@@ -32,7 +32,7 @@ export class ReverseFileStream extends stream.Readable {
       this.bytesRead += fs.readSync(this.fileDescriptor, buffer, 0, length, this.position);
 
       // Split into lines to fill the `lineBuffer`
-      this.remainder = buffer + this.remainder;
+      this.remainder = buffer.toString('utf8') + this.remainder;
       this.lineBuffer = this.remainder.split(/\r?\n/);
       // Ignore empty/trailing lines, `readable.push('')` is not recommended
       this.lineBuffer = this.lineBuffer.filter(line => line.length > 0);
