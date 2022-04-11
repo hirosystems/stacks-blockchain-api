@@ -68,7 +68,7 @@ $ PG_VERSION=12 \
 **Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
 
 1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o stacks-node/bns/export-data.tar.gz`
+`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz`
 2. Extract the data:  
 `tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/`
 3. Each file in `./bns` will have a corresponding `sha256` value.
@@ -146,7 +146,6 @@ STACKS_CORE_EVENT_PORT=3700
 STACKS_CORE_EVENT_HOST=0.0.0.0
 STACKS_BLOCKCHAIN_API_PORT=3999
 STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
-STACKS_BLOCKCHAIN_API_DB=pg
 STACKS_CORE_RPC_HOST=localhost
 STACKS_CORE_RPC_PORT=20443
 #BNS_IMPORT_DIR=/stacks-node/bns

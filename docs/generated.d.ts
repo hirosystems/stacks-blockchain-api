@@ -37,6 +37,8 @@ export type SchemaMergeRootStub =
   | CoreNodeFeeResponse
   | CoreNodeInfoResponse
   | CoreNodePoxResponse
+  | TransactionFeeEstimateResponse
+  | TransactionFeeEstimateRequest
   | RunFaucetResponse
   | FeeRateRequest
   | FeeRate
@@ -1640,6 +1642,32 @@ export interface CoreNodePoxResponse {
   reward_cycle_length: number;
   rejection_votes_left_required: number;
   total_liquid_supply_ustx: number;
+}
+/**
+ * POST response for estimated fee
+ */
+export interface TransactionFeeEstimateResponse {
+  estimated_cost_scalar: number;
+  cost_scalar_change_by_byte?: number;
+  estimated_cost: {
+    read_count: number;
+    read_length: number;
+    runtime: number;
+    write_count: number;
+    write_length: number;
+  };
+  estimations?: {
+    fee_rate?: number;
+    fee?: number;
+    [k: string]: unknown | undefined;
+  }[];
+}
+/**
+ * POST request for estimated fee
+ */
+export interface TransactionFeeEstimateRequest {
+  transaction_payload: string;
+  estimated_len?: number;
 }
 /**
  * POST request that initiates a transfer of tokens to a specified testnet address

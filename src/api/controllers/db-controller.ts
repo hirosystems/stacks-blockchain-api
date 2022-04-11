@@ -59,6 +59,8 @@ import {
   DbSmartContract,
   DbSearchResultWithMetadata,
   BaseTx,
+  DbMinerReward,
+  StxUnlockEvent,
 } from '../../datastore/common';
 import {
   unwrapOptional,
@@ -480,6 +482,71 @@ function parseDbBlock(
   return apiBlock;
 }
 
+async function parseRosettaTxDetail(opts: {
+  block_height: number;
+  indexBlockHash: string;
+  tx: DbTx;
+  db: DataStore;
+  minerRewards: DbMinerReward[];
+  unlockingEvents: StxUnlockEvent[];
+}): Promise<RosettaTransaction> {
+  let events: DbEvent[] = [];
+  if (opts.block_height > 1) {
+    // only return events of blocks at height greater than 1
+    const eventsQuery = await opts.db.getTxEvents({
+      txId: opts.tx.tx_id,
+      indexBlockHash: opts.indexBlockHash,
+      limit: 5000,
+      offset: 0,
+    });
+    events = eventsQuery.results;
+  }
+  const operations = await getOperations(
+    opts.tx,
+    opts.db,
+    opts.minerRewards,
+    events,
+    opts.unlockingEvents
+  );
+  const txMemo = parseTransactionMemo(opts.tx);
+  const rosettaTx: RosettaTransaction = {
+    transaction_identifier: { hash: opts.tx.tx_id },
+    operations: operations,
+  };
+  if (txMemo) {
+    rosettaTx.metadata = {
+      memo: txMemo,
+    };
+  }
+  return rosettaTx;
+}
+
+async function getRosettaBlockTxFromDataStore(opts: {
+  tx: DbTx;
+  block: DbBlock;
+  db: DataStore;
+}): Promise<FoundOrNot<RosettaTransaction>> {
+  let minerRewards: DbMinerReward[] = [],
+    unlockingEvents: StxUnlockEvent[] = [];
+
+  if (opts.tx.type_id === DbTxTypeId.Coinbase) {
+    minerRewards = await opts.db.getMinersRewardsAtHeight({
+      blockHeight: opts.block.block_height,
+    });
+    unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.block);
+  }
+
+  const rosettaTx = await parseRosettaTxDetail({
+    block_height: opts.block.block_height,
+    indexBlockHash: opts.tx.index_block_hash,
+    tx: opts.tx,
+    db: opts.db,
+    minerRewards,
+    unlockingEvents,
+  });
+  return { found: true, result: rosettaTx };
+}
+
 async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
@@ -504,28 +571,14 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
-    let events: DbEvent[] = [];
-    if (blockQuery.result.block_height > 1) {
-      // only return events of blocks at height greater than 1
-      const eventsQuery = await opts.db.getTxEvents({
-        txId: tx.tx_id,
-        indexBlockHash: opts.indexBlockHash,
-        limit: 5000,
-        offset: 0,
-      });
-      events = eventsQuery.results;
-    }
-    const operations = await getOperations(tx, opts.db, minerRewards, events, unlockingEvents);
-    const txMemo = parseTransactionMemo(tx);
-    const rosettaTx: RosettaTransaction = {
-      transaction_identifier: { hash: tx.tx_id },
-      operations: operations,
-    };
-    if (txMemo) {
-      rosettaTx.metadata = {
-        memo: txMemo,
-      };
-    }
+    const rosettaTx = await parseRosettaTxDetail({
+      block_height: blockQuery.result.block_height,
+      indexBlockHash: opts.indexBlockHash,
+      tx,
+      db: opts.db,
+      minerRewards,
+      unlockingEvents,
+    });
     transactions.push(rosettaTx);
   }
 
@@ -540,30 +593,27 @@ export async function getRosettaTransactionFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const blockOperations = await getRosettaBlockTransactionsFromDataStore({
-    blockHash: txQuery.result.block_hash,
-    indexBlockHash: txQuery.result.index_block_hash,
-    db,
-  });
-  if (!blockOperations.found) {
+
+  const blockQuery = await db.getBlock({ hash: txQuery.result.block_hash });
+  if (!blockQuery.found) {
     throw new Error(
       `Could not find block for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
     );
   }
-  const rosettaTx = blockOperations.result.find(
-    op => op.transaction_identifier.hash === txQuery.result.tx_id
-  );
-  if (!rosettaTx) {
+
+  const rosettaTx = await getRosettaBlockTxFromDataStore({
+    tx: txQuery.result,
+    block: blockQuery.result,
+    db,
+  });
+
+  if (!rosettaTx.found) {
     throw new Error(
       `Rosetta block missing operations for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
     );
   }
-  const result: RosettaTransaction = {
-    transaction_identifier: rosettaTx.transaction_identifier,
-    operations: rosettaTx.operations,
-    metadata: rosettaTx.metadata,
-  };
-  return { found: true, result };
+
+  return rosettaTx;
 }
 
 interface GetTxArgs {
