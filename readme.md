@@ -103,7 +103,7 @@ be upgraded and its database cannot be migrated to a new schema. One way to hand
 and stacks-node working directory, and re-sync from scratch.
 
 Alternatively, an event-replay feature is available where the API records the HTTP POST requests from the stacks-node event emitter, then streams
-these events back to itself. Essentially simulating a wipe & full re-sync, but much quicker -- typically around 10 minutes.
+these events back to itself. Essentially simulating a wipe & full re-sync, but much quicker.
 
 The feature can be used via program args. For example, if there are breaking changes in the API's sql schema, like adding a new column which requires
 event's to be re-played, the following steps could be ran:
@@ -124,6 +124,10 @@ event's to be re-played, the following steps could be ran:
    ```shell
    node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv --wipe-db --force
    ```
+
+   This command has two modes of operation, specified by the `--mode` option:
+   * `archival` (default): The process will import and ingest *all* blockchain events that have happened since the first block.
+   * `pruned`: The import process will ignore some prunable events (mempool, microblocks) until the import block height has reached `chain tip - 256` blocks. This saves a considerable amount of time during import, but sacrifices some historical data. You can use this mode if you're mostly interested in running an API that prioritizes real time information.
 
 Alternatively, instead of performing the `export-events` command in step 1, an environmental variable can be set which enables events to be streamed to a file
 as they are received, while the application is running normally. To enable this feature, set the `STACKS_EXPORT_EVENTS_FILE` env var to the file path where
