@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   postgres:
-    image: "postgres:12.2"
+    image: "postgres:14"
     ports:
       - "5490:5432"
     environment:
@@ -42,7 +42,6 @@ services:
       STACKS_CORE_EVENT_HOST: http://0.0.0.0
       STACKS_BLOCKCHAIN_API_PORT: 3999
       STACKS_BLOCKCHAIN_API_HOST: 0.0.0.0
-      STACKS_BLOCKCHAIN_API_DB: pg
       STACKS_CORE_RPC_HOST: stacks-blockchain
       STACKS_CORE_RPC_PORT: 20443
       NODE_ENV: development

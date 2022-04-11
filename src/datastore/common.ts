@@ -120,6 +120,8 @@ export enum DbTxStatus {
   DroppedTooExpensive = -12,
   /** Transaction was dropped because it became stale. */
   DroppedStaleGarbageCollect = -13,
+  /** Dropped by the API (even though the Stacks node hadn't dropped it) because it exceeded maximum mempool age */
+  DroppedApiGarbageCollect = -14,
 }
 
 export enum DbTxAnchorMode {
@@ -650,6 +652,14 @@ export interface DataStore extends DataStoreEventEmitter {
     recipientAddress?: string;
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
+
+  /**
+   * Returns a string that represents a digest of all the current pending transactions
+   * in the mempool. This digest can be used to calculate an `ETag` for mempool endpoint cache handlers.
+   * @returns `FoundOrNot` object with a possible `digest` string.
+   */
+  getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>>;
+
   getDroppedTxs(args: {
     limit: number;
     offset: number;

@@ -354,7 +354,7 @@ const TX_COLUMNS = `
 
 const MEMPOOL_TX_COLUMNS = `
   -- required columns
-  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time,
+  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time, receipt_block_height,
   post_conditions, nonce, fee_rate, sponsored, sponsor_address, sender_address, origin_hash_mode,
 
   -- token-transfer tx columns
@@ -524,6 +524,7 @@ interface MempoolTxQueryResult {
   anchor_mode: number;
   status: number;
   receipt_time: number;
+  receipt_block_height: number;
 
   canonical: boolean;
   post_conditions: Buffer;
@@ -1417,6 +1418,10 @@ export class PgDataStore
         }
         await this.refreshNftCustody(client, batchedTxData);
         await this.refreshMaterializedView(client, 'chain_tip');
+        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(client);
+        if (deletedMempoolTxs.deletedTxs.length > 0) {
+          logger.verbose(`Garbage collected ${deletedMempoolTxs.deletedTxs.length} mempool txs`);
+        }
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -1705,6 +1710,10 @@ export class PgDataStore
         updatedAssociatedTableParams
       );
     }
+
+    // TODO: [bug] This is can end up with incorrect canonical state due to missing the `index_block_hash` column
+    // which is required for the way micro-reorgs are handled. Queries against this table can work around the
+    // bug by using the `txs` table canonical state in the JOIN condition.
 
     // Update `principal_stx_txs`
     await client.query(
@@ -2127,6 +2136,7 @@ export class PgDataStore
       `,
       [txIdBuffers]
     );
+    await this.refreshMaterializedView(client, 'mempool_digest');
     const restoredTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { restoredTxs: restoredTxs };
   }
@@ -2154,8 +2164,39 @@ export class PgDataStore
       `,
       [txIdBuffers]
     );
+    await this.refreshMaterializedView(client, 'mempool_digest');
     const removedTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
     return { removedTxs: removedTxs };
+  }
+
+  /**
+   * Deletes mempool txs older than `STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD` blocks (default 256).
+   * @param client - DB client
+   * @returns List of deleted `tx_id`s
+   */
+  async deleteGarbageCollectedMempoolTxs(client: ClientBase): Promise<{ deletedTxs: string[] }> {
+    // Get threshold block.
+    const blockThreshold = process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? 256;
+    const cutoffResults = await client.query<{ block_height: number }>(
+      `SELECT (block_height - $1) AS block_height FROM chain_tip`,
+      [blockThreshold]
+    );
+    if (cutoffResults.rowCount != 1) {
+      return { deletedTxs: [] };
+    }
+    const cutoffBlockHeight = cutoffResults.rows[0].block_height;
+    // Delete every mempool tx that came before that block.
+    // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
+    const deletedTxResults = await client.query<{ tx_id: Buffer }>(
+      `UPDATE mempool_txs
+      SET pruned = TRUE, status = $2
+      WHERE pruned = FALSE AND receipt_block_height < $1
+      RETURNING tx_id`,
+      [cutoffBlockHeight, DbTxStatus.DroppedApiGarbageCollect]
+    );
+    await this.refreshMaterializedView(client, 'mempool_digest');
+    const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    return { deletedTxs: deletedTxs };
   }
 
   async markEntitiesCanonical(
@@ -3407,12 +3448,13 @@ export class PgDataStore
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.queryTx(async client => {
+      const chainTip = await this.getChainTip(client);
       for (const tx of txs) {
         const result = await client.query(
           `
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
+          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
           ON CONFLICT ON CONSTRAINT unique_tx_id
           DO NOTHING
           `,
@@ -3424,6 +3466,7 @@ export class PgDataStore
             tx.anchor_mode,
             tx.status,
             tx.receipt_time,
+            chainTip.blockHeight,
             tx.post_conditions,
             tx.nonce,
             tx.fee_rate,
@@ -3451,6 +3494,7 @@ export class PgDataStore
           updatedTxs.push(tx);
         }
       }
+      await this.refreshMaterializedView(client, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -3471,6 +3515,7 @@ export class PgDataStore
         [txIdBuffers, status]
       );
       updatedTxs = updateResults.rows.map(r => this.parseMempoolTxQueryResult(r));
+      await this.refreshMaterializedView(client, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -3837,6 +3882,16 @@ export class PgDataStore
       return this.parseMempoolTxQueryResult(r);
     });
     return { results: parsed, total: queryResult.total };
+  }
+
+  async getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
+    return await this.query(async client => {
+      const result = await client.query<{ digest: string }>(`SELECT digest FROM mempool_digest`);
+      if (result.rowCount === 0) {
+        return { found: false } as const;
+      }
+      return { found: true, result: { digest: result.rows[0].digest } };
+    });
   }
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
@@ -5540,14 +5595,19 @@ export class PgDataStore
         WITH stx_txs AS (
           SELECT tx_id, ${countOverColumn()}
           FROM principal_stx_txs
-          WHERE principal = $1 AND ${blockCond} AND canonical = TRUE AND microblock_canonical = TRUE
+          WHERE principal = $1 AND ${blockCond}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
         )
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
-        INNER JOIN txs USING (tx_id)
+        INNER JOIN txs
+          ON (stx_txs.tx_id = txs.tx_id
+          AND txs.canonical = TRUE
+          AND txs.microblock_canonical = TRUE)
+        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
+        LIMIT $2
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
@@ -7384,6 +7444,7 @@ export class PgDataStore
       await this.refreshMaterializedView(client, 'nft_custody', false);
       await this.refreshMaterializedView(client, 'nft_custody_unanchored', false);
       await this.refreshMaterializedView(client, 'chain_tip', false);
+      await this.refreshMaterializedView(client, 'mempool_digest', false);
     });
   }
 

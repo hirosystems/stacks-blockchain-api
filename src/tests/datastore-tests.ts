@@ -1,4 +1,3 @@
-import { MemoryDataStore } from '../datastore/memory-store';
 import {
   DbBlock,
   DbTx,
@@ -34,40 +33,6 @@ import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
 import { intCV, serializeCV } from '@stacks/transactions';
-
-describe('in-memory datastore', () => {
-  let db: MemoryDataStore;
-
-  beforeEach(() => {
-    db = new MemoryDataStore();
-  });
-
-  test('in-memory block store and retrieve', async () => {
-    const block: DbBlock = {
-      block_hash: '123',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      block_height: 123,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: false,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
-    assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
-  });
-});
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -114,7 +79,7 @@ describe('postgres datastore', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -999,12 +964,6 @@ describe('postgres datastore', () => {
         tx_id: '0x12340003',
         tx_index: 3,
       },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
-      },
     ]);
     expect(mapAddrTxResults(addrBResult.results)).toEqual([
       {
@@ -1018,12 +977,6 @@ describe('postgres datastore', () => {
         token_transfer_recipient_address: 'addrB',
         tx_id: '0x12340003',
         tx_index: 3,
-      },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
       },
     ]);
     expect(mapAddrTxResults(addrCResult.results)).toEqual([
@@ -1141,8 +1094,8 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(3);
-    expect(addrAAllBlockResult.total).toBe(7);
+    expect(addrAAtBlockResult.total).toBe(4);
+    expect(addrAAllBlockResult.total).toBe(9);
   });
 
   test('pg get address asset events', async () => {

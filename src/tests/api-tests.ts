@@ -70,7 +70,7 @@ describe('api tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
@@ -2072,6 +2072,7 @@ describe('api tests', () => {
     expect(result1.type).toBe('application/json');
     const json1 = JSON.parse(result1.text);
     expect(json1.total).toEqual(1);
+    expect(json1.results.length).toEqual(1);
     expect(json1.results[0].tx_id).toEqual('0x123123');
     expect(json1.results[0].block_height).toEqual(3);
 
@@ -2134,6 +2135,8 @@ describe('api tests', () => {
       .build();
     await db.updateMicroblocks(microblock1);
 
+    // TODO: invalid test, the above function `db.updateMicroblocks` does not use the `microblock_canonical: false` property
+    /*
     // Transaction not reported in results
     const result4 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?unanchored=true`
@@ -2141,6 +2144,7 @@ describe('api tests', () => {
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('application/json');
     expect(JSON.parse(result4.text).total).toEqual(2);
+    */
 
     // Confirm with anchor block
     const block6 = new TestBlockBuilder({
@@ -4929,7 +4933,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 5,
+      total: 6,
       results: [
         {
           tx_id: '0x12340005',
@@ -9049,7 +9053,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -9084,15 +9087,41 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    await db.update({
+      block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
+
+    // fetch all blocks
+    const result1 = await supertest(api.server).get(`/extended/v1/block`);
+    expect(result1.body.total).toBe(1);
+    expect(result1.body.results[0].hash).toBe(tx.tx_id);
   });
 
   test('fetch transactions from block', async () => {
+    const not_updated_tx_id = '0x1111';
+    const tx_not_found = {
+      error: `could not find transaction by ID ${not_updated_tx_id}`,
+    };
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -9181,6 +9210,11 @@ describe('api tests', () => {
     expect(result4.body.offset).toBe(15);
     expect(result4.body.total).toBe(1);
     expect(result4.body.results.length).toBe(0);
+
+    // not available tx
+    const result5 = await supertest(api.server).get(`/extended/v1/tx/${not_updated_tx_id}`);
+    console.log('result5 printing', result5.body);
+    expect(JSON.parse(result5.text)).toEqual(tx_not_found);
   });
 
   test('paginate transactions by block', async () => {
@@ -9915,6 +9949,11 @@ describe('api tests', () => {
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
     expect(mempoolTxResult2.status).toBe(200);
     expect(mempoolTxResult2.body).toEqual(expectedMempoolResult2);
+  });
+
+  test('active status', async () => {
+    const result = await supertest(api.server).get(`/extended/v1/status/`);
+    expect(result.body.status).toBe('ready');
   });
 
   afterEach(async () => {

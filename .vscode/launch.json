@@ -42,7 +42,6 @@
       "preLaunchTask": "stacks-node:deploy-dev",
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
-        "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
@@ -64,7 +63,6 @@
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
         "STACKS_API_MODE": "writeonly",
-        "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
@@ -92,7 +90,6 @@
       "env": {
         "STACKS_BLOCKCHAIN_API_PORT": "3998",
         "STACKS_API_MODE": "readonly",
-        "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
@@ -110,7 +107,6 @@
       "preLaunchTask": "stacks-node:deploy-follower",
       "postDebugTask": "stacks-node:stop-dev",
       "env": {
-        "STACKS_BLOCKCHAIN_API_DB": "pg",
         "STACKS_CHAIN_ID": "0x00000001",
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"

@@ -8,7 +8,7 @@ import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
-import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
@@ -20,7 +20,7 @@ const parseBlockQueryLimit = parseLimitQuery({
 
 export function createBlockRouter(db: DataStore): express.Router {
   const router = express.Router();
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
   router.get(
     '/',
     cacheHandler,
@@ -41,7 +41,7 @@ export function createBlockRouter(db: DataStore): express.Router {
         }
         return blockQuery.result;
       });
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       // TODO: block schema validation
       const response: BlockListResponse = { limit, offset, total, results };
       res.json(response);
@@ -58,7 +58,7 @@ export function createBlockRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `cannot find block by height ${height}` });
         return;
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -86,7 +86,7 @@ export function createBlockRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `cannot find block by height ${burnBlockHeight}` });
         return;
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -108,7 +108,7 @@ export function createBlockRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `cannot find block by hash ${hash}` });
         return;
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })
@@ -129,7 +129,7 @@ export function createBlockRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `cannot find block by burn block hash ${burnBlockHash}` });
         return;
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       // TODO: block schema validation
       res.json(block.result);
     })

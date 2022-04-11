@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg STACKS_CHAIN_ID=0x80000000 ts-node-transpile-only src/index.ts",
-    "dev:watch": "cross-env NODE_ENV=development STACKS_BLOCKCHAIN_API_DB=pg nodemon -e ts -x 'ts-node-transpile-only src/index.ts'",
+    "dev": "cross-env NODE_ENV=development STACKS_CHAIN_ID=0x80000000 ts-node-transpile-only src/index.ts",
+    "dev:watch": "cross-env NODE_ENV=development nodemon -e ts -x 'ts-node-transpile-only src/index.ts'",
     "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=development jest --config ./jest.config.js --coverage --runInBand",
