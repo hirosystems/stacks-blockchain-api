@@ -6922,7 +6922,7 @@ export class PgDataStore
         FROM subdomains
         WHERE name = $1 AND block_height <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         `,
         [name, maxBlockHeight]
       );

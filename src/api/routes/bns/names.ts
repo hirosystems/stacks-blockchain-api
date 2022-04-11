@@ -37,7 +37,7 @@ export function createBnsNamesRouter(db: DataStore): express.Router {
   );
 
   router.get(
-    '/:name/subdomains/',
+    '/:name/subdomains',
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
