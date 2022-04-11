@@ -523,6 +523,11 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+export function hexToUtf8String(hex: string): string {
+  const buffer = hexToBuffer(hex);
+  return buffer.toString('utf8');
+}
+
 export function numberToHex(number: number, paddingBytes: number = 4): string {
   let result = number.toString(16);
   if (result.length % 2 > 0) {

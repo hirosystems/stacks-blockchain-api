@@ -1,6 +1,6 @@
 import { Address, ChainID, StacksMessageType } from '@stacks/transactions';
 import { DbBnsNamespace } from './datastore/common';
-import { hexToBuffer } from './helpers';
+import { hexToBuffer, hexToUtf8String } from './helpers';
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
@@ -65,9 +65,9 @@ export function parseNameRawValue(rawValue: string): Attachment {
   const metadataCV = attachment.data.metadata;
 
   const nameCV = metadataCV.data.name;
-  const name = nameCV.buffer.toString();
+  const name = hexToUtf8String(nameCV.buffer);
   const namespaceCV = metadataCV.data.namespace;
-  const namespace = namespaceCV.buffer.toString();
+  const namespace = hexToUtf8String(namespaceCV.buffer);
   const opCV = metadataCV.data.op;
   const op = opCV.data;
   const addressCV = metadataCV.data['tx-sender'];
@@ -120,7 +120,7 @@ export function parseNamespaceRawValue(
   }
 
   const namespaceCV = cl_val.data.namespace;
-  const namespace = namespaceCV.buffer.toString();
+  const namespace = hexToUtf8String(namespaceCV.buffer);
   const statusCV = cl_val.data.status;
   const status = statusCV.data;
   const properties = cl_val.data.properties;

@@ -32,7 +32,7 @@ test('test synthetic tx token transfer 1', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '2e5da7fb854c2807a3dcab4151e62660697728cc',
+        signer: '0x2e5da7fb854c2807a3dcab4151e62660697728cc',
         signer_stacks_address: {
           address: 'SMQ5V9ZVGN62G1X3VJNM2MF64SG6JXS8SKVNTGZQ',
           address_hash_bytes: '0x2e5da7fb854c2807a3dcab4151e62660697728cc',
@@ -88,7 +88,7 @@ test('test synthetic tx token transfer 2', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '64744e00ead9eee455b07fe900ca844ba2e67569',
+        signer: '0x64744e00ead9eee455b07fe900ca844ba2e67569',
         signer_stacks_address: {
           address: 'SM1J78KG0XBCYXS2NP1ZYJ06AGH5T5SKND701Q4CA',
           address_hash_bytes: '0x64744e00ead9eee455b07fe900ca844ba2e67569',
@@ -104,7 +104,7 @@ test('test synthetic tx token transfer 2', () => {
       memo_hex: '0x',
       recipient: {
         address: 'SMSJ4YQNTPHWE1KH325MHVHXDRZY7ZA21W989BPW',
-        address_hash_bytes: '0z33227af5d5a3c70671188b48ee3d6e3fe3fd420f',
+        address_hash_bytes: '0x33227af5d5a3c70671188b48ee3d6e3fe3fd420f',
         address_version: 20,
         type_id: 5,
       },
@@ -144,7 +144,7 @@ test('test synthetic tx stx lock 1', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: 'e725a898f9fe204da28afb5cf7766602d1b30ad9',
+        signer: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
         signer_stacks_address: {
           address: 'SM3KJBA4RZ7Z20KD2HBXNSXVPCR1D3CRAV6Q05MKT',
           address_hash_bytes: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
@@ -239,7 +239,7 @@ test('test synthetic tx stx lock 2', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: 'c23dc19a1ea61a205312b229c6bd4046bf15f367',
+        signer: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
         signer_stacks_address: {
           address: 'SM313VGCT3TK1M82K2AS2KHNX813BY5FKCXJSKZ4E',
           address_hash_bytes: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
