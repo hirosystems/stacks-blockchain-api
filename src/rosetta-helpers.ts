@@ -791,7 +791,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (!delegate_to) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  args.delegate_to = delegate_to.repr;
+  args.delegate_to = delegate_to.repr.replace(/^'/, '');
 
   // Height on which the relation between delegator-delagatee will end  - OPTIONAL
   argName = 'until-burn-ht';
