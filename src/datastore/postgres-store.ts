@@ -1987,10 +1987,19 @@ export class PgDataStore
         [args.stxAddress]
       );
 
-      const lastExecutedTxNonce = executedTxNonce.rows[0]?.nonce ?? null;
+      let lastExecutedTxNonce = executedTxNonce.rows[0]?.nonce ?? null;
       const lastExecutedTxSponsorNonce = executedTxSponsorNonce.rows[0]?.nonce ?? null;
-      const lastMempoolTxNonce = mempoolTxNonce.rows[0]?.nonce ?? null;
+      if (lastExecutedTxNonce != null || lastExecutedTxSponsorNonce != null) {
+        lastExecutedTxNonce = Math.max(lastExecutedTxNonce ?? 0, lastExecutedTxSponsorNonce ?? 0);
+      }
+
+      let lastMempoolTxNonce = mempoolTxNonce.rows[0]?.nonce ?? null;
       const lastMempoolTxSponsorNonce = mempoolTxSponsorNonce.rows[0]?.nonce ?? null;
+
+      if (lastMempoolTxNonce != null || lastMempoolTxSponsorNonce != null) {
+        lastMempoolTxNonce = Math.max(lastMempoolTxNonce ?? 0, lastMempoolTxSponsorNonce ?? 0);
+      }
+
       let possibleNextNonce = 0;
       if (
         lastExecutedTxNonce !== null ||
