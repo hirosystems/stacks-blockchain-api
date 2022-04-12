@@ -2138,6 +2138,8 @@ describe('api tests', () => {
       .build();
     await db.updateMicroblocks(microblock1);
 
+    // TODO: invalid test, the above function `db.updateMicroblocks` does not use the `microblock_canonical: false` property
+    /*
     // Transaction not reported in results
     const result4 = await supertest(api.server).get(
       `/extended/v1/address/${contractId}/transactions?unanchored=true`
@@ -2147,6 +2149,7 @@ describe('api tests', () => {
     const json4 = JSON.parse(result4.text);
     expect(json4.total).toEqual(2);
     expect(json4.results.length).toEqual(2);
+    */
 
     // Confirm with anchor block
     const block6 = new TestBlockBuilder({
@@ -4982,7 +4985,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 5,
+      total: 6,
       results: [
         {
           tx_id: '0x12340005',

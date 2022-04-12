@@ -1715,6 +1715,10 @@ export class PgDataStore
       );
     }
 
+    // TODO: [bug] This is can end up with incorrect canonical state due to missing the `index_block_hash` column
+    // which is required for the way micro-reorgs are handled. Queries against this table can work around the
+    // bug by using the `txs` table canonical state in the JOIN condition.
+
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
@@ -5589,7 +5593,7 @@ export class PgDataStore
         WITH stx_txs AS (
           SELECT tx_id, ${countOverColumn()}
           FROM principal_stx_txs
-          WHERE principal = $1 AND ${blockCond} AND canonical = TRUE AND microblock_canonical = TRUE
+          WHERE principal = $1 AND ${blockCond}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
@@ -6904,6 +6908,30 @@ export class PgDataStore
       };
     }
     return { found: false } as const;
+  }
+
+  async getSubdomainsListInName({
+    name,
+    includeUnanchored,
+  }: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }> {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ fully_qualified_subdomain: string }>(
+        `
+        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
+        FROM subdomains
+        WHERE name = $1 AND block_height <= $2
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
+        `,
+        [name, maxBlockHeight]
+      );
+    });
+    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    return { results };
   }
 
   async getSubdomainsList({

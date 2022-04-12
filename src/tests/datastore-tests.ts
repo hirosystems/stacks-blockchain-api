@@ -964,12 +964,6 @@ describe('postgres datastore', () => {
         tx_id: '0x12340003',
         tx_index: 3,
       },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
-      },
     ]);
     expect(mapAddrTxResults(addrBResult.results)).toEqual([
       {
@@ -983,12 +977,6 @@ describe('postgres datastore', () => {
         token_transfer_recipient_address: 'addrB',
         tx_id: '0x12340003',
         tx_index: 3,
-      },
-      {
-        sender_address: 'addrA',
-        token_transfer_recipient_address: 'addrB',
-        tx_id: '0x12340002',
-        tx_index: 2,
       },
     ]);
     expect(mapAddrTxResults(addrCResult.results)).toEqual([
@@ -1106,8 +1094,8 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(3);
-    expect(addrAAllBlockResult.total).toBe(7);
+    expect(addrAAtBlockResult.total).toBe(4);
+    expect(addrAAllBlockResult.total).toBe(9);
   });
 
   test('pg get address asset events', async () => {

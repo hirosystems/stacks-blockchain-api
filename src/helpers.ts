@@ -17,6 +17,7 @@ import {
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
 import { DbStxEvent, DbTx } from './datastore/common';
+import { StacksCoreRpcClient } from './core-rpc/client';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -959,4 +960,35 @@ export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boo
     }
   }
   return false;
+}
+
+/**
+ * Gets the chain id as reported by the Stacks node.
+ * @returns `ChainID` Chain id
+ */
+export async function getStacksNodeChainID(): Promise<ChainID> {
+  const client = new StacksCoreRpcClient();
+  await client.waitForConnection(Infinity);
+  const coreInfo = await client.getInfo();
+  if (coreInfo.network_id === ChainID.Mainnet) {
+    return ChainID.Mainnet;
+  } else if (coreInfo.network_id === ChainID.Testnet) {
+    return ChainID.Testnet;
+  } else {
+    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
+  }
+}
+
+/**
+ * Gets the chain id as configured by the `STACKS_CHAIN_ID` API env variable.
+ * @returns `ChainID` Chain id
+ */
+export function getApiConfiguredChainID() {
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  return configuredChainID;
 }
