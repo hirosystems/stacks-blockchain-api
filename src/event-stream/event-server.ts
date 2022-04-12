@@ -55,9 +55,9 @@ import {
 import {
   decodeTransaction,
   decodeClarityValue,
-  ParsedClarityValueBuffer,
-  ParsedClarityValueStringAscii,
-  ParsedClarityValueTuple,
+  ClarityValueBuffer,
+  ClarityValueStringAscii,
+  ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { ChainID } from '@stacks/transactions';
@@ -581,10 +581,10 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
       attachment.contract_id === BnsContractIdentifier.testnet
     ) {
       const metadataCV = decodeClarityValue<
-        ParsedClarityValueTuple<{
-          op: ParsedClarityValueStringAscii;
-          name: ParsedClarityValueBuffer;
-          namespace: ParsedClarityValueBuffer;
+        ClarityValueTuple<{
+          op: ClarityValueStringAscii;
+          name: ClarityValueBuffer;
+          namespace: ClarityValueBuffer;
         }>
       >(attachment.metadata);
       const op = metadataCV.data['op'].data;

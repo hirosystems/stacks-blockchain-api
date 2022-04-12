@@ -32,8 +32,7 @@ test('test synthetic tx token transfer 1', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '0x2e5da7fb854c2807a3dcab4151e62660697728cc',
-        signer_stacks_address: {
+        signer: {
           address: 'SMQ5V9ZVGN62G1X3VJNM2MF64SG6JXS8SKVNTGZQ',
           address_hash_bytes: '0x2e5da7fb854c2807a3dcab4151e62660697728cc',
           address_version: 20,
@@ -88,8 +87,7 @@ test('test synthetic tx token transfer 2', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '0x64744e00ead9eee455b07fe900ca844ba2e67569',
-        signer_stacks_address: {
+        signer: {
           address: 'SM1J78KG0XBCYXS2NP1ZYJ06AGH5T5SKND701Q4CA',
           address_hash_bytes: '0x64744e00ead9eee455b07fe900ca844ba2e67569',
           address_version: 20,
@@ -144,8 +142,7 @@ test('test synthetic tx stx lock 1', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
-        signer_stacks_address: {
+        signer: {
           address: 'SM3KJBA4RZ7Z20KD2HBXNSXVPCR1D3CRAV6Q05MKT',
           address_hash_bytes: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
           address_version: 20,
@@ -165,23 +162,8 @@ test('test synthetic tx stx lock 1', () => {
           hex: '0x010000000000000000000000104c533c00',
           repr: 'u70000000000',
           type_id: 1,
-          value: '70000000000',
         },
         {
-          data: {
-            hashbytes: {
-              buffer: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
-              hex: '0x0200000014e725a898f9fe204da28afb5cf7766602d1b30ad9',
-              repr: '0xe725a898f9fe204da28afb5cf7766602d1b30ad9',
-              type_id: 2,
-            },
-            version: {
-              buffer: '0x14',
-              hex: '0x020000000114',
-              repr: '0x14',
-              type_id: 2,
-            },
-          },
           hex:
             '0x0c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e020000000114',
           repr: '(tuple (hashbytes 0xe725a898f9fe204da28afb5cf7766602d1b30ad9) (version 0x14))',
@@ -191,13 +173,11 @@ test('test synthetic tx stx lock 1', () => {
           hex: '0x01000000000000000000000000000a30a7',
           repr: 'u667815',
           type_id: 1,
-          value: '667815',
         },
         {
           hex: '0x0100000000000000000000000000000001',
           repr: 'u1',
           type_id: 1,
-          value: '1',
         },
       ],
       function_args_buffer:
@@ -239,8 +219,7 @@ test('test synthetic tx stx lock 2', () => {
         key_encoding: 0,
         nonce: '0',
         signature: '0x',
-        signer: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
-        signer_stacks_address: {
+        signer: {
           address: 'SM313VGCT3TK1M82K2AS2KHNX813BY5FKCXJSKZ4E',
           address_hash_bytes: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
           address_version: 20,
@@ -260,23 +239,8 @@ test('test synthetic tx stx lock 2', () => {
           hex: '0x0100000000000000000000038a607f5f70',
           repr: 'u3892859330416',
           type_id: 1,
-          value: '3892859330416',
         },
         {
-          data: {
-            hashbytes: {
-              buffer: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
-              hex: '0x0200000014c23dc19a1ea61a205312b229c6bd4046bf15f367',
-              repr: '0xc23dc19a1ea61a205312b229c6bd4046bf15f367',
-              type_id: 2,
-            },
-            version: {
-              buffer: '0x14',
-              hex: '0x020000000114',
-              repr: '0x14',
-              type_id: 2,
-            },
-          },
           hex:
             '0x0c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e020000000114',
           repr: '(tuple (hashbytes 0xc23dc19a1ea61a205312b229c6bd4046bf15f367) (version 0x14))',
@@ -286,13 +250,11 @@ test('test synthetic tx stx lock 2', () => {
           hex: '0x01000000000000000000000000000b1560',
           repr: 'u726368',
           type_id: 1,
-          value: '726368',
         },
         {
           hex: '0x010000000000000000000000000000000c',
           repr: 'u12',
           type_id: 1,
-          value: '12',
         },
       ],
       function_args_buffer:

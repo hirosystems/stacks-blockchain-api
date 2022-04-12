@@ -10,18 +10,19 @@ import * as crypto from 'crypto';
 import {
   ClarityTypeID,
   decodeClarityValue,
-  ParsedClarityValue,
-  ParsedClarityValueBuffer,
-  ParsedClarityValueInt,
-  ParsedClarityValueList,
-  ParsedClarityValueOptional,
-  ParsedClarityValueOptionalSome,
-  ParsedClarityValueOptionalUInt,
-  ParsedClarityValuePrincipalStandard,
-  ParsedClarityValueStringAscii,
-  ParsedClarityValueTuple,
-  ParsedClarityValueUInt,
+  ClarityValue,
+  ClarityValueBuffer,
+  ClarityValueInt,
+  ClarityValueList,
+  ClarityValueOptional,
+  ClarityValueOptionalSome,
+  ClarityValueOptionalUInt,
+  ClarityValuePrincipalStandard,
+  ClarityValueStringAscii,
+  ClarityValueTuple,
+  ClarityValueUInt,
   TxPayloadTypeID,
+  ClarityValuePrincipalContract,
 } from 'stacks-encoding-native-js';
 
 interface Attachment {
@@ -42,14 +43,14 @@ interface Attachment {
 
 export function parseNameRawValue(rawValue: string): Attachment {
   const cl_val = decodeClarityValue<
-    ParsedClarityValueTuple<{
-      attachment: ParsedClarityValueTuple<{
-        hash: ParsedClarityValueBuffer;
-        metadata: ParsedClarityValueTuple<{
-          name: ParsedClarityValueBuffer;
-          namespace: ParsedClarityValueBuffer;
-          op: ParsedClarityValueStringAscii;
-          'tx-sender': ParsedClarityValuePrincipalStandard;
+    ClarityValueTuple<{
+      attachment: ClarityValueTuple<{
+        hash: ClarityValueBuffer;
+        metadata: ClarityValueTuple<{
+          name: ClarityValueBuffer;
+          namespace: ClarityValueBuffer;
+          op: ClarityValueStringAscii;
+          'tx-sender': ClarityValuePrincipalStandard;
         }>;
       }>;
     }>
@@ -97,20 +98,20 @@ export function parseNamespaceRawValue(
   txIndex: number
 ): DbBnsNamespace | undefined {
   const cl_val = decodeClarityValue<
-    ParsedClarityValueTuple<{
-      namespace: ParsedClarityValueBuffer;
-      status: ParsedClarityValueStringAscii;
-      properties: ParsedClarityValueTuple<{
-        'launched-at': ParsedClarityValueOptionalUInt;
-        lifetime: ParsedClarityValueUInt;
-        'revealed-at': ParsedClarityValueUInt;
-        'namespace-import': ParsedClarityValuePrincipalStandard;
-        'price-function': ParsedClarityValueTuple<{
-          base: ParsedClarityValueUInt;
-          coeff: ParsedClarityValueUInt;
-          'no-vowel-discount': ParsedClarityValueUInt;
-          'nonalpha-discount': ParsedClarityValueUInt;
-          buckets: ParsedClarityValueList<ParsedClarityValueUInt>;
+    ClarityValueTuple<{
+      namespace: ClarityValueBuffer;
+      status: ClarityValueStringAscii;
+      properties: ClarityValueTuple<{
+        'launched-at': ClarityValueOptionalUInt;
+        lifetime: ClarityValueUInt;
+        'revealed-at': ClarityValueUInt;
+        'namespace-import': ClarityValuePrincipalStandard;
+        'price-function': ClarityValueTuple<{
+          base: ClarityValueUInt;
+          coeff: ClarityValueUInt;
+          'no-vowel-discount': ClarityValueUInt;
+          'nonalpha-discount': ClarityValueUInt;
+          buckets: ClarityValueList<ClarityValueUInt>;
         }>;
       }>;
     }>
@@ -198,11 +199,15 @@ export function getNewOwner(
         if (
           tx.parsed_tx.payload.function_args.length >= 3 &&
           tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
-        )
-          return tx.parsed_tx.payload.function_args[2].address;
+        ) {
+          const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
+          const principal = decoded as ClarityValuePrincipalStandard;
+          principal.address;
+        }
       }
     }
   }
+  return undefined;
 }
 
 export function GetStacksNetwork(chainId: ChainID) {

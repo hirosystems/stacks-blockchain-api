@@ -14,10 +14,10 @@ import {
   decodeTransaction,
   decodeStacksAddress,
   ClarityTypeID,
-  ParsedClarityValuePrincipalStandard,
-  ParsedClarityValueResponse,
-  ParsedClarityValueTuple,
-  ParsedClarityValueUInt,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponse,
+  ClarityValueTuple,
+  ClarityValueUInt,
   AnchorModeID,
   DecodedTxResult,
   PostConditionModeID,
@@ -47,14 +47,14 @@ import {
 } from '@stacks/transactions';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
-  const txSender = tx.auth.origin_condition.signer_stacks_address.address;
+  const txSender = tx.auth.origin_condition.signer.address;
   return txSender;
 }
 
 export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
   let sponsorAddress: string | undefined = undefined;
   if (tx.auth.type_id === PostConditionAuthFlag.Sponsored) {
-    sponsorAddress = tx.auth.sponsor_condition.signer_stacks_address.address;
+    sponsorAddress = tx.auth.sponsor_condition.signer.address;
   }
   return sponsorAddress;
 }
@@ -67,11 +67,11 @@ function createTransactionFromCoreBtcStxLockEvent(
   txId: string
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
-    ParsedClarityValueResponse<
-      ParsedClarityValueTuple<{
-        'lock-amount': ParsedClarityValueUInt;
-        'unlock-burn-height': ParsedClarityValueUInt;
-        stacker: ParsedClarityValuePrincipalStandard;
+    ClarityValueResponse<
+      ClarityValueTuple<{
+        'lock-amount': ClarityValueUInt;
+        'unlock-burn-height': ClarityValueUInt;
+        stacker: ClarityValuePrincipalStandard;
       }>
     >
   >(txResult);
@@ -116,8 +116,7 @@ function createTransactionFromCoreBtcStxLockEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress[1],
-        signer_stacks_address: {
+        signer: {
           address_version: senderAddress[0],
           address_hash_bytes: senderAddress[1],
           address: event.stx_lock_event.locked_address,
@@ -161,8 +160,7 @@ function createTransactionFromCoreBtcTxEvent(
       type_id: PostConditionAuthFlag.Standard,
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
-        signer: senderAddress[1],
-        signer_stacks_address: {
+        signer: {
           address_version: senderAddress[0],
           address_hash_bytes: senderAddress[1],
           address: event.stx_transfer_event.sender,

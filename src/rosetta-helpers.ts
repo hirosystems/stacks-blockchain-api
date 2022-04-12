@@ -68,13 +68,13 @@ import {
   ClarityTypeID,
   decodeClarityValue,
   decodeTransaction,
-  ParsedClarityValueBuffer,
-  ParsedClarityValueOptional,
-  ParsedClarityValueOptionalBool,
-  ParsedClarityValuePrincipalStandard,
-  ParsedClarityValueResponse,
-  ParsedClarityValueTuple,
-  ParsedClarityValueUInt,
+  ClarityValueBuffer,
+  ClarityValueOptional,
+  ClarityValueOptionalBool,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponse,
+  ClarityValueTuple,
+  ClarityValueUInt,
   PrincipalTypeID,
   TxPayloadTokenTransfer,
   TxPayloadTypeID,
@@ -757,7 +757,7 @@ function parseRevokeDelegateStxArgs(
   }
 
   // Call result
-  const result = decodeClarityValue<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  const result = decodeClarityValue<ClarityValueOptionalBool>(contract.tx_result.hex);
   args.result =
     result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
       ? 'true'
@@ -808,14 +808,14 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
-    const pox_address_cv = decodeClarityValue<ParsedClarityValueOptional>(pox_address_raw.hex);
+    const pox_address_cv = decodeClarityValue<ClarityValueOptional>(pox_address_raw.hex);
     if (pox_address_cv.type_id === ClarityTypeID.OptionalSome) {
       args.pox_addr = pox_address_cv.value.hex;
     }
   }
 
   // Call result
-  const result = decodeClarityValue<ParsedClarityValueOptionalBool>(contract.tx_result.hex);
+  const result = decodeClarityValue<ClarityValueOptionalBool>(contract.tx_result.hex);
   args.result =
     result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
       ? 'true'
@@ -861,10 +861,10 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Unlock burn height
   const temp = decodeClarityValue<
-    ParsedClarityValueResponse<
-      ParsedClarityValueTuple<{
-        'unlock-burn-height': ParsedClarityValueUInt;
-        stacker: ParsedClarityValuePrincipalStandard;
+    ClarityValueResponse<
+      ClarityValueTuple<{
+        'unlock-burn-height': ClarityValueUInt;
+        stacker: ClarityValuePrincipalStandard;
       }>
     >
   >(contract.tx_result.hex);
@@ -888,9 +888,9 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   if (pox_address_cv.type_id === ClarityTypeID.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
     try {
-      const addressCV = pox_address_cv as ParsedClarityValueTuple<{
-        version: ParsedClarityValueBuffer;
-        hashbytes: ParsedClarityValueBuffer;
+      const addressCV = pox_address_cv as ClarityValueTuple<{
+        version: ClarityValueBuffer;
+        hashbytes: ClarityValueBuffer;
       }>;
       args.pox_addr = poxAddressToBtcAddress(
         hexToBuffer(addressCV.data.version.buffer),
