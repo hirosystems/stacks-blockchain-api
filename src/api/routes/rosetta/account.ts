@@ -37,11 +37,6 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
       let blockQuery: FoundOrNot<DbBlock>;
       let blockHash: string = '0x';
 
-      if (accountIdentifier === undefined) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
-        return;
-      }
-
       // we need to return the block height/hash in the response, so we
       // need to fetch the block first.
       if (blockIdentifier === undefined) {

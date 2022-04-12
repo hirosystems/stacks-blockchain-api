@@ -6916,6 +6916,30 @@ export class PgDataStore
     return { found: false } as const;
   }
 
+  async getSubdomainsListInName({
+    name,
+    includeUnanchored,
+  }: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }> {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
+      return await client.query<{ fully_qualified_subdomain: string }>(
+        `
+        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
+        FROM subdomains
+        WHERE name = $1 AND block_height <= $2
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
+        `,
+        [name, maxBlockHeight]
+      );
+    });
+    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    return { results };
+  }
+
   async getSubdomainsList({
     page,
     includeUnanchored,

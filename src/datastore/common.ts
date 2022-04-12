@@ -937,6 +937,14 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
+  /**
+   * This function returns the subdomains for a specific name
+   * @param name - The name for which subdomains are required
+   */
+  getSubdomainsListInName(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }>;
   getSubdomainsList(args: {
     page: number;
     includeUnanchored: boolean;

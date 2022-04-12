@@ -37,6 +37,16 @@ export function createBnsNamesRouter(db: DataStore): express.Router {
   );
 
   router.get(
+    '/:name/subdomains',
+    asyncHandler(async (req, res, next) => {
+      const { name } = req.params;
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      res.json(subdomainsList.results);
+    })
+  );
+
+  router.get(
     '/:name/zonefile',
     asyncHandler(async (req, res, next) => {
       // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
