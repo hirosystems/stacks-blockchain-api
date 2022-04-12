@@ -748,13 +748,13 @@ export class TokensProcessorQueue {
   /** The entries currently queued for processing in memory, keyed by the queue entry db id. */
   readonly queuedEntries: Map<number, TokenMetadataUpdateInfo> = new Map();
 
-  readonly onTokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
+  readonly onTokenMetadataUpdateQueued: (queueId: number) => void;
 
   constructor(db: DataStore, chainId: ChainID) {
     this.db = db;
     this.chainId = chainId;
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
-    this.onTokenMetadataUpdateQueued = entry => this.queueHandler(entry);
+    this.onTokenMetadataUpdateQueued = entry => this.queueNotificationHandler(entry);
     this.db.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
   }
 
@@ -797,6 +797,13 @@ export class TokensProcessorQueue {
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
+    }
+  }
+
+  async queueNotificationHandler(queueId: number) {
+    const queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
+    if (queueEntry.found) {
+      await this.queueHandler(queueEntry.result);
     }
   }
 
