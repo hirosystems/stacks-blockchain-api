@@ -521,7 +521,7 @@ interface MempoolTxQueryResult {
   tx_id: Buffer;
 
   nonce: number;
-  sponsor_nonce: number;
+  sponsor_nonce?: number;
   type_id: number;
   anchor_mode: number;
   status: number;
@@ -573,7 +573,7 @@ interface TxQueryResult {
   burn_block_time: number;
   parent_burn_block_time: number;
   nonce: number;
-  sponsor_nonce: number;
+  sponsor_nonce?: number;
   type_id: number;
   anchor_mode: number;
   status: number;
@@ -1961,7 +1961,7 @@ export class PgDataStore
         `
         SELECT MAX(sponsor_nonce) nonce
         FROM txs
-        WHERE sponsor_address = $1 AND sponsored= true
+        WHERE sponsor_address = $1 AND sponsored = true
         AND canonical = true AND microblock_canonical = true
         `,
         [args.stxAddress]

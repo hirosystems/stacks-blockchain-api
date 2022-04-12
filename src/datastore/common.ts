@@ -136,8 +136,8 @@ export interface BaseTx {
   fee_rate: bigint;
   sender_address: string;
   sponsored: boolean;
-  sponsor_address: string | undefined;
-  sponsor_nonce?: number | undefined;
+  sponsor_address?: string;
+  sponsor_nonce?: number;
   nonce: number;
   tx_id: string;
   anchor_mode: DbTxAnchorMode;
