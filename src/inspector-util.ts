@@ -428,8 +428,6 @@ export async function startProfilerServer(
       return;
     }
     const fileName = `profile-${Date.now()}.svg`;
-    const nativeProfilerFilePath = path.join('/Users/matt/Downloads/profiler-results/', fileName);
-    fs.writeFileSync(nativeProfilerFilePath, profilerResults);
     res.setHeader('Cache-Control', 'no-store');
     res.setHeader('Transfer-Encoding', 'chunked');
     res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
