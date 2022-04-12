@@ -26,6 +26,7 @@ import {
   PostConditionAuthFlag,
   TxPublicKeyEncoding,
   TxSpendingConditionSingleSigHashMode,
+  decodeClarityValueList,
 } from 'stacks-encoding-native-js';
 import { DbMicroblockPartial } from '../datastore/common';
 import { NotImplementedError } from '../errors';
@@ -106,7 +107,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   const rawFnArgs = bufferToHexPrefixString(
     Buffer.concat([fnLenBuffer, ...serializedClarityValues])
   );
-  const clarityFnArgs = serializedClarityValues.map(c => decodeClarityValue(c));
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
     tx_id: txId,

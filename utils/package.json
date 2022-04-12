@@ -22,7 +22,6 @@
     "pg-copy-streams": "^5.1.1",
     "pg-cursor": "^2.6.0",
     "pg-listen": "^1.7.0",
-    "stacks-encoding-native-js": "file:../../stacks-encoding-native-js",
     "table": "^6.7.2"
   },
   "devDependencies": {
