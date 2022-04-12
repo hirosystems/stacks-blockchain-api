@@ -892,6 +892,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
         version: ClarityValueBuffer;
         hashbytes: ClarityValueBuffer;
       }>;
+      // TODO(perf): this should be able to use stacks-native-encoding stx-to-btc address fn
       args.pox_addr = poxAddressToBtcAddress(
         hexToBuffer(addressCV.data.version.buffer),
         hexToBuffer(addressCV.data.hashbytes.buffer),

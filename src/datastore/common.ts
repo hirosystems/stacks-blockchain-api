@@ -143,6 +143,8 @@ export interface BaseTx {
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
   token_transfer_amount?: bigint;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
   token_transfer_memo?: Buffer;
   status: DbTxStatus;
@@ -150,6 +152,8 @@ export interface BaseTx {
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
   abi?: string;
@@ -179,6 +183,8 @@ export interface DbTx extends BaseTx {
   // TODO(mb): should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  // and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   post_conditions: Buffer;
 
   /** u8 */
@@ -311,6 +317,8 @@ export interface DbFtEvent extends DbContractAssetEvent {
 
 export interface DbNftEvent extends DbContractAssetEvent {
   event_type: DbEventTypeId.NonFungibleTokenAsset;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Raw Clarity value */
   value: Buffer;
 }
@@ -341,6 +349,8 @@ export interface DbTxWithAssetTransfers {
   }[];
   nft_transfers: {
     asset_identifier: string;
+    // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+    //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
     value: Buffer;
     sender?: string;
     recipient?: string;
@@ -349,6 +359,8 @@ export interface DbTxWithAssetTransfers {
 
 export interface NftHoldingInfo {
   asset_identifier: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
   recipient: string;
   tx_id: Buffer;
@@ -368,6 +380,8 @@ export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
   asset_identifier: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
   block_height: number;
   tx_id: Buffer;
