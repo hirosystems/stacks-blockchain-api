@@ -135,7 +135,8 @@ export interface BaseTx {
   fee_rate: bigint;
   sender_address: string;
   sponsored: boolean;
-  sponsor_address: string | undefined;
+  sponsor_address?: string;
+  sponsor_nonce?: number;
   nonce: number;
   tx_id: string;
   anchor_mode: DbTxAnchorMode;
@@ -402,7 +403,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
+    tokenMetadataUpdateQueued: (queueId: number) => void;
   }
 >;
 
@@ -703,6 +704,21 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
+  /**
+   * It retrieves filtered events from the db based on transaction, principal or event type. Note: It does not accept both principal and txId at the same time
+   * @param args - addressOrTxId: filter for either transaction id or address
+   * @param args - eventTypeFilter: filter based on event types ids
+   * @param args - limit: returned that many rows
+   * @param args - offset: skip that any rows
+   * @returns returns array of events
+   */
+  getTransactionEvents(args: {
+    addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
+    eventTypeFilter: DbEventTypeId[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
   getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
 
   getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
@@ -977,6 +993,12 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
 
+  /**
+   * Returns a single entry from the `token_metadata_queue` table.
+   * @param queueId - queue entry id
+   */
+  getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
+
   getTokenMetadataQueue(
     limit: number,
     excludingEntries: number[]
@@ -1062,11 +1084,11 @@ export function createDbMempoolTxFromCoreMsg(msg: {
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
     pruned: false,
-    nonce: Number(
+    nonce: Number(msg.txData.auth.origin_condition.nonce),
+    sponsor_nonce:
       msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
-        ? msg.txData.auth.sponsor_condition.nonce
-        : msg.txData.auth.origin_condition.nonce
-    ),
+        ? Number(msg.txData.auth.sponsor_condition.nonce)
+        : undefined,
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
     type_id: parseEnum(DbTxTypeId, msg.txData.payload.type_id as number),
@@ -1093,11 +1115,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
-    nonce: Number(
+    nonce: Number(parsedTx.auth.origin_condition.nonce),
+    sponsor_nonce:
       parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
-        ? parsedTx.auth.sponsor_condition.nonce
-        : parsedTx.auth.origin_condition.nonce
-    ),
+        ? Number(parsedTx.auth.sponsor_condition.nonce)
+        : undefined,
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,

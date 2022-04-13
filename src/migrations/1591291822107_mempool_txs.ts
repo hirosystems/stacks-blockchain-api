@@ -45,6 +45,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     sponsor_address: {
       type: 'string'
     },
+    sponsor_nonce: {
+      type: 'integer'
+    },
     sender_address: {
       type: 'string',
       notNull: true,

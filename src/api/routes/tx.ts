@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
+import { DataStore, DbTx, DbMempoolTx, DbEventTypeId } from '../../datastore/common';
 import {
   getTxFromDataStore,
   parseTxTypeStrings,
@@ -8,6 +8,7 @@ import {
   searchTx,
   searchTxs,
   parseDbTx,
+  parseDbEvent,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -18,12 +19,15 @@ import {
   bufferToHexPrefixString,
   isValidPrincipal,
   hexToBuffer,
+  parseEventTypeStrings,
 } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
   getBlockHeightPathParam,
   validateRequestHexInput,
+  parseAddressOrTxId,
+  parseEventTypeFilter,
 } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
@@ -256,6 +260,28 @@ export function createTxRouter(db: DataStore): express.Router {
         db.removeListener('txUpdate', onTxUpdate);
       });
       await endWaiter;
+    })
+  );
+
+  router.get(
+    '/events',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+
+      const principalOrTxId = parseAddressOrTxId(req, res, next);
+      const eventTypeFilter = parseEventTypeFilter(req, res, next);
+
+      const { results } = await db.getTransactionEvents({
+        addressOrTxId: principalOrTxId,
+        eventTypeFilter,
+        offset,
+        limit,
+      });
+      const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+      setETagCacheHeaders(res);
+      res.status(200).json(response);
     })
   );
 

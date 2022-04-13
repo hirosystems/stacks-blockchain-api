@@ -21,7 +21,7 @@ export type PgAddressNotificationPayload = {
 };
 
 export type PgTokenMetadataNotificationPayload = {
-  entry: DbTokenMetadataQueueEntry;
+  queueId: number;
 };
 
 export type PgNameNotificationPayload = {

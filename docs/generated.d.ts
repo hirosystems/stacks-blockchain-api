@@ -101,6 +101,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
   | GetRawTransactionResult
+  | TransactionEventsResponse
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
@@ -1080,6 +1081,7 @@ export interface BaseTransaction {
    * Address of the transaction initiator
    */
   sender_address: string;
+  sponsor_nonce?: number;
   /**
    * Denotes whether the originating account is the same as the paying account
    */
@@ -3401,6 +3403,14 @@ export interface GetRawTransactionResult {
    */
   raw_tx: string;
   [k: string]: unknown | undefined;
+}
+/**
+ * GET event for the given transaction
+ */
+export interface TransactionEventsResponse {
+  limit: number;
+  offset: number;
+  results: TransactionEvent[];
 }
 /**
  * GET request that returns transactions
