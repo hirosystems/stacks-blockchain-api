@@ -6,7 +6,7 @@ import * as util from 'util';
 import * as stream from 'stream';
 import * as http from 'http';
 import * as winston from 'winston';
-import * as c32check from 'c32check';
+import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import { ChainID } from '@stacks/transactions';
@@ -16,7 +16,7 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbStxEvent, DbTx } from './datastore/common';
+import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
@@ -258,7 +258,7 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = c32check.c32ToB58(address);
+    const result = stacksToBitcoinAddress(address);
     return result;
   } catch (e) {
     return false;
@@ -267,8 +267,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    c32check.c32addressDecode(stxAddress);
-    return true;
+    return isValidStacksAddress(stxAddress);
   } catch (error) {
     return false;
   }
@@ -525,6 +524,11 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+export function hexToUtf8String(hex: string): string {
+  const buffer = hexToBuffer(hex);
+  return buffer.toString('utf8');
+}
+
 export function numberToHex(number: number, paddingBytes: number = 4): string {
   let result = number.toString(16);
   if (result.length % 2 > 0) {
@@ -756,24 +760,37 @@ export function waiter<T = void>(): Waiter<T> {
   return Object.assign(promise, completer);
 }
 
-export function stopwatch(): {
+export interface Stopwatch {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
+  /** Seconds since stopwatch was created. */
+  getElapsedSeconds: () => number;
   getElapsedAndRestart: () => number;
-} {
-  let start = process.hrtime();
-  return {
+  restart(): void;
+}
+
+export function stopwatch(): Stopwatch {
+  let start = process.hrtime.bigint();
+  const result: Stopwatch = {
+    getElapsedSeconds: () => {
+      const elapsedMs = result.getElapsed();
+      return elapsedMs / 1000;
+    },
     getElapsed: () => {
-      const hrend = process.hrtime(start);
-      return hrend[0] * 1000 + hrend[1] / 1000000;
+      const end = process.hrtime.bigint();
+      return Number((end - start) / 1_000_000n);
     },
     getElapsedAndRestart: () => {
-      const hrend = process.hrtime(start);
-      const result = hrend[0] * 1000 + hrend[1] / 1000000;
-      start = process.hrtime();
+      const end = process.hrtime.bigint();
+      const result = Number((end - start) / 1_000_000n);
+      start = process.hrtime.bigint();
       return result;
     },
+    restart: () => {
+      start = process.hrtime.bigint();
+    },
   };
+  return result;
 }
 
 export async function time<T>(
@@ -991,4 +1008,23 @@ export function getApiConfiguredChainID() {
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
   return configuredChainID;
+}
+
+export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
+  return values.map(v => {
+    switch (v) {
+      case 'smart_contract_log':
+        return DbEventTypeId.SmartContractLog;
+      case 'stx_lock':
+        return DbEventTypeId.StxLock;
+      case 'stx_asset':
+        return DbEventTypeId.StxAsset;
+      case 'fungible_token_asset':
+        return DbEventTypeId.FungibleTokenAsset;
+      case 'non_fungible_token_asset':
+        return DbEventTypeId.NonFungibleTokenAsset;
+      default:
+        throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
+    }
+  });
 }

@@ -3296,3 +3296,59 @@ paths:
                 $ref: ./api/core-node/post-fee-transaction-response.schema.json
               example:
                 $ref: ./api/core-node/post-fee-transaction-response.example.json
+  /extended/v1/tx/events:
+    get:
+      summary: Transaction Events
+      description: Retrieves the list of events filtered by principal (STX address or Smart Contract ID), transaction id or event types.
+        The list of event types is ('smart_contract_log', 'stx_lock', 'stx_asset', 'fungible_token_asset', 'non_fungible_token_asset').
+      tags:
+        - Transactions
+      operationId: get_filtered_events
+      parameters:
+        - name: tx_id
+          in: query
+          description: Hash of transaction
+          required: false
+          schema:
+            type: string
+            example: '0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5'
+        - name: address
+          in: query
+          description: Stacks address or a Contract identifier
+          required: false
+          schema:
+            type: string
+            example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+            example: 100
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+            example: 50
+        - name: type
+          in: query
+          description: Filter the events on event type
+          required: false
+          schema:
+            type: array
+            items: 
+              type: string
+              enum: [smart_contract_log, stx_lock, stx_asset, fungible_token_asset, non_fungible_token_asset]
+              example: stx_lock
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transaction-events.schema.json
+              example:
+                $ref: ./api/transaction/get-transaction-events.example.json

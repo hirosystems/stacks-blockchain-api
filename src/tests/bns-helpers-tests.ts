@@ -71,7 +71,6 @@ test('Success: parse name raw value', () => {
   expect(attachment.metadata.name).toEqual(expectedAttachment.metadata.name);
   expect(attachment.metadata.namespace).toEqual(expectedAttachment.metadata.namespace);
   expect(attachment.metadata.op).toEqual(expectedAttachment.metadata.op);
-  expect(attachment.metadata.tx_sender.type).toEqual(expectedAttachment.metadata.tx_sender.type);
   expect(attachment.metadata.tx_sender.version).toEqual(
     expectedAttachment.metadata.tx_sender.version
   );

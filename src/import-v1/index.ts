@@ -5,7 +5,7 @@ import * as util from 'util';
 import * as readline from 'readline';
 import * as path from 'path';
 import * as zlib from 'zlib';
-import * as c32check from 'c32check';
+import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import * as split2 from 'split2';
 
 import {
@@ -26,7 +26,6 @@ import {
 } from '../helpers';
 
 import { PoolClient } from 'pg';
-import { b58ToC32 } from './c32helper';
 
 const IMPORT_FILES = [
   'chainstate.txt',
@@ -233,7 +232,7 @@ class SubdomainZonefileParser extends stream.Transform {
 // Convert a BTC address to STX, otherwise return the original value if invalid
 function btcToStxAddress(btcAddress: string) {
   try {
-    return c32check.b58ToC32(btcAddress);
+    return bitcoinToStacksAddress(btcAddress);
   } catch (error) {
     return btcAddress;
   }
@@ -378,7 +377,7 @@ class StxVestingTransform extends stream.Transform {
       // skip the headers row
       if (address !== 'address') {
         if (!address.startsWith('S')) {
-          address = b58ToC32(address);
+          address = bitcoinToStacksAddress(address);
         }
         const tokenOfferingLocked: DbTokenOfferingLocked = {
           address,
