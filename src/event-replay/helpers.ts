@@ -13,7 +13,7 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
   let blockHeight = 0;
   const reverseStream = new ReverseFileStream(filePath);
   for await (const data of reverseStream) {
-    const columns = data.toString().split('\t');
+    const columns = data.split('\t');
     const eventName = columns[2];
     if (eventName === '/new_block') {
       const payload = columns[3];

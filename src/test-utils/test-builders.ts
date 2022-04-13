@@ -25,8 +25,8 @@ import {
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
-import { bufferCV, bufferCVFromString, intCV, serializeCV, uintCV } from '@stacks/transactions';
-import { createClarityValueArray } from '../p2p/tx';
+import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;

@@ -61,7 +61,6 @@ import {
   RosettaOperationType,
 } from '../../rosetta-constants';
 import {
-  bitcoinAddressToSTXAddress,
   getOperations,
   getOptionsFromOperations,
   getSigners,
@@ -77,6 +76,7 @@ import {
   parseTransactionMemo,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
+import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 
 export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -109,7 +109,7 @@ export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID)
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidPublicKey]);
           return;
         }
-        const stxAddress = bitcoinAddressToSTXAddress(btcAddress);
+        const stxAddress = bitcoinToStacksAddress(btcAddress);
 
         const accountIdentifier: RosettaAccountIdentifier = {
           address: stxAddress,

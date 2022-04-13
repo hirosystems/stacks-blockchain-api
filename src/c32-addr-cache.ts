@@ -9,6 +9,7 @@ and for now this approach is much easier and faster.
 
 import * as c32check from 'c32check';
 import * as LruCache from 'lru-cache';
+import { stacksAddressFromParts } from 'stacks-encoding-native-js';
 
 type c32AddressFn = typeof c32check.c32address;
 
@@ -38,7 +39,7 @@ function createC32AddressCache(origFn: c32AddressFn): c32AddressFn {
     const addrCache = getAddressLruCache();
     let addrVal = addrCache.get(cacheKey);
     if (addrVal === undefined) {
-      addrVal = origFn(version, hash160hex);
+      addrVal = stacksAddressFromParts(version, hash160hex);
       addrCache.set(cacheKey, addrVal);
     }
     return addrVal;

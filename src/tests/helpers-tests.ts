@@ -1,4 +1,5 @@
 import * as c32check from 'c32check';
+import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
 import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
@@ -68,13 +69,13 @@ test('bitcoin<->stacks address', () => {
   const mainnetStxAddr = 'SP2JKEZC09WVMR33NBSCWQAJC5GS590RP1FR9CK55';
   const mainnetBtcAddr = '1G4ayBXJvxZMoZpaNdZG6VyWwWq2mHpMjQ';
   // What we'd have here, is a failure to communicate.
-  expect(c32check.b58ToC32(mainnetBtcAddr)).toBe(mainnetStxAddr);
-  expect(c32check.c32ToB58(mainnetStxAddr)).toBe(mainnetBtcAddr);
+  expect(bitcoinToStacksAddress(mainnetBtcAddr)).toBe(mainnetStxAddr);
+  expect(stacksToBitcoinAddress(mainnetStxAddr)).toBe(mainnetBtcAddr);
 
   const testnetStxAddr = 'STDFV22FCWGHB7B5563BHXVMCSYM183PRB9DH090';
   const testnetBtcAddr = 'mhyfanXuwsCMrixyQcCDzh28iHEdtQzZEm';
-  expect(c32check.b58ToC32(testnetBtcAddr)).toBe(testnetStxAddr);
-  expect(c32check.c32ToB58(testnetStxAddr)).toBe(testnetBtcAddr);
+  expect(bitcoinToStacksAddress(testnetBtcAddr)).toBe(testnetStxAddr);
+  expect(stacksToBitcoinAddress(testnetStxAddr)).toBe(testnetBtcAddr);
 
   // Generated with these utilities:
   //   https://iancoleman.io/bip39/

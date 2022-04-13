@@ -16,8 +16,16 @@ export class ReverseFileStream extends stream.Readable {
   public bytesRead: number = 0;
 
   constructor(filePath: string, opts?: stream.ReadableOptions) {
-    // `objectMode` avoids the `Buffer->utf8->Buffer->utf8` conversions when pushing strings
-    super({ ...{ objectMode: true, autoDestroy: true }, ...opts });
+    super({
+      ...{
+        // `objectMode` avoids the `Buffer->utf8->Buffer->utf8` conversions when pushing strings
+        objectMode: true,
+        // Restore default size for byte-streams, since objectMode sets it to 16
+        highWaterMark: 16384,
+        autoDestroy: true,
+      },
+      ...opts,
+    });
     this.fileLength = fs.statSync(filePath).size;
     this.position = this.fileLength;
     this.fileDescriptor = fs.openSync(filePath, 'r', 0o666);
@@ -34,9 +42,16 @@ export class ReverseFileStream extends stream.Readable {
       // Split into lines to fill the `lineBuffer`
       this.remainder = buffer.toString('utf8') + this.remainder;
       this.lineBuffer = this.remainder.split(/\r?\n/);
+
       // Ignore empty/trailing lines, `readable.push('')` is not recommended
       this.lineBuffer = this.lineBuffer.filter(line => line.length > 0);
+      const remainderHasPrefixEnding = this.remainder.startsWith('\n');
       this.remainder = this.lineBuffer.shift() ?? '';
+
+      // Preserve the line-ending char for the remainder if one was at the read boundary
+      if (remainderHasPrefixEnding) {
+        this.remainder = '\n' + this.remainder;
+      }
     }
     if (this.lineBuffer.length) {
       this.push(this.lineBuffer.pop());

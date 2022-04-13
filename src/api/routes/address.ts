@@ -39,7 +39,8 @@ import {
   AddressTransactionsWithTransfersListResponse,
   AddressNonces,
 } from '@stacks/stacks-blockchain-api-types';
-import { ChainID, cvToString, deserializeCV } from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
 import {
@@ -354,13 +355,12 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
             recipient: transfer.recipient,
           })),
           nft_transfers: entry.nft_transfers.map(transfer => {
-            const valueHex = bufferToHexPrefixString(transfer.value);
-            const valueRepr = cvToString(deserializeCV(transfer.value));
+            const parsedClarityValue = decodeClarityValueToRepr(transfer.value);
             const nftTransfer = {
               asset_identifier: transfer.asset_identifier,
               value: {
-                hex: valueHex,
-                repr: valueRepr,
+                hex: bufferToHexPrefixString(transfer.value),
+                repr: parsedClarityValue,
               },
               sender: transfer.sender,
               recipient: transfer.recipient,
@@ -497,17 +497,21 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
         blockHeight,
         includeUnanchored,
       });
-      const nft_events = response.results.map(row => ({
-        sender: row.sender,
-        recipient: row.recipient,
-        asset_identifier: row.asset_identifier,
-        value: {
-          hex: bufferToHexPrefixString(row.value),
-          repr: cvToString(deserializeCV(row.value)),
-        },
-        tx_id: bufferToHexPrefixString(row.tx_id),
-        block_height: row.block_height,
-      }));
+      const nft_events = response.results.map(row => {
+        const parsedClarityValue = decodeClarityValueToRepr(row.value);
+        const r = {
+          sender: row.sender,
+          recipient: row.recipient,
+          asset_identifier: row.asset_identifier,
+          value: {
+            hex: bufferToHexPrefixString(row.value),
+            repr: parsedClarityValue,
+          },
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          block_height: row.block_height,
+        };
+        return r;
+      });
       const nftListResponse: AddressNftListResponse = {
         nft_events: nft_events,
         total: response.total,

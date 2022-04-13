@@ -235,7 +235,7 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/utils",
       "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
-    }
+    },
   ],
   "compounds": [
     {

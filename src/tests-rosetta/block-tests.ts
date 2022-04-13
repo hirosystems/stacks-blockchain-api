@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
-import { createClarityValueArray } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 describe('/block tests', () => {
   let db: PgDataStore;

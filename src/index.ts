@@ -78,7 +78,10 @@ function getApiMode(): StacksApiMode {
 
 loadDotEnv();
 
-sourceMapSupport.install({ handleUncaughtExceptions: false });
+// ts-node has automatic source map support, avoid clobbering
+if (!process.execArgv.some(r => r.includes('ts-node'))) {
+  sourceMapSupport.install({ handleUncaughtExceptions: false });
+}
 
 injectC32addressEncodeCache();
 
