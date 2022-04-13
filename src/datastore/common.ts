@@ -389,7 +389,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
+    tokenMetadataUpdateQueued: (queueId: number) => void;
   }
 >;
 
@@ -963,6 +963,12 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  /**
+   * Returns a single entry from the `token_metadata_queue` table.
+   * @param queueId - queue entry id
+   */
+  getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
 
   getTokenMetadataQueue(
     limit: number,

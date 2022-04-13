@@ -797,7 +797,7 @@ export class PgDataStore
           break;
         case 'tokenMetadataUpdateQueued':
           const metadata = notification.payload as PgTokenMetadataNotificationPayload;
-          this.emit('tokenMetadataUpdateQueued', metadata.entry);
+          this.emit('tokenMetadataUpdateQueued', metadata.queueId);
           break;
       }
     });
@@ -1457,7 +1457,7 @@ export class PgDataStore
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-        await this.notifier.sendTokenMetadata({ entry: tokenMetadataQueueEntry });
+        await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
       }
     }
   }
@@ -3670,7 +3670,7 @@ export class PgDataStore
         `
           SELECT tx_id
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND tx_id = ANY($1)
           AND block_height = $2
           `,
@@ -4854,6 +4854,31 @@ export class PgDataStore
         event.value,
       ]
     );
+  }
+
+  async getTokenMetadataQueueEntry(
+    queueId: number
+  ): Promise<FoundOrNot<DbTokenMetadataQueueEntry>> {
+    const result = await this.query(async client => {
+      const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
+        `SELECT * FROM token_metadata_queue WHERE queue_id = $1`,
+        [queueId]
+      );
+      return queryResult;
+    });
+    if (result.rowCount === 0) {
+      return { found: false };
+    }
+    const row = result.rows[0];
+    const entry: DbTokenMetadataQueueEntry = {
+      queueId: row.queue_id,
+      txId: bufferToHexPrefixString(row.tx_id),
+      contractId: row.contract_id,
+      contractAbi: JSON.parse(row.contract_abi),
+      blockHeight: row.block_height,
+      processed: row.processed,
+    };
+    return { found: true, result: entry };
   }
 
   async getTokenMetadataQueue(
@@ -6484,7 +6509,7 @@ export class PgDataStore
     const validZonefileHash = this.validateZonefileHash(zonefile_hash);
     await client.query(
       `
-        INSERT INTO zonefiles (zonefile, zonefile_hash) 
+        INSERT INTO zonefiles (zonefile, zonefile_hash)
         VALUES ($1, $2)
         `,
       [zonefile, validZonefileHash]
@@ -6880,10 +6905,10 @@ export class PgDataStore
           WHERE owner = $1
           AND block_height <= $2
           AND canonical = true AND microblock_canonical = true
-        )), 
+        )),
 
-      latest_names AS( 
-      ( 
+      latest_names AS(
+      (
         SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
         FROM names, address_names
         WHERE address_names.name = names.name
