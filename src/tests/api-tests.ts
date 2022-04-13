@@ -7963,6 +7963,43 @@ describe('api tests', () => {
     expect(mempool_sponsor_nonces.status).toBe(200);
     expect(mempool_sponsor_nonces.type).toBe('application/json');
     expect(JSON.parse(mempool_sponsor_nonces.text)).toEqual(expectedResp4);
+
+    /**
+     * Sponsor detected missin gnonce
+     */
+
+    const mempoolTx1: DbMempoolTx = {
+      tx_id: '0x52123456',
+      anchor_mode: 3,
+      nonce: 1,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sponsor_address: sponsor_address,
+      sender_address: senderAddress,
+      sponsor_nonce: 6,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+
+    const expectedResp5 = {
+      detected_missing_nonces: [5, 4],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: 6,
+      possible_next_nonce: 7,
+    };
+    const detected_missing_nonce = await supertest(api.server).get(
+      `/extended/v1/address/${sponsor_address}/nonces`
+    );
+    expect(detected_missing_nonce.status).toBe(200);
+    expect(detected_missing_nonce.type).toBe('application/json');
+    expect(JSON.parse(detected_missing_nonce.text)).toEqual(expectedResp5);
   });
 
   test('tx store and processing', async () => {

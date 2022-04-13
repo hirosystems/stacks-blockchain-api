@@ -2017,7 +2017,12 @@ export class PgDataStore
             `
             SELECT nonce
             FROM mempool_txs
-            WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true)) AND nonce = ANY($2)
+            WHERE sender_address = $1 AND nonce = ANY($2)
+            AND pruned = false
+            UNION
+            SELECT sponsor_nonce as nonce
+            FROM mempool_txs
+            WHERE sponsor_address = $1 AND sponsored= true AND sponsor_nonce = ANY($2)
             AND pruned = false
             `,
             [args.stxAddress, expectedNonces]
