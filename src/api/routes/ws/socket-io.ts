@@ -21,7 +21,7 @@ import { isProdEnv, logError, logger } from '../../../helpers';
 import { WebSocketPrometheus } from './metrics';
 import { isPrincipalValid, isValidTxId } from '../../../api/query-helpers';
 
-export function areSubscriptionsValid(subscriptions: Topic | Topic[]) {
+function areSubscriptionsValid(subscriptions: Topic | Topic[]) {
   const isSubValid = (sub: Topic) => {
     if (sub.includes(':')) {
       const txOrAddr = sub.split(':')[0];
