@@ -3676,7 +3676,7 @@ export class PgDataStore
         `
           SELECT tx_id
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true 
+          WHERE canonical = true AND microblock_canonical = true
           AND tx_id = ANY($1)
           AND block_height = $2
           `,
@@ -5594,6 +5594,7 @@ export class PgDataStore
           SELECT tx_id, ${countOverColumn()}
           FROM principal_stx_txs
           WHERE principal = $1 AND ${blockCond}
+          AND canonical = TRUE AND microblock_canonical = TRUE
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
@@ -6478,7 +6479,7 @@ export class PgDataStore
     const validZonefileHash = this.validateZonefileHash(zonefile_hash);
     await client.query(
       `
-        INSERT INTO zonefiles (zonefile, zonefile_hash) 
+        INSERT INTO zonefiles (zonefile, zonefile_hash)
         VALUES ($1, $2)
         `,
       [zonefile, validZonefileHash]
@@ -6874,10 +6875,10 @@ export class PgDataStore
           WHERE owner = $1
           AND block_height <= $2
           AND canonical = true AND microblock_canonical = true
-        )), 
+        )),
 
-      latest_names AS( 
-      ( 
+      latest_names AS(
+      (
         SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
         FROM names, address_names
         WHERE address_names.name = names.name
