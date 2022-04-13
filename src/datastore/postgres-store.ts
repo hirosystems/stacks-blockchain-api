@@ -2001,19 +2001,8 @@ export class PgDataStore
       }
 
       let possibleNextNonce = 0;
-      if (
-        lastExecutedTxNonce !== null ||
-        lastExecutedTxSponsorNonce !== null ||
-        lastMempoolTxNonce !== null ||
-        lastMempoolTxSponsorNonce !== null
-      ) {
-        possibleNextNonce =
-          Math.max(
-            lastExecutedTxNonce ?? 0,
-            lastExecutedTxSponsorNonce ?? 0,
-            lastMempoolTxNonce ?? 0,
-            lastMempoolTxSponsorNonce ?? 0
-          ) + 1;
+      if (lastExecutedTxNonce !== null || lastMempoolTxNonce !== null) {
+        possibleNextNonce = Math.max(lastExecutedTxNonce ?? 0, lastMempoolTxNonce ?? 0) + 1;
       }
       const detectedMissingNonces: number[] = [];
       if (lastExecutedTxNonce !== null && lastMempoolTxNonce !== null) {
