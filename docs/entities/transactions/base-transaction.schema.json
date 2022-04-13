@@ -31,6 +31,9 @@
       "type": "string",
       "description": "Address of the transaction initiator"
     },
+    "sponsor_nonce": {
+      "type": "integer"
+    },
     "sponsored": {
       "type": "boolean",
       "description": "Denotes whether the originating account is the same as the paying account"
