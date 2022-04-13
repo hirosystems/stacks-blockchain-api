@@ -4543,8 +4543,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient, 
-              locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+              locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
             FROM stx_lock_events
@@ -4556,8 +4556,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
             FROM stx_events
@@ -4569,8 +4569,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
             FROM ft_events
@@ -4582,8 +4582,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
               value, NULL as topic,
               ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
             FROM nft_events
@@ -4595,8 +4595,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient, 
-              0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier, 
+              tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+              0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
               value, topic,
               ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
             FROM contract_logs
@@ -4611,7 +4611,7 @@ export class PgDataStore
         `WITH events AS ( ` +
         eventsQueries.join(`\nUNION\n`) +
         `)
-        SELECT * 
+        SELECT *
         FROM events JOIN txs USING(tx_id)
         WHERE txs.canonical = true AND txs.microblock_canonical = true
         ORDER BY events.block_height DESC, microblock_sequence DESC, events.tx_index DESC, event_index DESC
@@ -5866,7 +5866,7 @@ export class PgDataStore
         // join against `txs` to get the full transaction objects only for that page.
         `
         WITH stx_txs AS (
-          SELECT tx_id, ${countOverColumn()}
+          SELECT tx_id, index_block_hash, microblock_hash, ${countOverColumn()}
           FROM principal_stx_txs
           WHERE principal = $1 AND ${blockCond}
           AND canonical = TRUE AND microblock_canonical = TRUE
@@ -5876,8 +5876,7 @@ export class PgDataStore
         )
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
-        INNER JOIN txs USING (tx_id)
-        WHERE canonical = TRUE AND microblock_canonical = TRUE
+        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
