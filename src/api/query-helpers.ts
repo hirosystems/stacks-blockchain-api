@@ -286,3 +286,20 @@ export function parseEventTypeFilter(
 
   return eventTypeFilter;
 }
+export function isValidTxId(tx_id: string) {
+  try {
+    validateRequestHexInput(tx_id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function isPrincipalValid(stxAddress: string) {
+  try {
+    validatePrincipal(stxAddress);
+    return true;
+  } catch {
+    return false;
+  }
+}

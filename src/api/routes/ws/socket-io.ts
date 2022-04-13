@@ -19,6 +19,36 @@ import {
 } from '../../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../../helpers';
 import { WebSocketPrometheus } from './metrics';
+import { isPrincipalValid, isValidTxId } from '../../../api/query-helpers';
+
+export function areSubscriptionsValid(subscriptions: Topic | Topic[]) {
+  const isSubValid = (sub: Topic) => {
+    if (sub.includes(':')) {
+      const txOrAddr = sub.split(':')[0];
+      const value = sub.split(':')[1];
+      switch (txOrAddr) {
+        case 'address-transaction':
+        case 'address-stx-balance':
+          return isPrincipalValid(value);
+        case 'transaction':
+          return isValidTxId(value);
+        default:
+          return false;
+      }
+    }
+    switch (sub) {
+      case 'block':
+      case 'mempool':
+      case 'microblock':
+        return true;
+      default:
+        return false;
+    }
+  };
+  if (!Array.isArray(subscriptions)) return isSubValid(subscriptions);
+  const validatedSubs = subscriptions.map(isSubValid);
+  return !(validatedSubs.indexOf(false) > -1);
+}
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
@@ -40,9 +70,14 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     if (subscriptions) {
       // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      for (const topic of topics) {
-        prometheus?.subscribe(socket, topic);
-        await socket.join(topic);
+      if (areSubscriptionsValid(topics as Topic[])) {
+        for (const topic of topics) {
+          prometheus?.subscribe(socket, topic);
+          await socket.join(topic);
+        }
+      } else {
+        socket.emit('exception', 'Invalid Topic');
+        socket.disconnect();
       }
     }
 
@@ -51,10 +86,14 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       prometheus?.disconnect(socket);
     });
     socket.on('subscribe', async (topic, callback) => {
-      prometheus?.subscribe(socket, topic);
-      await socket.join(topic);
+      if (areSubscriptionsValid(topic)) {
+        prometheus?.subscribe(socket, topic);
+        await socket.join(topic);
+        callback?.(null);
+      } else {
+        socket.emit('exception', 'Invalid Topic');
+      }
       // TODO: check if topic is valid, and return error message if not
-      callback?.(null);
     });
     socket.on('unsubscribe', async (...topics) => {
       for (const topic of topics) {
