@@ -16,7 +16,7 @@ import {
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbStxEvent, DbTx } from './datastore/common';
+import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
@@ -991,4 +991,23 @@ export function getApiConfiguredChainID() {
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
   return configuredChainID;
+}
+
+export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
+  return values.map(v => {
+    switch (v) {
+      case 'smart_contract_log':
+        return DbEventTypeId.SmartContractLog;
+      case 'stx_lock':
+        return DbEventTypeId.StxLock;
+      case 'stx_asset':
+        return DbEventTypeId.StxAsset;
+      case 'fungible_token_asset':
+        return DbEventTypeId.FungibleTokenAsset;
+      case 'non_fungible_token_asset':
+        return DbEventTypeId.NonFungibleTokenAsset;
+      default:
+        throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
+    }
+  });
 }

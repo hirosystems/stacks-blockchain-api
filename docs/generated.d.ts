@@ -101,6 +101,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokensMetadataList
   | MempoolTransactionListResponse
   | GetRawTransactionResult
+  | TransactionEventsResponse
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
@@ -3401,6 +3402,14 @@ export interface GetRawTransactionResult {
    */
   raw_tx: string;
   [k: string]: unknown | undefined;
+}
+/**
+ * GET event for the given transaction
+ */
+export interface TransactionEventsResponse {
+  limit: number;
+  offset: number;
+  results: TransactionEvent[];
 }
 /**
  * GET request that returns transactions

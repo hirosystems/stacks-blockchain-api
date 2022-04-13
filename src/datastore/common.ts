@@ -690,6 +690,21 @@ export interface DataStore extends DataStoreEventEmitter {
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
 
+  /**
+   * It retrieves filtered events from the db based on transaction, principal or event type. Note: It does not accept both principal and txId at the same time
+   * @param args - addressOrTxId: filter for either transaction id or address
+   * @param args - eventTypeFilter: filter based on event types ids
+   * @param args - limit: returned that many rows
+   * @param args - offset: skip that any rows
+   * @returns returns array of events
+   */
+  getTransactionEvents(args: {
+    addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
+    eventTypeFilter: DbEventTypeId[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
   getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
 
   getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
