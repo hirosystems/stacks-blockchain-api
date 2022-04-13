@@ -295,9 +295,9 @@ export function isValidTxId(tx_id: string) {
   }
 }
 
-export function isPrincipalValid(stxAddress: string) {
+export function isPrincipalValid(principal: string) {
   try {
-    validatePrincipal(stxAddress);
+    validatePrincipal(principal);
     return true;
   } catch {
     return false;

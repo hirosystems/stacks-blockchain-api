@@ -21,7 +21,7 @@ import { isProdEnv, logError, logger } from '../../../helpers';
 import { WebSocketPrometheus } from './metrics';
 import { isPrincipalValid, isValidTxId } from '../../../api/query-helpers';
 
-function areSubscriptionsValid(subscriptions: Topic | Topic[]) {
+function areSubscriptionsValid(subscriptions: Topic | Topic[]): boolean {
   const isSubValid = (sub: Topic) => {
     if (sub.includes(':')) {
       const txOrAddr = sub.split(':')[0];
@@ -68,16 +68,10 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     }
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
-      // TODO: check if init topics are valid, reject connection with error if not
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      if (areSubscriptionsValid(topics as Topic[])) {
-        for (const topic of topics) {
-          prometheus?.subscribe(socket, topic);
-          await socket.join(topic);
-        }
-      } else {
-        socket.emit('exception', 'Invalid Topic');
-        socket.disconnect();
+      for (const topic of topics) {
+        prometheus?.subscribe(socket, topic);
+        await socket.join(topic);
       }
     }
 
@@ -90,10 +84,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         prometheus?.subscribe(socket, topic);
         await socket.join(topic);
         callback?.(null);
-      } else {
-        socket.emit('exception', 'Invalid Topic');
       }
-      // TODO: check if topic is valid, and return error message if not
     });
     socket.on('unsubscribe', async (...topics) => {
       for (const topic of topics) {
@@ -101,6 +92,21 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
         await socket.leave(topic);
       }
     });
+  });
+
+  io.use((socket, next) => {
+    const subscriptions = socket.handshake.query['subscriptions'];
+    if (subscriptions) {
+      const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
+      if (!areSubscriptionsValid(topics as Topic[])) {
+        const error = new Error('Invalid topic');
+        next(error);
+      } else {
+        next();
+      }
+    } else {
+      next();
+    }
   });
 
   const adapter = io.of('/').adapter;

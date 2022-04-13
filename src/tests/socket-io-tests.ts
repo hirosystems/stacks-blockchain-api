@@ -231,15 +231,17 @@ describe('socket-io', () => {
       reconnection: false,
       query: { subscriptions: `address-stx-balance:${faultyAddr}` },
     });
-    const updateWaiter: Waiter<string> = waiter();
+    const updateWaiter: Waiter<Error> = waiter();
 
-    socket.on(`exception`, err => {
+    socket.on(`connect_error`, err => {
       updateWaiter.finish(err);
     });
 
     const result = await updateWaiter;
     try {
-      expect(result).toEqual('Invalid Topic');
+      throw result;
+    } catch (err: any) {
+      expect(err.message).toEqual('Invalid topic');
     } finally {
       socket.close();
     }
@@ -271,28 +273,6 @@ describe('socket-io', () => {
       expect(result.txs[0]).toEqual('0x4321');
     } finally {
       socket.emit('unsubscribe', 'block');
-      socket.close();
-    }
-  });
-
-  test('socket-io > invalid socket subscription', async () => {
-    const address = apiServer.address;
-    const socket = io(`http://${address}`, {
-      reconnection: false,
-      query: { subscriptions: '' },
-    });
-    const updateWaiter: Waiter<string> = waiter();
-
-    socket.emit('subscribe', 'faulty topic');
-
-    socket.on('exception', err => {
-      updateWaiter.finish(err);
-    });
-
-    const result = await updateWaiter;
-    try {
-      expect(result).toEqual('Invalid Topic');
-    } finally {
       socket.close();
     }
   });
