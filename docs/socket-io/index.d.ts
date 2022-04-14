@@ -28,7 +28,7 @@ export interface ServerToClientMessages {
   microblock: (microblock: Microblock) => void;
   mempool: (transaction: MempoolTransaction) => void;
   transaction: (transaction: Transaction | MempoolTransaction) => void;
-  
+
   // @ts-ignore scheduled for support in TS v4.3 https://github.com/microsoft/TypeScript/pull/26797
   [key: AddressTransactionTopic]: (address: string, stxBalance: AddressTransactionWithTransfers) => void;
   'address-transaction': (address: string, tx: AddressTransactionWithTransfers) => void;

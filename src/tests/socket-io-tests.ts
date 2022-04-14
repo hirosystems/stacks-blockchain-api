@@ -247,6 +247,30 @@ describe('socket-io', () => {
     }
   });
 
+  test('socket-io > multiple invalid topic connection', async () => {
+    const faultyAddrStx = 'address-stx-balance:faulty address';
+    const faultyTx = 'transaction:0x1';
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: `${faultyAddrStx},${faultyTx}` },
+    });
+    const updateWaiter: Waiter<Error> = waiter();
+
+    socket.on(`connect_error`, err => {
+      updateWaiter.finish(err);
+    });
+
+    const result = await updateWaiter;
+    try {
+      throw result;
+    } catch (err: any) {
+      expect(err.message).toEqual(`Invalid topic: ${faultyAddrStx},${faultyTx}`);
+    } finally {
+      socket.close();
+    }
+  });
+
   test('socket-io > valid socket subscription', async () => {
     const address = apiServer.address;
     const socket = io(`http://${address}`, {

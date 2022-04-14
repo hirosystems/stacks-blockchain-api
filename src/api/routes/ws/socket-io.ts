@@ -21,7 +21,7 @@ import { isProdEnv, isValidPrincipal, logError, logger } from '../../../helpers'
 import { WebSocketPrometheus } from './metrics';
 import { isValidTxId } from '../../../api/query-helpers';
 
-function getInvalidSub(subscriptions: Topic | Topic[]): undefined | string {
+function getInvalidSubscriptionTopics(subscriptions: Topic | Topic[]): undefined | string[] {
   const isSubValid = (sub: Topic): undefined | string => {
     if (sub.includes(':')) {
       const txOrAddr = sub.split(':')[0];
@@ -45,10 +45,13 @@ function getInvalidSub(subscriptions: Topic | Topic[]): undefined | string {
         return sub;
     }
   };
-  if (!Array.isArray(subscriptions)) return isSubValid(subscriptions);
+  if (!Array.isArray(subscriptions)) {
+    const invalidSub = isSubValid(subscriptions);
+    return invalidSub ? [invalidSub] : undefined;
+  }
   const validatedSubs = subscriptions.map(isSubValid);
-  const invalidSub = validatedSubs.find(validSub => typeof validSub === 'string');
-  return invalidSub ?? undefined;
+  const invalidSubs = validatedSubs.filter(validSub => typeof validSub === 'string');
+  return invalidSubs.length === 0 ? undefined : (invalidSubs as string[]);
 }
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
@@ -81,7 +84,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       prometheus?.disconnect(socket);
     });
     socket.on('subscribe', async (topic, callback) => {
-      if (!getInvalidSub(topic)) {
+      if (!getInvalidSubscriptionTopics(topic)) {
         prometheus?.subscribe(socket, topic);
         await socket.join(topic);
         callback?.(null);
@@ -95,14 +98,14 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     });
   });
 
+  // Middleware checks for the invalid topic subscriptions and terminates connection if found any
   io.use((socket, next) => {
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      const invalidSubs = getInvalidSub(topics as Topic[]);
+      const invalidSubs = getInvalidSubscriptionTopics(topics as Topic[]);
       if (invalidSubs) {
-        console.log('invalidSubs: ', invalidSubs);
-        const error = new Error(`Invalid topic: ${invalidSubs}`);
+        const error = new Error(`Invalid topic: ${invalidSubs.join(',')}`);
         next(error);
       } else {
         next();
