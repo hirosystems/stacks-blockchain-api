@@ -1778,10 +1778,6 @@ export class PgDataStore
       );
     }
 
-    // TODO: [bug] This is can end up with incorrect canonical state due to missing the `index_block_hash` column
-    // which is required for the way micro-reorgs are handled. Queries against this table can work around the
-    // bug by using the `txs` table canonical state in the JOIN condition.
-
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
