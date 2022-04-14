@@ -17,37 +17,38 @@ import {
   getTxFromDataStore,
   parseDbTx,
 } from '../../controllers/db-controller';
-import { isProdEnv, logError, logger } from '../../../helpers';
+import { isProdEnv, isValidPrincipal, logError, logger } from '../../../helpers';
 import { WebSocketPrometheus } from './metrics';
-import { isPrincipalValid, isValidTxId } from '../../../api/query-helpers';
+import { isValidTxId } from '../../../api/query-helpers';
 
-function areSubscriptionsValid(subscriptions: Topic | Topic[]): boolean {
-  const isSubValid = (sub: Topic) => {
+function getInvalidSub(subscriptions: Topic | Topic[]): undefined | string {
+  const isSubValid = (sub: Topic): undefined | string => {
     if (sub.includes(':')) {
       const txOrAddr = sub.split(':')[0];
       const value = sub.split(':')[1];
       switch (txOrAddr) {
         case 'address-transaction':
         case 'address-stx-balance':
-          return isPrincipalValid(value);
+          return isValidPrincipal(value) ? undefined : sub;
         case 'transaction':
-          return isValidTxId(value);
+          return isValidTxId(value) ? undefined : sub;
         default:
-          return false;
+          return sub;
       }
     }
     switch (sub) {
       case 'block':
       case 'mempool':
       case 'microblock':
-        return true;
+        return undefined;
       default:
-        return false;
+        return sub;
     }
   };
   if (!Array.isArray(subscriptions)) return isSubValid(subscriptions);
   const validatedSubs = subscriptions.map(isSubValid);
-  return !(validatedSubs.indexOf(false) > -1);
+  const invalidSub = validatedSubs.find(validSub => typeof validSub === 'string');
+  return invalidSub ?? undefined;
 }
 
 export function createSocketIORouter(db: DataStore, server: http.Server) {
@@ -80,7 +81,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       prometheus?.disconnect(socket);
     });
     socket.on('subscribe', async (topic, callback) => {
-      if (areSubscriptionsValid(topic)) {
+      if (!getInvalidSub(topic)) {
         prometheus?.subscribe(socket, topic);
         await socket.join(topic);
         callback?.(null);
@@ -98,8 +99,10 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     const subscriptions = socket.handshake.query['subscriptions'];
     if (subscriptions) {
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
-      if (!areSubscriptionsValid(topics as Topic[])) {
-        const error = new Error('Invalid topic');
+      const invalidSubs = getInvalidSub(topics as Topic[]);
+      if (invalidSubs) {
+        console.log('invalidSubs: ', invalidSubs);
+        const error = new Error(`Invalid topic: ${invalidSubs}`);
         next(error);
       } else {
         next();
