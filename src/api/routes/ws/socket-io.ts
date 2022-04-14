@@ -105,7 +105,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
       const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
       const invalidSubs = getInvalidSubscriptionTopics(topics as Topic[]);
       if (invalidSubs) {
-        const error = new Error(`Invalid topic: ${invalidSubs.join(',')}`);
+        const error = new Error(`Invalid topic: ${invalidSubs.join(', ')}`);
         next(error);
       } else {
         next();

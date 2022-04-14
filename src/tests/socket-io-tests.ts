@@ -265,7 +265,7 @@ describe('socket-io', () => {
     try {
       throw result;
     } catch (err: any) {
-      expect(err.message).toEqual(`Invalid topic: ${faultyAddrStx},${faultyTx}`);
+      expect(err.message).toEqual(`Invalid topic: ${faultyAddrStx}, ${faultyTx}`);
     } finally {
       socket.close();
     }
