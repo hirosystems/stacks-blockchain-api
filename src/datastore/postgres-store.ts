@@ -1701,6 +1701,10 @@ export class PgDataStore
       microblocks: string[];
     }
   ): Promise<{ updatedTxs: DbTx[] }> {
+    const bufIndexBlockHash = hexToBuffer(args.indexBlockHash);
+    const bufBlockHash = hexToBuffer(args.blockHash);
+    const bufMicroblockHashes = args.microblocks.map(mb => hexToBuffer(mb));
+
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await client.query(
       `
@@ -1711,9 +1715,9 @@ export class PgDataStore
       [
         args.isMicroCanonical,
         args.isCanonical,
-        hexToBuffer(args.indexBlockHash),
-        hexToBuffer(args.blockHash),
-        args.microblocks.map(mb => hexToBuffer(mb)),
+        bufIndexBlockHash,
+        bufBlockHash,
+        bufMicroblockHashes,
       ]
     );
     if (updatedMicroblocksQuery.rowCount !== args.microblocks.length) {
@@ -1734,10 +1738,10 @@ export class PgDataStore
       [
         args.isMicroCanonical,
         args.isCanonical,
-        hexToBuffer(args.indexBlockHash),
-        hexToBuffer(args.blockHash),
+        bufIndexBlockHash,
+        bufBlockHash,
         args.burnBlockTime,
-        args.microblocks.map(mb => hexToBuffer(mb)),
+        bufMicroblockHashes,
       ]
     );
     // Any txs restored need to be pruned from the mempool
@@ -1757,8 +1761,8 @@ export class PgDataStore
     const updatedAssociatedTableParams = [
       args.isMicroCanonical,
       args.isCanonical,
-      hexToBuffer(args.indexBlockHash),
-      args.microblocks.map(mb => hexToBuffer(mb)),
+      bufIndexBlockHash,
+      bufMicroblockHashes,
       updatedMbTxs.map(tx => hexToBuffer(tx.tx_id)),
     ];
     for (const associatedTableName of TX_METADATA_TABLES) {
@@ -1774,16 +1778,14 @@ export class PgDataStore
       );
     }
 
-    // TODO: [bug] This is can end up with incorrect canonical state due to missing the `index_block_hash` column
-    // which is required for the way micro-reorgs are handled. Queries against this table can work around the
-    // bug by using the `txs` table canonical state in the JOIN condition.
-
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
-      SET canonical = $1, microblock_canonical = $2
-      WHERE tx_id = ANY ($3)`,
-      [args.isCanonical, args.isMicroCanonical, updatedMbTxs.map(tx => hexToBuffer(tx.tx_id))]
+      SET microblock_canonical = $1, canonical = $2, index_block_hash = $3
+      WHERE microblock_hash = ANY($4)
+      AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
+      AND tx_id = ANY($5)`,
+      updatedAssociatedTableParams
     );
 
     return { updatedTxs: updatedMbTxs };
@@ -2327,9 +2329,9 @@ export class PgDataStore
     // Update `principal_stx_txs`
     await client.query(
       `UPDATE principal_stx_txs
-      SET canonical = $1
-      WHERE tx_id = ANY ($2)`,
-      [canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
+      SET canonical = $2
+      WHERE tx_id = ANY($3) AND index_block_hash = $1 AND canonical != $2`,
+      [indexBlockHash, canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
     );
 
     const minerRewardResults = await client.query(
@@ -4537,8 +4539,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient, 
-              locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+              locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
             FROM stx_lock_events
@@ -4550,8 +4552,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
             FROM stx_events
@@ -4563,8 +4565,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
               '0'::bytea as value, NULL as topic,
               ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
             FROM ft_events
@@ -4576,8 +4578,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient, 
-              0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier, 
+              tx_id, event_index, tx_index, block_height, sender, recipient,
+              0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
               value, NULL as topic,
               ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
             FROM nft_events
@@ -4589,8 +4591,8 @@ export class PgDataStore
             }
             eventsQueries.push(`
             SELECT
-              tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient, 
-              0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier, 
+              tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+              0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
               value, topic,
               ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
             FROM contract_logs
@@ -4605,7 +4607,7 @@ export class PgDataStore
         `WITH events AS ( ` +
         eventsQueries.join(`\nUNION\n`) +
         `)
-        SELECT * 
+        SELECT *
         FROM events JOIN txs USING(tx_id)
         WHERE txs.canonical = true AND txs.microblock_canonical = true
         ORDER BY events.block_height DESC, microblock_sequence DESC, events.tx_index DESC, event_index DESC
@@ -4738,9 +4740,11 @@ export class PgDataStore
    */
   async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
     const txIdBuffer = hexToBuffer(tx.tx_id);
+    const indexBlockHashBuffer = hexToBuffer(tx.index_block_hash);
+    const microblockHashBuffer = hexToBuffer(tx.microblock_hash);
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
-      const columnCount = 7;
+      const columnCount = 9;
       const insertParams = this.generateParameterizedInsertString({
         rowCount: principals.length,
         columnCount,
@@ -4751,31 +4755,21 @@ export class PgDataStore
           principal,
           txIdBuffer,
           tx.block_height,
+          indexBlockHashBuffer,
+          microblockHashBuffer,
           tx.microblock_sequence,
           tx.tx_index,
           tx.canonical,
           tx.microblock_canonical
         );
       }
-      // If there was already an existing (`tx_id`, `principal`) pair in the table, we will update
-      // the entry's data to reflect the newer transaction state.
       const insertQuery = `
         INSERT INTO principal_stx_txs
-          (principal, tx_id, block_height, microblock_sequence, tx_index, canonical, microblock_canonical)
+          (principal, tx_id,
+            block_height, index_block_hash, microblock_hash, microblock_sequence, tx_index,
+            canonical, microblock_canonical)
         VALUES ${insertParams}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id
-          DO UPDATE
-            SET block_height = EXCLUDED.block_height,
-              microblock_sequence = EXCLUDED.microblock_sequence,
-              tx_index = EXCLUDED.tx_index,
-              canonical = EXCLUDED.canonical,
-              microblock_canonical = EXCLUDED.microblock_canonical
-            WHERE EXCLUDED.block_height > principal_stx_txs.block_height
-              OR EXCLUDED.microblock_sequence > principal_stx_txs.microblock_sequence
-              OR EXCLUDED.tx_index > principal_stx_txs.tx_index
-              OR EXCLUDED.canonical != principal_stx_txs.canonical
-              OR EXCLUDED.microblock_canonical != principal_stx_txs.microblock_canonical
-        `;
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING`;
       const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
       const insertQueryConfig: QueryConfig = {
         name: insertQueryName,
@@ -5868,21 +5862,17 @@ export class PgDataStore
         // join against `txs` to get the full transaction objects only for that page.
         `
         WITH stx_txs AS (
-          SELECT tx_id, ${countOverColumn()}
+          SELECT tx_id, index_block_hash, microblock_hash, ${countOverColumn()}
           FROM principal_stx_txs
           WHERE principal = $1 AND ${blockCond}
+          AND canonical = TRUE AND microblock_canonical = TRUE
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT $2
           OFFSET $3
         )
         SELECT ${txColumns()}, ${abiColumn()}, count
         FROM stx_txs
-        INNER JOIN txs
-          ON (stx_txs.tx_id = txs.tx_id
-          AND txs.canonical = TRUE
-          AND txs.microblock_canonical = TRUE)
-        ORDER BY txs.block_height DESC, txs.microblock_sequence DESC, txs.tx_index DESC
-        LIMIT $2
+        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
         `,
         [args.stxAddress, args.limit, args.offset, args.blockHeight]
       );
