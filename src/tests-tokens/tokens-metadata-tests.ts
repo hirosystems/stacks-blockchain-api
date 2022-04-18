@@ -149,7 +149,7 @@ describe('api tests', () => {
     expect(query4.body.error).toMatch(/not enabled/);
   });
 
-  test('retry read only contract call', async () => {
+  test('fail read contract call - with strict mode', async () => {
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
     const abi = `{"functions":[{"name":"get-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":{"buffer":{"length":32}},"error":"int128"}}}},{"name":"set-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}},{"name":"value","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-emit-event","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-event-types","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}}],"variables":[{"name":"recipient","type":"principal","access":"constant"},{"name":"sender","type":"principal","access":"constant"}],"maps":[{"name":"store","key":[{"name":"key","type":{"buffer":{"length":32}}}],"value":[{"name":"value","type":{"buffer":{"length":32}}}]}],"fungible_tokens":[{"name":"novel-token-19"}],"non_fungible_tokens":[{"name":"hello-nft","type":"uint128"}]}`;
     const jsonAbi = JSON.parse(abi);
@@ -161,20 +161,32 @@ describe('api tests', () => {
       txId: 'queueEntry.txId',
       dbQueueId: 0,
     });
-    let error_count = 0;
-    const spy = jest
-      .spyOn(TokensContractHandler.prototype, 'makeReadOnlyContractCall')
-      .mockImplementation(() => {
-        error_count++;
-        throw new Error('Error');
-      });
     try {
       await tokensContractHandler.retryReadOnlyContractCall('get-token-uri', [uintCV(0)]);
-    } catch (error) {
-      expect(error_count).toEqual(3);
+    } catch (err: any) {
+      const expectedResponse = `Error calling read-only function. Response 404: Not Found. Attempted to fetch http://127.0.0.1:20443/v2/contracts/call-read/contractId/undefined/get-token-uri and failed with the message: "/v2/contracts/call-read/contractId/undefined/get-token-uri"`;
+      expect(err.message).toBe(expectedResponse);
     }
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '0';
-    spy.mockRestore();
+  });
+
+  test('fail read contract call - without strict mode', async () => {
+    const abi = `{"functions":[{"name":"get-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":{"buffer":{"length":32}},"error":"int128"}}}},{"name":"set-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}},{"name":"value","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-emit-event","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-event-types","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}}],"variables":[{"name":"recipient","type":"principal","access":"constant"},{"name":"sender","type":"principal","access":"constant"}],"maps":[{"name":"store","key":[{"name":"key","type":{"buffer":{"length":32}}}],"value":[{"name":"value","type":{"buffer":{"length":32}}}]}],"fungible_tokens":[{"name":"novel-token-19"}],"non_fungible_tokens":[{"name":"hello-nft","type":"uint128"}]}`;
+    const jsonAbi = JSON.parse(abi);
+    const tokensContractHandler = new TokensContractHandler({
+      contractId: 'contractId',
+      smartContractAbi: jsonAbi,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: 'queueEntry.txId',
+      dbQueueId: 0,
+    });
+    try {
+      await tokensContractHandler.retryReadOnlyContractCall('get-token-uri', [uintCV(0)]);
+    } catch (err: any) {
+      const expectedResponse = `Error calling read-only function. Response 404: Not Found. Attempted to fetch http://127.0.0.1:20443/v2/contracts/call-read/contractId/undefined/get-token-uri and failed with the message: "/v2/contracts/call-read/contractId/undefined/get-token-uri"`;
+      expect(err.message).toBe(expectedResponse);
+    }
   });
 
   test('token nft-metadata data URL plain percent-encoded', async () => {

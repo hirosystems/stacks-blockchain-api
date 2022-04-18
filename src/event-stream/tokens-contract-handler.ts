@@ -7,14 +7,16 @@ import {
   TokenMetadataUpdateInfo,
 } from '../datastore/common';
 import {
-  callReadOnlyFunction,
   ChainID,
   ClarityAbi,
   ClarityAbiFunction,
   ClarityType,
   ClarityValue,
+  cvToHex,
+  fetchPrivate,
   getAddressFromPrivateKey,
   makeRandomPrivKey,
+  parseReadOnlyResponse,
   ReadOnlyFunctionOptions,
   TransactionVersion,
   uintCV,
@@ -27,6 +29,18 @@ import PQueue from 'p-queue';
 import * as querystring from 'querystring';
 import fetch from 'node-fetch';
 import { Evt } from 'evt';
+import { reject } from 'bluebird';
+
+/**
+ * This response is for the readOnlyContractCall function and time interval
+ * for calls if strict mode is disabled
+ */
+type ReadOnlyContractCallResponse =
+  | { found: true; value: ClarityValue }
+  | { found: false; error: string; retriable: false }
+  | { found: false; retriable: true };
+
+const METADATA_RETREIVAL_INTERVAL = 3000;
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -58,8 +72,6 @@ export enum TokenMetadataErrorMode {
    */
   error,
 }
-
-const MAX_RETRIES_METADATA_RETREIVAL = 3;
 
 function isMetadataStrictModeEnabled() {
   return parseArgBoolean(process.env['STACKS_API_METADATA_STRICT_MODE']);
@@ -628,45 +640,72 @@ export class TokensContractHandler {
     });
   }
 
-  async retryReadOnlyContractCall(
-    functionName: string,
-    functionArgs: ClarityValue[]
-  ): Promise<ClarityValue> {
-    let retryCounter = 0;
-    while (true) {
-      retryCounter++;
-      try {
-        const response = await this.makeReadOnlyContractCall(functionName, functionArgs);
-        return response;
-      } catch (error: any) {
-        if (!isMetadataStrictModeEnabled()) {
-          throw error;
-        } else if (
-          !error.message.includes('Error calling read-only function') &&
-          retryCounter === MAX_RETRIES_METADATA_RETREIVAL
-        ) {
-          throw error;
-        }
-      }
-    }
-  }
-
   /**
    * Make readonly contract call
    */
   async makeReadOnlyContractCall(
     functionName: string,
     functionArgs: ClarityValue[]
+  ): Promise<ReadOnlyContractCallResponse> {
+    const url = this.stacksNetwork.getReadOnlyFunctionCallApiUrl(
+      this.contractAddress,
+      this.contractName,
+      functionName
+    );
+    const args = functionArgs.map(arg => cvToHex(arg));
+
+    const body = JSON.stringify({
+      sender: this.address,
+      arguments: args,
+    });
+
+    const response = await fetchPrivate(url, {
+      method: 'POST',
+      body,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status >= 500) return { found: false, retriable: true };
+      const msg = await response.text().catch(() => '');
+      return {
+        found: false,
+        retriable: false,
+        error: `Error calling read-only function. Response ${response.status}: ${response.statusText}. Attempted to fetch ${url} and failed with the message: "${msg}"`,
+      };
+    }
+    const value = await response.json();
+    return { found: true, value: parseReadOnlyResponse(value) };
+  }
+
+  async retryReadOnlyContractCall(
+    functionName: string,
+    functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
-    const txOptions: ReadOnlyFunctionOptions = {
-      senderAddress: this.address,
-      contractAddress: this.contractAddress,
-      contractName: this.contractName,
-      functionName: functionName,
-      functionArgs: functionArgs,
-      network: this.stacksNetwork,
-    };
-    return await callReadOnlyFunction(txOptions);
+    return await new Promise<ClarityValue>(async (resolve, reject) => {
+      let response: ReadOnlyContractCallResponse = { found: false, retriable: true };
+      if (isMetadataStrictModeEnabled()) {
+        while (!response.found && response.retriable) {
+          response = await this.makeReadOnlyContractCall(functionName, functionArgs);
+        }
+        if (response.found) return resolve(response.value);
+        // incase the issue is not temporary.
+        else if (!response.retriable) return reject(new Error(response.error));
+      } else {
+        const interval = setInterval(async () => {
+          response = await this.makeReadOnlyContractCall(functionName, functionArgs);
+          if (response.found) {
+            resolve(response.value);
+            clearInterval(interval);
+          } else if (!response.found && !response.retriable) {
+            reject(new Error(response.error));
+            clearInterval(interval);
+          }
+        }, METADATA_RETREIVAL_INTERVAL);
+      }
+    });
   }
 
   private async readStringFromContract(
