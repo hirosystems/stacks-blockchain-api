@@ -1,10 +1,10 @@
 import * as express from 'express';
 import { FeeRate } from '@stacks/stacks-blockchain-api-types';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 export const FEE_RATE = 400;
 
-export function createFeeRateRouter(_: PgReplicaStore): express.Router {
+export function createFeeRateRouter(_: PgStore): express.Router {
   const router = express.Router();
 
   router.post('/', (req, res) => {

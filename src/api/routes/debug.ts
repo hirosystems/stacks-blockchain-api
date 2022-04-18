@@ -36,7 +36,7 @@ import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -85,7 +85,7 @@ export function getStacksTestnetNetwork() {
   return stacksNetwork;
 }
 
-export function createDebugRouter(db: PgReplicaStore): express.Router {
+export function createDebugRouter(db: PgStore): express.Router {
   const defaultTxFee = 12345;
   const stacksNetwork = getStacksTestnetNetwork();
 

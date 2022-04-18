@@ -70,9 +70,11 @@ import {
   PgTokenMetadataNotificationPayload,
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
-} from './postgres-notifier';
+} from './pg-notifier';
 import { PgStore } from './pg-store';
 import { ChainEventEmitter } from './chain-event-emitter';
+import { connectPgPool, getPgClientConfig, PgServer } from './connection';
+import { runMigrations } from './migrations';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -95,6 +97,36 @@ export class PgPrimaryStore extends PgStore {
     super(pool, eventReplay);
     this.notifier = notifier;
     this.eventEmitter = new ChainEventEmitter();
+  }
+
+  static async connect({
+    skipMigrations = false,
+    withNotifier = true,
+    eventReplay = false,
+    usageName,
+  }: {
+    skipMigrations?: boolean;
+    withNotifier?: boolean;
+    eventReplay?: boolean;
+    usageName: string;
+  }): Promise<PgStore> {
+    const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.primary });
+    if (!skipMigrations) {
+      const clientConfig = getPgClientConfig({
+        usageName: `${usageName};schema-migrations`,
+        primary: true,
+      });
+      await runMigrations(clientConfig);
+    }
+    let notifier: PgNotifier | undefined = undefined;
+    if (withNotifier) {
+      notifier = new PgNotifier(
+        getPgClientConfig({ usageName: `${usageName}:notifier`, primary: true })
+      );
+    }
+    const store = new PgPrimaryStore(pool, notifier, eventReplay);
+    await store.connectPgNotifier();
+    return store;
   }
 
   async close(): Promise<void> {

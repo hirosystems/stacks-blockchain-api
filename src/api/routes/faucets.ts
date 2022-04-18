@@ -13,7 +13,7 @@ import { intMax, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -60,7 +60,7 @@ function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
-export function createFaucetRouter(db: PgReplicaStore): express.Router {
+export function createFaucetRouter(db: PgStore): express.Router {
   const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(express.json());

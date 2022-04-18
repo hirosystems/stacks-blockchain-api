@@ -2,7 +2,7 @@ import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
 import { logger } from '../../helpers';
 import { asyncHandler } from '../async-handler';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -161,7 +161,7 @@ export function parseIfNoneMatchHeader(
  * returns a string which can be used later for setting the cache control `ETag` response header.
  */
 async function checkETagCacheOK(
-  db: PgReplicaStore,
+  db: PgStore,
   req: Request,
   etagType: ETagType
 ): Promise<ETag | undefined | typeof CACHE_OK> {
@@ -219,7 +219,7 @@ async function checkETagCacheOK(
  * ```
  */
 export function getETagCacheHandler(
-  db: PgReplicaStore,
+  db: PgStore,
   etagType: ETagType = ETagType.chainTip
 ): RequestHandler {
   const requestHandler = asyncHandler(async (req, res, next) => {
@@ -240,7 +240,7 @@ export function getETagCacheHandler(
   return requestHandler;
 }
 
-async function calculateETag(db: PgReplicaStore, etagType: ETagType): Promise<ETag | undefined> {
+async function calculateETag(db: PgStore, etagType: ETagType): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:
       const chainTip = await db.getUnanchoredChainTip();

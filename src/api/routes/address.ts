@@ -48,7 +48,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -74,7 +74,7 @@ async function getBlockHeight(
   req: Request,
   res: Response,
   next: NextFunction,
-  db: PgReplicaStore
+  db: PgStore
 ): Promise<number> {
   let blockHeight = 0;
   if (typeof untilBlock === 'number') {
@@ -111,7 +111,7 @@ interface AddressAssetEvents {
   total: number;
 }
 
-export function createAddressRouter(db: PgReplicaStore, chainId: ChainID): express.Router {
+export function createAddressRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);

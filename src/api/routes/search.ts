@@ -26,7 +26,7 @@ import {
   searchHashWithMetadata,
 } from '../controllers/db-controller';
 import { booleanValueForParam } from '../query-helpers';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -38,7 +38,7 @@ const enum SearchResultType {
   InvalidTerm = 'invalid_term',
 }
 
-export function createSearchRouter(db: PgReplicaStore): express.Router {
+export function createSearchRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {

@@ -43,7 +43,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
-import { PgReplicaStore } from 'src/datastore/pg-replica-store';
+import { PgStore } from 'src/datastore/pg-replica-store';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -63,7 +63,7 @@ const parseTxQueryEventsLimit = parseLimitQuery({
   errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
 });
 
-export function createTxRouter(db: PgReplicaStore): express.Router {
+export function createTxRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   const cacheHandler = getETagCacheHandler(db);

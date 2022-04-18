@@ -13,7 +13,7 @@ import {
 import { has0xPrefix } from '../../helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validateRequestHexInput } from '../query-helpers';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_MICROBLOCKS_PER_REQUEST = 200;
 
@@ -22,7 +22,7 @@ const parseMicroblockQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_MICROBLOCKS_PER_REQUEST,
 });
 
-export function createMicroblockRouter(db: PgReplicaStore): express.Router {
+export function createMicroblockRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   router.get(

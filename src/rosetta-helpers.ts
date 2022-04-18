@@ -78,7 +78,7 @@ import {
   TxPayloadTokenTransfer,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { PgReplicaStore } from './datastore/pg-replica-store';
+import { PgStore } from './datastore/pg-replica-store';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -123,7 +123,7 @@ export function parseTransactionMemo(tx: BaseTx): string | null {
 
 export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
-  db: PgReplicaStore,
+  db: PgStore,
   minerRewards?: DbMinerReward[],
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
@@ -174,7 +174,7 @@ export function processUnlockingEvents(events: StxUnlockEvent[], operations: Ros
 }
 
 async function processEvents(
-  db: PgReplicaStore,
+  db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
   operations: RosettaOperation[]
@@ -566,7 +566,7 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
 
 async function makeCallContractOperation(
   tx: BaseTx,
-  db: PgReplicaStore,
+  db: PgStore,
   index: number
 ): Promise<RosettaOperation> {
   const contractCallOp: RosettaOperation = {
@@ -1020,7 +1020,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 }
 
 export async function getValidatedFtMetadata(
-  db: PgReplicaStore,
+  db: PgStore,
   assetIdentifier: string
 ): Promise<DbFungibleTokenMetadata | undefined> {
   if (!isFtMetadataEnabled()) {

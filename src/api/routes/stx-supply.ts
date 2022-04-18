@@ -9,9 +9,9 @@ import {
   GetStxTotalSupplyPlainResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { getBlockParams } from '../query-helpers';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
-export function createStxSupplyRouter(db: PgReplicaStore): express.Router {
+export function createStxSupplyRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   async function getStxSupplyInfo(

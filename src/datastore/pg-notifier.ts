@@ -1,7 +1,6 @@
 import { ClientConfig } from 'pg';
 import createPostgresSubscriber, { Subscriber } from 'pg-listen';
 import { logError, logger } from '../helpers';
-import { DbTokenMetadataQueueEntry } from './common';
 
 export type PgTxNotificationPayload = {
   txId: string;

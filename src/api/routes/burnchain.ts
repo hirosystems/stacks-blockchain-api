@@ -11,7 +11,7 @@ import {
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_BLOCKS_PER_REQUEST = 250;
 
@@ -20,7 +20,7 @@ const parseQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBurnchainRouter(db: PgReplicaStore): express.Router {
+export function createBurnchainRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   router.get(

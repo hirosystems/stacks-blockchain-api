@@ -9,7 +9,7 @@ import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 
@@ -18,7 +18,7 @@ const parseBlockQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBlockRouter(db: PgReplicaStore): express.Router {
+export function createBlockRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   router.get(

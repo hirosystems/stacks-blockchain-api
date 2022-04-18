@@ -46,7 +46,7 @@ import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { PgReplicaStore } from '../datastore/pg-replica-store';
+import { PgStore } from '../datastore/pg-replica-store';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -54,13 +54,13 @@ export interface ApiServer {
   wss: WebSocket.Server;
   io: SocketIO.Server;
   address: string;
-  datastore: PgReplicaStore;
+  datastore: PgStore;
   terminate: () => Promise<void>;
   forceKill: () => Promise<void>;
 }
 
 export async function startApiServer(opts: {
-  datastore: PgReplicaStore;
+  datastore: PgStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;

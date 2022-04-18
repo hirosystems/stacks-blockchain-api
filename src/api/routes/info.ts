@@ -7,7 +7,7 @@ import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { PgReplicaStore } from '../../datastore/pg-replica-store';
+import { PgStore } from '../../datastore/pg-store';
 
 const enum TargetBlockTime {
   /**
@@ -22,7 +22,7 @@ const enum TargetBlockTime {
   Mainnet = 10 * 60, // 10 minutes
 }
 
-export function createInfoRouter(db: PgReplicaStore): express.Router {
+export function createInfoRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   router.get(
