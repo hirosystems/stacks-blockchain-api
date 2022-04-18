@@ -11,7 +11,6 @@ import {
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
-import { PgDataStore } from './datastore/postgres-store';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
@@ -30,6 +29,8 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
+import { PgStore } from './datastore/pg-store';
+import { PgPrimaryStore } from './datastore/pg-primary-store';
 
 enum StacksApiMode {
   /**
@@ -115,18 +116,18 @@ async function init(): Promise<void> {
   }
   const apiMode = getApiMode();
 
-  let db: DataStore;
+  let db: PgStore;
   if (apiMode === StacksApiMode.offline) {
-    db = OfflineDummyStore;
+    // db = OfflineDummyStore;
   } else {
     const skipMigrations = apiMode === StacksApiMode.readOnly;
-    db = await PgDataStore.connect({
+    db = await PgStore.connect({
       usageName: `datastore-${apiMode}`,
       skipMigrations: skipMigrations,
     });
 
     if (apiMode !== StacksApiMode.readOnly) {
-      if (db instanceof PgDataStore) {
+      if (db instanceof PgPrimaryStore) {
         if (isProdEnv) {
           await importV1TokenOfferingData(db);
         } else {

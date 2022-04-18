@@ -49,7 +49,6 @@ import {
 
 import {
   BlockIdentifier,
-  DataStore,
   DbAssetEventTypeId,
   DbBlock,
   DbEvent,
@@ -77,6 +76,7 @@ import {
 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
+import { PgReplicaStore } from '../../datastore/pg-replica-store';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -309,7 +309,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
-  db: DataStore,
+  db: PgReplicaStore,
   fetchTransactions: boolean,
   blockHash?: string,
   blockHeight?: number
@@ -369,7 +369,7 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
-export async function getUnanchoredTxsFromDataStore(db: DataStore): Promise<Transaction[]> {
+export async function getUnanchoredTxsFromDataStore(db: PgReplicaStore): Promise<Transaction[]> {
   const dbTxs = await db.getUnanchoredTxs();
   const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx));
   return parsedTxs;
@@ -400,7 +400,7 @@ export async function getMicroblockFromDataStore({
   db,
   microblockHash,
 }: {
-  db: DataStore;
+  db: PgReplicaStore;
   microblockHash: string;
 }): Promise<FoundOrNot<Microblock>> {
   const query = await db.getMicroblock({ microblockHash: microblockHash });
@@ -417,7 +417,7 @@ export async function getMicroblockFromDataStore({
 }
 
 export async function getMicroblocksFromDataStore(args: {
-  db: DataStore;
+  db: PgReplicaStore;
   limit: number;
   offset: number;
 }): Promise<{ total: number; result: Microblock[] }> {
@@ -434,7 +434,7 @@ export async function getBlockFromDataStore({
   db,
 }: {
   blockIdentifer: BlockIdentifier;
-  db: DataStore;
+  db: PgReplicaStore;
 }): Promise<FoundOrNot<Block>> {
   const blockQuery = await db.getBlockWithMetadata(blockIdentifer, {
     txs: true,
@@ -489,7 +489,7 @@ async function parseRosettaTxDetail(opts: {
   block_height: number;
   indexBlockHash: string;
   tx: DbTx;
-  db: DataStore;
+  db: PgReplicaStore;
   minerRewards: DbMinerReward[];
   unlockingEvents: StxUnlockEvent[];
 }): Promise<RosettaTransaction> {
@@ -527,7 +527,7 @@ async function parseRosettaTxDetail(opts: {
 async function getRosettaBlockTxFromDataStore(opts: {
   tx: DbTx;
   block: DbBlock;
-  db: DataStore;
+  db: PgReplicaStore;
 }): Promise<FoundOrNot<RosettaTransaction>> {
   let minerRewards: DbMinerReward[] = [],
     unlockingEvents: StxUnlockEvent[] = [];
@@ -553,7 +553,7 @@ async function getRosettaBlockTxFromDataStore(opts: {
 async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
-  db: DataStore;
+  db: PgReplicaStore;
 }): Promise<FoundOrNot<RosettaTransaction[]>> {
   const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
   if (!blockQuery.found) {
@@ -590,7 +590,7 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
 
 export async function getRosettaTransactionFromDataStore(
   txId: string,
-  db: DataStore
+  db: PgReplicaStore
 ): Promise<FoundOrNot<RosettaTransaction>> {
   const txQuery = await db.getTx({ txId, includeUnanchored: false });
   if (!txQuery.found) {
@@ -850,7 +850,7 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
 }
 
 export async function getMempoolTxsFromDataStore(
-  db: DataStore,
+  db: PgReplicaStore,
   args: GetTxsArgs
 ): Promise<MempoolTransaction[]> {
   const mempoolTxsQuery = await db.getMempoolTxs({
@@ -868,7 +868,7 @@ export async function getMempoolTxsFromDataStore(
 }
 
 async function getTxsFromDataStore(
-  db: DataStore,
+  db: PgReplicaStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<Transaction[]> {
   // fetching all requested transactions from db
@@ -914,7 +914,7 @@ async function getTxsFromDataStore(
 }
 
 export async function getTxFromDataStore(
-  db: DataStore,
+  db: PgReplicaStore,
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx;
@@ -952,7 +952,7 @@ export async function getTxFromDataStore(
 }
 
 export async function searchTxs(
-  db: DataStore,
+  db: PgReplicaStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<TransactionList> {
   const minedTxs = await getTxsFromDataStore(db, args);
@@ -1010,7 +1010,7 @@ export async function searchTxs(
 }
 
 export async function searchTx(
-  db: DataStore,
+  db: PgReplicaStore,
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
@@ -1039,7 +1039,7 @@ export async function searchTx(
 
 export async function searchHashWithMetadata(
   hash: string,
-  db: DataStore
+  db: PgReplicaStore
 ): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
   // checking for tx
   const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });

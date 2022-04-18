@@ -1,10 +1,9 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
-import { ClarityAbi, ClarityAbiTypeId } from '@stacks/transactions';
 import { parseTraitAbi } from '../query-helpers';
+import { PgReplicaStore } from '../../datastore/pg-replica-store';
 
 const MAX_EVENTS_PER_REQUEST = 50;
 const parseContractEventsQueryLimit = parseLimitQuery({
@@ -12,7 +11,7 @@ const parseContractEventsQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
 });
 
-export function createContractRouter(db: DataStore): express.Router {
+export function createContractRouter(db: PgReplicaStore): express.Router {
   const router = express.Router();
 
   router.get(

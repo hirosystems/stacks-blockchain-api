@@ -2,7 +2,6 @@ import * as express from 'express';
 import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore } from '../../datastore/common';
 import { getBlockFromDataStore } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
@@ -10,6 +9,7 @@ import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
+import { PgReplicaStore } from '../../datastore/pg-replica-store';
 
 const MAX_BLOCKS_PER_REQUEST = 30;
 
@@ -18,7 +18,7 @@ const parseBlockQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBlockRouter(db: DataStore): express.Router {
+export function createBlockRouter(db: PgReplicaStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   router.get(

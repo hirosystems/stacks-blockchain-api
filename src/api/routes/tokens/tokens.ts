@@ -1,6 +1,5 @@
 import { asyncHandler } from '../../async-handler';
 import * as express from 'express';
-import { DataStore } from '../../../datastore/common';
 import {
   FungibleTokenMetadata,
   FungibleTokensMetadataList,
@@ -23,6 +22,7 @@ import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-he
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
+import { PgReplicaStore } from '../../../datastore/pg-replica-store';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -30,7 +30,7 @@ const parseTokenQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_TOKENS_PER_REQUEST,
 });
 
-export function createTokenRouter(db: DataStore): express.Router {
+export function createTokenRouter(db: PgReplicaStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   router.use(express.json());

@@ -8,10 +8,10 @@ import {
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore } from '../../datastore/common';
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { PgReplicaStore } from '../../datastore/pg-replica-store';
 
 const MAX_BLOCKS_PER_REQUEST = 250;
 
@@ -20,7 +20,7 @@ const parseQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
 });
 
-export function createBurnchainRouter(db: DataStore): express.Router {
+export function createBurnchainRouter(db: PgReplicaStore): express.Router {
   const router = express.Router();
 
   router.get(

@@ -1,4 +1,3 @@
-import * as crypto from 'crypto';
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
 import { hexToBuffer, parseEnum, FoundOrNot } from '../helpers';
@@ -13,15 +12,11 @@ import {
   TxPayloadTypeID,
   PostConditionAuthFlag,
 } from 'stacks-encoding-native-js';
-import {
-  AddressTokenOfferingLocked,
-  MempoolTransaction,
-  TransactionType,
-} from '@stacks/stacks-blockchain-api-types';
+import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
-import { RawTxQueryResult } from './postgres-store';
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
+import { RawTxQueryResult } from './helpers';
 
 export interface DbBlock {
   block_hash: string;
