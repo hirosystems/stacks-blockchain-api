@@ -14,4 +14,4 @@ type DataStoreEventEmitter = StrictEventEmitter<
   }
 >;
 
-export class ChainEventEmitter extends (EventEmitter as { new (): DataStoreEventEmitter }) {}
+export class PgStoreEventEmitter extends (EventEmitter as { new (): DataStoreEventEmitter }) {}

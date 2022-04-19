@@ -1,6 +1,7 @@
 import { ClientConfig } from 'pg';
 import createPostgresSubscriber, { Subscriber } from 'pg-listen';
 import { logError, logger } from '../helpers';
+import { getPgClientConfig, PgServer } from './connection';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -55,6 +56,12 @@ type PgNotificationCallback = (notification: PgNotification) => void;
 export class PgNotifier {
   readonly pgChannelName: string = 'stacks-api-pg-notifier';
   subscriber: Subscriber;
+
+  static create(usageName: string) {
+    return new PgNotifier(
+      getPgClientConfig({ usageName: `${usageName}:notifier`, pgServer: PgServer.primary })
+    );
+  }
 
   constructor(clientConfig: ClientConfig) {
     this.subscriber = createPostgresSubscriber(clientConfig, {

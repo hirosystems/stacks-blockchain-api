@@ -14,6 +14,12 @@ export enum PgServer {
   primary,
 }
 
+/**
+ * Connects to a Postgres pool. This function will also test the connection first to make sure
+ * all connection parameters are specified correctly in `.env`.
+ * @param args - Connection options
+ * @returns configured `Pool` object
+ */
 export async function connectPgPool({
   usageName,
   pgServer,
@@ -28,7 +34,7 @@ export async function connectPgPool({
   do {
     const clientConfig = getPgClientConfig({
       usageName: `${usageName};init-connection-poll`,
-      primary: pgServer === PgServer.primary,
+      pgServer: pgServer,
     });
     const client = new Client(clientConfig);
     try {
@@ -59,7 +65,7 @@ export async function connectPgPool({
   const poolConfig: PoolConfig = getPgClientConfig({
     usageName: `${usageName};datastore-crud`,
     getPoolConfig: true,
-    primary: pgServer === PgServer.primary,
+    pgServer: pgServer,
   });
   const pool = new Pool(poolConfig);
   pool.on('error', error => {
@@ -73,18 +79,18 @@ export async function connectPgPool({
  */
 export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   usageName,
-  primary = false,
+  pgServer,
   getPoolConfig,
 }: {
   usageName: string;
-  primary?: boolean;
+  pgServer?: PgServer;
   getPoolConfig?: TGetPoolConfig;
 }): TGetPoolConfig extends true ? PgPoolConfig : PgClientConfig {
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
   // See the `.env` file for more information on these options.
   const pgEnvValue = (name: string): string | undefined =>
-    primary
+    pgServer === PgServer.primary
       ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
       : process.env[`PG_${name}`];
   const pgEnvVars = {

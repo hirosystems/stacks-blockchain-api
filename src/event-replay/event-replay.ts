@@ -113,7 +113,7 @@ export async function importEventsFromTsv(
     usageName: 'import-events',
     skipMigrations: true,
     withNotifier: false,
-    eventReplay: true,
+    isEventReplay: true,
   });
   const eventServer = await startEventServer({
     datastore: db,

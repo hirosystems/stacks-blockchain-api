@@ -15,7 +15,7 @@ import {
   logger,
   unwrapOptional,
 } from '../helpers';
-import { ChainEventEmitter } from './chain-event-emitter';
+import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
@@ -90,30 +90,50 @@ import {
   TX_COLUMNS,
   validateZonefileHash,
 } from './helpers';
+import {
+  PgAddressNotificationPayload,
+  PgBlockNotificationPayload,
+  PgMicroblockNotificationPayload,
+  PgNameNotificationPayload,
+  PgNotifier,
+  PgTokenMetadataNotificationPayload,
+  PgTokensNotificationPayload,
+  PgTxNotificationPayload,
+} from './pg-notifier';
 
+/**
+ * This is the main interface between the API and the Postgres database. It contains all methods that
+ * query the DB in search for blockchain data to be returned via endpoints or WebSockets/Socket.IO.
+ * It also provides an `EventEmitter` to notify the rest of the API whenever an important DB write has
+ * happened in the `PgServer.primary` server (see `.env`).
+ */
 export class PgStore {
-  readonly eventReplay: boolean;
   readonly pool: Pool;
-  readonly eventEmitter: ChainEventEmitter;
+  readonly eventEmitter: PgStoreEventEmitter;
+  readonly notifier?: PgNotifier;
 
-  constructor(pool: Pool, eventReplay: boolean = false) {
+  constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
     this.pool = pool;
-    this.eventReplay = eventReplay;
-    this.eventEmitter = new ChainEventEmitter();
+    this.notifier = notifier;
+    this.eventEmitter = new PgStoreEventEmitter();
   }
 
   static async connect({
     usageName,
-    eventReplay = false,
+    withNotifier = true,
   }: {
     usageName: string;
-    eventReplay?: boolean;
+    withNotifier?: boolean;
   }): Promise<PgStore> {
     const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.default });
-    return new PgStore(pool, eventReplay);
+    const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
+    const store = new PgStore(pool, notifier);
+    await store.connectPgNotifier();
+    return store;
   }
 
   async close(): Promise<void> {
+    await this.notifier?.close();
     await this.pool.end();
   }
 
@@ -126,6 +146,45 @@ export class PgStore {
       return result.rows[0].application_name;
     });
     return statResult;
+  }
+
+  /**
+   * Connects to the `PgNotifier`. Its messages will be forwarded to the rest of the API components
+   * though the EventEmitter.
+   */
+  async connectPgNotifier() {
+    await this.notifier?.connect(notification => {
+      switch (notification.type) {
+        case 'blockUpdate':
+          const block = notification.payload as PgBlockNotificationPayload;
+          this.eventEmitter.emit('blockUpdate', block.blockHash);
+          break;
+        case 'microblockUpdate':
+          const microblock = notification.payload as PgMicroblockNotificationPayload;
+          this.eventEmitter.emit('microblockUpdate', microblock.microblockHash);
+          break;
+        case 'txUpdate':
+          const tx = notification.payload as PgTxNotificationPayload;
+          this.eventEmitter.emit('txUpdate', tx.txId);
+          break;
+        case 'addressUpdate':
+          const address = notification.payload as PgAddressNotificationPayload;
+          this.eventEmitter.emit('addressUpdate', address.address, address.blockHeight);
+          break;
+        case 'tokensUpdate':
+          const tokens = notification.payload as PgTokensNotificationPayload;
+          this.eventEmitter.emit('tokensUpdate', tokens.contractID);
+          break;
+        case 'nameUpdate':
+          const name = notification.payload as PgNameNotificationPayload;
+          this.eventEmitter.emit('nameUpdate', name.nameInfo);
+          break;
+        case 'tokenMetadataUpdateQueued':
+          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
+          this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
+          break;
+      }
+    });
   }
 
   /**
@@ -191,18 +250,7 @@ export class PgStore {
       block_height: number;
       block_hash: Buffer;
       index_block_hash: Buffer;
-    }>(
-      // The `chain_tip` materialized view is not available during event replay.
-      // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
-      // a classic query.
-      this.eventReplay
-        ? `
-          SELECT block_height, block_hash, index_block_hash
-          FROM blocks
-          WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
-          `
-        : `SELECT block_height, block_hash, index_block_hash FROM chain_tip`
-    );
+    }>(`SELECT block_height, block_hash, index_block_hash FROM chain_tip`);
     const height = currentTipBlock.rows[0]?.block_height ?? 0;
     return {
       blockHeight: height,

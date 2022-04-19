@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { Readable, Writable } from 'stream';
-import { Pool, ClientBase, QueryConfig } from 'pg';
+import { ClientBase, Pool, QueryConfig } from 'pg';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
 import {
@@ -61,16 +61,7 @@ import {
   UpdatedEntities,
   validateZonefileHash,
 } from './helpers';
-import {
-  PgAddressNotificationPayload,
-  PgBlockNotificationPayload,
-  PgMicroblockNotificationPayload,
-  PgNameNotificationPayload,
-  PgNotifier,
-  PgTokenMetadataNotificationPayload,
-  PgTokensNotificationPayload,
-  PgTxNotificationPayload,
-} from './pg-notifier';
+import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
 import { connectPgPool, getPgClientConfig, PgServer } from './connection';
 import { runMigrations } from './migrations';
@@ -83,52 +74,78 @@ class MicroblockGapError extends Error {
   }
 }
 
+/**
+ * Extends `PgStore` to provide data insertion functions. These added features are usually called by
+ * the `EventServer` upon receiving blockchain events from a Stacks node. It also deals with chain data
+ * re-orgs and Postgres NOTIFY message broadcasts when important data is written into the DB.
+ */
 export class PgPrimaryStore extends PgStore {
-  readonly notifier?: PgNotifier;
+  readonly isEventReplay: boolean;
   private cachedParameterizedInsertStrings = new Map<string, string>();
 
   constructor(
     pool: Pool,
     notifier: PgNotifier | undefined = undefined,
-    eventReplay: boolean = false
+    isEventReplay: boolean = false
   ) {
-    super(pool, eventReplay);
-    this.notifier = notifier;
+    super(pool, notifier);
+    this.isEventReplay = isEventReplay;
   }
 
   static async connect({
+    usageName,
     skipMigrations = false,
     withNotifier = true,
-    eventReplay = false,
-    usageName,
+    isEventReplay = false,
   }: {
+    usageName: string;
     skipMigrations?: boolean;
     withNotifier?: boolean;
-    eventReplay?: boolean;
-    usageName: string;
+    isEventReplay?: boolean;
   }): Promise<PgPrimaryStore> {
     const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.primary });
     if (!skipMigrations) {
-      const clientConfig = getPgClientConfig({
-        usageName: `${usageName};schema-migrations`,
-        primary: true,
-      });
-      await runMigrations(clientConfig);
-    }
-    let notifier: PgNotifier | undefined = undefined;
-    if (withNotifier) {
-      notifier = new PgNotifier(
-        getPgClientConfig({ usageName: `${usageName}:notifier`, primary: true })
+      await runMigrations(
+        getPgClientConfig({
+          usageName: `${usageName}:schema-migrations`,
+          pgServer: PgServer.primary,
+        })
       );
     }
-    const store = new PgPrimaryStore(pool, notifier, eventReplay);
+    const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
+    const store = new PgPrimaryStore(pool, notifier, isEventReplay);
     await store.connectPgNotifier();
     return store;
   }
 
-  async close(): Promise<void> {
-    await this.notifier?.close();
-    await super.close();
+  async getChainTip(
+    client: ClientBase
+  ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
+    if (!this.isEventReplay) {
+      return super.getChainTip(client);
+    }
+    const currentTipBlock = await client.query<{
+      block_height: number;
+      block_hash: Buffer;
+      index_block_hash: Buffer;
+    }>(
+      // The `chain_tip` materialized view is not available during event replay.
+      // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
+      // a classic query.
+      `
+      SELECT block_height, block_hash, index_block_hash
+      FROM blocks
+      WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
+      `
+    );
+    const height = currentTipBlock.rows[0]?.block_height ?? 0;
+    return {
+      blockHeight: height,
+      blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
+      indexBlockHash: bufferToHexPrefixString(
+        currentTipBlock.rows[0]?.index_block_hash ?? Buffer.from([])
+      ),
+    };
   }
 
   private generateParameterizedInsertString({
@@ -154,45 +171,6 @@ export class PgPrimaryStore extends PgStore {
     const stringRes = params.map(r => `(${r.join(',')})`).join(',');
     this.cachedParameterizedInsertStrings.set(cacheKey, stringRes);
     return stringRes;
-  }
-
-  /**
-   * Connects to the `PgNotifier`. Its messages will be forwarded to the rest of the API components
-   * though the EventEmitter.
-   */
-  async connectPgNotifier() {
-    await this.notifier?.connect(notification => {
-      switch (notification.type) {
-        case 'blockUpdate':
-          const block = notification.payload as PgBlockNotificationPayload;
-          this.eventEmitter.emit('blockUpdate', block.blockHash);
-          break;
-        case 'microblockUpdate':
-          const microblock = notification.payload as PgMicroblockNotificationPayload;
-          this.eventEmitter.emit('microblockUpdate', microblock.microblockHash);
-          break;
-        case 'txUpdate':
-          const tx = notification.payload as PgTxNotificationPayload;
-          this.eventEmitter.emit('txUpdate', tx.txId);
-          break;
-        case 'addressUpdate':
-          const address = notification.payload as PgAddressNotificationPayload;
-          this.eventEmitter.emit('addressUpdate', address.address, address.blockHeight);
-          break;
-        case 'tokensUpdate':
-          const tokens = notification.payload as PgTokensNotificationPayload;
-          this.eventEmitter.emit('tokensUpdate', tokens.contractID);
-          break;
-        case 'nameUpdate':
-          const name = notification.payload as PgNameNotificationPayload;
-          this.eventEmitter.emit('nameUpdate', name.nameInfo);
-          break;
-        case 'tokenMetadataUpdateQueued':
-          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
-          this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
-          break;
-      }
-    });
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
@@ -2765,7 +2743,7 @@ export class PgPrimaryStore extends PgStore {
     viewName: string,
     skipDuringEventReplay = true
   ) {
-    if (this.eventReplay && skipDuringEventReplay) {
+    if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
     await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
@@ -2813,7 +2791,7 @@ export class PgPrimaryStore extends PgStore {
    * Called when a full event import is complete.
    */
   async finishEventReplay() {
-    if (!this.eventReplay) {
+    if (!this.isEventReplay) {
       return;
     }
     await this.queryTx(async client => {
