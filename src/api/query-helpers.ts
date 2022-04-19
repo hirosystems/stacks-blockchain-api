@@ -1,6 +1,6 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix, hexToBuffer, isValidPrincipal, parseEventTypeStrings } from './../helpers';
+import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
 
@@ -285,4 +285,12 @@ export function parseEventTypeFilter(
   }
 
   return eventTypeFilter;
+}
+export function isValidTxId(tx_id: string) {
+  try {
+    validateRequestHexInput(tx_id);
+    return true;
+  } catch {
+    return false;
+  }
 }
