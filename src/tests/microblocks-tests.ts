@@ -19,7 +19,6 @@ import {
   DbSmartContract,
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { httpPostRequest, I32_MAX, logger } from '../helpers';
 import {
@@ -39,15 +38,17 @@ import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('microblock tests', () => {
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -63,7 +64,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-out-of-order-microblock.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -125,7 +126,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -191,7 +192,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {

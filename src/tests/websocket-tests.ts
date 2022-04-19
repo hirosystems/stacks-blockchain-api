@@ -1,6 +1,5 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { DbTxTypeId, DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
 import { PoolClient } from 'pg';
@@ -29,17 +28,19 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
 
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let dbClient: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgPrimaryStore.connect({ usageName: 'tests' });
     dbClient = await db.pool.connect();
     apiServer = await startApiServer({
       datastore: db,
@@ -121,7 +122,7 @@ describe('websocket notifications', () => {
       expect(txStatus2).toBe('pending');
 
       // update DB with TX after WS server is sent txid to monitor
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
@@ -132,7 +133,7 @@ describe('websocket notifications', () => {
       expect(unsubscribeResult).toEqual({ tx_id: txId });
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[3].isFinished).toBe(false);
     } finally {

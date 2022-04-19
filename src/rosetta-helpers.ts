@@ -78,7 +78,7 @@ import {
   TxPayloadTokenTransfer,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { PgStore } from './datastore/pg-replica-store';
+import { PgStore } from './datastore/pg-store';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',

@@ -4,8 +4,8 @@ import {
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi } from '@stacks/transactions';
-import { ClientBase, Pool, QueryConfig, QueryResult } from 'pg';
-import { getTxTypeId } from 'src/api/controllers/db-controller';
+import { ClientBase, Pool, QueryResult } from 'pg';
+import { getTxTypeId } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
   bufferToHexPrefixString,

@@ -14,7 +14,6 @@ import {
   DbNonFungibleTokenMetadata,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
@@ -23,6 +22,8 @@ import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger, timeout } from '../helpers';
 import * as nock from 'nock';
 import { performFetch, TokensProcessorQueue } from './../event-stream/tokens-contract-handler';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -30,7 +31,7 @@ const HOST = 'localhost';
 const PORT = 20443;
 
 describe('api tests', () => {
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let client: PoolClient;
   let api: ApiServer;
   let eventServer: EventStreamServer;
@@ -50,11 +51,11 @@ describe('api tests', () => {
             dbTx.status === DbTxStatus.AbortByResponse ||
             dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
-          api.datastore.removeListener('txUpdate', listener);
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
           resolve(dbTx);
         }
       };
-      api.datastore.addListener('txUpdate', listener);
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
 
     return broadcastTx;
@@ -114,7 +115,7 @@ describe('api tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgPrimaryStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });

@@ -21,18 +21,15 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
 } from '../datastore/common';
-import {
-  PgDataStore,
-  cycleMigrations,
-  runMigrations,
-  getPgClientConfig,
-} from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
 import { intCV, serializeCV } from '@stacks/transactions';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { getPgClientConfig } from '../datastore/connection';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -73,13 +70,13 @@ function testEnvVars(
 }
 
 describe('postgres datastore', () => {
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -146,7 +143,7 @@ describe('postgres datastore', () => {
         PG_APPLICATION_NAME: 'test-app-name',
       },
       async () => {
-        const testDb = await PgDataStore.connect({
+        const testDb = await PgPrimaryStore.connect({
           usageName: 'test-usage-name',
           skipMigrations: true,
         });

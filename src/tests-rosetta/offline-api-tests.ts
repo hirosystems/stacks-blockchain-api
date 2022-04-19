@@ -1,7 +1,6 @@
 import * as BigNum from 'bn.js';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
-import { DataStore } from '../datastore/common';
 import {
   AnchorMode,
   AuthType,
@@ -56,9 +55,10 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
 import * as nock from 'nock';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { PgStore } from '../datastore/pg-store';
 
 describe('Rosetta offline API', () => {
-  let db: DataStore;
+  let db: PgStore;
   let api: ApiServer;
 
   beforeAll(async () => {

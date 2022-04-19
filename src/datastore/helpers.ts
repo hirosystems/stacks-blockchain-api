@@ -23,14 +23,14 @@ import {
   CoreNodeDropMempoolTxReasonType,
   CoreNodeParsedTxMessage,
   CoreNodeTxStatus,
-} from 'src/event-stream/core-node-message';
+} from '../event-stream/core-node-message';
 import {
   DecodedTxResult,
   PostConditionAuthFlag,
   PrincipalTypeID,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { getTxSenderAddress } from 'src/event-stream/reader';
+import { getTxSenderAddress } from '../event-stream/reader';
 
 export interface BlockQueryResult {
   block_hash: Buffer;

@@ -22,7 +22,7 @@ import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-he
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
-import { PgStore } from '../../../datastore/pg-replica-store';
+import { PgStore } from '../../../datastore/pg-store';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({

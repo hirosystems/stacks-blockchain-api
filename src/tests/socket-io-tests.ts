@@ -2,7 +2,6 @@ import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
-import { cycleMigrations, runMigrations, PgDataStore } from '../datastore/postgres-store';
 import { DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
 import {
@@ -18,16 +17,18 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let dbClient: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgPrimaryStore.connect({ usageName: 'tests' });
     dbClient = await db.pool.connect();
     apiServer = await startApiServer({
       datastore: db,

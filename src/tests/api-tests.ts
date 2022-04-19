@@ -28,7 +28,6 @@ import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction } from 'stacks-encoding-native-js';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
-  createDbTxFromCoreMsg,
   DbBlock,
   DbTx,
   DbTxTypeId,
@@ -51,26 +50,28 @@ import {
   DataStoreMicroblockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from './../api/routes/fee-rate';
-import { Block, FeeRateRequest } from 'docs/generated';
+import { FeeRateRequest } from 'docs/generated';
 import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { createDbTxFromCoreMsg } from '../datastore/helpers';
 
 describe('api tests', () => {
-  let db: PgDataStore;
+  let db: PgPrimaryStore;
   let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
