@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
 
 enum EventImportMode {
@@ -48,7 +48,7 @@ export async function exportEventsAsTsv(
   console.log(`Export event data to file: ${resolvedFilePath}`);
   const writeStream = fs.createWriteStream(resolvedFilePath);
   console.log(`Export started...`);
-  await PgPrimaryStore.exportRawEventRequests(writeStream);
+  await PgWriteStore.exportRawEventRequests(writeStream);
   console.log('Export successful.');
 }
 
@@ -84,7 +84,7 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await PgPrimaryStore.containsAnyRawEventRequests();
+  const hasData = await PgWriteStore.containsAnyRawEventRequests();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
@@ -109,7 +109,7 @@ export async function importEventsFromTsv(
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
   }
 
-  const db = await PgPrimaryStore.connect({
+  const db = await PgWriteStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
     withNotifier: false,
@@ -124,7 +124,7 @@ export async function importEventsFromTsv(
   });
 
   const readStream = fs.createReadStream(resolvedFilePath);
-  const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream, status => {
+  const rawEventsIterator = PgWriteStore.getRawEventRequests(readStream, status => {
     console.log(status);
   });
   // Set logger to only output for warnings/errors, otherwise the event replay will result

@@ -5,18 +5,18 @@ import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
 import { hexToBuffer } from '../helpers';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('/extended/v1/tokens tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });

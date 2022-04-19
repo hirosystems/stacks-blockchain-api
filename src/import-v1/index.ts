@@ -23,7 +23,7 @@ import {
   REPO_DIR,
 } from '../helpers';
 import { PoolClient } from 'pg';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 const IMPORT_FILES = [
   'chainstate.txt',
@@ -83,7 +83,7 @@ class ChainProcessor extends stream.Writable {
   rowCount: number = 0;
   zhashes: Map<string, string>;
   namespace: Map<string, DbBnsNamespace>;
-  db: PgPrimaryStore;
+  db: PgWriteStore;
   client: PoolClient;
   emptyBlockData = {
     index_block_hash: '',
@@ -93,7 +93,7 @@ class ChainProcessor extends stream.Writable {
     microblock_canonical: true,
   } as const;
 
-  constructor(client: PoolClient, db: PgPrimaryStore, zhashes: Map<string, string>) {
+  constructor(client: PoolClient, db: PgWriteStore, zhashes: Map<string, string>) {
     super();
     this.zhashes = zhashes;
     this.namespace = new Map();
@@ -394,7 +394,7 @@ class StxVestingTransform extends stream.Transform {
   }
 }
 
-export async function importV1BnsData(db: PgPrimaryStore, importDir: string) {
+export async function importV1BnsData(db: PgWriteStore, importDir: string) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
     logger.verbose('Stacks 1.0 BNS data is already imported');
@@ -502,7 +502,7 @@ class Sha256PassThrough extends stream.PassThrough {
   }
 }
 
-export async function importV1TokenOfferingData(db: PgPrimaryStore) {
+export async function importV1TokenOfferingData(db: PgWriteStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
     logger.verbose('Stacks 1.0 token offering data is already imported');

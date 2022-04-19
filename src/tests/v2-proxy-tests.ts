@@ -8,17 +8,17 @@ import * as path from 'path';
 import * as os from 'os';
 import * as nock from 'nock';
 import { DbBlock } from 'src/datastore/common';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('v2-proxy tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 

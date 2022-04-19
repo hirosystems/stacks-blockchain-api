@@ -6,7 +6,7 @@ import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 import { I32_MAX } from '../helpers';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 const nameSpaceExpected = {
@@ -43,7 +43,7 @@ jest.mock('@stacks/transactions', () => {
 });
 
 describe('BNS API tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let api: ApiServer;
 
@@ -70,7 +70,7 @@ describe('BNS API tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests' });
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 

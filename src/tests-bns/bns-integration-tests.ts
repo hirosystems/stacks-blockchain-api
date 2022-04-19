@@ -7,7 +7,7 @@ import { createHash } from 'crypto';
 import { DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import {
   broadcastTransaction,
@@ -47,7 +47,7 @@ type TestnetKey = {
 }
 
 describe('BNS integration tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
@@ -335,7 +335,7 @@ describe('BNS integration tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests' });
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });

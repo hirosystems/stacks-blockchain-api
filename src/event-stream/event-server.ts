@@ -70,7 +70,7 @@ import {
   BnsContractIdentifier,
 } from '../bns-constants';
 import * as zoneFileParser from 'zone-file';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   createDbMempoolTxFromCoreMsg,
   createDbTxFromCoreMsg,
@@ -80,14 +80,14 @@ import {
 async function handleRawEventRequest(
   eventPath: string,
   payload: string,
-  db: PgPrimaryStore
+  db: PgWriteStore
 ): Promise<void> {
   await db.storeRawEventRequest(eventPath, payload);
 }
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
-  db: PgPrimaryStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(
     `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
@@ -126,7 +126,7 @@ async function handleBurnBlockMessage(
   });
 }
 
-async function handleMempoolTxsMessage(rawTxs: string[], db: PgPrimaryStore): Promise<void> {
+async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
@@ -160,7 +160,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgPrimaryStore): Pr
 
 async function handleDroppedMempoolTxsMessage(
   msg: CoreNodeDropMempoolTxMessage,
-  db: PgPrimaryStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
@@ -170,7 +170,7 @@ async function handleDroppedMempoolTxsMessage(
 async function handleMicroblockMessage(
   chainId: ChainID,
   msg: CoreNodeMicroblockMessage,
-  db: PgPrimaryStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
   const dbMicroblocks = parseMicroblocksFromTxs({
@@ -222,7 +222,7 @@ async function handleMicroblockMessage(
 async function handleBlockMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
-  db: PgPrimaryStore
+  db: PgWriteStore
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
@@ -572,7 +572,7 @@ function parseDataStoreTxEventData(
   return dbData;
 }
 
-async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: PgPrimaryStore) {
+async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: PgWriteStore) {
   for (const attachment of msg) {
     if (
       attachment.contract_id === BnsContractIdentifier.mainnet ||
@@ -656,32 +656,32 @@ interface EventMessageHandler {
   handleRawEventRequest(
     eventPath: string,
     payload: string,
-    db: PgPrimaryStore
+    db: PgWriteStore
   ): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
-    db: PgPrimaryStore
+    db: PgWriteStore
   ): Promise<void> | void;
   handleMicroblockMessage(
     chainId: ChainID,
     msg: CoreNodeMicroblockMessage,
-    db: PgPrimaryStore
+    db: PgWriteStore
   ): Promise<void> | void;
-  handleMempoolTxs(rawTxs: string[], db: PgPrimaryStore): Promise<void> | void;
-  handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: PgPrimaryStore): Promise<void> | void;
+  handleMempoolTxs(rawTxs: string[], db: PgWriteStore): Promise<void> | void;
+  handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: PgWriteStore): Promise<void> | void;
   handleDroppedMempoolTxs(
     msg: CoreNodeDropMempoolTxMessage,
-    db: PgPrimaryStore
+    db: PgWriteStore
   ): Promise<void> | void;
-  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgPrimaryStore): Promise<void> | void;
+  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: string, db: PgPrimaryStore) => {
+    handleRawEventRequest: (eventPath: string, payload: string, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
         .catch(e => {
@@ -689,7 +689,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgPrimaryStore) => {
+    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
@@ -700,7 +700,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     handleMicroblockMessage: (
       chainId: ChainID,
       msg: CoreNodeMicroblockMessage,
-      db: PgPrimaryStore
+      db: PgWriteStore
     ) => {
       return processorQueue
         .add(() => handleMicroblockMessage(chainId, msg, db))
@@ -709,7 +709,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgPrimaryStore) => {
+    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleBurnBlockMessage(msg, db))
         .catch(e => {
@@ -717,7 +717,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleMempoolTxs: (rawTxs: string[], db: PgPrimaryStore) => {
+    handleMempoolTxs: (rawTxs: string[], db: PgWriteStore) => {
       return processorQueue
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
@@ -725,7 +725,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: PgPrimaryStore) => {
+    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
@@ -733,7 +733,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: PgPrimaryStore) => {
+    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: PgWriteStore) => {
       return processorQueue
         .add(() => handleNewAttachmentMessage(msg, db))
         .catch(e => {
@@ -752,7 +752,7 @@ export type EventStreamServer = net.Server & {
 };
 
 export async function startEventServer(opts: {
-  datastore: PgPrimaryStore;
+  datastore: PgWriteStore;
   chainId: ChainID;
   messageHandler?: EventMessageHandler;
   /** If not specified, this is read from the STACKS_CORE_EVENT_HOST env var. */

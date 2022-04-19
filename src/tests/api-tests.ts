@@ -59,19 +59,19 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
 
 describe('api tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });

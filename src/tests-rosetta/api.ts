@@ -26,18 +26,18 @@ import {
   RosettaConstants,
 } from '../api/rosetta-constants';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('Rosetta API', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests' });
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });

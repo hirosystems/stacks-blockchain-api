@@ -29,7 +29,7 @@ import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 import { PgStore } from './datastore/pg-store';
-import { PgPrimaryStore } from './datastore/pg-primary-store';
+import { PgWriteStore } from './datastore/pg-write-store';
 
 enum StacksApiMode {
   /**
@@ -119,7 +119,7 @@ async function init(): Promise<void> {
   switch (apiMode) {
     case StacksApiMode.default:
     case StacksApiMode.writeOnly:
-      db = await PgPrimaryStore.connect({
+      db = await PgWriteStore.connect({
         usageName: dbUsageName,
         skipMigrations: false,
       });
@@ -135,7 +135,7 @@ async function init(): Promise<void> {
   }
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
-    const primaryDb = db as PgPrimaryStore;
+    const primaryDb = db as PgWriteStore;
     if (isProdEnv) {
       await importV1TokenOfferingData(primaryDb);
     } else {

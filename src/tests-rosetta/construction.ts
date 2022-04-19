@@ -60,11 +60,11 @@ import {
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { decodeBtcAddress } from '@stacks/stacking';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('Rosetta API', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
@@ -112,7 +112,7 @@ describe('Rosetta API', () => {
     process.env.PG_DATABASE = 'postgres';
     process.env.STACKS_CHAIN_ID = '0x80000000';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests' });
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });

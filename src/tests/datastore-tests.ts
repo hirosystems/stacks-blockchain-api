@@ -27,7 +27,7 @@ import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
 import { intCV, serializeCV } from '@stacks/transactions';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { getPgClientConfig } from '../datastore/connection';
 
@@ -70,13 +70,13 @@ function testEnvVars(
 }
 
 describe('postgres datastore', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -143,7 +143,7 @@ describe('postgres datastore', () => {
         PG_APPLICATION_NAME: 'test-app-name',
       },
       async () => {
-        const testDb = await PgPrimaryStore.connect({
+        const testDb = await PgWriteStore.connect({
           usageName: 'test-usage-name',
           skipMigrations: true,
         });

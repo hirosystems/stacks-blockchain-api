@@ -38,17 +38,17 @@ import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('microblock tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
   let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -64,7 +64,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-out-of-order-microblock.tsv'
         );
-        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgWriteStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -126,7 +126,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
-        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgWriteStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -192,7 +192,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
-        const rawEventsIterator = PgPrimaryStore.getRawEventRequests(readStream);
+        const rawEventsIterator = PgWriteStore.getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {

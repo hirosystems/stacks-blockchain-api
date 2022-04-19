@@ -1,15 +1,15 @@
 import { importV1TokenOfferingData } from '../import-v1';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
-import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('import genesis data tests', () => {
-  let db: PgPrimaryStore;
+  let db: PgWriteStore;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgPrimaryStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
   });
 
   test('import token offering data', async () => {

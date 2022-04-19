@@ -79,7 +79,7 @@ class MicroblockGapError extends Error {
  * the `EventServer` upon receiving blockchain events from a Stacks node. It also deals with chain data
  * re-orgs and Postgres NOTIFY message broadcasts when important data is written into the DB.
  */
-export class PgPrimaryStore extends PgStore {
+export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
   private cachedParameterizedInsertStrings = new Map<string, string>();
 
@@ -102,7 +102,7 @@ export class PgPrimaryStore extends PgStore {
     skipMigrations?: boolean;
     withNotifier?: boolean;
     isEventReplay?: boolean;
-  }): Promise<PgPrimaryStore> {
+  }): Promise<PgWriteStore> {
     const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.primary });
     if (!skipMigrations) {
       await runMigrations(
@@ -113,7 +113,7 @@ export class PgPrimaryStore extends PgStore {
       );
     }
     const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
-    const store = new PgPrimaryStore(pool, notifier, isEventReplay);
+    const store = new PgWriteStore(pool, notifier, isEventReplay);
     await store.connectPgNotifier();
     return store;
   }
