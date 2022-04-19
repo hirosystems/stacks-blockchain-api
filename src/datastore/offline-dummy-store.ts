@@ -1,7 +1,8 @@
 import { EventEmitter } from 'events';
-import { DataStore } from './common';
+import { ChainEventEmitter } from './chain-event-emitter';
+import { PgStore } from './pg-store';
 
-export const OfflineDummyStore: DataStore = new Proxy(new EventEmitter() as DataStore, {
+export const OfflineDummyStore: PgStore = new Proxy(new EventEmitter() as ChainEventEmitter, {
   get(target: any, propKey) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     if (propKey in target) return target[propKey];

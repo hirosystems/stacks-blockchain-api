@@ -1,12 +1,12 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 
-export function createBnsNamesRouter(db: DataStore): express.Router {
+export function createBnsNamesRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   router.get(

@@ -72,7 +72,6 @@ import {
   PgTxNotificationPayload,
 } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { ChainEventEmitter } from './chain-event-emitter';
 import { connectPgPool, getPgClientConfig, PgServer } from './connection';
 import { runMigrations } from './migrations';
 
@@ -86,7 +85,6 @@ class MicroblockGapError extends Error {
 
 export class PgPrimaryStore extends PgStore {
   readonly notifier?: PgNotifier;
-  readonly eventEmitter: ChainEventEmitter;
   private cachedParameterizedInsertStrings = new Map<string, string>();
 
   constructor(
@@ -96,7 +94,6 @@ export class PgPrimaryStore extends PgStore {
   ) {
     super(pool, eventReplay);
     this.notifier = notifier;
-    this.eventEmitter = new ChainEventEmitter();
   }
 
   static async connect({
@@ -109,7 +106,7 @@ export class PgPrimaryStore extends PgStore {
     withNotifier?: boolean;
     eventReplay?: boolean;
     usageName: string;
-  }): Promise<PgStore> {
+  }): Promise<PgPrimaryStore> {
     const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.primary });
     if (!skipMigrations) {
       const clientConfig = getPgClientConfig({

@@ -1,6 +1,5 @@
 import { Server as SocketIOServer } from 'socket.io';
 import * as http from 'http';
-import { DataStore } from '../../../datastore/common';
 import {
   AddressStxBalanceResponse,
   AddressStxBalanceTopic,
@@ -19,8 +18,9 @@ import {
 } from '../../controllers/db-controller';
 import { isProdEnv, logError, logger } from '../../../helpers';
 import { WebSocketPrometheus } from './metrics';
+import { PgStore } from '../../../datastore/pg-store';
 
-export function createSocketIORouter(db: DataStore, server: http.Server) {
+export function createSocketIORouter(db: PgStore, server: http.Server) {
   const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(server, {
     cors: { origin: '*' },
   });
@@ -82,7 +82,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     logger.info(`[socket.io] socket ${id} left room: ${room}`);
   });
 
-  db.on('blockUpdate', async blockHash => {
+  db.eventEmitter.on('blockUpdate', async blockHash => {
     // Only parse and emit data if there are currently subscriptions to the blocks topic
     const blockTopic: Topic = 'block';
     if (adapter.rooms.has(blockTopic)) {
@@ -96,7 +96,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     }
   });
 
-  db.on('microblockUpdate', async microblockHash => {
+  db.eventEmitter.on('microblockUpdate', async microblockHash => {
     const microblockTopic: Topic = 'microblock';
     if (adapter.rooms.has(microblockTopic)) {
       const microblockQuery = await getMicroblockFromDataStore({
@@ -112,7 +112,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     }
   });
 
-  db.on('txUpdate', async txId => {
+  db.eventEmitter.on('txUpdate', async txId => {
     // Mempool updates
     const mempoolTopic: Topic = 'mempool';
     if (adapter.rooms.has(mempoolTopic)) {
@@ -150,7 +150,7 @@ export function createSocketIORouter(db: DataStore, server: http.Server) {
     }
   });
 
-  db.on('addressUpdate', async (address, blockHeight) => {
+  db.eventEmitter.on('addressUpdate', async (address, blockHeight) => {
     const addrTxTopic: AddressTransactionTopic = `address-transaction:${address}` as const;
     const addrStxBalanceTopic: AddressStxBalanceTopic = `address-stx-balance:${address}` as const;
     if (!adapter.rooms.has(addrTxTopic) && !adapter.rooms.has(addrStxBalanceTopic)) {

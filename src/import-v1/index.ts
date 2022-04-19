@@ -7,7 +7,6 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import * as split2 from 'split2';
-
 import {
   DbBnsName,
   DbBnsNamespace,
@@ -15,7 +14,6 @@ import {
   DbConfigState,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import { PgDataStore } from '../datastore/postgres-store';
 import {
   asyncBatchIterate,
   asyncIterableToGenerator,
@@ -24,8 +22,8 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-
 import { PoolClient } from 'pg';
+import { PgPrimaryStore } from '../datastore/pg-primary-store';
 
 const IMPORT_FILES = [
   'chainstate.txt',
@@ -85,7 +83,7 @@ class ChainProcessor extends stream.Writable {
   rowCount: number = 0;
   zhashes: Map<string, string>;
   namespace: Map<string, DbBnsNamespace>;
-  db: PgDataStore;
+  db: PgPrimaryStore;
   client: PoolClient;
   emptyBlockData = {
     index_block_hash: '',
@@ -95,7 +93,7 @@ class ChainProcessor extends stream.Writable {
     microblock_canonical: true,
   } as const;
 
-  constructor(client: PoolClient, db: PgDataStore, zhashes: Map<string, string>) {
+  constructor(client: PoolClient, db: PgPrimaryStore, zhashes: Map<string, string>) {
     super();
     this.zhashes = zhashes;
     this.namespace = new Map();
@@ -396,7 +394,7 @@ class StxVestingTransform extends stream.Transform {
   }
 }
 
-export async function importV1BnsData(db: PgDataStore, importDir: string) {
+export async function importV1BnsData(db: PgPrimaryStore, importDir: string) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
     logger.verbose('Stacks 1.0 BNS data is already imported');
@@ -504,7 +502,7 @@ class Sha256PassThrough extends stream.PassThrough {
   }
 }
 
-export async function importV1TokenOfferingData(db: PgDataStore) {
+export async function importV1TokenOfferingData(db: PgPrimaryStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
     logger.verbose('Stacks 1.0 token offering data is already imported');

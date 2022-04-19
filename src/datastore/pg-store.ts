@@ -15,6 +15,7 @@ import {
   logger,
   unwrapOptional,
 } from '../helpers';
+import { ChainEventEmitter } from './chain-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
@@ -93,10 +94,12 @@ import {
 export class PgStore {
   readonly eventReplay: boolean;
   readonly pool: Pool;
+  readonly eventEmitter: ChainEventEmitter;
 
   constructor(pool: Pool, eventReplay: boolean = false) {
     this.pool = pool;
     this.eventReplay = eventReplay;
+    this.eventEmitter = new ChainEventEmitter();
   }
 
   static async connect({
@@ -1186,6 +1189,11 @@ export class PgStore {
     return { results: parsed, total: queryResult.total };
   }
 
+  /**
+   * Returns a string that represents a digest of all the current pending transactions
+   * in the mempool. This digest can be used to calculate an `ETag` for mempool endpoint cache handlers.
+   * @returns `FoundOrNot` object with a possible `digest` string.
+   */
   async getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
     return await this.query(async client => {
       const result = await client.query<{ digest: string }>(`SELECT digest FROM mempool_digest`);
@@ -1547,6 +1555,14 @@ export class PgStore {
     });
   }
 
+  /**
+   * It retrieves filtered events from the db based on transaction, principal or event type. Note: It does not accept both principal and txId at the same time
+   * @param args - addressOrTxId: filter for either transaction id or address
+   * @param args - eventTypeFilter: filter based on event types ids
+   * @param args - limit: returned that many rows
+   * @param args - offset: skip that any rows
+   * @returns returns array of events
+   */
   async getTransactionEvents(args: {
     addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
     eventTypeFilter: DbEventTypeId[];
@@ -1689,6 +1705,10 @@ export class PgStore {
     });
   }
 
+  /**
+   * Returns a single entry from the `token_metadata_queue` table.
+   * @param queueId - queue entry id
+   */
   async getTokenMetadataQueueEntry(
     queueId: number
   ): Promise<FoundOrNot<DbTokenMetadataQueueEntry>> {
@@ -2959,6 +2979,11 @@ export class PgStore {
     });
   }
 
+  /**
+   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
+   * including optional transaction metadata.
+   * @param args - Query arguments
+   */
   async getNftHoldings(args: {
     principal: string;
     assetIdentifiers?: string[];
@@ -3010,6 +3035,10 @@ export class PgStore {
     });
   }
 
+  /**
+   * Returns the event history of a particular NFT.
+   * @param args - Query arguments
+   */
   async getNftHistory(args: {
     assetIdentifier: string;
     value: string;
@@ -3073,6 +3102,10 @@ export class PgStore {
     });
   }
 
+  /**
+   * Returns all NFT mint events for a particular asset identifier.
+   * @param args - Query arguments
+   */
   getNftMints(args: {
     assetIdentifier: string;
     limit: number;
@@ -3135,6 +3168,9 @@ export class PgStore {
     });
   }
 
+  /**
+   * @deprecated Use `getNftHoldings` instead.
+   */
   async getAddressNFTEvent(args: {
     stxAddress: string;
     limit: number;
@@ -3491,6 +3527,10 @@ export class PgStore {
     return { found: false } as const;
   }
 
+  /**
+   * This function returns the subdomains for a specific name
+   * @param name - The name for which subdomains are required
+   */
   async getSubdomainsListInName({
     name,
     includeUnanchored,

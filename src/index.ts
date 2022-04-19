@@ -10,7 +10,6 @@ import {
   getStacksNodeChainID,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
-import { DataStore } from './datastore/common';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
@@ -115,75 +114,79 @@ async function init(): Promise<void> {
     );
   }
   const apiMode = getApiMode();
-
+  const dbUsageName = `datastore-${apiMode}`;
   let db: PgStore;
-  if (apiMode === StacksApiMode.offline) {
-    // db = OfflineDummyStore;
-  } else {
-    const skipMigrations = apiMode === StacksApiMode.readOnly;
-    db = await PgStore.connect({
-      usageName: `datastore-${apiMode}`,
-      skipMigrations: skipMigrations,
+  switch (apiMode) {
+    case StacksApiMode.default:
+    case StacksApiMode.writeOnly:
+      db = await PgPrimaryStore.connect({
+        usageName: dbUsageName,
+        skipMigrations: false,
+      });
+      break;
+    case StacksApiMode.readOnly:
+      db = await PgStore.connect({
+        usageName: dbUsageName,
+      });
+      break;
+    case StacksApiMode.offline:
+      db = OfflineDummyStore;
+      break;
+  }
+
+  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
+    const primaryDb = db as PgPrimaryStore;
+    if (isProdEnv) {
+      await importV1TokenOfferingData(primaryDb);
+    } else {
+      logger.warn(`Notice: skipping token offering data import because of non-production NODE_ENV`);
+    }
+    if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
+      logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+    } else if (process.env.BNS_IMPORT_DIR) {
+      await importV1BnsData(primaryDb, process.env.BNS_IMPORT_DIR);
+    }
+
+    const configuredChainID = getApiConfiguredChainID();
+    const eventServer = await startEventServer({
+      datastore: primaryDb,
+      chainId: configuredChainID,
+    });
+    registerShutdownConfig({
+      name: 'Event Server',
+      handler: () => eventServer.closeAsync(),
+      forceKillable: false,
     });
 
-    if (apiMode !== StacksApiMode.readOnly) {
-      if (db instanceof PgPrimaryStore) {
-        if (isProdEnv) {
-          await importV1TokenOfferingData(db);
-        } else {
-          logger.warn(
-            `Notice: skipping token offering data import because of non-production NODE_ENV`
-          );
-        }
-        if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
-          logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
-        } else if (process.env.BNS_IMPORT_DIR) {
-          await importV1BnsData(db, process.env.BNS_IMPORT_DIR);
-        }
-      }
+    const networkChainId = await getStacksNodeChainID();
+    if (networkChainId !== configuredChainID) {
+      const chainIdConfig = numberToHex(configuredChainID);
+      const chainIdNode = numberToHex(networkChainId);
+      const error = new Error(
+        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+      );
+      logError(error.message, error);
+      throw error;
+    }
+    monitorCoreRpcConnection().catch(error => {
+      logger.error(`Error monitoring RPC connection: ${error}`, error);
+    });
 
-      const configuredChainID = getApiConfiguredChainID();
-
-      const eventServer = await startEventServer({
-        datastore: db,
-        chainId: configuredChainID,
-      });
+    if (!isFtMetadataEnabled()) {
+      logger.warn('Fungible Token metadata processing is not enabled.');
+    }
+    if (!isNftMetadataEnabled()) {
+      logger.warn('Non-Fungible Token metadata processing is not enabled.');
+    }
+    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
+      const tokenMetadataProcessor = new TokensProcessorQueue(primaryDb, configuredChainID);
       registerShutdownConfig({
-        name: 'Event Server',
-        handler: () => eventServer.closeAsync(),
-        forceKillable: false,
+        name: 'Token Metadata Processor',
+        handler: () => tokenMetadataProcessor.close(),
+        forceKillable: true,
       });
-
-      const networkChainId = await getStacksNodeChainID();
-      if (networkChainId !== configuredChainID) {
-        const chainIdConfig = numberToHex(configuredChainID);
-        const chainIdNode = numberToHex(networkChainId);
-        const error = new Error(
-          `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
-        );
-        logError(error.message, error);
-        throw error;
-      }
-      monitorCoreRpcConnection().catch(error => {
-        logger.error(`Error monitoring RPC connection: ${error}`, error);
-      });
-
-      if (!isFtMetadataEnabled()) {
-        logger.warn('Fungible Token metadata processing is not enabled.');
-      }
-      if (!isNftMetadataEnabled()) {
-        logger.warn('Non-Fungible Token metadata processing is not enabled.');
-      }
-      if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
-        const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
-        registerShutdownConfig({
-          name: 'Token Metadata Processor',
-          handler: () => tokenMetadataProcessor.close(),
-          forceKillable: true,
-        });
-        // check if db has any non-processed token queues and await them all here
-        await tokenMetadataProcessor.drainDbQueue();
-      }
+      // check if db has any non-processed token queues and await them all here
+      await tokenMetadataProcessor.drainDbQueue();
     }
   }
 

@@ -46,7 +46,7 @@ import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
 import * as fs from 'fs';
-import { PgStore } from '../datastore/pg-replica-store';
+import { PgStore } from '../datastore/pg-store';
 
 export interface ApiServer {
   expressApp: express.Express;

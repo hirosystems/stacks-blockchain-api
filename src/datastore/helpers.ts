@@ -1,16 +1,5 @@
-import * as path from 'path';
-import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import {
-  APP_DIR,
-  bufferToHexPrefixString,
-  isDevEnv,
-  isTestEnv,
-  logError,
-  logger,
-  parseArgBoolean,
-  parsePort,
-} from '../helpers';
-import { Client, ClientConfig, PoolConfig, QueryConfig, QueryResult } from 'pg';
+import { bufferToHexPrefixString, hexToBuffer, parseEnum } from '../helpers';
+import { QueryConfig, QueryResult } from 'pg';
 import {
   DbBlock,
   DbEvent,
@@ -27,8 +16,21 @@ import {
   DbStxLockEvent,
   DbTx,
   DbTxAnchorMode,
+  DbTxStatus,
   DbTxTypeId,
 } from './common';
+import {
+  CoreNodeDropMempoolTxReasonType,
+  CoreNodeParsedTxMessage,
+  CoreNodeTxStatus,
+} from 'src/event-stream/core-node-message';
+import {
+  DecodedTxResult,
+  PostConditionAuthFlag,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+} from 'stacks-encoding-native-js';
+import { getTxSenderAddress } from 'src/event-stream/reader';
 
 export interface BlockQueryResult {
   block_hash: Buffer;
@@ -844,4 +846,153 @@ export function validateZonefileHash(zonefileHash: string) {
     return zonefileHash.slice(2);
   }
   return zonefileHash;
+}
+
+export function getTxDbStatus(
+  txCoreStatus: CoreNodeTxStatus | CoreNodeDropMempoolTxReasonType
+): DbTxStatus {
+  switch (txCoreStatus) {
+    case 'success':
+      return DbTxStatus.Success;
+    case 'abort_by_response':
+      return DbTxStatus.AbortByResponse;
+    case 'abort_by_post_condition':
+      return DbTxStatus.AbortByPostCondition;
+    case 'ReplaceByFee':
+      return DbTxStatus.DroppedReplaceByFee;
+    case 'ReplaceAcrossFork':
+      return DbTxStatus.DroppedReplaceAcrossFork;
+    case 'TooExpensive':
+      return DbTxStatus.DroppedTooExpensive;
+    case 'StaleGarbageCollect':
+      return DbTxStatus.DroppedStaleGarbageCollect;
+    default:
+      throw new Error(`Unexpected tx status: ${txCoreStatus}`);
+  }
+}
+
+/**
+ * Extract tx-type specific data from a Transaction and into a tx db model.
+ * @param txData - Transaction data to extract from.
+ * @param dbTx - The tx db object to write to.
+ */
+function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempoolTx) {
+  switch (txData.payload.type_id) {
+    case TxPayloadTypeID.TokenTransfer: {
+      let recipientPrincipal = txData.payload.recipient.address;
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Contract) {
+        recipientPrincipal += '.' + txData.payload.recipient.contract_name;
+      }
+      dbTx.token_transfer_recipient_address = recipientPrincipal;
+      dbTx.token_transfer_amount = BigInt(txData.payload.amount);
+      dbTx.token_transfer_memo = hexToBuffer(txData.payload.memo_hex);
+      break;
+    }
+    case TxPayloadTypeID.SmartContract: {
+      const sender_address = getTxSenderAddress(txData);
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
+      dbTx.smart_contract_source_code = txData.payload.code_body;
+      break;
+    }
+    case TxPayloadTypeID.ContractCall: {
+      const contractAddress = txData.payload.address;
+      dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
+      dbTx.contract_call_function_name = txData.payload.function_name;
+      dbTx.contract_call_function_args = hexToBuffer(txData.payload.function_args_buffer);
+      break;
+    }
+    case TxPayloadTypeID.PoisonMicroblock: {
+      dbTx.poison_microblock_header_1 = hexToBuffer(txData.payload.microblock_header_1.buffer);
+      dbTx.poison_microblock_header_2 = hexToBuffer(txData.payload.microblock_header_2.buffer);
+      break;
+    }
+    case TxPayloadTypeID.Coinbase: {
+      dbTx.coinbase_payload = hexToBuffer(txData.payload.payload_buffer);
+      break;
+    }
+    default:
+      throw new Error(`Unexpected transaction type ID: ${JSON.stringify(txData.payload)}`);
+  }
+}
+
+export function createDbMempoolTxFromCoreMsg(msg: {
+  txData: DecodedTxResult;
+  txId: string;
+  sender: string;
+  sponsorAddress: string | undefined;
+  rawTx: Buffer;
+  receiptDate: number;
+}): DbMempoolTx {
+  const dbTx: DbMempoolTx = {
+    pruned: false,
+    nonce: Number(msg.txData.auth.origin_condition.nonce),
+    sponsor_nonce:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? Number(msg.txData.auth.sponsor_condition.nonce)
+        : undefined,
+    tx_id: msg.txId,
+    raw_tx: msg.rawTx,
+    type_id: parseEnum(DbTxTypeId, msg.txData.payload.type_id as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchor_mode as number),
+    status: DbTxStatus.Pending,
+    receipt_time: msg.receiptDate,
+    fee_rate:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? BigInt(msg.txData.auth.sponsor_condition.tx_fee)
+        : BigInt(msg.txData.auth.origin_condition.tx_fee),
+    sender_address: msg.sender,
+    origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
+    sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
+    sponsor_address: msg.sponsorAddress,
+    post_conditions: hexToBuffer(msg.txData.post_conditions_buffer),
+  };
+  extractTransactionPayload(msg.txData, dbTx);
+  return dbTx;
+}
+
+export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
+  const coreTx = msg.core_tx;
+  const parsedTx = msg.parsed_tx;
+  const dbTx: DbTx = {
+    tx_id: coreTx.txid,
+    tx_index: coreTx.tx_index,
+    nonce: Number(parsedTx.auth.origin_condition.nonce),
+    sponsor_nonce:
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? Number(parsedTx.auth.sponsor_condition.nonce)
+        : undefined,
+    raw_tx: msg.raw_tx,
+    index_block_hash: msg.index_block_hash,
+    parent_index_block_hash: msg.parent_index_block_hash,
+    parent_block_hash: msg.parent_block_hash,
+    block_hash: msg.block_hash,
+    block_height: msg.block_height,
+    burn_block_time: msg.burn_block_time,
+    parent_burn_block_time: msg.parent_burn_block_time,
+    type_id: parseEnum(DbTxTypeId, parsedTx.payload.type_id as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchor_mode as number),
+    status: getTxDbStatus(coreTx.status),
+    raw_result: coreTx.raw_result,
+    fee_rate:
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? BigInt(parsedTx.auth.sponsor_condition.tx_fee)
+        : BigInt(parsedTx.auth.origin_condition.tx_fee),
+    sender_address: msg.sender_address,
+    sponsor_address: msg.sponsor_address,
+    origin_hash_mode: parsedTx.auth.origin_condition.hash_mode as number,
+    sponsored: parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored,
+    canonical: true,
+    microblock_canonical: true,
+    microblock_sequence: msg.microblock_sequence,
+    microblock_hash: msg.microblock_hash,
+    post_conditions: hexToBuffer(parsedTx.post_conditions_buffer),
+    event_count: 0,
+    execution_cost_read_count: coreTx.execution_cost.read_count,
+    execution_cost_read_length: coreTx.execution_cost.read_length,
+    execution_cost_runtime: coreTx.execution_cost.runtime,
+    execution_cost_write_count: coreTx.execution_cost.write_count,
+    execution_cost_write_length: coreTx.execution_cost.write_length,
+  };
+  extractTransactionPayload(parsedTx, dbTx);
+  return dbTx;
 }

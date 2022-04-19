@@ -19,7 +19,6 @@ import {
   CoreNodeEvent,
 } from './core-node-message';
 import {
-  createDbTxFromCoreMsg,
   DbEventBase,
   DbSmartContractEvent,
   DbStxEvent,
@@ -29,11 +28,9 @@ import {
   DbNftEvent,
   DbBlock,
   DataStoreBlockUpdateData,
-  createDbMempoolTxFromCoreMsg,
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
-  getTxDbStatus,
   DbRewardSlotHolder,
   DbBnsName,
   DbBnsNamespace,
@@ -74,6 +71,11 @@ import {
 } from '../bns-constants';
 import * as zoneFileParser from 'zone-file';
 import { PgPrimaryStore } from '../datastore/pg-primary-store';
+import {
+  createDbMempoolTxFromCoreMsg,
+  createDbTxFromCoreMsg,
+  getTxDbStatus,
+} from '../datastore/helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
