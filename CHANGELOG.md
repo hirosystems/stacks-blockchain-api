@@ -1,3 +1,29 @@
+# [4.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v4.0.0-beta.1) (2022-04-20)
+
+
+### Bug Fixes
+
+* bns download script download path ([#1091](https://github.com/hirosystems/stacks-blockchain-api/issues/1091)) ([55fa41e](https://github.com/hirosystems/stacks-blockchain-api/commit/55fa41eb31fcc1869a4c16de36ad4f01be9565a9))
+* disable notifier for tests that don't need it ([#1102](https://github.com/hirosystems/stacks-blockchain-api/issues/1102)) ([9765cf0](https://github.com/hirosystems/stacks-blockchain-api/commit/9765cf06819767cae88eab6c106bc1d0bd87e47e))
+* shorten token metadata pg notifications ([#1143](https://github.com/hirosystems/stacks-blockchain-api/issues/1143)) ([1f09c0e](https://github.com/hirosystems/stacks-blockchain-api/commit/1f09c0e2bffb42a680e899848980b13a6652d51f))
+
+
+* feat!: prune garbage collected (256 blocks old) mempool txs (#1101) ([fe56756](https://github.com/hirosystems/stacks-blockchain-api/commit/fe56756cdeb3c71dbd2ebbbf820bc2a56fc35f02)), closes [#1101](https://github.com/hirosystems/stacks-blockchain-api/issues/1101)
+
+
+### Features
+
+* [CPU optimizations] use native rust module for decoding Clarity values, binary transaction blobs, post-condition binary blobs, Stacks addresses ([#1094](https://github.com/hirosystems/stacks-blockchain-api/issues/1094)) ([f5c4da7](https://github.com/hirosystems/stacks-blockchain-api/commit/f5c4da7b87e7eacecc6cd5d7075ecd0a39127ea0))
+* add `pruned` event import mode that ignores some historical events ([#1125](https://github.com/hirosystems/stacks-blockchain-api/issues/1125)) ([da992d7](https://github.com/hirosystems/stacks-blockchain-api/commit/da992d77b18bd49eef36e32b1d96d7e924d84cfc))
+* events-only endpoint for address and tx_id ([#1027](https://github.com/hirosystems/stacks-blockchain-api/issues/1027)) ([508afc7](https://github.com/hirosystems/stacks-blockchain-api/commit/508afc7b09641b79d5c8136b70088fc471f94433))
+* fetch subdomain list for bns name ([#1132](https://github.com/hirosystems/stacks-blockchain-api/issues/1132)) ([e34120f](https://github.com/hirosystems/stacks-blockchain-api/commit/e34120f70bcad5c6474f7631cad31fb04b9dfdfa))
+* pin exact dependencies in package.json ([#1068](https://github.com/hirosystems/stacks-blockchain-api/issues/1068)) ([303eaaa](https://github.com/hirosystems/stacks-blockchain-api/commit/303eaaa8cd520cf8db89a4ef359ca739a945cbbc))
+
+
+### BREAKING CHANGES
+
+* use event-replay to upgrade, this version includes breaking changes to the db sql schema
+
 ## [3.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.2...v3.0.3) (2022-04-04)
 
 
