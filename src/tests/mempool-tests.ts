@@ -1,18 +1,19 @@
 import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('mempool tests', () => {
-  let db: PgDataStore;
+  let db: PgWriteStore;
   let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });

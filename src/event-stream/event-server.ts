@@ -653,11 +653,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
 }
 
 interface EventMessageHandler {
-  handleRawEventRequest(
-    eventPath: string,
-    payload: string,
-    db: PgWriteStore
-  ): Promise<void> | void;
+  handleRawEventRequest(eventPath: string, payload: string, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
