@@ -2,7 +2,7 @@ import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
 import { logError, logger, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 
 export type PgClientConfig = ClientConfig & { schema?: string };
-export type PgPoolConfig = PoolConfig & { schema?: string };
+type PgPoolConfig = PoolConfig & { schema?: string };
 
 /**
  * The postgres server being used for a particular connection, transaction or query.

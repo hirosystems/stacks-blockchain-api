@@ -180,10 +180,6 @@ export interface ContractTxQueryResult extends TxQueryResult {
   abi?: unknown | null;
 }
 
-export interface MempoolTxIdQueryResult {
-  tx_id: Buffer;
-}
-
 export interface FaucetRequestQueryResult {
   currency: string;
   ip: string;
@@ -265,66 +261,6 @@ export interface DbTokenMetadataQueueEntryQuery {
   contract_abi: string;
   block_height: number;
   processed: boolean;
-}
-
-export interface StxEventQueryResult {
-  event_index: number;
-  tx_id: Buffer;
-  tx_index: number;
-  block_height: number;
-  canonical: boolean;
-  asset_event_type_id: number;
-  sender?: string;
-  recipient?: string;
-  amount: string;
-}
-
-export interface StxLockEventQueryResult {
-  event_index: number;
-  tx_id: Buffer;
-  tx_index: number;
-  block_height: number;
-  canonical: boolean;
-  locked_amount: string;
-  unlock_height: string;
-  locked_address: string;
-}
-
-export interface FungibleTokenEventQueryResult {
-  event_index: number;
-  tx_id: Buffer;
-  tx_index: number;
-  block_height: number;
-  canonical: boolean;
-  asset_event_type_id: number;
-  sender?: string;
-  recipient?: string;
-  asset_identifier: string;
-  amount: string;
-}
-
-export interface NonFungibleTokenEventQueryResult {
-  event_index: number;
-  tx_id: Buffer;
-  tx_index: number;
-  block_height: number;
-  canonical: boolean;
-  asset_event_type_id: number;
-  sender?: string;
-  recipient?: string;
-  asset_identifier: string;
-  value: Buffer;
-}
-
-export interface SmartContractLogEventResult {
-  event_index: number;
-  tx_id: Buffer;
-  tx_index: number;
-  block_height: number;
-  canonical: boolean;
-  contract_identifier: string;
-  topic: string;
-  value: Buffer;
 }
 
 export interface RawTxQueryResult {
@@ -545,7 +481,7 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
  * The pg query returns a JSON object, `null` (or the string 'null').
  * @returns Returns the stringify JSON if exists, or undefined if `null` or 'null' string.
  */
-export function parseAbiColumn(abi: unknown | null): string | undefined {
+function parseAbiColumn(abi: unknown | null): string | undefined {
   if (!abi || abi === 'null') {
     return undefined;
   } else {
@@ -593,7 +529,7 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
   return tx;
 }
 
-export function parseTxTypeSpecificQueryResult(
+function parseTxTypeSpecificQueryResult(
   result: MempoolTxQueryResult | TxQueryResult,
   target: DbTx | DbMempoolTx
 ) {

@@ -213,10 +213,6 @@ export interface DbMempoolTx extends BaseTx {
   coinbase_payload?: Buffer;
 }
 
-export interface DbMempoolTxId {
-  tx_id: string;
-}
-
 export interface DbSmartContract {
   tx_id: string;
   canonical: boolean;
@@ -373,19 +369,6 @@ export interface TokenMetadataUpdateInfo {
   txId: string;
   contractId: string;
 }
-
-export type DataStoreEventEmitter = StrictEventEmitter<
-  EventEmitter,
-  {
-    txUpdate: (txId: string) => void;
-    blockUpdate: (blockHash: string) => void;
-    microblockUpdate: (microblockHash: string) => void;
-    addressUpdate: (address: string, blockHeight: number) => void;
-    nameUpdate: (info: string) => void;
-    tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (queueId: number) => void;
-  }
->;
 
 export interface DataStoreBlockUpdateData {
   block: DbBlock;
