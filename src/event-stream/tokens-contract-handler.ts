@@ -17,19 +17,25 @@ import {
   getAddressFromPrivateKey,
   makeRandomPrivKey,
   parseReadOnlyResponse,
-  ReadOnlyFunctionOptions,
   TransactionVersion,
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
 import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger, parseArgBoolean, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
+import {
+  logError,
+  logger,
+  parseArgBoolean,
+  parseDataUrl,
+  REPO_DIR,
+  stopwatch,
+  timeout,
+} from '../helpers';
 import { StacksNetwork } from '@stacks/network';
 import PQueue from 'p-queue';
 import * as querystring from 'querystring';
 import fetch from 'node-fetch';
 import { Evt } from 'evt';
-import { reject } from 'bluebird';
 
 /**
  * This response is for the readOnlyContractCall function and time interval
@@ -335,10 +341,9 @@ export class TokensContractHandler {
     } else if (isCompliantNft(args.smartContractAbi)) {
       this.tokenKind = 'nft';
     } else {
-      this.tokenKind = 'nft';
-      // throw new Error(
-      //   `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
-      // );
+      throw new Error(
+        `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
+      );
     }
   }
 
@@ -659,13 +664,20 @@ export class TokensContractHandler {
       arguments: args,
     });
 
-    const response = await fetchPrivate(url, {
-      method: 'POST',
-      body,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    let response: Response;
+
+    try {
+      response = await fetchPrivate(url, {
+        method: 'POST',
+        body,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+    } catch {
+      // In case there is a network error during fetch.
+      return { found: false, retriable: true };
+    }
 
     if (!response.ok) {
       if (response.status >= 500) return { found: false, retriable: true };
@@ -676,36 +688,28 @@ export class TokensContractHandler {
         error: `Error calling read-only function. Response ${response.status}: ${response.statusText}. Attempted to fetch ${url} and failed with the message: "${msg}"`,
       };
     }
-    const value = await response.json();
-    return { found: true, value: parseReadOnlyResponse(value) };
+    try {
+      const value = await response.json();
+      return { found: true, value: parseReadOnlyResponse(value) };
+    } catch {
+      // In case there was a connection was interrupted
+      return { found: false, retriable: true };
+    }
   }
 
   async retryReadOnlyContractCall(
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
-    return await new Promise<ClarityValue>(async (resolve, reject) => {
-      let response: ReadOnlyContractCallResponse = { found: false, retriable: true };
-      if (isMetadataStrictModeEnabled()) {
-        while (!response.found && response.retriable) {
-          response = await this.makeReadOnlyContractCall(functionName, functionArgs);
-        }
-        if (response.found) return resolve(response.value);
-        // incase the issue is not temporary.
-        else if (!response.retriable) return reject(new Error(response.error));
-      } else {
-        const interval = setInterval(async () => {
-          response = await this.makeReadOnlyContractCall(functionName, functionArgs);
-          if (response.found) {
-            resolve(response.value);
-            clearInterval(interval);
-          } else if (!response.found && !response.retriable) {
-            reject(new Error(response.error));
-            clearInterval(interval);
-          }
-        }, METADATA_RETREIVAL_INTERVAL);
-      }
-    });
+    let response: ReadOnlyContractCallResponse = { found: false, retriable: true };
+    while (!response.found && response.retriable) {
+      response = await this.makeReadOnlyContractCall(functionName, functionArgs);
+      // In case of strict mode enabled, retry should be aggresive. Otherwise, queued for later.
+      if (!isMetadataStrictModeEnabled()) await timeout(METADATA_RETREIVAL_INTERVAL);
+    }
+    if (response.found) return response.value;
+    // In case the issue is permanent.
+    throw new Error(response.error);
   }
 
   private async readStringFromContract(

@@ -28,6 +28,8 @@ import {
   TokensContractHandler,
   TokensProcessorQueue,
 } from './../event-stream/tokens-contract-handler';
+import * as bnsHelpers from '../bns-helpers';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -149,9 +151,78 @@ describe('api tests', () => {
     expect(query4.body.error).toMatch(/not enabled/);
   });
 
-  test('fail read contract call - with strict mode', async () => {
+  test('makeReadOnlyContractCall retries on connection interruption', async () => {
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
-    const abi = `{"functions":[{"name":"get-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":{"buffer":{"length":32}},"error":"int128"}}}},{"name":"set-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}},{"name":"value","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-emit-event","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-event-types","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}}],"variables":[{"name":"recipient","type":"principal","access":"constant"},{"name":"sender","type":"principal","access":"constant"}],"maps":[{"name":"store","key":[{"name":"key","type":{"buffer":{"length":32}}}],"value":[{"name":"value","type":{"buffer":{"length":32}}}]}],"fungible_tokens":[{"name":"novel-token-19"}],"non_fungible_tokens":[{"name":"hello-nft","type":"uint128"}]}`;
+
+    // mock response with 200 status code, headers and no body
+    const headers = {
+      server: ['stacks/2.0'],
+      date: ['Thu, Apr 21 2022 23:33:17 GMT'],
+      'access-control-allow-origin': ['*'],
+      'access-control-allow-headers': ['origin, content-type'],
+      'access-control-allow-methods': ['POST, GET, OPTIONS'],
+      'content-type': ['application/json'],
+      'transfer-encoding': ['chunked'],
+      'x-request-id': ['3692950320'],
+      connection: ['close'],
+    };
+    nock('http://127.0.0.1:20443')
+      .post('/v2/contracts/call-read/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6/beeple/get-token-uri')
+      .reply(200, undefined, headers);
+
+    const contractAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      contractName = 'beeple';
+    const abi = `{"maps":[],"functions":[{"args":[{"name":"code","type":"uint128"}],"name":"nft-transfer-err","access":"private","outputs":{"type":{"response":{"ok":"none","error":"uint128"}}}},{"args":[{"name":"token-id","type":"uint128"},{"name":"sender","type":"principal"},{"name":"recipient","type":"principal"}],"name":"transfer","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"code","type":"uint128"}],"name":"get-errstr","access":"read_only","outputs":{"type":{"response":{"ok":{"string-ascii":{"length":23}},"error":"none"}}}},{"args":[],"name":"get-last-token-id","access":"read_only","outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":30}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[],"name":"get-nft-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":6}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-owner","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":"principal"},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-token-uri","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"string-ascii":{"length":197}}},"error":"none"}}}}],"variables":[{"name":"nft-not-found-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"nft-not-owned-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"sender-equals-recipient-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"}],"fungible_tokens":[],"non_fungible_tokens":[{"name":"beeple","type":"uint128"}]}`;
+    const jsonAbi = JSON.parse(abi);
+    const tokensContractHandler = new TokensContractHandler({
+      contractId: `${contractAddr}.${contractName}`,
+      smartContractAbi: jsonAbi,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: 'queueEntry.txId',
+      dbQueueId: 0,
+    });
+    const result = await tokensContractHandler.makeReadOnlyContractCall('get-token-uri', [
+      uintCV(0),
+    ]);
+    const expectedResult = { found: false, retriable: true };
+    expect(result).toEqual(expectedResult);
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '0';
+  });
+
+  test('makeReadOnlyContractCall retries on bogus hostname', async () => {
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
+
+    // mocking GetStacksNetwork
+    const mock = jest.spyOn(bnsHelpers, 'GetStacksNetwork');
+    mock.mockImplementation((chainId: ChainID) => {
+      const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
+      network.coreApiUrl = `http://bogus-hostname.com`; // returning a bogus hostname
+      return network;
+    });
+
+    const abi = `{"maps":[],"functions":[{"args":[{"name":"code","type":"uint128"}],"name":"nft-transfer-err","access":"private","outputs":{"type":{"response":{"ok":"none","error":"uint128"}}}},{"args":[{"name":"token-id","type":"uint128"},{"name":"sender","type":"principal"},{"name":"recipient","type":"principal"}],"name":"transfer","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"code","type":"uint128"}],"name":"get-errstr","access":"read_only","outputs":{"type":{"response":{"ok":{"string-ascii":{"length":23}},"error":"none"}}}},{"args":[],"name":"get-last-token-id","access":"read_only","outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":30}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[],"name":"get-nft-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":6}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-owner","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":"principal"},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-token-uri","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"string-ascii":{"length":197}}},"error":"none"}}}}],"variables":[{"name":"nft-not-found-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"nft-not-owned-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"sender-equals-recipient-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"}],"fungible_tokens":[],"non_fungible_tokens":[{"name":"beeple","type":"uint128"}]}`;
+    const jsonAbi = JSON.parse(abi);
+    const tokensContractHandler = new TokensContractHandler({
+      contractId: 'contractId',
+      smartContractAbi: jsonAbi,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: 'queueEntry.txId',
+      dbQueueId: 0,
+    });
+    const result = await tokensContractHandler.makeReadOnlyContractCall('get-token-uri', [
+      uintCV(0),
+    ]);
+    const expectedResult = { found: false, retriable: true };
+    expect(result).toEqual(expectedResult);
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '0';
+    mock.mockRestore();
+  });
+
+  test('read contract call not found - with strict mode', async () => {
+    process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
+    const abi = `{"maps":[],"functions":[{"args":[{"name":"code","type":"uint128"}],"name":"nft-transfer-err","access":"private","outputs":{"type":{"response":{"ok":"none","error":"uint128"}}}},{"args":[{"name":"token-id","type":"uint128"},{"name":"sender","type":"principal"},{"name":"recipient","type":"principal"}],"name":"transfer","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"code","type":"uint128"}],"name":"get-errstr","access":"read_only","outputs":{"type":{"response":{"ok":{"string-ascii":{"length":23}},"error":"none"}}}},{"args":[],"name":"get-last-token-id","access":"read_only","outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":30}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[],"name":"get-nft-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":6}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-owner","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":"principal"},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-token-uri","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"string-ascii":{"length":197}}},"error":"none"}}}}],"variables":[{"name":"nft-not-found-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"nft-not-owned-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"sender-equals-recipient-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"}],"fungible_tokens":[],"non_fungible_tokens":[{"name":"beeple","type":"uint128"}]}`;
     const jsonAbi = JSON.parse(abi);
     const tokensContractHandler = new TokensContractHandler({
       contractId: 'contractId',
@@ -170,8 +241,8 @@ describe('api tests', () => {
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '0';
   });
 
-  test('fail read contract call - without strict mode', async () => {
-    const abi = `{"functions":[{"name":"get-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":{"buffer":{"length":32}},"error":"int128"}}}},{"name":"set-value","access":"public","args":[{"name":"key","type":{"buffer":{"length":32}}},{"name":"value","type":{"buffer":{"length":32}}}],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-emit-event","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"name":"test-event-types","access":"public","args":[],"outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}}],"variables":[{"name":"recipient","type":"principal","access":"constant"},{"name":"sender","type":"principal","access":"constant"}],"maps":[{"name":"store","key":[{"name":"key","type":{"buffer":{"length":32}}}],"value":[{"name":"value","type":{"buffer":{"length":32}}}]}],"fungible_tokens":[{"name":"novel-token-19"}],"non_fungible_tokens":[{"name":"hello-nft","type":"uint128"}]}`;
+  test('read contract call not found - without strict mode', async () => {
+    const abi = `{"maps":[],"functions":[{"args":[{"name":"code","type":"uint128"}],"name":"nft-transfer-err","access":"private","outputs":{"type":{"response":{"ok":"none","error":"uint128"}}}},{"args":[{"name":"token-id","type":"uint128"},{"name":"sender","type":"principal"},{"name":"recipient","type":"principal"}],"name":"transfer","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"code","type":"uint128"}],"name":"get-errstr","access":"read_only","outputs":{"type":{"response":{"ok":{"string-ascii":{"length":23}},"error":"none"}}}},{"args":[],"name":"get-last-token-id","access":"read_only","outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":30}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[],"name":"get-nft-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":6}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-owner","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":"principal"},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-token-uri","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"string-ascii":{"length":197}}},"error":"none"}}}}],"variables":[{"name":"nft-not-found-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"nft-not-owned-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"sender-equals-recipient-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"}],"fungible_tokens":[],"non_fungible_tokens":[{"name":"beeple","type":"uint128"}]}`;
     const jsonAbi = JSON.parse(abi);
     const tokensContractHandler = new TokensContractHandler({
       contractId: 'contractId',
@@ -263,6 +334,7 @@ describe('api tests', () => {
       description:
         'I made a picture from start to finish every single day from May 1st, 2007 - January 7th, 2021. This is every motherfucking one of those pictures.',
     };
+
     nock('https://ipfs.io')
       .get('/ipfs/QmPAg1mjxcEQPPtqsLoEcauVedaeMH81WXDPvPx3VC5zUz')
       .reply(200, nftMetadata);
