@@ -41,7 +41,7 @@ describe('websocket notifications', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    dbClient = await db.pool.connect();
+    dbClient = await db.sql.connect();
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,

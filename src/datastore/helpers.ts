@@ -609,7 +609,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
 }
 
 export function parseDbEvents(
-  stxLockResults: QueryResult<{
+  stxLockResults: {
     event_index: number;
     tx_id: Buffer;
     tx_index: number;
@@ -618,8 +618,8 @@ export function parseDbEvents(
     locked_amount: string;
     unlock_height: string;
     locked_address: string;
-  }>,
-  stxResults: QueryResult<{
+  }[],
+  stxResults: {
     event_index: number;
     tx_id: Buffer;
     tx_index: number;
@@ -629,8 +629,8 @@ export function parseDbEvents(
     sender?: string | undefined;
     recipient?: string | undefined;
     amount: string;
-  }>,
-  ftResults: QueryResult<{
+  }[],
+  ftResults: {
     event_index: number;
     tx_id: Buffer;
     tx_index: number;
@@ -641,8 +641,8 @@ export function parseDbEvents(
     recipient?: string | undefined;
     asset_identifier: string;
     amount: string;
-  }>,
-  nftResults: QueryResult<{
+  }[],
+  nftResults: {
     event_index: number;
     tx_id: Buffer;
     tx_index: number;
@@ -653,8 +653,8 @@ export function parseDbEvents(
     recipient?: string | undefined;
     asset_identifier: string;
     value: Buffer;
-  }>,
-  logResults: QueryResult<{
+  }[],
+  logResults: {
     event_index: number;
     tx_id: Buffer;
     tx_index: number;
@@ -663,17 +663,17 @@ export function parseDbEvents(
     contract_identifier: string;
     topic: string;
     value: Buffer;
-  }>
+  }[]
 ) {
   const events = new Array<DbEvent>(
-    stxResults.rowCount +
-      nftResults.rowCount +
-      ftResults.rowCount +
-      logResults.rowCount +
-      stxLockResults.rowCount
+    stxResults.length +
+      nftResults.length +
+      ftResults.length +
+      logResults.length +
+      stxLockResults.length
   );
   let rowIndex = 0;
-  for (const result of stxLockResults.rows) {
+  for (const result of stxLockResults) {
     const event: DbStxLockEvent = {
       event_type: DbEventTypeId.StxLock,
       event_index: result.event_index,
@@ -687,7 +687,7 @@ export function parseDbEvents(
     };
     events[rowIndex++] = event;
   }
-  for (const result of stxResults.rows) {
+  for (const result of stxResults) {
     const event: DbStxEvent = {
       event_index: result.event_index,
       tx_id: bufferToHexPrefixString(result.tx_id),
@@ -702,7 +702,7 @@ export function parseDbEvents(
     };
     events[rowIndex++] = event;
   }
-  for (const result of ftResults.rows) {
+  for (const result of ftResults) {
     const event: DbFtEvent = {
       event_index: result.event_index,
       tx_id: bufferToHexPrefixString(result.tx_id),
@@ -718,7 +718,7 @@ export function parseDbEvents(
     };
     events[rowIndex++] = event;
   }
-  for (const result of nftResults.rows) {
+  for (const result of nftResults) {
     const event: DbNftEvent = {
       event_index: result.event_index,
       tx_id: bufferToHexPrefixString(result.tx_id),
@@ -734,7 +734,7 @@ export function parseDbEvents(
     };
     events[rowIndex++] = event;
   }
-  for (const result of logResults.rows) {
+  for (const result of logResults) {
     const event: DbSmartContractEvent = {
       event_index: result.event_index,
       tx_id: bufferToHexPrefixString(result.tx_id),
@@ -771,6 +771,101 @@ export function parseQueryResultToSmartContract(row: {
     abi: parseAbiColumn(row.abi) ?? null,
   };
   return { found: true, result: smartContract };
+}
+
+export function parseTxsWithAssetTransfers(
+  resultQuery: (TxQueryResult & {
+    count: number;
+    event_index?: number | undefined;
+    event_type?: number | undefined;
+    event_amount?: string | undefined;
+    event_sender?: string | undefined;
+    event_recipient?: string | undefined;
+    event_asset_identifier?: string | undefined;
+    event_value?: Buffer | undefined;
+  })[],
+  stxAddress: string
+) {
+  const txs = new Map<
+    string,
+    {
+      tx: DbTx;
+      stx_sent: bigint;
+      stx_received: bigint;
+      stx_transfers: {
+        amount: bigint;
+        sender?: string;
+        recipient?: string;
+      }[];
+      ft_transfers: {
+        asset_identifier: string;
+        amount: bigint;
+        sender?: string;
+        recipient?: string;
+      }[];
+      nft_transfers: {
+        asset_identifier: string;
+        value: Buffer;
+        sender?: string;
+        recipient?: string;
+      }[];
+    }
+  >();
+  for (const r of resultQuery) {
+    const txId = bufferToHexPrefixString(r.tx_id);
+    let txResult = txs.get(txId);
+    if (!txResult) {
+      txResult = {
+        tx: parseTxQueryResult(r),
+        stx_sent: 0n,
+        stx_received: 0n,
+        stx_transfers: [],
+        ft_transfers: [],
+        nft_transfers: [],
+      };
+      if (txResult.tx.sender_address === stxAddress) {
+        txResult.stx_sent += txResult.tx.fee_rate;
+      }
+      txs.set(txId, txResult);
+    }
+    if (r.event_index !== undefined && r.event_index !== null) {
+      const eventAmount = BigInt(r.event_amount as string);
+      switch (r.event_type) {
+        case DbEventTypeId.StxAsset:
+          txResult.stx_transfers.push({
+            amount: eventAmount,
+            sender: r.event_sender,
+            recipient: r.event_recipient,
+          });
+          if (r.event_sender === stxAddress) {
+            txResult.stx_sent += eventAmount;
+          }
+          if (r.event_recipient === stxAddress) {
+            txResult.stx_received += eventAmount;
+          }
+          break;
+
+        case DbEventTypeId.FungibleTokenAsset:
+          txResult.ft_transfers.push({
+            asset_identifier: r.event_asset_identifier as string,
+            amount: eventAmount,
+            sender: r.event_sender,
+            recipient: r.event_recipient,
+          });
+          break;
+
+        case DbEventTypeId.NonFungibleTokenAsset:
+          txResult.nft_transfers.push({
+            asset_identifier: r.event_asset_identifier as string,
+            value: r.event_value as Buffer,
+            sender: r.event_sender,
+            recipient: r.event_recipient,
+          });
+          break;
+      }
+    }
+  }
+  return txs;
 }
 
 /**

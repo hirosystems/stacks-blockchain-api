@@ -1,5 +1,8 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
 import { logError, logger, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import * as postgres from 'postgres';
+
+export type PgSqlClient = postgres.Sql<any>;
 
 export type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };
@@ -26,19 +29,18 @@ export async function connectPgPool({
 }: {
   usageName: string;
   pgServer: PgServer;
-}): Promise<Pool> {
+}): Promise<PgSqlClient> {
   const initTimer = stopwatch();
   let connectionError: Error | undefined;
   let connectionOkay = false;
   let lastElapsedLog = 0;
   do {
-    const clientConfig = getPgClientConfig({
+    const testSql = getPgClientConfig({
       usageName: `${usageName};init-connection-poll`,
       pgServer: pgServer,
     });
-    const client = new Client(clientConfig);
     try {
-      await client.connect();
+      await testSql`SELECT version()`;
       connectionOkay = true;
       break;
     } catch (error: any) {
@@ -55,23 +57,18 @@ export async function connectPgPool({
       connectionError = error;
       await timeout(100);
     } finally {
-      client.end(() => {});
+      await testSql.end();
     }
   } while (initTimer.getElapsed() < Number.MAX_SAFE_INTEGER);
   if (!connectionOkay) {
     connectionError = connectionError ?? new Error('Error connecting to database');
     throw connectionError;
   }
-  const poolConfig: PoolConfig = getPgClientConfig({
+  const sql = getPgClientConfig({
     usageName: `${usageName};datastore-crud`,
-    getPoolConfig: true,
     pgServer: pgServer,
   });
-  const pool = new Pool(poolConfig);
-  pool.on('error', error => {
-    logger.error(`Postgres connection pool error: ${error.message}`, error);
-  });
-  return pool;
+  return sql;
 }
 
 /**
@@ -80,12 +77,10 @@ export async function connectPgPool({
 export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   usageName,
   pgServer,
-  getPoolConfig,
 }: {
   usageName: string;
   pgServer?: PgServer;
-  getPoolConfig?: TGetPoolConfig;
-}): TGetPoolConfig extends true ? PgPoolConfig : PgClientConfig {
+}): PgSqlClient {
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
   // See the `.env` file for more information on these options.
@@ -102,6 +97,7 @@ export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
     ssl: pgEnvValue('SSL'),
     schema: pgEnvValue('SCHEMA'),
     applicationName: pgEnvValue('APPLICATION_NAME'),
+    poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '') ?? 10,
   };
   const defaultAppName = 'stacks-blockchain-api';
   const pgConnectionUri = pgEnvValue('CONNECTION_URI');
@@ -111,7 +107,7 @@ export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
       `Both PG_CONNECTION_URI and ${pgConfigEnvVar} environmental variables are defined. PG_CONNECTION_URI must be defined without others or omitted.`
     );
   }
-  let clientConfig: PgClientConfig;
+  let sql: PgSqlClient;
   if (pgConnectionUri) {
     const uri = new URL(pgConnectionUri);
     const searchParams = Object.fromEntries(
@@ -126,33 +122,27 @@ export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
       searchParams['schema'];
     const appName = `${uri.searchParams.get('application_name') ?? defaultAppName}:${usageName}`;
     uri.searchParams.set('application_name', appName);
-    clientConfig = {
-      connectionString: uri.toString(),
-      schema,
-    };
+    sql = postgres(uri.toString(), {
+      max: pgEnvVars.poolMax,
+      connection: { schema: schema },
+    });
   } else {
     const appName = `${pgEnvVars.applicationName ?? defaultAppName}:${usageName}`;
-    clientConfig = {
+    sql = postgres({
       database: pgEnvVars.database,
       user: pgEnvVars.user,
       password: pgEnvVars.password,
       host: pgEnvVars.host,
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
-      schema: pgEnvVars.schema,
-      application_name: appName,
-    };
+      max: pgEnvVars.poolMax,
+      connection: {
+        application_name: appName,
+        schema: pgEnvVars.schema,
+      },
+    });
   }
-  if (getPoolConfig) {
-    const poolConfig: PgPoolConfig = { ...clientConfig };
-    const pgConnectionPoolMaxEnv = process.env['PG_CONNECTION_POOL_MAX'];
-    if (pgConnectionPoolMaxEnv) {
-      poolConfig.max = Number.parseInt(pgConnectionPoolMaxEnv);
-    }
-    return poolConfig;
-  } else {
-    return clientConfig;
-  }
+  return sql;
 }
 
 /**

@@ -424,7 +424,7 @@ export async function importV1BnsData(db: PgWriteStore, importDir: string) {
     }
   }
 
-  const client = await db.pool.connect();
+  const client = await db.sql.connect();
   try {
     await client.query('BEGIN');
     logger.info(`Disabling BNS table indices temporarily for a faster import`);
@@ -532,7 +532,7 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
     }
   );
 
-  const client = await db.pool.connect();
+  const client = await db.sql.connect();
   try {
     await client.query('BEGIN');
 

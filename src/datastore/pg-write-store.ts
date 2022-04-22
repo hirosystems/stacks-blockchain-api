@@ -240,7 +240,7 @@ export class PgWriteStore extends PgStore {
       withNotifier: false,
     });
     try {
-      const client = await pg.pool.connect();
+      const client = await pg.sql.connect();
       try {
         await client.query('BEGIN');
         await client.query(`
@@ -1860,7 +1860,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async getConfigState(): Promise<DbConfigState> {
-    const queryResult = await this.pool.query(`SELECT * FROM config_state`);
+    const queryResult = await this.sql.query(`SELECT * FROM config_state`);
     const result: DbConfigState = {
       bns_names_onchain_imported: queryResult.rows[0].bns_names_onchain_imported,
       bns_subdomains_imported: queryResult.rows[0].bns_subdomains_imported,
@@ -1870,7 +1870,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateConfigState(configState: DbConfigState, client?: ClientBase): Promise<void> {
-    const queryResult = await (client ?? this.pool).query(
+    const queryResult = await (client ?? this.sql).query(
       `
       UPDATE config_state SET
       bns_names_onchain_imported = $1,
@@ -1935,6 +1935,29 @@ export class PgWriteStore extends PgStore {
         blockHeight: blockHeight,
       });
     }
+  }
+
+  async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
+    await this.query(async client => {
+      try {
+        await client.query(
+          `
+          INSERT INTO faucet_requests(
+            currency, address, ip, occurred_at
+          ) values($1, $2, $3, $4)
+          `,
+          [
+            faucetRequest.currency,
+            faucetRequest.address,
+            faucetRequest.ip,
+            faucetRequest.occurred_at,
+          ]
+        );
+      } catch (error) {
+        logError(`Error performing faucet request update: ${error}`, error);
+        throw error;
+      }
+    });
   }
 
   async insertMicroblockData(

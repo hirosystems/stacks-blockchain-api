@@ -17,7 +17,7 @@ describe('/extended/v1/tokens tests', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    client = await db.sql.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 

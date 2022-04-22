@@ -1,10 +1,10 @@
+import * as postgres from 'postgres';
 import {
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi } from '@stacks/transactions';
-import { ClientBase, Pool, QueryResult } from 'pg';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
@@ -12,7 +12,6 @@ import {
   FoundOrNot,
   hexToBuffer,
   logError,
-  logger,
   unwrapOptional,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
@@ -59,7 +58,7 @@ import {
   NftHoldingInfoWithTxMetadata,
   StxUnlockEvent,
 } from './common';
-import { connectPgPool, connectWithRetry, PgServer } from './connection';
+import { connectPgPool, PgServer, PgSqlClient } from './connection';
 import {
   abiColumn,
   BlockQueryResult,
@@ -69,7 +68,6 @@ import {
   DbTokenMetadataQueueEntryQuery,
   FaucetRequestQueryResult,
   FungibleTokenMetadataQueryResult,
-  getSqlQueryString,
   MempoolTxQueryResult,
   MEMPOOL_TX_COLUMNS,
   MicroblockQueryResult,
@@ -82,8 +80,8 @@ import {
   parseMicroblockQueryResult,
   parseQueryResultToSmartContract,
   parseTxQueryResult,
+  parseTxsWithAssetTransfers,
   RawTxQueryResult,
-  SQL_QUERY_LEAK_DETECTION,
   TransferQueryResult,
   txColumns,
   TxQueryResult,
@@ -108,12 +106,12 @@ import {
  * happened in the `PgServer.primary` server (see `.env`).
  */
 export class PgStore {
-  readonly pool: Pool;
+  readonly sql: PgSqlClient;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
 
-  constructor(pool: Pool, notifier: PgNotifier | undefined = undefined) {
-    this.pool = pool;
+  constructor(sql: PgSqlClient, notifier: PgNotifier | undefined = undefined) {
+    this.sql = sql;
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
   }
@@ -134,18 +132,15 @@ export class PgStore {
 
   async close(): Promise<void> {
     await this.notifier?.close();
-    await this.pool.end();
+    await this.sql.end();
   }
 
   async getConnectionApplicationName(): Promise<string> {
-    const statResult = await this.query(async client => {
-      const result = await client.query<{ application_name: string }>(
-        // Get `application_name` for current connection (each connection has a unique PID)
-        'select application_name from pg_stat_activity WHERE pid = pg_backend_pid()'
-      );
-      return result.rows[0].application_name;
-    });
-    return statResult;
+    // Get `application_name` for current connection (each connection has a unique PID)
+    const result = await this.sql<
+      { application_name: string }[]
+    >`SELECT application_name FROM pg_stat_activity WHERE pid = pg_backend_pid()`;
+    return result[0].application_name;
   }
 
   /**
@@ -187,107 +182,49 @@ export class PgStore {
     });
   }
 
-  /**
-   * Execute queries against the connection pool.
-   */
-  async query<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    const client = await connectWithRetry(this.pool);
-    try {
-      if (SQL_QUERY_LEAK_DETECTION) {
-        // Monkey patch in some query leak detection. Taken from the lib's docs:
-        // https://node-postgres.com/guides/project-structure
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        const query = client.query;
-        // eslint-disable-next-line @typescript-eslint/unbound-method
-        const release = client.release;
-        const lastQueries: any[] = [];
-        const timeout = setTimeout(() => {
-          const queries = lastQueries.map(q => getSqlQueryString(q));
-          logger.error(`Pg client has been checked out for more than 5 seconds`);
-          logger.error(`Last query: ${queries.join('|')}`);
-        }, 5000);
-        // @ts-expect-error hacky typing
-        client.query = (...args) => {
-          lastQueries.push(args[0]);
-          // @ts-expect-error hacky typing
-          return query.apply(client, args);
-        };
-        client.release = () => {
-          clearTimeout(timeout);
-          client.query = query;
-          client.release = release;
-          return release.apply(client);
-        };
-      }
-      const result = await cb(client);
-      return result;
-    } finally {
-      client.release();
-    }
-  }
-
-  /**
-   * Execute queries within a sql transaction.
-   */
-  async queryTx<T>(cb: (client: ClientBase) => Promise<T>): Promise<T> {
-    return await this.query(async client => {
-      try {
-        await client.query('BEGIN');
-        const result = await cb(client);
-        await client.query('COMMIT');
-        return result;
-      } catch (error) {
-        await client.query('ROLLBACK');
-        throw error;
-      }
-    });
-  }
-
   async getChainTip(
-    client: ClientBase
+    sql: PgSqlClient
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
-    const currentTipBlock = await client.query<{
-      block_height: number;
-      block_hash: Buffer;
-      index_block_hash: Buffer;
-    }>(`SELECT block_height, block_hash, index_block_hash FROM chain_tip`);
-    const height = currentTipBlock.rows[0]?.block_height ?? 0;
+    const currentTipBlock = await sql<
+      {
+        block_height: number;
+        block_hash: Buffer;
+        index_block_hash: Buffer;
+      }[]
+    >`SELECT block_height, block_hash, index_block_hash FROM chain_tip`;
+    const height = currentTipBlock[0]?.block_height ?? 0;
     return {
       blockHeight: height,
-      blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
+      blockHash: bufferToHexPrefixString(currentTipBlock[0]?.block_hash ?? Buffer.from([])),
       indexBlockHash: bufferToHexPrefixString(
-        currentTipBlock.rows[0]?.index_block_hash ?? Buffer.from([])
+        currentTipBlock[0]?.index_block_hash ?? Buffer.from([])
       ),
     };
   }
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
-    return this.query(async client => {
-      const result = await client.query<ContractTxQueryResult>(
-        `
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
-        FROM txs
-        WHERE tx_id = $1 AND index_block_hash = $2
-        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      const tx = parseTxQueryResult(row);
-      return { found: true, result: tx };
-    });
+    const result = await this.sql<ContractTxQueryResult[]>`
+      SELECT ${TX_COLUMNS}, ${abiColumn()}
+      FROM txs
+      WHERE tx_id = ${hexToBuffer(args.txId)}
+        AND index_block_hash = ${hexToBuffer(args.indexBlockHash)}
+      ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+      LIMIT 1
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const row = result[0];
+    const tx = parseTxQueryResult(row);
+    return { found: true, result: tx };
   }
 
   async getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
     blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
-    return await this.queryTx(async client => {
-      const block = await this.getBlockInternal(client, blockIdentifer);
+    return await this.sql.begin(async sql => {
+      const block = await this.getBlockInternal(sql, blockIdentifer);
       if (!block.found) {
         return { found: false };
       }
@@ -295,32 +232,26 @@ export class PgStore {
       let microblocksAccepted: DbMicroblock[] | null = null;
       let microblocksStreamed: DbMicroblock[] | null = null;
       if (metadata?.txs) {
-        const txQuery = await client.query<ContractTxQueryResult>(
-          `
+        const txQuery = await sql<ContractTxQueryResult[]>`
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
-          WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
+          WHERE index_block_hash = ${hexToBuffer(block.result.index_block_hash)}
+            AND canonical = true AND microblock_canonical = true
           ORDER BY microblock_sequence DESC, tx_index DESC
-          `,
-          [hexToBuffer(block.result.index_block_hash)]
-        );
-        txs = txQuery.rows.map(r => parseTxQueryResult(r));
+        `;
+        txs = txQuery.map(r => parseTxQueryResult(r));
       }
       if (metadata?.microblocks) {
-        const microblocksQuery = await client.query<MicroblockQueryResult>(
-          `
+        const microblocksQuery = await sql<MicroblockQueryResult[]>`
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
-          WHERE parent_index_block_hash IN ($1, $2)
+          WHERE parent_index_block_hash
+            IN (${hexToBuffer(block.result.index_block_hash)},
+              ${hexToBuffer(block.result.parent_index_block_hash)})
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
-          `,
-          [
-            hexToBuffer(block.result.index_block_hash),
-            hexToBuffer(block.result.parent_index_block_hash),
-          ]
-        );
-        const parsedMicroblocks = microblocksQuery.rows.map(r => parseMicroblockQueryResult(r));
+        `;
+        const parsedMicroblocks = microblocksQuery.map(r => parseMicroblockQueryResult(r));
         microblocksAccepted = parsedMicroblocks.filter(
           mb => mb.parent_index_block_hash === block.result.parent_index_block_hash
         );
@@ -345,210 +276,156 @@ export class PgStore {
   }
 
   async getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
-    return await this.queryTx(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         block_height: number;
         index_block_hash: Buffer;
         block_hash: Buffer;
         microblock_hash: Buffer | null;
         microblock_sequence: number | null;
-      }>(
-        `
-        SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
-        FROM chain_tip
-        `
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      const chainTipResult: DbChainTip = {
-        blockHeight: row.block_height,
-        indexBlockHash: bufferToHexPrefixString(row.index_block_hash),
-        blockHash: bufferToHexPrefixString(row.block_hash),
-        microblockHash:
-          row.microblock_hash === null ? undefined : bufferToHexPrefixString(row.microblock_hash),
-        microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
-      };
-      return { found: true, result: chainTipResult };
-    });
+      }[]
+    >`SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
+      FROM chain_tip`;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const row = result[0];
+    const chainTipResult: DbChainTip = {
+      blockHeight: row.block_height,
+      indexBlockHash: bufferToHexPrefixString(row.index_block_hash),
+      blockHash: bufferToHexPrefixString(row.block_hash),
+      microblockHash:
+        row.microblock_hash === null ? undefined : bufferToHexPrefixString(row.microblock_hash),
+      microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
+    };
+    return { found: true, result: chainTipResult };
   }
 
-  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
-    return this.query(client => this.getBlockInternal(client, blockIdentifer));
+  async getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
+    return this.getBlockInternal(this.sql, blockIdentifer);
   }
 
   async getBlockInternal(
-    client: ClientBase,
+    sql: PgSqlClient,
     blockIdentifer: BlockIdentifier
   ): Promise<FoundOrNot<DbBlock>> {
-    let result: QueryResult<BlockQueryResult>;
+    let blockCondition: postgres.PendingQuery<postgres.Row[]>;
     if ('hash' in blockIdentifer) {
-      result = await client.query<BlockQueryResult>(
-        `
-        SELECT ${BLOCK_COLUMNS}
-        FROM blocks
-        WHERE block_hash = $1
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [hexToBuffer(blockIdentifer.hash)]
-      );
+      blockCondition = sql`block_hash = ${hexToBuffer(blockIdentifer.hash)}`;
     } else if ('height' in blockIdentifer) {
-      result = await client.query<BlockQueryResult>(
-        `
-        SELECT ${BLOCK_COLUMNS}
-        FROM blocks
-        WHERE block_height = $1
-        ORDER BY canonical DESC
-        LIMIT 1
-        `,
-        [blockIdentifer.height]
-      );
+      blockCondition = sql`block_height = ${blockIdentifer.height}`;
     } else if ('burnBlockHash' in blockIdentifer) {
-      result = await client.query<BlockQueryResult>(
-        `
-        SELECT ${BLOCK_COLUMNS}
-        FROM blocks
-        WHERE burn_block_hash = $1
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [hexToBuffer(blockIdentifer.burnBlockHash)]
-      );
+      blockCondition = sql`burn_block_hash = ${hexToBuffer(blockIdentifer.burnBlockHash)}`;
     } else {
-      result = await client.query<BlockQueryResult>(
-        `
-        SELECT ${BLOCK_COLUMNS}
-        FROM blocks
-        WHERE burn_block_height = $1
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [blockIdentifer.burnBlockHeight]
-      );
+      blockCondition = sql`burn_block_height = ${blockIdentifer.burnBlockHeight}`;
     }
-
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const block = parseBlockQueryResult(row);
-    return { found: true, result: block } as const;
-  }
-
-  async getBlockByHeightInternal(client: ClientBase, blockHeight: number) {
-    const result = await client.query<BlockQueryResult>(
-      `
+    const result = await sql<BlockQueryResult[]>`
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
-      WHERE block_height = $1 AND canonical = true
-      `,
-      [blockHeight]
-    );
-    if (result.rowCount === 0) {
+      WHERE ${blockCondition}
+      ORDER BY canonical DESC, block_height DESC
+      LIMIT 1
+    `;
+    if (result.length === 0) {
       return { found: false } as const;
     }
-    const row = result.rows[0];
+    const row = result[0];
     const block = parseBlockQueryResult(row);
     return { found: true, result: block } as const;
   }
 
-  async getCurrentBlock() {
-    return this.query(async client => {
-      return this.getCurrentBlockInternal(client);
-    });
+  async getBlockByHeightInternal(
+    sql: PgSqlClient,
+    blockHeight: number
+  ): Promise<FoundOrNot<DbBlock>> {
+    const result = await sql<BlockQueryResult[]>`
+      SELECT ${BLOCK_COLUMNS}
+      FROM blocks
+      WHERE block_height = ${blockHeight} AND canonical = true
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const row = result[0];
+    const block = parseBlockQueryResult(row);
+    return { found: true, result: block } as const;
+  }
+
+  async getCurrentBlock(): Promise<FoundOrNot<DbBlock>> {
+    return this.getCurrentBlockInternal(this.sql);
   }
 
   async getCurrentBlockHeight(): Promise<FoundOrNot<number>> {
-    return this.query(async client => {
-      const result = await client.query<{ block_height: number }>(
-        `SELECT block_height FROM chain_tip`
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      return { found: true, result: row.block_height } as const;
-    });
+    const result = await this.sql<{ block_height: number }[]>`SELECT block_height FROM chain_tip`;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const row = result[0];
+    return { found: true, result: row.block_height } as const;
   }
 
-  async getCurrentBlockInternal(client: ClientBase) {
-    const result = await client.query<BlockQueryResult>(
-      `
+  async getCurrentBlockInternal(sql: PgSqlClient): Promise<FoundOrNot<DbBlock>> {
+    const result = await sql<BlockQueryResult[]>`
       SELECT ${BLOCK_COLUMNS}
       FROM blocks
       WHERE canonical = true
       ORDER BY block_height DESC
       LIMIT 1
-      `
-    );
-    if (result.rowCount === 0) {
+    `;
+    if (result.length === 0) {
       return { found: false } as const;
     }
-    const row = result.rows[0];
+    const row = result[0];
     const block = parseBlockQueryResult(row);
     return { found: true, result: block } as const;
   }
 
   async getBlocks({ limit, offset }: { limit: number; offset: number }) {
-    return this.queryTx(async client => {
-      const total = await client.query<{ count: number }>(`
+    return await this.sql.begin(async sql => {
+      const total = await sql<{ count: number }[]>`
         SELECT block_count AS count FROM chain_tip
-      `);
-      const results = await client.query<BlockQueryResult>(
-        `
+      `;
+      const results = await sql<BlockQueryResult[]>`
         SELECT ${BLOCK_COLUMNS}
         FROM blocks
         WHERE canonical = true
         ORDER BY block_height DESC
-        LIMIT $1
-        OFFSET $2
-        `,
-        [limit, offset]
-      );
-      const parsed = results.rows.map(r => parseBlockQueryResult(r));
-      return { results: parsed, total: total.rows[0].count } as const;
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const parsed = results.map(r => parseBlockQueryResult(r));
+      return { results: parsed, total: total[0].count } as const;
     });
   }
 
   async getBlockTxs(indexBlockHash: string) {
-    return this.query(async client => {
-      const result = await client.query<{ tx_id: Buffer; tx_index: number }>(
-        `
-        SELECT tx_id, tx_index
-        FROM txs
-        WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
-        `,
-        [hexToBuffer(indexBlockHash)]
-      );
-      const txIds = result.rows
-        .sort(tx => tx.tx_index)
-        .map(tx => bufferToHexPrefixString(tx.tx_id));
-      return { results: txIds };
-    });
+    const result = await this.sql<{ tx_id: Buffer; tx_index: number }[]>`
+      SELECT tx_id, tx_index
+      FROM txs
+      WHERE index_block_hash = ${hexToBuffer(indexBlockHash)}
+        AND canonical = true AND microblock_canonical = true
+    `;
+    const txIds = result.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
+    return { results: txIds };
   }
 
-  async getBlockTxsRows(blockHash: string) {
-    return this.queryTx(async client => {
-      const blockQuery = await this.getBlockInternal(client, { hash: blockHash });
+  async getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>> {
+    return await this.sql.begin(async sql => {
+      const blockQuery = await this.getBlockInternal(sql, { hash: blockHash });
       if (!blockQuery.found) {
         throw new Error(`Could not find block by hash ${blockHash}`);
       }
-      const result = await client.query<ContractTxQueryResult>(
-        `
-        -- getBlockTxsRows
+      const result = await sql<ContractTxQueryResult[]>`
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE index_block_hash = $1 AND canonical = true AND microblock_canonical = true
+        WHERE index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
+          AND canonical = true AND microblock_canonical = true
         ORDER BY microblock_sequence ASC, tx_index ASC
-        `,
-        [hexToBuffer(blockQuery.result.index_block_hash)]
-      );
-      if (result.rowCount === 0) {
+      `;
+      if (result.length === 0) {
         return { found: false } as const;
       }
-      const parsed = result.rows.map(r => parseTxQueryResult(r));
+      const parsed = result.map(r => parseTxQueryResult(r));
       return { found: true, result: parsed };
     });
   }
@@ -556,31 +433,25 @@ export class PgStore {
   async getMicroblock(args: {
     microblockHash: string;
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
-    return await this.queryTx(async client => {
-      const result = await client.query<MicroblockQueryResult>(
-        `
+    return await this.sql.begin(async sql => {
+      const result = await sql<MicroblockQueryResult[]>`
         SELECT ${MICROBLOCK_COLUMNS}
         FROM microblocks
-        WHERE microblock_hash = $1
+        WHERE microblock_hash = ${hexToBuffer(args.microblockHash)}
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
-        `,
-        [hexToBuffer(args.microblockHash)]
-      );
-      if (result.rowCount === 0) {
+      `;
+      if (result.length === 0) {
         return { found: false } as const;
       }
-      const txQuery = await client.query<{ tx_id: Buffer }>(
-        `
+      const txQuery = await sql<{ tx_id: Buffer }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = $1
+        WHERE microblock_hash = ${hexToBuffer(args.microblockHash)}
         ORDER BY tx_index DESC
-        `,
-        [hexToBuffer(args.microblockHash)]
-      );
-      const microblock = parseMicroblockQueryResult(result.rows[0]);
-      const txs = txQuery.rows.map(row => bufferToHexPrefixString(row.tx_id));
+      `;
+      const microblock = parseMicroblockQueryResult(result[0]);
+      const txs = txQuery.map(row => bufferToHexPrefixString(row.tx_id));
       return { found: true, result: { microblock, txs } };
     });
   }
@@ -589,21 +460,20 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
-    const result = await this.queryTx(async client => {
-      const countQuery = await client.query<{ total: number }>(
-        `SELECT microblock_count AS total FROM chain_tip`
-      );
-      const microblockQuery = await client.query<
-        MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null }
-      >(
-        `
+    return await this.sql.begin(async sql => {
+      const countQuery = await sql<
+        { total: number }[]
+      >`SELECT microblock_count AS total FROM chain_tip`;
+      const microblockQuery = await sql<
+        (MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null })[]
+      >`
         SELECT microblocks.*, tx_id FROM (
           SELECT ${MICROBLOCK_COLUMNS}
           FROM microblocks
           WHERE canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC
-          LIMIT $1
-          OFFSET $2
+          LIMIT ${args.limit}
+          OFFSET ${args.offset}
         ) microblocks
         LEFT JOIN (
           SELECT tx_id, tx_index, microblock_hash
@@ -613,12 +483,9 @@ export class PgStore {
         ) txs
         ON microblocks.microblock_hash = txs.microblock_hash
         ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
-        `,
-        [args.limit, args.offset]
-      );
-
+      `;
       const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
-      microblockQuery.rows.forEach(row => {
+      microblockQuery.forEach(row => {
         const mb = parseMicroblockQueryResult(row);
         let existing = microblocks.find(
           item => item.microblock.microblock_hash === mb.microblock_hash
@@ -634,32 +501,28 @@ export class PgStore {
       });
       return {
         result: microblocks,
-        total: countQuery.rows[0].total,
+        total: countQuery[0].total,
       };
     });
-    return result;
   }
 
-  async getUnanchoredTxsInternal(client: ClientBase): Promise<{ txs: DbTx[] }> {
+  async getUnanchoredTxsInternal(sql: PgSqlClient): Promise<{ txs: DbTx[] }> {
     // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
-    const { blockHeight } = await this.getChainTip(client);
+    const { blockHeight } = await this.getChainTip(sql);
     const unanchoredBlockHeight = blockHeight + 1;
-    const query = await client.query<ContractTxQueryResult>(
-      `
+    const query = await sql<ContractTxQueryResult[]>`
       SELECT ${TX_COLUMNS}, ${abiColumn()}
       FROM txs
-      WHERE canonical = true AND microblock_canonical = true AND block_height = $1
+      WHERE canonical = true AND microblock_canonical = true AND block_height = ${unanchoredBlockHeight}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-      `,
-      [unanchoredBlockHeight]
-    );
-    const txs = query.rows.map(row => parseTxQueryResult(row));
+    `;
+    const txs = query.map(row => parseTxQueryResult(row));
     return { txs: txs };
   }
 
   async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
-    return await this.queryTx(client => {
-      return this.getUnanchoredTxsInternal(client);
+    return await this.sql.begin(async sql => {
+      return this.getUnanchoredTxsInternal(sql);
     });
   }
 
@@ -667,25 +530,22 @@ export class PgStore {
     stxAddress: string;
     blockIdentifier: BlockIdentifier;
   }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
-    return await this.queryTx(async client => {
-      const dbBlock = await this.getBlockInternal(client, args.blockIdentifier);
+    return await this.sql.begin(async sql => {
+      const dbBlock = await this.getBlockInternal(sql, args.blockIdentifier);
       if (!dbBlock.found) {
         return { found: false };
       }
-      const nonceQuery = await client.query<{ nonce: number | null }>(
-        `
+      const nonceQuery = await sql<{ nonce: number | null }[]>`
         SELECT MAX(nonce) nonce
         FROM txs
-        WHERE ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored = true))
+        WHERE ((sender_address = ${args.stxAddress} AND sponsored = false) OR (sponsor_address = ${args.stxAddress} AND sponsored = true))
         AND canonical = true AND microblock_canonical = true
-        AND block_height <= $2
-        `,
-        [args.stxAddress, dbBlock.result.block_height]
-      );
+        AND block_height <= ${dbBlock.result.block_height}
+      `;
       let lastExecutedTxNonce: number | null = null;
       let possibleNextNonce = 0;
-      if (nonceQuery.rows.length > 0 && typeof nonceQuery.rows[0].nonce === 'number') {
-        lastExecutedTxNonce = nonceQuery.rows[0].nonce;
+      if (nonceQuery.length > 0 && typeof nonceQuery[0].nonce === 'number') {
+        lastExecutedTxNonce = nonceQuery[0].nonce;
         possibleNextNonce = lastExecutedTxNonce + 1;
       } else {
         possibleNextNonce = 0;
@@ -702,55 +562,40 @@ export class PgStore {
     possibleNextNonce: number;
     detectedMissingNonces: number[];
   }> {
-    return await this.queryTx(async client => {
-      const executedTxNonce = await client.query<{ nonce: number | null }>(
-        `
+    return await this.sql.begin(async sql => {
+      const executedTxNonce = await sql<{ nonce: number | null }[]>`
         SELECT MAX(nonce) nonce
         FROM txs
-        WHERE sender_address = $1
+        WHERE sender_address = ${args.stxAddress}
         AND canonical = true AND microblock_canonical = true
-        `,
-        [args.stxAddress]
-      );
-
-      const executedTxSponsorNonce = await client.query<{ nonce: number | null }>(
-        `
+      `;
+      const executedTxSponsorNonce = await sql<{ nonce: number | null }[]>`
         SELECT MAX(sponsor_nonce) nonce
         FROM txs
-        WHERE sponsor_address = $1 AND sponsored = true
+        WHERE sponsor_address = ${args.stxAddress} AND sponsored = true
         AND canonical = true AND microblock_canonical = true
-        `,
-        [args.stxAddress]
-      );
-
-      const mempoolTxNonce = await client.query<{ nonce: number | null }>(
-        `
+      `;
+      const mempoolTxNonce = await sql<{ nonce: number | null }[]>`
         SELECT MAX(nonce) nonce
         FROM mempool_txs
-        WHERE sender_address = $1
+        WHERE sender_address = ${args.stxAddress}
         AND pruned = false
-        `,
-        [args.stxAddress]
-      );
-
-      const mempoolTxSponsorNonce = await client.query<{ nonce: number | null }>(
-        `
+      `;
+      const mempoolTxSponsorNonce = await sql<{ nonce: number | null }[]>`
         SELECT MAX(sponsor_nonce) nonce
         FROM mempool_txs
-        WHERE sponsor_address = $1 AND sponsored= true
+        WHERE sponsor_address = ${args.stxAddress} AND sponsored= true
         AND pruned = false
-        `,
-        [args.stxAddress]
-      );
+      `;
 
-      let lastExecutedTxNonce = executedTxNonce.rows[0]?.nonce ?? null;
-      const lastExecutedTxSponsorNonce = executedTxSponsorNonce.rows[0]?.nonce ?? null;
+      let lastExecutedTxNonce = executedTxNonce[0]?.nonce ?? null;
+      const lastExecutedTxSponsorNonce = executedTxSponsorNonce[0]?.nonce ?? null;
       if (lastExecutedTxNonce != null || lastExecutedTxSponsorNonce != null) {
         lastExecutedTxNonce = Math.max(lastExecutedTxNonce ?? 0, lastExecutedTxSponsorNonce ?? 0);
       }
 
-      let lastMempoolTxNonce = mempoolTxNonce.rows[0]?.nonce ?? null;
-      const lastMempoolTxSponsorNonce = mempoolTxSponsorNonce.rows[0]?.nonce ?? null;
+      let lastMempoolTxNonce = mempoolTxNonce[0]?.nonce ?? null;
+      const lastMempoolTxSponsorNonce = mempoolTxSponsorNonce[0]?.nonce ?? null;
 
       if (lastMempoolTxNonce != null || lastMempoolTxSponsorNonce != null) {
         lastMempoolTxNonce = Math.max(lastMempoolTxNonce ?? 0, lastMempoolTxSponsorNonce ?? 0);
@@ -769,21 +614,21 @@ export class PgStore {
           for (let i = lastMempoolTxNonce - 1; i > lastExecutedTxNonce; i--) {
             expectedNonces.push(i);
           }
-          const mempoolNonces = await client.query<{ nonce: number }>(
-            `
+          const mempoolNonces = await sql<{ nonce: number }[]>`
             SELECT nonce
             FROM mempool_txs
-            WHERE sender_address = $1 AND nonce = ANY($2)
+            WHERE sender_address = ${args.stxAddress}
+              AND nonce = ANY(${sql(expectedNonces)})
             AND pruned = false
             UNION
             SELECT sponsor_nonce as nonce
             FROM mempool_txs
-            WHERE sponsor_address = $1 AND sponsored= true AND sponsor_nonce = ANY($2)
+            WHERE sponsor_address = ${args.stxAddress}
+              AND sponsored = true
+              AND sponsor_nonce = ANY(${sql(expectedNonces)})
             AND pruned = false
-            `,
-            [args.stxAddress, expectedNonces]
-          );
-          const mempoolNonceArr = mempoolNonces.rows.map(r => r.nonce);
+          `;
+          const mempoolNonceArr = mempoolNonces.map(r => r.nonce);
           expectedNonces.forEach(nonce => {
             if (!mempoolNonceArr.includes(nonce)) {
               detectedMissingNonces.push(nonce);
@@ -800,24 +645,19 @@ export class PgStore {
     });
   }
 
-  getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
-    return this.query(async client => {
-      const queryResult = await client.query(
-        `
-        SELECT canonical FROM names
-        WHERE tx_id = $1
-        AND index_block_hash = $2
-        `,
-        [hexToBuffer(txId), hexToBuffer(indexBlockHash)]
-      );
-      if (queryResult.rowCount > 0) {
-        return {
-          found: true,
-          result: queryResult.rows[0],
-        };
-      }
-      return { found: false } as const;
-    });
+  async getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
+    const queryResult = await this.sql<{ canonical: boolean }[]>`
+      SELECT canonical FROM names
+      WHERE tx_id = ${hexToBuffer(txId)}
+      AND index_block_hash = ${hexToBuffer(indexBlockHash)}
+    `;
+    if (queryResult.length > 0) {
+      return {
+        found: true,
+        result: queryResult[0].canonical,
+      };
+    }
+    return { found: false } as const;
   }
 
   async getBurnchainRewardSlotHolders({
@@ -829,41 +669,39 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }> {
-    return await this.query(async client => {
-      const queryResults = await client.query<{
+    const queryResults = await this.sql<
+      {
         burn_block_hash: Buffer;
         burn_block_height: number;
         address: string;
         slot_index: number;
         count: number;
-      }>(
-        `
-        SELECT
-          burn_block_hash, burn_block_height, address, slot_index, ${countOverColumn()}
-        FROM reward_slot_holders
-        WHERE canonical = true ${burnchainAddress ? 'AND address = $3' : ''}
-        ORDER BY burn_block_height DESC, slot_index DESC
-        LIMIT $1
-        OFFSET $2
-        `,
-        burnchainAddress ? [limit, offset, burnchainAddress] : [limit, offset]
-      );
-      const count = queryResults.rows[0]?.count ?? 0;
-      const slotHolders = queryResults.rows.map(r => {
-        const parsed: DbRewardSlotHolder = {
-          canonical: true,
-          burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
-          burn_block_height: r.burn_block_height,
-          address: r.address,
-          slot_index: r.slot_index,
-        };
-        return parsed;
-      });
-      return {
-        total: count,
-        slotHolders,
+      }[]
+    >`
+      SELECT
+        burn_block_hash, burn_block_height, address, slot_index, ${countOverColumn()}
+      FROM reward_slot_holders
+      WHERE canonical = true
+        ${burnchainAddress ? this.sql`AND address = ${burnchainAddress}` : this.sql``}
+      ORDER BY burn_block_height DESC, slot_index DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    const count = queryResults[0]?.count ?? 0;
+    const slotHolders = queryResults.map(r => {
+      const parsed: DbRewardSlotHolder = {
+        canonical: true,
+        burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+        burn_block_height: r.burn_block_height,
+        address: r.address,
+        slot_index: r.slot_index,
       };
+      return parsed;
     });
+    return {
+      total: count,
+      slotHolders,
+    };
   }
 
   async getTxsFromBlock(
@@ -871,32 +709,28 @@ export class PgStore {
     limit: number,
     offset: number
   ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
-    return this.queryTx(async client => {
-      const blockQuery = await this.getBlockInternal(client, blockIdentifer);
+    return this.sql.begin(async sql => {
+      const blockQuery = await this.getBlockInternal(sql, blockIdentifer);
       if (!blockQuery.found) {
         return { found: false };
       }
-      const totalQuery = await client.query<{ count: number }>(
-        `
+      const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM txs
-        WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
-        `,
-        [hexToBuffer(blockQuery.result.index_block_hash)]
-      );
-      const result = await client.query<ContractTxQueryResult>(
-        `
+        WHERE canonical = true AND microblock_canonical = true
+          AND index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
+      `;
+      const result = await sql<ContractTxQueryResult[]>`
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE canonical = true AND microblock_canonical = true AND index_block_hash = $1
+        WHERE canonical = true AND microblock_canonical = true
+          AND index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
         ORDER BY microblock_sequence DESC, tx_index DESC
-        LIMIT $2
-        OFFSET $3
-        `,
-        [hexToBuffer(blockQuery.result.index_block_hash), limit, offset]
-      );
-      const total = totalQuery.rowCount > 0 ? totalQuery.rows[0].count : 0;
-      const parsed = result.rows.map(r => parseTxQueryResult(r));
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const total = totalQuery.length > 0 ? totalQuery[0].count : 0;
+      const parsed = result.map(r => parseTxQueryResult(r));
       return { found: true, result: { results: parsed, total } };
     });
   }
@@ -910,46 +744,45 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<DbBurnchainReward[]> {
-    return this.query(async client => {
-      const queryResults = await client.query<{
+    const queryResults = await this.sql<
+      {
         burn_block_hash: Buffer;
         burn_block_height: number;
         burn_amount: string;
         reward_recipient: string;
         reward_amount: string;
         reward_index: number;
-      }>(
-        `
-        SELECT burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
-        FROM burnchain_rewards
-        WHERE canonical = true ${burnchainRecipient ? 'AND reward_recipient = $3' : ''}
-        ORDER BY burn_block_height DESC, reward_index DESC
-        LIMIT $1
-        OFFSET $2
-        `,
-        burnchainRecipient ? [limit, offset, burnchainRecipient] : [limit, offset]
-      );
-      return queryResults.rows.map(r => {
-        const parsed: DbBurnchainReward = {
-          canonical: true,
-          burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
-          burn_block_height: r.burn_block_height,
-          burn_amount: BigInt(r.burn_amount),
-          reward_recipient: r.reward_recipient,
-          reward_amount: BigInt(r.reward_amount),
-          reward_index: r.reward_index,
-        };
-        return parsed;
-      });
+      }[]
+    >`
+      SELECT burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
+      FROM burnchain_rewards
+      WHERE canonical = true
+        ${burnchainRecipient ? this.sql`AND reward_recipient = ${burnchainRecipient}` : this.sql``}
+      ORDER BY burn_block_height DESC, reward_index DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    return queryResults.map(r => {
+      const parsed: DbBurnchainReward = {
+        canonical: true,
+        burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+        burn_block_height: r.burn_block_height,
+        burn_amount: BigInt(r.burn_amount),
+        reward_recipient: r.reward_recipient,
+        reward_amount: BigInt(r.reward_amount),
+        reward_index: r.reward_index,
+      };
+      return parsed;
     });
   }
+
   async getMinersRewardsAtHeight({
     blockHeight,
   }: {
     blockHeight: number;
   }): Promise<DbMinerReward[]> {
-    return this.query(async client => {
-      const queryResults = await client.query<{
+    const queryResults = await this.sql<
+      {
         block_hash: Buffer;
         from_index_block_hash: Buffer;
         index_block_hash: Buffer;
@@ -959,79 +792,68 @@ export class PgStore {
         tx_fees_anchored: number;
         tx_fees_streamed_confirmed: number;
         tx_fees_streamed_produced: number;
-      }>(
-        `
-        SELECT id, mature_block_height, recipient, block_hash, index_block_hash, from_index_block_hash, canonical, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
-        FROM miner_rewards
-        WHERE canonical = true AND mature_block_height = $1
-        ORDER BY id DESC
-        `,
-        [blockHeight]
-      );
-      return queryResults.rows.map(r => {
-        const parsed: DbMinerReward = {
-          block_hash: bufferToHexPrefixString(r.block_hash),
-          from_index_block_hash: bufferToHexPrefixString(r.from_index_block_hash),
-          index_block_hash: bufferToHexPrefixString(r.index_block_hash),
-          canonical: true,
-          mature_block_height: r.mature_block_height,
-          recipient: r.recipient,
-          coinbase_amount: BigInt(r.coinbase_amount),
-          tx_fees_anchored: BigInt(r.tx_fees_anchored),
-          tx_fees_streamed_confirmed: BigInt(r.tx_fees_streamed_confirmed),
-          tx_fees_streamed_produced: BigInt(r.tx_fees_streamed_produced),
-        };
-        return parsed;
-      });
+      }[]
+    >`
+      SELECT id, mature_block_height, recipient, block_hash, index_block_hash, from_index_block_hash,
+        canonical, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+      FROM miner_rewards
+      WHERE canonical = true AND mature_block_height = ${blockHeight}
+      ORDER BY id DESC
+    `;
+    return queryResults.map(r => {
+      const parsed: DbMinerReward = {
+        block_hash: bufferToHexPrefixString(r.block_hash),
+        from_index_block_hash: bufferToHexPrefixString(r.from_index_block_hash),
+        index_block_hash: bufferToHexPrefixString(r.index_block_hash),
+        canonical: true,
+        mature_block_height: r.mature_block_height,
+        recipient: r.recipient,
+        coinbase_amount: BigInt(r.coinbase_amount),
+        tx_fees_anchored: BigInt(r.tx_fees_anchored),
+        tx_fees_streamed_confirmed: BigInt(r.tx_fees_streamed_confirmed),
+        tx_fees_streamed_produced: BigInt(r.tx_fees_streamed_produced),
+      };
+      return parsed;
     });
   }
 
   async getBurnchainRewardsTotal(
     burnchainRecipient: string
   ): Promise<{ reward_recipient: string; reward_amount: bigint }> {
-    return this.query(async client => {
-      const queryResults = await client.query<{
-        amount: string;
-      }>(
-        `
-        SELECT sum(reward_amount) amount
-        FROM burnchain_rewards
-        WHERE canonical = true AND reward_recipient = $1
-        `,
-        [burnchainRecipient]
-      );
-      const resultAmount = BigInt(queryResults.rows[0]?.amount ?? 0);
-      return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
-    });
+    const queryResults = await this.sql<{ amount: string }[]>`
+      SELECT sum(reward_amount) amount
+      FROM burnchain_rewards
+      WHERE canonical = true AND reward_recipient = ${burnchainRecipient}
+    `;
+    const resultAmount = BigInt(queryResults[0]?.amount ?? 0);
+    return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
   }
 
   private async parseMempoolTransactions(
-    result: QueryResult<MempoolTxQueryResult>,
-    client: ClientBase,
+    result: MempoolTxQueryResult[],
+    sql: PgSqlClient,
     includeUnanchored: boolean
   ) {
-    if (result.rowCount === 0) {
+    if (result.length === 0) {
       return [];
     }
-    const pruned = result.rows.filter(memTx => memTx.pruned && !includeUnanchored);
+    const pruned = result.filter(memTx => memTx.pruned && !includeUnanchored);
     if (pruned.length !== 0) {
-      const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
+      const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: true,
       });
       const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
-      const query = await client.query<{ tx_id: Buffer }>(
-        `
-          SELECT tx_id
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          AND tx_id = ANY($1)
-          AND block_height = $2
-          `,
-        [notPrunedBufferTxIds, unanchoredBlockHeight]
-      );
+      // FIXME: ANY
+      const query = await sql<{ tx_id: Buffer }[]>`
+        SELECT tx_id
+        FROM txs
+        WHERE canonical = true AND microblock_canonical = true
+        AND tx_id = ANY(${notPrunedBufferTxIds})
+        AND block_height = ${unanchoredBlockHeight}
+      `;
       // The tx is marked as pruned because it's in an unanchored microblock
-      query.rows.forEach(tran => {
-        const transaction = result.rows.find(
+      query.forEach(tran => {
+        const transaction = result.find(
           tx => bufferToHexPrefixString(tx.tx_id) === bufferToHexPrefixString(tran.tx_id)
         );
         if (transaction) {
@@ -1040,7 +862,7 @@ export class PgStore {
         }
       });
     }
-    return result.rows.map(transaction => parseMempoolTxQueryResult(transaction));
+    return result.map(transaction => parseMempoolTxQueryResult(transaction));
   }
 
   async getMempoolTxs(args: {
@@ -1048,16 +870,14 @@ export class PgStore {
     includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
-    return this.queryTx(async client => {
+    return this.sql.begin(async client => {
       const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
-      const result = await client.query<MempoolTxQueryResult>(
-        `
+      // FIXME: ANY
+      const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
-        WHERE tx_id = ANY($1)
-        `,
-        [hexTxIds]
-      );
+        WHERE tx_id = ANY(${hexTxIds})
+      `;
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
   }
@@ -1071,44 +891,38 @@ export class PgStore {
     includeUnanchored: boolean;
     includePruned?: boolean;
   }) {
-    return this.queryTx(async client => {
-      const result = await client.query<MempoolTxQueryResult>(
-        `
+    return this.sql.begin(async sql => {
+      const result = await sql<MempoolTxQueryResult[]>`
         SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
-        WHERE tx_id = $1
-        `,
-        [hexToBuffer(txId)]
-      );
+        WHERE tx_id = ${hexToBuffer(txId)}
+      `;
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
-      if (result.rows[0]?.pruned && !includeUnanchored) {
-        const unanchoredBlockHeight = await this.getMaxBlockHeight(client, {
+      if (result[0]?.pruned && !includeUnanchored) {
+        const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
           includeUnanchored: true,
         });
-        const query = await client.query<{ tx_id: Buffer }>(
-          `
+        const query = await sql<{ tx_id: Buffer }[]>`
           SELECT tx_id
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-          AND block_height = $1
-          AND tx_id = $2
+          AND block_height = ${unanchoredBlockHeight}
+          AND tx_id = ${hexToBuffer(txId)}
           LIMIT 1
-          `,
-          [unanchoredBlockHeight, hexToBuffer(txId)]
-        );
+        `;
         // The tx is marked as pruned because it's in an unanchored microblock
-        if (query.rowCount > 0) {
-          result.rows[0].pruned = false;
-          result.rows[0].status = DbTxStatus.Pending;
+        if (query.length > 0) {
+          result[0].pruned = false;
+          result[0].status = DbTxStatus.Pending;
         }
       }
-      if (result.rowCount === 0 || (!includePruned && result.rows[0].pruned)) {
+      if (result.length === 0 || (!includePruned && result[0].pruned)) {
         return { found: false } as const;
       }
-      if (result.rowCount > 1) {
+      if (result.length > 1) {
         throw new Error(`Multiple transactions found in mempool table for txid: ${txId}`);
       }
-      const rows = await this.parseMempoolTransactions(result, client, includeUnanchored);
+      const rows = await this.parseMempoolTransactions(result, sql, includeUnanchored);
       const tx = rows[0];
       return { found: true, result: tx };
     });
@@ -1121,7 +935,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    return await this.queryTx(async client => {
+    return await this.sql.begin(async sql => {
       const droppedStatuses = [
         DbTxStatus.DroppedReplaceByFee,
         DbTxStatus.DroppedReplaceAcrossFork,
@@ -1129,13 +943,12 @@ export class PgStore {
         DbTxStatus.DroppedStaleGarbageCollect,
       ];
       const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
-      const resultQuery = await client.query<MempoolTxQueryResult & { count: number }>(
-        `
+      const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
         SELECT ${selectCols}, ${abiColumn('mempool')}, ${countOverColumn()}
         FROM (
           SELECT *
           FROM mempool_txs
-          WHERE pruned = true AND status = ANY($1)
+          WHERE pruned = true AND status = ANY(${sql(droppedStatuses)})
         ) mempool
         LEFT JOIN (
           SELECT tx_id
@@ -1145,13 +958,11 @@ export class PgStore {
         ON mempool.tx_id = mined.tx_id
         WHERE mined.tx_id IS NULL
         ORDER BY receipt_time DESC
-        LIMIT $2
-        OFFSET $3
-        `,
-        [droppedStatuses, limit, offset]
-      );
-      const count = resultQuery.rows.length > 0 ? resultQuery.rows[0].count : 0;
-      const mempoolTxs = resultQuery.rows.map(r => parseMempoolTxQueryResult(r));
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const count = resultQuery.length > 0 ? resultQuery[0].count : 0;
+      const mempoolTxs = resultQuery.map(r => parseMempoolTxQueryResult(r));
       return { results: mempoolTxs, total: count };
     });
   }
@@ -1171,61 +982,45 @@ export class PgStore {
     recipientAddress?: string;
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    const whereConditions: string[] = [];
-    const queryValues: any[] = [];
-
-    if (address) {
-      whereConditions.push(
-        `(sender_address = $$
-          OR token_transfer_recipient_address = $$
-          OR smart_contract_contract_id = $$
-          OR contract_call_contract_id = $$)`
-      );
-      queryValues.push(address, address, address, address);
-    } else if (senderAddress && recipientAddress) {
-      whereConditions.push('(sender_address = $$ AND token_transfer_recipient_address = $$)');
-      queryValues.push(senderAddress, recipientAddress);
-    } else if (senderAddress) {
-      whereConditions.push('sender_address = $$');
-      queryValues.push(senderAddress);
-    } else if (recipientAddress) {
-      whereConditions.push('token_transfer_recipient_address = $$');
-      queryValues.push(recipientAddress);
-    }
-
-    const queryResult = await this.queryTx(async client => {
+    const queryResult = await this.sql.begin(async sql => {
+      let addressCond = sql``;
+      if (address) {
+        addressCond = sql`(sender_address = ${address}
+            OR token_transfer_recipient_address = ${address}
+            OR smart_contract_contract_id = ${address}
+            OR contract_call_contract_id = ${address})`;
+      } else if (senderAddress && recipientAddress) {
+        addressCond = sql`(sender_address = ${senderAddress} AND token_transfer_recipient_address = ${recipientAddress})`;
+      } else if (senderAddress) {
+        addressCond = sql`sender_address = ${senderAddress}`;
+      } else if (recipientAddress) {
+        addressCond = sql`token_transfer_recipient_address = ${recipientAddress}`;
+      }
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
+      let prunedCond: postgres.PendingQuery<postgres.Row[]>;
       if (!includeUnanchored) {
-        const unanchoredTxs = (await this.getUnanchoredTxsInternal(client)).txs.map(tx =>
+        const unanchoredTxs = (await this.getUnanchoredTxsInternal(sql)).txs.map(tx =>
           hexToBuffer(tx.tx_id)
         );
-        whereConditions.push('(pruned = false OR tx_id = ANY($$))');
-        queryValues.push(unanchoredTxs);
+        // FIXME: ANY
+        prunedCond = sql`(pruned = false OR tx_id = ANY(${unanchoredTxs}))`;
       } else {
-        whereConditions.push('pruned = false');
+        prunedCond = sql`pruned = false`;
       }
-      let paramNum = 1;
-      const whereCondition = whereConditions.join(' AND ').replace(/\$\$/g, () => `$${paramNum++}`);
-      const totalQuery = await client.query<{ count: number }>(
-        `
+      const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM mempool_txs
-        WHERE ${whereCondition}
-        `,
-        [...queryValues]
-      );
-      const resultQuery = await client.query<MempoolTxQueryResult>(
-        `
+        WHERE ${addressCond} AND ${prunedCond}
+      `;
+      const resultQuery = await sql<MempoolTxQueryResult[]>`
         SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
         FROM mempool_txs
-        WHERE ${whereCondition}
+        WHERE ${addressCond} AND ${prunedCond}
         ORDER BY receipt_time DESC
-        LIMIT $${queryValues.length + 1}
-        OFFSET $${queryValues.length + 2}
-        `,
-        [...queryValues, limit, offset]
-      );
-      return { total: totalQuery.rows[0].count, rows: resultQuery.rows };
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      return { total: totalQuery[0].count, rows: resultQuery };
     });
 
     const parsed = queryResult.rows.map(r => {
@@ -1243,42 +1038,37 @@ export class PgStore {
    * @returns `FoundOrNot` object with a possible `digest` string.
    */
   async getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
-    return await this.query(async client => {
-      const result = await client.query<{ digest: string }>(`SELECT digest FROM mempool_digest`);
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      return { found: true, result: { digest: result.rows[0].digest } };
-    });
+    const result = await this.sql<{ digest: string }[]>`SELECT digest FROM mempool_digest`;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    return { found: true, result: { digest: result[0].digest } };
   }
 
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
-    return this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<ContractTxQueryResult>(
-        `
+    return this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const result = await sql<ContractTxQueryResult[]>`
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE tx_id = $1 AND block_height <= $2
+        WHERE tx_id = ${hexToBuffer(txId)} AND block_height <= ${maxBlockHeight}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
-        `,
-        [hexToBuffer(txId), maxBlockHeight]
-      );
-      if (result.rowCount === 0) {
+      `;
+      if (result.length === 0) {
         return { found: false } as const;
       }
-      const row = result.rows[0];
+      const row = result[0];
       const tx = parseTxQueryResult(row);
       return { found: true, result: tx };
     });
   }
 
   async getMaxBlockHeight(
-    client: ClientBase,
+    sql: PgSqlClient,
     { includeUnanchored }: { includeUnanchored: boolean }
   ): Promise<number> {
-    const chainTip = await this.getChainTip(client);
+    const chainTip = await this.getChainTip(sql);
     if (includeUnanchored) {
       return chainTip.blockHeight + 1;
     } else {
@@ -1297,53 +1087,43 @@ export class PgStore {
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
   }) {
-    let totalQuery: QueryResult<{ count: number }>;
-    let resultQuery: QueryResult<ContractTxQueryResult>;
-    return this.queryTx(async client => {
-      const maxHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-
+    let totalQuery: { count: number }[];
+    let resultQuery: ContractTxQueryResult[];
+    return this.sql.begin(async sql => {
+      const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       if (txTypeFilter.length === 0) {
-        totalQuery = await client.query<{ count: number }>(
-          `
+        totalQuery = await sql<{ count: number }[]>`
           SELECT ${includeUnanchored ? 'tx_count_unanchored' : 'tx_count'} AS count
           FROM chain_tip
-          `
-        );
-        resultQuery = await client.query<ContractTxQueryResult>(
-          `
+        `;
+        resultQuery = await sql<ContractTxQueryResult[]>`
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND block_height <= $3
+          WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $1
-          OFFSET $2
-          `,
-          [limit, offset, maxHeight]
-        );
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       } else {
         const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
-        totalQuery = await client.query<{ count: number }>(
-          `
+        totalQuery = await sql<{ count: number }[]>`
           SELECT COUNT(*)::integer
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $2
-          `,
-          [txTypeIds, maxHeight]
-        );
-        resultQuery = await client.query<ContractTxQueryResult>(
-          `
+          WHERE canonical = true AND microblock_canonical = true
+            AND type_id = ANY(${sql(txTypeIds)}) AND block_height <= ${maxHeight}
+        `;
+        resultQuery = await sql<ContractTxQueryResult[]>`
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND type_id = ANY($1) AND block_height <= $4
+          WHERE canonical = true AND microblock_canonical = true
+            AND type_id = ANY(${sql(txTypeIds)}) AND block_height <= ${maxHeight}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $2
-          OFFSET $3
-          `,
-          [txTypeIds, limit, offset, maxHeight]
-        );
+          LIMIT ${limit}
+          OFFSET ${offset}
+        `;
       }
-      const parsed = resultQuery.rows.map(r => parseTxQueryResult(r));
-      return { results: parsed, total: totalQuery.rows[0].count };
+      const parsed = resultQuery.map(r => parseTxQueryResult(r));
+      return { results: parsed, total: totalQuery[0].count };
     });
   }
 
@@ -1355,133 +1135,110 @@ export class PgStore {
     limit: number;
     offset: number;
   }) {
-    return this.queryTx(async client => {
-      // preparing condition to query from
-      // condition = (tx_id=$1 AND index_block_hash=$2) OR (tx_id=$3 AND index_block_hash=$4)
-      // let condition = this.generateParameterizedWhereAndOrClause(args.txs);
+    // FIXME: ANY
+    return this.sql.begin(async sql => {
       if (args.txs.length === 0) return { results: [] };
-      let condition = '(tx_id, index_block_hash) = ANY(VALUES ';
-      let counter = 1;
-      const transactionValues = args.txs
-        .map(_ => {
-          const singleCondition = '($' + counter + '::bytea, $' + (counter + 1) + '::bytea)';
-          counter += 2;
-          return singleCondition;
-        })
-        .join(', ');
-      condition += transactionValues + ')';
-      // preparing values for condition
-      // conditionParams = [tx_id1, index_block_hash1, tx_id2, index_block_hash2]
-      const conditionParams: Buffer[] = [];
-      args.txs.forEach(transaction =>
-        conditionParams.push(hexToBuffer(transaction.txId), hexToBuffer(transaction.indexBlockHash))
-      );
+      const transactionValues = args.txs.map(tx => [
+        hexToBuffer(tx.txId),
+        hexToBuffer(tx.indexBlockHash),
+      ]);
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
-      // preparing complete where clause condition
-      const paramEventIndexStart = args.txs.length * 2 + 1;
-      const paramEventIndexEnd = paramEventIndexStart + 1;
-      condition =
-        condition +
-        ' AND microblock_canonical = true AND event_index BETWEEN $' +
-        paramEventIndexStart +
-        ' AND $' +
-        paramEventIndexEnd;
-      const stxLockResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        locked_amount: string;
-        unlock_height: string;
-        locked_address: string;
-      }>(
-        `
+      const stxLockResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          locked_amount: string;
+          unlock_height: string;
+          locked_address: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE ${condition}
-        `,
-        [...conditionParams, eventIndexStart, eventIndexEnd]
-      );
-      const stxResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        amount: string;
-      }>(
-        `
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const stxResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          amount: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE ${condition}
-        `,
-        [...conditionParams, eventIndexStart, eventIndexEnd]
-      );
-      const ftResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        amount: string;
-      }>(
-        `
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const ftResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          amount: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE ${condition}
-        `,
-        [...conditionParams, eventIndexStart, eventIndexEnd]
-      );
-      const nftResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        value: Buffer;
-      }>(
-        `
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const nftResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          value: Buffer;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE ${condition}
-        `,
-        [...conditionParams, eventIndexStart, eventIndexEnd]
-      );
-      const logResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        contract_identifier: string;
-        topic: string;
-        value: Buffer;
-      }>(
-        `
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const logResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          contract_identifier: string;
+          topic: string;
+          value: Buffer;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE ${condition}
-        `,
-        [...conditionParams, eventIndexStart, eventIndexEnd]
-      );
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
       return {
         results: parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
       };
@@ -1497,106 +1254,106 @@ export class PgStore {
     // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
     // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
     // will never be returned.
-    return this.queryTx(async client => {
+    return this.sql.begin(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const txIdBuffer = hexToBuffer(args.txId);
       const blockHashBuffer = hexToBuffer(args.indexBlockHash);
-      const stxLockResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        locked_amount: string;
-        unlock_height: string;
-        locked_address: string;
-      }>(
-        `
+      const stxLockResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          locked_amount: string;
+          unlock_height: string;
+          locked_address: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
-        `,
-        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
-      );
-      const stxResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        amount: string;
-      }>(
-        `
+        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const stxResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          amount: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
-        `,
-        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
-      );
-      const ftResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        amount: string;
-      }>(
-        `
+        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+        `;
+      const ftResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          amount: string;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
-        `,
-        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
-      );
-      const nftResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        asset_event_type_id: number;
-        sender?: string;
-        recipient?: string;
-        asset_identifier: string;
-        value: Buffer;
-      }>(
-        `
+        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const nftResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          asset_event_type_id: number;
+          sender?: string;
+          recipient?: string;
+          asset_identifier: string;
+          value: Buffer;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
-        `,
-        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
-      );
-      const logResults = await client.query<{
-        event_index: number;
-        tx_id: Buffer;
-        tx_index: number;
-        block_height: number;
-        canonical: boolean;
-        contract_identifier: string;
-        topic: string;
-        value: Buffer;
-      }>(
-        `
+        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
+      const logResults = await sql<
+        {
+          event_index: number;
+          tx_id: Buffer;
+          tx_index: number;
+          block_height: number;
+          canonical: boolean;
+          contract_identifier: string;
+          topic: string;
+          value: Buffer;
+        }[]
+      >`
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE tx_id = $1 AND index_block_hash = $2 AND microblock_canonical = true AND event_index BETWEEN $3 AND $4
-        `,
-        [txIdBuffer, blockHashBuffer, eventIndexStart, eventIndexEnd]
-      );
+        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+          AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
+      `;
       return {
         results: parseDbEvents(stxLockResults, stxResults, ftResults, nftResults, logResults),
       };
@@ -1617,114 +1374,128 @@ export class PgStore {
     limit: number;
     offset: number;
   }) {
-    return this.queryTx(async client => {
-      const eventsQueries: string[] = [];
-      let events: DbEvent[] = [];
-      let whereClause = '';
-      if (args.addressOrTxId.txId) {
-        whereClause = 'tx_id = $1';
-      }
-      const txIdBuffer = args.addressOrTxId.txId ? hexToBuffer(args.addressOrTxId.txId) : undefined;
-      for (const eventType of args.eventTypeFilter) {
-        switch (eventType) {
-          case DbEventTypeId.StxLock:
-            if (args.addressOrTxId.address) {
-              whereClause = 'locked_address = $1';
-            }
-            eventsQueries.push(`
-            SELECT
-              tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
-              locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-              '0'::bytea as value, NULL as topic,
-              ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
-            FROM stx_lock_events
-            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
-            break;
-          case DbEventTypeId.StxAsset:
-            if (args.addressOrTxId.address) {
-              whereClause = '(sender = $1 OR recipient = $1)';
-            }
-            eventsQueries.push(`
-            SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient,
-              amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-              '0'::bytea as value, NULL as topic,
-              ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
-            FROM stx_events
-            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
-            break;
-          case DbEventTypeId.FungibleTokenAsset:
-            if (args.addressOrTxId.address) {
-              whereClause = '(sender = $1 OR recipient = $1)';
-            }
-            eventsQueries.push(`
-            SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient,
-              amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-              '0'::bytea as value, NULL as topic,
-              ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
-            FROM ft_events
-            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
-            break;
-          case DbEventTypeId.NonFungibleTokenAsset:
-            if (args.addressOrTxId.address) {
-              whereClause = '(sender = $1 OR recipient = $1)';
-            }
-            eventsQueries.push(`
-            SELECT
-              tx_id, event_index, tx_index, block_height, sender, recipient,
-              0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-              value, NULL as topic,
-              ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
-            FROM nft_events
-            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
-            break;
-          case DbEventTypeId.SmartContractLog:
-            if (args.addressOrTxId.address) {
-              whereClause = 'contract_identifier = $1';
-            }
-            eventsQueries.push(`
-            SELECT
-              tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
-              0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
-              value, topic,
-              ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
-            FROM contract_logs
-            WHERE ${whereClause} AND canonical = true AND microblock_canonical = true`);
-            break;
-          default:
-            throw new Error('Unexpected event type');
-        }
-      }
-
-      const queryString =
-        `WITH events AS ( ` +
-        eventsQueries.join(`\nUNION\n`) +
-        `)
+    return this.sql.begin(async sql => {
+      const refValue = args.addressOrTxId.address ?? hexToBuffer(args.addressOrTxId.txId);
+      const isAddress = args.addressOrTxId.address !== undefined;
+      const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
+      const eventsResult = await sql<
+        {
+          tx_id: Buffer;
+          event_index: number;
+          tx_index: number;
+          block_height: number;
+          sender: string;
+          recipient: string;
+          amount: number;
+          unlock_height: number;
+          asset_identifier: string;
+          contract_identifier: string;
+          topic: string;
+          value: Buffer;
+          event_type_id: number;
+          asset_event_type_id: number;
+        }[]
+      >`
+        WITH events AS (
+          ${
+            args.eventTypeFilter.includes(DbEventTypeId.StxLock)
+              ? sql`
+                SELECT
+                  tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+                  locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                  '0'::bytea as value, NULL as topic,
+                  ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
+                FROM stx_lock_events
+                WHERE ${isAddress ? sql`locked_address = ${refValue}` : sql`tx_id = ${refValue}`}
+                AND canonical = true AND microblock_canonical = true
+                `
+              : emptyEvents
+          }
+          UNION
+          ${
+            args.eventTypeFilter.includes(DbEventTypeId.StxAsset)
+              ? sql`
+                SELECT
+                  tx_id, event_index, tx_index, block_height, sender, recipient,
+                  amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                  '0'::bytea as value, NULL as topic,
+                  ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
+                FROM stx_events
+                WHERE ${
+                  isAddress
+                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+                    : sql`tx_id = ${refValue}`
+                }
+                AND canonical = true AND microblock_canonical = true
+                `
+              : emptyEvents
+          }
+          UNION
+          ${
+            args.eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)
+              ? sql`
+                SELECT
+                  tx_id, event_index, tx_index, block_height, sender, recipient,
+                  amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                  '0'::bytea as value, NULL as topic,
+                  ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
+                FROM ft_events
+                WHERE ${
+                  isAddress
+                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+                    : sql`tx_id = ${refValue}`
+                }
+                AND canonical = true AND microblock_canonical = true
+                `
+              : emptyEvents
+          }
+          UNION
+          ${
+            args.eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)
+              ? sql`
+                SELECT
+                  tx_id, event_index, tx_index, block_height, sender, recipient,
+                  0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                  value, NULL as topic,
+                  ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
+                FROM nft_events
+                WHERE ${
+                  isAddress
+                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
+                    : sql`tx_id = ${refValue}`
+                }
+                AND canonical = true AND microblock_canonical = true
+                `
+              : emptyEvents
+          }
+          UNION
+          ${
+            args.eventTypeFilter.includes(DbEventTypeId.SmartContractLog)
+              ? sql`
+                SELECT
+                  tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+                  0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
+                  value, topic,
+                  ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
+                FROM contract_logs
+                WHERE ${
+                  isAddress ? sql`contract_identifier = ${refValue}` : sql`tx_id = ${refValue}`
+                }
+                AND canonical = true AND microblock_canonical = true
+                `
+              : emptyEvents
+          }
+        )
         SELECT *
         FROM events JOIN txs USING(tx_id)
         WHERE txs.canonical = true AND txs.microblock_canonical = true
         ORDER BY events.block_height DESC, microblock_sequence DESC, events.tx_index DESC, event_index DESC
-        LIMIT $2 OFFSET $3`;
-
-      const eventsResult = await client.query<{
-        tx_id: Buffer;
-        event_index: number;
-        tx_index: number;
-        block_height: number;
-        sender: string;
-        recipient: string;
-        amount: number;
-        unlock_height: number;
-        asset_identifier: string;
-        contract_identifier: string;
-        topic: string;
-        value: Buffer;
-        event_type_id: number;
-        asset_event_type_id: number;
-      }>(queryString, [txIdBuffer ?? args.addressOrTxId.address, args.limit, args.offset]);
-      if (eventsResult.rowCount > 0) {
-        events = eventsResult.rows.map(r => {
+        LIMIT ${args.limit}
+        OFFSET ${args.offset}
+      `;
+      let events: DbEvent[] = [];
+      if (eventsResult.length > 0) {
+        events = eventsResult.map(r => {
           const event: DbEvent = {
             tx_id: bufferToHexPrefixString(r.tx_id),
             event_index: r.event_index,
@@ -1760,17 +1531,13 @@ export class PgStore {
   async getTokenMetadataQueueEntry(
     queueId: number
   ): Promise<FoundOrNot<DbTokenMetadataQueueEntry>> {
-    const result = await this.query(async client => {
-      const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
-        `SELECT * FROM token_metadata_queue WHERE queue_id = $1`,
-        [queueId]
-      );
-      return queryResult;
-    });
-    if (result.rowCount === 0) {
+    const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
+      SELECT * FROM token_metadata_queue WHERE queue_id = ${queueId}
+    `;
+    if (result.length === 0) {
       return { found: false };
     }
-    const row = result.rows[0];
+    const row = result[0];
     const entry: DbTokenMetadataQueueEntry = {
       queueId: row.queue_id,
       txId: bufferToHexPrefixString(row.tx_id),
@@ -1786,21 +1553,15 @@ export class PgStore {
     limit: number,
     excludingEntries: number[]
   ): Promise<DbTokenMetadataQueueEntry[]> {
-    const result = await this.queryTx(async client => {
-      const queryResult = await client.query<DbTokenMetadataQueueEntryQuery>(
-        `
-        SELECT *
-        FROM token_metadata_queue
-        WHERE NOT (queue_id = ANY($1))
-        AND processed = false
-        ORDER BY block_height ASC, queue_id ASC
-        LIMIT $2
-        `,
-        [excludingEntries, limit]
-      );
-      return queryResult;
-    });
-    const entries = result.rows.map(row => {
+    const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
+      SELECT *
+      FROM token_metadata_queue
+      WHERE NOT (queue_id = ANY(${excludingEntries}))
+      AND processed = false
+      ORDER BY block_height ASC, queue_id ASC
+      LIMIT ${limit}
+    `;
+    const entries = result.map(row => {
       const entry: DbTokenMetadataQueueEntry = {
         queueId: row.queue_id,
         txId: bufferToHexPrefixString(row.tx_id),
@@ -1815,55 +1576,49 @@ export class PgStore {
   }
 
   async getSmartContractList(contractIds: string[]) {
-    return this.query(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         contract_id: string;
         canonical: boolean;
         tx_id: Buffer;
         block_height: number;
         source_code: string;
         abi: unknown | null;
-      }>(
-        `
-        SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
-        FROM smart_contracts
-        WHERE contract_id = ANY($1)
-        ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-      `,
-        [contractIds]
-      );
-      if (result.rowCount === 0) {
-        [];
-      }
-      return result.rows.map(r => parseQueryResultToSmartContract(r)).map(res => res.result);
-    });
+      }[]
+    >`
+      SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
+      FROM smart_contracts
+      WHERE contract_id = ANY(${contractIds})
+      ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+    `;
+    if (result.length === 0) {
+      [];
+    }
+    return result.map(r => parseQueryResultToSmartContract(r)).map(res => res.result);
   }
 
   async getSmartContract(contractId: string) {
-    return this.query(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         tx_id: Buffer;
         canonical: boolean;
         contract_id: string;
         block_height: number;
         source_code: string;
         abi: unknown | null;
-      }>(
-        `
-        SELECT tx_id, canonical, contract_id, block_height, source_code, abi
-        FROM smart_contracts
-        WHERE contract_id = $1
-        ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [contractId]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      return parseQueryResultToSmartContract(row);
-    });
+      }[]
+    >`
+      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      FROM smart_contracts
+      WHERE contract_id = ${contractId}
+      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+      LIMIT 1
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const row = result[0];
+    return parseQueryResultToSmartContract(row);
   }
 
   async getSmartContractEvents({
@@ -1875,8 +1630,8 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
-    return this.query(async client => {
-      const logResults = await client.query<{
+    const logResults = await this.sql<
+      {
         event_index: number;
         tx_id: Buffer;
         tx_index: number;
@@ -1884,34 +1639,31 @@ export class PgStore {
         contract_identifier: string;
         topic: string;
         value: Buffer;
-      }>(
-        `
-        SELECT
-          event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
-        FROM contract_logs
-        WHERE canonical = true AND microblock_canonical = true AND contract_identifier = $1
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT $2
-        OFFSET $3
-        `,
-        [contractId, limit, offset]
-      );
-      const result = logResults.rows.map(result => {
-        const event: DbSmartContractEvent = {
-          event_index: result.event_index,
-          tx_id: bufferToHexPrefixString(result.tx_id),
-          tx_index: result.tx_index,
-          block_height: result.block_height,
-          canonical: true,
-          event_type: DbEventTypeId.SmartContractLog,
-          contract_identifier: result.contract_identifier,
-          topic: result.topic,
-          value: result.value,
-        };
-        return event;
-      });
-      return { found: true, result };
+      }[]
+    >`
+      SELECT
+        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
+      FROM contract_logs
+      WHERE canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    const result = logResults.map(result => {
+      const event: DbSmartContractEvent = {
+        event_index: result.event_index,
+        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: true,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: result.contract_identifier,
+        topic: result.topic,
+        value: result.value,
+      };
+      return event;
     });
+    return { found: true, result };
   }
 
   async getSmartContractByTrait(args: {
@@ -1932,32 +1684,30 @@ export class PgStore {
       };
     });
 
-    return this.query(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         tx_id: Buffer;
         canonical: boolean;
         contract_id: string;
         block_height: number;
         source_code: string;
         abi: unknown | null;
-      }>(
-        `
-        SELECT tx_id, canonical, contract_id, block_height, source_code, abi
-        FROM smart_contracts
-        WHERE abi->'functions' @> $1::jsonb AND canonical = true AND microblock_canonical = true
-        ORDER BY block_height DESC
-        LIMIT $2 OFFSET $3
-        `,
-        [JSON.stringify(traitFunctionList), args.limit, args.offset]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const smartContracts = result.rows.map(row => {
-        return parseQueryResultToSmartContract(row).result;
-      });
-      return { found: true, result: smartContracts };
+      }[]
+    >`
+      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      FROM smart_contracts
+      WHERE abi->'functions' @> ${JSON.stringify(traitFunctionList)}::jsonb
+        AND canonical = true AND microblock_canonical = true
+      ORDER BY block_height DESC
+      LIMIT ${args.limit} OFFSET ${args.offset}
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const smartContracts = result.map(row => {
+      return parseQueryResultToSmartContract(row).result;
     });
+    return { found: true, result: smartContracts };
   }
 
   async getStxBalance({
@@ -1967,8 +1717,8 @@ export class PgStore {
     stxAddress: string;
     includeUnanchored: boolean;
   }): Promise<DbStxBalance> {
-    return this.queryTx(async client => {
-      const blockQuery = await this.getCurrentBlockInternal(client);
+    return this.sql.begin(async sql => {
+      const blockQuery = await this.getCurrentBlockInternal(sql);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
       }
@@ -1977,7 +1727,7 @@ export class PgStore {
         blockHeight++;
       }
       const result = await this.internalGetStxBalanceAtBlock(
-        client,
+        sql,
         stxAddress,
         blockHeight,
         blockQuery.result.burn_block_height
@@ -1987,16 +1737,16 @@ export class PgStore {
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    return this.queryTx(async client => {
-      const chainTip = await this.getChainTip(client);
+    return this.sql.begin(async sql => {
+      const chainTip = await this.getChainTip(sql);
       const blockHeightToQuery =
         blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
-      const blockQuery = await this.getBlockByHeightInternal(client, blockHeightToQuery);
+      const blockQuery = await this.getBlockByHeightInternal(sql, blockHeightToQuery);
       if (!blockQuery.found) {
         throw new Error(`Could not find block at height: ${blockHeight}`);
       }
       const result = await this.internalGetStxBalanceAtBlock(
-        client,
+        sql,
         stxAddress,
         blockHeight,
         blockQuery.result.burn_block_height
@@ -2006,84 +1756,78 @@ export class PgStore {
   }
 
   async internalGetStxBalanceAtBlock(
-    client: ClientBase,
+    sql: PgSqlClient,
     stxAddress: string,
     blockHeight: number,
     burnBlockHeight: number
   ): Promise<DbStxBalance> {
-    const result = await client.query<{
-      credit_total: string | null;
-      debit_total: string | null;
-    }>(
-      `
+    const result = await sql<
+      {
+        credit_total: string | null;
+        debit_total: string | null;
+      }[]
+    >`
       WITH credit AS (
         SELECT sum(amount) as credit_total
         FROM stx_events
-        WHERE canonical = true AND microblock_canonical = true AND recipient = $1 AND block_height <= $2
+        WHERE canonical = true AND microblock_canonical = true AND recipient = ${stxAddress} AND block_height <= ${blockHeight}
       ),
       debit AS (
         SELECT sum(amount) as debit_total
         FROM stx_events
-        WHERE canonical = true AND microblock_canonical = true AND sender = $1 AND block_height <= $2
+        WHERE canonical = true AND microblock_canonical = true AND sender = ${stxAddress} AND block_height <= ${blockHeight}
       )
       SELECT credit_total, debit_total
       FROM credit CROSS JOIN debit
-      `,
-      [stxAddress, blockHeight]
-    );
-    const feeQuery = await client.query<{ fee_sum: string }>(
-      `
+    `;
+    const feeQuery = await sql<{ fee_sum: string }[]>`
       SELECT sum(fee_rate) as fee_sum
       FROM txs
-      WHERE canonical = true AND microblock_canonical = true AND ((sender_address = $1 AND sponsored = false) OR (sponsor_address = $1 AND sponsored= true)) AND block_height <= $2
-      `,
-      [stxAddress, blockHeight]
-    );
-    const lockQuery = await client.query<{
-      locked_amount: string;
-      unlock_height: string;
-      block_height: string;
-      tx_id: Buffer;
-    }>(
-      `
+      WHERE canonical = true AND microblock_canonical = true
+        AND ((sender_address = ${stxAddress} AND sponsored = false) OR (sponsor_address = ${stxAddress} AND sponsored = true))
+        AND block_height <= ${blockHeight}
+    `;
+    const lockQuery = await sql<
+      {
+        locked_amount: string;
+        unlock_height: string;
+        block_height: string;
+        tx_id: Buffer;
+      }[]
+    >`
       SELECT locked_amount, unlock_height, block_height, tx_id
       FROM stx_lock_events
-      WHERE canonical = true AND microblock_canonical = true AND locked_address = $1
-      AND block_height <= $2 AND unlock_height > $3
-      `,
-      [stxAddress, blockHeight, burnBlockHeight]
-    );
+      WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
+      AND block_height <= ${blockHeight} AND unlock_height > ${burnBlockHeight}
+    `;
     let lockTxId: string = '';
     let locked: bigint = 0n;
     let lockHeight = 0;
     let burnchainLockHeight = 0;
     let burnchainUnlockHeight = 0;
-    if (lockQuery.rowCount > 1) {
+    if (lockQuery.length > 1) {
       throw new Error(
-        `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.rowCount}`
+        `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
       );
-    } else if (lockQuery.rowCount === 1) {
-      lockTxId = bufferToHexPrefixString(lockQuery.rows[0].tx_id);
-      locked = BigInt(lockQuery.rows[0].locked_amount);
-      burnchainUnlockHeight = parseInt(lockQuery.rows[0].unlock_height);
-      lockHeight = parseInt(lockQuery.rows[0].block_height);
-      const blockQuery = await this.getBlockByHeightInternal(client, lockHeight);
+    } else if (lockQuery.length === 1) {
+      lockTxId = bufferToHexPrefixString(lockQuery[0].tx_id);
+      locked = BigInt(lockQuery[0].locked_amount);
+      burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
+      lockHeight = parseInt(lockQuery[0].block_height);
+      const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
       burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
     }
-    const minerRewardQuery = await client.query<{ amount: string }>(
-      `
+    const minerRewardQuery = await sql<{ amount: string }[]>`
       SELECT sum(
         coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
       ) amount
       FROM miner_rewards
-      WHERE canonical = true AND recipient = $1 AND mature_block_height <= $2
-      `,
-      [stxAddress, blockHeight]
-    );
-    const totalRewards = BigInt(minerRewardQuery.rows[0]?.amount ?? 0);
-    const totalFees = BigInt(feeQuery.rows[0]?.fee_sum ?? 0);
-    const totalSent = BigInt(result.rows[0]?.debit_total ?? 0);
-    const totalReceived = BigInt(result.rows[0]?.credit_total ?? 0);
+      WHERE canonical = true AND recipient = ${stxAddress} AND mature_block_height <= ${blockHeight}
+    `;
+    const totalRewards = BigInt(minerRewardQuery[0]?.amount ?? 0);
+    const totalFees = BigInt(feeQuery[0]?.fee_sum ?? 0);
+    const totalSent = BigInt(result[0]?.debit_total ?? 0);
+    const totalReceived = BigInt(result[0]?.credit_total ?? 0);
     const balance = totalReceived - totalSent - totalFees + totalRewards;
     return {
       balance,
@@ -2106,45 +1850,43 @@ export class PgStore {
         }
       | { includeUnanchored: boolean }
   ) {
-    return this.queryTx(async client => {
+    return this.sql.begin(async sql => {
       let atBlockHeight: number;
       let atMatureBlockHeight: number;
       if ('blockHeight' in args) {
         atBlockHeight = args.blockHeight;
         atMatureBlockHeight = args.blockHeight;
       } else {
-        atBlockHeight = await this.getMaxBlockHeight(client, {
+        atBlockHeight = await this.getMaxBlockHeight(sql, {
           includeUnanchored: args.includeUnanchored,
         });
         atMatureBlockHeight = args.includeUnanchored ? atBlockHeight - 1 : atBlockHeight;
       }
-      const result = await client.query<{ amount: string }>(
-        `
-        SELECT SUM(amount) amount FROM (
+      const result = await sql<{ amount: string }[]>`
+        SELECT SUM(amount) amount
+        FROM (
             SELECT SUM(amount) amount
             FROM stx_events
             WHERE canonical = true AND microblock_canonical = true
             AND asset_event_type_id = 2 -- mint events
-            AND block_height <= $1
+            AND block_height <= ${atBlockHeight}
           UNION ALL
             SELECT (SUM(amount) * -1) amount
             FROM stx_events
             WHERE canonical = true AND microblock_canonical = true
             AND asset_event_type_id = 3 -- burn events
-            AND block_height <= $1
+            AND block_height <= ${atBlockHeight}
           UNION ALL
             SELECT SUM(coinbase_amount) amount
             FROM miner_rewards
             WHERE canonical = true
-            AND mature_block_height <= $2
+            AND mature_block_height <= ${atMatureBlockHeight}
         ) totals
-        `,
-        [atBlockHeight, atMatureBlockHeight]
-      );
-      if (result.rows.length < 1) {
+      `;
+      if (result.length < 1) {
         throw new Error(`No rows returned from total supply query`);
       }
-      return { stx: BigInt(result.rows[0].amount), blockHeight: atBlockHeight };
+      return { stx: BigInt(result[0].amount), blockHeight: atBlockHeight };
     });
   }
 
@@ -2159,224 +1901,209 @@ export class PgStore {
     offset: number;
     blockHeight: number;
   }): Promise<{ results: DbEvent[]; total: number }> {
-    return this.queryTx(async client => {
-      const results = await client.query<
-        {
-          asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
-          event_index: number;
-          tx_id: Buffer;
-          tx_index: number;
-          block_height: number;
-          canonical: boolean;
-          asset_event_type_id: number;
-          sender?: string;
-          recipient?: string;
-          asset_identifier: string;
-          amount?: string;
-          unlock_height?: string;
-          value?: Buffer;
-        } & { count: number }
-      >(
-        `
-        SELECT *, ${countOverColumn()}
-        FROM(
-          SELECT
-            'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
-            locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
-          FROM stx_lock_events
-          WHERE canonical = true AND microblock_canonical = true AND locked_address = $1 AND block_height <= $4
-          UNION ALL
-          SELECT
-            'stx' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-            sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
-          FROM stx_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
-          UNION ALL
-          SELECT
-            'ft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-            sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
-          FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
-          UNION ALL
-          SELECT
-            'nft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-            sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1) AND block_height <= $4
-        ) asset_events
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT $2
-        OFFSET $3
-        `,
-        [stxAddress, limit, offset, blockHeight]
-      );
+    const results = await this.sql<
+      ({
+        asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
+        event_index: number;
+        tx_id: Buffer;
+        tx_index: number;
+        block_height: number;
+        canonical: boolean;
+        asset_event_type_id: number;
+        sender?: string;
+        recipient?: string;
+        asset_identifier: string;
+        amount?: string;
+        unlock_height?: string;
+        value?: Buffer;
+      } & { count: number })[]
+    >`
+      SELECT *, ${countOverColumn()}
+      FROM(
+        SELECT
+          'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
+          locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
+        FROM stx_lock_events
+        WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress} AND block_height <= ${blockHeight}
+        UNION ALL
+        SELECT
+          'stx' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
+          sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
+        FROM stx_events
+        WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
+        UNION ALL
+        SELECT
+          'ft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
+          sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
+        FROM ft_events
+        WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
+        UNION ALL
+        SELECT
+          'nft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
+          sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
+        FROM nft_events
+        WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
+      ) asset_events
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
 
-      const events: DbEvent[] = results.rows.map(row => {
-        if (row.asset_type === 'stx_lock') {
-          const event: DbStxLockEvent = {
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-            locked_address: unwrapOptional(row.sender),
-            locked_amount: BigInt(assertNotNullish(row.amount)),
-            unlock_height: Number(assertNotNullish(row.unlock_height)),
-            event_type: DbEventTypeId.StxLock,
-          };
-          return event;
-        } else if (row.asset_type === 'stx') {
-          const event: DbStxEvent = {
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-            asset_event_type_id: row.asset_event_type_id,
-            sender: row.sender,
-            recipient: row.recipient,
-            event_type: DbEventTypeId.StxAsset,
-            amount: BigInt(row.amount ?? 0),
-          };
-          return event;
-        } else if (row.asset_type === 'ft') {
-          const event: DbFtEvent = {
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-            asset_event_type_id: row.asset_event_type_id,
-            sender: row.sender,
-            recipient: row.recipient,
-            asset_identifier: row.asset_identifier,
-            event_type: DbEventTypeId.FungibleTokenAsset,
-            amount: BigInt(row.amount ?? 0),
-          };
-          return event;
-        } else if (row.asset_type === 'nft') {
-          const event: DbNftEvent = {
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-            asset_event_type_id: row.asset_event_type_id,
-            sender: row.sender,
-            recipient: row.recipient,
-            asset_identifier: row.asset_identifier,
-            event_type: DbEventTypeId.NonFungibleTokenAsset,
-            value: row.value as Buffer,
-          };
-          return event;
-        } else {
-          throw new Error(`Unexpected asset_type "${row.asset_type}"`);
-        }
-      });
-      const count = results.rowCount > 0 ? results.rows[0].count : 0;
-      return {
-        results: events,
-        total: count,
-      };
+    const events: DbEvent[] = results.map(row => {
+      if (row.asset_type === 'stx_lock') {
+        const event: DbStxLockEvent = {
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+          locked_address: unwrapOptional(row.sender),
+          locked_amount: BigInt(assertNotNullish(row.amount)),
+          unlock_height: Number(assertNotNullish(row.unlock_height)),
+          event_type: DbEventTypeId.StxLock,
+        };
+        return event;
+      } else if (row.asset_type === 'stx') {
+        const event: DbStxEvent = {
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+          asset_event_type_id: row.asset_event_type_id,
+          sender: row.sender,
+          recipient: row.recipient,
+          event_type: DbEventTypeId.StxAsset,
+          amount: BigInt(row.amount ?? 0),
+        };
+        return event;
+      } else if (row.asset_type === 'ft') {
+        const event: DbFtEvent = {
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+          asset_event_type_id: row.asset_event_type_id,
+          sender: row.sender,
+          recipient: row.recipient,
+          asset_identifier: row.asset_identifier,
+          event_type: DbEventTypeId.FungibleTokenAsset,
+          amount: BigInt(row.amount ?? 0),
+        };
+        return event;
+      } else if (row.asset_type === 'nft') {
+        const event: DbNftEvent = {
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+          asset_event_type_id: row.asset_event_type_id,
+          sender: row.sender,
+          recipient: row.recipient,
+          asset_identifier: row.asset_identifier,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          value: row.value as Buffer,
+        };
+        return event;
+      } else {
+        throw new Error(`Unexpected asset_type "${row.asset_type}"`);
+      }
     });
+    const count = results.length > 0 ? results[0].count : 0;
+    return {
+      results: events,
+      total: count,
+    };
   }
 
   async getFungibleTokenBalances(args: {
     stxAddress: string;
     untilBlock: number;
   }): Promise<Map<string, DbFtBalance>> {
-    return this.queryTx(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         asset_identifier: string;
         credit_total: string | null;
         debit_total: string | null;
-      }>(
-        `
-        WITH transfers AS (
-          SELECT amount, sender, recipient, asset_identifier
-          FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true
-          AND (sender = $1 OR recipient = $1)
-          AND block_height <= $2
-        ), credit AS (
-          SELECT asset_identifier, sum(amount) as credit_total
-          FROM transfers
-          WHERE recipient = $1
-          GROUP BY asset_identifier
-        ), debit AS (
-          SELECT asset_identifier, sum(amount) as debit_total
-          FROM transfers
-          WHERE sender = $1
-          GROUP BY asset_identifier
-        )
-        SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
-        FROM credit FULL JOIN debit USING (asset_identifier)
-        `,
-        [args.stxAddress, args.untilBlock]
-      );
-      // sort by asset name (case-insensitive)
-      const rows = result.rows.sort((r1, r2) =>
-        r1.asset_identifier.localeCompare(r2.asset_identifier)
-      );
-      const assetBalances = new Map<string, DbFtBalance>(
-        rows.map(r => {
-          const totalSent = BigInt(r.debit_total ?? 0);
-          const totalReceived = BigInt(r.credit_total ?? 0);
-          const balance = totalReceived - totalSent;
-          return [r.asset_identifier, { balance, totalSent, totalReceived }];
-        })
-      );
-      return assetBalances;
-    });
+      }[]
+    >`
+      WITH transfers AS (
+        SELECT amount, sender, recipient, asset_identifier
+        FROM ft_events
+        WHERE canonical = true AND microblock_canonical = true
+        AND (sender = ${args.stxAddress} OR recipient = ${args.stxAddress})
+        AND block_height <= ${args.untilBlock}
+      ), credit AS (
+        SELECT asset_identifier, sum(amount) as credit_total
+        FROM transfers
+        WHERE recipient = ${args.stxAddress}
+        GROUP BY asset_identifier
+      ), debit AS (
+        SELECT asset_identifier, sum(amount) as debit_total
+        FROM transfers
+        WHERE sender = ${args.stxAddress}
+        GROUP BY asset_identifier
+      )
+      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, credit_total, debit_total
+      FROM credit FULL JOIN debit USING (asset_identifier)
+    `;
+    // sort by asset name (case-insensitive)
+    const rows = result.sort((r1, r2) => r1.asset_identifier.localeCompare(r2.asset_identifier));
+    const assetBalances = new Map<string, DbFtBalance>(
+      rows.map(r => {
+        const totalSent = BigInt(r.debit_total ?? 0);
+        const totalReceived = BigInt(r.credit_total ?? 0);
+        const balance = totalReceived - totalSent;
+        return [r.asset_identifier, { balance, totalSent, totalReceived }];
+      })
+    );
+    return assetBalances;
   }
 
   async getNonFungibleTokenCounts(args: {
     stxAddress: string;
     untilBlock: number;
   }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>> {
-    return this.queryTx(async client => {
-      const result = await client.query<{
+    const result = await this.sql<
+      {
         asset_identifier: string;
         received_total: string | null;
         sent_total: string | null;
-      }>(
-        `
-        WITH transfers AS (
-          SELECT sender, recipient, asset_identifier
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true
-          AND (sender = $1 OR recipient = $1)
-          AND block_height <= $2
-        ), credit AS (
-          SELECT asset_identifier, COUNT(*) as received_total
-          FROM transfers
-          WHERE recipient = $1
-          GROUP BY asset_identifier
-        ), debit AS (
-          SELECT asset_identifier, COUNT(*) as sent_total
-          FROM transfers
-          WHERE sender = $1
-          GROUP BY asset_identifier
-        )
-        SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
-        FROM credit FULL JOIN debit USING (asset_identifier)
-        `,
-        [args.stxAddress, args.untilBlock]
-      );
-      // sort by asset name (case-insensitive)
-      const rows = result.rows.sort((r1, r2) =>
-        r1.asset_identifier.localeCompare(r2.asset_identifier)
-      );
-      const assetBalances = new Map(
-        rows.map(r => {
-          const totalSent = BigInt(r.sent_total ?? 0);
-          const totalReceived = BigInt(r.received_total ?? 0);
-          const count = totalReceived - totalSent;
-          return [r.asset_identifier, { count, totalSent, totalReceived }];
-        })
-      );
-      return assetBalances;
-    });
+      }[]
+    >`
+      WITH transfers AS (
+        SELECT sender, recipient, asset_identifier
+        FROM nft_events
+        WHERE canonical = true AND microblock_canonical = true
+        AND (sender = ${args.stxAddress} OR recipient = ${args.stxAddress})
+        AND block_height <= ${args.untilBlock}
+      ), credit AS (
+        SELECT asset_identifier, COUNT(*) as received_total
+        FROM transfers
+        WHERE recipient = ${args.stxAddress}
+        GROUP BY asset_identifier
+      ), debit AS (
+        SELECT asset_identifier, COUNT(*) as sent_total
+        FROM transfers
+        WHERE sender = ${args.stxAddress}
+        GROUP BY asset_identifier
+      )
+      SELECT coalesce(credit.asset_identifier, debit.asset_identifier) as asset_identifier, received_total, sent_total
+      FROM credit FULL JOIN debit USING (asset_identifier)
+    `;
+    // sort by asset name (case-insensitive)
+    const rows = result.sort((r1, r2) => r1.asset_identifier.localeCompare(r2.asset_identifier));
+    const assetBalances = new Map(
+      rows.map(r => {
+        const totalSent = BigInt(r.sent_total ?? 0);
+        const totalReceived = BigInt(r.received_total ?? 0);
+        const count = totalReceived - totalSent;
+        return [r.asset_identifier, { count, totalSent, totalReceived }];
+      })
+    );
+    return assetBalances;
   }
 
   async getAddressTxs(args: {
@@ -2386,31 +2113,28 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    return this.queryTx(async client => {
-      const blockCond = args.atSingleBlock ? 'block_height = $4' : 'block_height <= $4';
-      const resultQuery = await client.query<ContractTxQueryResult & { count: number }>(
-        // Query the `principal_stx_txs` table first to get the results page we want and then
-        // join against `txs` to get the full transaction objects only for that page.
-        `
-        WITH stx_txs AS (
-          SELECT tx_id, index_block_hash, microblock_hash, ${countOverColumn()}
-          FROM principal_stx_txs
-          WHERE principal = $1 AND ${blockCond}
+    const blockCond = args.atSingleBlock
+      ? this.sql`block_height = ${args.blockHeight}`
+      : this.sql`block_height <= ${args.blockHeight}`;
+    // Query the `principal_stx_txs` table first to get the results page we want and then
+    // join against `txs` to get the full transaction objects only for that page.
+    const resultQuery = await this.sql<(ContractTxQueryResult & { count: number })[]>`
+      WITH stx_txs AS (
+        SELECT tx_id, index_block_hash, microblock_hash, ${countOverColumn()}
+        FROM principal_stx_txs
+        WHERE principal = ${args.stxAddress} AND ${blockCond}
           AND canonical = TRUE AND microblock_canonical = TRUE
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT $2
-          OFFSET $3
-        )
-        SELECT ${txColumns()}, ${abiColumn()}, count
-        FROM stx_txs
-        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
-        `,
-        [args.stxAddress, args.limit, args.offset, args.blockHeight]
-      );
-      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
-      const parsed = resultQuery.rows.map(r => parseTxQueryResult(r));
-      return { results: parsed, total: count };
-    });
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT ${args.limit}
+        OFFSET ${args.offset}
+      )
+      SELECT ${txColumns()}, ${abiColumn()}, count
+      FROM stx_txs
+      INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+    `;
+    const count = resultQuery.length > 0 ? resultQuery[0].count : 0;
+    const parsed = resultQuery.map(r => parseTxQueryResult(r));
+    return { results: parsed, total: count };
   }
 
   async getInformationTxsWithStxTransfers({
@@ -2420,36 +2144,37 @@ export class PgStore {
     stxAddress: string;
     tx_id: string;
   }): Promise<DbTxWithAssetTransfers> {
-    return this.query(async client => {
-      const queryParams: (string | Buffer)[] = [stxAddress, hexToBuffer(tx_id)];
-      const resultQuery = await client.query<
-        ContractTxQueryResult & {
-          count: number;
-          event_index?: number;
-          event_type?: number;
-          event_amount?: string;
-          event_sender?: string;
-          event_recipient?: string;
-        }
-      >(
-        `
+    const resultQuery = await this.sql<
+      (ContractTxQueryResult & {
+        count: number;
+        event_index?: number;
+        event_type?: number;
+        event_amount?: string;
+        event_sender?: string;
+        event_recipient?: string;
+      })[]
+    >`
       WITH transactions AS (
         WITH principal_txs AS (
           WITH event_txs AS (
-            SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
+            SELECT tx_id FROM stx_events
+            WHERE stx_events.sender = ${stxAddress} OR stx_events.recipient = ${stxAddress}
           )
           SELECT *
           FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND txs.tx_id = $2 AND (
-            sender_address = $1 OR
-            token_transfer_recipient_address = $1 OR
-            contract_call_contract_id = $1 OR
-            smart_contract_contract_id = $1
-          )
+          WHERE canonical = true AND microblock_canonical = true
+            AND txs.tx_id = ${hexToBuffer(tx_id)}
+            AND (
+              sender_address = ${stxAddress} OR
+              token_transfer_recipient_address = ${stxAddress} OR
+              contract_call_contract_id = ${stxAddress} OR
+              smart_contract_contract_id = ${stxAddress}
+            )
           UNION
           SELECT txs.* FROM txs
           INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
-          WHERE txs.canonical = true AND txs.microblock_canonical = true AND txs.tx_id = $2
+          WHERE txs.canonical = true AND txs.microblock_canonical = true
+            AND txs.tx_id = ${hexToBuffer(tx_id)}
         )
         SELECT ${TX_COLUMNS}, ${countOverColumn()}
         FROM principal_txs
@@ -2457,7 +2182,8 @@ export class PgStore {
       ), events AS (
         SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
         FROM stx_events
-        WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
+        WHERE canonical = true AND microblock_canonical = true
+          AND (sender = ${stxAddress} OR recipient = ${stxAddress})
       )
       SELECT
         transactions.*,
@@ -2468,16 +2194,13 @@ export class PgStore {
         events.recipient as event_recipient,
         ${abiColumn('transactions')}
       FROM transactions
-      LEFT JOIN events ON transactions.tx_id = events.tx_id AND transactions.tx_id = $2
+      LEFT JOIN events ON transactions.tx_id = events.tx_id
+      AND transactions.tx_id = ${hexToBuffer(tx_id)}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      `,
-        queryParams
-      );
-
-      const txs = this.parseTxsWithAssetTransfers(resultQuery, stxAddress);
-      const txTransfers = [...txs.values()];
-      return txTransfers[0];
-    });
+    `;
+    const txs = parseTxsWithAssetTransfers(resultQuery, stxAddress);
+    const txTransfers = [...txs.values()];
+    return txTransfers[0];
   }
 
   async getAddressTxsWithAssetTransfers(args: {
@@ -2487,202 +2210,107 @@ export class PgStore {
     limit?: number;
     offset?: number;
   }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }> {
-    return this.queryTx(async client => {
-      const queryParams: (string | number)[] = [args.stxAddress];
-
-      if (args.atSingleBlock) {
-        queryParams.push(args.blockHeight);
-      } else {
-        queryParams.push(args.limit ?? 20);
-        queryParams.push(args.offset ?? 0);
-        queryParams.push(args.blockHeight);
-      }
-      // Use a JOIN to include stx_events associated with the address's txs
-      const resultQuery = await client.query<
-        ContractTxQueryResult & {
-          count: number;
-          event_index?: number;
-          event_type?: number;
-          event_amount?: string;
-          event_sender?: string;
-          event_recipient?: string;
-          event_asset_identifier?: string;
-          event_value?: Buffer;
-        }
-      >(
-        `
-        WITH transactions AS (
-          WITH principal_txs AS (
-            WITH event_txs AS (
-              SELECT tx_id FROM stx_events WHERE stx_events.sender = $1 OR stx_events.recipient = $1
-              UNION
-              SELECT tx_id FROM ft_events WHERE ft_events.sender = $1 OR ft_events.recipient = $1
-              UNION
-              SELECT tx_id FROM nft_events WHERE nft_events.sender = $1 OR nft_events.recipient = $1
-            )
-            SELECT * FROM txs
-            WHERE canonical = true AND microblock_canonical = true AND (
-              sender_address = $1 OR
-              token_transfer_recipient_address = $1 OR
-              contract_call_contract_id = $1 OR
-              smart_contract_contract_id = $1
-            )
-            UNION
-            SELECT txs.* FROM txs
-            INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
-            WHERE canonical = true AND microblock_canonical = true
-          )
-          SELECT ${TX_COLUMNS}, ${countOverColumn()}
-          FROM principal_txs
-          ${args.atSingleBlock ? 'WHERE block_height = $2' : 'WHERE block_height <= $4'}
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          ${!args.atSingleBlock ? 'LIMIT $2 OFFSET $3' : ''}
-        ), events AS (
-          SELECT
-            tx_id, sender, recipient, event_index, amount,
-            ${DbEventTypeId.StxAsset} as event_type_id,
-            NULL as asset_identifier, '0'::bytea as value
-          FROM stx_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-          UNION
-          SELECT
-            tx_id, sender, recipient, event_index, amount,
-            ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
-            asset_identifier, '0'::bytea as value
-          FROM ft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-          UNION
-          SELECT
-            tx_id, sender, recipient, event_index, 0 as amount,
-            ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
-            asset_identifier, value
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true AND (sender = $1 OR recipient = $1)
-        )
-        SELECT
-          transactions.*,
-          ${abiColumn('transactions')},
-          events.event_index as event_index,
-          events.event_type_id as event_type,
-          events.amount as event_amount,
-          events.sender as event_sender,
-          events.recipient as event_recipient,
-          events.asset_identifier as event_asset_identifier,
-          events.value as event_value
-        FROM transactions
-        LEFT JOIN events ON transactions.tx_id = events.tx_id
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        `,
-        queryParams
-      );
-
-      // TODO: should mining rewards be added?
-
-      const txs = this.parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
-      const txTransfers = [...txs.values()];
-      txTransfers.sort((a, b) => {
-        return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
-      });
-      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
-      return { results: txTransfers, total: count };
-    });
-  }
-
-  parseTxsWithAssetTransfers(
-    resultQuery: QueryResult<
-      TxQueryResult & {
+    const resultQuery = await this.sql<
+      (ContractTxQueryResult & {
         count: number;
-        event_index?: number | undefined;
-        event_type?: number | undefined;
-        event_amount?: string | undefined;
-        event_sender?: string | undefined;
-        event_recipient?: string | undefined;
-        event_asset_identifier?: string | undefined;
-        event_value?: Buffer | undefined;
-      }
-    >,
-    stxAddress: string
-  ) {
-    const txs = new Map<
-      string,
-      {
-        tx: DbTx;
-        stx_sent: bigint;
-        stx_received: bigint;
-        stx_transfers: {
-          amount: bigint;
-          sender?: string;
-          recipient?: string;
-        }[];
-        ft_transfers: {
-          asset_identifier: string;
-          amount: bigint;
-          sender?: string;
-          recipient?: string;
-        }[];
-        nft_transfers: {
-          asset_identifier: string;
-          value: Buffer;
-          sender?: string;
-          recipient?: string;
-        }[];
-      }
-    >();
-    for (const r of resultQuery.rows) {
-      const txId = bufferToHexPrefixString(r.tx_id);
-      let txResult = txs.get(txId);
-      if (!txResult) {
-        txResult = {
-          tx: parseTxQueryResult(r),
-          stx_sent: 0n,
-          stx_received: 0n,
-          stx_transfers: [],
-          ft_transfers: [],
-          nft_transfers: [],
-        };
-        if (txResult.tx.sender_address === stxAddress) {
-          txResult.stx_sent += txResult.tx.fee_rate;
+        event_index?: number;
+        event_type?: number;
+        event_amount?: string;
+        event_sender?: string;
+        event_recipient?: string;
+        event_asset_identifier?: string;
+        event_value?: Buffer;
+      })[]
+    >`
+      WITH transactions AS (
+        WITH principal_txs AS (
+          WITH event_txs AS (
+            SELECT tx_id FROM stx_events
+            WHERE stx_events.sender = ${args.stxAddress}
+              OR stx_events.recipient = ${args.stxAddress}
+            UNION
+            SELECT tx_id FROM ft_events
+            WHERE ft_events.sender = ${args.stxAddress}
+              OR ft_events.recipient = ${args.stxAddress}
+            UNION
+            SELECT tx_id FROM nft_events
+            WHERE nft_events.sender = ${args.stxAddress}
+              OR nft_events.recipient = ${args.stxAddress}
+          )
+          SELECT * FROM txs
+          WHERE canonical = true AND microblock_canonical = true AND (
+            sender_address = ${args.stxAddress} OR
+            token_transfer_recipient_address = ${args.stxAddress} OR
+            contract_call_contract_id = ${args.stxAddress} OR
+            smart_contract_contract_id = ${args.stxAddress}
+          )
+          UNION
+          SELECT txs.* FROM txs
+          INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
+          WHERE canonical = true AND microblock_canonical = true
+        )
+        SELECT ${TX_COLUMNS}, ${countOverColumn()}
+        FROM principal_txs
+        ${
+          args.atSingleBlock
+            ? this.sql`WHERE block_height = ${args.blockHeight}`
+            : this.sql`WHERE block_height <= ${args.blockHeight}`
         }
-        txs.set(txId, txResult);
-      }
-      if (r.event_index !== undefined && r.event_index !== null) {
-        const eventAmount = BigInt(r.event_amount as string);
-        switch (r.event_type) {
-          case DbEventTypeId.StxAsset:
-            txResult.stx_transfers.push({
-              amount: eventAmount,
-              sender: r.event_sender,
-              recipient: r.event_recipient,
-            });
-            if (r.event_sender === stxAddress) {
-              txResult.stx_sent += eventAmount;
-            }
-            if (r.event_recipient === stxAddress) {
-              txResult.stx_received += eventAmount;
-            }
-            break;
-
-          case DbEventTypeId.FungibleTokenAsset:
-            txResult.ft_transfers.push({
-              asset_identifier: r.event_asset_identifier as string,
-              amount: eventAmount,
-              sender: r.event_sender,
-              recipient: r.event_recipient,
-            });
-            break;
-
-          case DbEventTypeId.NonFungibleTokenAsset:
-            txResult.nft_transfers.push({
-              asset_identifier: r.event_asset_identifier as string,
-              value: r.event_value as Buffer,
-              sender: r.event_sender,
-              recipient: r.event_recipient,
-            });
-            break;
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        ${
+          !args.atSingleBlock
+            ? this.sql`LIMIT ${args.limit ?? 20} OFFSET ${args.offset ?? 0}`
+            : this.sql``
         }
-      }
-    }
-    return txs;
+      ), events AS (
+        SELECT
+          tx_id, sender, recipient, event_index, amount,
+          ${DbEventTypeId.StxAsset} as event_type_id,
+          NULL as asset_identifier, '0'::bytea as value
+        FROM stx_events
+        WHERE canonical = true AND microblock_canonical = true
+          AND (sender = ${args.stxAddress} OR recipient = ${args.stxAddress})
+        UNION
+        SELECT
+          tx_id, sender, recipient, event_index, amount,
+          ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+          asset_identifier, '0'::bytea as value
+        FROM ft_events
+        WHERE canonical = true AND microblock_canonical = true
+          AND (sender = ${args.stxAddress} OR recipient = ${args.stxAddress})
+        UNION
+        SELECT
+          tx_id, sender, recipient, event_index, 0 as amount,
+          ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+          asset_identifier, value
+        FROM nft_events
+        WHERE canonical = true AND microblock_canonical = true
+          AND (sender = ${args.stxAddress} OR recipient = ${args.stxAddress})
+      )
+      SELECT
+        transactions.*,
+        ${abiColumn('transactions')},
+        events.event_index as event_index,
+        events.event_type_id as event_type,
+        events.amount as event_amount,
+        events.sender as event_sender,
+        events.recipient as event_recipient,
+        events.asset_identifier as event_asset_identifier,
+        events.value as event_value
+      FROM transactions
+      LEFT JOIN events ON transactions.tx_id = events.tx_id
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+    `;
+
+    // TODO: should mining rewards be added?
+
+    const txs = parseTxsWithAssetTransfers(resultQuery, args.stxAddress);
+    const txTransfers = [...txs.values()];
+    txTransfers.sort((a, b) => {
+      return b.tx.block_height - a.tx.block_height || b.tx.tx_index - a.tx.tx_index;
+    });
+    const count = resultQuery.length > 0 ? resultQuery[0].count : 0;
+    return { results: txTransfers, total: count };
   }
 
   async getInboundTransfers(args: {
@@ -2693,133 +2321,120 @@ export class PgStore {
     offset: number;
     sendManyContractId: string;
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
-    return this.queryTx(async client => {
-      let whereClause: string;
-      if (args.atSingleBlock) {
-        whereClause = 'WHERE block_height = $5';
-      } else {
-        whereClause = 'WHERE block_height <= $5';
+    const resultQuery = await this.sql<(TransferQueryResult & { count: number })[]>`
+      SELECT
+        *, ${countOverColumn()}
+      FROM
+        (
+          SELECT
+            stx_events.amount AS amount,
+            contract_logs.value AS memo,
+            stx_events.sender AS sender,
+            stx_events.block_height AS block_height,
+            stx_events.tx_id,
+            stx_events.microblock_sequence,
+            stx_events.tx_index,
+            'bulk-send' as transfer_type
+          FROM
+            contract_logs,
+            stx_events
+          WHERE
+            contract_logs.contract_identifier = ${args.sendManyContractId}
+            AND contract_logs.tx_id = stx_events.tx_id
+            AND stx_events.recipient = ${args.stxAddress}
+            AND contract_logs.event_index = (stx_events.event_index + 1)
+            AND stx_events.canonical = true AND stx_events.microblock_canonical = true
+            AND contract_logs.canonical = true AND contract_logs.microblock_canonical = true
+          UNION ALL
+          SELECT
+            token_transfer_amount AS amount,
+            token_transfer_memo AS memo,
+            sender_address AS sender,
+            block_height,
+            tx_id,
+            microblock_sequence,
+            tx_index,
+            'stx-transfer' as transfer_type
+          FROM
+            txs
+          WHERE
+            canonical = true AND microblock_canonical = true
+            AND type_id = 0
+            AND token_transfer_recipient_address = ${args.stxAddress}
+        ) transfers
+      ${
+        args.atSingleBlock
+          ? this.sql`WHERE block_height = ${args.blockHeight}`
+          : this.sql`WHERE block_height <= ${args.blockHeight}`
       }
-      const resultQuery = await client.query<TransferQueryResult & { count: number }>(
-        `
-        SELECT
-          *, ${countOverColumn()}
-        FROM
-          (
-            SELECT
-              stx_events.amount AS amount,
-              contract_logs.value AS memo,
-              stx_events.sender AS sender,
-              stx_events.block_height AS block_height,
-              stx_events.tx_id,
-              stx_events.microblock_sequence,
-              stx_events.tx_index,
-              'bulk-send' as transfer_type
-            FROM
-              contract_logs,
-              stx_events
-            WHERE
-              contract_logs.contract_identifier = $2
-              AND contract_logs.tx_id = stx_events.tx_id
-              AND stx_events.recipient = $1
-              AND contract_logs.event_index = (stx_events.event_index + 1)
-              AND stx_events.canonical = true AND stx_events.microblock_canonical = true
-              AND contract_logs.canonical = true AND contract_logs.microblock_canonical = true
-            UNION ALL
-            SELECT
-              token_transfer_amount AS amount,
-              token_transfer_memo AS memo,
-              sender_address AS sender,
-              block_height,
-              tx_id,
-              microblock_sequence,
-              tx_index,
-              'stx-transfer' as transfer_type
-            FROM
-              txs
-            WHERE
-              canonical = true AND microblock_canonical = true
-              AND type_id = 0
-              AND token_transfer_recipient_address = $1
-          ) transfers
-        ${whereClause}
-        ORDER BY
-          block_height DESC,
-          microblock_sequence DESC,
-          tx_index DESC
-        LIMIT $3
-        OFFSET $4
-        `,
-        [args.stxAddress, args.sendManyContractId, args.limit, args.offset, args.blockHeight]
-      );
-      const count = resultQuery.rowCount > 0 ? resultQuery.rows[0].count : 0;
-      const parsed: DbInboundStxTransfer[] = resultQuery.rows.map(r => {
-        return {
-          sender: r.sender,
-          memo: bufferToHexPrefixString(r.memo),
-          amount: BigInt(r.amount),
-          tx_id: bufferToHexPrefixString(r.tx_id),
-          tx_index: r.tx_index,
-          block_height: r.block_height,
-          transfer_type: r.transfer_type,
-        };
-      });
+      ORDER BY
+        block_height DESC,
+        microblock_sequence DESC,
+        tx_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset}
+    `;
+    const count = resultQuery.length > 0 ? resultQuery[0].count : 0;
+    const parsed: DbInboundStxTransfer[] = resultQuery.map(r => {
       return {
-        results: parsed,
-        total: count,
+        sender: r.sender,
+        memo: bufferToHexPrefixString(r.memo),
+        amount: BigInt(r.amount),
+        tx_id: bufferToHexPrefixString(r.tx_id),
+        tx_index: r.tx_index,
+        block_height: r.block_height,
+        transfer_type: r.transfer_type,
       };
     });
+    return {
+      results: parsed,
+      total: count,
+    };
   }
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
-    return this.query(async client => {
-      const txQuery = await client.query<ContractTxQueryResult>(
-        `SELECT ${TX_COLUMNS}, ${abiColumn()} FROM txs WHERE tx_id = $1 LIMIT 1`,
-        [hexToBuffer(hash)]
-      );
-      if (txQuery.rowCount > 0) {
-        const txResult = parseTxQueryResult(txQuery.rows[0]);
+    return this.sql.begin(async sql => {
+      const hashBuffer = hexToBuffer(hash);
+      const txQuery = await sql<ContractTxQueryResult[]>`
+        SELECT ${TX_COLUMNS}, ${abiColumn()} FROM txs WHERE tx_id = ${hashBuffer} LIMIT 1
+      `;
+      if (txQuery.length > 0) {
+        const txResult = parseTxQueryResult(txQuery[0]);
         return {
           found: true,
           result: {
             entity_type: 'tx_id',
-            entity_id: bufferToHexPrefixString(txQuery.rows[0].tx_id),
+            entity_id: bufferToHexPrefixString(txQuery[0].tx_id),
             entity_data: txResult,
           },
         };
       }
-
-      const txMempoolQuery = await client.query<MempoolTxQueryResult>(
-        `
+      const txMempoolQuery = await sql<MempoolTxQueryResult[]>`
         SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
-        FROM mempool_txs WHERE pruned = false AND tx_id = $1 LIMIT 1
-        `,
-        [hexToBuffer(hash)]
-      );
-      if (txMempoolQuery.rowCount > 0) {
-        const txResult = parseMempoolTxQueryResult(txMempoolQuery.rows[0]);
+        FROM mempool_txs WHERE pruned = false AND tx_id = ${hashBuffer} LIMIT 1
+      `;
+      if (txMempoolQuery.length > 0) {
+        const txResult = parseMempoolTxQueryResult(txMempoolQuery[0]);
         return {
           found: true,
           result: {
             entity_type: 'mempool_tx_id',
-            entity_id: bufferToHexPrefixString(txMempoolQuery.rows[0].tx_id),
+            entity_id: bufferToHexPrefixString(txMempoolQuery[0].tx_id),
             entity_data: txResult,
           },
         };
       }
-
-      const blockQueryResult = await client.query<BlockQueryResult>(
-        `SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = $1 LIMIT 1`,
-        [hexToBuffer(hash)]
-      );
-      if (blockQueryResult.rowCount > 0) {
-        const blockResult = parseBlockQueryResult(blockQueryResult.rows[0]);
+      const blockQueryResult = await sql<BlockQueryResult[]>`
+        SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = ${hashBuffer} LIMIT 1
+      `;
+      if (blockQueryResult.length > 0) {
+        const blockResult = parseBlockQueryResult(blockQueryResult[0]);
         return {
           found: true,
           result: {
             entity_type: 'block_hash',
-            entity_id: bufferToHexPrefixString(blockQueryResult.rows[0].block_hash),
+            entity_id: bufferToHexPrefixString(blockQueryResult[0].block_hash),
             entity_data: blockResult,
           },
         };
@@ -2838,17 +2453,14 @@ export class PgStore {
         entity_id: principal,
       },
     } as const;
-    return await this.query(async client => {
+    return await this.sql.begin(async sql => {
       if (isContract) {
-        const contractMempoolTxResult = await client.query<MempoolTxQueryResult>(
-          `
+        const contractMempoolTxResult = await sql<MempoolTxQueryResult[]>`
           SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
-          FROM mempool_txs WHERE pruned = false AND smart_contract_contract_id = $1 LIMIT 1
-          `,
-          [principal]
-        );
-        if (contractMempoolTxResult.rowCount > 0) {
-          const txResult = parseMempoolTxQueryResult(contractMempoolTxResult.rows[0]);
+          FROM mempool_txs WHERE pruned = false AND smart_contract_contract_id = ${principal} LIMIT 1
+        `;
+        if (contractMempoolTxResult.length > 0) {
+          const txResult = parseMempoolTxQueryResult(contractMempoolTxResult[0]);
           return {
             found: true,
             result: {
@@ -2858,18 +2470,15 @@ export class PgStore {
             },
           };
         }
-        const contractTxResult = await client.query<ContractTxQueryResult>(
-          `
+        const contractTxResult = await sql<ContractTxQueryResult[]>`
           SELECT ${TX_COLUMNS}, ${abiColumn()}
           FROM txs
-          WHERE smart_contract_contract_id = $1
+          WHERE smart_contract_contract_id = ${principal}
           ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
           LIMIT 1
-          `,
-          [principal]
-        );
-        if (contractTxResult.rowCount > 0) {
-          const txResult = parseTxQueryResult(contractTxResult.rows[0]);
+        `;
+        if (contractTxResult.length > 0) {
+          const txResult = parseTxQueryResult(contractTxResult[0]);
           return {
             found: true,
             result: {
@@ -2881,150 +2490,96 @@ export class PgStore {
         }
         return { found: false } as const;
       }
-
-      const addressQueryResult = await client.query(
-        `
+      const addressQueryResult = await sql`
         SELECT sender_address, token_transfer_recipient_address
         FROM txs
-        WHERE sender_address = $1 OR token_transfer_recipient_address = $1
+        WHERE sender_address = ${principal} OR token_transfer_recipient_address = ${principal}
         LIMIT 1
-        `,
-        [principal]
-      );
-      if (addressQueryResult.rowCount > 0) {
+      `;
+      if (addressQueryResult.length > 0) {
         return successResponse;
       }
-
-      const stxQueryResult = await client.query(
-        `
+      const stxQueryResult = await sql`
         SELECT sender, recipient
         FROM stx_events
-        WHERE sender = $1 OR recipient = $1
+        WHERE sender = ${principal} OR recipient = ${principal}
         LIMIT 1
-        `,
-        [principal]
-      );
-      if (stxQueryResult.rowCount > 0) {
+      `;
+      if (stxQueryResult.length > 0) {
         return successResponse;
       }
-
-      const ftQueryResult = await client.query(
-        `
+      const ftQueryResult = await sql`
         SELECT sender, recipient
         FROM ft_events
-        WHERE sender = $1 OR recipient = $1
+        WHERE sender = ${principal} OR recipient = ${principal}
         LIMIT 1
-        `,
-        [principal]
-      );
-      if (ftQueryResult.rowCount > 0) {
+      `;
+      if (ftQueryResult.length > 0) {
         return successResponse;
       }
-
-      const nftQueryResult = await client.query(
-        `
+      const nftQueryResult = await sql`
         SELECT sender, recipient
         FROM nft_events
-        WHERE sender = $1 OR recipient = $1
+        WHERE sender = ${principal} OR recipient = ${principal}
         LIMIT 1
-        `,
-        [principal]
-      );
-      if (nftQueryResult.rowCount > 0) {
+      `;
+      if (nftQueryResult.length > 0) {
         return successResponse;
       }
-
       return { found: false };
     });
   }
 
-  async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
-    await this.query(async client => {
-      try {
-        await client.query(
-          `
-          INSERT INTO faucet_requests(
-            currency, address, ip, occurred_at
-          ) values($1, $2, $3, $4)
-          `,
-          [
-            faucetRequest.currency,
-            faucetRequest.address,
-            faucetRequest.ip,
-            faucetRequest.occurred_at,
-          ]
-        );
-      } catch (error) {
-        logError(`Error performing faucet request update: ${error}`, error);
-        throw error;
-      }
-    });
-  }
-
   async getBTCFaucetRequests(address: string) {
-    return this.query(async client => {
-      const queryResult = await client.query<FaucetRequestQueryResult>(
-        `
-        SELECT ip, address, currency, occurred_at
-        FROM faucet_requests
-        WHERE address = $1 AND currency = 'btc'
-        ORDER BY occurred_at DESC
-        LIMIT 5
-        `,
-        [address]
-      );
-      const results = queryResult.rows.map(r => parseFaucetRequestQueryResult(r));
-      return { results };
-    });
+    const queryResult = await this.sql<FaucetRequestQueryResult[]>`
+      SELECT ip, address, currency, occurred_at
+      FROM faucet_requests
+      WHERE address = ${address} AND currency = 'btc'
+      ORDER BY occurred_at DESC
+      LIMIT 5
+    `;
+    const results = queryResult.map(r => parseFaucetRequestQueryResult(r));
+    return { results };
   }
 
   async getSTXFaucetRequests(address: string) {
-    return await this.query(async client => {
-      const queryResult = await client.query<FaucetRequestQueryResult>(
-        `
-        SELECT ip, address, currency, occurred_at
-        FROM faucet_requests
-        WHERE address = $1 AND currency = 'stx'
-        ORDER BY occurred_at DESC
-        LIMIT 5
-        `,
-        [address]
-      );
-      const results = queryResult.rows.map(r => parseFaucetRequestQueryResult(r));
-      return { results };
-    });
+    const queryResult = await this.sql<FaucetRequestQueryResult[]>`
+      SELECT ip, address, currency, occurred_at
+      FROM faucet_requests
+      WHERE address = ${address} AND currency = 'stx'
+      ORDER BY occurred_at DESC
+      LIMIT 5
+    `;
+    const results = queryResult.map(r => parseFaucetRequestQueryResult(r));
+    return { results };
   }
 
   async getRawTx(txId: string) {
-    return this.query(async client => {
-      const result = await client.query<RawTxQueryResult>(
-        // Note the extra "limit 1" statements are only query hints
-        `
-        (
-          SELECT raw_tx
-          FROM txs
-          WHERE tx_id = $1
-          LIMIT 1
-        )
-        UNION ALL
-        (
-          SELECT raw_tx
-          FROM mempool_txs
-          WHERE tx_id = $1
-          LIMIT 1
-        )
+    // Note the extra "limit 1" statements are only query hints
+    const bufTxId = hexToBuffer(txId);
+    const result = await this.sql<RawTxQueryResult[]>`
+      (
+        SELECT raw_tx
+        FROM txs
+        WHERE tx_id = ${bufTxId}
         LIMIT 1
-        `,
-        [hexToBuffer(txId)]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const queryResult: RawTxQueryResult = {
-        raw_tx: result.rows[0].raw_tx,
-      };
-      return { found: true, result: queryResult };
-    });
+      )
+      UNION ALL
+      (
+        SELECT raw_tx
+        FROM mempool_txs
+        WHERE tx_id = ${bufTxId}
+        LIMIT 1
+      )
+      LIMIT 1
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    const queryResult: RawTxQueryResult = {
+      raw_tx: result[0].raw_tx,
+    };
+    return { found: true, result: queryResult };
   }
 
   /**
@@ -3040,47 +2595,50 @@ export class PgStore {
     includeUnanchored: boolean;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
-      const queryArgs: (string | string[] | number)[] = [args.principal, args.limit, args.offset];
-      if (args.assetIdentifiers) {
-        queryArgs.push(args.assetIdentifiers);
-      }
-      const nftCustody = args.includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
-      const assetIdFilter = args.assetIdentifiers ? 'AND nft.asset_identifier = ANY ($4)' : '';
-      const nftTxResults = await client.query<
-        NftHoldingInfo & ContractTxQueryResult & { count: number }
-      >(
-        `
-        WITH nft AS (
-          SELECT *, ${countOverColumn()}
-          FROM ${nftCustody} AS nft
-          WHERE nft.recipient = $1
-          ${assetIdFilter}
-          LIMIT $2
-          OFFSET $3
-        )
-        ` +
-          (args.includeTxMetadata
-            ? `SELECT nft.asset_identifier, nft.value, ${txColumns()}, ${abiColumn()}, nft.count
+    const queryArgs: (string | string[] | number)[] = [args.principal, args.limit, args.offset];
+    if (args.assetIdentifiers) {
+      queryArgs.push(args.assetIdentifiers);
+    }
+    const nftCustody = args.includeUnanchored
+      ? this.sql`nft_custody_unanchored`
+      : this.sql`nft_custody`;
+    const assetIdFilter = args.assetIdentifiers
+      ? this.sql`AND nft.asset_identifier = ANY (${this.sql(args.assetIdentifiers)})`
+      : this.sql``;
+    const nftTxResults = await this.sql<
+      (NftHoldingInfo & ContractTxQueryResult & { count: number })[]
+    >`
+      WITH nft AS (
+        SELECT *, ${countOverColumn()}
+        FROM ${nftCustody} AS nft
+        WHERE nft.recipient = ${args.principal}
+        ${assetIdFilter}
+        LIMIT $2
+        OFFSET $3
+      )
+      ${
+        args.includeTxMetadata
+          ? this.sql`
+            SELECT nft.asset_identifier, nft.value, ${txColumns()}, ${abiColumn()}, nft.count
             FROM nft
             INNER JOIN txs USING (tx_id)
-            WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE`
-            : `SELECT * FROM nft`),
-        queryArgs
-      );
-      return {
-        results: nftTxResults.rows.map(row => ({
-          nft_holding_info: {
-            asset_identifier: row.asset_identifier,
-            value: row.value,
-            recipient: row.recipient,
-            tx_id: row.tx_id,
-          },
-          tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
-        })),
-        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
-      };
-    });
+            WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+            `
+          : this.sql`SELECT * FROM nft`
+      }
+    `;
+    return {
+      results: nftTxResults.map(row => ({
+        nft_holding_info: {
+          asset_identifier: row.asset_identifier,
+          value: row.value,
+          recipient: row.recipient,
+          tx_id: row.tx_id,
+        },
+        tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
+      })),
+      total: nftTxResults.length > 0 ? nftTxResults[0].count : 0,
+    };
   }
 
   /**
@@ -3095,125 +2653,98 @@ export class PgStore {
     blockHeight: number;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
-      const queryArgs: (string | number | Buffer)[] = [
-        args.assetIdentifier,
-        hexToBuffer(args.value),
-        args.blockHeight,
-        args.limit,
-        args.offset,
-      ];
-      const columns = args.includeTxMetadata
-        ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-           ${txColumns()}, ${abiColumn()}`
-        : `nft.*`;
-      const nftTxResults = await client.query<
-        DbNftEvent & ContractTxQueryResult & { count: number }
-      >(
-        `
-        SELECT ${columns}, ${countOverColumn()}
-        FROM nft_events AS nft
-        INNER JOIN txs USING (tx_id)
-        WHERE asset_identifier = $1 AND nft.value = $2
-          AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
-          AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
-          AND nft.block_height <= $3
-        ORDER BY
-          nft.block_height DESC,
-          txs.microblock_sequence DESC,
-          txs.tx_index DESC,
-          nft.event_index DESC
-        LIMIT $4
-        OFFSET $5
-        `,
-        queryArgs
-      );
-      return {
-        results: nftTxResults.rows.map(row => ({
-          nft_event: {
-            event_type: DbEventTypeId.NonFungibleTokenAsset,
-            value: row.value,
-            asset_identifier: row.asset_identifier,
-            asset_event_type_id: row.asset_event_type_id,
-            sender: row.sender,
-            recipient: row.recipient,
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-          },
-          tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
-        })),
-        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
-      };
-    });
+    const columns = args.includeTxMetadata
+      ? this.sql`asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+          ${txColumns()}, ${abiColumn()}`
+      : this.sql`nft.*`;
+    const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
+      SELECT ${columns}, ${countOverColumn()}
+      FROM nft_events AS nft
+      INNER JOIN txs USING (tx_id)
+      WHERE asset_identifier = ${args.assetIdentifier} AND nft.value = ${hexToBuffer(args.value)}
+        AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+        AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
+        AND nft.block_height <= ${args.blockHeight}
+      ORDER BY
+        nft.block_height DESC,
+        txs.microblock_sequence DESC,
+        txs.tx_index DESC,
+        nft.event_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset}
+    `;
+    return {
+      results: nftTxResults.map(row => ({
+        nft_event: {
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          value: row.value,
+          asset_identifier: row.asset_identifier,
+          asset_event_type_id: row.asset_event_type_id,
+          sender: row.sender,
+          recipient: row.recipient,
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+        },
+        tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
+      })),
+      total: nftTxResults.length > 0 ? nftTxResults[0].count : 0,
+    };
   }
 
   /**
    * Returns all NFT mint events for a particular asset identifier.
    * @param args - Query arguments
    */
-  getNftMints(args: {
+  async getNftMints(args: {
     assetIdentifier: string;
     limit: number;
     offset: number;
     blockHeight: number;
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
-    return this.queryTx(async client => {
-      const queryArgs: (string | number)[] = [
-        args.assetIdentifier,
-        args.blockHeight,
-        args.limit,
-        args.offset,
-      ];
-      const columns = args.includeTxMetadata
-        ? `asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-           ${txColumns()}, ${abiColumn()}`
-        : `nft.*`;
-      const nftTxResults = await client.query<
-        DbNftEvent & ContractTxQueryResult & { count: number }
-      >(
-        `
-        SELECT ${columns}, ${countOverColumn()}
-        FROM nft_events AS nft
-        INNER JOIN txs USING (tx_id)
-        WHERE nft.asset_identifier = $1
-          AND nft.asset_event_type_id = ${DbAssetEventTypeId.Mint}
-          AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
-          AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
-          AND nft.block_height <= $2
-        ORDER BY
-          nft.block_height DESC,
-          txs.microblock_sequence DESC,
-          txs.tx_index DESC,
-          nft.event_index DESC
-        LIMIT $3
-        OFFSET $4
-        `,
-        queryArgs
-      );
-      return {
-        results: nftTxResults.rows.map(row => ({
-          nft_event: {
-            event_type: DbEventTypeId.NonFungibleTokenAsset,
-            value: row.value,
-            asset_identifier: row.asset_identifier,
-            asset_event_type_id: row.asset_event_type_id,
-            sender: row.sender,
-            recipient: row.recipient,
-            event_index: row.event_index,
-            tx_id: bufferToHexPrefixString(row.tx_id),
-            tx_index: row.tx_index,
-            block_height: row.block_height,
-            canonical: row.canonical,
-          },
-          tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
-        })),
-        total: nftTxResults.rows.length > 0 ? nftTxResults.rows[0].count : 0,
-      };
-    });
+    const columns = args.includeTxMetadata
+      ? this.sql`asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+          ${txColumns()}, ${abiColumn()}`
+      : this.sql`nft.*`;
+    const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
+      SELECT ${columns}, ${countOverColumn()}
+      FROM nft_events AS nft
+      INNER JOIN txs USING (tx_id)
+      WHERE nft.asset_identifier = ${args.assetIdentifier}
+        AND nft.asset_event_type_id = ${DbAssetEventTypeId.Mint}
+        AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
+        AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
+        AND nft.block_height <= ${args.blockHeight}
+      ORDER BY
+        nft.block_height DESC,
+        txs.microblock_sequence DESC,
+        txs.tx_index DESC,
+        nft.event_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset}
+    `;
+    return {
+      results: nftTxResults.map(row => ({
+        nft_event: {
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          value: row.value,
+          asset_identifier: row.asset_identifier,
+          asset_event_type_id: row.asset_event_type_id,
+          sender: row.sender,
+          recipient: row.recipient,
+          event_index: row.event_index,
+          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_index: row.tx_index,
+          block_height: row.block_height,
+          canonical: row.canonical,
+        },
+        tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
+      })),
+      total: nftTxResults.length > 0 ? nftTxResults[0].count : 0,
+    };
   }
 
   /**
@@ -3226,46 +2757,41 @@ export class PgStore {
     blockHeight: number;
     includeUnanchored: boolean;
   }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
-    return this.queryTx(async client => {
-      const result = await client.query<AddressNftEventIdentifier & { count: number }>(
-        // Join against `nft_custody` materialized view only if we're looking for canonical results.
-        `
-        WITH address_transfers AS (
-          SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true
-          AND recipient = $1 AND block_height <= $4
-        ),
-        last_nft_transfers AS (
-          SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
-          FROM nft_events
-          WHERE canonical = true AND microblock_canonical = true
-          AND block_height <= $4
-          ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        )
-        SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, ${countOverColumn()}
-        FROM address_transfers
-        INNER JOIN ${args.includeUnanchored ? 'last_nft_transfers' : 'nft_custody'}
-          USING (asset_identifier, value, recipient)
-        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT $2 OFFSET $3
-        `,
-        [args.stxAddress, args.limit, args.offset, args.blockHeight]
-      );
+    // Join against `nft_custody` materialized view only if we're looking for canonical results.
+    const result = await this.sql<(AddressNftEventIdentifier & { count: number })[]>`
+      WITH address_transfers AS (
+        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
+        FROM nft_events
+        WHERE canonical = true AND microblock_canonical = true
+        AND recipient = ${args.stxAddress} AND block_height <= ${args.blockHeight}
+      ),
+      last_nft_transfers AS (
+        SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
+        FROM nft_events
+        WHERE canonical = true AND microblock_canonical = true
+        AND block_height <= ${args.blockHeight}
+        ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      )
+      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, ${countOverColumn()}
+      FROM address_transfers
+      INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
+        USING (asset_identifier, value, recipient)
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT ${args.limit} OFFSET ${args.offset}
+    `;
 
-      const count = result.rows.length > 0 ? result.rows[0].count : 0;
+    const count = result.length > 0 ? result[0].count : 0;
 
-      const nftEvents = result.rows.map(row => ({
-        sender: row.sender,
-        recipient: row.recipient,
-        asset_identifier: row.asset_identifier,
-        value: row.value,
-        block_height: row.block_height,
-        tx_id: row.tx_id,
-      }));
+    const nftEvents = result.map(row => ({
+      sender: row.sender,
+      recipient: row.recipient,
+      asset_identifier: row.asset_identifier,
+      value: row.value,
+      block_height: row.block_height,
+      tx_id: row.tx_id,
+    }));
 
-      return { results: nftEvents, total: count };
-    });
+    return { results: nftEvents, total: count };
   }
 
   async getTxListDetails({
@@ -3275,42 +2801,35 @@ export class PgStore {
     txIds: string[];
     includeUnanchored: boolean;
   }) {
-    return this.queryTx(async client => {
+    return this.sql.begin(async sql => {
       const values = txIds.map(id => hexToBuffer(id));
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const result = await client.query<ContractTxQueryResult>(
-        `
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const result = await sql<ContractTxQueryResult[]>`
         SELECT ${TX_COLUMNS}, ${abiColumn()}
         FROM txs
-        WHERE tx_id = ANY($1) AND block_height <= $2 AND canonical = true AND microblock_canonical = true
-        `,
-        [values, maxBlockHeight]
-      );
-      if (result.rowCount === 0) {
+        WHERE tx_id = ANY(${values}) AND block_height <= ${maxBlockHeight} AND canonical = true AND microblock_canonical = true
+      `;
+      if (result.length === 0) {
         return [];
       }
-      return result.rows.map(row => {
+      return result.map(row => {
         return parseTxQueryResult(row);
       });
     });
   }
 
   async getNamespaceList({ includeUnanchored }: { includeUnanchored: boolean }) {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ namespace_id: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ namespace_id: string }[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id
         FROM namespaces
         WHERE canonical = true AND microblock_canonical = true
-        AND ready_block <= $1
+        AND ready_block <= ${maxBlockHeight}
         ORDER BY namespace_id, ready_block DESC, tx_index DESC
-        `,
-        [maxBlockHeight]
-      );
+      `;
     });
-
-    const results = queryResult.rows.map(r => r.namespace_id);
+    const results = queryResult.map(r => r.namespace_id);
     return { results };
   }
 
@@ -3326,24 +2845,20 @@ export class PgStore {
     results: string[];
   }> {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ name: string }[]>`
         SELECT DISTINCT ON (name) name
         FROM names
-        WHERE namespace_id = $1
-        AND registered_at <= $3
+        WHERE namespace_id = ${namespace}
+        AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY name, registered_at DESC, tx_index DESC
         LIMIT 100
-        OFFSET $2
-        `,
-        [namespace, offset, maxBlockHeight]
-      );
+        OFFSET ${offset}
+      `;
     });
-
-    const results = queryResult.rows.map(r => r.name);
+    const results = queryResult.map(r => r.name);
     return { results };
   }
 
@@ -3354,28 +2869,25 @@ export class PgStore {
     namespace: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<(DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer })[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
-        WHERE namespace_id = $1
-        AND ready_block <= $2
+        WHERE namespace_id = ${namespace}
+        AND ready_block <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY namespace_id, ready_block DESC, tx_index DESC
         LIMIT 1
-        `,
-        [namespace, maxBlockHeight]
-      );
+      `;
     });
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
         result: {
-          ...queryResult.rows[0],
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
+          ...queryResult[0],
+          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
         },
       };
     }
@@ -3389,29 +2901,26 @@ export class PgStore {
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<(DbBnsName & { tx_id: Buffer; index_block_hash: Buffer })[]>`
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
         LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
-        WHERE name = $1
-        AND registered_at <= $2
+        WHERE name = ${name}
+        AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY name, registered_at DESC, tx_index DESC
         LIMIT 1
-        `,
-        [name, maxBlockHeight]
-      );
+      `;
     });
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
         result: {
-          ...queryResult.rows[0],
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
+          ...queryResult[0],
+          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
         },
       };
     }
@@ -3422,30 +2931,24 @@ export class PgStore {
     name: string;
     zoneFileHash: string;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.query(client => {
-      const validZonefileHash = validateZonefileHash(args.zoneFileHash);
-      return client.query<{ zonefile: string }>(
-        `
-        SELECT zonefile
-        FROM names
-        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
-        WHERE name = $1
-        AND names.zonefile_hash = $2
-        UNION ALL
-        SELECT zonefile
-        FROM subdomains
-        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
-        WHERE fully_qualified_subdomain = $1
-        AND subdomains.zonefile_hash = $2
-        `,
-        [args.name, validZonefileHash]
-      );
-    });
-
-    if (queryResult.rowCount > 0) {
+    const validZonefileHash = validateZonefileHash(args.zoneFileHash);
+    const queryResult = await this.sql<{ zonefile: string }[]>`
+      SELECT zonefile
+      FROM names
+      LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
+      WHERE name = ${args.name}
+      AND names.zonefile_hash = ${validZonefileHash}
+      UNION ALL
+      SELECT zonefile
+      FROM subdomains
+      LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
+      WHERE fully_qualified_subdomain = $1
+      AND subdomains.zonefile_hash = $2
+    `;
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.rows[0],
+        result: queryResult[0],
       };
     }
     return { found: false } as const;
@@ -3458,16 +2961,15 @@ export class PgStore {
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const zonefileHashResult = await client.query<{ name: string; zonefile: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const zonefileHashResult = await sql<{ name: string; zonefile: string }[]>`
         SELECT name, zonefile_hash as zonefile FROM (
           (
             SELECT DISTINCT ON (name) name, zonefile_hash
             FROM names
-            WHERE name = $1
-            AND registered_at <= $2
+            WHERE name = ${name}
+            AND registered_at <= ${maxBlockHeight}
             AND canonical = true AND microblock_canonical = true
             ORDER BY name, registered_at DESC, tx_index DESC
             LIMIT 1
@@ -3475,40 +2977,35 @@ export class PgStore {
           UNION ALL (
             SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile_hash
             FROM subdomains
-            WHERE fully_qualified_subdomain = $1
-            AND block_height <= $2
+            WHERE fully_qualified_subdomain = ${name}
+            AND block_height <= ${maxBlockHeight}
             AND canonical = true AND microblock_canonical = true
             ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
             LIMIT 1
           )
         ) results
         LIMIT 1
-        `,
-        [name, maxBlockHeight]
-      );
-      if (zonefileHashResult.rowCount === 0) {
+      `;
+      if (zonefileHashResult.length === 0) {
         return zonefileHashResult;
       }
-      const zonefileHash = zonefileHashResult.rows[0].zonefile;
-      const zonefileResult = await client.query<{ zonefile: string }>(
-        `
+      const zonefileHash = zonefileHashResult[0].zonefile;
+      const zonefileResult = await sql<{ zonefile: string }[]>`
         SELECT zonefile
         FROM zonefiles
-        WHERE zonefile_hash = $1
-      `,
-        [zonefileHash]
-      );
-      if (zonefileResult.rowCount === 0) {
+        WHERE zonefile_hash = ${zonefileHash}
+      `;
+      if (zonefileResult.length === 0) {
         return zonefileHashResult;
       }
-      zonefileHashResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      zonefileHashResult[0].zonefile = zonefileResult[0].zonefile;
       return zonefileHashResult;
     });
 
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.rows[0],
+        result: queryResult[0],
       };
     }
     return { found: false } as const;
@@ -3521,55 +3018,52 @@ export class PgStore {
     address: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const query = await client.query<{ name: string }>(
-        `
-      WITH address_names AS(
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const query = await sql<{ name: string }[]>`
+        WITH address_names AS(
+          (
+            SELECT name
+            FROM names
+            WHERE address = ${address}
+            AND registered_at <= ${maxBlockHeight}
+            AND canonical = true AND microblock_canonical = true
+          )
+          UNION ALL (
+            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
+            FROM subdomains
+            WHERE owner = ${address}
+            AND block_height <= ${maxBlockHeight}
+            AND canonical = true AND microblock_canonical = true
+          )),
+
+        latest_names AS(
         (
-          SELECT name
-          FROM names
-          WHERE address = $1
-          AND registered_at <= $2
+          SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
+          FROM names, address_names
+          WHERE address_names.name = names.name
           AND canonical = true AND microblock_canonical = true
+          ORDER BY names.name, registered_at DESC, tx_index DESC
         )
-        UNION ALL (
-          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
-          FROM subdomains
-          WHERE owner = $1
-          AND block_height <= $2
+        UNION ALL(
+          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
+          FROM subdomains, address_names
+          WHERE fully_qualified_subdomain = address_names.name
           AND canonical = true AND microblock_canonical = true
-        )),
+          ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        ))
 
-      latest_names AS(
-      (
-        SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
-        FROM names, address_names
-        WHERE address_names.name = names.name
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY names.name, registered_at DESC, tx_index DESC
-      )
-      UNION ALL(
-        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
-        FROM subdomains, address_names
-        WHERE fully_qualified_subdomain = address_names.name
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-      ))
-
-      SELECT name from latest_names
-      WHERE address = $1
-      ORDER BY name, block_height DESC, tx_index DESC
-        `,
-        [address, maxBlockHeight]
-      );
+        SELECT name from latest_names
+        WHERE address = ${address}
+        ORDER BY name, block_height DESC, tx_index DESC
+      `;
       return query;
     });
 
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.rows.map(r => r.name),
+        result: queryResult.map(r => r.name),
       };
     }
     return { found: false } as const;
@@ -3586,20 +3080,17 @@ export class PgStore {
     name: string;
     includeUnanchored: boolean;
   }): Promise<{ results: string[] }> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ fully_qualified_subdomain: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE name = $1 AND block_height <= $2
+        WHERE name = ${name} AND block_height <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
-        `,
-        [name, maxBlockHeight]
-      );
+      `;
     });
-    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    const results = queryResult.map(r => r.fully_qualified_subdomain);
     return { results };
   }
 
@@ -3611,44 +3102,37 @@ export class PgStore {
     includeUnanchored: boolean;
   }) {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ fully_qualified_subdomain: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE block_height <= $2
+        WHERE block_height <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
         LIMIT 100
-        OFFSET $1
-        `,
-        [offset, maxBlockHeight]
-      );
+        OFFSET ${offset}
+      `;
     });
-    const results = queryResult.rows.map(r => r.fully_qualified_subdomain);
+    const results = queryResult.map(r => r.fully_qualified_subdomain);
     return { results };
   }
 
   async getNamesList({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
     const offset = page * 100;
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<{ name: string }>(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      return await sql<{ name: string }[]>`
         SELECT DISTINCT ON (name) name
         FROM names
         WHERE canonical = true AND microblock_canonical = true
-        AND registered_at <= $2
+        AND registered_at <= ${maxBlockHeight}
         ORDER BY name, registered_at DESC, tx_index DESC
         LIMIT 100
-        OFFSET $1
-        `,
-        [offset, maxBlockHeight]
-      );
+        OFFSET ${offset}
+      `;
     });
-
-    const results = queryResult.rows.map(r => r.name);
+    const results = queryResult.map(r => r.name);
     return { results };
   }
 
@@ -3659,46 +3143,40 @@ export class PgStore {
     subdomain: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const subdomainResult = await client.query<
-        DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
-      >(
-        `
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const subdomainResult = await sql<
+        (DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer })[]
+      >`
         SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= $2
-        AND fully_qualified_subdomain = $1
+        AND block_height <= ${maxBlockHeight}
+        AND fully_qualified_subdomain = ${subdomain}
         ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-        `,
-        [subdomain, maxBlockHeight]
-      );
-      if (subdomainResult.rowCount === 0 || !subdomainResult.rows[0].zonefile_hash) {
+      `;
+      if (subdomainResult.length === 0 || !subdomainResult[0].zonefile_hash) {
         return subdomainResult;
       }
-      const zonefileHash = subdomainResult.rows[0].zonefile_hash;
-      const zonefileResult = await client.query(
-        `
+      const zonefileHash = subdomainResult[0].zonefile_hash;
+      const zonefileResult = await sql`
         SELECT zonefile
         FROM zonefiles
-        WHERE zonefile_hash = $1
-      `,
-        [zonefileHash]
-      );
-      if (zonefileResult.rowCount === 0) {
+        WHERE zonefile_hash = ${zonefileHash}
+      `;
+      if (zonefileResult.length === 0) {
         return subdomainResult;
       }
-      subdomainResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
+      subdomainResult[0].zonefile = zonefileResult[0].zonefile;
       return subdomainResult;
     });
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
         result: {
-          ...queryResult.rows[0],
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
+          ...queryResult[0],
+          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
         },
       };
     }
@@ -3706,125 +3184,109 @@ export class PgStore {
   }
 
   async getSubdomainResolver(args: { name: string }): Promise<FoundOrNot<string>> {
-    const queryResult = await this.query(client => {
-      return client.query<{ resolver: string }>(
-        `
-        SELECT DISTINCT ON (name) name, resolver
-        FROM subdomains
-        WHERE canonical = true AND microblock_canonical = true
-        AND name = $1
-        ORDER BY name, block_height DESC, tx_index DESC
-        LIMIT 1
-        `,
-        [args.name]
-      );
-    });
-    if (queryResult.rowCount > 0) {
+    const queryResult = await this.sql<{ resolver: string }[]>`
+      SELECT DISTINCT ON (name) name, resolver
+      FROM subdomains
+      WHERE canonical = true AND microblock_canonical = true
+      AND name = ${args.name}
+      ORDER BY name, block_height DESC, tx_index DESC
+      LIMIT 1
+    `;
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.rows[0].resolver,
+        result: queryResult[0].resolver,
       };
     }
     return { found: false } as const;
   }
 
   async getTokenOfferingLocked(address: string, blockHeight: number) {
-    return this.query(async client => {
-      const queryResult = await client.query<DbTokenOfferingLocked>(
-        `
-         SELECT block, value
-         FROM token_offering_locked
-         WHERE address = $1
-         ORDER BY block ASC
-       `,
-        [address]
-      );
-      if (queryResult.rowCount > 0) {
-        let totalLocked = 0n;
-        let totalUnlocked = 0n;
-        const unlockSchedules: AddressUnlockSchedule[] = [];
-        queryResult.rows.forEach(lockedInfo => {
-          const unlockSchedule: AddressUnlockSchedule = {
-            amount: lockedInfo.value.toString(),
-            block_height: lockedInfo.block,
-          };
-          unlockSchedules.push(unlockSchedule);
-          if (lockedInfo.block > blockHeight) {
-            totalLocked += BigInt(lockedInfo.value);
-          } else {
-            totalUnlocked += BigInt(lockedInfo.value);
-          }
-        });
+    const queryResult = await this.sql<DbTokenOfferingLocked[]>`
+      SELECT block, value
+      FROM token_offering_locked
+      WHERE address = ${address}
+      ORDER BY block ASC
+    `;
+    if (queryResult.length > 0) {
+      let totalLocked = 0n;
+      let totalUnlocked = 0n;
+      const unlockSchedules: AddressUnlockSchedule[] = [];
+      queryResult.forEach(lockedInfo => {
+        const unlockSchedule: AddressUnlockSchedule = {
+          amount: lockedInfo.value.toString(),
+          block_height: lockedInfo.block,
+        };
+        unlockSchedules.push(unlockSchedule);
+        if (lockedInfo.block > blockHeight) {
+          totalLocked += BigInt(lockedInfo.value);
+        } else {
+          totalUnlocked += BigInt(lockedInfo.value);
+        }
+      });
 
-        const tokenOfferingLocked: AddressTokenOfferingLocked = {
-          total_locked: totalLocked.toString(),
-          total_unlocked: totalUnlocked.toString(),
-          unlock_schedule: unlockSchedules,
-        };
-        return {
-          found: true,
-          result: tokenOfferingLocked,
-        };
-      } else {
-        return { found: false } as const;
-      }
-    });
+      const tokenOfferingLocked: AddressTokenOfferingLocked = {
+        total_locked: totalLocked.toString(),
+        total_unlocked: totalUnlocked.toString(),
+        unlock_schedule: unlockSchedules,
+      };
+      return {
+        found: true,
+        result: tokenOfferingLocked,
+      };
+    } else {
+      return { found: false } as const;
+    }
   }
 
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
-    return this.queryTx(async client => {
+    return this.sql.begin(async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
 
   async internalGetUnlockedAccountsAtHeight(
-    client: ClientBase,
+    sql: PgSqlClient,
     block: DbBlock
   ): Promise<StxUnlockEvent[]> {
     const current_burn_height = block.burn_block_height;
     let previous_burn_height = current_burn_height;
     if (block.block_height > 1) {
-      const previous_block = await this.getBlockByHeightInternal(client, block.block_height - 1);
+      const previous_block = await this.getBlockByHeightInternal(sql, block.block_height - 1);
       if (previous_block.found) {
         previous_burn_height = previous_block.result.burn_block_height;
       }
     }
 
-    const lockQuery = await client.query<{
-      locked_amount: string;
-      unlock_height: string;
-      locked_address: string;
-      tx_id: Buffer;
-    }>(
-      `
+    const lockQuery = await sql<
+      {
+        locked_amount: string;
+        unlock_height: string;
+        locked_address: string;
+        tx_id: Buffer;
+      }[]
+    >`
       SELECT locked_amount, unlock_height, locked_address
       FROM stx_lock_events
       WHERE microblock_canonical = true AND canonical = true
-      AND unlock_height <= $1 AND unlock_height > $2
-      `,
-      [current_burn_height, previous_burn_height]
-    );
+      AND unlock_height <= ${current_burn_height} AND unlock_height > ${previous_burn_height}
+    `;
 
-    const txIdQuery = await client.query<{
-      tx_id: Buffer;
-    }>(
-      `
+    const txIdQuery = await sql<{ tx_id: Buffer }[]>`
       SELECT tx_id
       FROM txs
       WHERE microblock_canonical = true AND canonical = true
-      AND block_height = $1 AND type_id = $2
+      AND block_height = ${block.block_height} AND type_id = ${DbTxTypeId.Coinbase}
       LIMIT 1
-      `,
-      [block.block_height, DbTxTypeId.Coinbase]
-    );
+    `;
 
     const result: StxUnlockEvent[] = [];
-    lockQuery.rows.forEach(row => {
+    lockQuery.forEach(row => {
       const unlockEvent: StxUnlockEvent = {
         unlock_height: row.unlock_height,
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
-        tx_id: bufferToHexPrefixString(txIdQuery.rows[0].tx_id),
+        tx_id: bufferToHexPrefixString(txIdQuery[0].tx_id),
       };
       result.push(unlockEvent);
     });
@@ -3833,86 +3295,71 @@ export class PgStore {
   }
 
   async getStxUnlockHeightAtTransaction(txId: string): Promise<FoundOrNot<number>> {
-    return this.queryTx(async client => {
-      const lockQuery = await client.query<{ unlock_height: number }>(
-        `
-        SELECT unlock_height
-        FROM stx_lock_events
-        WHERE canonical = true AND tx_id = $1
-        `,
-        [hexToBuffer(txId)]
-      );
-      if (lockQuery.rowCount > 0) {
-        return { found: true, result: lockQuery.rows[0].unlock_height };
-      }
-      return { found: false };
-    });
+    const lockQuery = await this.sql<{ unlock_height: number }[]>`
+      SELECT unlock_height
+      FROM stx_lock_events
+      WHERE canonical = true AND tx_id = ${hexToBuffer(txId)}
+    `;
+    if (lockQuery.length > 0) {
+      return { found: true, result: lockQuery[0].unlock_height };
+    }
+    return { found: false };
   }
 
   async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
-    return this.query(async client => {
-      const queryResult = await client.query<FungibleTokenMetadataQueryResult>(
-        `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
-         FROM ft_metadata
-         WHERE contract_id = $1
-         LIMIT 1
-       `,
-        [contractId]
-      );
-      if (queryResult.rowCount > 0) {
-        const metadata: DbFungibleTokenMetadata = {
-          token_uri: queryResult.rows[0].token_uri,
-          name: queryResult.rows[0].name,
-          description: queryResult.rows[0].description,
-          image_uri: queryResult.rows[0].image_uri,
-          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
-          symbol: queryResult.rows[0].symbol,
-          decimals: queryResult.rows[0].decimals,
-          contract_id: queryResult.rows[0].contract_id,
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          sender_address: queryResult.rows[0].sender_address,
-        };
-        return {
-          found: true,
-          result: metadata,
-        };
-      } else {
-        return { found: false } as const;
-      }
-    });
+    const queryResult = await this.sql<FungibleTokenMetadataQueryResult[]>`
+      SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
+      FROM ft_metadata
+      WHERE contract_id = ${contractId}
+      LIMIT 1
+    `;
+    if (queryResult.length > 0) {
+      const metadata: DbFungibleTokenMetadata = {
+        token_uri: queryResult[0].token_uri,
+        name: queryResult[0].name,
+        description: queryResult[0].description,
+        image_uri: queryResult[0].image_uri,
+        image_canonical_uri: queryResult[0].image_canonical_uri,
+        symbol: queryResult[0].symbol,
+        decimals: queryResult[0].decimals,
+        contract_id: queryResult[0].contract_id,
+        tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+        sender_address: queryResult[0].sender_address,
+      };
+      return {
+        found: true,
+        result: metadata,
+      };
+    } else {
+      return { found: false } as const;
+    }
   }
 
   async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
-    return this.query(async client => {
-      const queryResult = await client.query<NonFungibleTokenMetadataQueryResult>(
-        `
-         SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
-         FROM nft_metadata
-         WHERE contract_id = $1
-         LIMIT 1
-       `,
-        [contractId]
-      );
-      if (queryResult.rowCount > 0) {
-        const metadata: DbNonFungibleTokenMetadata = {
-          token_uri: queryResult.rows[0].token_uri,
-          name: queryResult.rows[0].name,
-          description: queryResult.rows[0].description,
-          image_uri: queryResult.rows[0].image_uri,
-          image_canonical_uri: queryResult.rows[0].image_canonical_uri,
-          contract_id: queryResult.rows[0].contract_id,
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          sender_address: queryResult.rows[0].sender_address,
-        };
-        return {
-          found: true,
-          result: metadata,
-        };
-      } else {
-        return { found: false } as const;
-      }
-    });
+    const queryResult = await this.sql<NonFungibleTokenMetadataQueryResult[]>`
+      SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
+      FROM nft_metadata
+      WHERE contract_id = ${contractId}
+      LIMIT 1
+    `;
+    if (queryResult.length > 0) {
+      const metadata: DbNonFungibleTokenMetadata = {
+        token_uri: queryResult[0].token_uri,
+        name: queryResult[0].name,
+        description: queryResult[0].description,
+        image_uri: queryResult[0].image_uri,
+        image_canonical_uri: queryResult[0].image_canonical_uri,
+        contract_id: queryResult[0].contract_id,
+        tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+        sender_address: queryResult[0].sender_address,
+      };
+      return {
+        found: true,
+        result: metadata,
+      };
+    } else {
+      return { found: false } as const;
+    }
   }
 
   getFtMetadataList({
@@ -3922,23 +3369,18 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    return this.queryTx(async client => {
-      const totalQuery = await client.query<{ count: number }>(
-        `
-          SELECT COUNT(*)::integer
-          FROM ft_metadata
-          `
-      );
-      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
-        `
-          SELECT *
-          FROM ft_metadata
-          LIMIT $1
-          OFFSET $2
-          `,
-        [limit, offset]
-      );
-      const parsed = resultQuery.rows.map(r => {
+    return this.sql.begin(async sql => {
+      const totalQuery = await sql<{ count: number }[]>`
+        SELECT COUNT(*)::integer
+        FROM ft_metadata
+      `;
+      const resultQuery = await sql<FungibleTokenMetadataQueryResult[]>`
+        SELECT *
+        FROM ft_metadata
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const parsed = resultQuery.map(r => {
         const metadata: DbFungibleTokenMetadata = {
           name: r.name,
           description: r.description,
@@ -3953,7 +3395,7 @@ export class PgStore {
         };
         return metadata;
       });
-      return { results: parsed, total: totalQuery.rows[0].count };
+      return { results: parsed, total: totalQuery[0].count };
     });
   }
 
@@ -3964,23 +3406,18 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    return this.queryTx(async client => {
-      const totalQuery = await client.query<{ count: number }>(
-        `
-          SELECT COUNT(*)::integer
-          FROM nft_metadata
-          `
-      );
-      const resultQuery = await client.query<FungibleTokenMetadataQueryResult>(
-        `
-          SELECT *
-          FROM nft_metadata
-          LIMIT $1
-          OFFSET $2
-          `,
-        [limit, offset]
-      );
-      const parsed = resultQuery.rows.map(r => {
+    return this.sql.begin(async sql => {
+      const totalQuery = await sql<{ count: number }[]>`
+        SELECT COUNT(*)::integer
+        FROM nft_metadata
+      `;
+      const resultQuery = await sql<FungibleTokenMetadataQueryResult[]>`
+        SELECT *
+        FROM nft_metadata
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const parsed = resultQuery.map(r => {
         const metadata: DbNonFungibleTokenMetadata = {
           name: r.name,
           description: r.description,
@@ -3993,7 +3430,7 @@ export class PgStore {
         };
         return metadata;
       });
-      return { results: parsed, total: totalQuery.rows[0].count };
+      return { results: parsed, total: totalQuery[0].count };
     });
   }
 }
