@@ -1,3 +1,4 @@
+import * as postgres from 'postgres';
 import * as fs from 'fs';
 import { Readable, Writable } from 'stream';
 import { ClientBase, Pool, QueryConfig } from 'pg';
@@ -41,12 +42,18 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
+  DbFaucetRequest,
+  DbAssetEventTypeId,
 } from './common';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BlockQueryResult,
   BLOCK_COLUMNS,
+  BnsSubdomainInsertValues,
+  BnsZonefileInsertValues,
+  SmartContractEventInsertValues,
+  StxEventInsertValues,
   MempoolTxQueryResult,
   MEMPOOL_TX_COLUMNS,
   MicroblockQueryResult,
@@ -55,6 +62,8 @@ import {
   parseMempoolTxQueryResult,
   parseMicroblockQueryResult,
   parseTxQueryResult,
+  PrincipalStxTxsInsertValues,
+  RewardSlotHolderInsertValues,
   TxQueryResult,
   TX_COLUMNS,
   TX_METADATA_TABLES,
@@ -63,7 +72,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { connectPgPool, getPgClientConfig, PgServer } from './connection';
+import { connectPostgres, getPostgresConfig, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 
 class MicroblockGapError extends Error {
@@ -84,11 +93,11 @@ export class PgWriteStore extends PgStore {
   private cachedParameterizedInsertStrings = new Map<string, string>();
 
   constructor(
-    pool: Pool,
+    sql: PgSqlClient,
     notifier: PgNotifier | undefined = undefined,
     isEventReplay: boolean = false
   ) {
-    super(pool, notifier);
+    super(sql, notifier);
     this.isEventReplay = isEventReplay;
   }
 
@@ -103,66 +112,66 @@ export class PgWriteStore extends PgStore {
     withNotifier?: boolean;
     isEventReplay?: boolean;
   }): Promise<PgWriteStore> {
-    const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.primary });
+    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.primary });
     if (!skipMigrations) {
       await runMigrations(
-        getPgClientConfig({
+        getPostgresConfig({
           usageName: `${usageName}:schema-migrations`,
           pgServer: PgServer.primary,
         })
       );
     }
     const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
-    const store = new PgWriteStore(pool, notifier, isEventReplay);
+    const store = new PgWriteStore(sql, notifier, isEventReplay);
     await store.connectPgNotifier();
     return store;
   }
 
   async getChainTip(
-    client: ClientBase
+    sql: PgSqlClient
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
     if (!this.isEventReplay) {
-      return super.getChainTip(client);
+      return super.getChainTip(sql);
     }
-    const currentTipBlock = await client.query<{
-      block_height: number;
-      block_hash: Buffer;
-      index_block_hash: Buffer;
-    }>(
-      // The `chain_tip` materialized view is not available during event replay.
-      // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
-      // a classic query.
-      `
+    // The `chain_tip` materialized view is not available during event replay.
+    // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
+    // a classic query.
+    const currentTipBlock = await sql<
+      {
+        block_height: number;
+        block_hash: Buffer;
+        index_block_hash: Buffer;
+      }[]
+    >`
       SELECT block_height, block_hash, index_block_hash
       FROM blocks
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
-      `
-    );
-    const height = currentTipBlock.rows[0]?.block_height ?? 0;
+    `;
+    const height = currentTipBlock[0]?.block_height ?? 0;
     return {
       blockHeight: height,
-      blockHash: bufferToHexPrefixString(currentTipBlock.rows[0]?.block_hash ?? Buffer.from([])),
+      blockHash: bufferToHexPrefixString(currentTipBlock[0]?.block_hash ?? Buffer.from([])),
       indexBlockHash: bufferToHexPrefixString(
-        currentTipBlock.rows[0]?.index_block_hash ?? Buffer.from([])
+        currentTipBlock[0]?.index_block_hash ?? Buffer.from([])
       ),
     };
   }
 
   private generateParameterizedInsertString({
     columnCount,
-    rowCount,
+    length,
   }: {
     columnCount: number;
-    rowCount: number;
+    length: number;
   }): string {
-    const cacheKey = `${columnCount}x${rowCount}`;
+    const cacheKey = `${columnCount}x${length}`;
     const existing = this.cachedParameterizedInsertStrings.get(cacheKey);
     if (existing !== undefined) {
       return existing;
     }
     const params: string[][] = [];
     let i = 1;
-    for (let r = 0; r < rowCount; r++) {
+    for (let r = 0; r < length; r++) {
       params[r] = Array<string>(columnCount);
       for (let c = 0; c < columnCount; c++) {
         params[r][c] = `\$${i++}`;
@@ -177,28 +186,26 @@ export class PgWriteStore extends PgStore {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.
-    const insertResult = await this.queryTx(async client => {
-      return await client.query<{
+    const insertResult = await this.sql<
+      {
         id: string;
         receive_timestamp: string;
         event_path: string;
         payload: string;
-      }>(
-        `INSERT INTO event_observer_requests(
-          event_path, payload
-        ) values($1, $2)
-        RETURNING id, receive_timestamp::text, event_path, payload::text`,
-        [eventPath, payload]
-      );
-    });
-    if (insertResult.rowCount !== 1) {
+      }[]
+    >`INSERT INTO event_observer_requests(
+        event_path, payload
+      ) values(${eventPath}, ${payload})
+      RETURNING id, receive_timestamp::text, event_path, payload::text
+    `;
+    if (insertResult.length !== 1) {
       throw new Error(
-        `Unexpected row count ${insertResult.rowCount} when storing event_observer_requests entry`
+        `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
       );
     }
     const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
     if (exportEventsFile) {
-      const result = insertResult.rows[0];
+      const result = insertResult[0];
       const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
       fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
     }
@@ -211,7 +218,7 @@ export class PgWriteStore extends PgStore {
       withNotifier: false,
     });
     try {
-      await pg.query(async client => {
+      await pg.sql.query(async client => {
         const copyQuery = pgCopyStreams.to(
           `
           COPY (SELECT id, receive_timestamp, event_path, payload FROM event_observer_requests ORDER BY id ASC)
@@ -268,10 +275,10 @@ export class PgWriteStore extends PgStore {
           FROM temp_raw_tsv
           ON CONFLICT DO NOTHING;
         `);
-        const totalRowCountQuery = await client.query<{ count: string }>(
+        const totallengthQuery = await client.query<{ count: string }>(
           `SELECT COUNT(id) count FROM temp_event_observer_requests`
         );
-        const totalRowCount = parseInt(totalRowCountQuery.rows[0].count);
+        const totallength = parseInt(totallengthQuery.rows[0].count);
         let lastStatusUpdatePercent = 0;
         onStatusUpdate?.('Streaming raw event requests from temporary table...');
         const cursor = new PgCursor<{ id: string; event_path: string; payload: string }>(
@@ -292,10 +299,10 @@ export class PgWriteStore extends PgStore {
                 reject(error);
               } else {
                 rowsReadCount += rows.length;
-                if ((rowsReadCount / totalRowCount) * 100 > lastStatusUpdatePercent + 1) {
-                  lastStatusUpdatePercent = Math.floor((rowsReadCount / totalRowCount) * 100);
+                if ((rowsReadCount / totallength) * 100 > lastStatusUpdatePercent + 1) {
+                  lastStatusUpdatePercent = Math.floor((rowsReadCount / totallength) * 100);
                   onStatusUpdate?.(
-                    `Raw event requests processed: ${lastStatusUpdatePercent}% (${rowsReadCount} / ${totalRowCount})`
+                    `Raw event requests processed: ${lastStatusUpdatePercent}% (${rowsReadCount} / ${totallength})`
                   );
                 }
                 resolve(rows);
@@ -328,7 +335,7 @@ export class PgWriteStore extends PgStore {
       return await pg.query(async client => {
         try {
           const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
-          return result.rowCount > 0;
+          return result.length > 0;
         } catch (error: any) {
           if (error.message?.includes('does not exist')) {
             return false;
@@ -343,9 +350,9 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
-    await this.queryTx(async client => {
-      const chainTip = await this.getChainTip(client);
-      await this.handleReorg(client, data.block, chainTip.blockHeight);
+    await this.sql.begin(async sql => {
+      const chainTip = await this.getChainTip(sql);
+      await this.handleReorg(sql, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
       if (!isCanonical) {
@@ -366,7 +373,7 @@ export class PgWriteStore extends PgStore {
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
         const candidateTxIds = data.txs.map(d => d.tx.tx_id);
-        const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
+        const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
           logger.verbose(
             `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during new block ingestion`
@@ -417,19 +424,16 @@ export class PgWriteStore extends PgStore {
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
       if (data.microblocks.length > 0) {
-        const existingMicroblocksQuery = await client.query<{ microblock_hash: Buffer }>(
-          `
+        const existingMicroblocksQuery = await sql<{ microblock_hash: Buffer }[]>`
           SELECT microblock_hash
           FROM microblocks
-          WHERE parent_index_block_hash = $1 AND microblock_hash = ANY($2)
-          `,
-          [
-            hexToBuffer(data.block.parent_index_block_hash),
-            data.microblocks.map(mb => hexToBuffer(mb.microblock_hash)),
-          ]
-        );
+          WHERE parent_index_block_hash = ${hexToBuffer(data.block.parent_index_block_hash)}
+            AND microblock_hash = ANY(${data.microblocks.map(mb =>
+              hexToBuffer(mb.microblock_hash)
+            )})
+        `;
         const existingMicroblockHashes = new Set(
-          existingMicroblocksQuery.rows.map(r => bufferToHexPrefixString(r.microblock_hash))
+          existingMicroblocksQuery.map(r => bufferToHexPrefixString(r.microblock_hash))
         );
 
         const missingMicroblocks = data.microblocks.filter(
@@ -440,7 +444,7 @@ export class PgWriteStore extends PgStore {
           const missingTxs = data.txs.filter(entry =>
             missingMicroblockHashes.has(entry.tx.microblock_hash)
           );
-          await this.insertMicroblockData(client, missingMicroblocks, missingTxs);
+          await this.insertMicroblockData(sql, missingMicroblocks, missingTxs);
 
           // Clear already inserted microblock txs from the anchor-block update data to avoid duplicate inserts.
           batchedTxData = batchedTxData.filter(entry => {
@@ -453,7 +457,7 @@ export class PgWriteStore extends PgStore {
       // which may be still considered canonical by the canonical block at this height.
       if (isCanonical) {
         const { acceptedMicroblockTxs, orphanedMicroblockTxs } = await this.updateMicroCanonical(
-          client,
+          sql,
           {
             isCanonical: isCanonical,
             blockHeight: data.block.block_height,
@@ -471,7 +475,7 @@ export class PgWriteStore extends PgStore {
           tx => !data.txs.find(r => tx.tx_id === r.tx.tx_id)
         );
         const restoredMempoolTxs = await this.restoreMempoolTxs(
-          client,
+          sql,
           orphanedAndMissingTxs.map(tx => tx.tx_id)
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
@@ -489,38 +493,38 @@ export class PgWriteStore extends PgStore {
 
       // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below
 
-      const blocksUpdated = await this.updateBlock(client, data.block);
+      const blocksUpdated = await this.updateBlock(sql, data.block);
       if (blocksUpdated !== 0) {
         for (const minerRewards of data.minerRewards) {
-          await this.updateMinerReward(client, minerRewards);
+          await this.updateMinerReward(sql, minerRewards);
         }
         for (const entry of batchedTxData) {
-          await this.updateTx(client, entry.tx);
-          await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
-          await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
-          await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
+          await this.updateTx(sql, entry.tx);
+          await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
+          await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+          await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
-            await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
+            await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
           }
           for (const ftEvent of entry.ftEvents) {
-            await this.updateFtEvent(client, entry.tx, ftEvent);
+            await this.updateFtEvent(sql, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
-            await this.updateNftEvent(client, entry.tx, nftEvent);
+            await this.updateNftEvent(sql, entry.tx, nftEvent);
           }
           for (const smartContract of entry.smartContracts) {
-            await this.updateSmartContract(client, entry.tx, smartContract);
+            await this.updateSmartContract(sql, entry.tx, smartContract);
           }
           for (const bnsName of entry.names) {
-            await this.updateNames(client, entry.tx, bnsName);
+            await this.updateNames(sql, entry.tx, bnsName);
           }
           for (const namespace of entry.namespaces) {
-            await this.updateNamespaces(client, entry.tx, namespace);
+            await this.updateNamespaces(sql, entry.tx, namespace);
           }
         }
-        await this.refreshNftCustody(client, batchedTxData);
-        await this.refreshMaterializedView(client, 'chain_tip');
-        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(client);
+        await this.refreshNftCustody(sql, batchedTxData);
+        await this.refreshMaterializedView(sql, 'chain_tip');
+        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(sql);
         if (deletedMempoolTxs.deletedTxs.length > 0) {
           logger.verbose(`Garbage collected ${deletedMempoolTxs.deletedTxs.length} mempool txs`);
         }
@@ -544,7 +548,7 @@ export class PgWriteStore extends PgStore {
           })
           .filter(entry => isProcessableTokenMetadata(entry.contractAbi));
         for (const pendingQueueEntry of tokenContractDeployments) {
-          const queueEntry = await this.updateTokenMetadataQueue(client, pendingQueueEntry);
+          const queueEntry = await this.updateTokenMetadataQueue(sql, pendingQueueEntry);
           tokenMetadataQueueEntries.push(queueEntry);
         }
       }
@@ -564,63 +568,57 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateMinerReward(client: ClientBase, minerReward: DbMinerReward): Promise<number> {
-    const result = await client.query(
-      `
+  async updateMinerReward(sql: PgSqlClient, minerReward: DbMinerReward): Promise<number> {
+    const result = await sql`
       INSERT INTO miner_rewards(
-        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `,
-      [
-        hexToBuffer(minerReward.block_hash),
-        hexToBuffer(minerReward.index_block_hash),
-        hexToBuffer(minerReward.from_index_block_hash),
-        minerReward.mature_block_height,
-        minerReward.canonical,
-        minerReward.recipient,
-        minerReward.coinbase_amount,
-        minerReward.tx_fees_anchored,
-        minerReward.tx_fees_streamed_confirmed,
-        minerReward.tx_fees_streamed_produced,
-      ]
-    );
-    return result.rowCount;
+        block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient,
+        coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
+      ) values (
+        ${hexToBuffer(minerReward.block_hash)},
+        ${hexToBuffer(minerReward.index_block_hash)},
+        ${hexToBuffer(minerReward.from_index_block_hash)},
+        ${minerReward.mature_block_height},
+        ${minerReward.canonical},
+        ${minerReward.recipient},
+        ${minerReward.coinbase_amount},
+        ${minerReward.tx_fees_anchored},
+        ${minerReward.tx_fees_streamed_confirmed},
+        ${minerReward.tx_fees_streamed_produced},
+      )
+    `;
+    return result.length;
   }
 
-  async updateBlock(client: ClientBase, block: DbBlock): Promise<number> {
-    const result = await client.query(
-      `
+  async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
+    const result = await sql`
       INSERT INTO blocks(
         block_hash, index_block_hash,
         parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
         block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
         execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
         execution_cost_write_count, execution_cost_write_length
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-      ON CONFLICT (index_block_hash)
-      DO NOTHING
-      `,
-      [
-        hexToBuffer(block.block_hash),
-        hexToBuffer(block.index_block_hash),
-        hexToBuffer(block.parent_index_block_hash),
-        hexToBuffer(block.parent_block_hash),
-        hexToBuffer(block.parent_microblock_hash),
-        block.parent_microblock_sequence,
-        block.block_height,
-        block.burn_block_time,
-        hexToBuffer(block.burn_block_hash),
-        block.burn_block_height,
-        hexToBuffer(block.miner_txid),
-        block.canonical,
-        block.execution_cost_read_count,
-        block.execution_cost_read_length,
-        block.execution_cost_runtime,
-        block.execution_cost_write_count,
-        block.execution_cost_write_length,
-      ]
-    );
-    return result.rowCount;
+      ) values(
+        ${hexToBuffer(block.block_hash)},
+        ${hexToBuffer(block.index_block_hash)},
+        ${hexToBuffer(block.parent_index_block_hash)},
+        ${hexToBuffer(block.parent_block_hash)},
+        ${hexToBuffer(block.parent_microblock_hash)},
+        ${block.parent_microblock_sequence},
+        ${block.block_height},
+        ${block.burn_block_time},
+        ${hexToBuffer(block.burn_block_hash)},
+        ${block.burn_block_height},
+        ${hexToBuffer(block.miner_txid)},
+        ${block.canonical},
+        ${block.execution_cost_read_count},
+        ${block.execution_cost_read_length},
+        ${block.execution_cost_runtime},
+        ${block.execution_cost_write_count},
+        ${block.execution_cost_write_length},
+      )
+      ON CONFLICT (index_block_hash) DO NOTHING
+    `;
+    return result.length;
   }
 
   async updateBurnchainRewardSlotHolders({
@@ -632,51 +630,43 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     slotHolders: DbRewardSlotHolder[];
   }): Promise<void> {
-    await this.queryTx(async client => {
-      const existingSlotHolders = await client.query<{
-        address: string;
-      }>(
-        `
+    await this.sql.begin(async sql => {
+      const existingSlotHolders = await sql<{ address: string }[]>`
         UPDATE reward_slot_holders
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
+        WHERE canonical = true
+          AND (burn_block_hash = ${hexToBuffer(burnchainBlockHash)}
+            OR burn_block_height >= ${burnchainBlockHeight})
         RETURNING address
-        `,
-        [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
-      );
-      if (existingSlotHolders.rowCount > 0) {
+      `;
+      if (existingSlotHolders.length > 0) {
         logger.warn(
-          `Invalidated ${existingSlotHolders.rowCount} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
+          `Invalidated ${existingSlotHolders.length} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
         );
       }
       if (slotHolders.length === 0) {
         return;
       }
-      const insertParams = this.generateParameterizedInsertString({
-        rowCount: slotHolders.length,
-        columnCount: 5,
-      });
-      const values: any[] = [];
-      slotHolders.forEach(val => {
-        values.push(
-          val.canonical,
-          hexToBuffer(val.burn_block_hash),
-          val.burn_block_height,
-          val.address,
-          val.slot_index
-        );
-      });
-      const result = await client.query(
-        `
-        INSERT INTO reward_slot_holders(
-          canonical, burn_block_hash, burn_block_height, address, slot_index
-        ) VALUES ${insertParams}
-        `,
-        values
-      );
-      if (result.rowCount !== slotHolders.length) {
+      const values: RewardSlotHolderInsertValues[] = slotHolders.map(val => ({
+        canonical: val.canonical,
+        burn_block_hash: hexToBuffer(val.burn_block_hash),
+        burn_block_height: val.burn_block_height,
+        address: val.address,
+        slot_index: val.slot_index,
+      }));
+      const result = await sql`
+        INSERT INTO reward_slot_holders ${sql(
+          values,
+          'canonical',
+          'burn_block_hash',
+          'burn_block_height',
+          'address',
+          'slot_index'
+        )}
+      `;
+      if (result.length !== slotHolders.length) {
         throw new Error(
-          `Unexpected row count after inserting reward slot holders: ${result.rowCount} vs ${slotHolders.length}`
+          `Unexpected row count after inserting reward slot holders: ${result.length} vs ${slotHolders.length}`
         );
       }
     });
@@ -700,11 +690,11 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
-    await this.queryTx(async client => {
+    await this.sql.begin(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(client);
+      const chainTip = await this.getChainTip(sql);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
@@ -769,13 +759,13 @@ export class PgWriteStore extends PgStore {
         });
       }
 
-      await this.insertMicroblockData(client, dbMicroblocks, txs);
+      await this.insertMicroblockData(sql, dbMicroblocks, txs);
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
       const currentMicroblockTip = dbMicroblocks[dbMicroblocks.length - 1];
       const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
-        client,
+        sql,
         currentMicroblockTip.parent_index_block_hash,
         blockHeight,
         currentMicroblockTip
@@ -790,7 +780,7 @@ export class PgWriteStore extends PgStore {
       if (orphanedMicroblocks.length > 0) {
         // Handle microblocks reorgs here, these _should_ only be micro-forks off the same same
         // unanchored chain tip, e.g. a leader orphaning it's own unconfirmed microblocks
-        const microOrphanResult = await this.handleMicroReorg(client, {
+        const microOrphanResult = await this.handleMicroReorg(sql, {
           isCanonical: true,
           isMicroCanonical: false,
           indexBlockHash: '',
@@ -801,7 +791,7 @@ export class PgWriteStore extends PgStore {
         const microOrphanedTxs = microOrphanResult.updatedTxs;
         // Restore any micro-orphaned txs into the mempool
         const restoredMempoolTxs = await this.restoreMempoolTxs(
-          client,
+          sql,
           microOrphanedTxs.map(tx => tx.tx_id)
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
@@ -810,15 +800,15 @@ export class PgWriteStore extends PgStore {
       }
 
       const candidateTxIds = data.txs.map(d => d.tx.tx_id);
-      const removedTxsResult = await this.pruneMempoolTxs(client, candidateTxIds);
+      const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
       if (removedTxsResult.removedTxs.length > 0) {
         logger.verbose(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
       }
 
-      await this.refreshNftCustody(client, txs, true);
-      await this.refreshMaterializedView(client, 'chain_tip');
+      await this.refreshNftCustody(sql, txs, true);
+      await this.refreshMaterializedView(sql, 'chain_tip');
 
       if (this.notifier) {
         for (const microblock of dbMicroblocks) {
@@ -832,74 +822,73 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateStxLockEvent(client: ClientBase, tx: DbTx, event: DbStxLockEvent) {
-    await client.query(
-      `
+  async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
+    await sql`
       INSERT INTO stx_lock_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
         parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, locked_amount, unlock_height, locked_address
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `,
-      [
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-        event.canonical,
-        event.locked_amount,
-        event.unlock_height,
-        event.locked_address,
-      ]
-    );
+      ) values (
+        ${event.event_index},
+        ${hexToBuffer(event.tx_id)},
+        ${event.tx_index},
+        ${event.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+        ${event.canonical},
+        ${event.locked_amount},
+        ${event.unlock_height},
+        ${event.locked_address},
+      )
+    `;
   }
 
-  async updateBatchStxEvents(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+  async updateBatchStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 14;
-      const insertParams = this.generateParameterizedInsertString({
-        rowCount: eventBatch.length,
-        columnCount,
-      });
-      const values: any[] = [];
+      const values: StxEventInsertValues[] = [];
       for (const event of eventBatch) {
-        values.push(
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.tx_index,
-          event.block_height,
-          hexToBuffer(tx.index_block_hash),
-          hexToBuffer(tx.parent_index_block_hash),
-          hexToBuffer(tx.microblock_hash),
-          tx.microblock_sequence,
-          tx.microblock_canonical,
-          event.canonical,
-          event.asset_event_type_id,
-          event.sender,
-          event.recipient,
-          event.amount
-        );
+        values.push({
+          event_index: event.event_index,
+          tx_id: hexToBuffer(event.tx_id),
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: hexToBuffer(tx.index_block_hash),
+          parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+          microblock_hash: hexToBuffer(tx.microblock_hash),
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          asset_event_type_id: event.asset_event_type_id,
+          sender: event.sender ?? null,
+          recipient: event.recipient ?? null,
+          amount: event.amount,
+        });
       }
-      const insertQuery = `INSERT INTO stx_events(
-        event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
-        canonical, asset_event_type_id, sender, recipient, amount
-      ) VALUES ${insertParams}`;
-      const insertQueryName = `insert-batch-stx-events_${columnCount}x${eventBatch.length}`;
-      const insertStxEventQuery: QueryConfig = {
-        name: insertQueryName,
-        text: insertQuery,
-        values,
-      };
-      const res = await client.query(insertStxEventQuery);
-      if (res.rowCount !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
+      const res = await sql`
+        INSERT INTO stx_events ${sql(
+          values,
+          'event_index',
+          'tx_id',
+          'tx_index',
+          'block_height',
+          'index_block_hash',
+          'parent_index_block_hash',
+          'microblock_hash',
+          'microblock_sequence',
+          'microblock_canonical',
+          'canonical',
+          'asset_event_type_id',
+          'sender',
+          'recipient',
+          'amount'
+        )}
+      `;
+      if (res.length !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.length}`);
       }
     }
   }
@@ -907,49 +896,42 @@ export class PgWriteStore extends PgStore {
   /**
    * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
    * transfer relevant to a principal (stx address or contract id).
-   * @param client - DB client
+   * @param sql - DB client
    * @param tx - Transaction
    * @param events - Transaction STX events
    */
-  async updatePrincipalStxTxs(client: ClientBase, tx: DbTx, events: DbStxEvent[]) {
+  async updatePrincipalStxTxs(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
     const txIdBuffer = hexToBuffer(tx.tx_id);
     const indexBlockHashBuffer = hexToBuffer(tx.index_block_hash);
     const microblockHashBuffer = hexToBuffer(tx.microblock_hash);
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
-      const columnCount = 9;
-      const insertParams = this.generateParameterizedInsertString({
-        rowCount: principals.length,
-        columnCount,
-      });
-      const values: any[] = [];
-      for (const principal of principals) {
-        values.push(
-          principal,
-          txIdBuffer,
-          tx.block_height,
-          indexBlockHashBuffer,
-          microblockHashBuffer,
-          tx.microblock_sequence,
-          tx.tx_index,
-          tx.canonical,
-          tx.microblock_canonical
-        );
-      }
-      const insertQuery = `
-        INSERT INTO principal_stx_txs
-          (principal, tx_id,
-            block_height, index_block_hash, microblock_hash, microblock_sequence, tx_index,
-            canonical, microblock_canonical)
-        VALUES ${insertParams}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING`;
-      const insertQueryName = `insert-batch-principal_stx_txs_${columnCount}x${principals.length}`;
-      const insertQueryConfig: QueryConfig = {
-        name: insertQueryName,
-        text: insertQuery,
-        values,
-      };
-      await client.query(insertQueryConfig);
+      const values: PrincipalStxTxsInsertValues[] = principals.map(principal => ({
+        principal: principal,
+        tx_id: txIdBuffer,
+        block_height: tx.block_height,
+        index_block_hash: indexBlockHashBuffer,
+        microblock_hash: microblockHashBuffer,
+        microblock_sequence: tx.microblock_sequence,
+        tx_index: tx.tx_index,
+        canonical: tx.canonical,
+        microblock_canonical: tx.microblock_canonical,
+      }));
+      await sql`
+        INSERT INTO principal_stx_txs ${sql(
+          values,
+          'principal',
+          'tx_id',
+          'block_height',
+          'index_block_hash',
+          'microblock_hash',
+          'microblock_sequence',
+          'tx_index',
+          'canonical',
+          'microblock_canonical'
+        )}
+        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
+      `;
     };
     // Insert tx data
     await insertPrincipalStxTxs(
@@ -973,7 +955,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateBatchSubdomains(
-    client: ClientBase,
+    sql: PgSqlClient,
     blockData: {
       index_block_hash: string;
       parent_index_block_hash: string;
@@ -983,98 +965,83 @@ export class PgWriteStore extends PgStore {
     },
     subdomains: DbBnsSubdomain[]
   ) {
-    // bns insertion variables
-    const columnCount = 18;
-    const insertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount,
-    });
-    const values: any[] = [];
-    // zonefile insertion variables
-    const zonefilesColumnCount = 2;
-    const zonefileInsertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount: zonefilesColumnCount,
-    });
-    const zonefileValues: string[] = [];
+    const subdomainValues: BnsSubdomainInsertValues[] = [];
+    const zonefileValues: BnsZonefileInsertValues[] = [];
     for (const subdomain of subdomains) {
       let txIndex = subdomain.tx_index;
       if (txIndex === -1) {
-        const txQuery = await client.query<{ tx_index: number }>(
-          `
+        const txQuery = await sql<{ tx_index: number }[]>`
           SELECT tx_index from txs
-          WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
+          WHERE tx_id = ${hexToBuffer(subdomain.tx_id)}
+            AND index_block_hash = ${hexToBuffer(blockData.index_block_hash)}
+            AND block_height = ${subdomain.block_height}
           LIMIT 1
-          `,
-          [
-            hexToBuffer(subdomain.tx_id),
-            hexToBuffer(blockData.index_block_hash),
-            subdomain.block_height,
-          ]
-        );
-        if (txQuery.rowCount === 0) {
+        `;
+        if (txQuery.length === 0) {
           logger.warn(`Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`);
           txIndex = 0;
         } else {
-          txIndex = txQuery.rows[0].tx_index;
+          txIndex = txQuery[0].tx_index;
         }
       }
-      // preparing bns values for insertion
-      values.push(
-        subdomain.name,
-        subdomain.namespace_id,
-        subdomain.fully_qualified_subdomain,
-        subdomain.owner,
-        validateZonefileHash(subdomain.zonefile_hash),
-        subdomain.parent_zonefile_hash,
-        subdomain.parent_zonefile_index,
-        subdomain.block_height,
-        txIndex,
-        subdomain.zonefile_offset,
-        subdomain.resolver,
-        subdomain.canonical,
-        hexToBuffer(subdomain.tx_id),
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical
-      );
-      // preparing zonefile values for insertion
-      zonefileValues.push(subdomain.zonefile, validateZonefileHash(subdomain.zonefile_hash));
+      subdomainValues.push({
+        name: subdomain.name,
+        namespace_id: subdomain.namespace_id,
+        fully_qualified_subdomain: subdomain.fully_qualified_subdomain,
+        owner: subdomain.owner,
+        zonefile_hash: validateZonefileHash(subdomain.zonefile_hash),
+        parent_zonefile_hash: subdomain.parent_zonefile_hash,
+        parent_zonefile_index: subdomain.parent_zonefile_index,
+        block_height: subdomain.block_height,
+        tx_index: txIndex,
+        zonefile_offset: subdomain.zonefile_offset,
+        resolver: subdomain.resolver,
+        canonical: subdomain.canonical,
+        tx_id: hexToBuffer(subdomain.tx_id),
+        index_block_hash: hexToBuffer(blockData.index_block_hash),
+        parent_index_block_hash: hexToBuffer(blockData.parent_index_block_hash),
+        microblock_hash: hexToBuffer(blockData.microblock_hash),
+        microblock_sequence: blockData.microblock_sequence,
+        microblock_canonical: blockData.microblock_canonical,
+      });
+      zonefileValues.push({
+        zonefile: subdomain.zonefile,
+        zonefile_hash: validateZonefileHash(subdomain.zonefile_hash),
+      });
     }
-    // bns insertion query
-    const insertQuery = `INSERT INTO subdomains (
-        name, namespace_id, fully_qualified_subdomain, owner,
-        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-        zonefile_offset, resolver, canonical, tx_id,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
-    const insertBnsSubdomainsEventQuery: QueryConfig = {
-      name: insertQueryName,
-      text: insertQuery,
-      values,
-    };
-    // zonefile insertion query
-    const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
-    const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
-    const insertZonefilesEventQuery: QueryConfig = {
-      name: insertZonefileQueryName,
-      text: zonefileInsertQuery,
-      values: zonefileValues,
-    };
     try {
-      // checking for bns insertion errors
-      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
-      if (bnsRes.rowCount !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
+      const bnsRes = await sql`INSERT INTO subdomains ${sql(
+        subdomainValues,
+        'name',
+        'namespace_id',
+        'fully_qualified_subdomain',
+        'owner',
+        'zonefile_hash',
+        'parent_zonefile_hash',
+        'parent_zonefile_index',
+        'block_height',
+        'tx_index',
+        'zonefile_offset',
+        'resolver',
+        'canonical',
+        'tx_id',
+        'index_block_hash',
+        'parent_index_block_hash',
+        'microblock_hash',
+        'microblock_sequence',
+        'microblock_canonical'
+      )}`;
+      if (bnsRes.length !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.length} for BNS`);
       }
-      // checking for zonefile insertion errors
-      const zonefilesRes = await client.query(insertZonefilesEventQuery);
-      if (zonefilesRes.rowCount !== subdomains.length) {
+      const zonefilesRes = await sql`INSERT INTO zonefiles ${sql(
+        zonefileValues,
+        'zonefile',
+        'zonefile_hash'
+      )}`;
+      if (zonefilesRes.length !== subdomains.length) {
         throw new Error(
-          `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+          `Expected ${subdomains.length} inserts, got ${zonefilesRes.length} for zonefiles`
         );
       }
     } catch (e: any) {
@@ -1094,176 +1061,156 @@ export class PgWriteStore extends PgStore {
     data: DbBnsSubdomain[]
   ): Promise<void> {
     if (data.length == 0) return;
-    await this.queryTx(async client => {
-      await this.updateBatchSubdomains(client, blockData, data);
+    await this.sql.begin(async sql => {
+      await this.updateBatchSubdomains(sql, blockData, data);
     });
   }
 
-  async updateStxEvent(client: ClientBase, tx: DbTx, event: DbStxEvent) {
-    const insertStxEventQuery: QueryConfig = {
-      name: 'insert-stx-event',
-      text: `
-        INSERT INTO stx_events(
-          event_index, tx_id, tx_index, block_height, index_block_hash,
-          parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
-          canonical, asset_event_type_id, sender, recipient, amount
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-      `,
-      values: [
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-        event.canonical,
-        event.asset_event_type_id,
-        event.sender,
-        event.recipient,
-        event.amount,
-      ],
-    };
-    await client.query(insertStxEventQuery);
+  async updateStxEvent(sql: PgSqlClient, tx: DbTx, event: DbStxEvent) {
+    await sql`
+      INSERT INTO stx_events(
+        event_index, tx_id, tx_index, block_height, index_block_hash,
+        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
+        canonical, asset_event_type_id, sender, recipient, amount
+      ) values (
+        ${event.event_index},
+        ${hexToBuffer(event.tx_id)},
+        ${event.tx_index},
+        ${event.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+        ${event.canonical},
+        ${event.asset_event_type_id},
+        ${event.sender ?? null},
+        ${event.recipient ?? null},
+        ${event.amount},
+      )
+    `;
   }
 
-  async updateFtEvent(client: ClientBase, tx: DbTx, event: DbFtEvent) {
-    await client.query(
-      `
+  async updateFtEvent(sql: PgSqlClient, tx: DbTx, event: DbFtEvent) {
+    await sql`
       INSERT INTO ft_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
         parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      `,
-      [
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-        event.canonical,
-        event.asset_event_type_id,
-        event.sender,
-        event.recipient,
-        event.asset_identifier,
-        event.amount,
-      ]
-    );
+      ) values (
+        ${event.event_index},
+        ${hexToBuffer(event.tx_id)},
+        ${event.tx_index},
+        ${event.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+        ${event.canonical},
+        ${event.asset_event_type_id},
+        ${event.sender ?? null},
+        ${event.recipient ?? null},
+        ${event.asset_identifier},
+        ${event.amount},
+      )
+    `;
   }
 
-  async updateNftEvent(client: ClientBase, tx: DbTx, event: DbNftEvent) {
-    await client.query(
-      `
+  async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent) {
+    await sql`
       INSERT INTO nft_events(
         event_index, tx_id, tx_index, block_height, index_block_hash,
         parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, asset_event_type_id, sender, recipient, asset_identifier, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      `,
-      [
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-        event.canonical,
-        event.asset_event_type_id,
-        event.sender,
-        event.recipient,
-        event.asset_identifier,
-        event.value,
-      ]
-    );
+      ) values (
+        ${event.event_index},
+        ${hexToBuffer(event.tx_id)},
+        ${event.tx_index},
+        ${event.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+        ${event.canonical},
+        ${event.asset_event_type_id},
+        ${event.sender ?? null},
+        ${event.recipient ?? null},
+        ${event.asset_identifier},
+        ${event.value},
+      )
+    `;
   }
 
-  async updateBatchSmartContractEvent(
-    client: ClientBase,
-    tx: DbTx,
-    events: DbSmartContractEvent[]
-  ) {
+  async updateBatchSmartContractEvent(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const columnCount = 13;
-      const insertParams = this.generateParameterizedInsertString({
-        rowCount: eventBatch.length,
-        columnCount,
-      });
-      const values: any[] = [];
-      for (const event of eventBatch) {
-        values.push(
-          event.event_index,
-          hexToBuffer(event.tx_id),
-          event.tx_index,
-          event.block_height,
-          hexToBuffer(tx.index_block_hash),
-          hexToBuffer(tx.parent_index_block_hash),
-          hexToBuffer(tx.microblock_hash),
-          tx.microblock_sequence,
-          tx.microblock_canonical,
-          event.canonical,
-          event.contract_identifier,
-          event.topic,
-          event.value
-        );
-      }
-      const insertQueryText = `INSERT INTO contract_logs(
-        event_index, tx_id, tx_index, block_height, index_block_hash,
-        parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
-        canonical, contract_identifier, topic, value
-      ) VALUES ${insertParams}`;
-      const insertQueryName = `insert-batch-smart-contract-events_${columnCount}x${eventBatch.length}`;
-      const insertQuery: QueryConfig = {
-        name: insertQueryName,
-        text: insertQueryText,
-        values,
-      };
-      const res = await client.query(insertQuery);
-      if (res.rowCount !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.rowCount}`);
+      const values: SmartContractEventInsertValues[] = eventBatch.map(event => ({
+        event_index: event.event_index,
+        tx_id: hexToBuffer(event.tx_id),
+        tx_index: event.tx_index,
+        block_height: event.block_height,
+        index_block_hash: hexToBuffer(tx.index_block_hash),
+        parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+        microblock_hash: hexToBuffer(tx.microblock_hash),
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+        canonical: event.canonical,
+        contract_identifier: event.contract_identifier,
+        topic: event.topic,
+        value: event.value,
+      }));
+      const res = await sql`
+        INSERT INTO contract_logs ${sql(
+          values,
+          'event_index',
+          'tx_id',
+          'tx_index',
+          'block_height',
+          'index_block_hash',
+          'parent_index_block_hash',
+          'microblock_hash',
+          'microblock_sequence',
+          'microblock_canonical',
+          'canonical',
+          'contract_identifier',
+          'topic',
+          'value'
+        )}
+      `;
+      if (res.length !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.length}`);
       }
     }
   }
 
-  async updateSmartContractEvent(client: ClientBase, tx: DbTx, event: DbSmartContractEvent) {
-    await client.query(
-      `
+  async updateSmartContractEvent(sql: PgSqlClient, tx: DbTx, event: DbSmartContractEvent) {
+    await sql`
       INSERT INTO contract_logs(
         event_index, tx_id, tx_index, block_height, index_block_hash,
         parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical,
         canonical, contract_identifier, topic, value
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-      `,
-      [
-        event.event_index,
-        hexToBuffer(event.tx_id),
-        event.tx_index,
-        event.block_height,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-        event.canonical,
-        event.contract_identifier,
-        event.topic,
-        event.value,
-      ]
-    );
+      ) values (
+        ${event.event_index},
+        ${hexToBuffer(event.tx_id)},
+        ${event.tx_index},
+        ${event.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+        ${event.canonical},
+        ${event.contract_identifier},
+        ${event.topic},
+        ${event.value}
+      )
+    `;
   }
 
   async updateMicroCanonical(
-    client: ClientBase,
+    sql: PgSqlClient,
     blockData: {
       isCanonical: boolean;
       blockHeight: number;
@@ -1291,24 +1238,22 @@ export class PgWriteStore extends PgStore {
       }
       acceptedMicroblockTip = undefined;
     } else {
-      const microblockTipQuery = await client.query<MicroblockQueryResult>(
-        `
+      const microblockTipQuery = await sql<MicroblockQueryResult[]>`
         SELECT ${MICROBLOCK_COLUMNS} FROM microblocks
-        WHERE parent_index_block_hash = $1 AND microblock_hash = $2
-        `,
-        [hexToBuffer(blockData.parentIndexBlockHash), hexToBuffer(blockData.parentMicroblockHash)]
-      );
-      if (microblockTipQuery.rowCount === 0) {
+        WHERE parent_index_block_hash = ${hexToBuffer(blockData.parentIndexBlockHash)}
+        AND microblock_hash = ${hexToBuffer(blockData.parentMicroblockHash)}
+      `;
+      if (microblockTipQuery.length === 0) {
         throw new Error(
           `Could not find microblock ${blockData.parentMicroblockHash} while processing anchor block chain tip`
         );
       }
-      acceptedMicroblockTip = parseMicroblockQueryResult(microblockTipQuery.rows[0]);
+      acceptedMicroblockTip = parseMicroblockQueryResult(microblockTipQuery[0]);
     }
 
     // Identify microblocks that were either accepted or orphaned by this anchor block.
     const unanchoredMicroblocksAtTip = await this.findUnanchoredMicroblocksAtChainTip(
-      client,
+      sql,
       blockData.parentIndexBlockHash,
       blockData.blockHeight,
       acceptedMicroblockTip
@@ -1323,7 +1268,7 @@ export class PgWriteStore extends PgStore {
 
     let orphanedMicroblockTxs: DbTx[] = [];
     if (orphanedMicroblocks.length > 0) {
-      const microOrphanResult = await this.handleMicroReorg(client, {
+      const microOrphanResult = await this.handleMicroReorg(sql, {
         isCanonical: blockData.isCanonical,
         isMicroCanonical: false,
         indexBlockHash: blockData.indexBlockHash,
@@ -1335,7 +1280,7 @@ export class PgWriteStore extends PgStore {
     }
     let acceptedMicroblockTxs: DbTx[] = [];
     if (acceptedMicroblocks.length > 0) {
-      const microAcceptResult = await this.handleMicroReorg(client, {
+      const microAcceptResult = await this.handleMicroReorg(sql, {
         isCanonical: blockData.isCanonical,
         isMicroCanonical: true,
         indexBlockHash: blockData.indexBlockHash,
@@ -1355,17 +1300,14 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
-    await this.queryTx(async client => {
+    await this.sql.begin(async sql => {
       // inserting zonefile into zonefiles table
       const validZonefileHash = validateZonefileHash(zonefile_hash);
-      await client.query(
-        `
+      await sql`
         UPDATE zonefiles
-        SET zonefile = $1
-        WHERE zonefile_hash = $2
-        `,
-        [zonefile, validZonefileHash]
-      );
+        SET zonefile = ${zonefile}
+        WHERE zonefile_hash = ${validZonefileHash}
+      `;
     });
     await this.notifier?.sendName({ nameInfo: tx_id });
   }
@@ -1379,161 +1321,142 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
   }): Promise<void> {
-    return this.queryTx(async client => {
-      const existingRewards = await client.query<{
-        reward_recipient: string;
-        reward_amount: string;
-      }>(
-        `
+    return this.sql.begin(async sql => {
+      const existingRewards = await sql<
+        {
+          reward_recipient: string;
+          reward_amount: string;
+        }[]
+      >`
         UPDATE burnchain_rewards
         SET canonical = false
-        WHERE canonical = true AND (burn_block_hash = $1 OR burn_block_height >= $2)
+        WHERE canonical = true AND
+          (burn_block_hash = ${hexToBuffer(burnchainBlockHash)}
+          OR burn_block_height >= ${burnchainBlockHeight})
         RETURNING reward_recipient, reward_amount
-        `,
-        [hexToBuffer(burnchainBlockHash), burnchainBlockHeight]
-      );
-      if (existingRewards.rowCount > 0) {
+      `;
+      if (existingRewards.length > 0) {
         logger.warn(
-          `Invalidated ${existingRewards.rowCount} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
+          `Invalidated ${existingRewards.length} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
         );
       }
 
       for (const reward of rewards) {
-        const rewardInsertResult = await client.query(
-          `
+        const rewardInsertResult = await sql`
           INSERT into burnchain_rewards(
             canonical, burn_block_hash, burn_block_height, burn_amount, reward_recipient, reward_amount, reward_index
-          ) values($1, $2, $3, $4, $5, $6, $7)
-          `,
-          [
-            true,
-            hexToBuffer(reward.burn_block_hash),
-            reward.burn_block_height,
-            reward.burn_amount,
-            reward.reward_recipient,
-            reward.reward_amount,
-            reward.reward_index,
-          ]
-        );
-        if (rewardInsertResult.rowCount !== 1) {
+          ) values(${true}, ${hexToBuffer(reward.burn_block_hash)},
+            ${reward.burn_block_height}, ${reward.burn_amount}, ${reward.reward_recipient},
+            ${reward.reward_amount}, ${reward.reward_index})
+        `;
+        if (rewardInsertResult.length !== 1) {
           throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
         }
       }
     });
   }
 
-  async updateTx(client: ClientBase, tx: DbTx): Promise<number> {
-    const result = await client.query(
-      `
+  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
+    const result = await sql`
       INSERT INTO txs(
         ${TX_COLUMNS}
       ) values(
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
-        $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37,
-        $38, $39, $40, $41, $42, $43
+        ${hexToBuffer(tx.tx_id)},
+        ${tx.raw_tx},
+        ${tx.tx_index},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.block_hash)},
+        ${hexToBuffer(tx.parent_block_hash)},
+        ${tx.block_height},
+        ${tx.burn_block_time},
+        ${tx.parent_burn_block_time},
+        ${tx.type_id},
+        ${tx.anchor_mode},
+        ${tx.status},
+        ${tx.canonical},
+        ${tx.post_conditions},
+        ${tx.nonce},
+        ${tx.fee_rate},
+        ${tx.sponsored},
+        ${tx.sponsor_nonce ?? null},
+        ${tx.sponsor_address ?? null},
+        ${tx.sender_address},
+        ${tx.origin_hash_mode},
+        ${tx.microblock_canonical},
+        ${tx.microblock_sequence},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.token_transfer_recipient_address ?? null},
+        ${tx.token_transfer_amount ?? null},
+        ${tx.token_transfer_memo ?? null},
+        ${tx.smart_contract_contract_id ?? null},
+        ${tx.smart_contract_source_code ?? null},
+        ${tx.contract_call_contract_id ?? null},
+        ${tx.contract_call_function_name ?? null},
+        ${tx.contract_call_function_args ?? null},
+        ${tx.poison_microblock_header_1 ?? null},
+        ${tx.poison_microblock_header_2 ?? null},
+        ${tx.coinbase_payload ?? null},
+        ${hexToBuffer(tx.raw_result)},
+        ${tx.event_count},
+        ${tx.execution_cost_read_count},
+        ${tx.execution_cost_read_length},
+        ${tx.execution_cost_runtime},
+        ${tx.execution_cost_write_count},
+        ${tx.execution_cost_write_length},
       )
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
-      `,
-      [
-        hexToBuffer(tx.tx_id),
-        tx.raw_tx,
-        tx.tx_index,
-        hexToBuffer(tx.index_block_hash),
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.block_hash),
-        hexToBuffer(tx.parent_block_hash),
-        tx.block_height,
-        tx.burn_block_time,
-        tx.parent_burn_block_time,
-        tx.type_id,
-        tx.anchor_mode,
-        tx.status,
-        tx.canonical,
-        tx.post_conditions,
-        tx.nonce,
-        tx.fee_rate,
-        tx.sponsored,
-        tx.sponsor_nonce,
-        tx.sponsor_address,
-        tx.sender_address,
-        tx.origin_hash_mode,
-        tx.microblock_canonical,
-        tx.microblock_sequence,
-        hexToBuffer(tx.microblock_hash),
-        tx.token_transfer_recipient_address,
-        tx.token_transfer_amount,
-        tx.token_transfer_memo,
-        tx.smart_contract_contract_id,
-        tx.smart_contract_source_code,
-        tx.contract_call_contract_id,
-        tx.contract_call_function_name,
-        tx.contract_call_function_args,
-        tx.poison_microblock_header_1,
-        tx.poison_microblock_header_2,
-        tx.coinbase_payload,
-        hexToBuffer(tx.raw_result),
-        tx.event_count,
-        tx.execution_cost_read_count,
-        tx.execution_cost_read_length,
-        tx.execution_cost_runtime,
-        tx.execution_cost_write_count,
-        tx.execution_cost_write_length,
-      ]
-    );
-    return result.rowCount;
+    `;
+    return result.length;
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
-    await this.queryTx(async client => {
-      const chainTip = await this.getChainTip(client);
+    await this.sql.begin(async sql => {
+      const chainTip = await this.getChainTip(sql);
       for (const tx of txs) {
-        const result = await client.query(
-          `
+        const result = await sql`
           INSERT INTO mempool_txs(
             ${MEMPOOL_TX_COLUMNS}
-          ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
-          ON CONFLICT ON CONSTRAINT unique_tx_id
-          DO NOTHING
-          `,
-          [
-            tx.pruned,
-            hexToBuffer(tx.tx_id),
-            tx.raw_tx,
-            tx.type_id,
-            tx.anchor_mode,
-            tx.status,
-            tx.receipt_time,
-            chainTip.blockHeight,
-            tx.post_conditions,
-            tx.nonce,
-            tx.fee_rate,
-            tx.sponsored,
-            tx.sponsor_nonce,
-            tx.sponsor_address,
-            tx.sender_address,
-            tx.origin_hash_mode,
-            tx.token_transfer_recipient_address,
-            tx.token_transfer_amount,
-            tx.token_transfer_memo,
-            tx.smart_contract_contract_id,
-            tx.smart_contract_source_code,
-            tx.contract_call_contract_id,
-            tx.contract_call_function_name,
-            tx.contract_call_function_args,
-            tx.poison_microblock_header_1,
-            tx.poison_microblock_header_2,
-            tx.coinbase_payload,
-          ]
-        );
-        if (result.rowCount !== 1) {
+          ) values (
+            ${tx.pruned},
+            ${hexToBuffer(tx.tx_id)},
+            ${tx.raw_tx},
+            ${tx.type_id},
+            ${tx.anchor_mode},
+            ${tx.status},
+            ${tx.receipt_time},
+            ${chainTip.blockHeight},
+            ${tx.post_conditions},
+            ${tx.nonce},
+            ${tx.fee_rate},
+            ${tx.sponsored},
+            ${tx.sponsor_nonce ?? null},
+            ${tx.sponsor_address ?? null},
+            ${tx.sender_address},
+            ${tx.origin_hash_mode},
+            ${tx.token_transfer_recipient_address ?? null},
+            ${tx.token_transfer_amount ?? null},
+            ${tx.token_transfer_memo ?? null},
+            ${tx.smart_contract_contract_id ?? null},
+            ${tx.smart_contract_source_code ?? null},
+            ${tx.contract_call_contract_id ?? null},
+            ${tx.contract_call_function_name ?? null},
+            ${tx.contract_call_function_args ?? null},
+            ${tx.poison_microblock_header_1 ?? null},
+            ${tx.poison_microblock_header_2 ?? null},
+            ${tx.coinbase_payload ?? null},
+          )
+          ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
+        `;
+        if (result.length !== 1) {
           const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
           logger.warn(errMsg);
         } else {
           updatedTxs.push(tx);
         }
       }
-      await this.refreshMaterializedView(client, 'mempool_digest');
+      await this.refreshMaterializedView(sql, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -1542,19 +1465,16 @@ export class PgWriteStore extends PgStore {
 
   async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
     let updatedTxs: DbMempoolTx[] = [];
-    await this.queryTx(async client => {
+    await this.sql.begin(async sql => {
       const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
-      const updateResults = await client.query<MempoolTxQueryResult>(
-        `
+      const updateResults = await sql<MempoolTxQueryResult[]>`
         UPDATE mempool_txs
-        SET pruned = true, status = $2
-        WHERE tx_id = ANY($1)
+        SET pruned = true, status = ${status}
+        WHERE tx_id = ANY(${txIdBuffers})
         RETURNING ${MEMPOOL_TX_COLUMNS}
-        `,
-        [txIdBuffers, status]
-      );
-      updatedTxs = updateResults.rows.map(r => parseMempoolTxQueryResult(r));
-      await this.refreshMaterializedView(client, 'mempool_digest');
+      `;
+      updatedTxs = updateResults.map(r => parseMempoolTxQueryResult(r));
+      await this.refreshMaterializedView(sql, 'mempool_digest');
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -1562,57 +1482,51 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateTokenMetadataQueue(
-    client: ClientBase,
+    sql: PgSqlClient,
     entry: DbTokenMetadataQueueEntry
   ): Promise<DbTokenMetadataQueueEntry> {
-    const queryResult = await client.query<{ queue_id: number }>(
-      `
+    const queryResult = await sql<{ queue_id: number }[]>`
       INSERT INTO token_metadata_queue(
         tx_id, contract_id, contract_abi, block_height, processed
-      ) values($1, $2, $3, $4, $5)
-      RETURNING queue_id
-      `,
-      [
-        hexToBuffer(entry.txId),
-        entry.contractId,
-        JSON.stringify(entry.contractAbi),
-        entry.blockHeight,
+      ) values (
+        ${hexToBuffer(entry.txId)},
+        ${entry.contractId},
+        ${JSON.stringify(entry.contractAbi)},
+        ${entry.blockHeight},
         false,
-      ]
-    );
+      )
+      RETURNING queue_id
+    `;
     const result: DbTokenMetadataQueueEntry = {
       ...entry,
-      queueId: queryResult.rows[0].queue_id,
+      queueId: queryResult[0].queue_id,
     };
     return result;
   }
 
-  async updateSmartContract(client: ClientBase, tx: DbTx, smartContract: DbSmartContract) {
-    await client.query(
-      `
+  async updateSmartContract(sql: PgSqlClient, tx: DbTx, smartContract: DbSmartContract) {
+    await sql`
       INSERT INTO smart_contracts(
         tx_id, canonical, contract_id, block_height, index_block_hash, source_code, abi,
         parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      `,
-      [
-        hexToBuffer(smartContract.tx_id),
-        smartContract.canonical,
-        smartContract.contract_id,
-        smartContract.block_height,
-        hexToBuffer(tx.index_block_hash),
-        smartContract.source_code,
-        smartContract.abi,
-        hexToBuffer(tx.parent_index_block_hash),
-        hexToBuffer(tx.microblock_hash),
-        tx.microblock_sequence,
-        tx.microblock_canonical,
-      ]
-    );
+      ) values (
+        ${hexToBuffer(smartContract.tx_id)},
+        ${smartContract.canonical},
+        ${smartContract.contract_id},
+        ${smartContract.block_height},
+        ${hexToBuffer(tx.index_block_hash)},
+        ${smartContract.source_code},
+        ${smartContract.abi},
+        ${hexToBuffer(tx.parent_index_block_hash)},
+        ${hexToBuffer(tx.microblock_hash)},
+        ${tx.microblock_sequence},
+        ${tx.microblock_canonical},
+      )
+    `;
   }
 
   async updateNames(
-    client: ClientBase,
+    sql: PgSqlClient,
     blockData: {
       index_block_hash: string;
       parent_index_block_hash: string;
@@ -1622,58 +1536,38 @@ export class PgWriteStore extends PgStore {
     },
     bnsName: DbBnsName
   ) {
-    const {
-      name,
-      address,
-      registered_at,
-      expire_block,
-      zonefile,
-      zonefile_hash,
-      namespace_id,
-      tx_id,
-      tx_index,
-      status,
-      canonical,
-    } = bnsName;
-    // inserting remaining names information in names table
-    const validZonefileHash = validateZonefileHash(zonefile_hash);
-    await client.query(
-      `
-        INSERT INTO zonefiles (zonefile, zonefile_hash)
-        VALUES ($1, $2)
-        `,
-      [zonefile, validZonefileHash]
-    );
-    await client.query(
-      `
-        INSERT INTO names(
-          name, address, registered_at, expire_block, zonefile_hash, namespace_id,
-          tx_index, tx_id, status, canonical,
-          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-        ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
-        `,
-      [
-        name,
-        address,
-        registered_at,
-        expire_block,
-        validZonefileHash,
-        namespace_id,
-        tx_index,
-        hexToBuffer(tx_id),
-        status,
-        canonical,
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical,
-      ]
-    );
+    const validZonefileHash = validateZonefileHash(bnsName.zonefile_hash);
+    await sql`
+      INSERT INTO zonefiles (zonefile, zonefile_hash)
+      VALUES (${bnsName.zonefile}, ${validZonefileHash})
+    `;
+    await sql`
+      INSERT INTO names(
+        name, address, registered_at, expire_block, zonefile_hash, namespace_id,
+        tx_index, tx_id, status, canonical,
+        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+      ) values (
+        ${bnsName.name},
+        ${bnsName.address},
+        ${bnsName.registered_at},
+        ${bnsName.expire_block},
+        ${validZonefileHash},
+        ${bnsName.namespace_id},
+        ${bnsName.tx_index},
+        ${hexToBuffer(bnsName.tx_id)},
+        ${bnsName.status ?? null},
+        ${bnsName.canonical},
+        ${hexToBuffer(blockData.index_block_hash)},
+        ${hexToBuffer(blockData.parent_index_block_hash)},
+        ${hexToBuffer(blockData.microblock_hash)},
+        ${blockData.microblock_sequence},
+        ${blockData.microblock_canonical},
+      )
+    `;
   }
 
   async updateNamespaces(
-    client: ClientBase,
+    sql: PgSqlClient,
     blockData: {
       index_block_hash: string;
       parent_index_block_hash: string;
@@ -1683,175 +1577,99 @@ export class PgWriteStore extends PgStore {
     },
     bnsNamespace: DbBnsNamespace
   ) {
-    const {
-      namespace_id,
-      launched_at,
-      address,
-      reveal_block,
-      ready_block,
-      buckets,
-      base,
-      coeff,
-      nonalpha_discount,
-      no_vowel_discount,
-      lifetime,
-      status,
-      tx_id,
-      tx_index,
-      canonical,
-    } = bnsNamespace;
-
-    await client.query(
-      `
-      INSERT INTO namespaces(
+    await sql`
+      INSERT INTO namespaces (
         namespace_id, launched_at, address, reveal_block, ready_block, buckets,
         base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, tx_index,
         tx_id, canonical,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-      `,
-      [
-        namespace_id,
-        launched_at,
-        address,
-        reveal_block,
-        ready_block,
-        buckets,
-        base,
-        coeff,
-        nonalpha_discount,
-        no_vowel_discount,
-        lifetime,
-        status,
-        tx_index,
-        hexToBuffer(tx_id ?? ''),
-        canonical,
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical,
-      ]
-    );
+      ) values (
+        ${bnsNamespace.namespace_id},
+        ${bnsNamespace.launched_at ?? null},
+        ${bnsNamespace.address},
+        ${bnsNamespace.reveal_block},
+        ${bnsNamespace.ready_block},
+        ${bnsNamespace.buckets},
+        ${bnsNamespace.base},
+        ${bnsNamespace.coeff},
+        ${bnsNamespace.nonalpha_discount},
+        ${bnsNamespace.no_vowel_discount},
+        ${bnsNamespace.lifetime},
+        ${bnsNamespace.status ?? null},
+        ${bnsNamespace.tx_index},
+        ${hexToBuffer(bnsNamespace.tx_id ?? '')},
+        ${bnsNamespace.canonical},
+        ${hexToBuffer(blockData.index_block_hash)},
+        ${hexToBuffer(blockData.parent_index_block_hash)},
+        ${hexToBuffer(blockData.microblock_hash)},
+        ${blockData.microblock_sequence},
+        ${blockData.microblock_canonical},
+      )
+    `;
   }
 
   async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
-    const {
-      token_uri,
-      name,
-      description,
-      image_uri,
-      image_canonical_uri,
-      contract_id,
-      symbol,
-      decimals,
-      tx_id,
-      sender_address,
-    } = ftMetadata;
-
-    const rowCount = await this.queryTx(async client => {
-      const result = await client.query(
-        `
-        INSERT INTO ft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id, symbol, decimals, tx_id, sender_address
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        `,
-        [
-          token_uri,
-          name,
-          description,
-          image_uri,
-          image_canonical_uri,
-          contract_id,
-          symbol,
-          decimals,
-          hexToBuffer(tx_id),
-          sender_address,
-        ]
-      );
-      await client.query(
-        `
+    const length = await this.sql.begin(async sql => {
+      const result = await sql`
+        INSERT INTO ft_metadata ${sql(
+          ftMetadata,
+          'token_uri',
+          'name',
+          'description',
+          'image_uri',
+          'image_canonical_uri',
+          'contract_id',
+          'symbol',
+          'decimals',
+          'tx_id',
+          'sender_address'
+        )}`;
+      await sql`
         UPDATE token_metadata_queue
         SET processed = true
-        WHERE queue_id = $1
-        `,
-        [dbQueueId]
-      );
-      return result.rowCount;
+        WHERE queue_id = ${dbQueueId}
+      `;
+      return result.length;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
-    return rowCount;
+    await this.notifier?.sendTokens({ contractID: ftMetadata.contract_id });
+    return length;
   }
 
   async updateNFtMetadata(
     nftMetadata: DbNonFungibleTokenMetadata,
     dbQueueId: number
   ): Promise<number> {
-    const {
-      token_uri,
-      name,
-      description,
-      image_uri,
-      image_canonical_uri,
-      contract_id,
-      tx_id,
-      sender_address,
-    } = nftMetadata;
-    const rowCount = await this.queryTx(async client => {
-      const result = await client.query(
-        `
-        INSERT INTO nft_metadata(
-          token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
-        ) values($1, $2, $3, $4, $5, $6, $7, $8)
-        `,
-        [
-          token_uri,
-          name,
-          description,
-          image_uri,
-          image_canonical_uri,
-          contract_id,
-          hexToBuffer(tx_id),
-          sender_address,
-        ]
-      );
-      await client.query(
-        `
+    const length = await this.sql.begin(async sql => {
+      const result = await sql`
+        INSERT INTO nft_metadata ${sql(
+          nftMetadata,
+          'token_uri',
+          'name',
+          'description',
+          'image_uri',
+          'image_canonical_uri',
+          'contract_id',
+          'tx_id',
+          'sender_address'
+        )}`;
+      await sql`
         UPDATE token_metadata_queue
         SET processed = true
-        WHERE queue_id = $1
-        `,
-        [dbQueueId]
-      );
-      return result.rowCount;
+        WHERE queue_id = ${dbQueueId}
+      `;
+      return result.length;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
-    return rowCount;
+    await this.notifier?.sendTokens({ contractID: nftMetadata.contract_id });
+    return length;
   }
 
-  async updateBatchTokenOfferingLocked(client: ClientBase, lockedInfos: DbTokenOfferingLocked[]) {
-    const columnCount = 3;
-    const insertParams = this.generateParameterizedInsertString({
-      rowCount: lockedInfos.length,
-      columnCount,
-    });
-    const values: any[] = [];
-    for (const lockedInfo of lockedInfos) {
-      values.push(lockedInfo.address, lockedInfo.value, lockedInfo.block);
-    }
-    const insertQuery = `INSERT INTO token_offering_locked (
-      address, value, block
-      ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-token-offering-locked_${columnCount}x${lockedInfos.length}`;
-    const insertLockedInfosQuery: QueryConfig = {
-      name: insertQueryName,
-      text: insertQuery,
-      values,
-    };
+  async updateBatchTokenOfferingLocked(sql: PgSqlClient, lockedInfos: DbTokenOfferingLocked[]) {
     try {
-      const res = await client.query(insertLockedInfosQuery);
-      if (res.rowCount !== lockedInfos.length) {
-        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.rowCount}`);
+      const res = await sql`
+        INSERT INTO token_offering_locked ${sql(lockedInfos, 'address', 'value', 'block')}
+      `;
+      if (res.length !== lockedInfos.length) {
+        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.length}`);
       }
     } catch (e: any) {
       logError(`Locked Info errors ${e.message}`, e);
@@ -1860,31 +1678,19 @@ export class PgWriteStore extends PgStore {
   }
 
   async getConfigState(): Promise<DbConfigState> {
-    const queryResult = await this.sql.query(`SELECT * FROM config_state`);
-    const result: DbConfigState = {
-      bns_names_onchain_imported: queryResult.rows[0].bns_names_onchain_imported,
-      bns_subdomains_imported: queryResult.rows[0].bns_subdomains_imported,
-      token_offering_imported: queryResult.rows[0].token_offering_imported,
-    };
-    return result;
+    const queryResult = await this.sql<DbConfigState[]>`SELECT * FROM config_state`;
+    return queryResult[0];
   }
 
-  async updateConfigState(configState: DbConfigState, client?: ClientBase): Promise<void> {
-    const queryResult = await (client ?? this.sql).query(
-      `
+  async updateConfigState(configState: DbConfigState, sql?: PgSqlClient): Promise<void> {
+    const queryResult = await (sql ?? this.sql)`
       UPDATE config_state SET
-      bns_names_onchain_imported = $1,
-      bns_subdomains_imported = $2,
-      token_offering_imported = $3
-      `,
-      [
-        configState.bns_names_onchain_imported,
-        configState.bns_subdomains_imported,
-        configState.token_offering_imported,
-      ]
-    );
-    if (queryResult.rowCount !== 1) {
-      throw new Error(`Unexpected config update row count: ${queryResult.rowCount}`);
+      bns_names_onchain_imported = ${configState.bns_names_onchain_imported},
+      bns_subdomains_imported = ${configState.bns_subdomains_imported},
+      token_offering_imported = ${configState.token_offering_imported}
+    `;
+    if (queryResult.length !== 1) {
+      throw new Error(`Unexpected config update row count: ${queryResult.length}`);
     }
   }
 
@@ -1938,61 +1744,48 @@ export class PgWriteStore extends PgStore {
   }
 
   async insertFaucetRequest(faucetRequest: DbFaucetRequest) {
-    await this.query(async client => {
-      try {
-        await client.query(
-          `
-          INSERT INTO faucet_requests(
-            currency, address, ip, occurred_at
-          ) values($1, $2, $3, $4)
-          `,
-          [
-            faucetRequest.currency,
-            faucetRequest.address,
-            faucetRequest.ip,
-            faucetRequest.occurred_at,
-          ]
-        );
-      } catch (error) {
-        logError(`Error performing faucet request update: ${error}`, error);
-        throw error;
-      }
-    });
+    try {
+      await this.sql`
+        INSERT INTO faucet_requests(
+          currency, address, ip, occurred_at
+        ) values (${faucetRequest.currency}, ${faucetRequest.address}, ${faucetRequest.ip}, ${faucetRequest.occurred_at})
+      `;
+    } catch (error) {
+      logError(`Error performing faucet request update: ${error}`, error);
+      throw error;
+    }
   }
 
   async insertMicroblockData(
-    client: ClientBase,
+    sql: PgSqlClient,
     microblocks: DbMicroblock[],
     txs: DataStoreTxEventData[]
   ): Promise<void> {
     for (const mb of microblocks) {
-      const mbResult = await client.query(
-        `
+      const mbResult = await sql`
         INSERT INTO microblocks(
           canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
           parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash,
           parent_burn_block_height, parent_burn_block_hash, parent_burn_block_time
-        ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) values (
+          ${mb.canonical},
+          ${mb.microblock_canonical},
+          ${hexToBuffer(mb.microblock_hash)},
+          ${mb.microblock_sequence},
+          ${hexToBuffer(mb.microblock_parent_hash)},
+          ${hexToBuffer(mb.parent_index_block_hash)},
+          ${mb.block_height},
+          ${mb.parent_block_height},
+          ${hexToBuffer(mb.parent_block_hash)},
+          ${hexToBuffer(mb.index_block_hash)},
+          ${hexToBuffer(mb.block_hash)},
+          ${mb.parent_burn_block_height},
+          ${hexToBuffer(mb.parent_burn_block_hash)},
+          ${mb.parent_burn_block_time},
+        )
         ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
-        `,
-        [
-          mb.canonical,
-          mb.microblock_canonical,
-          hexToBuffer(mb.microblock_hash),
-          mb.microblock_sequence,
-          hexToBuffer(mb.microblock_parent_hash),
-          hexToBuffer(mb.parent_index_block_hash),
-          mb.block_height,
-          mb.parent_block_height,
-          hexToBuffer(mb.parent_block_hash),
-          hexToBuffer(mb.index_block_hash),
-          hexToBuffer(mb.block_hash),
-          mb.parent_burn_block_height,
-          hexToBuffer(mb.parent_burn_block_hash),
-          mb.parent_burn_block_time,
-        ]
-      );
-      if (mbResult.rowCount !== 1) {
+      `;
+      if (mbResult.length !== 1) {
         const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
         logger.warn(errMsg);
         // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
@@ -2002,39 +1795,39 @@ export class PgWriteStore extends PgStore {
     }
 
     for (const entry of txs) {
-      const rowsUpdated = await this.updateTx(client, entry.tx);
+      const rowsUpdated = await this.updateTx(sql, entry.tx);
       if (rowsUpdated !== 1) {
         throw new Error(
           `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
         );
       }
 
-      await this.updateBatchStxEvents(client, entry.tx, entry.stxEvents);
-      await this.updatePrincipalStxTxs(client, entry.tx, entry.stxEvents);
-      await this.updateBatchSmartContractEvent(client, entry.tx, entry.contractLogEvents);
+      await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
+      await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+      await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
       for (const stxLockEvent of entry.stxLockEvents) {
-        await this.updateStxLockEvent(client, entry.tx, stxLockEvent);
+        await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
       }
       for (const ftEvent of entry.ftEvents) {
-        await this.updateFtEvent(client, entry.tx, ftEvent);
+        await this.updateFtEvent(sql, entry.tx, ftEvent);
       }
       for (const nftEvent of entry.nftEvents) {
-        await this.updateNftEvent(client, entry.tx, nftEvent);
+        await this.updateNftEvent(sql, entry.tx, nftEvent);
       }
       for (const smartContract of entry.smartContracts) {
-        await this.updateSmartContract(client, entry.tx, smartContract);
+        await this.updateSmartContract(sql, entry.tx, smartContract);
       }
       for (const bnsName of entry.names) {
-        await this.updateNames(client, entry.tx, bnsName);
+        await this.updateNames(sql, entry.tx, bnsName);
       }
       for (const namespace of entry.namespaces) {
-        await this.updateNamespaces(client, entry.tx, namespace);
+        await this.updateNamespaces(sql, entry.tx, namespace);
       }
     }
   }
 
   async handleMicroReorg(
-    client: ClientBase,
+    sql: PgSqlClient,
     args: {
       isCanonical: boolean;
       isMicroCanonical: boolean;
@@ -2049,50 +1842,33 @@ export class PgWriteStore extends PgStore {
     const bufMicroblockHashes = args.microblocks.map(mb => hexToBuffer(mb));
 
     // Flag orphaned microblock rows as `microblock_canonical=false`
-    const updatedMicroblocksQuery = await client.query(
-      `
+    const updatedMicroblocksQuery = await sql`
       UPDATE microblocks
-      SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4
-      WHERE microblock_hash = ANY($5)
-      `,
-      [
-        args.isMicroCanonical,
-        args.isCanonical,
-        bufIndexBlockHash,
-        bufBlockHash,
-        bufMicroblockHashes,
-      ]
-    );
-    if (updatedMicroblocksQuery.rowCount !== args.microblocks.length) {
+      SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical},
+        index_block_hash = ${bufIndexBlockHash}, block_hash = ${bufBlockHash}
+      WHERE microblock_hash = ANY(${bufMicroblockHashes})
+    `;
+    if (updatedMicroblocksQuery.length !== args.microblocks.length) {
       throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
     }
 
     // Identify microblock transactions that were orphaned or accepted by this anchor block,
     // and update `microblock_canonical`, `canonical`, as well as anchor block data that may be missing
     // for unanchored entires.
-    const updatedMbTxsQuery = await client.query<TxQueryResult>(
-      `
+    const updatedMbTxsQuery = await sql<TxQueryResult[]>`
       UPDATE txs
-      SET microblock_canonical = $1, canonical = $2, index_block_hash = $3, block_hash = $4, burn_block_time = $5
-      WHERE microblock_hash = ANY($6)
+      SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash},
+        block_hash = ${bufBlockHash}, burn_block_time = ${args.burnBlockTime}
+      WHERE microblock_hash = ANY(${bufMicroblockHashes})
       AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
       RETURNING ${TX_COLUMNS}
-      `,
-      [
-        args.isMicroCanonical,
-        args.isCanonical,
-        bufIndexBlockHash,
-        bufBlockHash,
-        args.burnBlockTime,
-        bufMicroblockHashes,
-      ]
-    );
+    `;
     // Any txs restored need to be pruned from the mempool
-    const updatedMbTxs = updatedMbTxsQuery.rows.map(r => parseTxQueryResult(r));
+    const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
     const txsToPrune = updatedMbTxs
       .filter(tx => tx.canonical && tx.microblock_canonical)
       .map(tx => tx.tx_id);
-    const removedTxsResult = await this.pruneMempoolTxs(client, txsToPrune);
+    const removedTxsResult = await this.pruneMempoolTxs(sql, txsToPrune);
     if (removedTxsResult.removedTxs.length > 0) {
       logger.verbose(
         `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during micro-reorg handling`
@@ -2101,35 +1877,23 @@ export class PgWriteStore extends PgStore {
 
     // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
     // microblock-tx metadata that have been accepted or orphaned in this anchor block.
-    const updatedAssociatedTableParams = [
-      args.isMicroCanonical,
-      args.isCanonical,
-      bufIndexBlockHash,
-      bufMicroblockHashes,
-      updatedMbTxs.map(tx => hexToBuffer(tx.tx_id)),
-    ];
+    const bufferTxIds = updatedMbTxs.map(tx => hexToBuffer(tx.tx_id));
     for (const associatedTableName of TX_METADATA_TABLES) {
-      await client.query(
-        `
+      await sql`
         UPDATE ${associatedTableName}
-        SET microblock_canonical = $1, canonical = $2, index_block_hash = $3
-        WHERE microblock_hash = ANY($4)
+        SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash}
+        WHERE microblock_hash = ANY(${bufMicroblockHashes})
         AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
-        AND tx_id = ANY($5)
-        `,
-        updatedAssociatedTableParams
-      );
+        AND tx_id = ANY(${bufferTxIds})
+      `;
     }
-
-    // Update `principal_stx_txs`
-    await client.query(
-      `UPDATE principal_stx_txs
-      SET microblock_canonical = $1, canonical = $2, index_block_hash = $3
-      WHERE microblock_hash = ANY($4)
+    await sql`
+      UPDATE principal_stx_txs
+      SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash}
+      WHERE microblock_hash = ANY(${bufMicroblockHashes})
       AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
-      AND tx_id = ANY($5)`,
-      updatedAssociatedTableParams
-    );
+      AND tx_id = ANY(${bufferTxIds})
+    `;
 
     return { updatedTxs: updatedMbTxs };
   }
@@ -2143,7 +1907,7 @@ export class PgWriteStore extends PgStore {
    * @param microblockChainTip - undefined if processing an anchor block that doesn't point to a parent microblock.
    */
   async findUnanchoredMicroblocksAtChainTip(
-    client: ClientBase,
+    sql: PgSqlClient,
     parentIndexBlockHash: string,
     blockHeight: number,
     microblockChainTip: DbMicroblock | undefined
@@ -2159,15 +1923,13 @@ export class PgWriteStore extends PgStore {
     // Get any microblocks that this anchor block is responsible for accepting or rejecting.
     // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
     // which could now be in the process of being re-org'd.
-    const mbQuery = await client.query<MicroblockQueryResult>(
-      `
+    const mbQuery = await sql<MicroblockQueryResult[]>`
       SELECT ${MICROBLOCK_COLUMNS}
       FROM microblocks
-      WHERE (parent_index_block_hash = $1 OR block_height = $2)
-      `,
-      [hexToBuffer(parentIndexBlockHash), blockHeight]
-    );
-    const candidateMicroblocks = mbQuery.rows.map(row => parseMicroblockQueryResult(row));
+      WHERE (parent_index_block_hash = ${hexToBuffer(parentIndexBlockHash)}
+        OR block_height = ${blockHeight})
+    `;
+    const candidateMicroblocks = mbQuery.map(row => parseMicroblockQueryResult(row));
 
     // Accepted/orphaned status needs to be determined by walking through the microblock hash chain rather than a simple sequence number comparison,
     // because we can't depend on a `microblock_canonical=true` filter in the above query, so there could be microblocks with the same sequence number
@@ -2207,7 +1969,7 @@ export class PgWriteStore extends PgStore {
    * marked from canonical to non-canonical.
    * @param txIds - List of transactions to update in the mempool
    */
-  async restoreMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ restoredTxs: string[] }> {
+  async restoreMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<{ restoredTxs: string[] }> {
     if (txIds.length === 0) {
       // Avoid an unnecessary query.
       return { restoredTxs: [] };
@@ -2216,17 +1978,15 @@ export class PgWriteStore extends PgStore {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
     const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
-    const updateResults = await client.query<{ tx_id: Buffer }>(
-      `
+    // FIXME: ANY
+    const updateResults = await sql<{ tx_id: Buffer }[]>`
       UPDATE mempool_txs
       SET pruned = false
-      WHERE tx_id = ANY($1)
+      WHERE tx_id = ANY(${txIdBuffers})
       RETURNING tx_id
-      `,
-      [txIdBuffers]
-    );
-    await this.refreshMaterializedView(client, 'mempool_digest');
-    const restoredTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    `;
+    await this.refreshMaterializedView(sql, 'mempool_digest');
+    const restoredTxs = updateResults.map(r => bufferToHexPrefixString(r.tx_id));
     return { restoredTxs: restoredTxs };
   }
 
@@ -2235,7 +1995,7 @@ export class PgWriteStore extends PgStore {
    * mined into a block.
    * @param txIds - List of transactions to update in the mempool
    */
-  async pruneMempoolTxs(client: ClientBase, txIds: string[]): Promise<{ removedTxs: string[] }> {
+  async pruneMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<{ removedTxs: string[] }> {
     if (txIds.length === 0) {
       // Avoid an unnecessary query.
       return { removedTxs: [] };
@@ -2244,220 +2004,181 @@ export class PgWriteStore extends PgStore {
       logger.verbose(`Pruning mempool tx: ${txId}`);
     }
     const txIdBuffers = txIds.map(txId => hexToBuffer(txId));
-    const updateResults = await client.query<{ tx_id: Buffer }>(
-      `
+    const updateResults = await sql<{ tx_id: Buffer }[]>`
       UPDATE mempool_txs
       SET pruned = true
-      WHERE tx_id = ANY($1)
+      WHERE tx_id = ANY(${txIdBuffers})
       RETURNING tx_id
-      `,
-      [txIdBuffers]
-    );
-    await this.refreshMaterializedView(client, 'mempool_digest');
-    const removedTxs = updateResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    `;
+    await this.refreshMaterializedView(sql, 'mempool_digest');
+    const removedTxs = updateResults.map(r => bufferToHexPrefixString(r.tx_id));
     return { removedTxs: removedTxs };
   }
 
   /**
    * Deletes mempool txs older than `STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD` blocks (default 256).
-   * @param client - DB client
+   * @param sql - DB client
    * @returns List of deleted `tx_id`s
    */
-  async deleteGarbageCollectedMempoolTxs(client: ClientBase): Promise<{ deletedTxs: string[] }> {
+  async deleteGarbageCollectedMempoolTxs(sql: PgSqlClient): Promise<{ deletedTxs: string[] }> {
     // Get threshold block.
     const blockThreshold = process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? 256;
-    const cutoffResults = await client.query<{ block_height: number }>(
-      `SELECT (block_height - $1) AS block_height FROM chain_tip`,
-      [blockThreshold]
-    );
-    if (cutoffResults.rowCount != 1) {
+    const cutoffResults = await sql<{ block_height: number }[]>`
+      SELECT (block_height - ${blockThreshold}) AS block_height FROM chain_tip
+    `;
+    if (cutoffResults.length != 1) {
       return { deletedTxs: [] };
     }
-    const cutoffBlockHeight = cutoffResults.rows[0].block_height;
+    const cutoffBlockHeight = cutoffResults[0].block_height;
     // Delete every mempool tx that came before that block.
     // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
-    const deletedTxResults = await client.query<{ tx_id: Buffer }>(
-      `UPDATE mempool_txs
-      SET pruned = TRUE, status = $2
-      WHERE pruned = FALSE AND receipt_block_height < $1
-      RETURNING tx_id`,
-      [cutoffBlockHeight, DbTxStatus.DroppedApiGarbageCollect]
-    );
-    await this.refreshMaterializedView(client, 'mempool_digest');
-    const deletedTxs = deletedTxResults.rows.map(r => bufferToHexPrefixString(r.tx_id));
+    const deletedTxResults = await sql<{ tx_id: Buffer }[]>`
+      UPDATE mempool_txs
+      SET pruned = TRUE, status = ${DbTxStatus.DroppedApiGarbageCollect}
+      WHERE pruned = FALSE AND receipt_block_height < ${cutoffBlockHeight}
+      RETURNING tx_id
+    `;
+    await this.refreshMaterializedView(sql, 'mempool_digest');
+    const deletedTxs = deletedTxResults.map(r => bufferToHexPrefixString(r.tx_id));
     return { deletedTxs: deletedTxs };
   }
 
   async markEntitiesCanonical(
-    client: ClientBase,
+    sql: PgSqlClient,
     indexBlockHash: Buffer,
     canonical: boolean,
     updatedEntities: UpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const txResult = await client.query<TxQueryResult>(
-      `
+    const txResult = await sql<TxQueryResult[]>`
       UPDATE txs
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING ${TX_COLUMNS}
-      `,
-      [indexBlockHash, canonical]
-    );
-    const txIds = txResult.rows.map(row => parseTxQueryResult(row));
+    `;
+    const txIds = txResult.map(row => parseTxQueryResult(row));
     if (canonical) {
-      updatedEntities.markedCanonical.txs += txResult.rowCount;
+      updatedEntities.markedCanonical.txs += txResult.length;
     } else {
-      updatedEntities.markedNonCanonical.txs += txResult.rowCount;
+      updatedEntities.markedNonCanonical.txs += txResult.length;
     }
     for (const txId of txIds) {
       logger.verbose(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
     }
-    // Update `principal_stx_txs`
-    await client.query(
-      `UPDATE principal_stx_txs
-      SET canonical = $2
-      WHERE tx_id = ANY($3) AND index_block_hash = $1 AND canonical != $2`,
-      [indexBlockHash, canonical, txIds.map(tx => hexToBuffer(tx.tx_id))]
-    );
+    await sql`
+      UPDATE principal_stx_txs
+      SET canonical = ${canonical}
+      WHERE tx_id = ANY(${txIds.map(tx => hexToBuffer(tx.tx_id))})
+        AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
 
-    const minerRewardResults = await client.query(
-      `
+    const minerRewardResults = await sql`
       UPDATE miner_rewards
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.minerRewards += minerRewardResults.rowCount;
+      updatedEntities.markedCanonical.minerRewards += minerRewardResults.length;
     } else {
-      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.rowCount;
+      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.length;
     }
 
-    const stxLockResults = await client.query(
-      `
+    const stxLockResults = await sql`
       UPDATE stx_lock_events
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.rowCount;
+      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.length;
     } else {
-      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.rowCount;
+      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.length;
     }
 
-    const stxResults = await client.query(
-      `
+    const stxResults = await sql`
       UPDATE stx_events
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.stxEvents += stxResults.rowCount;
+      updatedEntities.markedCanonical.stxEvents += stxResults.length;
     } else {
-      updatedEntities.markedNonCanonical.stxEvents += stxResults.rowCount;
+      updatedEntities.markedNonCanonical.stxEvents += stxResults.length;
     }
 
-    const ftResult = await client.query(
-      `
+    const ftResult = await sql`
       UPDATE ft_events
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.ftEvents += ftResult.rowCount;
+      updatedEntities.markedCanonical.ftEvents += ftResult.length;
     } else {
-      updatedEntities.markedNonCanonical.ftEvents += ftResult.rowCount;
+      updatedEntities.markedNonCanonical.ftEvents += ftResult.length;
     }
 
-    const nftResult = await client.query(
-      `
+    const nftResult = await sql`
       UPDATE nft_events
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.nftEvents += nftResult.rowCount;
+      updatedEntities.markedCanonical.nftEvents += nftResult.length;
     } else {
-      updatedEntities.markedNonCanonical.nftEvents += nftResult.rowCount;
+      updatedEntities.markedNonCanonical.nftEvents += nftResult.length;
     }
 
-    const contractLogResult = await client.query(
-      `
+    const contractLogResult = await sql`
       UPDATE contract_logs
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.contractLogs += contractLogResult.rowCount;
+      updatedEntities.markedCanonical.contractLogs += contractLogResult.length;
     } else {
-      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.rowCount;
+      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.length;
     }
 
-    const smartContractResult = await client.query(
-      `
+    const smartContractResult = await sql`
       UPDATE smart_contracts
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.smartContracts += smartContractResult.rowCount;
+      updatedEntities.markedCanonical.smartContracts += smartContractResult.length;
     } else {
-      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.rowCount;
+      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.length;
     }
 
-    const nameResult = await client.query(
-      `
+    const nameResult = await sql`
       UPDATE names
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.names += nameResult.rowCount;
+      updatedEntities.markedCanonical.names += nameResult.length;
     } else {
-      updatedEntities.markedNonCanonical.names += nameResult.rowCount;
+      updatedEntities.markedNonCanonical.names += nameResult.length;
     }
 
-    const namespaceResult = await client.query(
-      `
+    const namespaceResult = await sql`
       UPDATE namespaces
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.namespaces += namespaceResult.rowCount;
+      updatedEntities.markedCanonical.namespaces += namespaceResult.length;
     } else {
-      updatedEntities.markedNonCanonical.namespaces += namespaceResult.rowCount;
+      updatedEntities.markedNonCanonical.namespaces += namespaceResult.length;
     }
 
-    const subdomainResult = await client.query(
-      `
+    const subdomainResult = await sql`
       UPDATE subdomains
-      SET canonical = $2
-      WHERE index_block_hash = $1 AND canonical != $2
-      `,
-      [indexBlockHash, canonical]
-    );
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
     if (canonical) {
-      updatedEntities.markedCanonical.subdomains += subdomainResult.rowCount;
+      updatedEntities.markedCanonical.subdomains += subdomainResult.length;
     } else {
-      updatedEntities.markedNonCanonical.subdomains += subdomainResult.rowCount;
+      updatedEntities.markedNonCanonical.subdomains += subdomainResult.length;
     }
 
     return {
@@ -2467,51 +2188,45 @@ export class PgWriteStore extends PgStore {
   }
 
   async restoreOrphanedChain(
-    client: ClientBase,
+    sql: PgSqlClient,
     indexBlockHash: Buffer,
     updatedEntities: UpdatedEntities
   ): Promise<UpdatedEntities> {
-    const restoredBlockResult = await client.query<BlockQueryResult>(
-      `
+    const restoredBlockResult = await sql<BlockQueryResult[]>`
       -- restore the previously orphaned block to canonical
       UPDATE blocks
       SET canonical = true
-      WHERE index_block_hash = $1 AND canonical = false
+      WHERE index_block_hash = ${indexBlockHash} AND canonical = false
       RETURNING ${BLOCK_COLUMNS}
-      `,
-      [indexBlockHash]
-    );
+    `;
 
-    if (restoredBlockResult.rowCount === 0) {
+    if (restoredBlockResult.length === 0) {
       throw new Error(
         `Could not find orphaned block by index_hash ${indexBlockHash.toString('hex')}`
       );
     }
-    if (restoredBlockResult.rowCount > 1) {
+    if (restoredBlockResult.length > 1) {
       throw new Error(
         `Found multiple non-canonical parents for index_hash ${indexBlockHash.toString('hex')}`
       );
     }
     updatedEntities.markedCanonical.blocks++;
 
-    const orphanedBlockResult = await client.query<BlockQueryResult>(
-      `
+    const orphanedBlockResult = await sql<BlockQueryResult[]>`
       -- orphan the now conflicting block at the same height
       UPDATE blocks
       SET canonical = false
-      WHERE block_height = $1 AND index_block_hash != $2 AND canonical = true
+      WHERE block_height = ${restoredBlockResult[0].block_height} AND index_block_hash != ${indexBlockHash} AND canonical = true
       RETURNING ${BLOCK_COLUMNS}
-      `,
-      [restoredBlockResult.rows[0].block_height, indexBlockHash]
-    );
+    `;
 
     const microblocksOrphaned = new Set<string>();
     const microblocksAccepted = new Set<string>();
 
-    if (orphanedBlockResult.rowCount > 0) {
-      const orphanedBlocks = orphanedBlockResult.rows.map(b => parseBlockQueryResult(b));
+    if (orphanedBlockResult.length > 0) {
+      const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        const microCanonicalUpdateResult = await this.updateMicroCanonical(client, {
+        const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
           blockHash: orphanedBlock.block_hash,
@@ -2533,19 +2248,19 @@ export class PgWriteStore extends PgStore {
 
       updatedEntities.markedNonCanonical.blocks++;
       const markNonCanonicalResult = await this.markEntitiesCanonical(
-        client,
-        orphanedBlockResult.rows[0].index_block_hash,
+        sql,
+        orphanedBlockResult[0].index_block_hash,
         false,
         updatedEntities
       );
-      await this.restoreMempoolTxs(client, markNonCanonicalResult.txsMarkedNonCanonical);
+      await this.restoreMempoolTxs(sql, markNonCanonicalResult.txsMarkedNonCanonical);
     }
 
     // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a given height,
     // because there is only 1 row per microblock hash, and both the orphaned blocks at this height and the
     // canonical block can be pointed to the same microblocks.
-    const restoredBlock = parseBlockQueryResult(restoredBlockResult.rows[0]);
-    const microCanonicalUpdateResult = await this.updateMicroCanonical(client, {
+    const restoredBlock = parseBlockQueryResult(restoredBlockResult[0]);
+    const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
       isCanonical: true,
       blockHeight: restoredBlock.block_height,
       blockHash: restoredBlock.block_hash,
@@ -2570,13 +2285,13 @@ export class PgWriteStore extends PgStore {
     microblocksAccepted.forEach(mb => logger.verbose(`Marked microblock as canonical: ${mb}`));
 
     const markCanonicalResult = await this.markEntitiesCanonical(
-      client,
+      sql,
       indexBlockHash,
       true,
       updatedEntities
     );
     const removedTxsResult = await this.pruneMempoolTxs(
-      client,
+      sql,
       markCanonicalResult.txsMarkedCanonical
     );
     if (removedTxsResult.removedTxs.length > 0) {
@@ -2584,36 +2299,25 @@ export class PgWriteStore extends PgStore {
         `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during reorg handling`
       );
     }
-    const parentResult = await client.query<{ index_block_hash: Buffer }>(
-      `
-      -- check if the parent block is also orphaned
+    const parentResult = await sql<{ index_block_hash: Buffer }[]>`
       SELECT index_block_hash
       FROM blocks
       WHERE
-        block_height = $1 AND
-        index_block_hash = $2 AND
+        block_height = ${restoredBlockResult[0].block_height - 1} AND
+        index_block_hash = ${restoredBlockResult[0].parent_index_block_hash} AND
         canonical = false
-      `,
-      [
-        restoredBlockResult.rows[0].block_height - 1,
-        restoredBlockResult.rows[0].parent_index_block_hash,
-      ]
-    );
-    if (parentResult.rowCount > 1) {
+    `;
+    if (parentResult.length > 1) {
       throw new Error('Found more than one non-canonical parent to restore during reorg');
     }
-    if (parentResult.rowCount > 0) {
-      await this.restoreOrphanedChain(
-        client,
-        parentResult.rows[0].index_block_hash,
-        updatedEntities
-      );
+    if (parentResult.length > 0) {
+      await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
     }
     return updatedEntities;
   }
 
   async handleReorg(
-    client: ClientBase,
+    sql: PgSqlClient,
     block: DbBlock,
     chainTipHeight: number
   ): Promise<UpdatedEntities> {
@@ -2652,27 +2356,27 @@ export class PgWriteStore extends PgStore {
 
     // Check if incoming block's parent is canonical
     if (block.block_height > 1) {
-      const parentResult = await client.query<{
-        canonical: boolean;
-        index_block_hash: Buffer;
-        parent_index_block_hash: Buffer;
-      }>(
-        `
+      const parentResult = await sql<
+        {
+          canonical: boolean;
+          index_block_hash: Buffer;
+          parent_index_block_hash: Buffer;
+        }[]
+      >`
         SELECT canonical, index_block_hash, parent_index_block_hash
         FROM blocks
-        WHERE block_height = $1 AND index_block_hash = $2
-        `,
-        [block.block_height - 1, hexToBuffer(block.parent_index_block_hash)]
-      );
+        WHERE block_height = ${block.block_height - 1}
+          AND index_block_hash = ${hexToBuffer(block.parent_index_block_hash)}
+      `;
 
-      if (parentResult.rowCount > 1) {
+      if (parentResult.length > 1) {
         throw new Error(
           `DB contains multiple blocks at height ${block.block_height - 1} and index_hash ${
             block.parent_index_block_hash
           }`
         );
       }
-      if (parentResult.rowCount === 0) {
+      if (parentResult.length === 0) {
         throw new Error(
           `DB does not contain a parent block at height ${block.block_height - 1} with index_hash ${
             block.parent_index_block_hash
@@ -2681,12 +2385,8 @@ export class PgWriteStore extends PgStore {
       }
 
       // This blocks builds off a previously orphaned chain. Restore canonical status for this chain.
-      if (!parentResult.rows[0].canonical && block.block_height > chainTipHeight) {
-        await this.restoreOrphanedChain(
-          client,
-          parentResult.rows[0].index_block_hash,
-          updatedEntities
-        );
+      if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
+        await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
         this.logReorgResultInfo(updatedEntities);
       }
     }
@@ -2757,29 +2457,25 @@ export class PgWriteStore extends PgStore {
 
   /**
    * Refreshes a Postgres materialized view.
-   * @param client - Pg Client
+   * @param sql - Pg Client
    * @param viewName - Materialized view name
    * @param skipDuringEventReplay - If we should skip refreshing during event replay
    */
-  async refreshMaterializedView(
-    client: ClientBase,
-    viewName: string,
-    skipDuringEventReplay = true
-  ) {
+  async refreshMaterializedView(sql: PgSqlClient, viewName: string, skipDuringEventReplay = true) {
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
-    await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
+    await sql`REFRESH MATERIALIZED VIEW ${viewName}`;
   }
 
   /**
    * Refreshes the `nft_custody` and `nft_custody_unanchored` materialized views if necessary.
-   * @param client - DB client
+   * @param sql - DB client
    * @param txs - Transaction event data
    * @param unanchored - If this refresh is requested from a block or microblock
    */
   async refreshNftCustody(
-    client: ClientBase,
+    sql: PgSqlClient,
     txs: DataStoreTxEventData[],
     unanchored: boolean = false
   ) {
@@ -2789,23 +2485,21 @@ export class PgWriteStore extends PgStore {
     if (newNftEventCount > 0) {
       // Always refresh unanchored view since even if we're in a new anchored block we should update the
       // unanchored state to the current one.
-      await this.refreshMaterializedView(client, 'nft_custody_unanchored');
+      await this.refreshMaterializedView(sql, 'nft_custody_unanchored');
       if (!unanchored) {
-        await this.refreshMaterializedView(client, 'nft_custody');
+        await this.refreshMaterializedView(sql, 'nft_custody');
       }
     } else if (!unanchored) {
       // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
       // update the anchored view to reflect any changes made by previous microblocks.
-      const result = await client.query<{ outdated: boolean }>(
-        `
+      const result = await sql<{ outdated: boolean }[]>`
         WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
           unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
         SELECT unanchored > anchored AS outdated
         FROM anchored_height CROSS JOIN unanchored_height
-        `
-      );
-      if (result.rows.length > 0 && result.rows[0].outdated) {
-        await this.refreshMaterializedView(client, 'nft_custody');
+      `;
+      if (result.length > 0 && result[0].outdated) {
+        await this.refreshMaterializedView(sql, 'nft_custody');
       }
     }
   }
@@ -2817,11 +2511,11 @@ export class PgWriteStore extends PgStore {
     if (!this.isEventReplay) {
       return;
     }
-    await this.queryTx(async client => {
-      await this.refreshMaterializedView(client, 'nft_custody', false);
-      await this.refreshMaterializedView(client, 'nft_custody_unanchored', false);
-      await this.refreshMaterializedView(client, 'chain_tip', false);
-      await this.refreshMaterializedView(client, 'mempool_digest', false);
+    await this.sql.begin(async sql => {
+      await this.refreshMaterializedView(sql, 'nft_custody', false);
+      await this.refreshMaterializedView(sql, 'nft_custody_unanchored', false);
+      await this.refreshMaterializedView(sql, 'chain_tip', false);
+      await this.refreshMaterializedView(sql, 'mempool_digest', false);
     });
   }
 }

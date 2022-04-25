@@ -2,13 +2,13 @@ import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Client } from 'pg';
 import { APP_DIR, isDevEnv, isTestEnv, logError, logger } from '../helpers';
-import { getPgClientConfig, PgClientConfig } from './connection';
+import { getPgClientConfig, PgClientConfig, PgSqlClient } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 export async function runMigrations(
-  clientConfig: PgClientConfig = getPgClientConfig({ usageName: 'schema-migrations' }),
+  sql: PgSqlClient = getPgClientConfig({ usageName: 'schema-migrations' }),
   direction: 'up' | 'down' = 'up',
   opts?: {
     // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
@@ -21,7 +21,7 @@ export async function runMigrations(
         'Set NODE_ENV to "test" or "development" to enable migration testing.'
     );
   }
-  const client = new Client(clientConfig);
+  const client = new Client(sql);
   try {
     await client.connect();
     const runnerOpts: RunnerOption = {
@@ -37,8 +37,8 @@ export async function runMigrations(
         error: msg => logger.error(msg),
       },
     };
-    if (clientConfig.schema) {
-      runnerOpts.schema = clientConfig.schema;
+    if (sql.schema) {
+      runnerOpts.schema = sql.schema;
     }
     await PgMigrate(runnerOpts);
   } catch (error) {

@@ -1,6 +1,7 @@
 import { bufferToHexPrefixString, hexToBuffer, parseEnum } from '../helpers';
 import { QueryConfig, QueryResult } from 'pg';
 import {
+  DbAssetEventTypeId,
   DbBlock,
   DbEvent,
   DbEventTypeId,
@@ -31,6 +32,7 @@ import {
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { getTxSenderAddress } from '../event-stream/reader';
+import { number } from 'bitcoinjs-lib/types/script';
 
 export interface BlockQueryResult {
   block_hash: Buffer;
@@ -265,6 +267,85 @@ export interface DbTokenMetadataQueueEntryQuery {
 
 export interface RawTxQueryResult {
   raw_tx: Buffer;
+}
+
+export interface StxEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  amount: bigint;
+}
+
+export interface SmartContractEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  contract_identifier: string;
+  topic: string;
+  value: Buffer;
+}
+
+export interface BnsSubdomainInsertValues {
+  name: string;
+  namespace_id: string;
+  fully_qualified_subdomain: string;
+  owner: string;
+  zonefile_hash: string;
+  parent_zonefile_hash: string;
+  parent_zonefile_index: number;
+  block_height: number;
+  tx_index: number;
+  zonefile_offset: number;
+  resolver: string;
+  canonical: boolean;
+  tx_id: Buffer;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsZonefileInsertValues {
+  zonefile: string;
+  zonefile_hash: string;
+}
+
+export interface PrincipalStxTxsInsertValues {
+  principal: string;
+  tx_id: Buffer;
+  block_height: number;
+  index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  tx_index: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
+}
+
+export interface RewardSlotHolderInsertValues {
+  canonical: boolean;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  address: string;
+  slot_index: number;
 }
 
 /**

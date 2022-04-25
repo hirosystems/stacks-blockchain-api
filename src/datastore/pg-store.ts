@@ -11,7 +11,6 @@ import {
   bufferToHexPrefixString,
   FoundOrNot,
   hexToBuffer,
-  logError,
   unwrapOptional,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
@@ -28,7 +27,6 @@ import {
   DbChainTip,
   DbEvent,
   DbEventTypeId,
-  DbFaucetRequest,
   DbFtBalance,
   DbFtEvent,
   DbFungibleTokenMetadata,
@@ -84,7 +82,6 @@ import {
   RawTxQueryResult,
   TransferQueryResult,
   txColumns,
-  TxQueryResult,
   TX_COLUMNS,
   validateZonefileHash,
 } from './helpers';
@@ -123,9 +120,9 @@ export class PgStore {
     usageName: string;
     withNotifier?: boolean;
   }): Promise<PgStore> {
-    const pool = await connectPgPool({ usageName: usageName, pgServer: PgServer.default });
+    const sql = await connectPgPool({ usageName: usageName, pgServer: PgServer.default });
     const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
-    const store = new PgStore(pool, notifier);
+    const store = new PgStore(sql, notifier);
     await store.connectPgNotifier();
     return store;
   }
