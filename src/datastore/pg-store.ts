@@ -56,7 +56,7 @@ import {
   NftHoldingInfoWithTxMetadata,
   StxUnlockEvent,
 } from './common';
-import { connectPgPool, PgServer, PgSqlClient } from './connection';
+import { connectPostgres, PgServer, PgSqlClient } from './connection';
 import {
   abiColumn,
   BlockQueryResult,
@@ -120,7 +120,7 @@ export class PgStore {
     usageName: string;
     withNotifier?: boolean;
   }): Promise<PgStore> {
-    const sql = await connectPgPool({ usageName: usageName, pgServer: PgServer.default });
+    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.default });
     const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
     const store = new PgStore(sql, notifier);
     await store.connectPgNotifier();

@@ -29,7 +29,7 @@ import { I32_MAX } from '../helpers';
 import { intCV, serializeCV } from '@stacks/transactions';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPgClientConfig } from '../datastore/connection';
+import { getPostgres } from '../datastore/connection';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -96,7 +96,7 @@ describe('postgres datastore', () => {
         PG_APPLICATION_NAME: undefined,
       },
       () => {
-        const config = getPgClientConfig({ usageName: 'tests' });
+        const config = getPostgres({ usageName: 'tests' });
         const parsedUrl = pgConnectionString.parse(config.connectionString ?? '');
         expect(parsedUrl.database).toBe('test_db');
         expect(parsedUrl.user).toBe('test_user');
@@ -124,7 +124,7 @@ describe('postgres datastore', () => {
         PG_APPLICATION_NAME: 'test-env-vars',
       },
       () => {
-        const config = getPgClientConfig({ usageName: 'tests' });
+        const config = getPostgres({ usageName: 'tests' });
         expect(config.database).toBe('pg_db_db1');
         expect(config.user).toBe('pg_user_user1');
         expect(config.password).toBe('pg_password_password1');
@@ -173,7 +173,7 @@ describe('postgres datastore', () => {
       },
       () => {
         expect(() => {
-          const config = getPgClientConfig({ usageName: 'tests' });
+          const config = getPostgres({ usageName: 'tests' });
         }).toThrowError();
       }
     );
