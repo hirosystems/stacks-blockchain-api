@@ -6,6 +6,7 @@ import {
   PostConditionMode,
   AnchorMode,
   uintCV,
+  ClarityType,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import {
@@ -151,6 +152,34 @@ describe('api tests', () => {
     expect(query4.body.error).toMatch(/not enabled/);
   });
 
+  test('contract function call return error', async () => {
+    const contract1 = await deployContract(
+      'beeple-d',
+      pKey,
+      'src/tests-tokens/test-contracts/error-function.clar'
+    );
+    await standByForTokens(contract1.contractId);
+    const abi = `{"maps":[],"functions":[{"args":[{"name":"code","type":"uint128"}],"name":"nft-transfer-err","access":"private","outputs":{"type":{"response":{"ok":"none","error":"uint128"}}}},{"args":[{"name":"token-id","type":"uint128"},{"name":"sender","type":"principal"},{"name":"recipient","type":"principal"}],"name":"transfer","access":"public","outputs":{"type":{"response":{"ok":"bool","error":"uint128"}}}},{"args":[{"name":"code","type":"uint128"}],"name":"get-errstr","access":"read_only","outputs":{"type":{"response":{"ok":{"string-ascii":{"length":23}},"error":"none"}}}},{"args":[],"name":"get-last-token-id","access":"read_only","outputs":{"type":{"response":{"ok":"uint128","error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":30}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[],"name":"get-nft-meta","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"tuple":[{"name":"mime-type","type":{"string-ascii":{"length":10}}},{"name":"name","type":{"string-ascii":{"length":6}}},{"name":"uri","type":{"string-ascii":{"length":87}}}]}},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-owner","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":"principal"},"error":"none"}}}},{"args":[{"name":"token-id","type":"uint128"}],"name":"get-token-uri","access":"read_only","outputs":{"type":{"response":{"ok":{"optional":{"string-ascii":{"length":197}}},"error":"none"}}}}],"variables":[{"name":"nft-not-found-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"nft-not-owned-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"},{"name":"sender-equals-recipient-err","type":{"response":{"ok":"none","error":"uint128"}},"access":"constant"}],"fungible_tokens":[],"non_fungible_tokens":[{"name":"beeple","type":"uint128"}]}`;
+    const jsonAbi = JSON.parse(abi);
+    const tokensContractHandler = new TokensContractHandler({
+      contractId: contract1.contractId,
+      smartContractAbi: jsonAbi,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: 'queueEntry.txId',
+      dbQueueId: 0,
+    });
+    const result = await tokensContractHandler.makeReadOnlyContractCall('return-error', []);
+    const expectedResult = { type: ClarityType.UInt, value: 404n };
+    expect(result.found).toBeFalsy();
+    if (!result.found) {
+      expect(result.retriable).toBeFalsy();
+      if (!result.retriable) {
+        expect(result.error).toBe(`Function execution failed with error: ${expectedResult}`);
+      }
+    }
+  });
+
   test('makeReadOnlyContractCall retries on connection interruption', async () => {
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
 
@@ -197,7 +226,7 @@ describe('api tests', () => {
     const mock = jest.spyOn(bnsHelpers, 'GetStacksNetwork');
     mock.mockImplementation((chainId: ChainID) => {
       const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
-      network.coreApiUrl = `http://bogus-hostname.com`; // returning a bogus hostname
+      network.coreApiUrl = `http://bogus-url.com`; // returning a bogus hostname
       return network;
     });
 

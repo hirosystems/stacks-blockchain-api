@@ -17,6 +17,7 @@ import {
   getAddressFromPrivateKey,
   makeRandomPrivKey,
   parseReadOnlyResponse,
+  ReadOnlyFunctionResponse,
   TransactionVersion,
   uintCV,
   UIntCV,
@@ -674,13 +675,16 @@ export class TokensContractHandler {
           'Content-Type': 'application/json',
         },
       });
-    } catch {
+    } catch (error: any) {
       // In case there is a network error during fetch.
+      console.log(`Error calling read only contract function value: ${error.message}`);
       return { found: false, retriable: true };
     }
 
     if (!response.ok) {
-      if (response.status >= 500) return { found: false, retriable: true };
+      if (response.status >= 500) {
+        return { found: false, retriable: true };
+      }
       const msg = await response.text().catch(() => '');
       return {
         found: false,
@@ -689,10 +693,19 @@ export class TokensContractHandler {
       };
     }
     try {
-      const value = await response.json();
-      return { found: true, value: parseReadOnlyResponse(value) };
-    } catch {
+      const value: ReadOnlyFunctionResponse = await response.json();
+      const parseValue = parseReadOnlyResponse(value);
+      if (parseValue.type === ClarityType.ResponseErr) {
+        return {
+          found: false,
+          retriable: false,
+          error: `Function execution failed with error: ${parseValue.value}`,
+        };
+      }
+      return { found: true, value: parseValue };
+    } catch (error: any) {
       // In case there was a connection was interrupted
+      console.log(`Error parsing read only contract function response: ${error.message}`);
       return { found: false, retriable: true };
     }
   }
@@ -701,11 +714,13 @@ export class TokensContractHandler {
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
-    let response: ReadOnlyContractCallResponse = { found: false, retriable: true };
+    let response = await this.makeReadOnlyContractCall(functionName, functionArgs);
     while (!response.found && response.retriable) {
-      response = await this.makeReadOnlyContractCall(functionName, functionArgs);
       // In case of strict mode enabled, retry should be aggresive. Otherwise, queued for later.
-      if (!isMetadataStrictModeEnabled()) await timeout(METADATA_RETREIVAL_INTERVAL);
+      if (!isMetadataStrictModeEnabled()) {
+        await timeout(METADATA_RETREIVAL_INTERVAL);
+      }
+      response = await this.makeReadOnlyContractCall(functionName, functionArgs);
     }
     if (response.found) return response.value;
     // In case the issue is permanent.
