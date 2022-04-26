@@ -1,4 +1,4 @@
-import { bufferToHexPrefixString, hexToBuffer, parseEnum } from '../helpers';
+import { bufferToHexPrefixString, has0xPrefix, hexToBuffer, parseEnum } from '../helpers';
 import { QueryConfig, QueryResult } from 'pg';
 import {
   DbAssetEventTypeId,
@@ -281,38 +281,38 @@ export interface TxInsertValues {
   burn_block_time: number;
   parent_burn_block_time: number;
   type_id: number;
-  anchor_mode: AnchorMode;
+  anchor_mode: DbTxAnchorMode;
   status: DbTxStatus;
   canonical: boolean;
   post_conditions: string;
   nonce: number;
-  fee_rate: string;
-  sponsored: string;
+  fee_rate: bigint;
+  sponsored: boolean;
   sponsor_nonce: number | null;
   sponsor_address: string | null;
   sender_address: string;
-  origin_hash_mode: string;
-  microblock_canonical: string;
-  microblock_sequence: string;
+  origin_hash_mode: number;
+  microblock_canonical: boolean;
+  microblock_sequence: number;
   microblock_hash: string;
-  token_transfer_recipient_address: string;
-  token_transfer_amount: string;
-  token_transfer_memo: string;
-  smart_contract_contract_id: string;
-  smart_contract_source_code: string;
-  contract_call_contract_id: string;
-  contract_call_function_name: string;
-  contract_call_function_args: string;
-  poison_microblock_header_1: string;
-  poison_microblock_header_2: string;
-  coinbase_payload: string;
+  token_transfer_recipient_address: string | null;
+  token_transfer_amount: bigint | null;
+  token_transfer_memo: string | null;
+  smart_contract_contract_id: string | null;
+  smart_contract_source_code: string | null;
+  contract_call_contract_id: string | null;
+  contract_call_function_name: string | null;
+  contract_call_function_args: string | null;
+  poison_microblock_header_1: string | null;
+  poison_microblock_header_2: string | null;
+  coinbase_payload: string | null;
   raw_result: string;
-  event_count: string;
-  execution_cost_read_count: string;
-  execution_cost_read_length: string;
-  execution_cost_runtime: string;
-  execution_cost_write_count: string;
-  execution_cost_write_length: string;
+  event_count: number;
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
 }
 
 export interface StxEventInsertValues {
