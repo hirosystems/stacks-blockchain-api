@@ -1,5 +1,12 @@
-import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
-import { logError, logger, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import {
+  bufferToHexPrefixString,
+  logError,
+  logger,
+  parseArgBoolean,
+  parsePort,
+  stopwatch,
+  timeout,
+} from '../helpers';
 import * as postgres from 'postgres';
 
 export type PgSqlClient = postgres.Sql<any>;
@@ -41,6 +48,7 @@ export async function connectPostgres({
       connectionOkay = true;
       break;
     } catch (error: any) {
+      // FIXME: check errors
       // const pgConnectionError = isPgConnectionError(error);
       // if (!pgConnectionError) {
       //   logError('Cannot connect to pg', error);
@@ -130,9 +138,19 @@ export function getPostgres({
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
       max: pgEnvVars.poolMax,
+      transform: {
+        value: {
+          from: value => {
+            if (Buffer.isBuffer(value)) {
+              return Buffer.from(value.toString('utf8'), 'hex');
+            }
+            return value;
+          },
+        },
+      },
       connection: {
         application_name: appName,
-        schema: pgEnvVars.schema,
+        // schema: pgEnvVars.schema,
       },
     });
   }

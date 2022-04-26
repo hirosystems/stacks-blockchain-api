@@ -13,13 +13,11 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.sql.connect();
   });
 
   test('tx post multicast', async () => {
@@ -109,7 +107,6 @@ describe('v2-proxy tests', () => {
   });
 
   afterEach(async () => {
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -33,15 +33,12 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
-
   let db: PgWriteStore;
-  let dbClient: PoolClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    dbClient = await db.sql.connect();
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
@@ -400,7 +397,6 @@ describe('websocket notifications', () => {
 
   afterEach(async () => {
     await apiServer.terminate();
-    dbClient.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

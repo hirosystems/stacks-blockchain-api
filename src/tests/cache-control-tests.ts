@@ -9,17 +9,18 @@ import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.sql.connect();
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -414,9 +415,9 @@ describe('cache-control tests', () => {
     expect(request7.headers['etag']).toEqual('"0"');
 
     // Simulate an incompatible pg version (without `bit_xor`).
-    await db.queryTx(async client => {
-      await client.query(`DROP MATERIALIZED VIEW mempool_digest`);
-      await client.query(`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`);
+    await client.begin(async sql => {
+      await sql`DROP MATERIALIZED VIEW mempool_digest`;
+      await sql`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`;
     });
 
     // ETag is undefined as if mempool cache did not exist.
@@ -428,7 +429,6 @@ describe('cache-control tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

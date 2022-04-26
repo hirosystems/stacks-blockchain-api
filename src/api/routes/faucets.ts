@@ -93,12 +93,13 @@ export function createFaucetRouter(db: PgStore): express.Router {
         }
 
         const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
-        await db.insertFaucetRequest({
-          ip: `${ip}`,
-          address: address,
-          currency: DbFaucetRequestCurrency.BTC,
-          occurred_at: now,
-        });
+        // FIXME: faucet
+        // await db.insertFaucetRequest({
+        //   ip: `${ip}`,
+        //   address: address,
+        //   currency: DbFaucetRequestCurrency.BTC,
+        //   occurred_at: now,
+        // });
 
         res.json({
           txid: tx.txId,
@@ -278,12 +279,13 @@ export function createFaucetRouter(db: PgStore): express.Router {
           res.json(response);
         }
 
-        await db.insertFaucetRequest({
-          ip: `${ip}`,
-          address: address,
-          currency: DbFaucetRequestCurrency.STX,
-          occurred_at: now,
-        });
+        // FIXME: faucet
+        // await db.insertFaucetRequest({
+        //   ip: `${ip}`,
+        //   address: address,
+        //   currency: DbFaucetRequestCurrency.STX,
+        //   occurred_at: now,
+        // });
       });
     })
   );

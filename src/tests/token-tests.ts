@@ -1,6 +1,5 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
@@ -10,14 +9,15 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.sql.connect();
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+    });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -1000,7 +1000,6 @@ describe('/extended/v1/tokens tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

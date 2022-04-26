@@ -32,7 +32,7 @@ import {
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { getTxSenderAddress } from '../event-stream/reader';
-import { number } from 'bitcoinjs-lib/types/script';
+import { AnchorMode } from '@stacks/transactions';
 
 export interface BlockQueryResult {
   block_hash: Buffer;
@@ -269,6 +269,52 @@ export interface RawTxQueryResult {
   raw_tx: Buffer;
 }
 
+export interface TxInsertValues {
+  tx_id: string;
+  raw_tx: string;
+  tx_index: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  block_hash: string;
+  parent_block_hash: string;
+  block_height: number;
+  burn_block_time: number;
+  parent_burn_block_time: number;
+  type_id: number;
+  anchor_mode: AnchorMode;
+  status: DbTxStatus;
+  canonical: boolean;
+  post_conditions: string;
+  nonce: number;
+  fee_rate: string;
+  sponsored: string;
+  sponsor_nonce: number | null;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: string;
+  microblock_canonical: string;
+  microblock_sequence: string;
+  microblock_hash: string;
+  token_transfer_recipient_address: string;
+  token_transfer_amount: string;
+  token_transfer_memo: string;
+  smart_contract_contract_id: string;
+  smart_contract_source_code: string;
+  contract_call_contract_id: string;
+  contract_call_function_name: string;
+  contract_call_function_args: string;
+  poison_microblock_header_1: string;
+  poison_microblock_header_2: string;
+  coinbase_payload: string;
+  raw_result: string;
+  event_count: string;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
+}
+
 export interface StxEventInsertValues {
   event_index: number;
   tx_id: Buffer;
@@ -284,6 +330,24 @@ export interface StxEventInsertValues {
   sender: string | null;
   recipient: string | null;
   amount: bigint;
+}
+
+export interface NftEventInsertValues {
+  event_index: number;
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string;
+  value: string;
 }
 
 export interface SmartContractEventInsertValues {
@@ -424,7 +488,7 @@ export const MICROBLOCK_COLUMNS = `
  * @param tableName - Name of the table to query against. Defaults to `txs`.
  * @returns `string` - Column list to insert in SELECT statement.
  */
-export function txColumns(tableName: string = 'txs'): string {
+export function txColumns(tableName: string = 'txs'): string[] {
   const columns: string[] = [
     // required columns
     'tx_id',
@@ -479,7 +543,7 @@ export function txColumns(tableName: string = 'txs'): string {
     'execution_cost_write_count',
     'execution_cost_write_length',
   ];
-  return columns.map(c => `${tableName}.${c}`).join(',');
+  return columns.map(c => `${tableName}.${c}`);
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   assertNotNullish,
   bufferToHexPrefixString,
   FoundOrNot,
+  hexStringWithoutPrefix,
   hexToBuffer,
   unwrapOptional,
 } from '../helpers';
@@ -2651,14 +2652,17 @@ export class PgStore {
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
     const columns = args.includeTxMetadata
-      ? this.sql`asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-          ${txColumns()}, ${abiColumn()}`
+      ? this.sql.unsafe(`
+          asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+          ${txColumns().join(', ')}, ${abiColumn()}
+        `)
       : this.sql`nft.*`;
     const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
-      SELECT ${columns}, ${countOverColumn()}
+      SELECT ${columns}, (COUNT(*) OVER())::INTEGER AS count
       FROM nft_events AS nft
       INNER JOIN txs USING (tx_id)
-      WHERE asset_identifier = ${args.assetIdentifier} AND nft.value = ${hexToBuffer(args.value)}
+      WHERE asset_identifier = ${args.assetIdentifier}
+        AND nft.value = ${hexStringWithoutPrefix(args.value)}
         AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
         AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
         AND nft.block_height <= ${args.blockHeight}
