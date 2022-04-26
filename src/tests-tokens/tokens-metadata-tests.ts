@@ -184,20 +184,20 @@ describe('api tests', () => {
     process.env['STACKS_API_METADATA_STRICT_MODE'] = '1';
 
     // mock response with 200 status code, headers and no body
-    const headers = {
-      server: ['stacks/2.0'],
-      date: ['Thu, Apr 21 2022 23:33:17 GMT'],
-      'access-control-allow-origin': ['*'],
-      'access-control-allow-headers': ['origin, content-type'],
-      'access-control-allow-methods': ['POST, GET, OPTIONS'],
-      'content-type': ['application/json'],
-      'transfer-encoding': ['chunked'],
-      'x-request-id': ['3692950320'],
-      connection: ['close'],
-    };
-    nock('http://127.0.0.1:20443')
-      .post('/v2/contracts/call-read/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6/beeple/get-token-uri')
-      .reply(200, undefined, headers);
+    // const headers = {
+    //   server: ['stacks/2.0'],
+    //   date: ['Thu, Apr 21 2022 23:33:17 GMT'],
+    //   'access-control-allow-origin': ['*'],
+    //   'access-control-allow-headers': ['origin, content-type'],
+    //   'access-control-allow-methods': ['POST, GET, OPTIONS'],
+    //   'content-type': ['application/json'],
+    //   'transfer-encoding': ['chunked'],
+    //   'x-request-id': ['3692950320'],
+    //   connection: ['close'],
+    // };
+    // nock('http://127.0.0.1:20443')
+    //   .post('/v2/contracts/call-read/STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6/beeple/get-token-uri')
+    //   .reply(200, undefined, headers);
 
     const contractAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
       contractName = 'beeple';
