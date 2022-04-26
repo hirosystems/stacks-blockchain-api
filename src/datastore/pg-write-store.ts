@@ -65,6 +65,9 @@ import {
   NftEventInsertValues,
   txColumns,
   TxInsertValues,
+  MicroblockInsertValues,
+  BlockInsertValues,
+  NEW_TX_COLUMNS,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
@@ -409,9 +412,9 @@ export class PgWriteStore extends PgStore {
         block_hash, index_block_hash, from_index_block_hash, mature_block_height, canonical, recipient,
         coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
       ) values (
-        ${hexToBuffer(minerReward.block_hash)},
-        ${hexToBuffer(minerReward.index_block_hash)},
-        ${hexToBuffer(minerReward.from_index_block_hash)},
+        ${hexStringWithoutPrefix(minerReward.block_hash)},
+        ${hexStringWithoutPrefix(minerReward.index_block_hash)},
+        ${hexStringWithoutPrefix(minerReward.from_index_block_hash)},
         ${minerReward.mature_block_height},
         ${minerReward.canonical},
         ${minerReward.recipient},
@@ -425,34 +428,29 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
+    const values: BlockInsertValues = {
+      block_hash: hexStringWithoutPrefix(block.block_hash),
+      index_block_hash: hexStringWithoutPrefix(block.index_block_hash),
+      parent_index_block_hash: hexStringWithoutPrefix(block.parent_index_block_hash),
+      parent_block_hash: hexStringWithoutPrefix(block.parent_block_hash),
+      parent_microblock_hash: hexStringWithoutPrefix(block.parent_microblock_hash),
+      parent_microblock_sequence: block.parent_microblock_sequence,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      burn_block_hash: hexStringWithoutPrefix(block.burn_block_hash),
+      burn_block_height: block.burn_block_height,
+      miner_txid: hexStringWithoutPrefix(block.miner_txid),
+      canonical: block.canonical,
+      execution_cost_read_count: block.execution_cost_read_count,
+      execution_cost_read_length: block.execution_cost_read_length,
+      execution_cost_runtime: block.execution_cost_runtime,
+      execution_cost_write_count: block.execution_cost_write_count,
+      execution_cost_write_length: block.execution_cost_write_length,
+    };
     const result = await sql`
-      INSERT INTO blocks (
-        block_hash, index_block_hash,
-        parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-        block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
-        execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
-        execution_cost_write_count, execution_cost_write_length
-      ) values (
-        ${hexToBuffer(block.block_hash)},
-        ${hexToBuffer(block.index_block_hash)},
-        ${hexToBuffer(block.parent_index_block_hash)},
-        ${hexToBuffer(block.parent_block_hash)},
-        ${hexToBuffer(block.parent_microblock_hash)},
-        ${block.parent_microblock_sequence},
-        ${block.block_height},
-        ${block.burn_block_time},
-        ${hexToBuffer(block.burn_block_hash)},
-        ${block.burn_block_height},
-        ${hexToBuffer(block.miner_txid)},
-        ${block.canonical},
-        ${block.execution_cost_read_count},
-        ${block.execution_cost_read_length},
-        ${block.execution_cost_runtime},
-        ${block.execution_cost_write_count},
-        ${block.execution_cost_write_length}
-      )
+      INSERT INTO blocks ${sql(values)}
       ON CONFLICT (index_block_hash) DO NOTHING
-      RETURNING index_block_hash
+      RETURNING *
     `;
     return result.length;
   }
@@ -471,7 +469,7 @@ export class PgWriteStore extends PgStore {
         UPDATE reward_slot_holders
         SET canonical = false
         WHERE canonical = true
-          AND (burn_block_hash = ${hexToBuffer(burnchainBlockHash)}
+          AND (burn_block_hash = ${hexStringWithoutPrefix(burnchainBlockHash)}
             OR burn_block_height >= ${burnchainBlockHeight})
         RETURNING address
       `;
@@ -1090,7 +1088,7 @@ export class PgWriteStore extends PgStore {
       acceptedMicroblockTip = undefined;
     } else {
       const microblockTipQuery = await sql<MicroblockQueryResult[]>`
-        SELECT ${MICROBLOCK_COLUMNS} FROM microblocks
+        SELECT ${sql(MICROBLOCK_COLUMNS)} FROM microblocks
         WHERE parent_index_block_hash = ${hexToBuffer(blockData.parentIndexBlockHash)}
         AND microblock_hash = ${hexToBuffer(blockData.parentMicroblockHash)}
       `;
@@ -1321,7 +1319,7 @@ export class PgWriteStore extends PgStore {
       const updateResults = await sql<MempoolTxQueryResult[]>`
         UPDATE mempool_txs
         SET pruned = true, status = ${status}
-        WHERE tx_id = ANY(${sql(txIdHex)})
+        WHERE tx_id IN ${sql(txIdHex)}
         RETURNING ${MEMPOOL_TX_COLUMNS}
       `;
       updatedTxs = updateResults.map(r => parseMempoolTxQueryResult(r));
@@ -1613,28 +1611,26 @@ export class PgWriteStore extends PgStore {
     txs: DataStoreTxEventData[]
   ): Promise<void> {
     for (const mb of microblocks) {
+      const values: MicroblockInsertValues = {
+        canonical: mb.canonical,
+        microblock_canonical: mb.microblock_canonical,
+        microblock_hash: hexStringWithoutPrefix(mb.microblock_hash),
+        microblock_sequence: mb.microblock_sequence,
+        microblock_parent_hash: hexStringWithoutPrefix(mb.microblock_parent_hash),
+        parent_index_block_hash: hexStringWithoutPrefix(mb.parent_index_block_hash),
+        block_height: mb.block_height,
+        parent_block_height: mb.parent_block_height,
+        parent_block_hash: hexStringWithoutPrefix(mb.parent_block_hash),
+        index_block_hash: hexStringWithoutPrefix(mb.index_block_hash),
+        block_hash: hexStringWithoutPrefix(mb.block_hash),
+        parent_burn_block_height: mb.parent_burn_block_height,
+        parent_burn_block_hash: hexStringWithoutPrefix(mb.parent_burn_block_hash),
+        parent_burn_block_time: mb.parent_burn_block_time,
+      };
       const mbResult = await sql`
-        INSERT INTO microblocks(
-          canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
-          parent_index_block_hash, block_height, parent_block_height, parent_block_hash, index_block_hash, block_hash,
-          parent_burn_block_height, parent_burn_block_hash, parent_burn_block_time
-        ) values (
-          ${mb.canonical},
-          ${mb.microblock_canonical},
-          ${hexToBuffer(mb.microblock_hash)},
-          ${mb.microblock_sequence},
-          ${hexToBuffer(mb.microblock_parent_hash)},
-          ${hexToBuffer(mb.parent_index_block_hash)},
-          ${mb.block_height},
-          ${mb.parent_block_height},
-          ${hexToBuffer(mb.parent_block_hash)},
-          ${hexToBuffer(mb.index_block_hash)},
-          ${hexToBuffer(mb.block_hash)},
-          ${mb.parent_burn_block_height},
-          ${hexToBuffer(mb.parent_burn_block_hash)},
-          ${mb.parent_burn_block_time},
-        )
+        INSERT INTO microblocks ${sql(values)}
         ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
+        RETURNING *
       `;
       if (mbResult.length !== 1) {
         const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
@@ -1688,16 +1684,17 @@ export class PgWriteStore extends PgStore {
       microblocks: string[];
     }
   ): Promise<{ updatedTxs: DbTx[] }> {
-    const bufIndexBlockHash = hexToBuffer(args.indexBlockHash);
-    const bufBlockHash = hexToBuffer(args.blockHash);
+    const hexIndexBlockHash = hexStringWithoutPrefix(args.indexBlockHash);
+    const hexBlockHash = hexStringWithoutPrefix(args.blockHash);
     const hexMicroblockHashes = args.microblocks.map(mb => hexStringWithoutPrefix(mb));
 
     // Flag orphaned microblock rows as `microblock_canonical=false`
     const updatedMicroblocksQuery = await sql`
       UPDATE microblocks
       SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical},
-        index_block_hash = ${bufIndexBlockHash}, block_hash = ${bufBlockHash}
-      WHERE microblock_hash = ANY(${sql(hexMicroblockHashes)})
+        index_block_hash = ${hexIndexBlockHash}, block_hash = ${hexBlockHash}
+      WHERE microblock_hash IN ${sql(hexMicroblockHashes)}
+      RETURNING *
     `;
     if (updatedMicroblocksQuery.length !== args.microblocks.length) {
       throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
@@ -1709,11 +1706,11 @@ export class PgWriteStore extends PgStore {
     const updatedMbTxsQuery = await sql<TxQueryResult[]>`
       UPDATE txs
       SET microblock_canonical = ${args.isMicroCanonical},
-        canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash},
-        block_hash = ${bufBlockHash}, burn_block_time = ${args.burnBlockTime}
-      WHERE microblock_hash = ANY(${sql(hexMicroblockHashes)})
-      AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
-      RETURNING ${TX_COLUMNS}
+        canonical = ${args.isCanonical}, index_block_hash = ${hexIndexBlockHash},
+        block_hash = ${hexBlockHash}, burn_block_time = ${args.burnBlockTime}
+      WHERE microblock_hash IN ${sql(hexMicroblockHashes)}
+      AND (index_block_hash = ${hexIndexBlockHash} OR index_block_hash = '\\x'::bytea)
+      RETURNING *
     `;
     // Any txs restored need to be pruned from the mempool
     const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
@@ -1729,25 +1726,27 @@ export class PgWriteStore extends PgStore {
 
     // Update the `index_block_hash` and `microblock_canonical` properties on all the tables containing other
     // microblock-tx metadata that have been accepted or orphaned in this anchor block.
-    const bufferTxIds = updatedMbTxs.map(tx => hexToBuffer(tx.tx_id));
-    for (const associatedTableName of TX_METADATA_TABLES) {
+    if (updatedMbTxs.length > 0) {
+      const hexTxIds = updatedMbTxs.map(tx => hexStringWithoutPrefix(tx.tx_id));
+      for (const associatedTableName of TX_METADATA_TABLES) {
+        await sql`
+          UPDATE ${sql(associatedTableName)}
+          SET microblock_canonical = ${args.isMicroCanonical},
+            canonical = ${args.isCanonical}, index_block_hash = ${hexIndexBlockHash}
+          WHERE microblock_hash IN ${sql(hexMicroblockHashes)}
+            AND (index_block_hash = ${hexIndexBlockHash} OR index_block_hash = '\\x'::bytea)
+            AND tx_id IN ${sql(hexTxIds)}
+        `;
+      }
       await sql`
-        UPDATE ${associatedTableName}
+        UPDATE principal_stx_txs
         SET microblock_canonical = ${args.isMicroCanonical},
-          canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash}
-        WHERE microblock_hash = ANY(${sql(hexMicroblockHashes)})
-        AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
-        AND tx_id = ANY(${bufferTxIds})
+          canonical = ${args.isCanonical}, index_block_hash = ${hexIndexBlockHash}
+        WHERE microblock_hash IN ${sql(hexMicroblockHashes)}
+        AND (index_block_hash = ${hexIndexBlockHash} OR index_block_hash = '\\x'::bytea)
+        AND tx_id IN ${sql(hexTxIds)}
       `;
     }
-    await sql`
-      UPDATE principal_stx_txs
-      SET microblock_canonical = ${args.isMicroCanonical},
-        canonical = ${args.isCanonical}, index_block_hash = ${bufIndexBlockHash}
-      WHERE microblock_hash = ANY(${sql(hexMicroblockHashes)})
-      AND (index_block_hash = $3 OR index_block_hash = '\\x'::bytea)
-      AND tx_id = ANY(${bufferTxIds})
-    `;
 
     return { updatedTxs: updatedMbTxs };
   }
@@ -1778,9 +1777,9 @@ export class PgWriteStore extends PgStore {
     // Note: we don't filter on `microblock_canonical=true` here because that could have been flipped in a previous anchor block
     // which could now be in the process of being re-org'd.
     const mbQuery = await sql<MicroblockQueryResult[]>`
-      SELECT ${MICROBLOCK_COLUMNS}
+      SELECT ${sql(MICROBLOCK_COLUMNS)}
       FROM microblocks
-      WHERE (parent_index_block_hash = ${hexToBuffer(parentIndexBlockHash)}
+      WHERE (parent_index_block_hash = ${hexStringWithoutPrefix(parentIndexBlockHash)}
         OR block_height = ${blockHeight})
     `;
     const candidateMicroblocks = mbQuery.map(row => parseMicroblockQueryResult(row));
@@ -1835,7 +1834,7 @@ export class PgWriteStore extends PgStore {
     const updateResults = await sql<{ tx_id: Buffer }[]>`
       UPDATE mempool_txs
       SET pruned = false
-      WHERE tx_id = ANY(${sql(txIdHex)})
+      WHERE tx_id IN ${sql(txIdHex)}
       RETURNING tx_id
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
@@ -2219,7 +2218,7 @@ export class PgWriteStore extends PgStore {
         SELECT canonical, index_block_hash, parent_index_block_hash
         FROM blocks
         WHERE block_height = ${block.block_height - 1}
-          AND index_block_hash = ${hexToBuffer(block.parent_index_block_hash)}
+          AND index_block_hash = ${hexStringWithoutPrefix(block.parent_index_block_hash)}
       `;
 
       if (parentResult.length > 1) {

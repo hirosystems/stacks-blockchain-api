@@ -141,6 +141,7 @@ export function getPostgres({
       transform: {
         value: {
           from: value => {
+            // Convert Buffers from 'utf8' to 'hex' string encoding.
             if (Buffer.isBuffer(value)) {
               return Buffer.from(value.toString('utf8'), 'hex');
             }

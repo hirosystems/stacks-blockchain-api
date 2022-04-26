@@ -315,6 +315,43 @@ export interface TxInsertValues {
   execution_cost_write_length: number;
 }
 
+export interface BlockInsertValues {
+  block_hash: string;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  parent_microblock_hash: string;
+  parent_microblock_sequence: number;
+  block_height: number;
+  burn_block_time: number;
+  burn_block_hash: string;
+  burn_block_height: number;
+  miner_txid: string;
+  canonical: boolean;
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
+}
+
+export interface MicroblockInsertValues {
+  canonical: boolean;
+  microblock_canonical: boolean;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_parent_hash: string;
+  parent_index_block_hash: string;
+  block_height: number;
+  parent_block_height: number;
+  parent_block_hash: string;
+  index_block_hash: string;
+  block_hash: string;
+  parent_burn_block_height: number;
+  parent_burn_block_hash: string;
+  parent_burn_block_time: number;
+}
+
 export interface StxEventInsertValues {
   event_index: number;
   tx_id: Buffer;
@@ -446,6 +483,52 @@ export const TX_COLUMNS = `
   execution_cost_read_count, execution_cost_read_length, execution_cost_runtime, execution_cost_write_count, execution_cost_write_length
 `;
 
+export const NEW_TX_COLUMNS = [
+  'tx_id',
+  'raw_tx',
+  'tx_index',
+  'index_block_hash',
+  'parent_index_block_hash',
+  'block_hash',
+  'parent_block_hash',
+  'block_height',
+  'burn_block_time',
+  'parent_burn_block_time',
+  'type_id',
+  'anchor_mode',
+  'status',
+  'canonical',
+  'post_conditions',
+  'nonce',
+  'fee_rate',
+  'sponsored',
+  'sponsor_nonce',
+  'sponsor_address',
+  'sender_address',
+  'origin_hash_mode',
+  'microblock_canonical',
+  'microblock_sequence',
+  'microblock_hash',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_contract_id',
+  'smart_contract_source_code',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'contract_call_function_args',
+  'poison_microblock_header_1',
+  'poison_microblock_header_2',
+  'coinbase_payload',
+  'raw_result',
+  'event_count',
+  'execution_cost_read_count',
+  'execution_cost_read_length',
+  'execution_cost_runtime',
+  'execution_cost_write_count',
+  'execution_cost_write_length',
+];
+
 export const MEMPOOL_TX_COLUMNS = `
   -- required columns
   pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time, receipt_block_height,
@@ -475,12 +558,22 @@ export const BLOCK_COLUMNS = `
   execution_cost_write_count, execution_cost_write_length
 `;
 
-export const MICROBLOCK_COLUMNS = `
-  canonical, microblock_canonical, microblock_hash, microblock_sequence, microblock_parent_hash,
-  parent_index_block_hash, block_height, parent_block_height, parent_block_hash,
-  parent_burn_block_height, parent_burn_block_time, parent_burn_block_hash,
-  index_block_hash, block_hash
-`;
+export const MICROBLOCK_COLUMNS = [
+  'canonical',
+  'microblock_canonical',
+  'microblock_hash',
+  'microblock_sequence',
+  'microblock_parent_hash',
+  'parent_index_block_hash',
+  'block_height',
+  'parent_block_height',
+  'parent_block_hash',
+  'parent_burn_block_height',
+  'parent_burn_block_time',
+  'parent_burn_block_hash',
+  'index_block_hash',
+  'block_hash',
+];
 
 /**
  * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
