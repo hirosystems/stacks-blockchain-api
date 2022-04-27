@@ -134,7 +134,7 @@
     "pg-copy-streams": "5.1.1",
     "pg-cursor": "2.7.1",
     "pg-listen": "1.7.0",
-    "postgres": "^3.0.6",
+    "postgres": "github:porsager/postgres#master",
     "prom-client": "14.0.1",
     "rpc-bitcoin": "2.0.0",
     "socket.io": "4.4.0",

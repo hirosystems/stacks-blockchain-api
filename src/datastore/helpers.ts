@@ -354,12 +354,12 @@ export interface MicroblockInsertValues {
 
 export interface StxEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: string;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
@@ -367,6 +367,35 @@ export interface StxEventInsertValues {
   sender: string | null;
   recipient: string | null;
   amount: bigint;
+}
+
+export interface MinerRewardInsertValues {
+  block_hash: string;
+  index_block_hash: string;
+  from_index_block_hash: string;
+  mature_block_height: number;
+  canonical: boolean;
+  recipient: string;
+  coinbase_amount: bigint;
+  tx_fees_anchored: bigint;
+  tx_fees_streamed_confirmed: bigint;
+  tx_fees_streamed_produced: bigint;
+}
+
+export interface StxLockEventInsertValues {
+  event_index: number;
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  locked_amount: bigint;
+  unlock_height: number;
+  locked_address: string;
 }
 
 export interface NftEventInsertValues {
@@ -387,20 +416,48 @@ export interface NftEventInsertValues {
   value: string;
 }
 
-export interface SmartContractEventInsertValues {
+export interface FtEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: string;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string;
+  amount: bigint;
+}
+
+export interface SmartContractEventInsertValues {
+  event_index: number;
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
   contract_identifier: string;
   topic: string;
-  value: Buffer;
+  value: string;
+}
+
+export interface BurnchainRewardInsertValues {
+  canonical: boolean;
+  burn_block_hash: string;
+  burn_block_height: number;
+  burn_amount: bigint;
+  reward_recipient: string;
+  reward_amount: bigint;
+  reward_index: number;
 }
 
 export interface BnsSubdomainInsertValues {
