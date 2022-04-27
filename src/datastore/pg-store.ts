@@ -1009,29 +1009,34 @@ export class PgStore {
         SELECT ${unsafeCols(this.sql, [
           ...MEMPOOL_TX_COLUMNS,
           abiColumn('mempool_txs'),
-          '(COUNT(*) OVER(*))::INTEGER AS count',
+          '(COUNT(*) OVER())::INTEGER AS count',
         ])}
         FROM mempool_txs
         WHERE ${
           address
-            ? sql`(sender_address = ${address}
+            ? this.sql`(sender_address = ${address}
                 OR token_transfer_recipient_address = ${address}
                 OR smart_contract_contract_id = ${address}
                 OR contract_call_contract_id = ${address})`
             : senderAddress && recipientAddress
-            ? sql`(sender_address = ${senderAddress} AND token_transfer_recipient_address = ${recipientAddress})`
+            ? this.sql`(sender_address = ${senderAddress}
+                AND token_transfer_recipient_address = ${recipientAddress})`
             : senderAddress
-            ? sql`sender_address = ${senderAddress}`
+            ? this.sql`sender_address = ${senderAddress}`
             : recipientAddress
-            ? sql`token_transfer_recipient_address = ${recipientAddress}`
-            : sql`FALSE`
+            ? this.sql`token_transfer_recipient_address = ${recipientAddress}`
+            : this.sql`TRUE`
         }
-          AND (pruned = false ${!includeUnanchored ? sql`OR tx_id IN ${unanchoredTxs}` : sql``})
+          AND (pruned = false ${
+            !includeUnanchored && unanchoredTxs.length
+              ? this.sql`tx_id IN ${sql(unanchoredTxs)}`
+              : this.sql``
+          })
         ORDER BY receipt_time DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      return { total: resultQuery[0].count, rows: resultQuery };
+      return { total: resultQuery[0]?.count ?? 0, rows: resultQuery };
     });
 
     const parsed = queryResult.rows.map(r => {

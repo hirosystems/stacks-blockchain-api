@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "address info"
+        "api tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
