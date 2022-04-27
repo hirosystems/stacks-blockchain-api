@@ -7185,7 +7185,7 @@ describe('api tests', () => {
     expect(query.status).toBe(431);
   });
 
-  test('getTxList() returns object', async () => {
+  test('getTxList returns object', async () => {
     const block = new TestBlockBuilder().build();
     await db.update(block);
     const expectedResp = {

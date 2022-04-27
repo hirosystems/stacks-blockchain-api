@@ -1109,7 +1109,9 @@ export class PgStore {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       if (txTypeFilter.length === 0) {
         totalQuery = await sql<{ count: number }[]>`
-          SELECT ${includeUnanchored ? 'tx_count_unanchored' : 'tx_count'} AS count
+          SELECT ${
+            includeUnanchored ? this.sql('tx_count_unanchored') : this.sql('tx_count')
+          } AS count
           FROM chain_tip
         `;
         resultQuery = await sql<ContractTxQueryResult[]>`
@@ -1153,10 +1155,11 @@ export class PgStore {
   }) {
     return this.sql.begin(async sql => {
       if (args.txs.length === 0) return { results: [] };
-      const transactionValues = args.txs.map(tx => [
-        pgHexString(tx.txId),
-        pgHexString(tx.indexBlockHash),
-      ]);
+      // TODO: This hack has to be done because postgres.js can't figure out how to interpolate
+      // these `bytea` VALUES comparisons yet.
+      const transactionValues = args.txs
+        .map(tx => `('${pgHexString(tx.txId)}'::bytea, '${pgHexString(tx.indexBlockHash)}'::bytea)`)
+        .join(', ');
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const stxLockResults = await sql<
@@ -1174,7 +1177,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE (tx_id::text, index_block_hash::text) IN (VALUES ${sql(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN (VALUES ${this.sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
@@ -1193,7 +1196,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN (VALUES ${this.sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const ftResults = await sql<
@@ -1213,7 +1216,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN (VALUES ${this.sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
@@ -1233,7 +1236,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
+        WHERE (tx_id, index_block_hash) = ANY(VALUES ${this.sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
@@ -1251,7 +1254,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN (VALUES ${this.sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
