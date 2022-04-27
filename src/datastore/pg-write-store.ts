@@ -66,7 +66,6 @@ import {
   TxInsertValues,
   MicroblockInsertValues,
   BlockInsertValues,
-  NEW_TX_COLUMNS,
   MinerRewardInsertValues,
   StxLockEventInsertValues,
   FtEventInsertValues,
@@ -499,6 +498,7 @@ export class PgWriteStore extends PgStore {
       }));
       const result = await sql`
         INSERT INTO reward_slot_holders ${sql(values)}
+        RETURNING *
       `;
       if (result.length !== slotHolders.length) {
         throw new Error(
@@ -822,7 +822,8 @@ export class PgWriteStore extends PgStore {
         throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.length} for BNS`);
       }
       const zonefilesRes = await sql`
-        INSERT INTO zonefiles ${sql(zonefileValues)} RETURNING *
+        INSERT INTO zonefiles ${sql(zonefileValues)}
+        RETURNING *
       `;
       if (zonefilesRes.length !== subdomains.length) {
         throw new Error(
@@ -939,6 +940,7 @@ export class PgWriteStore extends PgStore {
       }));
       const res = await sql`
         INSERT INTO contract_logs ${sql(values)}
+        RETURNING *
       `;
       if (res.length !== eventBatch.length) {
         throw new Error(`Expected ${eventBatch.length} inserts, got ${res.length}`);
@@ -1169,7 +1171,7 @@ export class PgWriteStore extends PgStore {
     const result = await sql`
       INSERT INTO txs ${sql(values)}
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
-      RETURNING ${sql(NEW_TX_COLUMNS)}
+      RETURNING ${sql(TX_COLUMNS)}
     `;
     return result.length;
   }
@@ -1406,6 +1408,7 @@ export class PgWriteStore extends PgStore {
     try {
       const res = await sql`
         INSERT INTO token_offering_locked ${sql(lockedInfos, 'address', 'value', 'block')}
+        RETURNING *
       `;
       if (res.length !== lockedInfos.length) {
         throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.length}`);
@@ -1604,7 +1607,7 @@ export class PgWriteStore extends PgStore {
         block_hash = ${hexBlockHash}, burn_block_time = ${args.burnBlockTime}
       WHERE microblock_hash IN ${sql(hexMicroblockHashes)}
         AND (index_block_hash = ${hexIndexBlockHash} OR index_block_hash = '\\x'::bytea)
-      RETURNING ${sql(NEW_TX_COLUMNS)}
+      RETURNING ${sql(TX_COLUMNS)}
     `;
     // Any txs restored need to be pruned from the mempool
     const updatedMbTxs = updatedMbTxsQuery.map(r => parseTxQueryResult(r));
@@ -1800,7 +1803,7 @@ export class PgWriteStore extends PgStore {
       UPDATE txs
       SET canonical = ${canonical}
       WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
-      RETURNING ${sql(NEW_TX_COLUMNS)}
+      RETURNING ${sql(TX_COLUMNS)}
     `;
     const txIds = txResult.map(row => parseTxQueryResult(row));
     if (canonical) {

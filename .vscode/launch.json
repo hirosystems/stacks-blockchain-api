@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "/extended/v1/tokens tests"
+        "api tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

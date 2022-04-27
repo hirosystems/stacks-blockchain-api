@@ -62,7 +62,6 @@ import {
   BlockQueryResult,
   BLOCK_COLUMNS,
   ContractTxQueryResult,
-  countOverColumn,
   DbTokenMetadataQueueEntryQuery,
   FaucetRequestQueryResult,
   FungibleTokenMetadataQueryResult,
@@ -70,7 +69,6 @@ import {
   MEMPOOL_TX_COLUMNS,
   MicroblockQueryResult,
   MICROBLOCK_COLUMNS,
-  NEW_TX_COLUMNS,
   NonFungibleTokenMetadataQueryResult,
   parseBlockQueryResult,
   parseDbEvents,
@@ -81,10 +79,12 @@ import {
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
   pgHexString,
+  prefixedCols,
   RawTxQueryResult,
   TransferQueryResult,
   txColumns,
   TX_COLUMNS,
+  unsafeCols,
   validateZonefileHash,
 } from './helpers';
 import {
@@ -203,10 +203,10 @@ export class PgStore {
 
   async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
     const result = await this.sql<ContractTxQueryResult[]>`
-      SELECT ${TX_COLUMNS}, ${abiColumn()}
+      SELECT ${this.sql(TX_COLUMNS)}, ${this.sql.unsafe(abiColumn())}
       FROM txs
-      WHERE tx_id = ${hexToBuffer(args.txId)}
-        AND index_block_hash = ${hexToBuffer(args.indexBlockHash)}
+      WHERE tx_id = ${pgHexString(args.txId)}
+        AND index_block_hash = ${pgHexString(args.indexBlockHash)}
       ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
       LIMIT 1
     `;
@@ -232,9 +232,9 @@ export class PgStore {
       let microblocksStreamed: DbMicroblock[] | null = null;
       if (metadata?.txs) {
         const txQuery = await sql<ContractTxQueryResult[]>`
-          SELECT ${TX_COLUMNS}, ${abiColumn()}
+          SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
           FROM txs
-          WHERE index_block_hash = ${hexToBuffer(block.result.index_block_hash)}
+          WHERE index_block_hash = ${pgHexString(block.result.index_block_hash)}
             AND canonical = true AND microblock_canonical = true
           ORDER BY microblock_sequence DESC, tx_index DESC
         `;
@@ -242,11 +242,11 @@ export class PgStore {
       }
       if (metadata?.microblocks) {
         const microblocksQuery = await sql<MicroblockQueryResult[]>`
-          SELECT ${MICROBLOCK_COLUMNS}
+          SELECT ${sql(MICROBLOCK_COLUMNS)}
           FROM microblocks
           WHERE parent_index_block_hash
-            IN (${hexToBuffer(block.result.index_block_hash)},
-              ${hexToBuffer(block.result.parent_index_block_hash)})
+            IN (${pgHexString(block.result.index_block_hash)},
+              ${pgHexString(block.result.parent_index_block_hash)})
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
         `;
@@ -308,23 +308,41 @@ export class PgStore {
     sql: PgSqlClient,
     blockIdentifer: BlockIdentifier
   ): Promise<FoundOrNot<DbBlock>> {
-    let blockCondition: postgres.PendingQuery<postgres.Row[]>;
+    // FIXME: Try again
+    let result: postgres.RowList<BlockQueryResult[]>;
     if ('hash' in blockIdentifer) {
-      blockCondition = sql`block_hash = ${hexToBuffer(blockIdentifer.hash)}`;
+      result = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE block_hash = ${pgHexString(blockIdentifer.hash)}
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+      `;
     } else if ('height' in blockIdentifer) {
-      blockCondition = sql`block_height = ${blockIdentifer.height}`;
+      result = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE block_height = ${blockIdentifer.height}
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+      `;
     } else if ('burnBlockHash' in blockIdentifer) {
-      blockCondition = sql`burn_block_hash = ${hexToBuffer(blockIdentifer.burnBlockHash)}`;
+      result = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE burn_block_hash = ${pgHexString(blockIdentifer.burnBlockHash)}
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+      `;
     } else {
-      blockCondition = sql`burn_block_height = ${blockIdentifer.burnBlockHeight}`;
+      result = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE burn_block_height = ${blockIdentifer.burnBlockHeight}
+        ORDER BY canonical DESC, block_height DESC
+        LIMIT 1
+      `;
     }
-    const result = await sql<BlockQueryResult[]>`
-      SELECT ${BLOCK_COLUMNS}
-      FROM blocks
-      WHERE ${blockCondition}
-      ORDER BY canonical DESC, block_height DESC
-      LIMIT 1
-    `;
     if (result.length === 0) {
       return { found: false } as const;
     }
@@ -338,7 +356,7 @@ export class PgStore {
     blockHeight: number
   ): Promise<FoundOrNot<DbBlock>> {
     const result = await sql<BlockQueryResult[]>`
-      SELECT ${BLOCK_COLUMNS}
+      SELECT ${sql(BLOCK_COLUMNS)}
       FROM blocks
       WHERE block_height = ${blockHeight} AND canonical = true
     `;
@@ -365,7 +383,7 @@ export class PgStore {
 
   async getCurrentBlockInternal(sql: PgSqlClient): Promise<FoundOrNot<DbBlock>> {
     const result = await sql<BlockQueryResult[]>`
-      SELECT ${BLOCK_COLUMNS}
+      SELECT ${sql(BLOCK_COLUMNS)}
       FROM blocks
       WHERE canonical = true
       ORDER BY block_height DESC
@@ -385,7 +403,7 @@ export class PgStore {
         SELECT block_count AS count FROM chain_tip
       `;
       const results = await sql<BlockQueryResult[]>`
-        SELECT ${BLOCK_COLUMNS}
+        SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
         WHERE canonical = true
         ORDER BY block_height DESC
@@ -401,7 +419,7 @@ export class PgStore {
     const result = await this.sql<{ tx_id: Buffer; tx_index: number }[]>`
       SELECT tx_id, tx_index
       FROM txs
-      WHERE index_block_hash = ${hexToBuffer(indexBlockHash)}
+      WHERE index_block_hash = ${pgHexString(indexBlockHash)}
         AND canonical = true AND microblock_canonical = true
     `;
     const txIds = result.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
@@ -415,7 +433,7 @@ export class PgStore {
         throw new Error(`Could not find block by hash ${blockHash}`);
       }
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
+        SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
         WHERE index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
           AND canonical = true AND microblock_canonical = true
@@ -510,7 +528,7 @@ export class PgStore {
     const { blockHeight } = await this.getChainTip(sql);
     const unanchoredBlockHeight = blockHeight + 1;
     const query = await sql<ContractTxQueryResult[]>`
-      SELECT ${TX_COLUMNS}, ${abiColumn()}
+      SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
       FROM txs
       WHERE canonical = true AND microblock_canonical = true AND block_height = ${unanchoredBlockHeight}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -617,14 +635,14 @@ export class PgStore {
             SELECT nonce
             FROM mempool_txs
             WHERE sender_address = ${args.stxAddress}
-              AND nonce = ANY(${sql(expectedNonces)})
+              AND nonce IN ${sql(expectedNonces)}
             AND pruned = false
             UNION
             SELECT sponsor_nonce as nonce
             FROM mempool_txs
             WHERE sponsor_address = ${args.stxAddress}
               AND sponsored = true
-              AND sponsor_nonce = ANY(${sql(expectedNonces)})
+              AND sponsor_nonce IN ${sql(expectedNonces)}
             AND pruned = false
           `;
           const mempoolNonceArr = mempoolNonces.map(r => r.nonce);
@@ -647,8 +665,8 @@ export class PgStore {
   async getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     const queryResult = await this.sql<{ canonical: boolean }[]>`
       SELECT canonical FROM names
-      WHERE tx_id = ${hexToBuffer(txId)}
-      AND index_block_hash = ${hexToBuffer(indexBlockHash)}
+      WHERE tx_id = ${pgHexString(txId)}
+      AND index_block_hash = ${pgHexString(indexBlockHash)}
     `;
     if (queryResult.length > 0) {
       return {
@@ -678,7 +696,7 @@ export class PgStore {
       }[]
     >`
       SELECT
-        burn_block_hash, burn_block_height, address, slot_index, ${countOverColumn()}
+        burn_block_hash, burn_block_height, address, slot_index, (COUNT(*) OVER())::INTEGER AS count
       FROM reward_slot_holders
       WHERE canonical = true
         ${burnchainAddress ? this.sql`AND address = ${burnchainAddress}` : this.sql``}
@@ -717,13 +735,13 @@ export class PgStore {
         SELECT COUNT(*)::integer
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-          AND index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
+          AND index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
       `;
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
+        SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-          AND index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
+          AND index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
         ORDER BY microblock_sequence DESC, tx_index DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -841,13 +859,12 @@ export class PgStore {
       const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: true,
       });
-      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
-      // FIXME: ANY
+      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id.toString('hex'));
       const query = await sql<{ tx_id: Buffer }[]>`
         SELECT tx_id
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-        AND tx_id = ANY(${notPrunedBufferTxIds})
+        AND tx_id IN ${sql(notPrunedBufferTxIds)}
         AND block_height = ${unanchoredBlockHeight}
       `;
       // The tx is marked as pruned because it's in an unanchored microblock
@@ -870,12 +887,11 @@ export class PgStore {
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
     return this.sql.begin(async client => {
-      const hexTxIds = args.txIds.map(txId => hexToBuffer(txId));
-      // FIXME: ANY
+      const hexTxIds = args.txIds.map(txId => pgHexString(txId));
       const result = await this.sql<MempoolTxQueryResult[]>`
-        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
+        SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
-        WHERE tx_id = ANY(${hexTxIds})
+        WHERE tx_id IN ${this.sql(hexTxIds)}
       `;
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
@@ -892,9 +908,9 @@ export class PgStore {
   }) {
     return this.sql.begin(async sql => {
       const result = await sql<MempoolTxQueryResult[]>`
-        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
+        SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
-        WHERE tx_id = ${hexToBuffer(txId)}
+        WHERE tx_id = ${pgHexString(txId)}
       `;
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
       if (result[0]?.pruned && !includeUnanchored) {
@@ -906,7 +922,7 @@ export class PgStore {
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
           AND block_height = ${unanchoredBlockHeight}
-          AND tx_id = ${hexToBuffer(txId)}
+          AND tx_id = ${pgHexString(txId)}
           LIMIT 1
         `;
         // The tx is marked as pruned because it's in an unanchored microblock
@@ -941,13 +957,16 @@ export class PgStore {
         DbTxStatus.DroppedTooExpensive,
         DbTxStatus.DroppedStaleGarbageCollect,
       ];
-      const selectCols = MEMPOOL_TX_COLUMNS.replace('tx_id', 'mempool.tx_id');
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
-        SELECT ${selectCols}, ${abiColumn('mempool')}, ${countOverColumn()}
+        SELECT ${unsafeCols(this.sql, [
+          ...prefixedCols(MEMPOOL_TX_COLUMNS, 'mempool'),
+          abiColumn('mempool'),
+        ])},
+          (COUNT(*) OVER())::INTEGER AS count
         FROM (
           SELECT *
           FROM mempool_txs
-          WHERE pruned = true AND status = ANY(${sql(droppedStatuses)})
+          WHERE pruned = true AND status IN ${sql(droppedStatuses)}
         ) mempool
         LEFT JOIN (
           SELECT tx_id
@@ -982,44 +1001,37 @@ export class PgStore {
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
     const queryResult = await this.sql.begin(async sql => {
-      let addressCond = sql``;
-      if (address) {
-        addressCond = sql`(sender_address = ${address}
-            OR token_transfer_recipient_address = ${address}
-            OR smart_contract_contract_id = ${address}
-            OR contract_call_contract_id = ${address})`;
-      } else if (senderAddress && recipientAddress) {
-        addressCond = sql`(sender_address = ${senderAddress} AND token_transfer_recipient_address = ${recipientAddress})`;
-      } else if (senderAddress) {
-        addressCond = sql`sender_address = ${senderAddress}`;
-      } else if (recipientAddress) {
-        addressCond = sql`token_transfer_recipient_address = ${recipientAddress}`;
-      }
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
-      let prunedCond: postgres.PendingQuery<postgres.Row[]>;
-      if (!includeUnanchored) {
-        const unanchoredTxs = (await this.getUnanchoredTxsInternal(sql)).txs.map(tx =>
-          hexToBuffer(tx.tx_id)
-        );
-        // FIXME: ANY
-        prunedCond = sql`(pruned = false OR tx_id = ANY(${unanchoredTxs}))`;
-      } else {
-        prunedCond = sql`pruned = false`;
-      }
-      const totalQuery = await sql<{ count: number }[]>`
-        SELECT COUNT(*)::integer
+      const unanchoredTxs: string[] = !includeUnanchored
+        ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => pgHexString(tx.tx_id))
+        : [];
+      const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
+        SELECT ${unsafeCols(this.sql, [
+          ...MEMPOOL_TX_COLUMNS,
+          abiColumn('mempool_txs'),
+          '(COUNT(*) OVER(*))::INTEGER AS count',
+        ])}
         FROM mempool_txs
-        WHERE ${addressCond} AND ${prunedCond}
-      `;
-      const resultQuery = await sql<MempoolTxQueryResult[]>`
-        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
-        FROM mempool_txs
-        WHERE ${addressCond} AND ${prunedCond}
+        WHERE ${
+          address
+            ? sql`(sender_address = ${address}
+                OR token_transfer_recipient_address = ${address}
+                OR smart_contract_contract_id = ${address}
+                OR contract_call_contract_id = ${address})`
+            : senderAddress && recipientAddress
+            ? sql`(sender_address = ${senderAddress} AND token_transfer_recipient_address = ${recipientAddress})`
+            : senderAddress
+            ? sql`sender_address = ${senderAddress}`
+            : recipientAddress
+            ? sql`token_transfer_recipient_address = ${recipientAddress}`
+            : sql`FALSE`
+        }
+          AND (pruned = false ${!includeUnanchored ? sql`OR tx_id IN ${unanchoredTxs}` : sql``})
         ORDER BY receipt_time DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      return { total: totalQuery[0].count, rows: resultQuery };
+      return { total: resultQuery[0].count, rows: resultQuery };
     });
 
     const parsed = queryResult.rows.map(r => {
@@ -1048,9 +1060,9 @@ export class PgStore {
     return this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
+        SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE tx_id = ${hexToBuffer(txId)} AND block_height <= ${maxBlockHeight}
+        WHERE tx_id = ${pgHexString(txId)} AND block_height <= ${maxBlockHeight}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
       `;
@@ -1096,7 +1108,7 @@ export class PgStore {
           FROM chain_tip
         `;
         resultQuery = await sql<ContractTxQueryResult[]>`
-          SELECT ${TX_COLUMNS}, ${abiColumn()}
+          SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -1109,13 +1121,13 @@ export class PgStore {
           SELECT COUNT(*)::integer
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-            AND type_id = ANY(${sql(txTypeIds)}) AND block_height <= ${maxHeight}
+            AND type_id IN ${sql(txTypeIds)} AND block_height <= ${maxHeight}
         `;
         resultQuery = await sql<ContractTxQueryResult[]>`
-          SELECT ${TX_COLUMNS}, ${abiColumn()}
+          SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-            AND type_id = ANY(${sql(txTypeIds)}) AND block_height <= ${maxHeight}
+            AND type_id IN ${sql(txTypeIds)} AND block_height <= ${maxHeight}
           ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
           LIMIT ${limit}
           OFFSET ${offset}
@@ -1134,12 +1146,11 @@ export class PgStore {
     limit: number;
     offset: number;
   }) {
-    // FIXME: ANY
     return this.sql.begin(async sql => {
       if (args.txs.length === 0) return { results: [] };
       const transactionValues = args.txs.map(tx => [
-        hexToBuffer(tx.txId),
-        hexToBuffer(tx.indexBlockHash),
+        pgHexString(tx.txId),
+        pgHexString(tx.indexBlockHash),
       ]);
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
@@ -1158,7 +1169,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+        WHERE (tx_id::text, index_block_hash::text) IN (VALUES ${sql(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
@@ -1177,7 +1188,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const ftResults = await sql<
@@ -1197,7 +1208,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
@@ -1217,7 +1228,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
@@ -1235,7 +1246,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${transactionValues})
+        WHERE (tx_id::text, index_block_hash::text) = ANY(VALUES ${sql(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
@@ -1256,8 +1267,8 @@ export class PgStore {
     return this.sql.begin(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
-      const txIdBuffer = hexToBuffer(args.txId);
-      const blockHashBuffer = hexToBuffer(args.indexBlockHash);
+      const txIdHex = pgHexString(args.txId);
+      const blockHashHex = pgHexString(args.indexBlockHash);
       const stxLockResults = await sql<
         {
           event_index: number;
@@ -1273,7 +1284,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
@@ -1292,7 +1303,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
         `;
       const ftResults = await sql<
@@ -1312,7 +1323,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
@@ -1332,7 +1343,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
@@ -1350,7 +1361,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE tx_id = ${txIdBuffer} AND index_block_hash = ${blockHashBuffer}
+        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
@@ -1374,7 +1385,7 @@ export class PgStore {
     offset: number;
   }) {
     return this.sql.begin(async sql => {
-      const refValue = args.addressOrTxId.address ?? hexToBuffer(args.addressOrTxId.txId);
+      const refValue = args.addressOrTxId.address ?? pgHexString(args.addressOrTxId.txId);
       const isAddress = args.addressOrTxId.address !== undefined;
       const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
       const eventsResult = await sql<
@@ -1398,90 +1409,131 @@ export class PgStore {
         WITH events AS (
           ${
             args.eventTypeFilter.includes(DbEventTypeId.StxLock)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
-                  locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
-                  ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
-                FROM stx_lock_events
-                WHERE ${isAddress ? sql`locked_address = ${refValue}` : sql`tx_id = ${refValue}`}
-                AND canonical = true AND microblock_canonical = true
-                `
+              ? isAddress
+                ? sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+                    locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
+                  FROM stx_lock_events
+                  WHERE locked_address = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
+                : sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
+                    locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
+                  FROM stx_lock_events
+                  WHERE tx_id = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
               : emptyEvents
           }
           UNION
           ${
             args.eventTypeFilter.includes(DbEventTypeId.StxAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
-                  ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
-                FROM stx_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
+              ? isAddress
+                ? sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
+                  FROM stx_events
+                  WHERE (sender = ${refValue} OR recipient = ${refValue})
+                  AND canonical = true AND microblock_canonical = true
+                  `
+                : sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
+                  FROM stx_events
+                  WHERE tx_id = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
               : emptyEvents
           }
           UNION
           ${
             args.eventTypeFilter.includes(DbEventTypeId.FungibleTokenAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
-                  ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
-                FROM ft_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
+              ? isAddress
+                ? sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
+                  FROM ft_events
+                  WHERE (sender = ${refValue} OR recipient = ${refValue})
+                  AND canonical = true AND microblock_canonical = true
+                  `
+                : sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                    '0'::bytea as value, NULL as topic,
+                    ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
+                  FROM ft_events
+                  WHERE tx_id = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
               : emptyEvents
           }
           UNION
           ${
             args.eventTypeFilter.includes(DbEventTypeId.NonFungibleTokenAsset)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, sender, recipient,
-                  0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  value, NULL as topic,
-                  ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
-                FROM nft_events
-                WHERE ${
-                  isAddress
-                    ? sql`(sender = ${refValue} OR recipient = ${refValue})`
-                    : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
+              ? isAddress
+                ? sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                    value, NULL as topic,
+                    ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
+                  FROM nft_events
+                  WHERE (sender = ${refValue} OR recipient = ${refValue})
+                  AND canonical = true AND microblock_canonical = true
+                  `
+                : sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, sender, recipient,
+                    0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
+                    value, NULL as topic,
+                    ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
+                  FROM nft_events
+                  WHERE tx_id = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
               : emptyEvents
           }
           UNION
           ${
             args.eventTypeFilter.includes(DbEventTypeId.SmartContractLog)
-              ? sql`
-                SELECT
-                  tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
-                  0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
-                  value, topic,
-                  ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
-                FROM contract_logs
-                WHERE ${
-                  isAddress ? sql`contract_identifier = ${refValue}` : sql`tx_id = ${refValue}`
-                }
-                AND canonical = true AND microblock_canonical = true
-                `
+              ? isAddress
+                ? sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+                    0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
+                    value, topic,
+                    ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
+                  FROM contract_logs
+                  WHERE contract_identifier = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
+                : sql`
+                  SELECT
+                    tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
+                    0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
+                    value, topic,
+                    ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
+                  FROM contract_logs
+                  WHERE tx_id = ${refValue}
+                  AND canonical = true AND microblock_canonical = true
+                  `
               : emptyEvents
           }
         )
@@ -1555,7 +1607,7 @@ export class PgStore {
     const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
       SELECT *
       FROM token_metadata_queue
-      WHERE NOT (queue_id = ANY(${excludingEntries}))
+      WHERE NOT (queue_id IN ${excludingEntries})
       AND processed = false
       ORDER BY block_height ASC, queue_id ASC
       LIMIT ${limit}
@@ -1587,7 +1639,7 @@ export class PgStore {
     >`
       SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
       FROM smart_contracts
-      WHERE contract_id = ANY(${contractIds})
+      WHERE contract_id IN ${contractIds}
       ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
     `;
     if (result.length === 0) {
@@ -1917,7 +1969,7 @@ export class PgStore {
         value?: Buffer;
       } & { count: number })[]
     >`
-      SELECT *, ${countOverColumn()}
+      SELECT *, (COUNT(*) OVER())::INTEGER AS count
       FROM(
         SELECT
           'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
@@ -2119,7 +2171,7 @@ export class PgStore {
     // join against `txs` to get the full transaction objects only for that page.
     const resultQuery = await this.sql<(ContractTxQueryResult & { count: number })[]>`
       WITH stx_txs AS (
-        SELECT tx_id, index_block_hash, microblock_hash, ${countOverColumn()}
+        SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::INTEGER AS count
         FROM principal_stx_txs
         WHERE principal = ${args.stxAddress} AND ${blockCond}
           AND canonical = TRUE AND microblock_canonical = TRUE
@@ -2127,7 +2179,7 @@ export class PgStore {
         LIMIT ${args.limit}
         OFFSET ${args.offset}
       )
-      SELECT ${txColumns()}, ${abiColumn()}, count
+      SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}, count
       FROM stx_txs
       INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
     `;
@@ -2162,7 +2214,7 @@ export class PgStore {
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-            AND txs.tx_id = ${hexToBuffer(tx_id)}
+            AND txs.tx_id = ${pgHexString(tx_id)}
             AND (
               sender_address = ${stxAddress} OR
               token_transfer_recipient_address = ${stxAddress} OR
@@ -2173,9 +2225,9 @@ export class PgStore {
           SELECT txs.* FROM txs
           INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
           WHERE txs.canonical = true AND txs.microblock_canonical = true
-            AND txs.tx_id = ${hexToBuffer(tx_id)}
+            AND txs.tx_id = ${pgHexString(tx_id)}
         )
-        SELECT ${TX_COLUMNS}, ${countOverColumn()}
+        SELECT ${this.sql(TX_COLUMNS)}, (COUNT(*) OVER())::INTEGER AS count
         FROM principal_txs
         ORDER BY block_height DESC, tx_index DESC
       ), events AS (
@@ -2191,10 +2243,10 @@ export class PgStore {
         events.amount as event_amount,
         events.sender as event_sender,
         events.recipient as event_recipient,
-        ${abiColumn('transactions')}
+        ${this.sql.unsafe(abiColumn('transactions'))}
       FROM transactions
       LEFT JOIN events ON transactions.tx_id = events.tx_id
-      AND transactions.tx_id = ${hexToBuffer(tx_id)}
+      AND transactions.tx_id = ${pgHexString(tx_id)}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
     `;
     const txs = parseTxsWithAssetTransfers(resultQuery, stxAddress);
@@ -2248,7 +2300,7 @@ export class PgStore {
           INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
           WHERE canonical = true AND microblock_canonical = true
         )
-        SELECT ${TX_COLUMNS}, ${countOverColumn()}
+        SELECT ${this.sql(TX_COLUMNS)}, (COUNT(*) OVER())::INTEGER AS count
         FROM principal_txs
         ${
           args.atSingleBlock
@@ -2288,7 +2340,7 @@ export class PgStore {
       )
       SELECT
         transactions.*,
-        ${abiColumn('transactions')},
+        ${this.sql.unsafe(abiColumn('transactions'))},
         events.event_index as event_index,
         events.event_type_id as event_type,
         events.amount as event_amount,
@@ -2322,7 +2374,7 @@ export class PgStore {
   }): Promise<{ results: DbInboundStxTransfer[]; total: number }> {
     const resultQuery = await this.sql<(TransferQueryResult & { count: number })[]>`
       SELECT
-        *, ${countOverColumn()}
+        *, (COUNT(*) OVER())::INTEGER AS count
       FROM
         (
           SELECT
@@ -2394,9 +2446,10 @@ export class PgStore {
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
     return this.sql.begin(async sql => {
-      const hashBuffer = hexToBuffer(hash);
+      const hashHex = pgHexString(hash);
       const txQuery = await sql<ContractTxQueryResult[]>`
-        SELECT ${TX_COLUMNS}, ${abiColumn()} FROM txs WHERE tx_id = ${hashBuffer} LIMIT 1
+        SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
+        FROM txs WHERE tx_id = ${hashHex} LIMIT 1
       `;
       if (txQuery.length > 0) {
         const txResult = parseTxQueryResult(txQuery[0]);
@@ -2410,8 +2463,8 @@ export class PgStore {
         };
       }
       const txMempoolQuery = await sql<MempoolTxQueryResult[]>`
-        SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
-        FROM mempool_txs WHERE pruned = false AND tx_id = ${hashBuffer} LIMIT 1
+        SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
+        FROM mempool_txs WHERE pruned = false AND tx_id = ${hashHex} LIMIT 1
       `;
       if (txMempoolQuery.length > 0) {
         const txResult = parseMempoolTxQueryResult(txMempoolQuery[0]);
@@ -2425,7 +2478,7 @@ export class PgStore {
         };
       }
       const blockQueryResult = await sql<BlockQueryResult[]>`
-        SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = ${hashBuffer} LIMIT 1
+        SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = ${hashHex} LIMIT 1
       `;
       if (blockQueryResult.length > 0) {
         const blockResult = parseBlockQueryResult(blockQueryResult[0]);
@@ -2455,7 +2508,7 @@ export class PgStore {
     return await this.sql.begin(async sql => {
       if (isContract) {
         const contractMempoolTxResult = await sql<MempoolTxQueryResult[]>`
-          SELECT ${MEMPOOL_TX_COLUMNS}, ${abiColumn('mempool_txs')}
+          SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
           FROM mempool_txs WHERE pruned = false AND smart_contract_contract_id = ${principal} LIMIT 1
         `;
         if (contractMempoolTxResult.length > 0) {
@@ -2470,7 +2523,7 @@ export class PgStore {
           };
         }
         const contractTxResult = await sql<ContractTxQueryResult[]>`
-          SELECT ${TX_COLUMNS}, ${abiColumn()}
+          SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
           FROM txs
           WHERE smart_contract_contract_id = ${principal}
           ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
@@ -2618,8 +2671,13 @@ export class PgStore {
       ${
         args.includeTxMetadata
           ? this.sql`
-            SELECT nft.asset_identifier, nft.value,
-              ${this.sql(txColumns())}, ${this.sql.unsafe(abiColumn())}, nft.count
+            SELECT ${unsafeCols(this.sql, [
+              'nft.asset_identifier',
+              'nft.value',
+              ...prefixedCols(TX_COLUMNS, 'txs'),
+              abiColumn(),
+              'nft.count',
+            ])}
             FROM nft
             INNER JOIN txs USING (tx_id)
             WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE
@@ -2777,7 +2835,7 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, ${countOverColumn()}
+      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
       FROM address_transfers
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
@@ -2807,12 +2865,15 @@ export class PgStore {
     includeUnanchored: boolean;
   }) {
     return this.sql.begin(async sql => {
-      const values = txIds.map(id => hexToBuffer(id));
+      const values = txIds.map(id => pgHexString(id));
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
+        SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE tx_id = ANY(${values}) AND block_height <= ${maxBlockHeight} AND canonical = true AND microblock_canonical = true
+        WHERE tx_id IN ${sql(values)}
+          AND block_height <= ${maxBlockHeight}
+          AND canonical = true
+          AND microblock_canonical = true
       `;
       if (result.length === 0) {
         return [];
@@ -3303,7 +3364,7 @@ export class PgStore {
     const lockQuery = await this.sql<{ unlock_height: number }[]>`
       SELECT unlock_height
       FROM stx_lock_events
-      WHERE canonical = true AND tx_id = ${hexToBuffer(txId)}
+      WHERE canonical = true AND tx_id = ${pgHexString(txId)}
     `;
     if (lockQuery.length > 0) {
       return { found: true, result: lockQuery[0].unlock_height };

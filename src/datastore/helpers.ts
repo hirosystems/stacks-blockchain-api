@@ -33,6 +33,8 @@ import {
 } from 'stacks-encoding-native-js';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { AnchorMode } from '@stacks/transactions';
+import postgres = require('postgres');
+import { PgSqlClient } from './connection';
 
 export interface BlockQueryResult {
   block_hash: Buffer;
@@ -618,41 +620,7 @@ export function pgHexString(hex: string): string {
   return hex;
 }
 
-/**
- * @deprecated use `txColumns()` instead.
- */
-export const TX_COLUMNS = `
-  -- required columns
-  tx_id, raw_tx, tx_index, index_block_hash, parent_index_block_hash, block_hash, parent_block_hash, block_height, burn_block_time, parent_burn_block_time,
-  type_id, anchor_mode, status, canonical, post_conditions, nonce, fee_rate, sponsored, sponsor_nonce, sponsor_address, sender_address, origin_hash_mode,
-  microblock_canonical, microblock_sequence, microblock_hash,
-
-  -- token-transfer tx columns
-  token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
-
-  -- smart-contract tx columns
-  smart_contract_contract_id, smart_contract_source_code,
-
-  -- contract-call tx columns
-  contract_call_contract_id, contract_call_function_name, contract_call_function_args,
-
-  -- poison-microblock tx columns
-  poison_microblock_header_1, poison_microblock_header_2,
-
-  -- coinbase tx columns
-  coinbase_payload,
-
-  -- tx result
-  raw_result,
-
-  -- event count
-  event_count,
-
-  -- execution cost
-  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime, execution_cost_write_count, execution_cost_write_length
-`;
-
-export const NEW_TX_COLUMNS = [
+export const TX_COLUMNS = [
   'tx_id',
   'raw_tx',
   'tx_index',
@@ -698,34 +666,55 @@ export const NEW_TX_COLUMNS = [
   'execution_cost_write_length',
 ];
 
-export const MEMPOOL_TX_COLUMNS = `
-  -- required columns
-  pruned, tx_id, raw_tx, type_id, anchor_mode, status, receipt_time, receipt_block_height,
-  post_conditions, nonce, fee_rate, sponsored, sponsor_nonce, sponsor_address, sender_address, origin_hash_mode,
+export const MEMPOOL_TX_COLUMNS = [
+  'pruned',
+  'tx_id',
+  'raw_tx',
+  'type_id',
+  'anchor_mode',
+  'status',
+  'receipt_time',
+  'receipt_block_height',
+  'post_conditions',
+  'nonce',
+  'fee_rate',
+  'sponsored',
+  'sponsor_nonce',
+  'sponsor_address',
+  'sender_address',
+  'origin_hash_mode',
+  'token_transfer_recipient_address',
+  'token_transfer_amount',
+  'token_transfer_memo',
+  'smart_contract_contract_id',
+  'smart_contract_source_code',
+  'contract_call_contract_id',
+  'contract_call_function_name',
+  'contract_call_function_args',
+  'poison_microblock_header_1',
+  'poison_microblock_header_2',
+  'coinbase_payload',
+];
 
-  -- token-transfer tx columns
-  token_transfer_recipient_address, token_transfer_amount, token_transfer_memo,
-
-  -- smart-contract tx columns
-  smart_contract_contract_id, smart_contract_source_code,
-
-  -- contract-call tx columns
-  contract_call_contract_id, contract_call_function_name, contract_call_function_args,
-
-  -- poison-microblock tx columns
-  poison_microblock_header_1, poison_microblock_header_2,
-
-  -- coinbase tx columns
-  coinbase_payload
-`;
-
-export const BLOCK_COLUMNS = `
-  block_hash, index_block_hash,
-  parent_index_block_hash, parent_block_hash, parent_microblock_hash, parent_microblock_sequence,
-  block_height, burn_block_time, burn_block_hash, burn_block_height, miner_txid, canonical,
-  execution_cost_read_count, execution_cost_read_length, execution_cost_runtime,
-  execution_cost_write_count, execution_cost_write_length
-`;
+export const BLOCK_COLUMNS = [
+  'block_hash',
+  'index_block_hash',
+  'parent_index_block_hash',
+  'parent_block_hash',
+  'parent_microblock_hash',
+  'parent_microblock_sequence',
+  'block_height',
+  'burn_block_time',
+  'burn_block_hash',
+  'burn_block_height',
+  'miner_txid',
+  'canonical',
+  'execution_cost_read_count',
+  'execution_cost_read_length',
+  'execution_cost_runtime',
+  'execution_cost_write_count',
+  'execution_cost_write_length',
+];
 
 export const MICROBLOCK_COLUMNS = [
   'canonical',
@@ -743,6 +732,15 @@ export const MICROBLOCK_COLUMNS = [
   'index_block_hash',
   'block_hash',
 ];
+
+export function prefixedCols(columns: string[], prefix: string): string[] {
+  return columns.map(c => `${prefix}.${c}`);
+}
+
+// FIXME: Force postgres.Sql instead of postgres.TransactionSql
+export function unsafeCols(sql: PgSqlClient, columns: string[]): postgres.PendingQuery<any> {
+  return sql.unsafe(columns.join(', '));
+}
 
 /**
  * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
@@ -826,15 +824,6 @@ export function abiColumn(tableName: string = 'txs'): string {
     `;
 }
 
-/**
- * Shorthand for a count column that aggregates over the complete query window outside of LIMIT/OFFSET.
- * @param alias - Count column alias
- * @returns `string` - count column select statement portion
- */
-export function countOverColumn(alias: string = 'count'): string {
-  return `(COUNT(*) OVER())::INTEGER AS ${alias}`;
-}
-
 // Enable this when debugging potential sql leaks.
 export const SQL_QUERY_LEAK_DETECTION = false;
 
@@ -892,7 +881,9 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
   if (!abi || abi === 'null') {
     return undefined;
   } else {
-    return JSON.stringify(abi);
+    // FIXME: Check
+    // return JSON.stringify(abi);
+    return abi as string;
   }
 }
 
