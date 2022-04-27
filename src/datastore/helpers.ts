@@ -315,6 +315,36 @@ export interface TxInsertValues {
   execution_cost_write_length: number;
 }
 
+export interface MempoolTxInsertValues {
+  pruned: boolean;
+  tx_id: string;
+  raw_tx: string;
+  type_id: DbTxTypeId;
+  anchor_mode: DbTxAnchorMode;
+  status: DbTxStatus;
+  receipt_time: number;
+  receipt_block_height: number;
+  post_conditions: string;
+  nonce: number;
+  fee_rate: bigint;
+  sponsored: boolean;
+  sponsor_nonce: number | null;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: number;
+  token_transfer_recipient_address: string | null;
+  token_transfer_amount: bigint | null;
+  token_transfer_memo: string | null;
+  smart_contract_contract_id: string | null;
+  smart_contract_source_code: string | null;
+  contract_call_contract_id: string | null;
+  contract_call_function_name: string | null;
+  contract_call_function_args: string | null;
+  poison_microblock_header_1: string | null;
+  poison_microblock_header_2: string | null;
+  coinbase_payload: string | null;
+}
+
 export interface BlockInsertValues {
   block_hash: string;
   index_block_hash: string;
@@ -460,6 +490,24 @@ export interface BurnchainRewardInsertValues {
   reward_index: number;
 }
 
+export interface BnsNameInsertValues {
+  name: string;
+  address: string;
+  registered_at: number;
+  expire_block: number;
+  zonefile_hash: string;
+  namespace_id: string;
+  tx_index: number;
+  tx_id: string;
+  status: string | null;
+  canonical: boolean;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
 export interface BnsSubdomainInsertValues {
   name: string;
   namespace_id: string;
@@ -473,10 +521,33 @@ export interface BnsSubdomainInsertValues {
   zonefile_offset: number;
   resolver: string;
   canonical: boolean;
-  tx_id: Buffer;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  tx_id: string;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsNamespaceInsertValues {
+  namespace_id: string;
+  launched_at: number | null;
+  address: string;
+  reveal_block: number;
+  ready_block: number;
+  buckets: string;
+  base: number;
+  coeff: number;
+  nonalpha_discount: number;
+  no_vowel_discount: number;
+  lifetime: number;
+  status: string | null;
+  tx_index: number;
+  tx_id: string;
+  canonical: boolean;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
@@ -486,12 +557,19 @@ export interface BnsZonefileInsertValues {
   zonefile_hash: string;
 }
 
+export interface FaucetRequestInsertValues {
+  currency: DbFaucetRequestCurrency;
+  address: string;
+  ip: string;
+  occurred_at: number;
+}
+
 export interface PrincipalStxTxsInsertValues {
   principal: string;
-  tx_id: Buffer;
+  tx_id: string;
   block_height: number;
-  index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: string;
+  microblock_hash: string;
   microblock_sequence: number;
   tx_index: number;
   canonical: boolean;
@@ -500,10 +578,44 @@ export interface PrincipalStxTxsInsertValues {
 
 export interface RewardSlotHolderInsertValues {
   canonical: boolean;
-  burn_block_hash: Buffer;
+  burn_block_hash: string;
   burn_block_height: number;
   address: string;
   slot_index: number;
+}
+
+export interface TokenMetadataQueueEntryInsertValues {
+  tx_id: string;
+  contract_id: string;
+  contract_abi: string;
+  block_height: number;
+  processed: boolean;
+}
+
+export interface SmartContractInsertValues {
+  tx_id: string;
+  canonical: boolean;
+  contract_id: string;
+  block_height: number;
+  index_block_hash: string;
+  source_code: string;
+  abi: string | null;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+/**
+ * Takes in a hex string that may or may not have a `0x` prefix and returns it
+ * without the prefix for postgres INSERTs.
+ * @param hex - Input string
+ */
+export function pgHexString(hex: string): string {
+  if (has0xPrefix(hex)) {
+    return hex.substring(2);
+  }
+  return hex;
 }
 
 /**

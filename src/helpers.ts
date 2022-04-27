@@ -864,18 +864,6 @@ export function cssEscape(value: string): string {
 export const has0xPrefix = (id: string) => id.substr(0, 2).toLowerCase() === '0x';
 
 /**
- * Takes in a hex string that may or may not have a `0x` prefix and returns it
- * without the prefix.
- * @param hex - Input string
- */
-export function hexStringWithoutPrefix(hex: string): string {
-  if (has0xPrefix(hex)) {
-    return hex.substring(2);
-  }
-  return hex;
-}
-
-/**
  * Check if the input is a valid 32-byte hex string. If valid, returns a
  * lowercase and 0x-prefixed hex string. If invalid, returns false.
  */
