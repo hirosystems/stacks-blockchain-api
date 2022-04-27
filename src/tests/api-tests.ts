@@ -71,7 +71,11 @@ describe('api tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });

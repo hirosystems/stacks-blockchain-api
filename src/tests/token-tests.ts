@@ -17,6 +17,7 @@ describe('/extended/v1/tokens tests', () => {
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
+      skipMigrations: true,
     });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });

@@ -10,7 +10,6 @@ import {
   assertNotNullish,
   bufferToHexPrefixString,
   FoundOrNot,
-  hexStringWithoutPrefix,
   hexToBuffer,
   unwrapOptional,
 } from '../helpers';
@@ -71,6 +70,7 @@ import {
   MEMPOOL_TX_COLUMNS,
   MicroblockQueryResult,
   MICROBLOCK_COLUMNS,
+  NEW_TX_COLUMNS,
   NonFungibleTokenMetadataQueryResult,
   parseBlockQueryResult,
   parseDbEvents,
@@ -80,6 +80,7 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
+  pgHexString,
   RawTxQueryResult,
   TransferQueryResult,
   txColumns,
@@ -2598,26 +2599,27 @@ export class PgStore {
       queryArgs.push(args.assetIdentifiers);
     }
     const nftCustody = args.includeUnanchored
-      ? this.sql`nft_custody_unanchored`
-      : this.sql`nft_custody`;
+      ? this.sql(`nft_custody_unanchored`)
+      : this.sql(`nft_custody`);
     const assetIdFilter = args.assetIdentifiers
-      ? this.sql`AND nft.asset_identifier = ANY (${this.sql(args.assetIdentifiers)})`
+      ? this.sql`AND nft.asset_identifier IN ${this.sql(args.assetIdentifiers)}`
       : this.sql``;
     const nftTxResults = await this.sql<
       (NftHoldingInfo & ContractTxQueryResult & { count: number })[]
     >`
       WITH nft AS (
-        SELECT *, ${countOverColumn()}
+        SELECT *, (COUNT(*) OVER())::INTEGER AS count
         FROM ${nftCustody} AS nft
         WHERE nft.recipient = ${args.principal}
         ${assetIdFilter}
-        LIMIT $2
-        OFFSET $3
+        LIMIT ${args.limit}
+        OFFSET ${args.offset}
       )
       ${
         args.includeTxMetadata
           ? this.sql`
-            SELECT nft.asset_identifier, nft.value, ${txColumns()}, ${abiColumn()}, nft.count
+            SELECT nft.asset_identifier, nft.value,
+              ${this.sql(txColumns())}, ${this.sql.unsafe(abiColumn())}, nft.count
             FROM nft
             INNER JOIN txs USING (tx_id)
             WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE
@@ -2662,7 +2664,7 @@ export class PgStore {
       FROM nft_events AS nft
       INNER JOIN txs USING (tx_id)
       WHERE asset_identifier = ${args.assetIdentifier}
-        AND nft.value = ${hexStringWithoutPrefix(args.value)}
+        AND nft.value = ${pgHexString(args.value)}
         AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
         AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
         AND nft.block_height <= ${args.blockHeight}
@@ -2707,11 +2709,13 @@ export class PgStore {
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
     const columns = args.includeTxMetadata
-      ? this.sql`asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-          ${txColumns()}, ${abiColumn()}`
+      ? this.sql.unsafe(`
+          asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
+          ${txColumns().join(', ')}, ${abiColumn()}
+        `)
       : this.sql`nft.*`;
     const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
-      SELECT ${columns}, ${countOverColumn()}
+      SELECT ${columns}, (COUNT(*) OVER())::INTEGER AS count
       FROM nft_events AS nft
       INNER JOIN txs USING (tx_id)
       WHERE nft.asset_identifier = ${args.assetIdentifier}

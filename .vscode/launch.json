@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "/nft/history"
+        "/extended/v1/tokens tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
