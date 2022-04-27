@@ -2169,22 +2169,25 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbTx[]; total: number }> {
-    const blockCond = args.atSingleBlock
-      ? this.sql`block_height = ${args.blockHeight}`
-      : this.sql`block_height <= ${args.blockHeight}`;
     // Query the `principal_stx_txs` table first to get the results page we want and then
     // join against `txs` to get the full transaction objects only for that page.
     const resultQuery = await this.sql<(ContractTxQueryResult & { count: number })[]>`
       WITH stx_txs AS (
         SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::INTEGER AS count
         FROM principal_stx_txs
-        WHERE principal = ${args.stxAddress} AND ${blockCond}
-          AND canonical = TRUE AND microblock_canonical = TRUE
+        WHERE principal = ${args.stxAddress}
+          AND ${
+            args.atSingleBlock
+              ? this.sql`block_height = ${args.blockHeight}`
+              : this.sql`block_height <= ${args.blockHeight}`
+          }
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}
       )
-      SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}, count
+      SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn(), 'count'])}
       FROM stx_txs
       INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
     `;

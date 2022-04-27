@@ -1148,7 +1148,7 @@ export class PgWriteStore extends PgStore {
       origin_hash_mode: tx.origin_hash_mode,
       microblock_canonical: tx.microblock_canonical,
       microblock_sequence: tx.microblock_sequence,
-      microblock_hash: tx.microblock_hash,
+      microblock_hash: pgHexString(tx.microblock_hash),
       token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
       token_transfer_amount: tx.token_transfer_amount ?? null,
       token_transfer_memo: tx.token_transfer_memo?.toString('hex') ?? null,
