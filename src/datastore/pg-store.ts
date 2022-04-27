@@ -435,7 +435,7 @@ export class PgStore {
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE index_block_hash = ${hexToBuffer(blockQuery.result.index_block_hash)}
+        WHERE index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
           AND canonical = true AND microblock_canonical = true
         ORDER BY microblock_sequence ASC, tx_index ASC
       `;
@@ -2231,7 +2231,7 @@ export class PgStore {
         FROM principal_txs
         ORDER BY block_height DESC, tx_index DESC
       ), events AS (
-        SELECT *, ${DbEventTypeId.StxAsset} as event_type_id
+        SELECT *, ${DbEventTypeId.StxAsset}::integer as event_type_id
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true
           AND (sender = ${stxAddress} OR recipient = ${stxAddress})
@@ -2316,7 +2316,7 @@ export class PgStore {
       ), events AS (
         SELECT
           tx_id, sender, recipient, event_index, amount,
-          ${DbEventTypeId.StxAsset} as event_type_id,
+          ${DbEventTypeId.StxAsset}::integer as event_type_id,
           NULL as asset_identifier, '0'::bytea as value
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true
@@ -2324,7 +2324,7 @@ export class PgStore {
         UNION
         SELECT
           tx_id, sender, recipient, event_index, amount,
-          ${DbEventTypeId.FungibleTokenAsset} as event_type_id,
+          ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id,
           asset_identifier, '0'::bytea as value
         FROM ft_events
         WHERE canonical = true AND microblock_canonical = true
@@ -2332,7 +2332,7 @@ export class PgStore {
         UNION
         SELECT
           tx_id, sender, recipient, event_index, 0 as amount,
-          ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id,
+          ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id,
           asset_identifier, value
         FROM nft_events
         WHERE canonical = true AND microblock_canonical = true
