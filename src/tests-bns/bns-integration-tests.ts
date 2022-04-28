@@ -1,4 +1,3 @@
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
@@ -26,6 +25,7 @@ import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { PgSqlClient } from 'src/datastore/connection';
 
 
 function hash160(bfr: Buffer): Buffer {
@@ -48,7 +48,6 @@ type TestnetKey = {
 
 describe('BNS integration tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
 
@@ -335,8 +334,7 @@ describe('BNS integration tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
@@ -594,7 +592,6 @@ describe('BNS integration tests', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

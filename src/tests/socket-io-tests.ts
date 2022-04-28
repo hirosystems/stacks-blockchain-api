@@ -27,7 +27,7 @@ describe('socket-io', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests' });
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,

@@ -1431,6 +1431,7 @@ export class PgWriteStore extends PgStore {
         bns_names_onchain_imported = ${configState.bns_names_onchain_imported},
         bns_subdomains_imported = ${configState.bns_subdomains_imported},
         token_offering_imported = ${configState.token_offering_imported}
+      RETURNING *
     `;
     if (queryResult.length !== 1) {
       throw new Error(`Unexpected config update row count: ${queryResult.length}`);
