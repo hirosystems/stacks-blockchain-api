@@ -1615,7 +1615,11 @@ export class PgStore {
     const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
       SELECT *
       FROM token_metadata_queue
-      WHERE NOT (queue_id IN ${excludingEntries})
+      WHERE ${
+        excludingEntries.length
+          ? this.sql`NOT (queue_id IN ${this.sql(excludingEntries)})`
+          : this.sql`TRUE`
+      }
       AND processed = false
       ORDER BY block_height ASC, queue_id ASC
       LIMIT ${limit}

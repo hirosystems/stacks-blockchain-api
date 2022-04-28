@@ -32,7 +32,6 @@ const PORT = 20443;
 
 describe('api tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let api: ApiServer;
   let eventServer: EventStreamServer;
   let tokensProcessorQueue: TokensProcessorQueue;
@@ -115,8 +114,7 @@ describe('api tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
@@ -394,7 +392,6 @@ describe('api tests', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

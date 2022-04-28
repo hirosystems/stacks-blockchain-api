@@ -22,9 +22,8 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-import { PoolClient } from 'pg';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient } from 'src/datastore/connection';
+import { PgSqlClient } from '../datastore/connection';
 
 const IMPORT_FILES = [
   'chainstate.txt',

@@ -1,4 +1,3 @@
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { DbMempoolTx, DbTxStatus, DbTxTypeId, DbTxAnchorMode } from '../datastore/common';
@@ -28,17 +27,18 @@ import {
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
@@ -1197,7 +1197,6 @@ describe('Rosetta API', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

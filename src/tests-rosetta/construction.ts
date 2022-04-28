@@ -1,4 +1,3 @@
-import { PoolClient } from 'pg';
 import * as BigNum from 'bn.js';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
@@ -65,7 +64,6 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
 
@@ -113,7 +111,6 @@ describe('Rosetta API', () => {
     process.env.STACKS_CHAIN_ID = '0x80000000';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
@@ -2485,7 +2482,6 @@ describe('Rosetta API', () => {
   afterAll(async () => {
     await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

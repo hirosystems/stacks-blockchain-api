@@ -25,7 +25,6 @@ import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { PgSqlClient } from 'src/datastore/connection';
 
 
 function hash160(bfr: Buffer): Buffer {

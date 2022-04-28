@@ -10,14 +10,12 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('/block tests', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -366,7 +364,6 @@ describe('/block tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
