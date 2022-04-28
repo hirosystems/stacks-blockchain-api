@@ -21,7 +21,6 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
 } from '../datastore/common';
-import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { I32_MAX } from '../helpers';
@@ -84,60 +83,59 @@ describe('postgres datastore', () => {
   });
 
   test('postgres uri config', () => {
-    // const uri =
-    //   'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema&application_name=test-conn-str';
-    // testEnvVars(
-    //   {
-    //     PG_CONNECTION_URI: uri,
-    //     PG_DATABASE: undefined,
-    //     PG_USER: undefined,
-    //     PG_PASSWORD: undefined,
-    //     PG_HOST: undefined,
-    //     PG_PORT: undefined,
-    //     PG_SSL: undefined,
-    //     PG_SCHEMA: undefined,
-    //     PG_APPLICATION_NAME: undefined,
-    //   },
-    //   () => {
-    //     const config = getPostgres({ usageName: 'tests' });
-    //     const parsedUrl = pgConnectionString.parse(config.connectionString ?? '');
-    //     expect(parsedUrl.database).toBe('test_db');
-    //     expect(parsedUrl.user).toBe('test_user');
-    //     expect(parsedUrl.password).toBe('secret_password');
-    //     expect(parsedUrl.host).toBe('database.server.com');
-    //     expect(parsedUrl.port).toBe('3211');
-    //     expect(parsedUrl.ssl).toBe(true);
-    //     expect(config.schema).toBe('test_schema');
-    //     expect(parsedUrl.application_name).toBe('test-conn-str:tests');
-    //   }
-    // );
+    const uri =
+      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema&application_name=test-conn-str';
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: uri,
+        PG_DATABASE: undefined,
+        PG_USER: undefined,
+        PG_PASSWORD: undefined,
+        PG_HOST: undefined,
+        PG_PORT: undefined,
+        PG_SSL: undefined,
+        PG_SCHEMA: undefined,
+        PG_APPLICATION_NAME: undefined,
+      },
+      () => {
+        const sql = getPostgres({ usageName: 'tests' });
+        expect(sql.options.database).toBe('test_db');
+        expect(sql.options.user).toBe('test_user');
+        expect(sql.options.pass).toBe('secret_password');
+        expect(sql.options.host).toStrictEqual(['database.server.com']);
+        expect(sql.options.port).toStrictEqual(['3211']);
+        expect(sql.options.ssl).toBe(true);
+        expect(sql.options.connection.search_paths).toBe('test_schema');
+        expect(sql.options.connection.application_name).toBe('test-conn-str:tests');
+      }
+    );
   });
 
   test('postgres env var config', () => {
-    // testEnvVars(
-    //   {
-    //     PG_CONNECTION_URI: undefined,
-    //     PG_DATABASE: 'pg_db_db1',
-    //     PG_USER: 'pg_user_user1',
-    //     PG_PASSWORD: 'pg_password_password1',
-    //     PG_HOST: 'pg_host_host1',
-    //     PG_PORT: '9876',
-    //     PG_SSL: 'true',
-    //     PG_SCHEMA: 'pg_schema_schema1',
-    //     PG_APPLICATION_NAME: 'test-env-vars',
-    //   },
-    //   () => {
-    //     const config = getPostgres({ usageName: 'tests' });
-    //     expect(config.database).toBe('pg_db_db1');
-    //     expect(config.user).toBe('pg_user_user1');
-    //     expect(config.password).toBe('pg_password_password1');
-    //     expect(config.host).toBe('pg_host_host1');
-    //     expect(config.port).toBe(9876);
-    //     expect(config.ssl).toBe(true);
-    //     expect(config.schema).toBe('pg_schema_schema1');
-    //     expect(config.application_name).toBe('test-env-vars:tests');
-    //   }
-    // );
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: undefined,
+        PG_DATABASE: 'pg_db_db1',
+        PG_USER: 'pg_user_user1',
+        PG_PASSWORD: 'pg_password_password1',
+        PG_HOST: 'pg_host_host1',
+        PG_PORT: '9876',
+        PG_SSL: 'true',
+        PG_SCHEMA: 'pg_schema_schema1',
+        PG_APPLICATION_NAME: 'test-env-vars',
+      },
+      () => {
+        const sql = getPostgres({ usageName: 'tests' });
+        expect(sql.options.database).toBe('pg_db_db1');
+        expect(sql.options.user).toBe('pg_user_user1');
+        expect(sql.options.pass).toBe('pg_password_password1');
+        expect(sql.options.host).toStrictEqual(['pg_host_host1']);
+        expect(sql.options.port).toStrictEqual([9876]);
+        expect(sql.options.ssl).toBe(true);
+        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
+        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
+      }
+    );
   });
 
   test('postgres connection application_name', async () => {

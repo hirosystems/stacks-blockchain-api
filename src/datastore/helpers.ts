@@ -589,9 +589,34 @@ export interface RewardSlotHolderInsertValues {
 export interface TokenMetadataQueueEntryInsertValues {
   tx_id: string;
   contract_id: string;
+  // FIXME: Should this be jsonb?
   contract_abi: string;
   block_height: number;
   processed: boolean;
+}
+
+export interface NftMetadataInsertValues {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: string;
+  sender_address: string;
+}
+
+export interface FtMetadataInsertValues {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: string;
+  sender_address: string;
 }
 
 export interface SmartContractInsertValues {

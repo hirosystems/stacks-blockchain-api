@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "postgres datastore"
+        "postgres env var config"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

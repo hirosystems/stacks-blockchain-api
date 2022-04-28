@@ -77,6 +77,8 @@ import {
   BnsNameInsertValues,
   BnsNamespaceInsertValues,
   FaucetRequestInsertValues,
+  NftMetadataInsertValues,
+  FtMetadataInsertValues,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
@@ -1370,8 +1372,20 @@ export class PgWriteStore extends PgStore {
 
   async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
     const length = await this.sql.begin(async sql => {
+      const values: FtMetadataInsertValues = {
+        token_uri: ftMetadata.token_uri,
+        name: ftMetadata.name,
+        description: ftMetadata.description,
+        image_uri: ftMetadata.image_uri,
+        image_canonical_uri: ftMetadata.image_canonical_uri,
+        contract_id: ftMetadata.contract_id,
+        symbol: ftMetadata.symbol,
+        decimals: ftMetadata.decimals,
+        tx_id: pgHexString(ftMetadata.tx_id),
+        sender_address: ftMetadata.sender_address,
+      };
       const result = await sql`
-        INSERT INTO ft_metadata ${sql(ftMetadata)}
+        INSERT INTO ft_metadata ${sql(values)}
         RETURNING *
       `;
       await sql`
@@ -1390,8 +1404,18 @@ export class PgWriteStore extends PgStore {
     dbQueueId: number
   ): Promise<number> {
     const length = await this.sql.begin(async sql => {
+      const values: NftMetadataInsertValues = {
+        token_uri: nftMetadata.token_uri,
+        name: nftMetadata.name,
+        description: nftMetadata.description,
+        image_uri: nftMetadata.image_uri,
+        image_canonical_uri: nftMetadata.image_canonical_uri,
+        contract_id: nftMetadata.contract_id,
+        tx_id: pgHexString(nftMetadata.tx_id),
+        sender_address: nftMetadata.sender_address,
+      };
       const result = await sql`
-        INSERT INTO nft_metadata ${sql(nftMetadata)}
+        INSERT INTO nft_metadata ${sql(values)}
         RETURNING *
       `;
       await sql`
@@ -1816,12 +1840,14 @@ export class PgWriteStore extends PgStore {
     for (const txId of txIds) {
       logger.verbose(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
     }
-    await sql`
-      UPDATE principal_stx_txs
-      SET canonical = ${canonical}
-      WHERE tx_id IN ${sql(txIds.map(tx => pgHexString(tx.tx_id)))}
-        AND index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
-    `;
+    if (txIds.length) {
+      await sql`
+        UPDATE principal_stx_txs
+        SET canonical = ${canonical}
+        WHERE tx_id IN ${sql(txIds.map(tx => pgHexString(tx.tx_id)))}
+          AND index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      `;
+    }
 
     const minerRewardResults = await sql`
       UPDATE miner_rewards
