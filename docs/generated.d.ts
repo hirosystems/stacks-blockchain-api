@@ -26,6 +26,7 @@ export type SchemaMergeRootStub =
   | BnsGetAllNamespacesNamesResponse
   | BnsGetAllNamespacesResponse
   | BnsGetNamespacePriceResponse
+  | GetAllSubdomainsInName
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
@@ -719,6 +720,10 @@ export type BnsGetSubdomainAtTx = {
  * Fetch a list of names from the namespace.
  */
 export type BnsGetAllNamespacesNamesResponse = string[];
+/**
+ * Fetch a list of subdomains in a name.
+ */
+export type GetAllSubdomainsInName = string[];
 /**
  * GET fee estimates
  */
@@ -3253,6 +3258,7 @@ export interface NonFungibleTokenHoldingWithTxId {
      */
     repr: string;
   };
+  block_height: number;
   tx_id: string;
 }
 /**
@@ -3273,6 +3279,7 @@ export interface NonFungibleTokenHoldingWithTxMetadata {
      */
     repr: string;
   };
+  block_height: number;
   tx: Transaction;
 }
 /**
