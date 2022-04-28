@@ -452,9 +452,9 @@ export class PgStore {
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
     return await this.sql.begin(async sql => {
       const result = await sql<MicroblockQueryResult[]>`
-        SELECT ${MICROBLOCK_COLUMNS}
+        SELECT ${sql(MICROBLOCK_COLUMNS)}
         FROM microblocks
-        WHERE microblock_hash = ${hexToBuffer(args.microblockHash)}
+        WHERE microblock_hash = ${pgHexString(args.microblockHash)}
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
       `;
@@ -464,7 +464,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: Buffer }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${hexToBuffer(args.microblockHash)}
+        WHERE microblock_hash = ${pgHexString(args.microblockHash)}
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
@@ -485,7 +485,7 @@ export class PgStore {
         (MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null })[]
       >`
         SELECT microblocks.*, tx_id FROM (
-          SELECT ${MICROBLOCK_COLUMNS}
+          SELECT ${sql(MICROBLOCK_COLUMNS)}
           FROM microblocks
           WHERE canonical = true AND microblock_canonical = true
           ORDER BY block_height DESC, microblock_sequence DESC
@@ -1029,7 +1029,7 @@ export class PgStore {
         }
           AND (pruned = false ${
             !includeUnanchored && unanchoredTxs.length
-              ? this.sql`tx_id IN ${sql(unanchoredTxs)}`
+              ? this.sql`OR tx_id IN ${sql(unanchoredTxs)}`
               : this.sql``
           })
         ORDER BY receipt_time DESC

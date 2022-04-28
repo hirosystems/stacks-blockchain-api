@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "api tests"
+        "contiguous microblock stream fully confirmed in anchor block"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

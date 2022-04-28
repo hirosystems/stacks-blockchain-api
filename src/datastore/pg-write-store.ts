@@ -274,10 +274,10 @@ export class PgWriteStore extends PgStore {
         const existingMicroblocksQuery = await sql<{ microblock_hash: Buffer }[]>`
           SELECT microblock_hash
           FROM microblocks
-          WHERE parent_index_block_hash = ${hexToBuffer(data.block.parent_index_block_hash)}
-            AND microblock_hash = ANY(${sql(
+          WHERE parent_index_block_hash = ${pgHexString(data.block.parent_index_block_hash)}
+            AND microblock_hash IN ${sql(
               data.microblocks.map(mb => pgHexString(mb.microblock_hash))
-            )})
+            )}
         `;
         const existingMicroblockHashes = new Set(
           existingMicroblocksQuery.map(r => bufferToHexPrefixString(r.microblock_hash))
