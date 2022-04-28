@@ -150,7 +150,7 @@
         "--config",
         "${workspaceRoot}/jest.config.js",
         "-t",
-        "event count value"
+        "api tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

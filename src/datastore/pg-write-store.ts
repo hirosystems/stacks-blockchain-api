@@ -1277,7 +1277,8 @@ export class PgWriteStore extends PgStore {
       block_height: smartContract.block_height,
       index_block_hash: pgHexString(tx.index_block_hash),
       source_code: smartContract.source_code,
-      abi: smartContract.abi,
+      // FIXME: check
+      abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
       parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
       microblock_hash: pgHexString(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,

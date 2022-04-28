@@ -1423,7 +1423,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
                     locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
+                    ${DbEventTypeId.StxLock}::integer as event_type_id, 0 as asset_event_type_id
                   FROM stx_lock_events
                   WHERE locked_address = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1433,7 +1433,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
                     locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.StxLock} as event_type_id, 0 as asset_event_type_id
+                    ${DbEventTypeId.StxLock}::integer as event_type_id, 0 as asset_event_type_id
                   FROM stx_lock_events
                   WHERE tx_id = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1449,7 +1449,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.StxAsset}::integer as event_type_id, asset_event_type_id
                   FROM stx_events
                   WHERE (sender = ${refValue} OR recipient = ${refValue})
                   AND canonical = true AND microblock_canonical = true
@@ -1459,7 +1459,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.StxAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.StxAsset}::integer as event_type_id, asset_event_type_id
                   FROM stx_events
                   WHERE tx_id = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1475,7 +1475,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id, asset_event_type_id
                   FROM ft_events
                   WHERE (sender = ${refValue} OR recipient = ${refValue})
                   AND canonical = true AND microblock_canonical = true
@@ -1485,7 +1485,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
                     '0'::bytea as value, NULL as topic,
-                    ${DbEventTypeId.FungibleTokenAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id, asset_event_type_id
                   FROM ft_events
                   WHERE tx_id = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1501,7 +1501,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
                     value, NULL as topic,
-                    ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id, asset_event_type_id
                   FROM nft_events
                   WHERE (sender = ${refValue} OR recipient = ${refValue})
                   AND canonical = true AND microblock_canonical = true
@@ -1511,7 +1511,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, sender, recipient,
                     0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
                     value, NULL as topic,
-                    ${DbEventTypeId.NonFungibleTokenAsset} as event_type_id, asset_event_type_id
+                    ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id, asset_event_type_id
                   FROM nft_events
                   WHERE tx_id = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1527,7 +1527,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
                     0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
                     value, topic,
-                    ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
+                    ${DbEventTypeId.SmartContractLog}::integer as event_type_id, 0 as asset_event_type_id
                   FROM contract_logs
                   WHERE contract_identifier = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1537,7 +1537,7 @@ export class PgStore {
                     tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
                     0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
                     value, topic,
-                    ${DbEventTypeId.SmartContractLog} as event_type_id, 0 as asset_event_type_id
+                    ${DbEventTypeId.SmartContractLog}::integer as event_type_id, 0 as asset_event_type_id
                   FROM contract_logs
                   WHERE tx_id = ${refValue}
                   AND canonical = true AND microblock_canonical = true
@@ -1755,7 +1755,7 @@ export class PgStore {
     >`
       SELECT tx_id, canonical, contract_id, block_height, source_code, abi
       FROM smart_contracts
-      WHERE abi->'functions' @> ${JSON.stringify(traitFunctionList)}::jsonb
+      WHERE abi->'functions' @> ${traitFunctionList as any}::jsonb
         AND canonical = true AND microblock_canonical = true
       ORDER BY block_height DESC
       LIMIT ${args.limit} OFFSET ${args.offset}
@@ -2489,7 +2489,7 @@ export class PgStore {
         };
       }
       const blockQueryResult = await sql<BlockQueryResult[]>`
-        SELECT ${BLOCK_COLUMNS} FROM blocks WHERE block_hash = ${hashHex} LIMIT 1
+        SELECT ${sql(BLOCK_COLUMNS)} FROM blocks WHERE block_hash = ${hashHex} LIMIT 1
       `;
       if (blockQueryResult.length > 0) {
         const blockResult = parseBlockQueryResult(blockQueryResult[0]);
@@ -2619,19 +2619,19 @@ export class PgStore {
 
   async getRawTx(txId: string) {
     // Note the extra "limit 1" statements are only query hints
-    const bufTxId = hexToBuffer(txId);
+    const hexTxId = pgHexString(txId);
     const result = await this.sql<RawTxQueryResult[]>`
       (
         SELECT raw_tx
         FROM txs
-        WHERE tx_id = ${bufTxId}
+        WHERE tx_id = ${hexTxId}
         LIMIT 1
       )
       UNION ALL
       (
         SELECT raw_tx
         FROM mempool_txs
-        WHERE tx_id = ${bufTxId}
+        WHERE tx_id = ${hexTxId}
         LIMIT 1
       )
       LIMIT 1

@@ -601,7 +601,8 @@ export interface SmartContractInsertValues {
   block_height: number;
   index_block_hash: string;
   source_code: string;
-  abi: string | null;
+  // TODO: `any` is the only one that wrote the JSON correctly
+  abi: any;
   parent_index_block_hash: string;
   microblock_hash: string;
   microblock_sequence: number;
@@ -882,8 +883,8 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
     return undefined;
   } else {
     // FIXME: Check
-    // return JSON.stringify(abi);
-    return abi as string;
+    return JSON.stringify(abi);
+    // return abi as string;
   }
 }
 
