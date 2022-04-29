@@ -47,6 +47,7 @@ import { setResponseNonCacheable } from './controllers/cache-controller';
 import * as path from 'path';
 import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -61,6 +62,7 @@ export interface ApiServer {
 
 export async function startApiServer(opts: {
   datastore: PgStore;
+  writeDatastore: PgWriteStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;
@@ -68,7 +70,7 @@ export async function startApiServer(opts: {
   serverPort?: number;
   httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+  const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -202,7 +204,7 @@ export async function startApiServer(opts: {
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/faucets', createFaucetRouter(datastore));
+      router.use('/faucets', createFaucetRouter(writeDatastore));
       router.use('/tokens', createTokenRouter(datastore));
       return router;
     })()

@@ -13,7 +13,7 @@ import { intMax, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
-import { PgStore } from '../../datastore/pg-store';
+import { PgWriteStore } from '../../datastore/pg-write-store';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -60,7 +60,7 @@ function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
-export function createFaucetRouter(db: PgStore): express.Router {
+export function createFaucetRouter(db: PgWriteStore): express.Router {
   const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(express.json());
@@ -93,13 +93,12 @@ export function createFaucetRouter(db: PgStore): express.Router {
         }
 
         const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
-        // FIXME: faucet
-        // await db.insertFaucetRequest({
-        //   ip: `${ip}`,
-        //   address: address,
-        //   currency: DbFaucetRequestCurrency.BTC,
-        //   occurred_at: now,
-        // });
+        await db.insertFaucetRequest({
+          ip: `${ip}`,
+          address: address,
+          currency: DbFaucetRequestCurrency.BTC,
+          occurred_at: now,
+        });
 
         res.json({
           txid: tx.txId,
@@ -279,13 +278,12 @@ export function createFaucetRouter(db: PgStore): express.Router {
           res.json(response);
         }
 
-        // FIXME: faucet
-        // await db.insertFaucetRequest({
-        //   ip: `${ip}`,
-        //   address: address,
-        //   currency: DbFaucetRequestCurrency.STX,
-        //   occurred_at: now,
-        // });
+        await db.insertFaucetRequest({
+          ip: `${ip}`,
+          address: address,
+          currency: DbFaucetRequestCurrency.STX,
+          occurred_at: now,
+        });
       });
     })
   );
