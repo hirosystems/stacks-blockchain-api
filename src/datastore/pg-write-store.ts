@@ -424,10 +424,10 @@ export class PgWriteStore extends PgStore {
       mature_block_height: minerReward.mature_block_height,
       canonical: minerReward.canonical,
       recipient: minerReward.recipient,
-      coinbase_amount: minerReward.coinbase_amount,
-      tx_fees_anchored: minerReward.tx_fees_anchored,
-      tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed,
-      tx_fees_streamed_produced: minerReward.tx_fees_streamed_produced,
+      coinbase_amount: minerReward.coinbase_amount.toString(),
+      tx_fees_anchored: minerReward.tx_fees_anchored.toString(),
+      tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed.toString(),
+      tx_fees_streamed_produced: minerReward.tx_fees_streamed_produced.toString(),
     };
     const result = await sql`
       INSERT INTO miner_rewards ${sql(values)}
@@ -671,7 +671,7 @@ export class PgWriteStore extends PgStore {
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
-      locked_amount: event.locked_amount,
+      locked_amount: event.locked_amount.toString(),
       unlock_height: event.unlock_height,
       locked_address: event.locked_address,
     };
@@ -891,7 +891,7 @@ export class PgWriteStore extends PgStore {
       sender: event.sender ?? null,
       recipient: event.recipient ?? null,
       asset_identifier: event.asset_identifier,
-      amount: event.amount,
+      amount: event.amount.toString(),
     };
     await sql`
       INSERT INTO ft_events ${sql(values)}
@@ -1107,7 +1107,7 @@ export class PgWriteStore extends PgStore {
           canonical: true,
           burn_block_hash: hexToBuffer(reward.burn_block_hash),
           burn_block_height: reward.burn_block_height,
-          burn_amount: reward.burn_amount,
+          burn_amount: reward.burn_amount.toString(),
           reward_recipient: reward.reward_recipient,
           reward_amount: reward.reward_amount,
           reward_index: reward.reward_index,

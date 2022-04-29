@@ -408,10 +408,14 @@ export interface MinerRewardInsertValues {
   mature_block_height: number;
   canonical: boolean;
   recipient: string;
-  coinbase_amount: bigint;
-  tx_fees_anchored: bigint;
-  tx_fees_streamed_confirmed: bigint;
-  tx_fees_streamed_produced: bigint;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  coinbase_amount: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_anchored: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_streamed_confirmed: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_streamed_produced: string;
 }
 
 export interface StxLockEventInsertValues {
@@ -425,7 +429,8 @@ export interface StxLockEventInsertValues {
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
-  locked_amount: bigint;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  locked_amount: string;
   unlock_height: number;
   locked_address: string;
 }
@@ -463,7 +468,8 @@ export interface FtEventInsertValues {
   sender: string | null;
   recipient: string | null;
   asset_identifier: string;
-  amount: bigint;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  amount: string;
 }
 
 export interface SmartContractEventInsertValues {
@@ -486,7 +492,8 @@ export interface BurnchainRewardInsertValues {
   canonical: boolean;
   burn_block_hash: Buffer;
   burn_block_height: number;
-  burn_amount: bigint;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  burn_amount: string;
   reward_recipient: string;
   reward_amount: bigint;
   reward_index: number;
