@@ -1,5 +1,4 @@
 import { bufferToHexPrefixString, hexToBuffer, parseEnum } from '../helpers';
-import { QueryConfig } from 'pg';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -39,20 +38,6 @@ import {
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import { PgSqlClient } from './connection';
-
-/**
- * Takes in a hex string that may or may not have a `0x` prefix and returns it
- * without the prefix for postgres INSERTs.
- * @param hex - Input string
- */
-export function pgHexString(hex: string): Buffer {
-  return hexToBuffer(hex);
-  // let str: string = hex;
-  // if (has0xPrefix(hex)) {
-  //   str = hex.substring(2);
-  // }
-  // return `\\x${str}`;
-}
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -167,6 +152,39 @@ export const MICROBLOCK_COLUMNS = [
   'block_hash',
 ];
 
+// Tables containing tx metadata, like events (stx, ft, nft transfers), contract logs, bns data, etc.
+export const TX_METADATA_TABLES = [
+  'stx_events',
+  'ft_events',
+  'nft_events',
+  'contract_logs',
+  'stx_lock_events',
+  'smart_contracts',
+  'names',
+  'namespaces',
+  'subdomains',
+] as const;
+
+/**
+ * Takes in a hex string that may or may not have a `0x` prefix and returns it
+ * without the prefix for postgres INSERTs.
+ * @param hex - Input string
+ */
+export function pgHexString(hex: string): Buffer {
+  return hexToBuffer(hex);
+  // let str: string = hex;
+  // if (has0xPrefix(hex)) {
+  //   str = hex.substring(2);
+  // }
+  // return `\\x${str}`;
+}
+
+/**
+ * Adds a table name prefix to an array of column names.
+ * @param columns - array of column names
+ * @param prefix - table name prefix
+ * @returns array with prefixed columns
+ */
 export function prefixedCols(columns: string[], prefix: string): string[] {
   return columns.map(c => `${prefix}.${c}`);
 }
@@ -198,30 +216,6 @@ export function abiColumn(tableName: string = 'txs'): string {
       LIMIT 1
     ) END as abi
     `;
-}
-
-// Enable this when debugging potential sql leaks.
-export const SQL_QUERY_LEAK_DETECTION = false;
-
-// Tables containing tx metadata, like events (stx, ft, nft transfers), contract logs, bns data, etc.
-export const TX_METADATA_TABLES = [
-  'stx_events',
-  'ft_events',
-  'nft_events',
-  'contract_logs',
-  'stx_lock_events',
-  'smart_contracts',
-  'names',
-  'namespaces',
-  'subdomains',
-] as const;
-
-export function getSqlQueryString(query: QueryConfig | string): string {
-  if (typeof query === 'string') {
-    return query;
-  } else {
-    return query.text;
-  }
 }
 
 export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
