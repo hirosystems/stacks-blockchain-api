@@ -22,6 +22,7 @@ export async function exportRawEventRequests(targetStream: Writable): Promise<vo
     const queryStream = client.query(copyQuery);
     await pipelineAsync(queryStream, targetStream);
   } finally {
+    client.release();
     await pool.end();
   }
 }
@@ -122,18 +123,17 @@ export async function containsAnyRawEventRequests(): Promise<boolean> {
     usageName: 'contains-raw-events-check',
     pgServer: PgServer.primary,
   });
+  const client = await pool.connect();
   try {
-    const client = await pool.connect();
-    try {
-      const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
-      return result.rowCount > 0;
-    } catch (error: any) {
-      if (error.message?.includes('does not exist')) {
-        return false;
-      }
-      throw error;
+    const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
+    return result.rowCount > 0;
+  } catch (error: any) {
+    if (error.message?.includes('does not exist')) {
+      return false;
     }
+    throw error;
   } finally {
+    client.release();
     await pool.end();
   }
 }

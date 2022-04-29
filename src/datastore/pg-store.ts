@@ -995,7 +995,7 @@ export class PgStore {
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
     const queryResult = await this.sql.begin(async sql => {
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
-      const unanchoredTxs: string[] = !includeUnanchored
+      const unanchoredTxs: Buffer[] = !includeUnanchored
         ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => pgHexString(tx.tx_id))
         : [];
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`

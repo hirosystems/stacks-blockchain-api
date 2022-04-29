@@ -130,7 +130,7 @@
       "request": "launch",
       "name": "Launch: import-events",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
+      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/Users/rafaelcr/src/stacks/stacks-node-events.tsv", "--wipe-db", "--force"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
@@ -148,9 +148,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js",
-        "-t",
-        "fetch mempool-tx"
+        "${workspaceRoot}/jest.config.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

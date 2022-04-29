@@ -418,9 +418,9 @@ export class PgWriteStore extends PgStore {
 
   async updateMinerReward(sql: PgSqlClient, minerReward: DbMinerReward): Promise<number> {
     const values: MinerRewardInsertValues = {
-      block_hash: pgHexString(minerReward.block_hash),
-      index_block_hash: pgHexString(minerReward.index_block_hash),
-      from_index_block_hash: pgHexString(minerReward.from_index_block_hash),
+      block_hash: hexToBuffer(minerReward.block_hash),
+      index_block_hash: hexToBuffer(minerReward.index_block_hash),
+      from_index_block_hash: hexToBuffer(minerReward.from_index_block_hash),
       mature_block_height: minerReward.mature_block_height,
       canonical: minerReward.canonical,
       recipient: minerReward.recipient,
@@ -438,17 +438,17 @@ export class PgWriteStore extends PgStore {
 
   async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
     const values: BlockInsertValues = {
-      block_hash: pgHexString(block.block_hash),
-      index_block_hash: pgHexString(block.index_block_hash),
-      parent_index_block_hash: pgHexString(block.parent_index_block_hash),
-      parent_block_hash: pgHexString(block.parent_block_hash),
-      parent_microblock_hash: pgHexString(block.parent_microblock_hash),
+      block_hash: hexToBuffer(block.block_hash),
+      index_block_hash: hexToBuffer(block.index_block_hash),
+      parent_index_block_hash: hexToBuffer(block.parent_index_block_hash),
+      parent_block_hash: hexToBuffer(block.parent_block_hash),
+      parent_microblock_hash: hexToBuffer(block.parent_microblock_hash),
       parent_microblock_sequence: block.parent_microblock_sequence,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
-      burn_block_hash: pgHexString(block.burn_block_hash),
+      burn_block_hash: hexToBuffer(block.burn_block_hash),
       burn_block_height: block.burn_block_height,
-      miner_txid: pgHexString(block.miner_txid),
+      miner_txid: hexToBuffer(block.miner_txid),
       canonical: block.canonical,
       execution_cost_read_count: block.execution_cost_read_count,
       execution_cost_read_length: block.execution_cost_read_length,
@@ -492,7 +492,7 @@ export class PgWriteStore extends PgStore {
       }
       const values: RewardSlotHolderInsertValues[] = slotHolders.map(val => ({
         canonical: val.canonical,
-        burn_block_hash: pgHexString(val.burn_block_hash),
+        burn_block_hash: hexToBuffer(val.burn_block_hash),
         burn_block_height: val.burn_block_height,
         address: val.address,
         slot_index: val.slot_index,
@@ -662,12 +662,12 @@ export class PgWriteStore extends PgStore {
   async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
     const values: StxLockEventInsertValues = {
       event_index: event.event_index,
-      tx_id: pgHexString(event.tx_id),
+      tx_id: hexToBuffer(event.tx_id),
       tx_index: event.tx_index,
       block_height: event.block_height,
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
@@ -685,12 +685,12 @@ export class PgWriteStore extends PgStore {
     for (const eventBatch of batchIterate(events, batchSize)) {
       const values: StxEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
-        tx_id: pgHexString(event.tx_id),
+        tx_id: hexToBuffer(event.tx_id),
         tx_index: event.tx_index,
         block_height: event.block_height,
-        index_block_hash: pgHexString(tx.index_block_hash),
-        parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-        microblock_hash: pgHexString(tx.microblock_hash),
+        index_block_hash: hexToBuffer(tx.index_block_hash),
+        parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+        microblock_hash: hexToBuffer(tx.microblock_hash),
         microblock_sequence: tx.microblock_sequence,
         microblock_canonical: tx.microblock_canonical,
         canonical: event.canonical,
@@ -717,17 +717,17 @@ export class PgWriteStore extends PgStore {
    * @param events - Transaction STX events
    */
   async updatePrincipalStxTxs(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    const txIdHex = pgHexString(tx.tx_id);
-    const indexBlockHashHex = pgHexString(tx.index_block_hash);
-    const microblockHashHex = pgHexString(tx.microblock_hash);
+    const txId = hexToBuffer(tx.tx_id);
+    const indexBlockHash = hexToBuffer(tx.index_block_hash);
+    const microblockHash = hexToBuffer(tx.microblock_hash);
     const insertPrincipalStxTxs = async (principals: string[]) => {
       principals = [...new Set(principals)]; // Remove duplicates
       const values: PrincipalStxTxsInsertValues[] = principals.map(principal => ({
         principal: principal,
-        tx_id: txIdHex,
+        tx_id: txId,
         block_height: tx.block_height,
-        index_block_hash: indexBlockHashHex,
-        microblock_hash: microblockHashHex,
+        index_block_hash: indexBlockHash,
+        microblock_hash: microblockHash,
         microblock_sequence: tx.microblock_sequence,
         tx_index: tx.tx_index,
         canonical: tx.canonical,
@@ -802,10 +802,10 @@ export class PgWriteStore extends PgStore {
         zonefile_offset: subdomain.zonefile_offset,
         resolver: subdomain.resolver,
         canonical: subdomain.canonical,
-        tx_id: pgHexString(subdomain.tx_id),
-        index_block_hash: pgHexString(blockData.index_block_hash),
-        parent_index_block_hash: pgHexString(blockData.parent_index_block_hash),
-        microblock_hash: pgHexString(blockData.microblock_hash),
+        tx_id: hexToBuffer(subdomain.tx_id),
+        index_block_hash: hexToBuffer(blockData.index_block_hash),
+        parent_index_block_hash: hexToBuffer(blockData.parent_index_block_hash),
+        microblock_hash: hexToBuffer(blockData.microblock_hash),
         microblock_sequence: blockData.microblock_sequence,
         microblock_canonical: blockData.microblock_canonical,
       });
@@ -856,12 +856,12 @@ export class PgWriteStore extends PgStore {
   async updateStxEvent(sql: PgSqlClient, tx: DbTx, event: DbStxEvent) {
     const values: StxEventInsertValues = {
       event_index: event.event_index,
-      tx_id: pgHexString(event.tx_id),
+      tx_id: hexToBuffer(event.tx_id),
       tx_index: event.tx_index,
       block_height: event.block_height,
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
@@ -878,12 +878,12 @@ export class PgWriteStore extends PgStore {
   async updateFtEvent(sql: PgSqlClient, tx: DbTx, event: DbFtEvent) {
     const values: FtEventInsertValues = {
       event_index: event.event_index,
-      tx_id: pgHexString(event.tx_id),
+      tx_id: hexToBuffer(event.tx_id),
       tx_index: event.tx_index,
       block_height: event.block_height,
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
@@ -900,10 +900,10 @@ export class PgWriteStore extends PgStore {
 
   async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent) {
     const values: NftEventInsertValues = {
-      tx_id: pgHexString(event.tx_id),
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      tx_id: hexToBuffer(event.tx_id),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       sender: event.sender ?? null,
@@ -914,7 +914,7 @@ export class PgWriteStore extends PgStore {
       canonical: event.canonical,
       asset_event_type_id: event.asset_event_type_id,
       asset_identifier: event.asset_identifier,
-      value: pgHexString(bufferToHexPrefixString(event.value)),
+      value: event.value,
     };
     await sql`
       INSERT INTO nft_events ${sql(values)}
@@ -926,18 +926,18 @@ export class PgWriteStore extends PgStore {
     for (const eventBatch of batchIterate(events, batchSize)) {
       const values: SmartContractEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
-        tx_id: pgHexString(event.tx_id),
+        tx_id: hexToBuffer(event.tx_id),
         tx_index: event.tx_index,
         block_height: event.block_height,
-        index_block_hash: pgHexString(tx.index_block_hash),
-        parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-        microblock_hash: pgHexString(tx.microblock_hash),
+        index_block_hash: hexToBuffer(tx.index_block_hash),
+        parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+        microblock_hash: hexToBuffer(tx.microblock_hash),
         microblock_sequence: tx.microblock_sequence,
         microblock_canonical: tx.microblock_canonical,
         canonical: event.canonical,
         contract_identifier: event.contract_identifier,
         topic: event.topic,
-        value: event.value.toString('hex'),
+        value: event.value,
       }));
       const res = await sql`
         INSERT INTO contract_logs ${sql(values)}
@@ -952,18 +952,18 @@ export class PgWriteStore extends PgStore {
   async updateSmartContractEvent(sql: PgSqlClient, tx: DbTx, event: DbSmartContractEvent) {
     const values: SmartContractEventInsertValues = {
       event_index: event.event_index,
-      tx_id: pgHexString(event.tx_id),
+      tx_id: hexToBuffer(event.tx_id),
       tx_index: event.tx_index,
       block_height: event.block_height,
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
       contract_identifier: event.contract_identifier,
       topic: event.topic,
-      value: event.value.toString('hex'),
+      value: event.value,
     };
     await sql`
       INSERT INTO contract_logs ${sql(values)}
@@ -1105,7 +1105,7 @@ export class PgWriteStore extends PgStore {
       for (const reward of rewards) {
         const values: BurnchainRewardInsertValues = {
           canonical: true,
-          burn_block_hash: pgHexString(reward.burn_block_hash),
+          burn_block_hash: hexToBuffer(reward.burn_block_hash),
           burn_block_height: reward.burn_block_height,
           burn_amount: reward.burn_amount,
           reward_recipient: reward.reward_recipient,
@@ -1125,13 +1125,13 @@ export class PgWriteStore extends PgStore {
 
   async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
     const values: TxInsertValues = {
-      tx_id: pgHexString(tx.tx_id),
-      raw_tx: tx.raw_tx.toString('hex'),
+      tx_id: hexToBuffer(tx.tx_id),
+      raw_tx: tx.raw_tx,
       tx_index: tx.tx_index,
-      index_block_hash: pgHexString(tx.index_block_hash),
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      block_hash: pgHexString(tx.block_hash),
-      parent_block_hash: pgHexString(tx.parent_block_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      block_hash: hexToBuffer(tx.block_hash),
+      parent_block_hash: hexToBuffer(tx.parent_block_hash),
       block_height: tx.block_height,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
@@ -1139,7 +1139,7 @@ export class PgWriteStore extends PgStore {
       anchor_mode: tx.anchor_mode,
       status: tx.status,
       canonical: tx.canonical,
-      post_conditions: tx.post_conditions.toString('hex'),
+      post_conditions: tx.post_conditions,
       nonce: tx.nonce,
       fee_rate: tx.fee_rate,
       sponsored: tx.sponsored,
@@ -1149,19 +1149,19 @@ export class PgWriteStore extends PgStore {
       origin_hash_mode: tx.origin_hash_mode,
       microblock_canonical: tx.microblock_canonical,
       microblock_sequence: tx.microblock_sequence,
-      microblock_hash: pgHexString(tx.microblock_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
       token_transfer_amount: tx.token_transfer_amount ?? null,
-      token_transfer_memo: tx.token_transfer_memo?.toString('hex') ?? null,
+      token_transfer_memo: tx.token_transfer_memo ?? null,
       smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
       smart_contract_source_code: tx.smart_contract_source_code ?? null,
       contract_call_contract_id: tx.contract_call_contract_id ?? null,
       contract_call_function_name: tx.contract_call_function_name ?? null,
-      contract_call_function_args: tx.contract_call_function_args?.toString('hex') ?? null,
-      poison_microblock_header_1: tx.poison_microblock_header_1?.toString('hex') ?? null,
-      poison_microblock_header_2: tx.poison_microblock_header_2?.toString('hex') ?? null,
-      coinbase_payload: tx.coinbase_payload?.toString('hex') ?? null,
-      raw_result: pgHexString(tx.raw_result),
+      contract_call_function_args: tx.contract_call_function_args ?? null,
+      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+      coinbase_payload: tx.coinbase_payload ?? null,
+      raw_result: hexToBuffer(tx.raw_result),
       event_count: tx.event_count,
       execution_cost_read_count: tx.execution_cost_read_count,
       execution_cost_read_length: tx.execution_cost_read_length,
@@ -1184,14 +1184,14 @@ export class PgWriteStore extends PgStore {
       for (const tx of txs) {
         const values: MempoolTxInsertValues = {
           pruned: tx.pruned,
-          tx_id: pgHexString(tx.tx_id),
-          raw_tx: tx.raw_tx.toString('hex'),
+          tx_id: hexToBuffer(tx.tx_id),
+          raw_tx: tx.raw_tx,
           type_id: tx.type_id,
           anchor_mode: tx.anchor_mode,
           status: tx.status,
           receipt_time: tx.receipt_time,
           receipt_block_height: chainTip.blockHeight,
-          post_conditions: tx.post_conditions.toString('hex'),
+          post_conditions: tx.post_conditions,
           nonce: tx.nonce,
           fee_rate: tx.fee_rate,
           sponsored: tx.sponsored,
@@ -1201,15 +1201,15 @@ export class PgWriteStore extends PgStore {
           origin_hash_mode: tx.origin_hash_mode,
           token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
           token_transfer_amount: tx.token_transfer_amount ?? null,
-          token_transfer_memo: tx.token_transfer_memo?.toString('hex') ?? null,
+          token_transfer_memo: tx.token_transfer_memo ?? null,
           smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
           smart_contract_source_code: tx.smart_contract_source_code ?? null,
           contract_call_contract_id: tx.contract_call_contract_id ?? null,
           contract_call_function_name: tx.contract_call_function_name ?? null,
-          contract_call_function_args: tx.contract_call_function_args?.toString('hex') ?? null,
-          poison_microblock_header_1: tx.poison_microblock_header_1?.toString('hex') ?? null,
-          poison_microblock_header_2: tx.poison_microblock_header_2?.toString('hex') ?? null,
-          coinbase_payload: tx.coinbase_payload?.toString('hex') ?? null,
+          contract_call_function_args: tx.contract_call_function_args ?? null,
+          poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+          poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+          coinbase_payload: tx.coinbase_payload ?? null,
         };
         const result = await sql`
           INSERT INTO mempool_txs ${sql(values)}
@@ -1253,7 +1253,7 @@ export class PgWriteStore extends PgStore {
     entry: DbTokenMetadataQueueEntry
   ): Promise<DbTokenMetadataQueueEntry> {
     const values: TokenMetadataQueueEntryInsertValues = {
-      tx_id: pgHexString(entry.txId),
+      tx_id: hexToBuffer(entry.txId),
       contract_id: entry.contractId,
       contract_abi: JSON.stringify(entry.contractAbi),
       block_height: entry.blockHeight,
@@ -1272,16 +1272,16 @@ export class PgWriteStore extends PgStore {
 
   async updateSmartContract(sql: PgSqlClient, tx: DbTx, smartContract: DbSmartContract) {
     const values: SmartContractInsertValues = {
-      tx_id: pgHexString(smartContract.tx_id),
+      tx_id: hexToBuffer(smartContract.tx_id),
       canonical: smartContract.canonical,
       contract_id: smartContract.contract_id,
       block_height: smartContract.block_height,
-      index_block_hash: pgHexString(tx.index_block_hash),
+      index_block_hash: hexToBuffer(tx.index_block_hash),
       source_code: smartContract.source_code,
       // FIXME: check
       abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
-      parent_index_block_hash: pgHexString(tx.parent_index_block_hash),
-      microblock_hash: pgHexString(tx.microblock_hash),
+      parent_index_block_hash: hexToBuffer(tx.parent_index_block_hash),
+      microblock_hash: hexToBuffer(tx.microblock_hash),
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
     };
@@ -1317,12 +1317,12 @@ export class PgWriteStore extends PgStore {
       zonefile_hash: validZonefileHash,
       namespace_id: bnsName.namespace_id,
       tx_index: bnsName.tx_index,
-      tx_id: pgHexString(bnsName.tx_id),
+      tx_id: hexToBuffer(bnsName.tx_id),
       status: bnsName.status ?? null,
       canonical: bnsName.canonical,
-      index_block_hash: pgHexString(blockData.index_block_hash),
-      parent_index_block_hash: pgHexString(blockData.parent_index_block_hash),
-      microblock_hash: pgHexString(blockData.microblock_hash),
+      index_block_hash: hexToBuffer(blockData.index_block_hash),
+      parent_index_block_hash: hexToBuffer(blockData.parent_index_block_hash),
+      microblock_hash: hexToBuffer(blockData.microblock_hash),
       microblock_sequence: blockData.microblock_sequence,
       microblock_canonical: blockData.microblock_canonical,
     };
@@ -1356,11 +1356,11 @@ export class PgWriteStore extends PgStore {
       lifetime: bnsNamespace.lifetime,
       status: bnsNamespace.status ?? null,
       tx_index: bnsNamespace.tx_index,
-      tx_id: pgHexString(bnsNamespace.tx_id),
+      tx_id: hexToBuffer(bnsNamespace.tx_id),
       canonical: bnsNamespace.canonical,
-      index_block_hash: pgHexString(blockData.index_block_hash),
-      parent_index_block_hash: pgHexString(blockData.parent_index_block_hash),
-      microblock_hash: pgHexString(blockData.microblock_hash),
+      index_block_hash: hexToBuffer(blockData.index_block_hash),
+      parent_index_block_hash: hexToBuffer(blockData.parent_index_block_hash),
+      microblock_hash: hexToBuffer(blockData.microblock_hash),
       microblock_sequence: blockData.microblock_sequence,
       microblock_canonical: blockData.microblock_canonical,
     };
@@ -1380,7 +1380,7 @@ export class PgWriteStore extends PgStore {
         contract_id: ftMetadata.contract_id,
         symbol: ftMetadata.symbol,
         decimals: ftMetadata.decimals,
-        tx_id: pgHexString(ftMetadata.tx_id),
+        tx_id: hexToBuffer(ftMetadata.tx_id),
         sender_address: ftMetadata.sender_address,
       };
       const result = await sql`
@@ -1410,7 +1410,7 @@ export class PgWriteStore extends PgStore {
         image_uri: nftMetadata.image_uri,
         image_canonical_uri: nftMetadata.image_canonical_uri,
         contract_id: nftMetadata.contract_id,
-        tx_id: pgHexString(nftMetadata.tx_id),
+        tx_id: hexToBuffer(nftMetadata.tx_id),
         sender_address: nftMetadata.sender_address,
       };
       const result = await sql`
@@ -1536,17 +1536,17 @@ export class PgWriteStore extends PgStore {
       const values: MicroblockInsertValues = {
         canonical: mb.canonical,
         microblock_canonical: mb.microblock_canonical,
-        microblock_hash: pgHexString(mb.microblock_hash),
+        microblock_hash: hexToBuffer(mb.microblock_hash),
         microblock_sequence: mb.microblock_sequence,
-        microblock_parent_hash: pgHexString(mb.microblock_parent_hash),
-        parent_index_block_hash: pgHexString(mb.parent_index_block_hash),
+        microblock_parent_hash: hexToBuffer(mb.microblock_parent_hash),
+        parent_index_block_hash: hexToBuffer(mb.parent_index_block_hash),
         block_height: mb.block_height,
         parent_block_height: mb.parent_block_height,
-        parent_block_hash: pgHexString(mb.parent_block_hash),
-        index_block_hash: pgHexString(mb.index_block_hash),
-        block_hash: pgHexString(mb.block_hash),
+        parent_block_hash: hexToBuffer(mb.parent_block_hash),
+        index_block_hash: hexToBuffer(mb.index_block_hash),
+        block_hash: hexToBuffer(mb.block_hash),
         parent_burn_block_height: mb.parent_burn_block_height,
-        parent_burn_block_hash: pgHexString(mb.parent_burn_block_hash),
+        parent_burn_block_hash: hexToBuffer(mb.parent_burn_block_hash),
         parent_burn_block_time: mb.parent_burn_block_time,
       };
       const mbResult = await sql`
@@ -1823,11 +1823,10 @@ export class PgWriteStore extends PgStore {
     canonical: boolean,
     updatedEntities: UpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const hexIndexBlockHash = indexBlockHash.toString('hex');
     const txResult = await sql<TxQueryResult[]>`
       UPDATE txs
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING ${sql(TX_COLUMNS)}
     `;
     const txIds = txResult.map(row => parseTxQueryResult(row));
@@ -1844,14 +1843,14 @@ export class PgWriteStore extends PgStore {
         UPDATE principal_stx_txs
         SET canonical = ${canonical}
         WHERE tx_id IN ${sql(txIds.map(tx => pgHexString(tx.tx_id)))}
-          AND index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+          AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       `;
     }
 
     const minerRewardResults = await sql`
       UPDATE miner_rewards
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1863,7 +1862,7 @@ export class PgWriteStore extends PgStore {
     const stxLockResults = await sql`
       UPDATE stx_lock_events
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1875,7 +1874,7 @@ export class PgWriteStore extends PgStore {
     const stxResults = await sql`
       UPDATE stx_events
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1887,7 +1886,7 @@ export class PgWriteStore extends PgStore {
     const ftResult = await sql`
       UPDATE ft_events
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1899,7 +1898,7 @@ export class PgWriteStore extends PgStore {
     const nftResult = await sql`
       UPDATE nft_events
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1911,7 +1910,7 @@ export class PgWriteStore extends PgStore {
     const contractLogResult = await sql`
       UPDATE contract_logs
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1923,7 +1922,7 @@ export class PgWriteStore extends PgStore {
     const smartContractResult = await sql`
       UPDATE smart_contracts
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1935,7 +1934,7 @@ export class PgWriteStore extends PgStore {
     const nameResult = await sql`
       UPDATE names
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1947,7 +1946,7 @@ export class PgWriteStore extends PgStore {
     const namespaceResult = await sql`
       UPDATE namespaces
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1959,7 +1958,7 @@ export class PgWriteStore extends PgStore {
     const subdomainResult = await sql`
       UPDATE subdomains
       SET canonical = ${canonical}
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical != ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       RETURNING *
     `;
     if (canonical) {
@@ -1979,20 +1978,19 @@ export class PgWriteStore extends PgStore {
     indexBlockHash: Buffer,
     updatedEntities: UpdatedEntities
   ): Promise<UpdatedEntities> {
-    const hexIndexBlockHash = indexBlockHash.toString('hex');
     // Restore the previously orphaned block to canonical
     const restoredBlockResult = await sql<BlockQueryResult[]>`
       UPDATE blocks
       SET canonical = true
-      WHERE index_block_hash = ${hexIndexBlockHash} AND canonical = false
+      WHERE index_block_hash = ${indexBlockHash} AND canonical = false
       RETURNING ${sql(BLOCK_COLUMNS)}
     `;
 
     if (restoredBlockResult.length === 0) {
-      throw new Error(`Could not find orphaned block by index_hash ${hexIndexBlockHash}`);
+      throw new Error(`Could not find orphaned block by index_hash ${indexBlockHash}`);
     }
     if (restoredBlockResult.length > 1) {
-      throw new Error(`Found multiple non-canonical parents for index_hash ${hexIndexBlockHash}`);
+      throw new Error(`Found multiple non-canonical parents for index_hash ${indexBlockHash}`);
     }
     updatedEntities.markedCanonical.blocks++;
 
@@ -2001,7 +1999,7 @@ export class PgWriteStore extends PgStore {
       UPDATE blocks
       SET canonical = false
       WHERE block_height = ${restoredBlockResult[0].block_height}
-        AND index_block_hash != ${hexIndexBlockHash} AND canonical = true
+        AND index_block_hash != ${indexBlockHash} AND canonical = true
       RETURNING ${sql(BLOCK_COLUMNS)}
     `;
 
@@ -2089,7 +2087,7 @@ export class PgWriteStore extends PgStore {
       FROM blocks
       WHERE
         block_height = ${restoredBlockResult[0].block_height - 1} AND
-        index_block_hash = ${restoredBlockResult[0].parent_index_block_hash.toString('hex')} AND
+        index_block_hash = ${restoredBlockResult[0].parent_index_block_hash} AND
         canonical = false
     `;
     if (parentResult.length > 1) {

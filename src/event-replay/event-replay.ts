@@ -5,6 +5,11 @@ import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
+import {
+  containsAnyRawEventRequests,
+  exportRawEventRequests,
+  getRawEventRequests,
+} from '../datastore/event-requests';
 
 enum EventImportMode {
   /**
@@ -48,7 +53,7 @@ export async function exportEventsAsTsv(
   console.log(`Export event data to file: ${resolvedFilePath}`);
   const writeStream = fs.createWriteStream(resolvedFilePath);
   console.log(`Export started...`);
-  await PgWriteStore.exportRawEventRequests(writeStream);
+  await exportRawEventRequests(writeStream);
   console.log('Export successful.');
 }
 
@@ -84,7 +89,7 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await PgWriteStore.containsAnyRawEventRequests();
+  const hasData = await containsAnyRawEventRequests();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
@@ -124,7 +129,7 @@ export async function importEventsFromTsv(
   });
 
   const readStream = fs.createReadStream(resolvedFilePath);
-  const rawEventsIterator = PgWriteStore.getRawEventRequests(readStream, status => {
+  const rawEventsIterator = getRawEventRequests(readStream, status => {
     console.log(status);
   });
   // Set logger to only output for warnings/errors, otherwise the event replay will result
