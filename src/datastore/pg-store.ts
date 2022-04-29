@@ -6,13 +6,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import {
-  assertNotNullish,
-  bufferToHexPrefixString,
-  FoundOrNot,
-  hexToBuffer,
-  unwrapOptional,
-} from '../helpers';
+import { assertNotNullish, bufferToHexPrefixString, FoundOrNot, unwrapOptional } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
@@ -82,7 +76,6 @@ import {
   prefixedCols,
   RawTxQueryResult,
   TransferQueryResult,
-  txColumns,
   TX_COLUMNS,
   unsafeCols,
   validateZonefileHash,
@@ -2727,10 +2720,16 @@ export class PgStore {
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
     const columns = args.includeTxMetadata
-      ? this.sql.unsafe(`
-          asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-          ${txColumns().join(', ')}, ${abiColumn()}
-        `)
+      ? unsafeCols(this.sql, [
+          'asset_identifier',
+          'value',
+          'event_index',
+          'asset_event_type_id',
+          'sender',
+          'recipient',
+          ...prefixedCols(TX_COLUMNS, 'txs'),
+          abiColumn(),
+        ])
       : this.sql`nft.*`;
     const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
       SELECT ${columns}, (COUNT(*) OVER())::INTEGER AS count
@@ -2782,10 +2781,16 @@ export class PgStore {
     includeTxMetadata: boolean;
   }): Promise<{ results: NftEventWithTxMetadata[]; total: number }> {
     const columns = args.includeTxMetadata
-      ? this.sql.unsafe(`
-          asset_identifier, value, event_index, asset_event_type_id, sender, recipient,
-          ${txColumns().join(', ')}, ${abiColumn()}
-        `)
+      ? unsafeCols(this.sql, [
+          'asset_identifier',
+          'value',
+          'event_index',
+          'asset_event_type_id',
+          'sender',
+          'recipient',
+          ...prefixedCols(TX_COLUMNS, 'txs'),
+          abiColumn(),
+        ])
       : this.sql`nft.*`;
     const nftTxResults = await this.sql<(DbNftEvent & ContractTxQueryResult & { count: number })[]>`
       SELECT ${columns}, (COUNT(*) OVER())::INTEGER AS count

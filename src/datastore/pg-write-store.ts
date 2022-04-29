@@ -62,7 +62,6 @@ import {
   UpdatedEntities,
   validateZonefileHash,
   NftEventInsertValues,
-  txColumns,
   TxInsertValues,
   MicroblockInsertValues,
   BlockInsertValues,

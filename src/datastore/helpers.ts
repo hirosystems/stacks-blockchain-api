@@ -763,78 +763,20 @@ export function prefixedCols(columns: string[], prefix: string): string[] {
   return columns.map(c => `${prefix}.${c}`);
 }
 
-// FIXME: Force postgres.Sql instead of postgres.TransactionSql
+/**
+ * Concatenates column names to use on a query. Necessary when one or more of those columns is complex enough
+ * so that postgres.js can't figure out how to list it (e.g. abi column, aggregates, partitions, etc.).
+ * @param sql - SQL client
+ * @param columns - list of columns
+ * @returns raw SQL column list string
+ */
 export function unsafeCols(sql: PgSqlClient, columns: string[]): postgres.PendingQuery<any> {
   return sql.unsafe(columns.join(', '));
 }
 
 /**
- * Shorthand function to generate a list of common columns to query from the `txs` table. A parameter
- * is specified in case the table is aliased into something else and a prefix is required.
- * @param tableName - Name of the table to query against. Defaults to `txs`.
- * @returns `string` - Column list to insert in SELECT statement.
- */
-export function txColumns(tableName: string = 'txs'): string[] {
-  const columns: string[] = [
-    // required columns
-    'tx_id',
-    'raw_tx',
-    'tx_index',
-    'index_block_hash',
-    'parent_index_block_hash',
-    'block_hash',
-    'parent_block_hash',
-    'block_height',
-    'burn_block_time',
-    'parent_burn_block_time',
-    'type_id',
-    'anchor_mode',
-    'status',
-    'canonical',
-    'post_conditions',
-    'nonce',
-    'fee_rate',
-    'sponsored',
-    'sponsor_address',
-    'sponsor_nonce',
-    'sender_address',
-    'origin_hash_mode',
-    'microblock_canonical',
-    'microblock_sequence',
-    'microblock_hash',
-    // token-transfer tx columns
-    'token_transfer_recipient_address',
-    'token_transfer_amount',
-    'token_transfer_memo',
-    // smart-contract tx columns
-    'smart_contract_contract_id',
-    'smart_contract_source_code',
-    // contract-call tx columns
-    'contract_call_contract_id',
-    'contract_call_function_name',
-    'contract_call_function_args',
-    // poison-microblock tx columns
-    'poison_microblock_header_1',
-    'poison_microblock_header_2',
-    // coinbase tx columns
-    'coinbase_payload',
-    // tx result
-    'raw_result',
-    // event count
-    'event_count',
-    // execution cost
-    'execution_cost_read_count',
-    'execution_cost_read_length',
-    'execution_cost_runtime',
-    'execution_cost_write_count',
-    'execution_cost_write_length',
-  ];
-  return columns.map(c => `${tableName}.${c}`);
-}
-
-/**
  * Shorthand function that returns a column query to retrieve the smart contract abi when querying transactions
- * that may be of type `contract_call`. Usually used alongside `txColumns()`, `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
+ * that may be of type `contract_call`. Usually used alongside `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
  * @param tableName - Name of the table that will determine the transaction type. Defaults to `txs`.
  * @returns `string` - abi column select statement portion
  */
