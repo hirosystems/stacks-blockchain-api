@@ -63,7 +63,7 @@ export async function connectPostgres({
     } finally {
       await testSql.end();
     }
-  } while (initTimer.getElapsed() < Number.MAX_SAFE_INTEGER); // FIXME:
+  } while (initTimer.getElapsed() < Number.MAX_SAFE_INTEGER);
   if (!connectionOkay) {
     connectionError = connectionError ?? new Error('Error connecting to database');
     throw connectionError;
@@ -109,18 +109,6 @@ export function getPostgres({
     );
   }
   let sql: PgSqlClient;
-  const typeTransforms = {
-    value: {
-      from: (value: unknown) => {
-        // FIXME: Check
-        // Convert Buffers from 'utf8' to 'hex' string encoding.
-        if (Buffer.isBuffer(value)) {
-          return Buffer.from(value.toString('utf8'), 'hex');
-        }
-        return value;
-      },
-    },
-  };
   if (pgConnectionUri) {
     const uri = new URL(pgConnectionUri);
     const searchParams = Object.fromEntries(
@@ -137,7 +125,6 @@ export function getPostgres({
     uri.searchParams.set('application_name', appName);
     sql = postgres(uri.toString(), {
       max: pgEnvVars.poolMax,
-      transform: typeTransforms,
     });
   } else {
     const appName = `${pgEnvVars.applicationName ?? defaultAppName}:${usageName}`;
@@ -149,7 +136,6 @@ export function getPostgres({
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
       max: pgEnvVars.poolMax,
-      transform: typeTransforms,
       connection: {
         application_name: appName,
         search_path: pgEnvVars.schema,
