@@ -10,6 +10,7 @@ import {
 } from '../btc-faucet';
 import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
+import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
@@ -103,13 +104,20 @@ describe('btc faucet', () => {
 
   describe('faucet http API', () => {
     let apiServer: ApiServer;
-    let db: PgWriteStore;
+    let db: PgStore;
+    let writeDb: PgWriteStore;
     beforeAll(async () => {
       process.env.PG_DATABASE = 'postgres';
       await cycleMigrations();
-      db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+      db = await PgStore.connect({ usageName: 'tests', withNotifier: false });
+      writeDb = await PgWriteStore.connect({
+        usageName: 'tests',
+        withNotifier: false,
+        skipMigrations: true,
+      });
       apiServer = await startApiServer({
         datastore: db,
+        writeDatastore: writeDb,
         chainId: ChainID.Testnet,
         httpLogLevel: 'silly',
       });
@@ -146,6 +154,7 @@ describe('btc faucet', () => {
     afterAll(async () => {
       await apiServer.terminate();
       await db?.close();
+      await writeDb?.close();
       await runMigrations(undefined, 'down');
     });
   });

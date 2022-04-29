@@ -62,7 +62,7 @@ export interface ApiServer {
 
 export async function startApiServer(opts: {
   datastore: PgStore;
-  writeDatastore: PgWriteStore;
+  writeDatastore?: PgWriteStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;
@@ -204,8 +204,10 @@ export async function startApiServer(opts: {
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/faucets', createFaucetRouter(writeDatastore));
       router.use('/tokens', createTokenRouter(datastore));
+      if (writeDatastore) {
+        router.use('/faucets', createFaucetRouter(writeDatastore));
+      }
       return router;
     })()
   );
