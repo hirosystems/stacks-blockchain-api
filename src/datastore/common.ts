@@ -1,5 +1,3 @@
-import { EventEmitter } from 'events';
-import StrictEventEmitter from 'strict-event-emitter-types';
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 
@@ -574,4 +572,608 @@ export interface DbChainTip {
   blockHash: string;
   microblockHash?: string;
   microblockSequence?: number;
+}
+
+export interface BlockQueryResult {
+  block_hash: Buffer;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  parent_block_hash: Buffer;
+  parent_microblock_hash: Buffer;
+  parent_microblock_sequence: number;
+  block_height: number;
+  burn_block_time: number;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  miner_txid: Buffer;
+  canonical: boolean;
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
+}
+
+export interface MicroblockQueryResult {
+  canonical: boolean;
+  microblock_canonical: boolean;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_parent_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  block_height: number;
+  parent_block_height: number;
+  parent_block_hash: Buffer;
+  index_block_hash: Buffer;
+  block_hash: Buffer;
+  parent_burn_block_height: number;
+  parent_burn_block_hash: Buffer;
+  parent_burn_block_time: number;
+}
+
+export interface MempoolTxQueryResult {
+  pruned: boolean;
+  tx_id: Buffer;
+
+  nonce: number;
+  sponsor_nonce?: number;
+  type_id: number;
+  anchor_mode: number;
+  status: number;
+  receipt_time: number;
+  receipt_block_height: number;
+
+  canonical: boolean;
+  post_conditions: Buffer;
+  fee_rate: string;
+  sponsored: boolean;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: number;
+  raw_tx: Buffer;
+
+  // `token_transfer` tx types
+  token_transfer_recipient_address?: string;
+  token_transfer_amount?: string;
+  token_transfer_memo?: Buffer;
+
+  // `smart_contract` tx types
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  // `contract_call` tx types
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  contract_call_function_args?: Buffer;
+
+  // `poison_microblock` tx types
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
+
+  // `coinbase` tx types
+  coinbase_payload?: Buffer;
+
+  // sending abi in case tx is contract call
+  abi: unknown | null;
+}
+
+export interface TxQueryResult {
+  tx_id: Buffer;
+  tx_index: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  block_hash: Buffer;
+  parent_block_hash: Buffer;
+  block_height: number;
+  burn_block_time: number;
+  parent_burn_block_time: number;
+  nonce: number;
+  sponsor_nonce?: number;
+  type_id: number;
+  anchor_mode: number;
+  status: number;
+  raw_result: Buffer;
+  canonical: boolean;
+
+  microblock_canonical: boolean;
+  microblock_sequence: number;
+  microblock_hash: Buffer;
+
+  post_conditions: Buffer;
+  fee_rate: string;
+  sponsored: boolean;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: number;
+  raw_tx: Buffer;
+
+  // `token_transfer` tx types
+  token_transfer_recipient_address?: string;
+  token_transfer_amount?: string;
+  token_transfer_memo?: Buffer;
+
+  // `smart_contract` tx types
+  smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
+
+  // `contract_call` tx types
+  contract_call_contract_id?: string;
+  contract_call_function_name?: string;
+  contract_call_function_args?: Buffer;
+
+  // `poison_microblock` tx types
+  poison_microblock_header_1?: Buffer;
+  poison_microblock_header_2?: Buffer;
+
+  // `coinbase` tx types
+  coinbase_payload?: Buffer;
+
+  // events count
+  event_count: number;
+
+  execution_cost_read_count: string;
+  execution_cost_read_length: string;
+  execution_cost_runtime: string;
+  execution_cost_write_count: string;
+  execution_cost_write_length: string;
+}
+
+export interface ContractTxQueryResult extends TxQueryResult {
+  abi?: unknown | null;
+}
+
+export interface FaucetRequestQueryResult {
+  currency: string;
+  ip: string;
+  address: string;
+  occurred_at: string;
+}
+
+export interface UpdatedEntities {
+  markedCanonical: {
+    blocks: number;
+    microblocks: number;
+    minerRewards: number;
+    txs: number;
+    stxLockEvents: number;
+    stxEvents: number;
+    ftEvents: number;
+    nftEvents: number;
+    contractLogs: number;
+    smartContracts: number;
+    names: number;
+    namespaces: number;
+    subdomains: number;
+  };
+  markedNonCanonical: {
+    blocks: number;
+    microblocks: number;
+    minerRewards: number;
+    txs: number;
+    stxLockEvents: number;
+    stxEvents: number;
+    ftEvents: number;
+    nftEvents: number;
+    contractLogs: number;
+    smartContracts: number;
+    names: number;
+    namespaces: number;
+    subdomains: number;
+  };
+}
+
+export interface TransferQueryResult {
+  sender: string;
+  memo: Buffer;
+  block_height: number;
+  tx_index: number;
+  tx_id: Buffer;
+  transfer_type: string;
+  amount: string;
+}
+
+export interface NonFungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+export interface FungibleTokenMetadataQueryResult {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+export interface DbTokenMetadataQueueEntryQuery {
+  queue_id: number;
+  tx_id: Buffer;
+  contract_id: string;
+  contract_abi: string;
+  block_height: number;
+  processed: boolean;
+}
+
+export interface RawTxQueryResult {
+  raw_tx: Buffer;
+}
+
+export interface TxInsertValues {
+  tx_id: Buffer;
+  raw_tx: Buffer;
+  tx_index: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  block_hash: Buffer;
+  parent_block_hash: Buffer;
+  block_height: number;
+  burn_block_time: number;
+  parent_burn_block_time: number;
+  type_id: number;
+  anchor_mode: DbTxAnchorMode;
+  status: DbTxStatus;
+  canonical: boolean;
+  post_conditions: Buffer;
+  nonce: number;
+  fee_rate: bigint;
+  sponsored: boolean;
+  sponsor_nonce: number | null;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: number;
+  microblock_canonical: boolean;
+  microblock_sequence: number;
+  microblock_hash: Buffer;
+  token_transfer_recipient_address: string | null;
+  token_transfer_amount: bigint | null;
+  token_transfer_memo: Buffer | null;
+  smart_contract_contract_id: string | null;
+  smart_contract_source_code: string | null;
+  contract_call_contract_id: string | null;
+  contract_call_function_name: string | null;
+  contract_call_function_args: Buffer | null;
+  poison_microblock_header_1: Buffer | null;
+  poison_microblock_header_2: Buffer | null;
+  coinbase_payload: Buffer | null;
+  raw_result: Buffer;
+  event_count: number;
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
+}
+
+export interface MempoolTxInsertValues {
+  pruned: boolean;
+  tx_id: Buffer;
+  raw_tx: Buffer;
+  type_id: DbTxTypeId;
+  anchor_mode: DbTxAnchorMode;
+  status: DbTxStatus;
+  receipt_time: number;
+  receipt_block_height: number;
+  post_conditions: Buffer;
+  nonce: number;
+  fee_rate: bigint;
+  sponsored: boolean;
+  sponsor_nonce: number | null;
+  sponsor_address: string | null;
+  sender_address: string;
+  origin_hash_mode: number;
+  token_transfer_recipient_address: string | null;
+  token_transfer_amount: bigint | null;
+  token_transfer_memo: Buffer | null;
+  smart_contract_contract_id: string | null;
+  smart_contract_source_code: string | null;
+  contract_call_contract_id: string | null;
+  contract_call_function_name: string | null;
+  contract_call_function_args: Buffer | null;
+  poison_microblock_header_1: Buffer | null;
+  poison_microblock_header_2: Buffer | null;
+  coinbase_payload: Buffer | null;
+}
+
+export interface BlockInsertValues {
+  block_hash: Buffer;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  parent_block_hash: Buffer;
+  parent_microblock_hash: Buffer;
+  parent_microblock_sequence: number;
+  block_height: number;
+  burn_block_time: number;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  miner_txid: Buffer;
+  canonical: boolean;
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
+}
+
+export interface MicroblockInsertValues {
+  canonical: boolean;
+  microblock_canonical: boolean;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_parent_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  block_height: number;
+  parent_block_height: number;
+  parent_block_hash: Buffer;
+  index_block_hash: Buffer;
+  block_hash: Buffer;
+  parent_burn_block_height: number;
+  parent_burn_block_hash: Buffer;
+  parent_burn_block_time: number;
+}
+
+export interface StxEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  amount: bigint;
+}
+
+export interface MinerRewardInsertValues {
+  block_hash: Buffer;
+  index_block_hash: Buffer;
+  from_index_block_hash: Buffer;
+  mature_block_height: number;
+  canonical: boolean;
+  recipient: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  coinbase_amount: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_anchored: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_streamed_confirmed: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  tx_fees_streamed_produced: string;
+}
+
+export interface StxLockEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  locked_amount: string;
+  unlock_height: number;
+  locked_address: string;
+}
+
+export interface NftEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string;
+  value: Buffer;
+}
+
+export interface FtEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  amount: string;
+}
+
+export interface SmartContractEventInsertValues {
+  event_index: number;
+  tx_id: Buffer;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  contract_identifier: string;
+  topic: string;
+  value: Buffer;
+}
+
+export interface BurnchainRewardInsertValues {
+  canonical: boolean;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  /** `string` guarantees the value will fit into the `numeric` pg type. */
+  burn_amount: string;
+  reward_recipient: string;
+  reward_amount: bigint;
+  reward_index: number;
+}
+
+export interface BnsNameInsertValues {
+  name: string;
+  address: string;
+  registered_at: number;
+  expire_block: number;
+  zonefile_hash: string;
+  namespace_id: string;
+  tx_index: number;
+  tx_id: Buffer;
+  status: string | null;
+  canonical: boolean;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsSubdomainInsertValues {
+  name: string;
+  namespace_id: string;
+  fully_qualified_subdomain: string;
+  owner: string;
+  zonefile_hash: string;
+  parent_zonefile_hash: string;
+  parent_zonefile_index: number;
+  block_height: number;
+  tx_index: number;
+  zonefile_offset: number;
+  resolver: string;
+  canonical: boolean;
+  tx_id: Buffer;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsNamespaceInsertValues {
+  namespace_id: string;
+  launched_at: number | null;
+  address: string;
+  reveal_block: number;
+  ready_block: number;
+  buckets: string;
+  base: number;
+  coeff: number;
+  nonalpha_discount: number;
+  no_vowel_discount: number;
+  lifetime: number;
+  status: string | null;
+  tx_index: number;
+  tx_id: Buffer;
+  canonical: boolean;
+  index_block_hash: Buffer;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface BnsZonefileInsertValues {
+  zonefile: string;
+  zonefile_hash: string;
+}
+
+export interface FaucetRequestInsertValues {
+  currency: DbFaucetRequestCurrency;
+  address: string;
+  ip: string;
+  occurred_at: number;
+}
+
+export interface PrincipalStxTxsInsertValues {
+  principal: string;
+  tx_id: Buffer;
+  block_height: number;
+  index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  tx_index: number;
+  canonical: boolean;
+  microblock_canonical: boolean;
+}
+
+export interface RewardSlotHolderInsertValues {
+  canonical: boolean;
+  burn_block_hash: Buffer;
+  burn_block_height: number;
+  address: string;
+  slot_index: number;
+}
+
+export interface TokenMetadataQueueEntryInsertValues {
+  tx_id: Buffer;
+  contract_id: string;
+  contract_abi: string;
+  block_height: number;
+  processed: boolean;
+}
+
+export interface NftMetadataInsertValues {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+export interface FtMetadataInsertValues {
+  token_uri: string;
+  name: string;
+  description: string;
+  image_uri: string;
+  image_canonical_uri: string;
+  contract_id: string;
+  symbol: string;
+  decimals: number;
+  tx_id: Buffer;
+  sender_address: string;
+}
+
+export interface SmartContractInsertValues {
+  tx_id: Buffer;
+  canonical: boolean;
+  contract_id: string;
+  block_height: number;
+  index_block_hash: Buffer;
+  source_code: string;
+  // TODO: `any` is the only one that wrote the JSON correctly
+  abi: any;
+  parent_index_block_hash: Buffer;
+  microblock_hash: Buffer;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
 }
