@@ -907,9 +907,7 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
   if (!abi || abi === 'null') {
     return undefined;
   } else {
-    // FIXME: Check
     return JSON.stringify(abi);
-    // return abi as string;
   }
 }
 

@@ -114,42 +114,32 @@ async function init(): Promise<void> {
     );
   }
   const apiMode = getApiMode();
-  const dbUsageName = `datastore-${apiMode}`;
-  let db: PgStore;
-  switch (apiMode) {
-    case StacksApiMode.default:
-    case StacksApiMode.writeOnly:
-      db = await PgWriteStore.connect({
-        usageName: dbUsageName,
-        skipMigrations: false,
-      });
-      break;
-    case StacksApiMode.readOnly:
-      db = await PgStore.connect({
-        usageName: dbUsageName,
-      });
-      break;
-    case StacksApiMode.offline:
-      db = OfflineDummyStore;
-      break;
-  }
+  const dbStore =
+    apiMode === StacksApiMode.offline
+      ? OfflineDummyStore
+      : await PgStore.connect({
+          usageName: `datastore-${apiMode}`,
+        });
+  const dbWriteStore = await PgWriteStore.connect({
+    usageName: `write-datastore-${apiMode}`,
+    skipMigrations: false,
+  });
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
-    const primaryDb = db as PgWriteStore;
     if (isProdEnv) {
-      await importV1TokenOfferingData(primaryDb);
+      await importV1TokenOfferingData(dbWriteStore);
     } else {
       logger.warn(`Notice: skipping token offering data import because of non-production NODE_ENV`);
     }
     if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
       logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
     } else if (process.env.BNS_IMPORT_DIR) {
-      await importV1BnsData(primaryDb, process.env.BNS_IMPORT_DIR);
+      await importV1BnsData(dbWriteStore, process.env.BNS_IMPORT_DIR);
     }
 
     const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
-      datastore: primaryDb,
+      datastore: dbWriteStore,
       chainId: configuredChainID,
     });
     registerShutdownConfig({
@@ -179,7 +169,7 @@ async function init(): Promise<void> {
       logger.warn('Non-Fungible Token metadata processing is not enabled.');
     }
     if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
-      const tokenMetadataProcessor = new TokensProcessorQueue(primaryDb, configuredChainID);
+      const tokenMetadataProcessor = new TokensProcessorQueue(dbWriteStore, configuredChainID);
       registerShutdownConfig({
         name: 'Token Metadata Processor',
         handler: () => tokenMetadataProcessor.close(),
@@ -190,8 +180,12 @@ async function init(): Promise<void> {
     }
   }
 
-  if (apiMode !== StacksApiMode.writeOnly) {
-    const apiServer = await startApiServer({ datastore: db, chainId: getApiConfiguredChainID() });
+  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.readOnly) {
+    const apiServer = await startApiServer({
+      datastore: dbStore,
+      writeDatastore: dbWriteStore,
+      chainId: getApiConfiguredChainID(),
+    });
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
@@ -213,7 +207,10 @@ async function init(): Promise<void> {
 
   registerShutdownConfig({
     name: 'DB',
-    handler: () => db.close(),
+    handler: async () => {
+      await dbStore.close();
+      await dbWriteStore.close();
+    },
     forceKillable: false,
   });
 

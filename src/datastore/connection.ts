@@ -48,19 +48,18 @@ export async function connectPostgres({
       connectionOkay = true;
       break;
     } catch (error: any) {
-      // FIXME: check errors
-      // const pgConnectionError = isPgConnectionError(error);
-      // if (!pgConnectionError) {
-      //   logError('Cannot connect to pg', error);
-      //   throw error;
-      // }
-      const timeElapsed = initTimer.getElapsed();
-      if (timeElapsed - lastElapsedLog > 2000) {
-        lastElapsedLog = timeElapsed;
-        logError('Pg connection failed, retrying..');
+      if (error instanceof postgres.PostgresError) {
+        const timeElapsed = initTimer.getElapsed();
+        if (timeElapsed - lastElapsedLog > 2000) {
+          lastElapsedLog = timeElapsed;
+          logError('Pg connection failed, retrying..');
+        }
+        connectionError = error;
+        await timeout(100);
+      } else {
+        logError('Cannot connect to pg', error);
+        throw error;
       }
-      connectionError = error;
-      await timeout(100);
     } finally {
       await testSql.end();
     }
