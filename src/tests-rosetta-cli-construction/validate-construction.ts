@@ -26,7 +26,6 @@ const stacksNetwork = GetStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
   let rosettaOutput: any;
@@ -35,7 +34,6 @@ describe('Rosetta API', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    client = await db.sql.connect();
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
@@ -88,7 +86,6 @@ describe('Rosetta API', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
