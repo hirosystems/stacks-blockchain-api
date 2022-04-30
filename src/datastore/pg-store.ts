@@ -74,7 +74,6 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
-  pgHexString,
   prefixedCols,
   TX_COLUMNS,
   unsafeCols,
@@ -198,8 +197,7 @@ export class PgStore {
     const result = await this.sql<ContractTxQueryResult[]>`
       SELECT ${this.sql(TX_COLUMNS)}, ${this.sql.unsafe(abiColumn())}
       FROM txs
-      WHERE tx_id = ${pgHexString(args.txId)}
-        AND index_block_hash = ${pgHexString(args.indexBlockHash)}
+      WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
       ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
       LIMIT 1
     `;
@@ -227,7 +225,7 @@ export class PgStore {
         const txQuery = await sql<ContractTxQueryResult[]>`
           SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
           FROM txs
-          WHERE index_block_hash = ${pgHexString(block.result.index_block_hash)}
+          WHERE index_block_hash = ${block.result.index_block_hash}
             AND canonical = true AND microblock_canonical = true
           ORDER BY microblock_sequence DESC, tx_index DESC
         `;
@@ -238,8 +236,7 @@ export class PgStore {
           SELECT ${sql(MICROBLOCK_COLUMNS)}
           FROM microblocks
           WHERE parent_index_block_hash
-            IN (${pgHexString(block.result.index_block_hash)},
-              ${pgHexString(block.result.parent_index_block_hash)})
+            IN ${sql([block.result.index_block_hash, block.result.parent_index_block_hash])}
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
         `;
@@ -301,41 +298,21 @@ export class PgStore {
     sql: PgSqlClient,
     blockIdentifer: BlockIdentifier
   ): Promise<FoundOrNot<DbBlock>> {
-    // FIXME: Try again
-    let result: postgres.RowList<BlockQueryResult[]>;
-    if ('hash' in blockIdentifer) {
-      result = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE block_hash = ${pgHexString(blockIdentifer.hash)}
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-      `;
-    } else if ('height' in blockIdentifer) {
-      result = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE block_height = ${blockIdentifer.height}
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-      `;
-    } else if ('burnBlockHash' in blockIdentifer) {
-      result = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE burn_block_hash = ${pgHexString(blockIdentifer.burnBlockHash)}
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-      `;
-    } else {
-      result = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE burn_block_height = ${blockIdentifer.burnBlockHeight}
-        ORDER BY canonical DESC, block_height DESC
-        LIMIT 1
-      `;
-    }
+    const result = await sql<BlockQueryResult[]>`
+      SELECT ${sql(BLOCK_COLUMNS)}
+      FROM blocks
+      WHERE ${
+        'hash' in blockIdentifer
+          ? sql`block_hash = ${blockIdentifer.hash}`
+          : 'height' in blockIdentifer
+          ? sql`block_height = ${blockIdentifer.height}`
+          : 'burnBlockHash' in blockIdentifer
+          ? sql`burn_block_hash = ${blockIdentifer.burnBlockHash}`
+          : sql`burn_block_height = ${blockIdentifer.burnBlockHeight}`
+      }
+      ORDER BY canonical DESC, block_height DESC
+      LIMIT 1
+    `;
     if (result.length === 0) {
       return { found: false } as const;
     }
@@ -412,8 +389,7 @@ export class PgStore {
     const result = await this.sql<{ tx_id: Buffer; tx_index: number }[]>`
       SELECT tx_id, tx_index
       FROM txs
-      WHERE index_block_hash = ${pgHexString(indexBlockHash)}
-        AND canonical = true AND microblock_canonical = true
+      WHERE index_block_hash = ${indexBlockHash} AND canonical = true AND microblock_canonical = true
     `;
     const txIds = result.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
     return { results: txIds };
@@ -428,7 +404,7 @@ export class PgStore {
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
+        WHERE index_block_hash = ${blockQuery.result.index_block_hash}
           AND canonical = true AND microblock_canonical = true
         ORDER BY microblock_sequence ASC, tx_index ASC
       `;
@@ -447,7 +423,7 @@ export class PgStore {
       const result = await sql<MicroblockQueryResult[]>`
         SELECT ${sql(MICROBLOCK_COLUMNS)}
         FROM microblocks
-        WHERE microblock_hash = ${pgHexString(args.microblockHash)}
+        WHERE microblock_hash = ${args.microblockHash}
         ORDER BY canonical DESC, microblock_canonical DESC
         LIMIT 1
       `;
@@ -457,7 +433,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: Buffer }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${pgHexString(args.microblockHash)}
+        WHERE microblock_hash = ${args.microblockHash}
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
@@ -658,8 +634,7 @@ export class PgStore {
   async getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>> {
     const queryResult = await this.sql<{ canonical: boolean }[]>`
       SELECT canonical FROM names
-      WHERE tx_id = ${pgHexString(txId)}
-      AND index_block_hash = ${pgHexString(indexBlockHash)}
+      WHERE tx_id = ${txId} AND index_block_hash = ${indexBlockHash}
     `;
     if (queryResult.length > 0) {
       return {
@@ -728,13 +703,13 @@ export class PgStore {
         SELECT COUNT(*)::integer
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-          AND index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
+          AND index_block_hash = ${blockQuery.result.index_block_hash}
       `;
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-          AND index_block_hash = ${pgHexString(blockQuery.result.index_block_hash)}
+          AND index_block_hash = ${blockQuery.result.index_block_hash}
         ORDER BY microblock_sequence DESC, tx_index DESC
         LIMIT ${limit}
         OFFSET ${offset}
@@ -880,11 +855,10 @@ export class PgStore {
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
     return this.sql.begin(async client => {
-      const hexTxIds = args.txIds.map(txId => pgHexString(txId));
       const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
-        WHERE tx_id IN ${this.sql(hexTxIds)}
+        WHERE tx_id IN ${this.sql(args.txIds)}
       `;
       return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
     });
@@ -903,7 +877,7 @@ export class PgStore {
       const result = await sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
-        WHERE tx_id = ${pgHexString(txId)}
+        WHERE tx_id = ${txId}
       `;
       // Treat the tx as "not pruned" if it's in an unconfirmed microblock and the caller is has not opted-in to unanchored data.
       if (result[0]?.pruned && !includeUnanchored) {
@@ -915,7 +889,7 @@ export class PgStore {
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
           AND block_height = ${unanchoredBlockHeight}
-          AND tx_id = ${pgHexString(txId)}
+          AND tx_id = ${txId}
           LIMIT 1
         `;
         // The tx is marked as pruned because it's in an unanchored microblock
@@ -995,8 +969,8 @@ export class PgStore {
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
     const queryResult = await this.sql.begin(async sql => {
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
-      const unanchoredTxs: Buffer[] = !includeUnanchored
-        ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => pgHexString(tx.tx_id))
+      const unanchoredTxs: string[] = !includeUnanchored
+        ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => tx.tx_id)
         : [];
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
         SELECT ${unsafeCols(this.sql, [
@@ -1060,7 +1034,7 @@ export class PgStore {
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE tx_id = ${pgHexString(txId)} AND block_height <= ${maxBlockHeight}
+        WHERE tx_id = ${txId} AND block_height <= ${maxBlockHeight}
         ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
         LIMIT 1
       `;
@@ -1151,7 +1125,7 @@ export class PgStore {
       // TODO: This hack has to be done because postgres.js can't figure out how to interpolate
       // these `bytea` VALUES comparisons yet.
       const transactionValues = args.txs
-        .map(tx => `('${pgHexString(tx.txId)}'::bytea, '${pgHexString(tx.indexBlockHash)}'::bytea)`)
+        .map(tx => `('\\x${tx.txId.slice(2)}'::bytea, '\\x${tx.indexBlockHash.slice(2)}'::bytea)`)
         .join(', ');
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
@@ -1268,8 +1242,6 @@ export class PgStore {
     return this.sql.begin(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
-      const txIdHex = pgHexString(args.txId);
-      const blockHashHex = pgHexString(args.indexBlockHash);
       const stxLockResults = await sql<
         {
           event_index: number;
@@ -1285,7 +1257,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address
         FROM stx_lock_events
-        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
+        WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
@@ -1304,7 +1276,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
         FROM stx_events
-        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
+        WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
         `;
       const ftResults = await sql<
@@ -1324,7 +1296,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
+        WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
@@ -1344,7 +1316,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
+        WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
@@ -1362,7 +1334,7 @@ export class PgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE tx_id = ${txIdHex} AND index_block_hash = ${blockHashHex}
+        WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
@@ -1386,7 +1358,7 @@ export class PgStore {
     offset: number;
   }) {
     return this.sql.begin(async sql => {
-      const refValue = args.addressOrTxId.address ?? pgHexString(args.addressOrTxId.txId);
+      const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
       const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
       const eventsResult = await sql<
@@ -2222,7 +2194,7 @@ export class PgStore {
           SELECT *
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
-            AND txs.tx_id = ${pgHexString(tx_id)}
+            AND txs.tx_id = ${tx_id}
             AND (
               sender_address = ${stxAddress} OR
               token_transfer_recipient_address = ${stxAddress} OR
@@ -2233,7 +2205,7 @@ export class PgStore {
           SELECT txs.* FROM txs
           INNER JOIN event_txs ON txs.tx_id = event_txs.tx_id
           WHERE txs.canonical = true AND txs.microblock_canonical = true
-            AND txs.tx_id = ${pgHexString(tx_id)}
+            AND txs.tx_id = ${tx_id}
         )
         SELECT ${this.sql(TX_COLUMNS)}, (COUNT(*) OVER())::INTEGER AS count
         FROM principal_txs
@@ -2254,7 +2226,7 @@ export class PgStore {
         ${this.sql.unsafe(abiColumn('transactions'))}
       FROM transactions
       LEFT JOIN events ON transactions.tx_id = events.tx_id
-      AND transactions.tx_id = ${pgHexString(tx_id)}
+      AND transactions.tx_id = ${tx_id}
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
     `;
     const txs = parseTxsWithAssetTransfers(resultQuery, stxAddress);
@@ -2454,10 +2426,9 @@ export class PgStore {
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
     return this.sql.begin(async sql => {
-      const hashHex = pgHexString(hash);
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
-        FROM txs WHERE tx_id = ${hashHex} LIMIT 1
+        FROM txs WHERE tx_id = ${hash} LIMIT 1
       `;
       if (txQuery.length > 0) {
         const txResult = parseTxQueryResult(txQuery[0]);
@@ -2472,7 +2443,7 @@ export class PgStore {
       }
       const txMempoolQuery = await sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
-        FROM mempool_txs WHERE pruned = false AND tx_id = ${hashHex} LIMIT 1
+        FROM mempool_txs WHERE pruned = false AND tx_id = ${hash} LIMIT 1
       `;
       if (txMempoolQuery.length > 0) {
         const txResult = parseMempoolTxQueryResult(txMempoolQuery[0]);
@@ -2486,7 +2457,7 @@ export class PgStore {
         };
       }
       const blockQueryResult = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)} FROM blocks WHERE block_hash = ${hashHex} LIMIT 1
+        SELECT ${sql(BLOCK_COLUMNS)} FROM blocks WHERE block_hash = ${hash} LIMIT 1
       `;
       if (blockQueryResult.length > 0) {
         const blockResult = parseBlockQueryResult(blockQueryResult[0]);
@@ -2616,19 +2587,14 @@ export class PgStore {
 
   async getRawTx(txId: string) {
     // Note the extra "limit 1" statements are only query hints
-    const hexTxId = pgHexString(txId);
     const result = await this.sql<RawTxQueryResult[]>`
       (
-        SELECT raw_tx
-        FROM txs
-        WHERE tx_id = ${hexTxId}
+        SELECT raw_tx FROM txs WHERE tx_id = ${txId}
         LIMIT 1
       )
       UNION ALL
       (
-        SELECT raw_tx
-        FROM mempool_txs
-        WHERE tx_id = ${hexTxId}
+        SELECT raw_tx FROM mempool_txs WHERE tx_id = ${txId}
         LIMIT 1
       )
       LIMIT 1
@@ -2736,7 +2702,7 @@ export class PgStore {
       FROM nft_events AS nft
       INNER JOIN txs USING (tx_id)
       WHERE asset_identifier = ${args.assetIdentifier}
-        AND nft.value = ${pgHexString(args.value)}
+        AND nft.value = ${args.value}
         AND txs.canonical = TRUE AND txs.microblock_canonical = TRUE
         AND nft.canonical = TRUE AND nft.microblock_canonical = TRUE
         AND nft.block_height <= ${args.blockHeight}
@@ -2885,12 +2851,11 @@ export class PgStore {
     includeUnanchored: boolean;
   }) {
     return this.sql.begin(async sql => {
-      const values = txIds.map(id => pgHexString(id));
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE tx_id IN ${sql(values)}
+        WHERE tx_id IN ${sql(txIds)}
           AND block_height <= ${maxBlockHeight}
           AND canonical = true
           AND microblock_canonical = true
@@ -3384,7 +3349,7 @@ export class PgStore {
     const lockQuery = await this.sql<{ unlock_height: number }[]>`
       SELECT unlock_height
       FROM stx_lock_events
-      WHERE canonical = true AND tx_id = ${pgHexString(txId)}
+      WHERE canonical = true AND tx_id = ${txId}
     `;
     if (lockQuery.length > 0) {
       return { found: true, result: lockQuery[0].unlock_height };

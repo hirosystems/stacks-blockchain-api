@@ -166,20 +166,6 @@ export const TX_METADATA_TABLES = [
 ] as const;
 
 /**
- * Takes in a hex string that may or may not have a `0x` prefix and returns it
- * without the prefix for postgres INSERTs.
- * @param hex - Input string
- */
-export function pgHexString(hex: string): Buffer {
-  return hexToBuffer(hex);
-  // let str: string = hex;
-  // if (has0xPrefix(hex)) {
-  //   str = hex.substring(2);
-  // }
-  // return `\\x${str}`;
-}
-
-/**
  * Adds a table name prefix to an array of column names.
  * @param columns - array of column names
  * @param prefix - table name prefix

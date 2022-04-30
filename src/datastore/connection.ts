@@ -1,15 +1,8 @@
-import {
-  bufferToHexPrefixString,
-  logError,
-  logger,
-  parseArgBoolean,
-  parsePort,
-  stopwatch,
-  timeout,
-} from '../helpers';
+import { has0xPrefix, logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
 
 export type PgSqlClient = postgres.Sql<any>;
+export type PgBytea = string | Buffer;
 
 /**
  * The postgres server being used for a particular connection, transaction or query.
@@ -20,6 +13,26 @@ export enum PgServer {
   default,
   primary,
 }
+
+const PG_TYPE_MAPPINGS = {
+  // Make both `string` and `Buffer` be compatible with a `bytea` columns.
+  // * Buffers and strings with `0x` prefixes will be transformed to hex format (`\x`).
+  // * Other strings will be passed as-is.
+  // From postgres, all values will be returned as Buffers
+  bytea: {
+    to: 17,
+    from: [17],
+    serialize: (x: any) =>
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+      x instanceof Uint8Array
+        ? `\\x${Buffer.from(x, x.byteOffset, x.byteLength).toString('hex')}`
+        : typeof x === 'string' && has0xPrefix(x)
+        ? `\\x${x.slice(2)}`
+        : x,
+    parse: (x: any) => Buffer.from(x.slice(2), 'hex'),
+  },
+  // FIXME: numeric
+};
 
 /**
  * Connects to Postgres. This function will also test the connection first to make sure
@@ -124,6 +137,7 @@ export function getPostgres({
     const appName = `${uri.searchParams.get('application_name') ?? defaultAppName}:${usageName}`;
     uri.searchParams.set('application_name', appName);
     sql = postgres(uri.toString(), {
+      types: PG_TYPE_MAPPINGS,
       max: pgEnvVars.poolMax,
     });
   } else {
@@ -136,6 +150,7 @@ export function getPostgres({
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
       max: pgEnvVars.poolMax,
+      types: PG_TYPE_MAPPINGS,
       connection: {
         application_name: appName,
         search_path: pgEnvVars.schema,

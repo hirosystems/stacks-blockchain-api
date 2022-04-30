@@ -5884,7 +5884,7 @@ describe('api tests', () => {
   test('list contract with given trait', async () => {
     const block1: DbBlock = {
       block_hash: '0x1235',
-      index_block_hash: '0xdeadbeeg',
+      index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x01',
       parent_block_hash: '0xff0012',
       parent_microblock_hash: '',
@@ -7640,17 +7640,17 @@ describe('api tests', () => {
     const sponsoredAddress = 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0';
 
     const dbBlock: DbBlock = {
-      block_hash: '0xffnb',
-      index_block_hash: '0x1234nb',
-      parent_index_block_hash: '0x5678nb',
-      parent_block_hash: '0x5678nb',
+      block_hash: '0xffab',
+      index_block_hash: '0x1234ab',
+      parent_index_block_hash: '0x5678ab',
+      parent_block_hash: '0x5678ab',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 1594647997,
-      burn_block_hash: '0x1234nb',
+      burn_block_hash: '0x1234ab',
       burn_block_height: 124,
-      miner_txid: '0x4321nb',
+      miner_txid: '0x4321ab',
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,

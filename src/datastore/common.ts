@@ -1,5 +1,6 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
+import { PgBytea } from './connection';
 
 export interface DbBlock {
   block_hash: string;
@@ -810,13 +811,13 @@ export interface RawTxQueryResult {
 }
 
 export interface TxInsertValues {
-  tx_id: Buffer;
-  raw_tx: Buffer;
+  tx_id: PgBytea;
+  raw_tx: PgBytea;
   tx_index: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  block_hash: Buffer;
-  parent_block_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  block_hash: PgBytea;
+  parent_block_hash: PgBytea;
   block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
@@ -824,7 +825,7 @@ export interface TxInsertValues {
   anchor_mode: DbTxAnchorMode;
   status: DbTxStatus;
   canonical: boolean;
-  post_conditions: Buffer;
+  post_conditions: PgBytea;
   nonce: number;
   fee_rate: bigint;
   sponsored: boolean;
@@ -834,19 +835,19 @@ export interface TxInsertValues {
   origin_hash_mode: number;
   microblock_canonical: boolean;
   microblock_sequence: number;
-  microblock_hash: Buffer;
+  microblock_hash: PgBytea;
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
-  token_transfer_memo: Buffer | null;
+  token_transfer_memo: PgBytea | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
   contract_call_function_name: string | null;
-  contract_call_function_args: Buffer | null;
-  poison_microblock_header_1: Buffer | null;
-  poison_microblock_header_2: Buffer | null;
-  coinbase_payload: Buffer | null;
-  raw_result: Buffer;
+  contract_call_function_args: PgBytea | null;
+  poison_microblock_header_1: PgBytea | null;
+  poison_microblock_header_2: PgBytea | null;
+  coinbase_payload: PgBytea | null;
+  raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
   execution_cost_read_length: number;
@@ -857,14 +858,14 @@ export interface TxInsertValues {
 
 export interface MempoolTxInsertValues {
   pruned: boolean;
-  tx_id: Buffer;
-  raw_tx: Buffer;
+  tx_id: PgBytea;
+  raw_tx: PgBytea;
   type_id: DbTxTypeId;
   anchor_mode: DbTxAnchorMode;
   status: DbTxStatus;
   receipt_time: number;
   receipt_block_height: number;
-  post_conditions: Buffer;
+  post_conditions: PgBytea;
   nonce: number;
   fee_rate: bigint;
   sponsored: boolean;
@@ -874,29 +875,29 @@ export interface MempoolTxInsertValues {
   origin_hash_mode: number;
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
-  token_transfer_memo: Buffer | null;
+  token_transfer_memo: PgBytea | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
   contract_call_function_name: string | null;
-  contract_call_function_args: Buffer | null;
-  poison_microblock_header_1: Buffer | null;
-  poison_microblock_header_2: Buffer | null;
-  coinbase_payload: Buffer | null;
+  contract_call_function_args: PgBytea | null;
+  poison_microblock_header_1: PgBytea | null;
+  poison_microblock_header_2: PgBytea | null;
+  coinbase_payload: PgBytea | null;
 }
 
 export interface BlockInsertValues {
-  block_hash: Buffer;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  parent_block_hash: Buffer;
-  parent_microblock_hash: Buffer;
+  block_hash: PgBytea;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  parent_block_hash: PgBytea;
+  parent_microblock_hash: PgBytea;
   parent_microblock_sequence: number;
   block_height: number;
   burn_block_time: number;
-  burn_block_hash: Buffer;
+  burn_block_hash: PgBytea;
   burn_block_height: number;
-  miner_txid: Buffer;
+  miner_txid: PgBytea;
   canonical: boolean;
   execution_cost_read_count: number;
   execution_cost_read_length: number;
@@ -908,28 +909,28 @@ export interface BlockInsertValues {
 export interface MicroblockInsertValues {
   canonical: boolean;
   microblock_canonical: boolean;
-  microblock_hash: Buffer;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
-  microblock_parent_hash: Buffer;
-  parent_index_block_hash: Buffer;
+  microblock_parent_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
   block_height: number;
   parent_block_height: number;
-  parent_block_hash: Buffer;
-  index_block_hash: Buffer;
-  block_hash: Buffer;
+  parent_block_hash: PgBytea;
+  index_block_hash: PgBytea;
+  block_hash: PgBytea;
   parent_burn_block_height: number;
-  parent_burn_block_hash: Buffer;
+  parent_burn_block_hash: PgBytea;
   parent_burn_block_time: number;
 }
 
 export interface StxEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
@@ -940,9 +941,9 @@ export interface StxEventInsertValues {
 }
 
 export interface MinerRewardInsertValues {
-  block_hash: Buffer;
-  index_block_hash: Buffer;
-  from_index_block_hash: Buffer;
+  block_hash: PgBytea;
+  index_block_hash: PgBytea;
+  from_index_block_hash: PgBytea;
   mature_block_height: number;
   canonical: boolean;
   recipient: string;
@@ -958,12 +959,12 @@ export interface MinerRewardInsertValues {
 
 export interface StxLockEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
@@ -975,12 +976,12 @@ export interface StxLockEventInsertValues {
 
 export interface NftEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
@@ -988,17 +989,17 @@ export interface NftEventInsertValues {
   sender: string | null;
   recipient: string | null;
   asset_identifier: string;
-  value: Buffer;
+  value: PgBytea;
 }
 
 export interface FtEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
@@ -1012,23 +1013,23 @@ export interface FtEventInsertValues {
 
 export interface SmartContractEventInsertValues {
   event_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   tx_index: number;
   block_height: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
   contract_identifier: string;
   topic: string;
-  value: Buffer;
+  value: PgBytea;
 }
 
 export interface BurnchainRewardInsertValues {
   canonical: boolean;
-  burn_block_hash: Buffer;
+  burn_block_hash: PgBytea;
   burn_block_height: number;
   /** `string` guarantees the value will fit into the `numeric` pg type. */
   burn_amount: string;
@@ -1045,12 +1046,12 @@ export interface BnsNameInsertValues {
   zonefile_hash: string;
   namespace_id: string;
   tx_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   status: string | null;
   canonical: boolean;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
@@ -1068,10 +1069,10 @@ export interface BnsSubdomainInsertValues {
   zonefile_offset: number;
   resolver: string;
   canonical: boolean;
-  tx_id: Buffer;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  tx_id: PgBytea;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
@@ -1090,11 +1091,11 @@ export interface BnsNamespaceInsertValues {
   lifetime: number;
   status: string | null;
   tx_index: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   canonical: boolean;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
@@ -1113,10 +1114,10 @@ export interface FaucetRequestInsertValues {
 
 export interface PrincipalStxTxsInsertValues {
   principal: string;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   block_height: number;
-  index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   tx_index: number;
   canonical: boolean;
@@ -1125,14 +1126,14 @@ export interface PrincipalStxTxsInsertValues {
 
 export interface RewardSlotHolderInsertValues {
   canonical: boolean;
-  burn_block_hash: Buffer;
+  burn_block_hash: PgBytea;
   burn_block_height: number;
   address: string;
   slot_index: number;
 }
 
 export interface TokenMetadataQueueEntryInsertValues {
-  tx_id: Buffer;
+  tx_id: PgBytea;
   contract_id: string;
   contract_abi: string;
   block_height: number;
@@ -1146,7 +1147,7 @@ export interface NftMetadataInsertValues {
   image_uri: string;
   image_canonical_uri: string;
   contract_id: string;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   sender_address: string;
 }
 
@@ -1159,21 +1160,21 @@ export interface FtMetadataInsertValues {
   contract_id: string;
   symbol: string;
   decimals: number;
-  tx_id: Buffer;
+  tx_id: PgBytea;
   sender_address: string;
 }
 
 export interface SmartContractInsertValues {
-  tx_id: Buffer;
+  tx_id: PgBytea;
   canonical: boolean;
   contract_id: string;
   block_height: number;
-  index_block_hash: Buffer;
+  index_block_hash: PgBytea;
   source_code: string;
   // TODO: `any` is the only one that wrote the JSON correctly
   abi: any;
-  parent_index_block_hash: Buffer;
-  microblock_hash: Buffer;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
