@@ -1,6 +1,6 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
-import { PgBytea } from './connection';
+import { PgBytea, PgNumeric } from './connection';
 
 export interface DbBlock {
   block_hash: string;
@@ -947,14 +947,10 @@ export interface MinerRewardInsertValues {
   mature_block_height: number;
   canonical: boolean;
   recipient: string;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  coinbase_amount: string;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  tx_fees_anchored: string;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  tx_fees_streamed_confirmed: string;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  tx_fees_streamed_produced: string;
+  coinbase_amount: PgNumeric;
+  tx_fees_anchored: PgNumeric;
+  tx_fees_streamed_confirmed: PgNumeric;
+  tx_fees_streamed_produced: PgNumeric;
 }
 
 export interface StxLockEventInsertValues {
@@ -968,8 +964,7 @@ export interface StxLockEventInsertValues {
   microblock_sequence: number;
   microblock_canonical: boolean;
   canonical: boolean;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  locked_amount: string;
+  locked_amount: PgNumeric;
   unlock_height: number;
   locked_address: string;
 }
@@ -1007,8 +1002,7 @@ export interface FtEventInsertValues {
   sender: string | null;
   recipient: string | null;
   asset_identifier: string;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  amount: string;
+  amount: PgNumeric;
 }
 
 export interface SmartContractEventInsertValues {
@@ -1031,8 +1025,7 @@ export interface BurnchainRewardInsertValues {
   canonical: boolean;
   burn_block_hash: PgBytea;
   burn_block_height: number;
-  /** `string` guarantees the value will fit into the `numeric` pg type. */
-  burn_amount: string;
+  burn_amount: PgNumeric;
   reward_recipient: string;
   reward_amount: bigint;
   reward_index: number;

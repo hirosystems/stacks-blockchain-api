@@ -2,7 +2,6 @@ import { has0xPrefix, logError, parseArgBoolean, parsePort, stopwatch, timeout }
 import * as postgres from 'postgres';
 
 export type PgSqlClient = postgres.Sql<any>;
-export type PgBytea = string | Buffer;
 
 /**
  * The postgres server being used for a particular connection, transaction or query.
@@ -31,8 +30,11 @@ const PG_TYPE_MAPPINGS = {
         : x,
     parse: (x: any) => Buffer.from(x.slice(2), 'hex'),
   },
-  // FIXME: numeric
 };
+/** Values will be automatically converted into a `bytea` compatible string before sending to pg. */
+export type PgBytea = string | Buffer;
+/** The `string` type guarantees the value will fit into the `numeric` pg type. */
+export type PgNumeric = string;
 
 /**
  * Connects to Postgres. This function will also test the connection first to make sure
