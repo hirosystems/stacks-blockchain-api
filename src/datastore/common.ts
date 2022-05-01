@@ -1,6 +1,6 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
-import { PgBytea, PgNumeric } from './connection';
+import { PgBytea, PgJsonb, PgNumeric } from './connection';
 
 export interface DbBlock {
   block_hash: string;
@@ -1164,8 +1164,7 @@ export interface SmartContractInsertValues {
   block_height: number;
   index_block_hash: PgBytea;
   source_code: string;
-  // TODO: `any` is the only one that wrote the JSON correctly
-  abi: any;
+  abi: PgJsonb;
   parent_index_block_hash: PgBytea;
   microblock_hash: PgBytea;
   microblock_sequence: number;

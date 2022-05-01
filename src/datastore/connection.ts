@@ -35,6 +35,8 @@ const PG_TYPE_MAPPINGS = {
 export type PgBytea = string | Buffer;
 /** The `string` type guarantees the value will fit into the `numeric` pg type. */
 export type PgNumeric = string;
+/** JSON objects will be automatically stringified before insertion. */
+export type PgJsonb = any;
 
 /**
  * Connects to Postgres. This function will also test the connection first to make sure
