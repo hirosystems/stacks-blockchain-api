@@ -105,7 +105,7 @@ describe('postgres datastore', () => {
         expect(sql.options.host).toStrictEqual(['database.server.com']);
         expect(sql.options.port).toStrictEqual([3211]);
         expect(sql.options.ssl).toBe('true');
-        expect(sql.options.connection.search_paths).toBe('test_schema');
+        expect(sql.options.connection.search_path).toBe('test_schema');
         expect(sql.options.connection.application_name).toBe('test-conn-str:tests');
       }
     );

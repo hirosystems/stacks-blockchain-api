@@ -139,6 +139,10 @@ export function getPostgres({
     sql = postgres(uri.toString(), {
       types: PG_TYPE_MAPPINGS,
       max: pgEnvVars.poolMax,
+      connection: {
+        application_name: appName,
+        search_path: schema,
+      },
     });
   } else {
     const appName = `${pgEnvVars.applicationName ?? defaultAppName}:${usageName}`;

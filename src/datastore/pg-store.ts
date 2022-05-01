@@ -827,7 +827,7 @@ export class PgStore {
       const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: true,
       });
-      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id.toString('hex'));
+      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
       const query = await sql<{ tx_id: Buffer }[]>`
         SELECT tx_id
         FROM txs
