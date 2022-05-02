@@ -6998,6 +6998,16 @@ export class PgDataStore
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
+        // `
+        // SELECT names.*, zonefiles.zonefile
+        // FROM names
+        // LEFT JOIN zonefiles USING (zonefile_hash)
+        // WHERE name = $1
+        // AND registered_at <= $2
+        // AND canonical = true AND microblock_canonical = true
+        // ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
+        // LIMIT 1
+        // `,
         `
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names

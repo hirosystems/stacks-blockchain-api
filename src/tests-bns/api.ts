@@ -7,6 +7,7 @@ import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 import { I32_MAX } from '../helpers';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from 'src/test-utils/test-builders';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -753,6 +754,28 @@ describe('BNS API tests', () => {
     ];
     expect(query.body).toEqual(expectedResult);
   });
+
+  test('name is returned correctly after a micro re-orgd transfer', async () => {
+    const name = 'bro.btc';
+    const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
+    const addr2 = 'SP2JWXVBMB0DW53KC1PJ80VC7T6N2ZQDBGCDJDMNR';
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({ name: name, status: 'name-register', address: addr1 })
+      .build();
+    await db.update(block2);
+
+    const mb1 = new TestMicroblockStreamBuilder()
+      .addMicroblock({ parent_index_block_hash: '0x02', microblock_hash: '0x11' })
+      .addTx({ tx_id: '0xf111' })
+      .addTxBnsName({ name: name, status: 'name-update', address: addr2 })
+      .build();
+  })
 
   afterAll(async () => {
     await api.terminate();
