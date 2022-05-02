@@ -9,7 +9,7 @@ import * as winston from 'winston';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
-import { ChainID } from '@stacks/transactions';
+import { bufferCV, ChainID, cvToHex, tupleCV } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import {
   CliConfigSetColors,
@@ -942,6 +942,22 @@ export function parseDataUrl(
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
+ * received NFT events.
+ */
+export function bnsNameCV(name: string): Buffer {
+  const components = name.split('.');
+  return hexToBuffer(
+    cvToHex(
+      tupleCV({
+        name: bufferCV(Buffer.from(components[0])),
+        namespace: bufferCV(Buffer.from(components[1])),
+      })
+    )
+  );
 }
 
 export function getSendManyContract(chainId: ChainID) {

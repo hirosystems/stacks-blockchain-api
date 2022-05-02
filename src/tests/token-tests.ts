@@ -175,6 +175,7 @@ describe('/extended/v1/tokens tests', () => {
       block_height: 4,
       index_block_hash: '0x04',
       parent_index_block_hash: '0x03',
+      parent_microblock_hash: '0x11',
     })
       .addTx({ tx_id: '0x5555' })
       .build();
@@ -469,6 +470,7 @@ describe('/extended/v1/tokens tests', () => {
       block_height: 3,
       index_block_hash: '0x03',
       parent_index_block_hash: '0x02',
+      parent_microblock_hash: '0x11',
     })
       .addTx({ tx_id: '0x1004' })
       .build();
@@ -621,6 +623,7 @@ describe('/extended/v1/tokens tests', () => {
       block_height: 7,
       index_block_hash: '0x07',
       parent_index_block_hash: '0x06',
+      parent_microblock_hash: '0x14',
     })
       .addTx({ tx_id: '0x100b' })
       .build();
@@ -795,6 +798,7 @@ describe('/extended/v1/tokens tests', () => {
       block_height: 3,
       index_block_hash: '0x03',
       parent_index_block_hash: '0x02',
+      parent_microblock_hash: '0x11',
     })
       .addTx({ tx_id: '0x1004' })
       .build();
@@ -942,6 +946,7 @@ describe('/extended/v1/tokens tests', () => {
       block_height: 7,
       index_block_hash: '0x07',
       parent_index_block_hash: '0x06',
+      parent_microblock_hash: '0x14',
     })
       .addTx({ tx_id: '0x100b' })
       .build();

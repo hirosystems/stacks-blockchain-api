@@ -5,9 +5,11 @@ import * as supertest from 'supertest';
 import { validate } from '../api/rosetta-validate';
 import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
-import { ChainID } from '@stacks/transactions';
-import { I32_MAX } from '../helpers';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from 'src/test-utils/test-builders';
+import { bufferCV, ChainID, cvToHex, someCV, tupleCV } from '@stacks/transactions';
+import { bnsNameCV, hexToBuffer, I32_MAX } from '../helpers';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
+import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -759,6 +761,8 @@ describe('BNS API tests', () => {
     const name = 'bro.btc';
     const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
     const addr2 = 'SP2JWXVBMB0DW53KC1PJ80VC7T6N2ZQDBGCDJDMNR';
+    const addr3 = 'SP2619TX0ZEZQ9A4QMS29WH1HKA86413NZHDZ2Z04';
+    const value = bnsNameCV(name);
 
     const block2 = new TestBlockBuilder({
       block_height: 2,
@@ -767,14 +771,59 @@ describe('BNS API tests', () => {
     })
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({ name: name, status: 'name-register', address: addr1 })
+      .addTxNftEvent({
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        value: value,
+        recipient: addr1,
+      })
       .build();
     await db.update(block2);
 
     const mb1 = new TestMicroblockStreamBuilder()
-      .addMicroblock({ parent_index_block_hash: '0x02', microblock_hash: '0x11' })
+      // Correct microblock with name transfer
+      .addMicroblock({
+        parent_index_block_hash: '0x02',
+        microblock_hash: '0x11',
+        microblock_sequence: 0,
+      })
       .addTx({ tx_id: '0xf111' })
       .addTxBnsName({ name: name, status: 'name-update', address: addr2 })
+      .addTxNftEvent({
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        value: value,
+        sender: addr1,
+        recipient: addr2,
+      })
+      // Re-orgd microblock with name transfer
+      .addMicroblock({
+        parent_index_block_hash: '0x02',
+        microblock_hash: '0x12',
+        microblock_sequence: 0
+      })
+      .addTx({ tx_id: '0xf112' })
+      .addTxBnsName({ name: name, status: 'name-update', address: addr3 })
+      .addTxNftEvent({
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        value: value,
+        sender: addr1,
+        recipient: addr3,
+      })
       .build();
+    await db.updateMicroblocks(mb1);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+      parent_microblock_hash: '0x11'
+    })
+      .addTx()
+      .build();
+    await db.update(block3);
+
+    const query = await supertest(api.server).get(`/v1/names/${name}`);
+    expect(query.body.address).toEqual(addr2);
+    expect(query.body.last_txid).toEqual('0xf111');
   })
 
   afterAll(async () => {

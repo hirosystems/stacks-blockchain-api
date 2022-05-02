@@ -124,6 +124,9 @@ interface TestMicroblockArgs {
   microblock_parent_hash?: string;
   microblock_sequence?: number;
   parent_index_block_hash?: string;
+  parent_burn_block_time?: number;
+  parent_burn_block_hash?: string;
+  parent_burn_block_height?: number;
 }
 
 /**
@@ -137,9 +140,9 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
     microblock_sequence: args?.microblock_sequence ?? 0,
     microblock_parent_hash: args?.microblock_parent_hash ?? BLOCK_HASH,
     parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-    parent_burn_block_height: BURN_BLOCK_HEIGHT,
-    parent_burn_block_hash: BURN_BLOCK_HASH,
-    parent_burn_block_time: BURN_BLOCK_TIME,
+    parent_burn_block_height: args?.parent_burn_block_height ?? BURN_BLOCK_HEIGHT,
+    parent_burn_block_hash: args?.parent_burn_block_hash ?? BURN_BLOCK_HASH,
+    parent_burn_block_time: args?.parent_burn_block_time ?? BURN_BLOCK_TIME,
   };
 }
 
@@ -703,6 +706,7 @@ export class TestMicroblockStreamBuilder {
       microblock_hash: this.microblock.microblock_hash,
       microblock_sequence: this.microblock.microblock_sequence,
       tx_index: ++this.txIndex,
+      index_block_hash: '',
     };
     this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
     this.eventIndex = -1;

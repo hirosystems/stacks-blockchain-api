@@ -39,6 +39,7 @@ import {
   has0xPrefix,
   isValidPrincipal,
   isSmartContractTx,
+  bnsNameCV,
 } from '../helpers';
 import {
   DataStore,
@@ -2402,6 +2403,10 @@ export class PgDataStore
       updatedEntities.markedCanonical.nftEvents += nftResult.rowCount;
     } else {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.rowCount;
+    }
+    if (nftResult.rowCount) {
+      await this.refreshMaterializedView(client, 'nft_custody');
+      await this.refreshMaterializedView(client, 'nft_custody_unanchored');
     }
 
     const contractLogResult = await client.query(
@@ -6995,30 +7000,32 @@ export class PgDataStore
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
-    const queryResult = await this.queryTx(async client => {
-      const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
-        // `
-        // SELECT names.*, zonefiles.zonefile
-        // FROM names
-        // LEFT JOIN zonefiles USING (zonefile_hash)
-        // WHERE name = $1
-        // AND registered_at <= $2
-        // AND canonical = true AND microblock_canonical = true
-        // ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
-        // LIMIT 1
-        // `,
+    let nameValue: Buffer;
+    try {
+      nameValue = bnsNameCV(name);
+    } catch (error) {
+      return { found: false };
+    }
+    const queryResult = await this.query(async client => {
+      const nftCustody = includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
+      return await client.query<
+        DbBnsName & { recipient: string; tx_id: Buffer; index_block_hash: Buffer }
+      >(
         `
-        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
-        FROM names
-        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
-        WHERE name = $1
-        AND registered_at <= $2
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
-        LIMIT 1
+        SELECT DISTINCT ON(names.name) names.*, nft.recipient, zonefiles.zonefile
+        FROM ${nftCustody} AS nft
+          INNER JOIN txs ON nft.tx_id = txs.tx_id
+          INNER JOIN names ON nft.tx_id = names.tx_id
+          LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
+        WHERE nft.asset_identifier = 'SP000000000000000000002Q6VF78.bns::names'
+          AND nft.value = $1
+          AND names.name = $2
+          AND txs.canonical = TRUE
+          AND txs.microblock_canonical = TRUE
+          AND txs.index_block_hash = names.index_block_hash
+          AND txs.microblock_hash = names.microblock_hash
         `,
-        [name, maxBlockHeight]
+        [nameValue, name]
       );
     });
     if (queryResult.rowCount > 0) {
@@ -7026,6 +7033,7 @@ export class PgDataStore
         found: true,
         result: {
           ...queryResult.rows[0],
+          address: queryResult.rows[0].recipient,
           tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
           index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
         },
