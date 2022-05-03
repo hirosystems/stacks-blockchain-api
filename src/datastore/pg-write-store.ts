@@ -156,11 +156,9 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest2(eventPath: string, payload: string): Promise<void> {
+  async storeRawEventRequest2(events: { event_path: string; payload: string }[]): Promise<void> {
     await this.sql`
-      INSERT INTO event_observer_requests(
-        event_path, payload
-      ) values(${eventPath}, ${payload})
+      INSERT INTO event_observer_requests ${this.sql(events, 'event_path', 'payload')}
     `;
   }
 

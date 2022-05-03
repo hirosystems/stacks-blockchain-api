@@ -209,10 +209,18 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
 
   console.log('Writing event data to db...');
   let lastStatusUpdatePercent = 0;
+  let nextInserts: { event_path: string; payload: string }[] = [];
   for await (const event of preOrgStream) {
-    // const parts = line.split('\t');
-    // await db.storeRawEventRequest2(parts[2], parts[3]);
-    await db.storeRawEventRequest2(event.path, event.payload);
+    nextInserts.push({
+      event_path: event.path,
+      payload: event.payload,
+    });
+
+    if (nextInserts.length === 15) {
+      await db.storeRawEventRequest2(nextInserts);
+      nextInserts = [];
+    }
+
     const readLineCount: number = event.readLineCount;
 
     if ((readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
@@ -223,8 +231,11 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
     }
   }
 
+  if (nextInserts.length > 0) {
+    await db.storeRawEventRequest2(nextInserts);
+  }
+
   await db.close();
-  // 131 seconds
   const endTime = Date.now();
   console.log(`Took: ${Math.round((endTime - startTime) / 1000)} seconds`);
 }
