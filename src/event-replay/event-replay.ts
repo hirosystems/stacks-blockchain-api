@@ -10,6 +10,8 @@ import {
   exportRawEventRequests,
   getRawEventRequests,
 } from '../datastore/event-requests';
+import { readLines } from 'reverse-line-reader';
+import { createTsvReorgStream, getCanonicalEntityList } from './tsv-pre-org';
 
 enum EventImportMode {
   /**
@@ -24,6 +26,7 @@ enum EventImportMode {
    * This allows the import to be faster at the expense of historical blockchain information.
    */
   pruned = 'pruned',
+  preorg = 'preorg',
 }
 
 /**
@@ -82,6 +85,9 @@ export async function importEventsFromTsv(
     case 'pruned':
       eventImportMode = EventImportMode.pruned;
       break;
+    case 'preorg':
+      eventImportMode = EventImportMode.preorg;
+      break;
     case 'archival':
     case undefined:
       eventImportMode = EventImportMode.archival;
@@ -101,6 +107,11 @@ export async function importEventsFromTsv(
   // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
   // or the `--force` option can be used.
   await cycleMigrations({ dangerousAllowDataLoss: true });
+
+  if (eventImportMode === EventImportMode.preorg) {
+    await preOrgTsvInsert(resolvedFilePath);
+    return;
+  }
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
@@ -169,4 +180,51 @@ export async function importEventsFromTsv(
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+}
+
+async function preOrgTsvInsert(filePath: string): Promise<void> {
+  const db = await PgWriteStore.connect({
+    usageName: 'import-events',
+    skipMigrations: true,
+    withNotifier: false,
+    isEventReplay: true,
+  });
+  const startTime = Date.now();
+
+  // Set logger to only output for warnings/errors, otherwise the event replay will result
+  // in the equivalent of months/years of API log output.
+  logger.level = 'warn';
+  // Disable this feature so a redundant export file isn't created while importing from an existing one.
+  delete process.env['STACKS_EXPORT_EVENTS_FILE'];
+
+  console.log('Indexing canonical data from tsv file...');
+  const result = await getCanonicalEntityList(filePath);
+  const inputLineReader = readLines(filePath);
+  const transformStream = createTsvReorgStream(
+    result.indexBlockHashes,
+    result.burnBlockHashes,
+    true
+  );
+  const preOrgStream = inputLineReader.pipe(transformStream);
+
+  console.log('Writing event data to db...');
+  let lastStatusUpdatePercent = 0;
+  for await (const event of preOrgStream) {
+    // const parts = line.split('\t');
+    // await db.storeRawEventRequest2(parts[2], parts[3]);
+    await db.storeRawEventRequest2(event.path, event.payload);
+    const readLineCount: number = event.readLineCount;
+
+    if ((readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+      lastStatusUpdatePercent = Math.floor((readLineCount / result.tsvLineCount) * 100);
+      console.log(
+        `Raw event requests processed: ${lastStatusUpdatePercent}% (${readLineCount} / ${result.tsvLineCount})`
+      );
+    }
+  }
+
+  await db.close();
+  // 131 seconds
+  const endTime = Date.now();
+  console.log(`Took: ${Math.round((endTime - startTime) / 1000)} seconds`);
 }

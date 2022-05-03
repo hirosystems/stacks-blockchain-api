@@ -156,6 +156,14 @@ export class PgWriteStore extends PgStore {
     };
   }
 
+  async storeRawEventRequest2(eventPath: string, payload: string): Promise<void> {
+    await this.sql`
+      INSERT INTO event_observer_requests(
+        event_path, payload
+      ) values(${eventPath}, ${payload})
+    `;
+  }
+
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
