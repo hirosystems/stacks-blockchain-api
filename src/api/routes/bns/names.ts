@@ -5,8 +5,9 @@ import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
+import { ChainID } from '@stacks/transactions';
 
-export function createBnsNamesRouter(db: DataStore): express.Router {
+export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
 
   router.get(

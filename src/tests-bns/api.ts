@@ -73,7 +73,7 @@ describe('BNS API tests', () => {
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV('xyz.abc'),
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
       })
       .addTxBnsName({
@@ -267,7 +267,7 @@ describe('BNS API tests', () => {
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV(name),
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       })
       .build();
@@ -372,7 +372,7 @@ describe('BNS API tests', () => {
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV(name),
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       })
       .build();
@@ -556,7 +556,7 @@ describe('BNS API tests', () => {
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV(name),
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       })
       .build();
@@ -777,7 +777,7 @@ describe('BNS API tests', () => {
       .addTx({ tx_id: '0x1111' })
       .addTxBnsName({ name: name, status: 'name-register', address: addr1 })
       .addTxNftEvent({
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         value: value,
         recipient: addr1,
       })
@@ -794,7 +794,7 @@ describe('BNS API tests', () => {
       .addTx({ tx_id: '0xf111' })
       .addTxBnsName({ name: name, status: 'name-update', address: addr2 })
       .addTxNftEvent({
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         value: value,
         sender: addr1,
         recipient: addr2,
@@ -808,7 +808,7 @@ describe('BNS API tests', () => {
       .addTx({ tx_id: '0xf112' })
       .addTxBnsName({ name: name, status: 'name-update', address: addr3 })
       .addTxNftEvent({
-        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
         value: value,
         sender: addr1,
         recipient: addr3,
