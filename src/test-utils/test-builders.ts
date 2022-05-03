@@ -85,6 +85,9 @@ interface TestBlockArgs {
   block_hash?: string;
   index_block_hash?: string;
   burn_block_hash?: string;
+  burn_block_time?: number;
+  burn_block_height?: number;
+  miner_txid?: string;
   parent_index_block_hash?: string;
   parent_block_hash?: string;
   parent_microblock_hash?: string;
@@ -106,10 +109,10 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     parent_microblock_hash: args?.parent_microblock_hash ?? '',
     parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
-    burn_block_time: BURN_BLOCK_TIME,
+    burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
-    burn_block_height: BURN_BLOCK_HEIGHT,
-    miner_txid: '0x4321',
+    burn_block_height: args?.burn_block_height ?? BURN_BLOCK_HEIGHT,
+    miner_txid: args?.miner_txid ?? '0x4321',
     canonical: args?.canonical ?? true,
     execution_cost_read_count: 0,
     execution_cost_read_length: 0,
