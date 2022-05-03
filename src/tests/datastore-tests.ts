@@ -32,7 +32,7 @@ import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { bnsNameCV, I32_MAX } from '../helpers';
-import { intCV, serializeCV } from '@stacks/transactions';
+import { ChainID, intCV, serializeCV } from '@stacks/transactions';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -3812,7 +3812,11 @@ describe('postgres datastore', () => {
       ]
     );
 
-    let name = await db.getName({ name: 'xyz.abc', includeUnanchored: false });
+    let name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4015,7 +4019,11 @@ describe('postgres datastore', () => {
     });
     expect(names.results.length).toBe(1);
 
-    name = await db.getName({ name: 'xyz.abc', includeUnanchored: false });
+    name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4076,7 +4084,11 @@ describe('postgres datastore', () => {
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
-    name = await db.getName({ name: 'xyz.abc', includeUnanchored: false });
+    name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2b.index_block_hash);
