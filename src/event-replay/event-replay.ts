@@ -12,6 +12,8 @@ import {
 } from '../datastore/event-requests';
 import { readLines } from 'reverse-line-reader';
 import { createTsvReorgStream, getCanonicalEntityList } from './tsv-pre-org';
+import { Readable, Transform } from 'stream';
+import { pipeline } from 'stream/promises';
 
 enum EventImportMode {
   /**
@@ -205,35 +207,31 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
     result.burnBlockHashes,
     true
   );
-  const preOrgStream = inputLineReader.pipe(transformStream);
 
   console.log('Writing event data to db...');
   let lastStatusUpdatePercent = 0;
-  let nextInserts: { event_path: string; payload: string }[] = [];
-  for await (const event of preOrgStream) {
-    nextInserts.push({
-      event_path: event.path,
-      payload: event.payload,
-    });
 
-    if (nextInserts.length === 15) {
-      await db.storeRawEventRequest2(nextInserts);
-      nextInserts = [];
-    }
+  const insertTransformStream = new Transform({
+    objectMode: true,
+    autoDestroy: true,
+    transform: (
+      event: { path: string; payload: string; readLineCount: number },
+      _encoding,
+      callback
+    ) => {
+      if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+        lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+        console.log(
+          `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+        );
+      }
+      insertTransformStream.push(`${event.path}\t${event.payload}\n`);
+      callback();
+    },
+  });
 
-    const readLineCount: number = event.readLineCount;
-
-    if ((readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
-      lastStatusUpdatePercent = Math.floor((readLineCount / result.tsvLineCount) * 100);
-      console.log(
-        `Raw event requests processed: ${lastStatusUpdatePercent}% (${readLineCount} / ${result.tsvLineCount})`
-      );
-    }
-  }
-
-  if (nextInserts.length > 0) {
-    await db.storeRawEventRequest2(nextInserts);
-  }
+  const insertStream3 = await db.storeRawEventRequest3();
+  await pipeline(inputLineReader, transformStream, insertTransformStream, insertStream3);
 
   await db.close();
   const endTime = Date.now();

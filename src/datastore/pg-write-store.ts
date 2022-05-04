@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { Writable } from 'stream';
 import { logger, logError, getOrAdd, batchIterate, isProdEnv } from '../helpers';
 import {
   DbBlock,
@@ -160,6 +161,14 @@ export class PgWriteStore extends PgStore {
     await this.sql`
       INSERT INTO event_observer_requests ${this.sql(events, 'event_path', 'payload')}
     `;
+  }
+
+  async storeRawEventRequest3(): Promise<Writable> {
+    const query = this.sql`
+      COPY event_observer_requests (event_path, payload) FROM STDIN
+    `;
+    const inputStream = await Promise.resolve(query.writable());
+    return inputStream;
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
