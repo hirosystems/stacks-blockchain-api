@@ -205,10 +205,11 @@ export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
         if (p.status === 'rejected') {
           logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
         } else {
+          const logMsg = `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`;
           if (!p.value.ok) {
-            logError(
-              `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
-            );
+            logError(logMsg);
+          } else {
+            logger.info(logMsg);
           }
         }
       });
