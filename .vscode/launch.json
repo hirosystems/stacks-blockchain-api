@@ -148,9 +148,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js",
-        "-t",
-        "microblock tests"
+        "${workspaceRoot}/jest.config.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
