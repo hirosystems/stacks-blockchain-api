@@ -1,12 +1,12 @@
 import * as supertest from 'supertest';
 import { ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { bufferToHexPrefixString } from '../helpers';
 
 describe('/block tests', () => {
   let db: PgWriteStore;
@@ -67,7 +67,7 @@ describe('/block tests', () => {
         sender_address: testContractAddr,
         contract_call_contract_id: testContractAddr,
         contract_call_function_name: 'test-contract-fn',
-        contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
+        contract_call_function_args: bufferToHexPrefixString(createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))),
         abi: JSON.stringify(contractJsonAbi),
       })
       .build();
