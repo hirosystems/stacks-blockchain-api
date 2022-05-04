@@ -721,10 +721,6 @@ export type BnsGetSubdomainAtTx = {
  */
 export type BnsGetAllNamespacesNamesResponse = string[];
 /**
- * Fetch a list of subdomains in a name.
- */
-export type GetAllSubdomainsInName = string[];
-/**
  * GET fee estimates
  */
 export type CoreNodeFeeResponse = string;
