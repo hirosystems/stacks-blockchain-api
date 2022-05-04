@@ -3,10 +3,11 @@ import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { validate } from '../api/rosetta-validate';
-import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
+import { DbAssetEventTypeId, DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore/common';
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
-import { I32_MAX } from '../helpers';
+import { bnsNameCV, I32_MAX } from '../helpers';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -45,40 +46,48 @@ describe('BNS API tests', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let api: ApiServer;
+  let dbBlock: DbBlock;
 
-  const dbBlock: DbBlock = {
-    block_hash: '0xff',
-    index_block_hash: '0x1234',
-    parent_index_block_hash: '0x5678',
-    parent_block_hash: '0x5678',
-    parent_microblock_hash: '',
-    parent_microblock_sequence: 0,
-    block_height: 1,
-    burn_block_time: 1594647995,
-    burn_block_hash: '0x1234',
-    burn_block_height: 123,
-    miner_txid: '0x4321',
-    canonical: true,
-    execution_cost_read_count: 0,
-    execution_cost_read_length: 0,
-    execution_cost_runtime: 0,
-    execution_cost_write_count: 0,
-    execution_cost_write_length: 0,
-  };
-
-  beforeAll(async () => {
+  beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgDataStore.connect({ usageName: 'tests' });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
-    await db.update({
-      block: dbBlock,
-      microblocks: [],
-      minerRewards: [],
-      txs: [],
-    });
+    const block = new TestBlockBuilder({
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+    })
+      .addTx()
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV('xyz.abc'),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      })
+      .addTxBnsName({
+        name: 'xyz.abc',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+        namespace_id: 'abc',
+        expire_block: 14,
+        zonefile:
+          '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+        zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      })
+      .build();
+    dbBlock = block.block;
+    await db.update(block);
 
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
@@ -107,31 +116,6 @@ describe('BNS API tests', () => {
         microblock_canonical: true,
       },
       namespace
-    );
-
-    const name: DbBnsName = {
-      name: 'xyz',
-      address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
-      namespace_id: 'abc',
-      registered_at: dbBlock.block_height,
-      expire_block: 14,
-      zonefile:
-        '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
-      zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      name
     );
   });
 
@@ -185,7 +169,7 @@ describe('BNS API tests', () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/abc/names`);
     expect(query1.status).toBe(200);
     const result = JSON.parse(query1.text);
-    expect(result[0]).toBe('xyz');
+    expect(result[0]).toBe('xyz.abc');
   });
 
   test('Success: namespaces/{namespace}/name schema', async () => {
@@ -260,34 +244,34 @@ describe('BNS API tests', () => {
   });
 
   test('Success zonefile by name and hash', async () => {
-    const name = 'test';
+    const name = 'test.btc';
     const zonefileHash = 'test-hash';
     const zonefile = 'test-zone-file';
 
-    const dbName: DbBnsName = {
-      name: name,
-      address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-      namespace_id: '',
-      expire_block: 10000,
-      zonefile: zonefile,
-      zonefile_hash: zonefileHash,
-      registered_at: dbBlock.block_height,
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-      status: 'name_register',
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      dbName
-    );
+    const block = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x22' })
+      .addTxBnsName({
+        name: name,
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+        namespace_id: 'btc',
+        expire_block: 10000,
+        zonefile: zonefile,
+        zonefile_hash: zonefileHash,
+        canonical: true,
+        status: 'name_register',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      })
+      .build();
+    await db.update(block);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/${zonefileHash}`);
     expect(query1.status).toBe(200);
@@ -365,33 +349,34 @@ describe('BNS API tests', () => {
   });
 
   test('Fail zonefile by name - No zonefile found', async () => {
-    const name = 'test';
+    const name = 'test.btc';
     const zonefileHash = 'test-hash';
     const zonefile = 'test-zone-file';
 
-    const dbName: DbBnsName = {
-      name: name,
-      address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-      namespace_id: '',
-      expire_block: 10000,
-      zonefile: zonefile,
-      zonefile_hash: zonefileHash,
-      registered_at: dbBlock.block_height,
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      dbName
-    );
+    const block = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x22' })
+      .addTxBnsName({
+        name: name,
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+        namespace_id: 'btc',
+        expire_block: 10000,
+        zonefile: zonefile,
+        zonefile_hash: zonefileHash,
+        canonical: true,
+        status: 'name_register',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      })
+      .build();
+    await db.update(block);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/invalidHash`);
     expect(query1.status).toBe(404);
@@ -550,31 +535,32 @@ describe('BNS API tests', () => {
   test('Success get zonefile by name', async () => {
     const zonefile = 'test-zone-file';
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
-    const name = 'zonefile-test-name';
+    const name = 'zonefile-test-name.btc';
 
-    const dbName: DbBnsName = {
-      name: name,
-      address: address,
-      namespace_id: '',
-      expire_block: 10000,
-      zonefile: 'test-zone-file',
-      zonefile_hash: 'zonefileHash',
-      registered_at: dbBlock.block_height,
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      dbName
-    );
+    const block = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x22' })
+      .addTxBnsName({
+        name: name,
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+        namespace_id: 'btc',
+        expire_block: 10000,
+        zonefile: zonefile,
+        zonefile_hash: 'zonefileHash',
+        canonical: true,
+        status: 'name_register',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      })
+      .build();
+    await db.update(block);
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile`);
     expect(query1.status).toBe(200);
@@ -644,13 +630,13 @@ describe('BNS API tests', () => {
   });
 
   test('Success: name info', async () => {
-    const query1 = await supertest(api.server).get(`/v1/names/xyz`);
+    const query1 = await supertest(api.server).get(`/v1/names/xyz.abc`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
   });
 
   test('Validate: name info response schema', async () => {
-    const query1 = await supertest(api.server).get('/v1/names/xyz');
+    const query1 = await supertest(api.server).get('/v1/names/xyz.abc');
     const result = JSON.parse(query1.text);
     const path =
       '@stacks/stacks-blockchain-api-types/api/bns/name-querying/bns-get-name-info.response.schema.json';
@@ -664,7 +650,7 @@ describe('BNS API tests', () => {
   });
 
   test('Success: fetching name info', async () => {
-    const query1 = await supertest(api.server).get(`/v1/names/xyz`);
+    const query1 = await supertest(api.server).get(`/v1/names/xyz.abc`);
     expect(query1.status).toBe(200);
     expect(query1.body.address).toBe('ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA');
     expect(query1.body.expire_block).toBe(14);
@@ -743,18 +729,109 @@ describe('BNS API tests', () => {
   });
 
   test('Success: subdomains in name', async () => {
+    const subdomain: DbBnsSubdomain = {
+      namespace_id: 'blockstack',
+      name: 'id.blockstack',
+      fully_qualified_subdomain: 'zone_test.id.blockstack',
+      resolver: 'https://registrar.blockstack.org',
+      owner: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      zonefile: 'test-zone-file',
+      zonefile_hash: 'test-hash',
+      zonefile_offset: 0,
+      parent_zonefile_hash: 'p-test-hash',
+      parent_zonefile_index: 0,
+      block_height: dbBlock.block_height,
+      tx_index: 0,
+      tx_id: '',
+      canonical: true,
+    };
+    await db.resolveBnsSubdomains(
+      {
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        microblock_hash: '',
+        microblock_sequence: I32_MAX,
+        microblock_canonical: true,
+      },
+      [subdomain]
+    );
     const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains/`);
     const expectedResult =  [
-      'address_test.id.blockstack',
-      'previous_subdomain.id.blockstack',
-      'subdomain.id.blockstack',
-      'zonefile_test.id.blockstack',
-      'zone_test.id.blockstack'
+      'zone_test.id.blockstack',
     ];
     expect(query.body).toEqual(expectedResult);
   });
 
-  afterAll(async () => {
+  test('name is returned correctly after a micro re-orgd transfer', async () => {
+    const name = 'bro.btc';
+    const addr1 = 'SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR';
+    const addr2 = 'SP2JWXVBMB0DW53KC1PJ80VC7T6N2ZQDBGCDJDMNR';
+    const addr3 = 'SP2619TX0ZEZQ9A4QMS29WH1HKA86413NZHDZ2Z04';
+    const value = bnsNameCV(name);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({ name: name, status: 'name-register', address: addr1 })
+      .addTxNftEvent({
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        value: value,
+        recipient: addr1,
+      })
+      .build();
+    await db.update(block2);
+
+    const mb1 = new TestMicroblockStreamBuilder()
+      // Correct microblock with name transfer
+      .addMicroblock({
+        parent_index_block_hash: '0x02',
+        microblock_hash: '0x11',
+        microblock_sequence: 0,
+      })
+      .addTx({ tx_id: '0xf111' })
+      .addTxBnsName({ name: name, status: 'name-update', address: addr2 })
+      .addTxNftEvent({
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        value: value,
+        sender: addr1,
+        recipient: addr2,
+      })
+      // Re-orgd microblock with name transfer
+      .addMicroblock({
+        parent_index_block_hash: '0x02',
+        microblock_hash: '0x12',
+        microblock_sequence: 0
+      })
+      .addTx({ tx_id: '0xf112' })
+      .addTxBnsName({ name: name, status: 'name-update', address: addr3 })
+      .addTxNftEvent({
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        value: value,
+        sender: addr1,
+        recipient: addr3,
+      })
+      .build();
+    await db.updateMicroblocks(mb1);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+      parent_microblock_hash: '0x11'
+    })
+      .addTx()
+      .build();
+    await db.update(block3);
+
+    const query = await supertest(api.server).get(`/v1/names/${name}`);
+    expect(query.body.address).toEqual(addr2);
+    expect(query.body.last_txid).toEqual('0xf111');
+  })
+
+  afterEach(async () => {
     await api.terminate();
     client.release();
     await db?.close();

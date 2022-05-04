@@ -39,6 +39,7 @@ import {
   has0xPrefix,
   isValidPrincipal,
   isSmartContractTx,
+  bnsNameCV,
 } from '../helpers';
 import {
   DataStore,
@@ -103,7 +104,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import {
   PgAddressNotificationPayload,
   PgBlockNotificationPayload,
@@ -2402,6 +2403,10 @@ export class PgDataStore
       updatedEntities.markedCanonical.nftEvents += nftResult.rowCount;
     } else {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.rowCount;
+    }
+    if (nftResult.rowCount) {
+      await this.refreshMaterializedView(client, 'nft_custody');
+      await this.refreshMaterializedView(client, 'nft_custody_unanchored');
     }
 
     const contractLogResult = await client.query(
@@ -6991,13 +6996,17 @@ export class PgDataStore
   async getName({
     name,
     includeUnanchored,
+    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return await client.query<DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }>(
+      const nameZonefile = await client.query<
+        DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }
+      >(
         `
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
@@ -7006,18 +7015,52 @@ export class PgDataStore
         AND registered_at <= $2
         AND canonical = true AND microblock_canonical = true
         ORDER BY name, registered_at DESC, tx_index DESC
-        LIMIT 1
         `,
         [name, maxBlockHeight]
       );
+      if (nameZonefile.rowCount === 0) {
+        return;
+      }
+      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
+      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
+      // since they did not generate an NFT event for us to track.
+      if (nameZonefile.rows[0].registered_at !== 0) {
+        let value: Buffer;
+        try {
+          value = bnsNameCV(name);
+        } catch (error) {
+          return;
+        }
+        const assetIdentifier =
+          chainId === ChainID.Mainnet
+            ? 'SP000000000000000000002Q6VF78.bns::names'
+            : 'ST000000000000000000002AMW42H.bns::names';
+        const nftCustody = includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
+        const nameCustody = await client.query<{ recipient: string }>(
+          `
+          SELECT recipient
+          FROM ${nftCustody}
+          WHERE asset_identifier = $1 AND value = $2
+          `,
+          [assetIdentifier, value]
+        );
+        if (nameCustody.rowCount === 0) {
+          return;
+        }
+        return {
+          ...nameZonefile.rows[0],
+          address: nameCustody.rows[0].recipient,
+        };
+      }
+      return nameZonefile.rows[0];
     });
-    if (queryResult.rowCount > 0) {
+    if (queryResult) {
       return {
         found: true,
         result: {
-          ...queryResult.rows[0],
-          tx_id: bufferToHexPrefixString(queryResult.rows[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult.rows[0].index_block_hash),
+          ...queryResult,
+          tx_id: bufferToHexPrefixString(queryResult.tx_id),
+          index_block_hash: bufferToHexPrefixString(queryResult.index_block_hash),
         },
       };
     }

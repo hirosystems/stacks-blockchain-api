@@ -12,6 +12,7 @@ import {
   DataStoreTxEventData,
   DbAssetEventTypeId,
   DbBlock,
+  DbBnsName,
   DbEventTypeId,
   DbFtEvent,
   DbMempoolTx,
@@ -73,12 +74,20 @@ const COINBASE_AMOUNT = 15_000_000_000_000n;
 const TX_FEES_ANCHORED = 1_000_000_000_000n;
 const TX_FEES_STREAMED_CONFIRMED = 2_000_000_000_000n;
 const TX_FEES_STREAMED_PRODUCED = 3_000_000_000_000n;
+const BNS_NAME = 'test.btc';
+const BNS_NAMESPACE_ID = 'btc';
+const ZONEFILE =
+  '$ORIGIN test.btc\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/test.btc"\n';
+const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 
 interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   index_block_hash?: string;
   burn_block_hash?: string;
+  burn_block_time?: number;
+  burn_block_height?: number;
+  miner_txid?: string;
   parent_index_block_hash?: string;
   parent_block_hash?: string;
   parent_microblock_hash?: string;
@@ -100,10 +109,10 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     parent_microblock_hash: args?.parent_microblock_hash ?? '',
     parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
-    burn_block_time: BURN_BLOCK_TIME,
+    burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
-    burn_block_height: BURN_BLOCK_HEIGHT,
-    miner_txid: '0x4321',
+    burn_block_height: args?.burn_block_height ?? BURN_BLOCK_HEIGHT,
+    miner_txid: args?.miner_txid ?? '0x4321',
     canonical: args?.canonical ?? true,
     execution_cost_read_count: 0,
     execution_cost_read_length: 0,
@@ -118,6 +127,9 @@ interface TestMicroblockArgs {
   microblock_parent_hash?: string;
   microblock_sequence?: number;
   parent_index_block_hash?: string;
+  parent_burn_block_time?: number;
+  parent_burn_block_hash?: string;
+  parent_burn_block_height?: number;
 }
 
 /**
@@ -131,9 +143,9 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
     microblock_sequence: args?.microblock_sequence ?? 0,
     microblock_parent_hash: args?.microblock_parent_hash ?? BLOCK_HASH,
     parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-    parent_burn_block_height: BURN_BLOCK_HEIGHT,
-    parent_burn_block_hash: BURN_BLOCK_HASH,
-    parent_burn_block_time: BURN_BLOCK_TIME,
+    parent_burn_block_height: args?.parent_burn_block_height ?? BURN_BLOCK_HEIGHT,
+    parent_burn_block_hash: args?.parent_burn_block_hash ?? BURN_BLOCK_HASH,
+    parent_burn_block_time: args?.parent_burn_block_time ?? BURN_BLOCK_TIME,
   };
 }
 
@@ -377,16 +389,6 @@ interface TestSmartContractLogEventArgs {
   tx_index?: number;
 }
 
-interface TestStxEventLockArgs {
-  tx_id?: string;
-  block_height?: number;
-  event_index?: number;
-  tx_index?: number;
-  locked_amount?: number;
-  unlock_height?: number;
-  locked_address?: string;
-}
-
 /**
  * Generate a test contract log event.
  * @param args - Optional event data
@@ -404,6 +406,16 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     topic: 'some-topic',
     value: serializeCV(bufferCVFromString('some val')),
   };
+}
+
+interface TestStxEventLockArgs {
+  tx_id?: string;
+  block_height?: number;
+  event_index?: number;
+  tx_index?: number;
+  locked_amount?: number;
+  unlock_height?: number;
+  locked_address?: string;
 }
 
 /**
@@ -479,6 +491,47 @@ function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
     tx_fees_anchored: args?.tx_fees_anchored ?? TX_FEES_ANCHORED,
     tx_fees_streamed_confirmed: args?.tx_fees_streamed_confirmed ?? TX_FEES_STREAMED_CONFIRMED,
     tx_fees_streamed_produced: args?.tx_fees_streamed_produced ?? TX_FEES_STREAMED_PRODUCED,
+  };
+}
+
+interface TestBnsNameArgs {
+  name?: string;
+  address?: string;
+  namespace_id?: string;
+  registered_at?: number;
+  expire_block?: number;
+  grace_period?: number;
+  renewal_deadline?: number;
+  resolver?: string;
+  zonefile?: string;
+  zonefile_hash?: string;
+  tx_id?: string;
+  tx_index?: number;
+  status?: string;
+  canonical?: boolean;
+}
+
+/**
+ * Generate a test BNS name
+ * @param args - Optional name data
+ * @returns `DbBnsName`
+ */
+function testBnsName(args?: TestBnsNameArgs): DbBnsName {
+  return {
+    name: args?.name ?? BNS_NAME,
+    address: args?.address ?? SENDER_ADDRESS,
+    namespace_id: args?.namespace_id ?? BNS_NAMESPACE_ID,
+    registered_at: args?.registered_at ?? BLOCK_HEIGHT,
+    expire_block: args?.expire_block ?? 0,
+    grace_period: args?.grace_period,
+    renewal_deadline: args?.renewal_deadline,
+    resolver: args?.resolver,
+    zonefile: args?.zonefile ?? ZONEFILE,
+    zonefile_hash: args?.zonefile_hash ?? ZONEFILE_HASH,
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    status: args?.status ?? 'name-register',
+    canonical: args?.canonical ?? true,
   };
 }
 
@@ -597,6 +650,15 @@ export class TestBlockBuilder {
     return this;
   }
 
+  addTxBnsName(args?: TestBnsNameArgs): TestBlockBuilder {
+    const defaultArgs: TestBnsNameArgs = {
+      tx_id: this.txData.tx.tx_id,
+      registered_at: this.block.block_height,
+    };
+    this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
+    return this;
+  }
+
   build(): DataStoreBlockUpdateData {
     return this.data;
   }
@@ -647,6 +709,7 @@ export class TestMicroblockStreamBuilder {
       microblock_hash: this.microblock.microblock_hash,
       microblock_sequence: this.microblock.microblock_sequence,
       tx_index: ++this.txIndex,
+      index_block_hash: '',
     };
     this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
     this.eventIndex = -1;
@@ -669,6 +732,15 @@ export class TestMicroblockStreamBuilder {
       event_index: ++this.eventIndex,
     };
     this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxBnsName(args?: TestBnsNameArgs): TestMicroblockStreamBuilder {
+    const defaultArgs: TestBnsNameArgs = {
+      tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
+    };
+    this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
     return this;
   }
 

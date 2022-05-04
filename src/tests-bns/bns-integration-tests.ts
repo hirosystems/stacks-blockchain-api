@@ -359,7 +359,7 @@ describe('BNS integration tests', () => {
     // testing name import
     await nameImport(namespace, importZonefile, name, testnetKey);
 
-    const importQuery = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
+    const importQuery = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false, chainId: network.chainId });
     const importQuery1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(importQuery1.status).toBe(200);
     expect(importQuery1.type).toBe('application/json');
@@ -488,7 +488,7 @@ describe('BNS integration tests', () => {
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false });
+    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false, chainId: network.chainId });
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
