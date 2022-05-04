@@ -1,3 +1,10 @@
+# [4.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.1...v4.0.0-beta.2) (2022-05-04)
+
+
+### Bug Fixes
+
+* `/v1/names/[:name]` name resolution ([#1159](https://github.com/hirosystems/stacks-blockchain-api/issues/1159)) ([e656520](https://github.com/hirosystems/stacks-blockchain-api/commit/e656520701bea584fe7336c1a26388406cd167fe))
+
 # [4.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v4.0.0-beta.1) (2022-04-20)
 
 
