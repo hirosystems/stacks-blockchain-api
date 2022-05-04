@@ -8,7 +8,6 @@ import {
   decodeClarityValueList,
   decodeClarityValueToRepr,
   decodeClarityValueToTypeName,
-  DecodedPostConditionsResult,
   decodePostConditions,
 } from 'stacks-encoding-native-js';
 

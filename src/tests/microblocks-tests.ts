@@ -291,7 +291,7 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: '',
+          raw_tx: '0x131313',
           index_block_hash: block1.index_block_hash,
           block_hash: block1.block_hash,
           block_height: block1.block_height,
@@ -301,7 +301,7 @@ describe('microblock tests', () => {
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: '',
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sponsor_address: undefined,
@@ -309,11 +309,11 @@ describe('microblock tests', () => {
           origin_hash_mode: 1,
           coinbase_payload: 'hi',
           event_count: 1,
-          parent_index_block_hash: '',
-          parent_block_hash: '',
+          parent_index_block_hash: block1.parent_index_block_hash,
+          parent_block_hash: block1.parent_block_hash,
           microblock_canonical: true,
           microblock_sequence: I32_MAX,
-          microblock_hash: '',
+          microblock_hash: '0x00',
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -406,12 +406,12 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: '',
+          raw_tx: '0x141414',
           type_id: DbTxTypeId.TokenTransfer,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: '',
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
@@ -446,12 +446,12 @@ describe('microblock tests', () => {
           tx_index: 1,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: '',
+          raw_tx: '0x141415',
           type_id: DbTxTypeId.ContractCall,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: '',
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
@@ -616,7 +616,7 @@ describe('microblock tests', () => {
         expect(txBody2.parent_block_hash).toBe(block1.block_hash);
         expect(txBody2.microblock_hash).toBe(mb1.microblock_hash);
         expect(txBody2.microblock_sequence).toBe(mb1.microblock_sequence);
-        expect(txBody2.block_hash).toBeFalsy();
+        expect(txBody2.block_hash).toBe('0x');
 
         const mbListResult1 = await supertest(api.server).get(`/extended/v1/microblock`);
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;

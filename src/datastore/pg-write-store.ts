@@ -1,12 +1,5 @@
 import * as fs from 'fs';
-import {
-  bufferToHexPrefixString,
-  logger,
-  logError,
-  getOrAdd,
-  batchIterate,
-  isProdEnv,
-} from '../helpers';
+import { logger, logError, getOrAdd, batchIterate, isProdEnv } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -147,8 +140,8 @@ export class PgWriteStore extends PgStore {
     const currentTipBlock = await sql<
       {
         block_height: number;
-        block_hash: Buffer;
-        index_block_hash: Buffer;
+        block_hash: string;
+        index_block_hash: string;
       }[]
     >`
       SELECT block_height, block_hash, index_block_hash
@@ -158,10 +151,8 @@ export class PgWriteStore extends PgStore {
     const height = currentTipBlock[0]?.block_height ?? 0;
     return {
       blockHeight: height,
-      blockHash: bufferToHexPrefixString(currentTipBlock[0]?.block_hash ?? Buffer.from([])),
-      indexBlockHash: bufferToHexPrefixString(
-        currentTipBlock[0]?.index_block_hash ?? Buffer.from([])
-      ),
+      blockHash: currentTipBlock[0]?.block_hash ?? '',
+      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
     };
   }
 
@@ -270,14 +261,14 @@ export class PgWriteStore extends PgStore {
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
       if (data.microblocks.length > 0) {
-        const existingMicroblocksQuery = await sql<{ microblock_hash: Buffer }[]>`
+        const existingMicroblocksQuery = await sql<{ microblock_hash: string }[]>`
           SELECT microblock_hash
           FROM microblocks
           WHERE parent_index_block_hash = ${data.block.parent_index_block_hash}
             AND microblock_hash IN ${sql(data.microblocks.map(mb => mb.microblock_hash))}
         `;
         const existingMicroblockHashes = new Set(
-          existingMicroblocksQuery.map(r => bufferToHexPrefixString(r.microblock_hash))
+          existingMicroblocksQuery.map(r => r.microblock_hash)
         );
 
         const missingMicroblocks = data.microblocks.filter(
@@ -1739,14 +1730,14 @@ export class PgWriteStore extends PgStore {
     for (const txId of txIds) {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
-    const updateResults = await sql<{ tx_id: Buffer }[]>`
+    const updateResults = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = false
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
-    const restoredTxs = updateResults.map(r => bufferToHexPrefixString(r.tx_id));
+    const restoredTxs = updateResults.map(r => r.tx_id);
     return { restoredTxs: restoredTxs };
   }
 
@@ -1763,14 +1754,14 @@ export class PgWriteStore extends PgStore {
     for (const txId of txIds) {
       logger.verbose(`Pruning mempool tx: ${txId}`);
     }
-    const updateResults = await sql<{ tx_id: Buffer }[]>`
+    const updateResults = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = true
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
-    const removedTxs = updateResults.map(r => bufferToHexPrefixString(r.tx_id));
+    const removedTxs = updateResults.map(r => r.tx_id);
     return { removedTxs: removedTxs };
   }
 
@@ -1791,14 +1782,14 @@ export class PgWriteStore extends PgStore {
     const cutoffBlockHeight = cutoffResults[0].block_height;
     // Delete every mempool tx that came before that block.
     // TODO: Use DELETE instead of UPDATE once we implement a non-archival API replay mode.
-    const deletedTxResults = await sql<{ tx_id: Buffer }[]>`
+    const deletedTxResults = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = TRUE, status = ${DbTxStatus.DroppedApiGarbageCollect}
       WHERE pruned = FALSE AND receipt_block_height < ${cutoffBlockHeight}
       RETURNING tx_id
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
-    const deletedTxs = deletedTxResults.map(r => bufferToHexPrefixString(r.tx_id));
+    const deletedTxs = deletedTxResults.map(r => r.tx_id);
     return { deletedTxs: deletedTxs };
   }
 

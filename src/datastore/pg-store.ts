@@ -188,7 +188,7 @@ export class PgStore {
     return {
       blockHeight: height,
       blockHash: currentTipBlock[0]?.block_hash ?? '',
-      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? Buffer.from([]),
+      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
     };
   }
 
@@ -384,7 +384,7 @@ export class PgStore {
   }
 
   async getBlockTxs(indexBlockHash: string) {
-    const result = await this.sql<{ tx_id: Buffer; tx_index: number }[]>`
+    const result = await this.sql<{ tx_id: string; tx_index: number }[]>`
       SELECT tx_id, tx_index
       FROM txs
       WHERE index_block_hash = ${indexBlockHash} AND canonical = true AND microblock_canonical = true
@@ -824,12 +824,12 @@ export class PgStore {
       const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: true,
       });
-      const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
+      const notPrunedTxIds = pruned.map(tx => tx.tx_id);
       const query = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
-        AND tx_id IN ${sql(notPrunedBufferTxIds)}
+        AND tx_id IN ${sql(notPrunedTxIds)}
         AND block_height = ${unanchoredBlockHeight}
       `;
       // The tx is marked as pruned because it's in an unanchored microblock
@@ -879,7 +879,7 @@ export class PgStore {
         const unanchoredBlockHeight = await this.getMaxBlockHeight(sql, {
           includeUnanchored: true,
         });
-        const query = await sql<{ tx_id: Buffer }[]>`
+        const query = await sql<{ tx_id: string }[]>`
           SELECT tx_id
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
