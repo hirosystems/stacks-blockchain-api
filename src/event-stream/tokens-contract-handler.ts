@@ -27,6 +27,7 @@ import {
   logError,
   logger,
   parseArgBoolean,
+  parseArgNumber,
   parseDataUrl,
   REPO_DIR,
   stopwatch,
@@ -46,8 +47,6 @@ type ReadOnlyContractCallResponse =
   | { found: true; value: ClarityValue }
   | { found: false; error: string; retriable: false }
   | { found: false; retriable: true };
-
-const METADATA_RETREIVAL_INTERVAL = 3000;
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -82,6 +81,15 @@ export enum TokenMetadataErrorMode {
 
 function isMetadataStrictModeEnabled() {
   return parseArgBoolean(process.env['STACKS_API_METADATA_STRICT_MODE']);
+}
+
+function getMetadataRetrievalInterval() {
+  const interval = parseArgNumber(process.env['STACKS_API_METADATA_RETRIEVAL_INTERVAL']);
+  if (!interval) {
+    // returning 3000ms for undefined, null and 0ms
+    return 3000;
+  }
+  return interval;
 }
 
 export function isFtMetadataEnabled() {
@@ -677,7 +685,10 @@ export class TokensContractHandler {
       });
     } catch (error: any) {
       // In case there is a network error during fetch.
-      console.log(`Error calling read only contract function value: ${error.message}`);
+      logger.warn(
+        `[token-metadata] Error calling read only contract function value for ${functionName}`,
+        error
+      );
       return { found: false, retriable: true };
     }
 
@@ -705,7 +716,10 @@ export class TokensContractHandler {
       return { found: true, value: parseValue };
     } catch (error: any) {
       // In case there was a connection was interrupted
-      console.log(`Error parsing read only contract function response: ${error.message}`);
+      logger.warn(
+        `[token-metadata] Error parsing read only contract function response for ${functionName}`,
+        error
+      );
       return { found: false, retriable: true };
     }
   }
@@ -718,11 +732,13 @@ export class TokensContractHandler {
     while (!response.found && response.retriable) {
       // In case of strict mode enabled, retry should be aggresive. Otherwise, queued for later.
       if (!isMetadataStrictModeEnabled()) {
-        await timeout(METADATA_RETREIVAL_INTERVAL);
+        await timeout(getMetadataRetrievalInterval());
       }
       response = await this.makeReadOnlyContractCall(functionName, functionArgs);
     }
-    if (response.found) return response.value;
+    if (response.found) {
+      return response.value;
+    }
     // In case the issue is permanent.
     throw new Error(response.error);
   }

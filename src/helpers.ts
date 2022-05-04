@@ -440,6 +440,17 @@ export function parseArgBoolean(val: string | undefined | null): boolean {
   }
 }
 
+export function parseArgNumber(val: string | undefined | null): number {
+  if (typeof val === 'undefined' || val === null) {
+    return 0;
+  }
+  const num = Number(val);
+  if (Number.isInteger(num)) {
+    return num;
+  }
+  throw new Error(`Cannot parse integer from "${val}"`);
+}
+
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
