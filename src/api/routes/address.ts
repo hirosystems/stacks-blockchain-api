@@ -360,7 +360,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             const nftTransfer = {
               asset_identifier: transfer.asset_identifier,
               value: {
-                hex: bufferToHexPrefixString(transfer.value),
+                hex: transfer.value,
                 repr: parsedClarityValue,
               },
               sender: transfer.sender,
@@ -505,10 +505,10 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
           value: {
-            hex: bufferToHexPrefixString(row.value),
+            hex: row.value,
             repr: parsedClarityValue,
           },
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           block_height: row.block_height,
         };
         return r;

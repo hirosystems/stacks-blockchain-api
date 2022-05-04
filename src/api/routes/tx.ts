@@ -283,7 +283,7 @@ export function createTxRouter(db: PgStore): express.Router {
 
       if (rawTxQuery.found) {
         const response: GetRawTransactionResult = {
-          raw_tx: bufferToHexPrefixString(rawTxQuery.result.raw_tx),
+          raw_tx: rawTxQuery.result.raw_tx,
         };
         res.json(response);
       } else {

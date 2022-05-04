@@ -79,14 +79,14 @@ export function createTokenRouter(db: PgStore): express.Router {
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
-            hex: bufferToHexPrefixString(result.nft_holding_info.value),
+            hex: result.nft_holding_info.value,
             repr: parsedClarityValue,
           },
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };
         }
-        return { ...parsedNftData, tx_id: bufferToHexPrefixString(result.nft_holding_info.tx_id) };
+        return { ...parsedNftData, tx_id: result.nft_holding_info.tx_id };
       });
 
       const response: NonFungibleTokenHoldingsList = {
@@ -196,7 +196,7 @@ export function createTokenRouter(db: PgStore): express.Router {
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,
           value: {
-            hex: bufferToHexPrefixString(result.nft_event.value),
+            hex: result.nft_event.value,
             repr: parsedClarityValue,
           },
         };

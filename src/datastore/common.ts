@@ -123,19 +123,15 @@ export interface BaseTx {
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
   token_transfer_amount?: bigint;
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
-  token_transfer_memo?: Buffer;
+  token_transfer_memo?: string;
   status: DbTxStatus;
   type_id: DbTxTypeId;
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded Clarity values. Undefined if function defines no args. */
-  contract_call_function_args?: Buffer;
+  contract_call_function_args?: string;
   abi?: string;
 }
 
@@ -148,7 +144,7 @@ export interface DbTx extends BaseTx {
   burn_block_time: number;
   parent_burn_block_time: number;
 
-  raw_tx: Buffer;
+  raw_tx: string;
   tx_index: number;
 
   /** Hex encoded Clarity values. */
@@ -163,9 +159,7 @@ export interface DbTx extends BaseTx {
   // TODO(mb): should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  // and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
-  post_conditions: Buffer;
+  post_conditions: string;
 
   /** u8 */
   origin_hash_mode: number;
@@ -175,11 +169,11 @@ export interface DbTx extends BaseTx {
   smart_contract_source_code?: string;
 
   /** Only valid for `poison_microblock` tx types. */
-  poison_microblock_header_1?: Buffer;
-  poison_microblock_header_2?: Buffer;
+  poison_microblock_header_1?: string;
+  poison_microblock_header_2?: string;
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
-  coinbase_payload?: Buffer;
+  coinbase_payload?: string;
 
   event_count: number;
 
@@ -192,11 +186,11 @@ export interface DbTx extends BaseTx {
 
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
-  raw_tx: Buffer;
+  raw_tx: string;
 
   receipt_time: number;
 
-  post_conditions: Buffer;
+  post_conditions: string;
   /** u8 */
   origin_hash_mode: number;
 
@@ -205,11 +199,11 @@ export interface DbMempoolTx extends BaseTx {
   smart_contract_source_code?: string;
 
   /** Only valid for `poison_microblock` tx types. */
-  poison_microblock_header_1?: Buffer;
-  poison_microblock_header_2?: Buffer;
+  poison_microblock_header_1?: string;
+  poison_microblock_header_2?: string;
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
-  coinbase_payload?: Buffer;
+  coinbase_payload?: string;
 }
 
 export interface DbSmartContract {
@@ -254,7 +248,7 @@ export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
   topic: string;
-  value: Buffer;
+  value: string;
 }
 
 export interface DbStxLockEvent extends DbEventBase {
@@ -293,10 +287,7 @@ export interface DbFtEvent extends DbContractAssetEvent {
 
 export interface DbNftEvent extends DbContractAssetEvent {
   event_type: DbEventTypeId.NonFungibleTokenAsset;
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
-  /** Raw Clarity value */
-  value: Buffer;
+  value: string;
 }
 
 export interface StxUnlockEvent {
@@ -325,9 +316,7 @@ export interface DbTxWithAssetTransfers {
   }[];
   nft_transfers: {
     asset_identifier: string;
-    // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-    //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
-    value: Buffer;
+    value: string;
     sender?: string;
     recipient?: string;
   }[];
@@ -335,11 +324,9 @@ export interface DbTxWithAssetTransfers {
 
 export interface NftHoldingInfo {
   asset_identifier: string;
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
-  value: Buffer;
+  value: string;
   recipient: string;
-  tx_id: Buffer;
+  tx_id: string;
 }
 
 export interface NftHoldingInfoWithTxMetadata {
@@ -356,11 +343,9 @@ export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
   asset_identifier: string;
-  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
-  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
-  value: Buffer;
+  value: string;
   block_height: number;
-  tx_id: Buffer;
+  tx_id: string;
 }
 
 export interface TokenMetadataUpdateInfo {
@@ -576,17 +561,17 @@ export interface DbChainTip {
 }
 
 export interface BlockQueryResult {
-  block_hash: Buffer;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  parent_block_hash: Buffer;
-  parent_microblock_hash: Buffer;
+  block_hash: string;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  parent_block_hash: string;
+  parent_microblock_hash: string;
   parent_microblock_sequence: number;
   block_height: number;
   burn_block_time: number;
-  burn_block_hash: Buffer;
+  burn_block_hash: string;
   burn_block_height: number;
-  miner_txid: Buffer;
+  miner_txid: string;
   canonical: boolean;
   execution_cost_read_count: string;
   execution_cost_read_length: string;
@@ -598,23 +583,23 @@ export interface BlockQueryResult {
 export interface MicroblockQueryResult {
   canonical: boolean;
   microblock_canonical: boolean;
-  microblock_hash: Buffer;
+  microblock_hash: string;
   microblock_sequence: number;
-  microblock_parent_hash: Buffer;
-  parent_index_block_hash: Buffer;
+  microblock_parent_hash: string;
+  parent_index_block_hash: string;
   block_height: number;
   parent_block_height: number;
-  parent_block_hash: Buffer;
-  index_block_hash: Buffer;
-  block_hash: Buffer;
+  parent_block_hash: string;
+  index_block_hash: string;
+  block_hash: string;
   parent_burn_block_height: number;
-  parent_burn_block_hash: Buffer;
+  parent_burn_block_hash: string;
   parent_burn_block_time: number;
 }
 
 export interface MempoolTxQueryResult {
   pruned: boolean;
-  tx_id: Buffer;
+  tx_id: string;
 
   nonce: number;
   sponsor_nonce?: number;
@@ -625,18 +610,18 @@ export interface MempoolTxQueryResult {
   receipt_block_height: number;
 
   canonical: boolean;
-  post_conditions: Buffer;
+  post_conditions: string;
   fee_rate: string;
   sponsored: boolean;
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
-  raw_tx: Buffer;
+  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
   token_transfer_amount?: string;
-  token_transfer_memo?: Buffer;
+  token_transfer_memo?: string;
 
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
@@ -645,26 +630,26 @@ export interface MempoolTxQueryResult {
   // `contract_call` tx types
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
-  contract_call_function_args?: Buffer;
+  contract_call_function_args?: string;
 
   // `poison_microblock` tx types
-  poison_microblock_header_1?: Buffer;
-  poison_microblock_header_2?: Buffer;
+  poison_microblock_header_1?: string;
+  poison_microblock_header_2?: string;
 
   // `coinbase` tx types
-  coinbase_payload?: Buffer;
+  coinbase_payload?: string;
 
   // sending abi in case tx is contract call
   abi: unknown | null;
 }
 
 export interface TxQueryResult {
-  tx_id: Buffer;
+  tx_id: string;
   tx_index: number;
-  index_block_hash: Buffer;
-  parent_index_block_hash: Buffer;
-  block_hash: Buffer;
-  parent_block_hash: Buffer;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  block_hash: string;
+  parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
@@ -673,25 +658,25 @@ export interface TxQueryResult {
   type_id: number;
   anchor_mode: number;
   status: number;
-  raw_result: Buffer;
+  raw_result: string;
   canonical: boolean;
 
   microblock_canonical: boolean;
   microblock_sequence: number;
-  microblock_hash: Buffer;
+  microblock_hash: string;
 
-  post_conditions: Buffer;
+  post_conditions: string;
   fee_rate: string;
   sponsored: boolean;
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
-  raw_tx: Buffer;
+  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
   token_transfer_amount?: string;
-  token_transfer_memo?: Buffer;
+  token_transfer_memo?: string;
 
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
@@ -700,14 +685,14 @@ export interface TxQueryResult {
   // `contract_call` tx types
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
-  contract_call_function_args?: Buffer;
+  contract_call_function_args?: string;
 
   // `poison_microblock` tx types
-  poison_microblock_header_1?: Buffer;
-  poison_microblock_header_2?: Buffer;
+  poison_microblock_header_1?: string;
+  poison_microblock_header_2?: string;
 
   // `coinbase` tx types
-  coinbase_payload?: Buffer;
+  coinbase_payload?: string;
 
   // events count
   event_count: number;
@@ -765,10 +750,10 @@ export interface UpdatedEntities {
 
 export interface TransferQueryResult {
   sender: string;
-  memo: Buffer;
+  memo: string;
   block_height: number;
   tx_index: number;
-  tx_id: Buffer;
+  tx_id: string;
   transfer_type: string;
   amount: string;
 }
@@ -780,7 +765,7 @@ export interface NonFungibleTokenMetadataQueryResult {
   image_uri: string;
   image_canonical_uri: string;
   contract_id: string;
-  tx_id: Buffer;
+  tx_id: string;
   sender_address: string;
 }
 
@@ -793,13 +778,13 @@ export interface FungibleTokenMetadataQueryResult {
   contract_id: string;
   symbol: string;
   decimals: number;
-  tx_id: Buffer;
+  tx_id: string;
   sender_address: string;
 }
 
 export interface DbTokenMetadataQueueEntryQuery {
   queue_id: number;
-  tx_id: Buffer;
+  tx_id: string;
   contract_id: string;
   contract_abi: string;
   block_height: number;
@@ -807,7 +792,7 @@ export interface DbTokenMetadataQueueEntryQuery {
 }
 
 export interface RawTxQueryResult {
-  raw_tx: Buffer;
+  raw_tx: string;
 }
 
 export interface TxInsertValues {

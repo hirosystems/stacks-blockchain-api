@@ -1,4 +1,3 @@
-import * as postgres from 'postgres';
 import {
   AddressTokenOfferingLocked,
   AddressUnlockSchedule,
@@ -6,7 +5,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { assertNotNullish, bufferToHexPrefixString, FoundOrNot, unwrapOptional } from '../helpers';
+import { assertNotNullish, FoundOrNot, unwrapOptional } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
@@ -181,17 +180,15 @@ export class PgStore {
     const currentTipBlock = await sql<
       {
         block_height: number;
-        block_hash: Buffer;
-        index_block_hash: Buffer;
+        block_hash: string;
+        index_block_hash: string;
       }[]
     >`SELECT block_height, block_hash, index_block_hash FROM chain_tip`;
     const height = currentTipBlock[0]?.block_height ?? 0;
     return {
       blockHeight: height,
-      blockHash: bufferToHexPrefixString(currentTipBlock[0]?.block_hash ?? Buffer.from([])),
-      indexBlockHash: bufferToHexPrefixString(
-        currentTipBlock[0]?.index_block_hash ?? Buffer.from([])
-      ),
+      blockHash: currentTipBlock[0]?.block_hash ?? '',
+      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? Buffer.from([]),
     };
   }
 
@@ -270,9 +267,9 @@ export class PgStore {
     const result = await this.sql<
       {
         block_height: number;
-        index_block_hash: Buffer;
-        block_hash: Buffer;
-        microblock_hash: Buffer | null;
+        index_block_hash: string;
+        block_hash: string;
+        microblock_hash: string | null;
         microblock_sequence: number | null;
       }[]
     >`SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
@@ -283,10 +280,9 @@ export class PgStore {
     const row = result[0];
     const chainTipResult: DbChainTip = {
       blockHeight: row.block_height,
-      indexBlockHash: bufferToHexPrefixString(row.index_block_hash),
-      blockHash: bufferToHexPrefixString(row.block_hash),
-      microblockHash:
-        row.microblock_hash === null ? undefined : bufferToHexPrefixString(row.microblock_hash),
+      indexBlockHash: row.index_block_hash,
+      blockHash: row.block_hash,
+      microblockHash: row.microblock_hash === null ? undefined : row.microblock_hash,
       microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
     };
     return { found: true, result: chainTipResult };
@@ -393,7 +389,7 @@ export class PgStore {
       FROM txs
       WHERE index_block_hash = ${indexBlockHash} AND canonical = true AND microblock_canonical = true
     `;
-    const txIds = result.sort(tx => tx.tx_index).map(tx => bufferToHexPrefixString(tx.tx_id));
+    const txIds = result.sort(tx => tx.tx_index).map(tx => tx.tx_id);
     return { results: txIds };
   }
 
@@ -432,14 +428,14 @@ export class PgStore {
       if (result.length === 0) {
         return { found: false } as const;
       }
-      const txQuery = await sql<{ tx_id: Buffer }[]>`
+      const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
         WHERE microblock_hash = ${args.microblockHash}
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
-      const txs = txQuery.map(row => bufferToHexPrefixString(row.tx_id));
+      const txs = txQuery.map(row => row.tx_id);
       return { found: true, result: { microblock, txs } };
     });
   }
@@ -453,7 +449,7 @@ export class PgStore {
         { total: number }[]
       >`SELECT microblock_count AS total FROM chain_tip`;
       const microblockQuery = await sql<
-        (MicroblockQueryResult & { tx_id?: Buffer | null; tx_index?: number | null })[]
+        (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
         SELECT microblocks.*, tx_id FROM (
           SELECT ${sql(MICROBLOCK_COLUMNS)}
@@ -483,8 +479,7 @@ export class PgStore {
           microblocks.push(existing);
         }
         if (row.tx_id) {
-          const txId = bufferToHexPrefixString(row.tx_id);
-          existing.txs.push(txId);
+          existing.txs.push(row.tx_id);
         }
       });
       return {
@@ -658,7 +653,7 @@ export class PgStore {
   }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }> {
     const queryResults = await this.sql<
       {
-        burn_block_hash: Buffer;
+        burn_block_hash: string;
         burn_block_height: number;
         address: string;
         slot_index: number;
@@ -678,7 +673,7 @@ export class PgStore {
     const slotHolders = queryResults.map(r => {
       const parsed: DbRewardSlotHolder = {
         canonical: true,
-        burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+        burn_block_hash: r.burn_block_hash,
         burn_block_height: r.burn_block_height,
         address: r.address,
         slot_index: r.slot_index,
@@ -733,7 +728,7 @@ export class PgStore {
   }): Promise<DbBurnchainReward[]> {
     const queryResults = await this.sql<
       {
-        burn_block_hash: Buffer;
+        burn_block_hash: string;
         burn_block_height: number;
         burn_amount: string;
         reward_recipient: string;
@@ -752,7 +747,7 @@ export class PgStore {
     return queryResults.map(r => {
       const parsed: DbBurnchainReward = {
         canonical: true,
-        burn_block_hash: bufferToHexPrefixString(r.burn_block_hash),
+        burn_block_hash: r.burn_block_hash,
         burn_block_height: r.burn_block_height,
         burn_amount: BigInt(r.burn_amount),
         reward_recipient: r.reward_recipient,
@@ -770,9 +765,9 @@ export class PgStore {
   }): Promise<DbMinerReward[]> {
     const queryResults = await this.sql<
       {
-        block_hash: Buffer;
-        from_index_block_hash: Buffer;
-        index_block_hash: Buffer;
+        block_hash: string;
+        from_index_block_hash: string;
+        index_block_hash: string;
         mature_block_height: number;
         recipient: string;
         coinbase_amount: number;
@@ -789,9 +784,9 @@ export class PgStore {
     `;
     return queryResults.map(r => {
       const parsed: DbMinerReward = {
-        block_hash: bufferToHexPrefixString(r.block_hash),
-        from_index_block_hash: bufferToHexPrefixString(r.from_index_block_hash),
-        index_block_hash: bufferToHexPrefixString(r.index_block_hash),
+        block_hash: r.block_hash,
+        from_index_block_hash: r.from_index_block_hash,
+        index_block_hash: r.index_block_hash,
         canonical: true,
         mature_block_height: r.mature_block_height,
         recipient: r.recipient,
@@ -830,7 +825,7 @@ export class PgStore {
         includeUnanchored: true,
       });
       const notPrunedBufferTxIds = pruned.map(tx => tx.tx_id);
-      const query = await sql<{ tx_id: Buffer }[]>`
+      const query = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
         WHERE canonical = true AND microblock_canonical = true
@@ -839,9 +834,7 @@ export class PgStore {
       `;
       // The tx is marked as pruned because it's in an unanchored microblock
       query.forEach(tran => {
-        const transaction = result.find(
-          tx => bufferToHexPrefixString(tx.tx_id) === bufferToHexPrefixString(tran.tx_id)
-        );
+        const transaction = result.find(tx => tx.tx_id === tran.tx_id);
         if (transaction) {
           transaction.pruned = false;
           transaction.status = DbTxStatus.Pending;
@@ -1134,7 +1127,7 @@ export class PgStore {
       const stxLockResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1152,7 +1145,7 @@ export class PgStore {
       const stxResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1171,7 +1164,7 @@ export class PgStore {
       const ftResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1191,7 +1184,7 @@ export class PgStore {
       const nftResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1199,7 +1192,7 @@ export class PgStore {
           sender?: string;
           recipient?: string;
           asset_identifier: string;
-          value: Buffer;
+          value: string;
         }[]
       >`
         SELECT
@@ -1211,13 +1204,13 @@ export class PgStore {
       const logResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
           contract_identifier: string;
           topic: string;
-          value: Buffer;
+          value: string;
         }[]
       >`
         SELECT
@@ -1247,7 +1240,7 @@ export class PgStore {
       const stxLockResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1265,7 +1258,7 @@ export class PgStore {
       const stxResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1284,7 +1277,7 @@ export class PgStore {
       const ftResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1304,7 +1297,7 @@ export class PgStore {
       const nftResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
@@ -1312,7 +1305,7 @@ export class PgStore {
           sender?: string;
           recipient?: string;
           asset_identifier: string;
-          value: Buffer;
+          value: string;
         }[]
       >`
         SELECT
@@ -1324,13 +1317,13 @@ export class PgStore {
       const logResults = await sql<
         {
           event_index: number;
-          tx_id: Buffer;
+          tx_id: string;
           tx_index: number;
           block_height: number;
           canonical: boolean;
           contract_identifier: string;
           topic: string;
-          value: Buffer;
+          value: string;
         }[]
       >`
         SELECT
@@ -1365,7 +1358,7 @@ export class PgStore {
       const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
       const eventsResult = await sql<
         {
-          tx_id: Buffer;
+          tx_id: string;
           event_index: number;
           tx_index: number;
           block_height: number;
@@ -1376,7 +1369,7 @@ export class PgStore {
           asset_identifier: string;
           contract_identifier: string;
           topic: string;
-          value: Buffer;
+          value: string;
           event_type_id: number;
           asset_event_type_id: number;
         }[]
@@ -1484,7 +1477,7 @@ export class PgStore {
       if (eventsResult.length > 0) {
         events = eventsResult.map(r => {
           const event: DbEvent = {
-            tx_id: bufferToHexPrefixString(r.tx_id),
+            tx_id: r.tx_id,
             event_index: r.event_index,
             event_type: r.event_type_id,
             tx_index: r.tx_index,
@@ -1527,7 +1520,7 @@ export class PgStore {
     const row = result[0];
     const entry: DbTokenMetadataQueueEntry = {
       queueId: row.queue_id,
-      txId: bufferToHexPrefixString(row.tx_id),
+      txId: row.tx_id,
       contractId: row.contract_id,
       contractAbi: JSON.parse(row.contract_abi),
       blockHeight: row.block_height,
@@ -1555,7 +1548,7 @@ export class PgStore {
     const entries = result.map(row => {
       const entry: DbTokenMetadataQueueEntry = {
         queueId: row.queue_id,
-        txId: bufferToHexPrefixString(row.tx_id),
+        txId: row.tx_id,
         contractId: row.contract_id,
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
@@ -1571,7 +1564,7 @@ export class PgStore {
       {
         contract_id: string;
         canonical: boolean;
-        tx_id: Buffer;
+        tx_id: string;
         block_height: number;
         source_code: string;
         abi: unknown | null;
@@ -1591,7 +1584,7 @@ export class PgStore {
   async getSmartContract(contractId: string) {
     const result = await this.sql<
       {
-        tx_id: Buffer;
+        tx_id: string;
         canonical: boolean;
         contract_id: string;
         block_height: number;
@@ -1624,12 +1617,12 @@ export class PgStore {
     const logResults = await this.sql<
       {
         event_index: number;
-        tx_id: Buffer;
+        tx_id: string;
         tx_index: number;
         block_height: number;
         contract_identifier: string;
         topic: string;
-        value: Buffer;
+        value: string;
       }[]
     >`
       SELECT
@@ -1643,7 +1636,7 @@ export class PgStore {
     const result = logResults.map(result => {
       const event: DbSmartContractEvent = {
         event_index: result.event_index,
-        tx_id: bufferToHexPrefixString(result.tx_id),
+        tx_id: result.tx_id,
         tx_index: result.tx_index,
         block_height: result.block_height,
         canonical: true,
@@ -1677,7 +1670,7 @@ export class PgStore {
 
     const result = await this.sql<
       {
-        tx_id: Buffer;
+        tx_id: string;
         canonical: boolean;
         contract_id: string;
         block_height: number;
@@ -1783,7 +1776,7 @@ export class PgStore {
         locked_amount: string;
         unlock_height: string;
         block_height: string;
-        tx_id: Buffer;
+        tx_id: string;
       }[]
     >`
       SELECT locked_amount, unlock_height, block_height, tx_id
@@ -1801,7 +1794,7 @@ export class PgStore {
         `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
       );
     } else if (lockQuery.length === 1) {
-      lockTxId = bufferToHexPrefixString(lockQuery[0].tx_id);
+      lockTxId = lockQuery[0].tx_id;
       locked = BigInt(lockQuery[0].locked_amount);
       burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
       lockHeight = parseInt(lockQuery[0].block_height);
@@ -1896,7 +1889,7 @@ export class PgStore {
       ({
         asset_type: 'stx_lock' | 'stx' | 'ft' | 'nft';
         event_index: number;
-        tx_id: Buffer;
+        tx_id: string;
         tx_index: number;
         block_height: number;
         canonical: boolean;
@@ -1906,7 +1899,7 @@ export class PgStore {
         asset_identifier: string;
         amount?: string;
         unlock_height?: string;
-        value?: Buffer;
+        value?: string;
       } & { count: number })[]
     >`
       SELECT *, (COUNT(*) OVER())::INTEGER AS count
@@ -1944,7 +1937,7 @@ export class PgStore {
       if (row.asset_type === 'stx_lock') {
         const event: DbStxLockEvent = {
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -1957,7 +1950,7 @@ export class PgStore {
       } else if (row.asset_type === 'stx') {
         const event: DbStxEvent = {
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -1971,7 +1964,7 @@ export class PgStore {
       } else if (row.asset_type === 'ft') {
         const event: DbFtEvent = {
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -1986,7 +1979,7 @@ export class PgStore {
       } else if (row.asset_type === 'nft') {
         const event: DbNftEvent = {
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -1995,7 +1988,7 @@ export class PgStore {
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
           event_type: DbEventTypeId.NonFungibleTokenAsset,
-          value: row.value as Buffer,
+          value: row.value ?? '',
         };
         return event;
       } else {
@@ -2213,7 +2206,7 @@ export class PgStore {
         event_sender?: string;
         event_recipient?: string;
         event_asset_identifier?: string;
-        event_value?: Buffer;
+        event_value?: string;
       })[]
     >`
       WITH transactions AS (
@@ -2372,9 +2365,9 @@ export class PgStore {
     const parsed: DbInboundStxTransfer[] = resultQuery.map(r => {
       return {
         sender: r.sender,
-        memo: bufferToHexPrefixString(r.memo),
+        memo: r.memo,
         amount: BigInt(r.amount),
-        tx_id: bufferToHexPrefixString(r.tx_id),
+        tx_id: r.tx_id,
         tx_index: r.tx_index,
         block_height: r.block_height,
         transfer_type: r.transfer_type,
@@ -2399,7 +2392,7 @@ export class PgStore {
           found: true,
           result: {
             entity_type: 'tx_id',
-            entity_id: bufferToHexPrefixString(txQuery[0].tx_id),
+            entity_id: txQuery[0].tx_id,
             entity_data: txResult,
           },
         };
@@ -2414,7 +2407,7 @@ export class PgStore {
           found: true,
           result: {
             entity_type: 'mempool_tx_id',
-            entity_id: bufferToHexPrefixString(txMempoolQuery[0].tx_id),
+            entity_id: txMempoolQuery[0].tx_id,
             entity_data: txResult,
           },
         };
@@ -2428,7 +2421,7 @@ export class PgStore {
           found: true,
           result: {
             entity_type: 'block_hash',
-            entity_id: bufferToHexPrefixString(blockQueryResult[0].block_hash),
+            entity_id: blockQueryResult[0].block_hash,
             entity_data: blockResult,
           },
         };
@@ -2687,7 +2680,7 @@ export class PgStore {
           sender: row.sender,
           recipient: row.recipient,
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -2748,7 +2741,7 @@ export class PgStore {
           sender: row.sender,
           recipient: row.recipient,
           event_index: row.event_index,
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           tx_index: row.tx_index,
           block_height: row.block_height,
           canonical: row.canonical,
@@ -2885,7 +2878,7 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      return await sql<(DbBnsNamespace & { tx_id: Buffer; index_block_hash: Buffer })[]>`
+      return await sql<(DbBnsNamespace & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id, *
         FROM namespaces
         WHERE namespace_id = ${namespace}
@@ -2900,8 +2893,8 @@ export class PgStore {
         found: true,
         result: {
           ...queryResult[0],
-          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
+          tx_id: queryResult[0].tx_id,
+          index_block_hash: queryResult[0].index_block_hash,
         },
       };
     }
@@ -2917,7 +2910,7 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      return await sql<(DbBnsName & { tx_id: Buffer; index_block_hash: Buffer })[]>`
+      return await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
         LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
@@ -2933,8 +2926,8 @@ export class PgStore {
         found: true,
         result: {
           ...queryResult[0],
-          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
+          tx_id: queryResult[0].tx_id,
+          index_block_hash: queryResult[0].index_block_hash,
         },
       };
     }
@@ -3160,7 +3153,7 @@ export class PgStore {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const subdomainResult = await sql<
-        (DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer })[]
+        (DbBnsSubdomain & { tx_id: string; index_block_hash: string })[]
       >`
         SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
         FROM subdomains
@@ -3189,8 +3182,8 @@ export class PgStore {
         found: true,
         result: {
           ...queryResult[0],
-          tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
-          index_block_hash: bufferToHexPrefixString(queryResult[0].index_block_hash),
+          tx_id: queryResult[0].tx_id,
+          index_block_hash: queryResult[0].index_block_hash,
         },
       };
     }
@@ -3277,7 +3270,7 @@ export class PgStore {
         locked_amount: string;
         unlock_height: string;
         locked_address: string;
-        tx_id: Buffer;
+        tx_id: string;
       }[]
     >`
       SELECT locked_amount, unlock_height, locked_address
@@ -3286,7 +3279,7 @@ export class PgStore {
       AND unlock_height <= ${current_burn_height} AND unlock_height > ${previous_burn_height}
     `;
 
-    const txIdQuery = await sql<{ tx_id: Buffer }[]>`
+    const txIdQuery = await sql<{ tx_id: string }[]>`
       SELECT tx_id
       FROM txs
       WHERE microblock_canonical = true AND canonical = true
@@ -3300,7 +3293,7 @@ export class PgStore {
         unlock_height: row.unlock_height,
         unlocked_amount: row.locked_amount,
         stacker_address: row.locked_address,
-        tx_id: bufferToHexPrefixString(txIdQuery[0].tx_id),
+        tx_id: txIdQuery[0].tx_id,
       };
       result.push(unlockEvent);
     });
@@ -3337,7 +3330,7 @@ export class PgStore {
         symbol: queryResult[0].symbol,
         decimals: queryResult[0].decimals,
         contract_id: queryResult[0].contract_id,
-        tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+        tx_id: queryResult[0].tx_id,
         sender_address: queryResult[0].sender_address,
       };
       return {
@@ -3364,7 +3357,7 @@ export class PgStore {
         image_uri: queryResult[0].image_uri,
         image_canonical_uri: queryResult[0].image_canonical_uri,
         contract_id: queryResult[0].contract_id,
-        tx_id: bufferToHexPrefixString(queryResult[0].tx_id),
+        tx_id: queryResult[0].tx_id,
         sender_address: queryResult[0].sender_address,
       };
       return {
@@ -3404,7 +3397,7 @@ export class PgStore {
           decimals: r.decimals,
           symbol: r.symbol,
           contract_id: r.contract_id,
-          tx_id: bufferToHexPrefixString(r.tx_id),
+          tx_id: r.tx_id,
           sender_address: r.sender_address,
         };
         return metadata;
@@ -3439,7 +3432,7 @@ export class PgStore {
           image_uri: r.image_uri,
           image_canonical_uri: r.image_canonical_uri,
           contract_id: r.contract_id,
-          tx_id: bufferToHexPrefixString(r.tx_id),
+          tx_id: r.tx_id,
           sender_address: r.sender_address,
         };
         return metadata;

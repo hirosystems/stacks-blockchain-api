@@ -8,6 +8,7 @@ import {
   decodeClarityValueList,
   decodeClarityValueToRepr,
   decodeClarityValueToTypeName,
+  DecodedPostConditionsResult,
   decodePostConditions,
 } from 'stacks-encoding-native-js';
 
@@ -215,8 +216,7 @@ export function getAssetEventTypeString(
 export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
-      const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -225,7 +225,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
           value: {
-            hex: bufferToHexPrefixString(valueBuffer),
+            hex: dbEvent.value,
             repr: parsedClarityValue,
           },
         },
@@ -275,8 +275,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
-      const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -287,7 +286,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           sender: dbEvent.sender || '',
           recipient: dbEvent.recipient || '',
           value: {
-            hex: bufferToHexPrefixString(valueBuffer),
+            hex: dbEvent.value,
             repr: parsedClarityValue,
           },
         },
@@ -677,8 +676,9 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
             dbTx.token_transfer_amount,
             () => 'Unexpected nullish token_transfer_amount'
           ).toString(10),
-          memo: bufferToHexPrefixString(
-            unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
+          memo: unwrapOptional(
+            dbTx.token_transfer_memo,
+            () => 'Unexpected nullish token_transfer_memo'
           ),
         },
       };
@@ -707,12 +707,8 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: PoisonMicroblockTransactionMetadata = {
         tx_type: 'poison_microblock',
         poison_microblock: {
-          microblock_header_1: bufferToHexPrefixString(
-            unwrapOptional(dbTx.poison_microblock_header_1)
-          ),
-          microblock_header_2: bufferToHexPrefixString(
-            unwrapOptional(dbTx.poison_microblock_header_2)
-          ),
+          microblock_header_1: unwrapOptional(dbTx.poison_microblock_header_1),
+          microblock_header_2: unwrapOptional(dbTx.poison_microblock_header_2),
         },
       };
       return metadata;
@@ -721,9 +717,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: CoinbaseTransactionMetadata = {
         tx_type: 'coinbase',
         coinbase_payload: {
-          data: bufferToHexPrefixString(
-            unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
-          ),
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
         },
       };
       return metadata;

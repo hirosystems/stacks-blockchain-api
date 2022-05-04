@@ -17,7 +17,7 @@ const PG_TYPE_MAPPINGS = {
   // Make both `string` and `Buffer` be compatible with a `bytea` columns.
   // * Buffers and strings with `0x` prefixes will be transformed to hex format (`\x`).
   // * Other strings will be passed as-is.
-  // From postgres, all values will be returned as Buffers
+  // From postgres, all values will be returned as strings with `0x` prefix.
   bytea: {
     to: 17,
     from: [17],
@@ -28,7 +28,7 @@ const PG_TYPE_MAPPINGS = {
         : typeof x === 'string' && has0xPrefix(x)
         ? `\\x${x.slice(2)}`
         : x,
-    parse: (x: any) => Buffer.from(x.slice(2), 'hex'),
+    parse: (x: any) => `0x${x.slice(2)}`,
   },
 };
 /** Values will be automatically converted into a `bytea` compatible string before sending to pg. */

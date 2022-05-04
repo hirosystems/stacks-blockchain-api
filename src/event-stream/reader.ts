@@ -241,7 +241,7 @@ export function parseMessageTransaction(
   allEvents: CoreNodeEvent[]
 ): CoreNodeParsedTxMessage | null {
   try {
-    const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
+    const txBuffer = coreTx.raw_tx.substring(2);
     let rawTx: DecodedTxResult;
     let txSender: string;
     let sponsorAddress: string | undefined = undefined;

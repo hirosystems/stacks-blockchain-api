@@ -1,4 +1,4 @@
-import { bufferToHexPrefixString, hexToBuffer, parseEnum } from '../helpers';
+import { hexToBuffer, parseEnum } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -207,7 +207,7 @@ export function abiColumn(tableName: string = 'txs'): string {
 export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempoolTx {
   const tx: DbMempoolTx = {
     pruned: result.pruned,
-    tx_id: bufferToHexPrefixString(result.tx_id),
+    tx_id: result.tx_id,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
     raw_tx: result.raw_tx,
@@ -243,26 +243,26 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
 
 export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
   const tx: DbTx = {
-    tx_id: bufferToHexPrefixString(result.tx_id),
+    tx_id: result.tx_id,
     tx_index: result.tx_index,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
     raw_tx: result.raw_tx,
-    index_block_hash: bufferToHexPrefixString(result.index_block_hash),
-    parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
-    block_hash: bufferToHexPrefixString(result.block_hash),
-    parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
+    index_block_hash: result.index_block_hash,
+    parent_index_block_hash: result.parent_index_block_hash,
+    block_hash: result.block_hash,
+    parent_block_hash: result.parent_block_hash,
     block_height: result.block_height,
     burn_block_time: result.burn_block_time,
     parent_burn_block_time: result.parent_burn_block_time,
     type_id: result.type_id as DbTxTypeId,
     anchor_mode: result.anchor_mode as DbTxAnchorMode,
     status: result.status,
-    raw_result: bufferToHexPrefixString(result.raw_result),
+    raw_result: result.raw_result,
     canonical: result.canonical,
     microblock_canonical: result.microblock_canonical,
     microblock_sequence: result.microblock_sequence,
-    microblock_hash: bufferToHexPrefixString(result.microblock_hash),
+    microblock_hash: result.microblock_hash,
     post_conditions: result.post_conditions,
     fee_rate: BigInt(result.fee_rate),
     sponsored: result.sponsored,
@@ -310,17 +310,17 @@ export function parseMicroblockQueryResult(result: MicroblockQueryResult): DbMic
   const microblock: DbMicroblock = {
     canonical: result.canonical,
     microblock_canonical: result.microblock_canonical,
-    microblock_hash: bufferToHexPrefixString(result.microblock_hash),
+    microblock_hash: result.microblock_hash,
     microblock_sequence: result.microblock_sequence,
-    microblock_parent_hash: bufferToHexPrefixString(result.microblock_parent_hash),
-    parent_index_block_hash: bufferToHexPrefixString(result.parent_index_block_hash),
+    microblock_parent_hash: result.microblock_parent_hash,
+    parent_index_block_hash: result.parent_index_block_hash,
     block_height: result.block_height,
     parent_block_height: result.parent_block_height,
-    parent_block_hash: bufferToHexPrefixString(result.parent_block_hash),
-    index_block_hash: bufferToHexPrefixString(result.index_block_hash),
-    block_hash: bufferToHexPrefixString(result.block_hash),
+    parent_block_hash: result.parent_block_hash,
+    index_block_hash: result.index_block_hash,
+    block_hash: result.block_hash,
     parent_burn_block_height: result.parent_burn_block_height,
-    parent_burn_block_hash: bufferToHexPrefixString(result.parent_burn_block_hash),
+    parent_burn_block_hash: result.parent_burn_block_hash,
     parent_burn_block_time: result.parent_burn_block_time,
   };
   return microblock;
@@ -339,17 +339,17 @@ export function parseFaucetRequestQueryResult(result: FaucetRequestQueryResult):
 export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
   // TODO(mb): is the tx_index preserved between microblocks and committed anchor blocks?
   const block: DbBlock = {
-    block_hash: bufferToHexPrefixString(row.block_hash),
-    index_block_hash: bufferToHexPrefixString(row.index_block_hash),
-    parent_index_block_hash: bufferToHexPrefixString(row.parent_index_block_hash),
-    parent_block_hash: bufferToHexPrefixString(row.parent_block_hash),
-    parent_microblock_hash: bufferToHexPrefixString(row.parent_microblock_hash),
+    block_hash: row.block_hash,
+    index_block_hash: row.index_block_hash,
+    parent_index_block_hash: row.parent_index_block_hash,
+    parent_block_hash: row.parent_block_hash,
+    parent_microblock_hash: row.parent_microblock_hash,
     parent_microblock_sequence: row.parent_microblock_sequence,
     block_height: row.block_height,
     burn_block_time: row.burn_block_time,
-    burn_block_hash: bufferToHexPrefixString(row.burn_block_hash),
+    burn_block_hash: row.burn_block_hash,
     burn_block_height: row.burn_block_height,
-    miner_txid: bufferToHexPrefixString(row.miner_txid),
+    miner_txid: row.miner_txid,
     canonical: row.canonical,
     execution_cost_read_count: Number.parseInt(row.execution_cost_read_count),
     execution_cost_read_length: Number.parseInt(row.execution_cost_read_length),
@@ -363,7 +363,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
 export function parseDbEvents(
   stxLockResults: {
     event_index: number;
-    tx_id: Buffer;
+    tx_id: string;
     tx_index: number;
     block_height: number;
     canonical: boolean;
@@ -373,7 +373,7 @@ export function parseDbEvents(
   }[],
   stxResults: {
     event_index: number;
-    tx_id: Buffer;
+    tx_id: string;
     tx_index: number;
     block_height: number;
     canonical: boolean;
@@ -384,7 +384,7 @@ export function parseDbEvents(
   }[],
   ftResults: {
     event_index: number;
-    tx_id: Buffer;
+    tx_id: string;
     tx_index: number;
     block_height: number;
     canonical: boolean;
@@ -396,7 +396,7 @@ export function parseDbEvents(
   }[],
   nftResults: {
     event_index: number;
-    tx_id: Buffer;
+    tx_id: string;
     tx_index: number;
     block_height: number;
     canonical: boolean;
@@ -404,17 +404,17 @@ export function parseDbEvents(
     sender?: string | undefined;
     recipient?: string | undefined;
     asset_identifier: string;
-    value: Buffer;
+    value: string;
   }[],
   logResults: {
     event_index: number;
-    tx_id: Buffer;
+    tx_id: string;
     tx_index: number;
     block_height: number;
     canonical: boolean;
     contract_identifier: string;
     topic: string;
-    value: Buffer;
+    value: string;
   }[]
 ) {
   const events = new Array<DbEvent>(
@@ -429,7 +429,7 @@ export function parseDbEvents(
     const event: DbStxLockEvent = {
       event_type: DbEventTypeId.StxLock,
       event_index: result.event_index,
-      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_id: result.tx_id,
       tx_index: result.tx_index,
       block_height: result.block_height,
       canonical: result.canonical,
@@ -442,7 +442,7 @@ export function parseDbEvents(
   for (const result of stxResults) {
     const event: DbStxEvent = {
       event_index: result.event_index,
-      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_id: result.tx_id,
       tx_index: result.tx_index,
       block_height: result.block_height,
       canonical: result.canonical,
@@ -457,7 +457,7 @@ export function parseDbEvents(
   for (const result of ftResults) {
     const event: DbFtEvent = {
       event_index: result.event_index,
-      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_id: result.tx_id,
       tx_index: result.tx_index,
       block_height: result.block_height,
       canonical: result.canonical,
@@ -473,7 +473,7 @@ export function parseDbEvents(
   for (const result of nftResults) {
     const event: DbNftEvent = {
       event_index: result.event_index,
-      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_id: result.tx_id,
       tx_index: result.tx_index,
       block_height: result.block_height,
       canonical: result.canonical,
@@ -489,7 +489,7 @@ export function parseDbEvents(
   for (const result of logResults) {
     const event: DbSmartContractEvent = {
       event_index: result.event_index,
-      tx_id: bufferToHexPrefixString(result.tx_id),
+      tx_id: result.tx_id,
       tx_index: result.tx_index,
       block_height: result.block_height,
       canonical: result.canonical,
@@ -505,7 +505,7 @@ export function parseDbEvents(
 }
 
 export function parseQueryResultToSmartContract(row: {
-  tx_id: Buffer;
+  tx_id: string;
   canonical: boolean;
   contract_id: string;
   block_height: number;
@@ -513,7 +513,7 @@ export function parseQueryResultToSmartContract(row: {
   abi: unknown | null;
 }) {
   const smartContract: DbSmartContract = {
-    tx_id: bufferToHexPrefixString(row.tx_id),
+    tx_id: row.tx_id,
     canonical: row.canonical,
     contract_id: row.contract_id,
     block_height: row.block_height,
@@ -534,7 +534,7 @@ export function parseTxsWithAssetTransfers(
     event_sender?: string | undefined;
     event_recipient?: string | undefined;
     event_asset_identifier?: string | undefined;
-    event_value?: Buffer | undefined;
+    event_value?: string | undefined;
   })[],
   stxAddress: string
 ) {
@@ -557,15 +557,14 @@ export function parseTxsWithAssetTransfers(
       }[];
       nft_transfers: {
         asset_identifier: string;
-        value: Buffer;
+        value: string;
         sender?: string;
         recipient?: string;
       }[];
     }
   >();
   for (const r of resultQuery) {
-    const txId = bufferToHexPrefixString(r.tx_id);
-    let txResult = txs.get(txId);
+    let txResult = txs.get(r.tx_id);
     if (!txResult) {
       txResult = {
         tx: parseTxQueryResult(r),
@@ -578,7 +577,7 @@ export function parseTxsWithAssetTransfers(
       if (txResult.tx.sender_address === stxAddress) {
         txResult.stx_sent += txResult.tx.fee_rate;
       }
-      txs.set(txId, txResult);
+      txs.set(r.tx_id, txResult);
     }
     if (r.event_index !== undefined && r.event_index !== null) {
       const eventAmount = BigInt(r.event_amount as string);
@@ -609,7 +608,7 @@ export function parseTxsWithAssetTransfers(
         case DbEventTypeId.NonFungibleTokenAsset:
           txResult.nft_transfers.push({
             asset_identifier: r.event_asset_identifier as string,
-            value: r.event_value as Buffer,
+            value: r.event_value ?? '',
             sender: r.event_sender,
             recipient: r.event_recipient,
           });
@@ -668,7 +667,7 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       }
       dbTx.token_transfer_recipient_address = recipientPrincipal;
       dbTx.token_transfer_amount = BigInt(txData.payload.amount);
-      dbTx.token_transfer_memo = hexToBuffer(txData.payload.memo_hex);
+      dbTx.token_transfer_memo = txData.payload.memo_hex;
       break;
     }
     case TxPayloadTypeID.SmartContract: {
@@ -681,16 +680,16 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       const contractAddress = txData.payload.address;
       dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
       dbTx.contract_call_function_name = txData.payload.function_name;
-      dbTx.contract_call_function_args = hexToBuffer(txData.payload.function_args_buffer);
+      dbTx.contract_call_function_args = txData.payload.function_args_buffer;
       break;
     }
     case TxPayloadTypeID.PoisonMicroblock: {
-      dbTx.poison_microblock_header_1 = hexToBuffer(txData.payload.microblock_header_1.buffer);
-      dbTx.poison_microblock_header_2 = hexToBuffer(txData.payload.microblock_header_2.buffer);
+      dbTx.poison_microblock_header_1 = txData.payload.microblock_header_1.buffer;
+      dbTx.poison_microblock_header_2 = txData.payload.microblock_header_2.buffer;
       break;
     }
     case TxPayloadTypeID.Coinbase: {
-      dbTx.coinbase_payload = hexToBuffer(txData.payload.payload_buffer);
+      dbTx.coinbase_payload = txData.payload.payload_buffer;
       break;
     }
     default:
@@ -703,7 +702,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   txId: string;
   sender: string;
   sponsorAddress: string | undefined;
-  rawTx: Buffer;
+  rawTx: string;
   receiptDate: number;
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
@@ -727,7 +726,7 @@ export function createDbMempoolTxFromCoreMsg(msg: {
     origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
     sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
     sponsor_address: msg.sponsorAddress,
-    post_conditions: hexToBuffer(msg.txData.post_conditions_buffer),
+    post_conditions: msg.txData.post_conditions_buffer,
   };
   extractTransactionPayload(msg.txData, dbTx);
   return dbTx;
@@ -768,7 +767,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     microblock_canonical: true,
     microblock_sequence: msg.microblock_sequence,
     microblock_hash: msg.microblock_hash,
-    post_conditions: hexToBuffer(parsedTx.post_conditions_buffer),
+    post_conditions: parsedTx.post_conditions_buffer,
     event_count: 0,
     execution_cost_read_count: coreTx.execution_cost.read_count,
     execution_cost_read_length: coreTx.execution_cost.read_length,

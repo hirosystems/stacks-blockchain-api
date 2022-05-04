@@ -20,7 +20,7 @@ import {
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
 import { PgSqlClient } from '../datastore/connection';
-import { httpPostRequest, I32_MAX, logger } from '../helpers';
+import { bufferToHexPrefixString, httpPostRequest, I32_MAX, logger } from '../helpers';
 import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
@@ -291,7 +291,7 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '',
           index_block_hash: block1.index_block_hash,
           block_hash: block1.block_hash,
           block_height: block1.block_height,
@@ -301,13 +301,13 @@ describe('microblock tests', () => {
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '',
           fee_rate: 1234n,
           sponsored: false,
           sponsor_address: undefined,
           sender_address: addr1,
           origin_hash_mode: 1,
-          coinbase_payload: Buffer.from('hi'),
+          coinbase_payload: 'hi',
           event_count: 1,
           parent_index_block_hash: '',
           parent_block_hash: '',
@@ -353,7 +353,7 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: serializeCV(bufferCVFromString('some val')),
+          value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,
@@ -406,19 +406,19 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '',
           type_id: DbTxTypeId.TokenTransfer,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_memo: 'hi',
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -446,19 +446,19 @@ describe('microblock tests', () => {
           tx_index: 1,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '',
           type_id: DbTxTypeId.ContractCall,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_memo: 'hi',
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -474,9 +474,8 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
           contract_call_contract_id: contractAddr,
           contract_call_function_name: 'test-contract-fn',
-          contract_call_function_args: createClarityValueArray(
-            uintCV(123456),
-            stringAsciiCV('hello')
+          contract_call_function_args: bufferToHexPrefixString(
+            createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
           ),
           abi: JSON.stringify(contractJsonAbi),
 

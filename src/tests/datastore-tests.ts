@@ -240,18 +240,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -417,18 +417,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -577,18 +577,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -624,7 +624,7 @@ describe('postgres datastore', () => {
           tx_index: tx.tx_index,
           block_height: tx.block_height,
           asset_identifier: assetId,
-          value: Buffer.from([0]),
+          value: '',
           recipient,
           sender,
         };
@@ -657,7 +657,7 @@ describe('postgres datastore', () => {
       tx_index: tx.tx_index,
       block_height: tx.block_height,
       asset_identifier: 'cash',
-      value: Buffer.from([0]),
+      value: '',
       recipient: undefined,
       sender: 'addrA',
     };
@@ -748,18 +748,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -817,7 +817,7 @@ describe('postgres datastore', () => {
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: Buffer.alloc(0),
+        raw_tx: '',
         index_block_hash: dbBlock.index_block_hash,
         block_hash: dbBlock.block_hash,
         block_height: dbBlock.block_height,
@@ -825,12 +825,12 @@ describe('postgres datastore', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: Buffer.from('hi'),
+        token_transfer_memo: 'hi',
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
-        post_conditions: Buffer.from([0x01, 0xf5]),
+        post_conditions: '',
         fee_rate: 1234n,
         sponsored: false,
         sponsor_address: undefined,
@@ -1133,18 +1133,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -1196,18 +1196,18 @@ describe('postgres datastore', () => {
       tx_index: 3,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -1270,18 +1270,18 @@ describe('postgres datastore', () => {
       tx_index: 2,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -1317,7 +1317,7 @@ describe('postgres datastore', () => {
           tx_index: tx3.tx_index,
           block_height: tx3.block_height,
           asset_identifier: assetId,
-          value: serializeCV(intCV(0)),
+          value: '',
           recipient,
           sender,
         };
@@ -2089,18 +2089,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2166,7 +2166,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2176,7 +2176,7 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2198,7 +2198,7 @@ describe('postgres datastore', () => {
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
     );
     tx.token_transfer_amount = 34n;
-    tx.token_transfer_memo = Buffer.from('thx');
+    tx.token_transfer_memo = 'thx';
     tx.token_transfer_recipient_address = 'recipient-addr';
     await db.update({
       block: dbBlock,
@@ -2248,7 +2248,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2258,7 +2258,7 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2337,7 +2337,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2347,7 +2347,7 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2370,7 +2370,7 @@ describe('postgres datastore', () => {
     );
     tx.contract_call_contract_id = 'my-contract';
     tx.contract_call_function_name = 'my-fn';
-    tx.contract_call_function_args = Buffer.from('test');
+    tx.contract_call_function_args = 'test';
     await db.update({
       block: dbBlock,
       microblocks: [],
@@ -2419,7 +2419,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2429,7 +2429,7 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2450,8 +2450,8 @@ describe('postgres datastore', () => {
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
     );
-    tx.poison_microblock_header_1 = Buffer.from('poison A');
-    tx.poison_microblock_header_2 = Buffer.from('poison B');
+    tx.poison_microblock_header_1 = 'poison A';
+    tx.poison_microblock_header_2 = 'poison B';
     await db.update({
       block: dbBlock,
       microblocks: [],
@@ -2500,7 +2500,7 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2510,7 +2510,7 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2531,7 +2531,7 @@ describe('postgres datastore', () => {
     await expect(db.updateTx(client, tx)).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
     );
-    tx.coinbase_payload = Buffer.from('coinbase hi');
+    tx.coinbase_payload = 'coinbase hi';
     await db.update({
       block: dbBlock,
       microblocks: [],
@@ -2582,18 +2582,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -2649,7 +2649,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -2659,13 +2659,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 5,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -2719,7 +2719,7 @@ describe('postgres datastore', () => {
       sender: 'sender-addr',
       recipient: 'recipient-addr',
       event_type: DbEventTypeId.NonFungibleTokenAsset,
-      value: Buffer.from('some val'),
+      value: 'some val',
       asset_identifier: 'nft-asset-id',
     };
     const contractLogEvent1: DbSmartContractEvent = {
@@ -2731,7 +2731,7 @@ describe('postgres datastore', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: Buffer.from('some val'),
+      value: 'some val',
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
@@ -3131,14 +3131,14 @@ describe('postgres datastore', () => {
       tx_id: '0x01',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.from('test-raw-tx'),
+      raw_tx: 'test-raw-tx',
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
       token_transfer_amount: 1n,
-      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_memo: 'hi',
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -3148,7 +3148,7 @@ describe('postgres datastore', () => {
     const tx1: DbTx = {
       ...tx1Mempool,
       tx_index: 0,
-      raw_tx: Buffer.from('test-raw-tx'),
+      raw_tx: 'test-raw-tx',
       index_block_hash: block3B.index_block_hash,
       block_hash: block3B.block_hash,
       block_height: block3B.block_height,
@@ -3185,9 +3185,7 @@ describe('postgres datastore', () => {
     const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
-    expect(txQuery1?.result?.raw_tx.toString('hex')).toBe(
-      Buffer.from('test-raw-tx').toString('hex')
-    );
+    expect(txQuery1?.result?.raw_tx).toBe('test-raw-tx');
 
     for (const block of [block1, block2, block3]) {
       await db.update({
@@ -3235,9 +3233,7 @@ describe('postgres datastore', () => {
     expect(txQuery4.found).toBe(true);
     expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery4?.result?.canonical).toBe(true);
-    expect(txQuery4?.result?.raw_tx.toString('hex')).toBe(
-      Buffer.from('test-raw-tx').toString('hex')
-    );
+    expect(txQuery4?.result?.raw_tx).toBe('test-raw-tx');
 
     // reorg the chain to make the tx no longer canonical
     for (const block of [block4, block5]) {
@@ -3392,7 +3388,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
@@ -3402,13 +3398,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 1,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3427,7 +3423,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
@@ -3437,13 +3433,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: false,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 0,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3636,7 +3632,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
@@ -3646,13 +3642,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 1,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3671,7 +3667,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
@@ -3681,13 +3677,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
       sponsor_address: undefined,
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 1,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -3857,7 +3853,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block2b.index_block_hash,
       block_hash: block2b.block_hash,
       block_height: block2b.block_height,
@@ -3867,13 +3863,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 0,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -4134,7 +4130,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.from('abc'),
+      raw_tx: 'abc',
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4144,13 +4140,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 0,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -4185,7 +4181,7 @@ describe('postgres datastore', () => {
 
     const fetchTx1 = await db.getRawTx(tx1.tx_id);
     assert(fetchTx1.found);
-    expect(fetchTx1.result.raw_tx).toEqual(Buffer.from('abc'));
+    expect(fetchTx1.result.raw_tx).toEqual('abc');
   });
 
   test('pg get raw tx: tx not found', async () => {
@@ -4213,7 +4209,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.from('abc'),
+      raw_tx: 'abc',
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4223,13 +4219,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 0,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -4291,7 +4287,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4301,13 +4297,13 @@ describe('postgres datastore', () => {
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 4,
       parent_index_block_hash: '',
       parent_block_hash: '',
@@ -4361,7 +4357,7 @@ describe('postgres datastore', () => {
       sender: 'sender-addr',
       recipient: 'recipient-addr',
       event_type: DbEventTypeId.NonFungibleTokenAsset,
-      value: Buffer.from('some val'),
+      value: 'some val',
       asset_identifier: 'nft-asset-id',
     };
     const contractLogEvent1: DbSmartContractEvent = {
@@ -4373,7 +4369,7 @@ describe('postgres datastore', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: Buffer.from('some val'),
+      value: 'some val',
     };
 
     await db.update({
@@ -4621,18 +4617,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -4657,18 +4653,18 @@ describe('postgres datastore', () => {
       tx_index: 5,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sender_address: 'sender-addr',
@@ -4723,18 +4719,18 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: 'coinbase hi',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,

@@ -130,9 +130,8 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
-  const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
-  const decodedTxs = rawTxBuffers.map(buffer => {
-    const parsedTx = decodeTransaction(buffer);
+  const decodedTxs = rawTxs.map(str => {
+    const parsedTx = decodeTransaction(str);
     const txSender = getTxSenderAddress(parsedTx);
     const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
@@ -140,7 +139,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
       sender: txSender,
       sponsorAddress,
       txData: parsedTx,
-      rawTx: buffer,
+      rawTx: str,
     };
   });
   const dbMempoolTxs = decodedTxs.map(tx => {
@@ -376,7 +375,7 @@ function parseDataStoreTxEventData(
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: event.contract_event.contract_identifier,
           topic: event.contract_event.topic,
-          value: hexToBuffer(event.contract_event.raw_value),
+          value: event.contract_event.raw_value,
         };
         dbTx.contractLogEvents.push(entry);
         if (
@@ -517,7 +516,7 @@ function parseDataStoreTxEventData(
           recipient: event.nft_transfer_event.recipient,
           sender: event.nft_transfer_event.sender,
           asset_identifier: event.nft_transfer_event.asset_identifier,
-          value: hexToBuffer(event.nft_transfer_event.raw_value),
+          value: event.nft_transfer_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;
@@ -529,7 +528,7 @@ function parseDataStoreTxEventData(
           asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.nft_mint_event.recipient,
           asset_identifier: event.nft_mint_event.asset_identifier,
-          value: hexToBuffer(event.nft_mint_event.raw_value),
+          value: event.nft_mint_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;
@@ -541,7 +540,7 @@ function parseDataStoreTxEventData(
           asset_event_type_id: DbAssetEventTypeId.Burn,
           sender: event.nft_burn_event.sender,
           asset_identifier: event.nft_burn_event.asset_identifier,
-          value: hexToBuffer(event.nft_burn_event.raw_value),
+          value: event.nft_burn_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;

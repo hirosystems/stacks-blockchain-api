@@ -358,7 +358,6 @@ describe('/extended/v1/tokens tests', () => {
     const marketplace = 'SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v4';
     const contractAddr1 = 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173';
     const valueHex = '0x01000000000000000000000000000009c5';
-    const value = hexToBuffer(valueHex);
     const assetId = `${contractAddr1}.the-explorer-guild::The-Explorer-Guild`;
 
     // Mint NFT
@@ -369,7 +368,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: value,
+        value: valueHex,
       })
       .build();
     await db.update(block1);
@@ -410,7 +409,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr1,
         recipient: addr2,
-        value: value,
+        value: valueHex,
       })
       .build();
     await db.update(block2);
@@ -437,7 +436,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr2,
         recipient: addr3,
-        value: value,
+        value: valueHex,
       })
       .build();
     await db.updateMicroblocks(microblock1);
@@ -500,7 +499,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr3,
         recipient: addr2,
-        value: value,
+        value: valueHex,
       })
       .build();
     await db.update(block4);
@@ -526,7 +525,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr3,
         recipient: addr2,
-        value: value,
+        value: valueHex,
       })
       .build();
     await db.updateMicroblocks(microblock2);
@@ -565,7 +564,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr3,
         recipient: addr2,
-        value: value,
+        value: valueHex,
         canonical: false,
       })
       .build();
@@ -598,7 +597,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr3,
         recipient: marketplace,
-        value: value,
+        value: valueHex,
         event_index: 1, // Higher event index
       })
       .addMicroblock({
@@ -613,7 +612,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: marketplace,
         recipient: addr2,
-        value: value,
+        value: valueHex,
         event_index: 0, // Lower event index but higher microblock index
       })
       .build();
@@ -645,7 +644,6 @@ describe('/extended/v1/tokens tests', () => {
 
     // Mint and transfer NFT in the same tx
     const newValueHex = '0x01000000000000000000000000000009c6';
-    const newValue = hexToBuffer(newValueHex);
     const block8 = new TestBlockBuilder({
       block_height: 8,
       index_block_hash: '0x08',
@@ -656,7 +654,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: newValue,
+        value: newValueHex,
         event_index: 1,
       })
       .addTxNftEvent({
@@ -664,7 +662,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_event_type_id: DbAssetEventTypeId.Transfer,
         sender: addr1,
         recipient: marketplace,
-        value: newValue,
+        value: newValueHex,
         event_index: 2,
       })
       .build();
@@ -697,7 +695,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c5'),
+        value: '0x01000000000000000000000000000009c5',
       })
       .build();
     await db.update(block1);
@@ -738,7 +736,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr2,
-        value: hexToBuffer('0x01000000000000000000000000000009c6'),
+        value: '0x01000000000000000000000000000009c6',
       })
       .build();
     await db.update(block2);
@@ -763,7 +761,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr3,
-        value: hexToBuffer('0x01000000000000000000000000000009c7'),
+        value: '0x01000000000000000000000000000009c7',
       })
       .build();
     await db.updateMicroblocks(microblock1);
@@ -825,7 +823,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c8'),
+        value: '0x01000000000000000000000000000009c8',
       })
       .build();
     await db.update(block4);
@@ -850,7 +848,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c8'),
+        value: '0x01000000000000000000000000000009c8',
       })
       .build();
     await db.updateMicroblocks(microblock2);
@@ -888,7 +886,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c8'),
+        value: '0x01000000000000000000000000000009c8',
         canonical: false,
       })
       .build();
@@ -920,7 +918,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c8'),
+        value: '0x01000000000000000000000000000009c8',
         event_index: 1, // Higher event index
       })
       .addMicroblock({
@@ -934,7 +932,7 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009c9'),
+        value: '0x01000000000000000000000000000009c9',
         event_index: 0, // Lower event index but higher microblock index
       })
       .build();
@@ -974,14 +972,14 @@ describe('/extended/v1/tokens tests', () => {
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009cb'),
+        value: '0x01000000000000000000000000000009cb',
         event_index: 2,
       })
       .addTxNftEvent({
         asset_identifier: assetId,
         asset_event_type_id: DbAssetEventTypeId.Mint,
         recipient: addr1,
-        value: hexToBuffer('0x01000000000000000000000000000009ca'),
+        value: '0x01000000000000000000000000000009ca',
         event_index: 1,
       })
       .build();

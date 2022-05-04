@@ -1804,7 +1804,7 @@ export class PgWriteStore extends PgStore {
 
   async markEntitiesCanonical(
     sql: PgSqlClient,
-    indexBlockHash: Buffer,
+    indexBlockHash: string,
     canonical: boolean,
     updatedEntities: UpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
@@ -1960,7 +1960,7 @@ export class PgWriteStore extends PgStore {
 
   async restoreOrphanedChain(
     sql: PgSqlClient,
-    indexBlockHash: Buffer,
+    indexBlockHash: string,
     updatedEntities: UpdatedEntities
   ): Promise<UpdatedEntities> {
     // Restore the previously orphaned block to canonical
@@ -2067,7 +2067,7 @@ export class PgWriteStore extends PgStore {
         `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during reorg handling`
       );
     }
-    const parentResult = await sql<{ index_block_hash: Buffer }[]>`
+    const parentResult = await sql<{ index_block_hash: string }[]>`
       SELECT index_block_hash
       FROM blocks
       WHERE
@@ -2127,8 +2127,8 @@ export class PgWriteStore extends PgStore {
       const parentResult = await sql<
         {
           canonical: boolean;
-          index_block_hash: Buffer;
-          parent_index_block_hash: Buffer;
+          index_block_hash: string;
+          parent_index_block_hash: string;
         }[]
       >`
         SELECT canonical, index_block_hash, parent_index_block_hash
