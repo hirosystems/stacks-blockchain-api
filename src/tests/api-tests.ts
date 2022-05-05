@@ -7447,7 +7447,12 @@ describe('api tests', () => {
       execution_cost_write_length: 0,
       hash: '0x0002',
       height: 2,
-      microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
+      microblocks_accepted: [
+        {
+          microblock_hash: microblock1.microblocks[0].microblock_hash,
+          transaction_count: microblock1.txs.length,
+        },
+      ],
       microblocks_streamed: [],
       miner_txid: '0x4321',
       parent_block_hash: '0x0001',

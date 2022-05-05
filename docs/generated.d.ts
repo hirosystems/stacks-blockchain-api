@@ -1263,7 +1263,16 @@ export interface Block {
   /**
    * List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.
    */
-  microblocks_accepted: string[];
+  microblocks_accepted: {
+    /**
+     * Microblock hash
+     */
+    microblock_hash: string;
+    /**
+     * Total number of transactions in the microblock
+     */
+    transaction_count: number;
+  }[];
   /**
    * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
    */

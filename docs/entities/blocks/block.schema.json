@@ -81,8 +81,18 @@
       "type": "array",
       "description": "List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.",
       "items": {
-        "type": "string",
-        "description": "Microblock hash"
+        "required": ["microblock_hash", "transaction_count"],
+        "additionalProperties": false,
+        "properties": {
+          "microblock_hash": {
+            "type": "string",
+            "description": "Microblock hash"
+          },
+          "transaction_count": {
+            "type": "integer",
+            "description": "Total number of transactions in the microblock"
+          }
+        }
       }
     },
     "microblocks_streamed": {

@@ -16,9 +16,18 @@
     "0xc99fe597e44b8bd15a50eec660c6e679a7144a5a8553d214b9d5f1406d278c22"
   ],
   "microblocks_accepted": [
-    "0xce0b1a4099d3fc7d5885cc7a3baa952b6d999f9709d0683b98b843597208231c",
-    "0x4c0529b6448a5885991c5021bd869cc97f1692c128a98b382729dc962203c326",
-    "0x64968846291dfea1015228a9d4bbd60aac81378cd6774b810b08e59e6b0e7494"
+    {
+      "microblock_hash": "0xce0b1a4099d3fc7d5885cc7a3baa952b6d999f9709d0683b98b843597208231c",
+      "transaction_count": 5
+    },
+    {
+      "microblock_hash": "0x4c0529b6448a5885991c5021bd869cc97f1692c128a98b382729dc962203c326",
+      "transaction_count": 6
+    },
+    {
+      "microblock_hash": "0x64968846291dfea1015228a9d4bbd60aac81378cd6774b810b08e59e6b0e7494",
+      "transaction_count": 9
+    }
   ],
   "microblocks_streamed": [
     "0xb5650ef855f7d90fc146942e85cf9fac3a8c47ec408aca02f3cf9ed7c82f6cc6",
