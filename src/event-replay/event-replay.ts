@@ -12,7 +12,7 @@ import {
 } from '../datastore/event-requests';
 import { readLines } from 'reverse-line-reader';
 import { createTsvReorgStream, getCanonicalEntityList } from './tsv-pre-org';
-import { Readable, Transform } from 'stream';
+import { Readable, Transform, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
 
 enum EventImportMode {
@@ -184,6 +184,8 @@ export async function importEventsFromTsv(
   await db.close();
 }
 
+const insertMode: 'single' | 'single2' | 'single3' | 'batch' | 'batch2' | 'stream' = 'batch2';
+
 async function preOrgTsvInsert(filePath: string): Promise<void> {
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
@@ -211,27 +213,155 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   console.log('Writing event data to db...');
   let lastStatusUpdatePercent = 0;
 
-  const insertTransformStream = new Transform({
-    objectMode: true,
-    autoDestroy: true,
-    transform: (
-      event: { path: string; payload: string; readLineCount: number },
-      _encoding,
-      callback
-    ) => {
-      if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
-        lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+  if (insertMode === 'single') {
+    const insertTransformStream = new Transform({
+      objectMode: true,
+      autoDestroy: true,
+      transform: (
+        event: { path: string; payload: string; readLineCount: number },
+        _encoding,
+        callback
+      ) => {
+        if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+          lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+          console.log(
+            `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+          );
+        }
+        db.storeRawEventRequest1(event.path, event.payload).then(
+          () => callback(),
+          (error: Error) => callback(error)
+        );
+      },
+    });
+    await pipeline(inputLineReader, transformStream, insertTransformStream);
+  } else if (insertMode === 'single2') {
+    const preOrgStream = inputLineReader.pipe(transformStream);
+    for await (const event of preOrgStream) {
+      await db.storeRawEventRequest1(event.path, event.payload);
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / result.tsvLineCount) * 100);
         console.log(
-          `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+          `Raw event requests processed: ${lastStatusUpdatePercent}% (${readLineCount} / ${result.tsvLineCount})`
         );
       }
-      insertTransformStream.push(`${event.path}\t${event.payload}\n`);
-      callback();
-    },
-  });
+    }
+  } else if (insertMode === 'single3') {
+    const insertPgStream = new Writable({
+      objectMode: true,
+      autoDestroy: true,
+      write: (
+        event: { path: string; payload: string; readLineCount: number },
+        _encoding,
+        callback
+      ) => {
+        if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+          lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+          console.log(
+            `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+          );
+        }
+        db.storeRawEventRequest1(event.path, event.payload).then(
+          () => callback(),
+          (error: Error) => callback(error)
+        );
+      },
+    });
+    await pipeline(inputLineReader, transformStream, insertPgStream);
+  } else if (insertMode === 'stream') {
+    const insertTransformStream = new Transform({
+      objectMode: true,
+      autoDestroy: true,
+      transform: (
+        event: { path: string; payload: string; readLineCount: number },
+        _encoding,
+        callback
+      ) => {
+        if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+          lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+          console.log(
+            `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+          );
+        }
+        insertTransformStream.push(`${event.path}\t${event.payload}\n`);
+        callback();
+      },
+    });
+    const insertStream3 = await db.storeRawEventRequest3();
+    await pipeline(inputLineReader, transformStream, insertTransformStream, insertStream3);
+  } else if (insertMode === 'batch') {
+    const preOrgStream = inputLineReader.pipe(transformStream);
+    const batchSize = 5;
+    let nextInserts: { event_path: string; payload: string }[] = [];
+    for await (const event of preOrgStream) {
+      nextInserts.push({
+        event_path: event.path,
+        payload: event.payload,
+      });
 
-  const insertStream3 = await db.storeRawEventRequest3();
-  await pipeline(inputLineReader, transformStream, insertTransformStream, insertStream3);
+      if (nextInserts.length === batchSize) {
+        await db.storeRawEventRequest2(nextInserts);
+        nextInserts = [];
+      }
+
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / result.tsvLineCount) * 100);
+        console.log(
+          `Raw event requests processed: ${lastStatusUpdatePercent}% (${readLineCount} / ${result.tsvLineCount})`
+        );
+      }
+    }
+    if (nextInserts.length > 0) {
+      await db.storeRawEventRequest2(nextInserts);
+    }
+  } else if (insertMode === 'batch2') {
+    const batchSize = 5;
+    let nextInserts: { event_path: string; payload: string }[] = [];
+    const insertPgStream = new Writable({
+      objectMode: true,
+      autoDestroy: true,
+      write: (
+        event: { path: string; payload: string; readLineCount: number },
+        _encoding,
+        callback
+      ) => {
+        if ((event.readLineCount / result.tsvLineCount) * 100 > lastStatusUpdatePercent + 1) {
+          lastStatusUpdatePercent = Math.floor((event.readLineCount / result.tsvLineCount) * 100);
+          console.log(
+            `Raw event requests processed: ${lastStatusUpdatePercent}% (${event.readLineCount} / ${result.tsvLineCount})`
+          );
+        }
+        nextInserts.push({
+          event_path: event.path,
+          payload: event.payload,
+        });
+        if (nextInserts.length === batchSize) {
+          db.storeRawEventRequest2(nextInserts).then(
+            () => {
+              nextInserts = [];
+              callback();
+            },
+            (error: Error) => callback(error)
+          );
+        } else {
+          callback();
+        }
+      },
+      final: callback => {
+        if (nextInserts.length > 0) {
+          db.storeRawEventRequest2(nextInserts).then(
+            () => callback(),
+            (error: Error) => callback(error)
+          );
+        } else {
+          callback();
+        }
+      },
+    });
+    await pipeline(inputLineReader, transformStream, insertPgStream);
+  }
 
   await db.close();
   const endTime = Date.now();

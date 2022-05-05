@@ -19,3 +19,8 @@ It also checks for non-200 responses and will exit with an error if found. This 
 
 Once all requests have been issued, a "stop CPU profiling" request is sent. The profile result is saved to disk in this directory as a `*.cpuprofile` file. This can be opened in vscode to analyze.
 
+### Event Replay testing
+
+* Test with regular prune mode:
+  * Start: 2022-05-03T10:07:57.296Z
+  * End:   2022-05-03T11:02:30.444Z
