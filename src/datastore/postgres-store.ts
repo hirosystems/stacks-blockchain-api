@@ -103,7 +103,7 @@ import {
   Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
+import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
 import {
   PgAddressNotificationPayload,

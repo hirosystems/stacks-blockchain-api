@@ -3,14 +3,11 @@ import {
   DataStore,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
-  DbTokenMetadataQueueEntry,
-  TokenMetadataUpdateInfo,
 } from '../datastore/common';
 import {
   callReadOnlyFunction,
   ChainID,
   ClarityAbi,
-  ClarityAbiFunction,
   ClarityType,
   ClarityValue,
   getAddressFromPrivateKey,
@@ -23,28 +20,20 @@ import {
 import { GetStacksNetwork } from '../bns-helpers';
 import { logError, logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import { StacksNetwork } from '@stacks/network';
-import PQueue from 'p-queue';
 import * as querystring from 'querystring';
-import fetch from 'node-fetch';
-import { Evt } from 'evt';
-
-/**
- * The maximum number of token metadata parsing operations that can be ran concurrently before
- * being added to a FIFO queue.
- */
-const TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT = 5;
+import { isCompliantFt, isCompliantNft, performFetch } from './helpers';
 
 /**
  * Amount of milliseconds to wait when fetching token metadata.
  * If the fetch takes longer then it throws and the metadata is not processed.
  */
-const METADATA_FETCH_TIMEOUT_MS: number = 10_000; // 10 seconds
+export const METADATA_FETCH_TIMEOUT_MS: number = 10_000; // 10 seconds
 
 /**
  * The maximum number of bytes of metadata to fetch.
  * If the fetch encounters more bytes than this limit it throws and the metadata is not processed.
  */
-const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
+export const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
@@ -59,16 +48,6 @@ export enum TokenMetadataErrorMode {
   error,
 }
 
-export function isFtMetadataEnabled() {
-  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
-  return opt === '1' || opt === 'true';
-}
-
-export function isNftMetadataEnabled() {
-  const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
-  return opt === '1' || opt === 'true';
-}
-
 /**
  * Determines the token metadata error handling mode based on .env values.
  * @returns TokenMetadataMode
@@ -81,133 +60,6 @@ export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
       return TokenMetadataErrorMode.warning;
   }
 }
-
-const FT_FUNCTIONS: ClarityAbiFunction[] = [
-  {
-    access: 'public',
-    args: [
-      { type: 'uint128', name: 'amount' },
-      { type: 'principal', name: 'sender' },
-      { type: 'principal', name: 'recipient' },
-      { type: { optional: { buffer: { length: 34 } } }, name: 'memo' },
-    ],
-    name: 'transfer',
-    outputs: { type: { response: { ok: 'bool', error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-name',
-    outputs: { type: { response: { ok: { 'string-ascii': { length: 32 } }, error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-symbol',
-    outputs: { type: { response: { ok: { 'string-ascii': { length: 32 } }, error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-decimals',
-    outputs: { type: { response: { ok: 'uint128', error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [{ type: 'principal', name: 'address' }],
-    name: 'get-balance',
-    outputs: { type: { response: { ok: 'uint128', error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-total-supply',
-    outputs: { type: { response: { ok: 'uint128', error: 'uint128' } } },
-  },
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-token-uri',
-    outputs: {
-      type: {
-        response: {
-          ok: {
-            optional: { 'string-ascii': { length: 256 } },
-          },
-          error: 'uint128',
-        },
-      },
-    },
-  },
-];
-
-const NFT_FUNCTIONS: ClarityAbiFunction[] = [
-  {
-    access: 'read_only',
-    args: [],
-    name: 'get-last-token-id',
-    outputs: {
-      type: {
-        response: {
-          ok: 'uint128',
-          error: 'uint128',
-        },
-      },
-    },
-  },
-  {
-    access: 'read_only',
-    args: [{ name: 'any', type: 'uint128' }],
-    name: 'get-token-uri',
-    outputs: {
-      type: {
-        response: {
-          ok: {
-            optional: { 'string-ascii': { length: 256 } },
-          },
-          error: 'uint128',
-        },
-      },
-    },
-  },
-  {
-    access: 'read_only',
-    args: [{ type: 'uint128', name: 'any' }],
-    name: 'get-owner',
-    outputs: {
-      type: {
-        response: {
-          ok: {
-            optional: 'principal',
-          },
-          error: 'uint128',
-        },
-      },
-    },
-  },
-  {
-    access: 'public',
-    args: [
-      { type: 'uint128', name: 'id' },
-      { type: 'principal', name: 'sender' },
-      { type: 'principal', name: 'recipient' },
-    ],
-    name: 'transfer',
-    outputs: {
-      type: {
-        response: {
-          ok: 'bool',
-          error: {
-            tuple: [
-              { type: { 'string-ascii': { length: 32 } }, name: 'kind' },
-              { type: 'uint128', name: 'code' },
-            ],
-          },
-        },
-      },
-    },
-  },
-];
 
 interface NftTokenMetadata {
   name: string;
@@ -230,63 +82,7 @@ interface TokenHandlerArgs {
   dbQueueId: number;
 }
 
-/**
- * Checks if the given ABI contains functions from FT or NFT metadata standards (e.g. sip-09, sip-10) which can be resolved.
- * The function also checks if the server has FT and/or NFT metadata processing enabled.
- */
-export function isProcessableTokenMetadata(abi: ClarityAbi): boolean {
-  return (
-    (isFtMetadataEnabled() && isCompliantFt(abi)) || (isNftMetadataEnabled() && isCompliantNft(abi))
-  );
-}
-
-function isCompliantNft(abi: ClarityAbi): boolean {
-  if (abi.non_fungible_tokens.length > 0) {
-    if (abiContains(abi, NFT_FUNCTIONS)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isCompliantFt(abi: ClarityAbi): boolean {
-  if (abi.fungible_tokens.length > 0) {
-    if (abiContains(abi, FT_FUNCTIONS)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * This method check if the contract is compliance with sip-09 and sip-10
- * Ref: https://github.com/stacksgov/sips/tree/main/sips
- */
-function abiContains(abi: ClarityAbi, standardFunction: ClarityAbiFunction[]): boolean {
-  return standardFunction.every(abiFun => findFunction(abiFun, abi.functions));
-}
-
-/**
- * check if the fun  exist in the function list
- * @param fun - function to be found
- * @param functionList - list of functions
- * @returns - true if function is in the list false otherwise
- */
-function findFunction(fun: ClarityAbiFunction, functionList: ClarityAbiFunction[]): boolean {
-  const found = functionList.find(standardFunction => {
-    if (standardFunction.name !== fun.name || standardFunction.args.length !== fun.args.length)
-      return false;
-    for (let i = 0; i < fun.args.length; i++) {
-      if (standardFunction.args[i].type.toString() !== fun.args[i].type.toString()) {
-        return false;
-      }
-    }
-    return true;
-  });
-  return found !== undefined;
-}
-
-class TokensContractHandler {
+export class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;
   readonly contractId: string;
@@ -319,6 +115,7 @@ class TokensContractHandler {
     } else if (isCompliantNft(args.smartContractAbi)) {
       this.tokenKind = 'nft';
     } else {
+      // FIXME: error
       throw new Error(
         `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
       );
@@ -338,6 +135,7 @@ class TokensContractHandler {
       } else if (this.tokenKind === 'nft') {
         await this.handleNftContract();
       } else {
+        // FIXME: Error
         throw new Error(`Unexpected token kind '${this.tokenKind}'`);
       }
     } finally {
@@ -650,6 +448,7 @@ class TokensContractHandler {
       const stringVal = this.checkAndParseString(clarityValue);
       return stringVal;
     } catch (error) {
+      // FIXME: error
       logger.warn(
         `[token-metadata] error extracting string with contract function call '${functionName}' while processing ${this.contractId}`,
         error
@@ -727,167 +526,5 @@ class TokensContractHandler {
     throw new Error(
       `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
     );
-  }
-}
-
-export class TokensProcessorQueue {
-  readonly queue: PQueue;
-  readonly db: DataStore;
-  readonly chainId: ChainID;
-
-  readonly processStartedEvent: Evt<{
-    contractId: string;
-    txId: string;
-  }> = new Evt();
-
-  readonly processEndEvent: Evt<{
-    contractId: string;
-    txId: string;
-  }> = new Evt();
-
-  /** The entries currently queued for processing in memory, keyed by the queue entry db id. */
-  readonly queuedEntries: Map<number, TokenMetadataUpdateInfo> = new Map();
-
-  readonly onTokenMetadataUpdateQueued: (queueId: number) => void;
-
-  constructor(db: DataStore, chainId: ChainID) {
-    this.db = db;
-    this.chainId = chainId;
-    this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
-    this.onTokenMetadataUpdateQueued = entry => this.queueNotificationHandler(entry);
-    this.db.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
-  }
-
-  close() {
-    this.db.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
-    this.queue.pause();
-    this.queue.clear();
-  }
-
-  async drainDbQueue(): Promise<void> {
-    let entries: DbTokenMetadataQueueEntry[] = [];
-    do {
-      if (this.queue.isPaused) {
-        return;
-      }
-      const queuedEntries = [...this.queuedEntries.keys()];
-      entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
-      for (const entry of entries) {
-        await this.queueHandler(entry);
-      }
-      await this.queue.onEmpty();
-      // await this.queue.onIdle();
-    } while (entries.length > 0 || this.queuedEntries.size > 0);
-  }
-
-  async checkDbQueue(): Promise<void> {
-    if (this.queue.isPaused) {
-      return;
-    }
-    const queuedEntries = [...this.queuedEntries.keys()];
-    const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
-    if (limit > 0) {
-      const entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
-      for (const entry of entries) {
-        await this.queueHandler(entry);
-      }
-    }
-  }
-
-  async queueNotificationHandler(queueId: number) {
-    const queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
-    if (queueEntry.found) {
-      await this.queueHandler(queueEntry.result);
-    }
-  }
-
-  async queueHandler(queueEntry: TokenMetadataUpdateInfo) {
-    if (
-      this.queuedEntries.has(queueEntry.queueId) ||
-      this.queuedEntries.size >= this.queue.concurrency
-    ) {
-      return;
-    }
-    const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
-    if (!contractQuery.found || !contractQuery.result.abi) {
-      return;
-    }
-    logger.info(
-      `[token-metadata] queueing token contract for processing: ${queueEntry.contractId} from tx ${queueEntry.txId}`
-    );
-    this.queuedEntries.set(queueEntry.queueId, queueEntry);
-
-    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
-
-    const tokenContractHandler = new TokensContractHandler({
-      contractId: queueEntry.contractId,
-      smartContractAbi: contractAbi,
-      datastore: this.db,
-      chainId: this.chainId,
-      txId: queueEntry.txId,
-      dbQueueId: queueEntry.queueId,
-    });
-
-    void this.queue
-      .add(async () => {
-        this.processStartedEvent.post({
-          contractId: queueEntry.contractId,
-          txId: queueEntry.txId,
-        });
-        await tokenContractHandler.start();
-      })
-      .catch(error => {
-        logError(
-          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
-          error
-        );
-      })
-      .finally(() => {
-        this.queuedEntries.delete(queueEntry.queueId);
-        this.processEndEvent.post({
-          contractId: queueEntry.contractId,
-          txId: queueEntry.txId,
-        });
-        logger.info(
-          `[token-metadata] finished token contract processing for: ${queueEntry.contractId} from tx ${queueEntry.txId}`
-        );
-        if (this.queuedEntries.size < this.queue.concurrency) {
-          void this.checkDbQueue();
-        }
-      });
-  }
-}
-
-export async function performFetch<Type>(
-  url: string,
-  opts?: {
-    timeoutMs?: number;
-    maxResponseBytes?: number;
-  }
-): Promise<Type> {
-  const result = await fetch(url, {
-    size: opts?.maxResponseBytes ?? METADATA_MAX_PAYLOAD_BYTE_SIZE,
-    timeout: opts?.timeoutMs ?? METADATA_FETCH_TIMEOUT_MS,
-  });
-  if (!result.ok) {
-    let msg = '';
-    try {
-      msg = await result.text();
-    } catch (error) {
-      // ignore errors from fetching error text
-    }
-    throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
-  }
-  const resultString = await result.text();
-  try {
-    return JSON.parse(resultString) as Type;
-  } catch (error) {
-    throw new Error(`Error parsing response from ${url} as JSON: ${error}`);
   }
 }

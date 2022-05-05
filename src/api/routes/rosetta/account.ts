@@ -16,7 +16,7 @@ import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../roset
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 import { getValidatedFtMetadata } from '../../../rosetta-helpers';
-import { isFtMetadataEnabled } from '../../../event-stream/tokens-contract-handler';
+import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
 
 export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();

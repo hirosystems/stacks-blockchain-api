@@ -22,7 +22,8 @@ import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger, timeout } from '../helpers';
 import * as nock from 'nock';
-import { performFetch, TokensProcessorQueue } from './../event-stream/tokens-contract-handler';
+import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
+import { performFetch } from '../token-metadata/helpers';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
