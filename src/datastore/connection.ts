@@ -57,7 +57,7 @@ export async function connectPostgres({
   let lastElapsedLog = 0;
   do {
     const testSql = getPostgres({
-      usageName: `${usageName};init-connection-poll`,
+      usageName: `${usageName};conn-poll`,
       pgServer: pgServer,
     });
     try {
