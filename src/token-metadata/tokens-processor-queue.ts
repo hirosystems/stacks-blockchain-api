@@ -3,7 +3,7 @@ import { Evt } from 'evt';
 import PQueue from 'p-queue';
 import { DataStore, DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
-import { TokensContractHandler } from './tokens-contract-handler';
+import { RetryableTokenMetadataError, TokensContractHandler } from './tokens-contract-handler';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -124,6 +124,9 @@ export class TokensProcessorQueue {
         await tokenContractHandler.start();
       })
       .catch(error => {
+        if (error instanceof RetryableTokenMetadataError) {
+          //
+        }
         logError(
           `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
           error

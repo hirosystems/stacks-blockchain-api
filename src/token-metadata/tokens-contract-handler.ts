@@ -5,14 +5,13 @@ import {
   DbNonFungibleTokenMetadata,
 } from '../datastore/common';
 import {
-  callReadOnlyFunction,
   ChainID,
   ClarityAbi,
   ClarityType,
   ClarityValue,
   getAddressFromPrivateKey,
+  hexToCV,
   makeRandomPrivKey,
-  ReadOnlyFunctionOptions,
   TransactionVersion,
   uintCV,
   UIntCV,
@@ -22,6 +21,7 @@ import { logError, logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers'
 import { StacksNetwork } from '@stacks/network';
 import * as querystring from 'querystring';
 import { isCompliantFt, isCompliantNft, performFetch } from './helpers';
+import { StacksCoreRpcClient } from 'src/core-rpc/client';
 
 /**
  * Amount of milliseconds to wait when fetching token metadata.
@@ -61,6 +61,17 @@ export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
   }
 }
 
+/**
+ * A token metadata fetch/process error caused by something we can try again later.
+ */
+export class RetryableTokenMetadataError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.message = message;
+    this.name = this.constructor.name;
+  }
+}
+
 interface NftTokenMetadata {
   name: string;
   imageUri: string;
@@ -88,22 +99,22 @@ export class TokensContractHandler {
   readonly contractId: string;
   readonly txId: string;
   readonly dbQueueId: number;
-  private readonly contractAbi: ClarityAbi;
   private readonly db: DataStore;
   private readonly randomPrivKey = makeRandomPrivKey();
   private readonly chainId: ChainID;
   private readonly stacksNetwork: StacksNetwork;
   private readonly address: string;
   private readonly tokenKind: 'ft' | 'nft';
+  private readonly nodeRpcClient: StacksCoreRpcClient;
 
   constructor(args: TokenHandlerArgs) {
     [this.contractAddress, this.contractName] = args.contractId.split('.');
     this.contractId = args.contractId;
-    this.contractAbi = args.smartContractAbi;
     this.db = args.datastore;
     this.chainId = args.chainId;
     this.txId = args.txId;
     this.dbQueueId = args.dbQueueId;
+    this.nodeRpcClient = new StacksCoreRpcClient();
 
     this.stacksNetwork = GetStacksNetwork(this.chainId);
     this.address = getAddressFromPrivateKey(
@@ -115,7 +126,6 @@ export class TokensContractHandler {
     } else if (isCompliantNft(args.smartContractAbi)) {
       this.tokenKind = 'nft';
     } else {
-      // FIXME: error
       throw new Error(
         `TokenContractHandler passed an ABI that isn't compliant to FT or NFT standards`
       );
@@ -135,7 +145,6 @@ export class TokensContractHandler {
       } else if (this.tokenKind === 'nft') {
         await this.handleNftContract();
       } else {
-        // FIXME: Error
         throw new Error(`Unexpected token kind '${this.tokenKind}'`);
       }
     } finally {
@@ -421,76 +430,69 @@ export class TokensContractHandler {
     });
   }
 
-  /**
-   * Make readonly contract call
-   */
   private async makeReadOnlyContractCall(
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
-    const txOptions: ReadOnlyFunctionOptions = {
-      senderAddress: this.address,
-      contractAddress: this.contractAddress,
-      contractName: this.contractName,
-      functionName: functionName,
-      functionArgs: functionArgs,
-      network: this.stacksNetwork,
-    };
-    return await callReadOnlyFunction(txOptions);
+    const result = await this.nodeRpcClient.sendReadOnlyContractCall(
+      this.contractAddress,
+      this.contractName,
+      functionName,
+      this.address,
+      functionArgs
+    );
+    if (!result.okay) {
+      // Only runtime errors are retryable during a contract call.
+      if (result.cause.startsWith('Runtime')) {
+        throw new RetryableTokenMetadataError(
+          `[token-metadata] runtime error while calling read-only function ${functionName} on ${this.contractName}`
+        );
+      }
+      throw new Error(
+        `[token-metadata] error calling read-only function ${functionName} on ${this.contractName}`
+      );
+    }
+    return hexToCV(result.result);
   }
 
   private async readStringFromContract(
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<string | undefined> {
-    try {
-      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
-      const stringVal = this.checkAndParseString(clarityValue);
-      return stringVal;
-    } catch (error) {
-      // FIXME: error
-      logger.warn(
-        `[token-metadata] error extracting string with contract function call '${functionName}' while processing ${this.contractId}`,
-        error
-      );
-    }
+    const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+    return this.checkAndParseString(clarityValue);
   }
 
   private async readUIntFromContract(
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<bigint | undefined> {
+    const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
+    const uintVal = this.checkAndParseUintCV(clarityValue);
     try {
-      const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
-      const uintVal = this.checkAndParseUintCV(clarityValue);
       return BigInt(uintVal.value.toString());
     } catch (error) {
-      logger.warn(
-        `[token-metadata] error extracting string with contract function call '${functionName}' while processing ${this.contractId}`,
-        error
+      throw new RetryableTokenMetadataError(
+        `[token-metadata] invalid uint value '${uintVal}' while processing ${this.contractId}`
       );
     }
   }
 
-  /**
-   * Store ft metadata to db
-   */
   private async storeFtMetadata(ftMetadata: DbFungibleTokenMetadata) {
     try {
       await this.db.updateFtMetadata(ftMetadata, this.dbQueueId);
     } catch (error) {
-      throw new Error(`Error occurred while updating FT metadata ${error}`);
+      throw new RetryableTokenMetadataError(`[token-metadata] error updating FT metadata ${error}`);
     }
   }
 
-  /**
-   * Store NFT Metadata to db
-   */
   private async storeNftMetadata(nftMetadata: DbNonFungibleTokenMetadata) {
     try {
       await this.db.updateNFtMetadata(nftMetadata, this.dbQueueId);
     } catch (error) {
-      throw new Error(`Error occurred while updating NFT metadata ${error}`);
+      throw new RetryableTokenMetadataError(
+        `[token-metadata] error updating NFT metadata ${error}`
+      );
     }
   }
 
@@ -510,8 +512,8 @@ export class TokensContractHandler {
     if (unwrappedClarityValue.type === ClarityType.UInt) {
       return unwrappedClarityValue;
     }
-    throw new Error(
-      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping uint`
+    throw new RetryableTokenMetadataError(
+      `[token-metadata] unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping uint and processing ${this.contractId}`
     );
   }
 
@@ -523,8 +525,8 @@ export class TokensContractHandler {
     ) {
       return unwrappedClarityValue.data;
     }
-    throw new Error(
-      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
+    throw new RetryableTokenMetadataError(
+      `[token-metadata] unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string and processing ${this.contractId}`
     );
   }
 }

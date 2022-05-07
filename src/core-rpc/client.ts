@@ -2,6 +2,7 @@
 import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, logError, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
+import { ClarityValue, cvToHex } from '@stacks/transactions';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -48,6 +49,20 @@ export interface Neighbor {
   public_key_hash: string;
   authenticated: boolean;
 }
+
+export interface ReadOnlyContractCallSuccessResponse {
+  okay: true;
+  result: string;
+}
+
+export interface ReadOnlyContractCallFailResponse {
+  okay: false;
+  cause: string;
+}
+
+export type ReadOnlyContractCallResponse =
+  | ReadOnlyContractCallSuccessResponse
+  | ReadOnlyContractCallFailResponse;
 
 interface CoreRpcNeighbors {
   sample: Neighbor[];
@@ -206,6 +221,23 @@ export class StacksCoreRpcClient {
     return {
       txId: '0x' + result,
     };
+  }
+
+  async sendReadOnlyContractCall(
+    contractAddress: string,
+    contractName: string,
+    functionName: string,
+    senderAddress: string,
+    functionArgs: ClarityValue[]
+  ): Promise<ReadOnlyContractCallResponse> {
+    const body = JSON.stringify({
+      sender: senderAddress,
+      arguments: functionArgs.map(arg => cvToHex(arg)),
+    });
+    return await this.fetchJson<ReadOnlyContractCallResponse>(
+      `v2/contracts/call-read/${contractAddress}/${contractName}/${functionName}`,
+      { method: 'POST', body: body }
+    );
   }
 
   async getNeighbors(): Promise<CoreRpcNeighbors> {
