@@ -62,9 +62,9 @@ export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
 }
 
 /**
- * A token metadata fetch/process error caused by something we can try again later.
+ * A token metadata fetch/process error caused by something that we can try to do again later.
  */
-export class RetryableTokenMetadataError extends Error {
+class RetryableTokenMetadataError extends Error {
   constructor(message: string) {
     super(message);
     this.message = message;
@@ -102,7 +102,6 @@ export class TokensContractHandler {
   private readonly db: DataStore;
   private readonly randomPrivKey = makeRandomPrivKey();
   private readonly chainId: ChainID;
-  private readonly stacksNetwork: StacksNetwork;
   private readonly address: string;
   private readonly tokenKind: 'ft' | 'nft';
   private readonly nodeRpcClient: StacksCoreRpcClient;
@@ -116,7 +115,6 @@ export class TokensContractHandler {
     this.dbQueueId = args.dbQueueId;
     this.nodeRpcClient = new StacksCoreRpcClient();
 
-    this.stacksNetwork = GetStacksNetwork(this.chainId);
     this.address = getAddressFromPrivateKey(
       this.randomPrivKey.data,
       this.chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
@@ -139,19 +137,117 @@ export class TokensContractHandler {
       } compliant contract ${this.contractId} in tx ${this.txId}, begin retrieving metadata...`
     );
     const sw = stopwatch();
+    // This try/catch block will catch any and all errors that are generated while processing metadata
+    // (contract call errors, parse errors, timeouts, etc.). Fortunately, each of them were previously tagged
+    // as retryable or not retryable so we'll make a decision here about what to do in each case.
+    // If we choose to retry, this queue entry will simply not be marked as `processed = true` so it can be
+    // picked up by the `TokensProcessorQueue` at a later time.
+    let processingFinished = false;
     try {
       if (this.tokenKind === 'ft') {
         await this.handleFtContract();
       } else if (this.tokenKind === 'nft') {
         await this.handleNftContract();
+      }
+      processingFinished = true;
+    } catch (error) {
+      if (error instanceof RetryableTokenMetadataError) {
+        // FIXME: check strict mode and max retry attempts
+        logger.info(
+          `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
+        );
       } else {
-        throw new Error(`Unexpected token kind '${this.tokenKind}'`);
+        // Something went wrong but oh well, nvm.
+        processingFinished = true;
       }
     } finally {
-      logger.info(
-        `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
-      );
+      if (processingFinished) {
+        await this.db.updateProcessedTokenMetadataQueueEntry(this.dbQueueId);
+        logger.info(
+          `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
+        );
+      }
     }
+  }
+
+  /**
+   * fetch Fungible contract metadata
+   */
+  private async handleFtContract() {
+    const contractCallName = await this.readStringFromContract('get-name');
+    const contractCallUri = await this.readStringFromContract('get-token-uri');
+    const contractCallSymbol = await this.readStringFromContract('get-symbol');
+
+    let contractCallDecimals: number | undefined;
+    const decimalsResult = await this.readUIntFromContract('get-decimals');
+    if (decimalsResult) {
+      contractCallDecimals = Number(decimalsResult.toString());
+    }
+
+    let metadata: FtTokenMetadata | undefined;
+    if (contractCallUri) {
+      metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+      metadata = this.patchTokenMetadataImageUri(metadata);
+    }
+
+    let imgUrl: string | undefined;
+    if (metadata?.imageUri) {
+      const normalizedUrl = this.getImageUrl(metadata.imageUri);
+      imgUrl = await this.processImageUrl(normalizedUrl);
+    }
+
+    const fungibleTokenMetadata: DbFungibleTokenMetadata = {
+      token_uri: contractCallUri ?? '',
+      name: contractCallName ?? metadata?.name ?? '', // prefer the on-chain name
+      description: metadata?.description ?? '',
+      image_uri: imgUrl ?? '',
+      image_canonical_uri: metadata?.imageUri ?? '',
+      symbol: contractCallSymbol ?? '',
+      decimals: contractCallDecimals ?? 0,
+      contract_id: this.contractId,
+      tx_id: this.txId,
+      sender_address: this.contractAddress,
+    };
+    await this.db.updateFtMetadata(fungibleTokenMetadata);
+  }
+
+  /**
+   * fetch Non Fungible contract metadata
+   */
+  private async handleNftContract() {
+    // TODO: This is incorrectly attempting to fetch the metadata for a specific
+    // NFT and applying it to the entire NFT type/contract. A new SIP needs created
+    // to define how generic metadata for an NFT type/contract should be retrieved.
+    // In the meantime, this will often fail or result in weird data, but at least
+    // the NFT type enumeration endpoints will have data like the contract ID and txid.
+
+    // TODO: this should instead use the SIP-012 draft https://github.com/stacksgov/sips/pull/18
+    // function `(get-nft-meta () (response (optional {name: (string-uft8 30), image: (string-ascii 255)}) uint))`
+
+    let metadata: NftTokenMetadata | undefined;
+    const contractCallUri = await this.readStringFromContract('get-token-uri', [uintCV(0)]);
+    if (contractCallUri) {
+      metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+      metadata = this.patchTokenMetadataImageUri(metadata);
+    }
+
+    let imgUrl: string | undefined;
+    if (metadata?.imageUri) {
+      const normalizedUrl = this.getImageUrl(metadata.imageUri);
+      imgUrl = await this.processImageUrl(normalizedUrl);
+    }
+
+    const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
+      token_uri: contractCallUri ?? '',
+      name: metadata?.name ?? '',
+      description: metadata?.description ?? '',
+      image_uri: imgUrl ?? '',
+      image_canonical_uri: metadata?.imageUri ?? '',
+      contract_id: `${this.contractId}`,
+      tx_id: this.txId,
+      sender_address: this.contractAddress,
+    };
+    await this.db.updateNFtMetadata(nonFungibleTokenMetadata);
   }
 
   /**
@@ -177,144 +273,6 @@ export class TokensContractHandler {
       }
     }
     return { ...metadata };
-  }
-
-  /**
-   * fetch Fungible contract metadata
-   */
-  private async handleFtContract() {
-    let metadata: FtTokenMetadata | undefined;
-    let contractCallName: string | undefined;
-    let contractCallUri: string | undefined;
-    let contractCallSymbol: string | undefined;
-    let contractCallDecimals: number | undefined;
-    let imgUrl: string | undefined;
-
-    try {
-      // get name value
-      contractCallName = await this.readStringFromContract('get-name', []);
-
-      // get token uri
-      contractCallUri = await this.readStringFromContract('get-token-uri', []);
-
-      // get token symbol
-      contractCallSymbol = await this.readStringFromContract('get-symbol', []);
-
-      // get decimals
-      const decimalsResult = await this.readUIntFromContract('get-decimals', []);
-      if (decimalsResult) {
-        contractCallDecimals = Number(decimalsResult.toString());
-      }
-
-      if (contractCallUri) {
-        try {
-          metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
-          metadata = this.patchTokenMetadataImageUri(metadata);
-        } catch (error) {
-          logger.warn(
-            `[token-metadata] error fetching metadata while processing FT contract ${this.contractId}`,
-            error
-          );
-        }
-      }
-
-      if (metadata?.imageUri) {
-        try {
-          const normalizedUrl = this.getImageUrl(metadata.imageUri);
-          imgUrl = await this.processImageUrl(normalizedUrl);
-        } catch (error) {
-          logger.warn(
-            `[token-metadata] error handling image url while processing FT contract ${this.contractId}`,
-            error
-          );
-        }
-      }
-    } catch (error) {
-      // Note: something is wrong with the above error handling if this is ever reached.
-      logError(
-        `[token-metadata] unexpected error processing FT contract ${this.contractId}`,
-        error
-      );
-    }
-
-    const fungibleTokenMetadata: DbFungibleTokenMetadata = {
-      token_uri: contractCallUri ?? '',
-      name: contractCallName ?? metadata?.name ?? '', // prefer the on-chain name
-      description: metadata?.description ?? '',
-      image_uri: imgUrl ?? '',
-      image_canonical_uri: metadata?.imageUri ?? '',
-      symbol: contractCallSymbol ?? '',
-      decimals: contractCallDecimals ?? 0,
-      contract_id: this.contractId,
-      tx_id: this.txId,
-      sender_address: this.contractAddress,
-    };
-
-    //store metadata in db
-    await this.storeFtMetadata(fungibleTokenMetadata);
-  }
-
-  /**
-   * fetch Non Fungible contract metadata
-   */
-  private async handleNftContract() {
-    let metadata: NftTokenMetadata | undefined;
-    let contractCallUri: string | undefined;
-    let imgUrl: string | undefined;
-
-    try {
-      // TODO: This is incorrectly attempting to fetch the metadata for a specific
-      // NFT and applying it to the entire NFT type/contract. A new SIP needs created
-      // to define how generic metadata for an NFT type/contract should be retrieved.
-      // In the meantime, this will often fail or result in weird data, but at least
-      // the NFT type enumeration endpoints will have data like the contract ID and txid.
-
-      // TODO: this should instead use the SIP-012 draft https://github.com/stacksgov/sips/pull/18
-      // function `(get-nft-meta () (response (optional {name: (string-uft8 30), image: (string-ascii 255)}) uint))`
-
-      contractCallUri = await this.readStringFromContract('get-token-uri', [uintCV(0)]);
-      if (contractCallUri) {
-        try {
-          metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
-          metadata = this.patchTokenMetadataImageUri(metadata);
-        } catch (error) {
-          logger.warn(
-            `[token-metadata] error fetching metadata while processing NFT contract ${this.contractId}`,
-            error
-          );
-        }
-      }
-
-      if (metadata?.imageUri) {
-        try {
-          const normalizedUrl = this.getImageUrl(metadata.imageUri);
-          imgUrl = await this.processImageUrl(normalizedUrl);
-        } catch (error) {
-          logger.warn(
-            `[token-metadata] error handling image url while processing NFT contract ${this.contractId}`,
-            error
-          );
-        }
-      }
-    } catch (error) {
-      // Note: something is wrong with the above error handling if this is ever reached.
-      logError(
-        `[token-metadata] unexpected error processing NFT contract ${this.contractId}`,
-        error
-      );
-    }
-
-    const nonFungibleTokenMetadata: DbNonFungibleTokenMetadata = {
-      token_uri: contractCallUri ?? '',
-      name: metadata?.name ?? '',
-      description: metadata?.description ?? '',
-      image_uri: imgUrl ?? '',
-      image_canonical_uri: metadata?.imageUri ?? '',
-      contract_id: `${this.contractId}`,
-      tx_id: this.txId,
-      sender_address: this.contractAddress,
-    };
-    await this.storeNftMetadata(nonFungibleTokenMetadata);
   }
 
   /**
@@ -442,22 +400,20 @@ export class TokensContractHandler {
       functionArgs
     );
     if (!result.okay) {
-      // Only runtime errors are retryable during a contract call.
+      // Only runtime errors reported by the Stacks node are retryable during a contract call.
       if (result.cause.startsWith('Runtime')) {
         throw new RetryableTokenMetadataError(
-          `[token-metadata] runtime error while calling read-only function ${functionName} on ${this.contractName}`
+          `Runtime error while calling read-only function ${functionName}`
         );
       }
-      throw new Error(
-        `[token-metadata] error calling read-only function ${functionName} on ${this.contractName}`
-      );
+      throw new Error(`Error calling read-only function ${functionName}`);
     }
     return hexToCV(result.result);
   }
 
   private async readStringFromContract(
     functionName: string,
-    functionArgs: ClarityValue[]
+    functionArgs: ClarityValue[] = []
   ): Promise<string | undefined> {
     const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
     return this.checkAndParseString(clarityValue);
@@ -465,34 +421,14 @@ export class TokensContractHandler {
 
   private async readUIntFromContract(
     functionName: string,
-    functionArgs: ClarityValue[]
+    functionArgs: ClarityValue[] = []
   ): Promise<bigint | undefined> {
     const clarityValue = await this.makeReadOnlyContractCall(functionName, functionArgs);
     const uintVal = this.checkAndParseUintCV(clarityValue);
     try {
       return BigInt(uintVal.value.toString());
     } catch (error) {
-      throw new RetryableTokenMetadataError(
-        `[token-metadata] invalid uint value '${uintVal}' while processing ${this.contractId}`
-      );
-    }
-  }
-
-  private async storeFtMetadata(ftMetadata: DbFungibleTokenMetadata) {
-    try {
-      await this.db.updateFtMetadata(ftMetadata, this.dbQueueId);
-    } catch (error) {
-      throw new RetryableTokenMetadataError(`[token-metadata] error updating FT metadata ${error}`);
-    }
-  }
-
-  private async storeNftMetadata(nftMetadata: DbNonFungibleTokenMetadata) {
-    try {
-      await this.db.updateNFtMetadata(nftMetadata, this.dbQueueId);
-    } catch (error) {
-      throw new RetryableTokenMetadataError(
-        `[token-metadata] error updating NFT metadata ${error}`
-      );
+      throw new RetryableTokenMetadataError(`Invalid uint value '${uintVal}'`);
     }
   }
 
@@ -513,7 +449,7 @@ export class TokensContractHandler {
       return unwrappedClarityValue;
     }
     throw new RetryableTokenMetadataError(
-      `[token-metadata] unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping uint and processing ${this.contractId}`
+      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping uint`
     );
   }
 
@@ -526,7 +462,7 @@ export class TokensContractHandler {
       return unwrappedClarityValue.data;
     }
     throw new RetryableTokenMetadataError(
-      `[token-metadata] unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string and processing ${this.contractId}`
+      `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
     );
   }
 }

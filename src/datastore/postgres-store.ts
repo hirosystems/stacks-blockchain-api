@@ -7589,7 +7589,7 @@ export class PgDataStore
     });
   }
 
-  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
+  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
     const {
       token_uri,
       name,
@@ -7602,8 +7602,7 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = ftMetadata;
-
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.query(async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
@@ -7623,24 +7622,13 @@ export class PgDataStore
           sender_address,
         ]
       );
-      await client.query(
-        `
-        UPDATE token_metadata_queue
-        SET processed = true
-        WHERE queue_id = $1
-        `,
-        [dbQueueId]
-      );
       return result.rowCount;
     });
     await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
-  async updateNFtMetadata(
-    nftMetadata: DbNonFungibleTokenMetadata,
-    dbQueueId: number
-  ): Promise<number> {
+  async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
     const {
       token_uri,
       name,
@@ -7651,7 +7639,7 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = nftMetadata;
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.query(async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
@@ -7669,18 +7657,23 @@ export class PgDataStore
           sender_address,
         ]
       );
+      return result.rowCount;
+    });
+    await this.notifier?.sendTokens({ contractID: contract_id });
+    return rowCount;
+  }
+
+  async updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void> {
+    await this.query(async client => {
       await client.query(
         `
         UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = $1
         `,
-        [dbQueueId]
+        [queueId]
       );
-      return result.rowCount;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
-    return rowCount;
   }
 
   getFtMetadataList({
