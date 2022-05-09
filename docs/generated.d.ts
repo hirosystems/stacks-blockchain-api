@@ -26,7 +26,6 @@ export type SchemaMergeRootStub =
   | BnsGetAllNamespacesNamesResponse
   | BnsGetAllNamespacesResponse
   | BnsGetNamespacePriceResponse
-  | GetAllSubdomainsInName
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
