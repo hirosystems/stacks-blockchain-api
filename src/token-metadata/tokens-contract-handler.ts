@@ -16,12 +16,10 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
-import { GetStacksNetwork } from '../bns-helpers';
-import { logError, logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
-import { StacksNetwork } from '@stacks/network';
+import { logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import * as querystring from 'querystring';
 import { isCompliantFt, isCompliantNft, performFetch } from './helpers';
-import { StacksCoreRpcClient } from 'src/core-rpc/client';
+import { StacksCoreRpcClient } from '../core-rpc/client';
 
 /**
  * Amount of milliseconds to wait when fetching token metadata.
@@ -93,6 +91,10 @@ interface TokenHandlerArgs {
   dbQueueId: number;
 }
 
+/**
+ * Object that downloads, parses and indexes metadata info for a Fungible or Non-Fungible token in the Stacks blockchain
+ * by calling read-only functions in SIP-009 and SIP-010 compliant smart contracts.
+ */
 export class TokensContractHandler {
   readonly contractAddress: string;
   readonly contractName: string;

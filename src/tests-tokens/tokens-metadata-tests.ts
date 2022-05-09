@@ -308,7 +308,7 @@ describe('api tests', () => {
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
       };
-      await db.updateFtMetadata(ftMetadata, 0);
+      await db.updateFtMetadata(ftMetadata);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
@@ -341,7 +341,7 @@ describe('api tests', () => {
         sender_address: 'ABCDEFGHIJ',
       };
 
-      await db.updateNFtMetadata(nftMetadata, 0);
+      await db.updateNFtMetadata(nftMetadata);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);

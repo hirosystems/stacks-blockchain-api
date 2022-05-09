@@ -230,13 +230,17 @@ export class StacksCoreRpcClient {
     senderAddress: string,
     functionArgs: ClarityValue[]
   ): Promise<ReadOnlyContractCallResponse> {
-    const body = JSON.stringify({
+    const body = {
       sender: senderAddress,
       arguments: functionArgs.map(arg => cvToHex(arg)),
-    });
+    };
     return await this.fetchJson<ReadOnlyContractCallResponse>(
       `v2/contracts/call-read/${contractAddress}/${contractName}/${functionName}`,
-      { method: 'POST', body: body }
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }
     );
   }
 
