@@ -240,44 +240,6 @@ export class PgWriteStore extends PgStore {
         }
       }
 
-      //calculate total execution cost of the block
-      const totalCost = data.txs.reduce(
-        (previousValue, currentValue) => {
-          const {
-            execution_cost_read_count,
-            execution_cost_read_length,
-            execution_cost_runtime,
-            execution_cost_write_count,
-            execution_cost_write_length,
-          } = previousValue;
-
-          return {
-            execution_cost_read_count:
-              execution_cost_read_count + currentValue.tx.execution_cost_read_count,
-            execution_cost_read_length:
-              execution_cost_read_length + currentValue.tx.execution_cost_read_length,
-            execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
-            execution_cost_write_count:
-              execution_cost_write_count + currentValue.tx.execution_cost_write_count,
-            execution_cost_write_length:
-              execution_cost_write_length + currentValue.tx.execution_cost_write_length,
-          };
-        },
-        {
-          execution_cost_read_count: 0,
-          execution_cost_read_length: 0,
-          execution_cost_runtime: 0,
-          execution_cost_write_count: 0,
-          execution_cost_write_length: 0,
-        }
-      );
-
-      data.block.execution_cost_read_count = totalCost.execution_cost_read_count;
-      data.block.execution_cost_read_length = totalCost.execution_cost_read_length;
-      data.block.execution_cost_runtime = totalCost.execution_cost_runtime;
-      data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
-      data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
-
       let batchedTxData: DataStoreTxEventData[] = data.txs;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
@@ -444,7 +406,7 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
+  async updateBlock(sql: PgSqlClient, block: DbBlock, skipReorg?: boolean): Promise<number> {
     const values: BlockInsertValues = {
       block_hash: block.block_hash,
       index_block_hash: block.index_block_hash,
@@ -466,7 +428,7 @@ export class PgWriteStore extends PgStore {
     };
     const result = await sql`
       INSERT INTO blocks ${sql(values)}
-      ON CONFLICT (index_block_hash) DO NOTHING
+      ${skipReorg ? sql`` : sql`ON CONFLICT (index_block_hash) DO NOTHING`}
     `;
     return result.count;
   }
@@ -484,7 +446,7 @@ export class PgWriteStore extends PgStore {
     skipReorg?: boolean;
     sqlTx?: TransactionSql<any>;
   }): Promise<void> {
-    await this.runSqlTransaction(async sql => {
+    await this.beginSqlTx(async sql => {
       if (!skipReorg) {
         const existingSlotHolders = await sql<{ address: string }[]>`
           UPDATE reward_slot_holders
@@ -1077,7 +1039,7 @@ export class PgWriteStore extends PgStore {
     await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
-  async runSqlTransaction<T = void>(
+  async beginSqlTx<T = void>(
     fn: (sql: TransactionSql<any>) => Promise<T>,
     existingTx?: TransactionSql<any>
   ) {
@@ -1101,7 +1063,7 @@ export class PgWriteStore extends PgStore {
     skipReorg?: boolean;
     sqlTx?: TransactionSql<any>;
   }): Promise<void> {
-    return this.runSqlTransaction(async sql => {
+    return this.beginSqlTx(async sql => {
       if (!skipReorg) {
         const existingRewards = await sql<
           {

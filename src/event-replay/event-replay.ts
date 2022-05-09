@@ -1,6 +1,10 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { parseBurnBlockMessage, startEventServer } from '../event-stream/event-server';
+import {
+  parseBurnBlockMessage,
+  parseNewBlockMessage,
+  startEventServer,
+} from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -19,7 +23,8 @@ import {
 } from './tsv-pre-org';
 import { Readable, Transform, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
-import { CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
+import { CoreNodeBlockMessage, CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
+import { ChainID } from '@stacks/transactions';
 
 enum EventImportMode {
   /**
@@ -234,7 +239,8 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   }
 
   console.log(`Inserting event data to db...`);
-  await insertRawEvents(tsvEntityData, db, preOrgFilePath);
+  // await insertRawEvents(tsvEntityData, db, preOrgFilePath);
+  // await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath);
 
   /*
@@ -422,6 +428,70 @@ async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, f
 }
 
 async function insertNewBlockEvents(
+  tsvEntityData: TsvEntityData,
+  db: PgWriteStore,
+  filePath: string
+) {
+  const preOrgStream = readPreorgTsv(filePath, '/new_block');
+  let lastStatusUpdatePercent = 0;
+  const tables = [
+    'blocks',
+    'microblocks',
+    'txs',
+    'stx_events',
+    'principal_stx_txs',
+    'contract_logs',
+    'stx_lock_events',
+    'ft_events',
+    'nft_events',
+    'smart_contracts',
+    'zonefiles',
+    'names',
+    'namespaces',
+  ];
+  await db.sql.begin(async sql => {
+    await sql`
+      UPDATE pg_index
+      SET indisready = false, indisvalid = false
+      WHERE indrelid = ANY (
+        SELECT oid FROM pg_class
+        WHERE relname IN ${sql(tables)}
+      )
+    `;
+    for await (const event of preOrgStream) {
+      const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
+      const dbData = parseNewBlockMessage(ChainID.Mainnet, newBlockMsg);
+      await db.updateBlock(sql, dbData.block, true);
+      // INSERT INTO blocks
+      // INSERT INTO microblocks
+      // INSERT INTO txs
+      // INSERT INTO stx_events
+      // INSERT INTO principal_stx_txs
+      // INSERT INTO contract_logs
+      // INSERT INTO stx_lock_events
+      // INSERT INTO ft_events
+      // INSERT INTO nft_events
+      // INSERT INTO smart_contracts
+      // INSERT INTO zonefiles
+      // INSERT INTO names
+      // INSERT INTO namespaces
+
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
+        console.log(
+          `Processed '/new_burn_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+        );
+      }
+    }
+  });
+  for (const table of tables) {
+    console.log(`Re-indexing table "${table}"...`);
+    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+  }
+}
+
+async function insertNewBurnBlockEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
   filePath: string

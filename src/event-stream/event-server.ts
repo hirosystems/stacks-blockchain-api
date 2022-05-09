@@ -223,11 +223,7 @@ async function handleMicroblockMessage(
   await db.updateMicroblocks(updateData);
 }
 
-async function handleBlockMessage(
-  chainId: ChainID,
-  msg: CoreNodeBlockMessage,
-  db: PgWriteStore
-): Promise<void> {
+export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage) {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
@@ -238,6 +234,29 @@ async function handleBlockMessage(
       parsedTxs.push(parsedTx);
     }
   });
+
+  // calculate total execution cost of the block
+  const totalCost = msg.transactions.reduce(
+    (prev, cur) => {
+      return {
+        execution_cost_read_count: prev.execution_cost_read_count + cur.execution_cost.read_count,
+        execution_cost_read_length:
+          prev.execution_cost_read_length + cur.execution_cost.read_length,
+        execution_cost_runtime: prev.execution_cost_runtime + cur.execution_cost.runtime,
+        execution_cost_write_count:
+          prev.execution_cost_write_count + cur.execution_cost.write_count,
+        execution_cost_write_length:
+          prev.execution_cost_write_length + cur.execution_cost.write_length,
+      };
+    },
+    {
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    }
+  );
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -252,14 +271,12 @@ async function handleBlockMessage(
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
     miner_txid: msg.miner_txid,
-    execution_cost_read_count: 0,
-    execution_cost_read_length: 0,
-    execution_cost_runtime: 0,
-    execution_cost_write_count: 0,
-    execution_cost_write_length: 0,
+    execution_cost_read_count: totalCost.execution_cost_read_count,
+    execution_cost_read_length: totalCost.execution_cost_read_length,
+    execution_cost_runtime: totalCost.execution_cost_runtime,
+    execution_cost_write_count: totalCost.execution_cost_write_count,
+    execution_cost_write_length: totalCost.execution_cost_write_length,
   };
-
-  logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
 
   const dbMinerRewards: DbMinerReward[] = [];
   for (const minerReward of msg.matured_miner_rewards) {
@@ -277,8 +294,6 @@ async function handleBlockMessage(
     };
     dbMinerRewards.push(dbMinerReward);
   }
-
-  logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
 
   const dbMicroblocks = parseMicroblocksFromTxs({
     parentIndexBlockHash: msg.parent_index_block_hash,
@@ -302,21 +317,33 @@ async function handleBlockMessage(
     return microblock;
   });
 
-  parsedTxs.forEach(tx => {
-    logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
-    logger.info('Transaction confirmed', {
-      txid: tx.core_tx.txid,
-      in_microblock: tx.microblock_hash != '',
-      stacks_height: dbBlock.block_height,
-    });
-  });
-
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
   };
+
+  return dbData;
+}
+
+async function handleBlockMessage(
+  chainId: ChainID,
+  msg: CoreNodeBlockMessage,
+  db: PgWriteStore
+): Promise<void> {
+  const dbData = parseNewBlockMessage(chainId, msg);
+
+  logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbData.block);
+  logger.verbose(`Received ${dbData.minerRewards.length} matured miner rewards`);
+  dbData.txs.forEach(tx => {
+    logger.verbose(`Received anchor block mined tx: ${tx.tx.tx_id}`);
+    logger.info('Transaction confirmed', {
+      txid: tx.tx.tx_id,
+      in_microblock: tx.tx.microblock_hash != '',
+      stacks_height: tx.tx.block_height,
+    });
+  });
 
   await db.update(dbData);
 }
