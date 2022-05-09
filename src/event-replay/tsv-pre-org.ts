@@ -1,12 +1,10 @@
-import { Transform } from 'stream';
-import { readLinesReversed } from './reverse-line-reader';
+import { Readable, Transform } from 'stream';
+import { readLines, readLinesReversed } from './reverse-line-reader';
 import { CoreNodeBlockMessage, CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
 
 const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
-export async function getCanonicalEntityList(
-  tsvFilePath: string
-): Promise<{
+export interface TsvEntityData {
   indexBlockHashes: string[];
   canonicalStacksBlockCount: number;
   orphanStacksBlockCount: number;
@@ -14,7 +12,9 @@ export async function getCanonicalEntityList(
   canonicalBurnBlockCount: number;
   orphanBurnBlockCount: number;
   tsvLineCount: number;
-}> {
+}
+
+export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEntityData> {
   const readStream = readLinesReversed(tsvFilePath);
 
   const indexBlockHashes: string[] = [];
@@ -108,6 +108,48 @@ export async function getCanonicalEntityList(
     orphanBurnBlockCount: burnBlockOrphanCount,
     tsvLineCount,
   };
+}
+
+export function readPreorgTsv(
+  filePath: string,
+  pathFilter?: '/new_block' | '/new_burn_block' | '/attachments/new'
+): Readable {
+  let readLineCount = 0;
+  const transformStream = new Transform({
+    objectMode: true,
+    autoDestroy: true,
+    transform: (line: string, _encoding, callback) => {
+      if (line === '') {
+        callback();
+        return;
+      }
+      readLineCount++;
+      const [, , path, payload] = line.split('\t');
+      if (pathFilter !== undefined) {
+        if (path === pathFilter) {
+          transformStream.push({
+            path,
+            payload,
+            readLineCount,
+          });
+        }
+      } else {
+        if (path == '/new_block' || path === '/new_burn_block' || path === '/attachments/new') {
+          transformStream.push({
+            path,
+            payload,
+            readLineCount,
+          });
+        } else {
+          callback(new Error(`Unexpected event type: ${line}`));
+          return;
+        }
+      }
+      callback();
+    },
+  });
+  const readLineStream = readLines(filePath);
+  return readLineStream.pipe(transformStream);
 }
 
 export function createTsvReorgStream(

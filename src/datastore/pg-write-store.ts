@@ -76,6 +76,7 @@ import { PgStore } from './pg-store';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
+import { Sql, TransactionSql } from 'postgres';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -157,8 +158,8 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest1(eventPath: string, payload: string): Promise<void> {
-    await this.sql`
+  async storeRawEventRequest1(eventPath: string, payload: string, sqlTx?: Sql<any>): Promise<void> {
+    await (sqlTx ?? this.sql)`
       INSERT INTO event_observer_requests (event_path, payload) values (${eventPath}, ${payload})
     `;
   }
@@ -474,23 +475,29 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHash,
     burnchainBlockHeight,
     slotHolders,
+    skipReorg = false,
+    sqlTx,
   }: {
     burnchainBlockHash: string;
     burnchainBlockHeight: number;
     slotHolders: DbRewardSlotHolder[];
+    skipReorg?: boolean;
+    sqlTx?: TransactionSql<any>;
   }): Promise<void> {
-    await this.sql.begin(async sql => {
-      const existingSlotHolders = await sql<{ address: string }[]>`
-        UPDATE reward_slot_holders
-        SET canonical = false
-        WHERE canonical = true
-          AND (burn_block_hash = ${burnchainBlockHash}
-            OR burn_block_height >= ${burnchainBlockHeight})
-      `;
-      if (existingSlotHolders.count > 0) {
-        logger.warn(
-          `Invalidated ${existingSlotHolders.count} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
-        );
+    await this.runSqlTransaction(async sql => {
+      if (!skipReorg) {
+        const existingSlotHolders = await sql<{ address: string }[]>`
+          UPDATE reward_slot_holders
+          SET canonical = false
+          WHERE canonical = true
+            AND (burn_block_hash = ${burnchainBlockHash}
+              OR burn_block_height >= ${burnchainBlockHeight})
+        `;
+        if (existingSlotHolders.count > 0) {
+          logger.warn(
+            `Invalidated ${existingSlotHolders.count} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
+          );
+        }
       }
       if (slotHolders.length === 0) {
         return;
@@ -510,7 +517,7 @@ export class PgWriteStore extends PgStore {
           `Unexpected row count after inserting reward slot holders: ${result.count} vs ${slotHolders.length}`
         );
       }
-    });
+    }, sqlTx);
   }
 
   async updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void> {
@@ -1070,52 +1077,69 @@ export class PgWriteStore extends PgStore {
     await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
+  async runSqlTransaction<T = void>(
+    fn: (sql: TransactionSql<any>) => Promise<T>,
+    existingTx?: TransactionSql<any>
+  ) {
+    if (existingTx) {
+      return fn(existingTx);
+    } else {
+      return this.sql.begin(sql => fn(sql));
+    }
+  }
+
   async updateBurnchainRewards({
     burnchainBlockHash,
     burnchainBlockHeight,
     rewards,
+    skipReorg = false,
+    sqlTx,
   }: {
     burnchainBlockHash: string;
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
+    skipReorg?: boolean;
+    sqlTx?: TransactionSql<any>;
   }): Promise<void> {
-    return this.sql.begin(async sql => {
-      const existingRewards = await sql<
-        {
-          reward_recipient: string;
-          reward_amount: string;
-        }[]
-      >`
-        UPDATE burnchain_rewards
-        SET canonical = false
-        WHERE canonical = true AND
-          (burn_block_hash = ${burnchainBlockHash}
-            OR burn_block_height >= ${burnchainBlockHeight})
-      `;
-      if (existingRewards.count > 0) {
-        logger.warn(
-          `Invalidated ${existingRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
-        );
-      }
-
-      for (const reward of rewards) {
-        const values: BurnchainRewardInsertValues = {
-          canonical: true,
-          burn_block_hash: reward.burn_block_hash,
-          burn_block_height: reward.burn_block_height,
-          burn_amount: reward.burn_amount.toString(),
-          reward_recipient: reward.reward_recipient,
-          reward_amount: reward.reward_amount,
-          reward_index: reward.reward_index,
-        };
-        const rewardInsertResult = await sql`
-          INSERT into burnchain_rewards ${sql(values)}
+    return this.runSqlTransaction(async sql => {
+      if (!skipReorg) {
+        const existingRewards = await sql<
+          {
+            reward_recipient: string;
+            reward_amount: string;
+          }[]
+        >`
+          UPDATE burnchain_rewards
+          SET canonical = false
+          WHERE canonical = true AND
+            (burn_block_hash = ${burnchainBlockHash}
+              OR burn_block_height >= ${burnchainBlockHeight})
         `;
-        if (rewardInsertResult.count !== 1) {
-          throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
+        if (existingRewards.count > 0) {
+          logger.warn(
+            `Invalidated ${existingRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
+          );
         }
       }
-    });
+
+      const values: BurnchainRewardInsertValues[] = rewards.map(reward => ({
+        canonical: true,
+        burn_block_hash: reward.burn_block_hash,
+        burn_block_height: reward.burn_block_height,
+        burn_amount: reward.burn_amount.toString(),
+        reward_recipient: reward.reward_recipient,
+        reward_amount: reward.reward_amount,
+        reward_index: reward.reward_index,
+      }));
+      const rewardInsertResult = await sql`
+        INSERT into burnchain_rewards ${sql(values)}
+      `;
+      if (rewardInsertResult.count !== values.length) {
+        throw new Error(
+          `Unexpected row count after inserting burnchain rewards: ${rewardInsertResult.count} vs ${values.length}`
+        );
+      }
+    }, sqlTx);
   }
 
   async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {

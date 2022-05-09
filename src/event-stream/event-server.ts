@@ -85,13 +85,7 @@ async function handleRawEventRequest(
   await db.storeRawEventRequest(eventPath, payload);
 }
 
-async function handleBurnBlockMessage(
-  burnBlockMsg: CoreNodeBurnBlockMessage,
-  db: PgWriteStore
-): Promise<void> {
-  logger.verbose(
-    `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
-  );
+export function parseBurnBlockMessage(burnBlockMsg: CoreNodeBurnBlockMessage) {
   const rewards = burnBlockMsg.reward_recipients.map((r, index) => {
     const dbReward: DbBurnchainReward = {
       canonical: true,
@@ -114,6 +108,17 @@ async function handleBurnBlockMessage(
     };
     return slotHolder;
   });
+  return { rewards, slotHolders };
+}
+
+async function handleBurnBlockMessage(
+  burnBlockMsg: CoreNodeBurnBlockMessage,
+  db: PgWriteStore
+): Promise<void> {
+  logger.verbose(
+    `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
+  );
+  const { rewards, slotHolders } = parseBurnBlockMessage(burnBlockMsg);
   await db.updateBurnchainRewards({
     burnchainBlockHash: burnBlockMsg.burn_block_hash,
     burnchainBlockHeight: burnBlockMsg.burn_block_height,

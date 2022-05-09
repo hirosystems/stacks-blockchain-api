@@ -1,6 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { startEventServer } from '../event-stream/event-server';
+import { parseBurnBlockMessage, startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -10,10 +10,16 @@ import {
   exportRawEventRequests,
   getRawEventRequests,
 } from '../datastore/event-requests';
-import { readLines } from 'reverse-line-reader';
-import { createTsvReorgStream, getCanonicalEntityList } from './tsv-pre-org';
+import { readLines } from './reverse-line-reader';
+import {
+  createTsvReorgStream,
+  getCanonicalEntityList,
+  readPreorgTsv,
+  TsvEntityData,
+} from './tsv-pre-org';
 import { Readable, Transform, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
+import { CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
 
 enum EventImportMode {
   /**
@@ -184,7 +190,7 @@ export async function importEventsFromTsv(
   await db.close();
 }
 
-const insertMode: 'single' | 'single2' | 'single3' | 'batch' | 'batch2' | 'stream' = 'batch2';
+const insertMode: 'single' | 'single2' | 'single3' | 'batch' | 'batch2' | 'stream' = 'single2';
 
 async function preOrgTsvInsert(filePath: string): Promise<void> {
   const db = await PgWriteStore.connect({
@@ -202,7 +208,36 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
 
   console.log('Indexing canonical data from tsv file...');
-  const result = await getCanonicalEntityList(filePath);
+
+  let tsvEntityData: TsvEntityData;
+  if (fs.existsSync(filePath + '.entitydata')) {
+    tsvEntityData = JSON.parse(fs.readFileSync(filePath + '.entitydata', 'utf8'));
+  } else {
+    tsvEntityData = await getCanonicalEntityList(filePath);
+    fs.writeFileSync(filePath + '.entitydata', JSON.stringify(tsvEntityData));
+  }
+  console.log(`[Tsv entity data]: block height: ${tsvEntityData.indexBlockHashes.length}`);
+
+  const preOrgFilePath = filePath + '-preorg';
+  if (!fs.existsSync(preOrgFilePath)) {
+    console.log(`Writing preorg tsv file: ${preOrgFilePath} ...`);
+    const inputLineReader = readLines(filePath);
+    const transformStream = createTsvReorgStream(
+      tsvEntityData.indexBlockHashes,
+      tsvEntityData.burnBlockHashes,
+      false
+    );
+    const outputFileStream = fs.createWriteStream(preOrgFilePath);
+    await pipeline(inputLineReader, transformStream, outputFileStream);
+  } else {
+    console.log(`Using existing preorg tsv file: ${preOrgFilePath}`);
+  }
+
+  console.log(`Inserting event data to db...`);
+  await insertRawEvents(tsvEntityData, db, preOrgFilePath);
+  await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath);
+
+  /*
   const inputLineReader = readLines(filePath);
   const transformStream = createTsvReorgStream(
     result.indexBlockHashes,
@@ -362,8 +397,79 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
     });
     await pipeline(inputLineReader, transformStream, insertPgStream);
   }
+  */
 
   await db.close();
   const endTime = Date.now();
   console.log(`Took: ${Math.round((endTime - startTime) / 1000)} seconds`);
+}
+
+async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, filePath: string) {
+  const preOrgStream = readPreorgTsv(filePath);
+  let lastStatusUpdatePercent = 0;
+  await db.sql.begin(async sql => {
+    for await (const event of preOrgStream) {
+      await db.storeRawEventRequest1(event.path, event.payload, sql);
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
+        console.log(
+          `Raw event requests processed: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+        );
+      }
+    }
+  });
+}
+
+async function insertNewBlockEvents(
+  tsvEntityData: TsvEntityData,
+  db: PgWriteStore,
+  filePath: string
+) {
+  const preOrgStream = readPreorgTsv(filePath, '/new_burn_block');
+  let lastStatusUpdatePercent = 0;
+  await db.sql.begin(async sql => {
+    await sql`
+      UPDATE pg_index
+      SET indisready = false, indisvalid = false
+      WHERE indrelid = ANY (
+        SELECT oid FROM pg_class
+        WHERE relname IN ('burnchain_rewards', 'reward_slot_holders')
+      )
+    `;
+    for await (const event of preOrgStream) {
+      const burnBlockMsg: CoreNodeBurnBlockMessage = JSON.parse(event.payload);
+      const burnBlockData = parseBurnBlockMessage(burnBlockMsg);
+
+      if (burnBlockData.rewards.length > 0) {
+        await db.updateBurnchainRewards({
+          burnchainBlockHash: burnBlockMsg.burn_block_hash,
+          burnchainBlockHeight: burnBlockMsg.burn_block_height,
+          rewards: burnBlockData.rewards,
+          skipReorg: true,
+          sqlTx: sql,
+        });
+      }
+      if (burnBlockData.slotHolders.length > 0) {
+        await db.updateBurnchainRewardSlotHolders({
+          burnchainBlockHash: burnBlockMsg.burn_block_hash,
+          burnchainBlockHeight: burnBlockMsg.burn_block_height,
+          slotHolders: burnBlockData.slotHolders,
+          skipReorg: true,
+          sqlTx: sql,
+        });
+      }
+
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
+        console.log(
+          `Processed '/new_burn_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+        );
+      }
+    }
+  });
+  console.log(`Re-indexing burn block tables...`);
+  await db.sql`REINDEX TABLE burnchain_rewards`;
+  await db.sql`REINDEX TABLE reward_slot_holders`;
 }
