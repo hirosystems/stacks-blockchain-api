@@ -1500,6 +1500,33 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async insertMicroblock(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
+    const values: MicroblockInsertValues[] = microblocks.map(mb => ({
+      canonical: mb.canonical,
+      microblock_canonical: mb.microblock_canonical,
+      microblock_hash: mb.microblock_hash,
+      microblock_sequence: mb.microblock_sequence,
+      microblock_parent_hash: mb.microblock_parent_hash,
+      parent_index_block_hash: mb.parent_index_block_hash,
+      block_height: mb.block_height,
+      parent_block_height: mb.parent_block_height,
+      parent_block_hash: mb.parent_block_hash,
+      index_block_hash: mb.index_block_hash,
+      block_hash: mb.block_hash,
+      parent_burn_block_height: mb.parent_burn_block_height,
+      parent_burn_block_hash: mb.parent_burn_block_hash,
+      parent_burn_block_time: mb.parent_burn_block_time,
+    }));
+    const mbResult = await sql`
+      INSERT INTO microblocks ${sql(values)}
+    `;
+    if (mbResult.count !== microblocks.length) {
+      throw new Error(
+        `Unexpected row count after inserting microblocks: ${mbResult.count} vs ${values.length}`
+      );
+    }
+  }
+
   async insertMicroblockData(
     sql: PgSqlClient,
     microblocks: DbMicroblock[],

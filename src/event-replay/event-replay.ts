@@ -461,9 +461,13 @@ async function insertNewBlockEvents(
     for await (const event of preOrgStream) {
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(ChainID.Mainnet, newBlockMsg);
-      await db.updateBlock(sql, dbData.block, true);
       // INSERT INTO blocks
-      // INSERT INTO microblocks
+      await db.updateBlock(sql, dbData.block, true);
+      if (dbData.microblocks.length > 0) {
+        // INSERT INTO microblocks
+        await db.insertMicroblock(sql, dbData.microblocks);
+      }
+
       // INSERT INTO txs
       // INSERT INTO stx_events
       // INSERT INTO principal_stx_txs
@@ -480,7 +484,7 @@ async function insertNewBlockEvents(
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
         console.log(
-          `Processed '/new_burn_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+          `Processed '/new_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
         );
       }
     }
