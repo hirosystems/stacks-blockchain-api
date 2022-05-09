@@ -45,10 +45,6 @@ export interface DbMicroblock extends DbMicroblockPartial {
   block_hash: string;
 }
 
-export interface DbMicroblockWithTxCount extends DbMicroblock {
-  transaction_count: number;
-}
-
 export interface DbBurnchainReward {
   canonical: boolean;
   burn_block_hash: string;
@@ -508,8 +504,9 @@ export interface DbGetBlockWithMetadataResponse<
   block: DbBlock;
   txs: TWithTxs extends true ? DbTx[] : null;
   microblocks: TWithMicroblocks extends true
-    ? { accepted: DbMicroblockWithTxCount[]; streamed: DbMicroblock[] }
+    ? { accepted: DbMicroblock[]; streamed: DbMicroblock[] }
     : null;
+  microblock_tx_count: Record<string, number>;
 }
 
 export interface DbRawEventRequest {

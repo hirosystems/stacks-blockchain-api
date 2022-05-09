@@ -26,6 +26,7 @@ export type SchemaMergeRootStub =
   | BnsGetAllNamespacesNamesResponse
   | BnsGetAllNamespacesResponse
   | BnsGetNamespacePriceResponse
+  | GetAllSubdomainsInName
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
@@ -720,6 +721,10 @@ export type BnsGetSubdomainAtTx = {
  */
 export type BnsGetAllNamespacesNamesResponse = string[];
 /**
+ * Fetch a list of subdomains in a name.
+ */
+export type GetAllSubdomainsInName = string[];
+/**
  * GET fee estimates
  */
 export type CoreNodeFeeResponse = string;
@@ -1263,16 +1268,7 @@ export interface Block {
   /**
    * List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.
    */
-  microblocks_accepted: {
-    /**
-     * Microblock hash
-     */
-    microblock_hash: string;
-    /**
-     * Total number of transactions in the microblock
-     */
-    transaction_count: number;
-  }[];
+  microblocks_accepted: string[];
   /**
    * List of microblocks that were streamed/produced by this anchor block's miner. This list only includes microblocks that were accepted in the following anchor block. Microblocks that were orphaned are not included in this list.
    */
@@ -1297,6 +1293,12 @@ export interface Block {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
+  /**
+   * List of txs counts in each accepted microblock
+   */
+  microblock_tx_count: {
+    [k: string]: number | undefined;
+  };
   [k: string]: unknown | undefined;
 }
 /**

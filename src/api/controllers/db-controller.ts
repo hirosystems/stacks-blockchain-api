@@ -445,11 +445,9 @@ export async function getBlockFromDataStore({
   const apiBlock = parseDbBlock(
     result.block,
     result.txs.map(tx => tx.tx_id),
-    result.microblocks.accepted.map(mb => ({
-      microblock_hash: mb.microblock_hash,
-      transaction_count: mb.transaction_count,
-    })),
-    result.microblocks.streamed.map(mb => mb.microblock_hash)
+    result.microblocks.accepted.map(mb => mb.microblock_hash),
+    result.microblocks.streamed.map(mb => mb.microblock_hash),
+    result.microblock_tx_count
   );
   return { found: true, result: apiBlock };
 }
@@ -457,8 +455,9 @@ export async function getBlockFromDataStore({
 function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
-  microblocksAccepted: { microblock_hash: string; transaction_count: number }[],
-  microblocksStreamed: string[]
+  microblocksAccepted: string[],
+  microblocksStreamed: string[],
+  microblock_tx_count: Record<string, number>
 ): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
@@ -482,6 +481,7 @@ function parseDbBlock(
     execution_cost_runtime: dbBlock.execution_cost_runtime,
     execution_cost_write_count: dbBlock.execution_cost_write_count,
     execution_cost_write_length: dbBlock.execution_cost_write_length,
+    microblock_tx_count,
   };
   return apiBlock;
 }
@@ -1076,11 +1076,9 @@ export async function searchHashWithMetadata(
     const result = parseDbBlock(
       blockQuery.result.block,
       blockQuery.result.txs.map(tx => tx.tx_id),
-      blockQuery.result.microblocks.accepted.map(mb => ({
-        microblock_hash: mb.microblock_hash,
-        transaction_count: mb.transaction_count,
-      })),
-      blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash)
+      blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
+      blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash),
+      blockQuery.result.microblock_tx_count
     );
     return {
       found: true,

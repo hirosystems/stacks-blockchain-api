@@ -22,7 +22,8 @@
     "execution_cost_read_length",
     "execution_cost_runtime",
     "execution_cost_write_count",
-    "execution_cost_write_length"
+    "execution_cost_write_length",
+    "microblock_tx_count"
   ],
   "properties": {
     "canonical": {
@@ -81,18 +82,8 @@
       "type": "array",
       "description": "List of microblocks that were accepted in this anchor block. Not every anchored block will have a accepted all (or any) of the previously streamed microblocks. Microblocks that were orphaned are not included in this list.",
       "items": {
-        "required": ["microblock_hash", "transaction_count"],
-        "additionalProperties": false,
-        "properties": {
-          "microblock_hash": {
-            "type": "string",
-            "description": "Microblock hash"
-          },
-          "transaction_count": {
-            "type": "integer",
-            "description": "Total number of transactions in the microblock"
-          }
-        }
+        "type": "string",
+        "description": "Microblock hash"
       }
     },
     "microblocks_streamed": {
@@ -122,6 +113,13 @@
     "execution_cost_write_length": {
       "type": "integer",
       "description": "Execution cost write length."
+    },
+    "microblock_tx_count": {
+      "type": "object",
+      "description": "List of txs counts in each accepted microblock",
+      "additionalProperties": {
+        "type": "number"
+      }
     }
   }
 }
