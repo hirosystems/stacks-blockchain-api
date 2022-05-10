@@ -262,6 +262,7 @@ class SubdomainTransform extends stream.Transform {
         zonefile_offset: parseInt(parts[6], 10),
         resolver: parts[7],
         canonical: true,
+        index_block_hash: '',
       };
       this.push(subdomain);
     }
@@ -441,6 +442,8 @@ export async function importV1BnsData(db: PgWriteStore, importDir: string) {
       new ChainProcessor(db, zhashes)
     );
 
+    // TODO: these can be hard-coded with the known first block info for mainnet/testnet
+    // and avoid querying for them in order to speed up the import
     const blockData = {
       index_block_hash: '',
       parent_index_block_hash: '',

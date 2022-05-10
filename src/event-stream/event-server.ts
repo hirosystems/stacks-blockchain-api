@@ -672,6 +672,7 @@ export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
               block_height: Number.parseInt(attachment.block_height, 10),
               zonefile_offset: 1,
               resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
+              index_block_hash: attachment.index_block_hash,
             };
             subdomains.push(subdomain);
           }
@@ -683,82 +684,36 @@ export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
 }
 
 async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: PgWriteStore) {
-  for (const attachment of msg) {
-    if (
-      attachment.contract_id === BnsContractIdentifier.mainnet ||
-      attachment.contract_id === BnsContractIdentifier.testnet
-    ) {
-      const metadataCV = decodeClarityValue<
-        ClarityValueTuple<{
-          op: ClarityValueStringAscii;
-          name: ClarityValueBuffer;
-          namespace: ClarityValueBuffer;
-        }>
-      >(attachment.metadata);
-      const op = metadataCV.data['op'].data;
-      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
-      const zoneFileHash = attachment.content_hash;
-      if (op === 'name-update') {
-        const name = hexToBuffer(metadataCV.data['name'].buffer).toString('utf8');
-        const namespace = hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8');
-        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
-        const zoneFileTxt = zoneFileContents.txt;
-        const blockData = {
-          index_block_hash: '',
-          parent_index_block_hash: '',
-          microblock_hash: '',
-          microblock_sequence: I32_MAX,
-          microblock_canonical: true,
-        };
-        // Case for subdomain
-        if (zoneFileTxt) {
-          // get unresolved subdomain
-          let isCanonical = true;
-          const dbTx = await db.getTxStrict({
-            txId: attachment.tx_id,
-            indexBlockHash: attachment.index_block_hash,
-          });
-          if (dbTx.found) {
-            isCanonical = dbTx.result.canonical;
-            blockData.index_block_hash = dbTx.result.index_block_hash;
-            blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
-            blockData.microblock_hash = dbTx.result.microblock_hash;
-            blockData.microblock_sequence = dbTx.result.microblock_sequence;
-            blockData.microblock_canonical = dbTx.result.microblock_canonical;
-          } else {
-            logger.warn(
-              `Could not find transaction ${attachment.tx_id} associated with attachment`
-            );
-          }
-          // case for subdomain
-          const subdomains: DbBnsSubdomain[] = [];
-          for (let i = 0; i < zoneFileTxt.length; i++) {
-            const zoneFile = zoneFileTxt[i];
-            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
-            const subdomain: DbBnsSubdomain = {
-              name: name.concat('.', namespace),
-              namespace_id: namespace,
-              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
-              owner: parsedTxt.owner,
-              zonefile_hash: parsedTxt.zoneFileHash,
-              zonefile: parsedTxt.zoneFile,
-              tx_id: attachment.tx_id,
-              tx_index: -1,
-              canonical: isCanonical,
-              parent_zonefile_hash: attachment.content_hash.slice(2),
-              parent_zonefile_index: 0, //TODO need to figure out this field
-              block_height: Number.parseInt(attachment.block_height, 10),
-              zonefile_offset: 1,
-              resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
-            };
-            subdomains.push(subdomain);
-          }
-          await db.resolveBnsSubdomains(blockData, subdomains);
-        }
-      }
-      await db.updateZoneContent(zonefile, zoneFileHash, attachment.tx_id);
+  const attachments = parseAttachmentMessage(msg);
+  for (const subdomain of attachments.subdomains) {
+    const blockData = {
+      index_block_hash: subdomain.index_block_hash,
+      parent_index_block_hash: '',
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      microblock_canonical: true,
+    };
+    // get unresolved subdomain
+    const dbTx = await db.getTxStrict({
+      txId: subdomain.tx_id,
+      indexBlockHash: subdomain.index_block_hash,
+    });
+    if (dbTx.found) {
+      subdomain.canonical = dbTx.result.canonical;
+      blockData.index_block_hash = dbTx.result.index_block_hash;
+      blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
+      blockData.microblock_hash = dbTx.result.microblock_hash;
+      blockData.microblock_sequence = dbTx.result.microblock_sequence;
+      blockData.microblock_canonical = dbTx.result.microblock_canonical;
+    } else {
+      logger.warn(
+        `Could not find transaction ${subdomain.tx_id} associated with attachment subdomain "${subdomain.fully_qualified_subdomain}"`
+      );
     }
+    await db.resolveBnsSubdomains(blockData, [subdomain]);
+  }
+  for (const entry of attachments.zoneFiles) {
+    await db.updateZoneContent(entry.zonefile, entry.zonefileHash, entry.txId);
   }
 }
 
