@@ -1069,6 +1069,20 @@ export class PgWriteStore extends PgStore {
     };
   }
 
+  async insertZonefileContent(
+    sql: PgSqlClient,
+    zonefile: string,
+    zonefileHash: string
+  ): Promise<void> {
+    const values = {
+      zonefile: zonefile,
+      zonefile_hash: zonefileHash,
+    };
+    await sql`
+      INSERT into zonefiles ${sql(values)}
+    `;
+  }
+
   async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
     await this.sql.begin(async sql => {
       // inserting zonefile into zonefiles table
@@ -1323,9 +1337,11 @@ export class PgWriteStore extends PgStore {
       microblock_sequence: number;
       microblock_canonical: boolean;
     },
-    bnsName: DbBnsName
+    bnsName: DbBnsName,
+    skipZonefile?: boolean
   ) {
     const validZonefileHash = validateZonefileHash(bnsName.zonefile_hash);
+    if (!skipZonefile) {
     const zonefileValues: BnsZonefileInsertValues = {
       zonefile: bnsName.zonefile,
       zonefile_hash: validZonefileHash,
@@ -1333,6 +1349,7 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO zonefiles ${sql(zonefileValues)}
     `;
+    }
     const nameValues: BnsNameInsertValues = {
       name: bnsName.name,
       address: bnsName.address,

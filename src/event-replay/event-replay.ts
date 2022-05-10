@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import {
+  parseAttachmentMessage,
   parseBurnBlockMessage,
   parseNewBlockMessage,
   startEventServer,
@@ -23,7 +24,11 @@ import {
 } from './tsv-pre-org';
 import { Readable, Transform, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
-import { CoreNodeBlockMessage, CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
+import {
+  CoreNodeAttachmentMessage,
+  CoreNodeBlockMessage,
+  CoreNodeBurnBlockMessage,
+} from '../event-stream/core-node-message';
 import { ChainID } from '@stacks/transactions';
 
 enum EventImportMode {
@@ -227,6 +232,7 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   const preOrgFilePath = filePath + '-preorg';
   if (!fs.existsSync(preOrgFilePath)) {
     logger.warn(`Writing preorg tsv file: ${preOrgFilePath} ...`);
+    const reorgFileStartTime = Date.now();
     const inputLineReader = readLines(filePath);
     const transformStream = createTsvReorgStream(
       tsvEntityData.indexBlockHashes,
@@ -235,6 +241,9 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
     );
     const outputFileStream = fs.createWriteStream(preOrgFilePath);
     await pipeline(inputLineReader, transformStream, outputFileStream);
+    logger.warn(
+      `Writing preorg tsv file took ${Math.round((Date.now() - reorgFileStartTime) / 1000)} seconds`
+    );
   } else {
     logger.warn(`Using existing preorg tsv file: ${preOrgFilePath}`);
   }
@@ -245,9 +254,10 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   // 197 seconds: with disabled indexs, but without re-index
   // 655 seconds: with indexes untouched
   logger.warn(`Inserting event data to db...`);
-  // await insertRawEvents(tsvEntityData, db, preOrgFilePath);
-  // await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath);
+  await insertRawEvents(tsvEntityData, db, preOrgFilePath);
+  await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID);
+  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, chainID);
 
   /*
   const inputLineReader = readLines(filePath);
@@ -452,7 +462,6 @@ async function insertNewBlockEvents(
     'ft_events',
     'nft_events',
     'smart_contracts',
-    'zonefiles',
     'names',
     'namespaces',
   ];
@@ -504,10 +513,9 @@ async function insertNewBlockEvents(
             await db.updateSmartContract(sql, entry.tx, smartContract);
           }
 
-      // INSERT INTO zonefiles
       // INSERT INTO names
           for (const bnsName of entry.names) {
-            await db.updateNames(sql, entry.tx, bnsName);
+            await db.updateNames(sql, entry.tx, bnsName, true);
           }
 
       // INSERT INTO namespaces
@@ -542,6 +550,58 @@ async function insertNewBlockEvents(
   }
   logger.warn(
     `Re-indexing /new_block tables took ${Math.round(
+      (Date.now() - reindexStartTime) / 1000
+    )} seconds`
+  );
+}
+
+async function insertNewAttachmentEvents(
+  tsvEntityData: TsvEntityData,
+  db: PgWriteStore,
+  filePath: string,
+  chainID: ChainID
+) {
+  const preOrgStream = readPreorgTsv(filePath, '/attachments/new');
+  let lastStatusUpdatePercent = 0;
+  const tables = ['zonefiles'];
+  const newBlockInsertStartTime = Date.now();
+  await db.sql.begin(async sql => {
+    // Temporarily disable indexing and contraints on tables to speed up insertion
+    await db.toggleTableIndexes(sql, tables, false);
+
+    for await (const event of preOrgStream) {
+      const attatchmentMsg: CoreNodeAttachmentMessage[] = JSON.parse(event.payload);
+      const parsedAttachments = parseAttachmentMessage(attatchmentMsg);
+      for (const entry of parsedAttachments.zoneFiles) {
+        // INSERT INTO zonefiles
+        await db.insertZonefileContent(sql, entry.zonefile, entry.zonefileHash);
+      }
+
+      const readLineCount: number = event.readLineCount;
+      if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
+        lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
+        logger.warn(
+          `Processed '/attachments/new' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+        );
+      }
+    }
+
+    logger.warn(`Re-enabling indexs...`);
+    await db.toggleTableIndexes(sql, tables, true);
+  });
+  logger.warn(
+    `Inserting /attachments/new data took ${Math.round(
+      (Date.now() - newBlockInsertStartTime) / 1000
+    )} seconds`
+  );
+
+  const reindexStartTime = Date.now();
+  for (const table of tables) {
+    logger.warn(`Re-indexing table "${table}"...`);
+    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+  }
+  logger.warn(
+    `Re-indexing /attachments/new tables took ${Math.round(
       (Date.now() - reindexStartTime) / 1000
     )} seconds`
   );

@@ -1,6 +1,10 @@
 import { Readable, Transform } from 'stream';
 import { readLines, readLinesReversed } from './reverse-line-reader';
-import { CoreNodeBlockMessage, CoreNodeBurnBlockMessage } from '../event-stream/core-node-message';
+import {
+  CoreNodeAttachmentMessage,
+  CoreNodeBlockMessage,
+  CoreNodeBurnBlockMessage,
+} from '../event-stream/core-node-message';
 
 const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -160,6 +164,7 @@ export function createTsvReorgStream(
   let nextCanonicalStacksBlockIndex = 0;
   let nextCanonicalBurnBlockIndex = 0;
   let readLineCount = 0;
+  const canonicalIndexBlockHashesSet = new Set(canonicalIndexBlockHashes);
   const eventIdsRead = new Set<number>();
   const filterStream = new Transform({
     objectMode: true,
@@ -197,7 +202,21 @@ export function createTsvReorgStream(
           return;
         }
       } else if (parts[2] === '/attachments/new') {
-        // leave alone
+        const attachments: CoreNodeAttachmentMessage[] = JSON.parse(parts[3]);
+        const canonicalAttachments = attachments.filter(attm =>
+          canonicalIndexBlockHashesSet.has(attm.index_block_hash)
+        );
+        if (canonicalAttachments.length === 0) {
+          // this event does not contain any canonical data, ignore it
+          callback();
+          return;
+        }
+        // Some entries are canonical and some are not. This payload needs to be manipulated to
+        // exclude the non-canonical data.
+        if (canonicalAttachments.length !== attachments.length) {
+          parts[3] = JSON.stringify(canonicalAttachments);
+          line = parts.join('\t');
+        }
       } else if (PRUNABLE_EVENT_PATHS.includes(parts[2])) {
         callback();
         return;
