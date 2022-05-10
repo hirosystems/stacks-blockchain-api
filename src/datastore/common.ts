@@ -996,7 +996,6 @@ export interface DataStore extends DataStoreEventEmitter {
   /**
    * Returns a single entry from the `token_metadata_queue` table.
    * @param queueId - queue entry id
-   * @returns new retry count
    */
   getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
 
@@ -1009,6 +1008,7 @@ export interface DataStore extends DataStoreEventEmitter {
   /**
    * Increases the retry count for a specific token metadata queue entry.
    * @param queueId - queue entry id
+   * @returns new retry count
    */
   increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number>;
 
