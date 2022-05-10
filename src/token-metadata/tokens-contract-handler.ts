@@ -18,8 +18,14 @@ import {
 } from '@stacks/transactions';
 import { logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import * as querystring from 'querystring';
-import { isCompliantFt, isCompliantNft, performFetch } from './helpers';
-import { StacksCoreRpcClient } from '../core-rpc/client';
+import {
+  getTokenMetadataMaxRetries,
+  getTokenMetadataProcessingMode,
+  isCompliantFt,
+  isCompliantNft,
+  performFetch,
+} from './helpers';
+import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 
 /**
  * Amount of milliseconds to wait when fetching token metadata.
@@ -35,28 +41,18 @@ export const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
 const PUBLIC_IPFS = 'https://ipfs.io';
 
-export enum TokenMetadataErrorMode {
-  /**
-   * Default mode. If a required token metadata is not found, the API will issue a warning.
-   */
-  warning,
-  /**
-   * If a required token metadata is not found, the API will throw an error.
-   */
-  error,
+export enum TokenMetadataProcessingMode {
+  /** If a recoverable processing error occurs, we'll try again until the max retry attempt is reached. See `.env` */
+  default,
+  /** If a recoverable processing error occurs, we'll try again indefinitely. */
+  strict,
 }
 
-/**
- * Determines the token metadata error handling mode based on .env values.
- * @returns TokenMetadataMode
- */
-export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
-  switch (process.env['STACKS_API_TOKEN_METADATA_ERROR_MODE']) {
-    case 'error':
-      return TokenMetadataErrorMode.error;
-    default:
-      return TokenMetadataErrorMode.warning;
-  }
+export enum TokenMetadataErrorMode {
+  /** Default mode. If a required token metadata is not found when it is needed for a response, the API will issue a warning. */
+  warning,
+  /** If a required token metadata is not found, the API will throw an error. */
+  error,
 }
 
 /**
@@ -92,7 +88,7 @@ interface TokenHandlerArgs {
 }
 
 /**
- * Object that downloads, parses and indexes metadata info for a Fungible or Non-Fungible token in the Stacks blockchain
+ * This class downloads, parses and indexes metadata info for a Fungible or Non-Fungible token in the Stacks blockchain
  * by calling read-only functions in SIP-009 and SIP-010 compliant smart contracts.
  */
 export class TokensContractHandler {
@@ -154,12 +150,22 @@ export class TokensContractHandler {
       processingFinished = true;
     } catch (error) {
       if (error instanceof RetryableTokenMetadataError) {
-        // FIXME: check strict mode and max retry attempts
-        logger.info(
-          `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
-        );
+        const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
+        if (
+          getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
+          retries < getTokenMetadataMaxRetries()
+        ) {
+          logger.info(
+            `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
+          );
+        } else {
+          logger.warn(
+            `[token-metadata] max retries reached while processing ${this.contractId}, giving up: ${error}`
+          );
+          processingFinished = true;
+        }
       } else {
-        // Something went wrong but oh well, nvm.
+        // Something more serious happened, mark this contract as done.
         processingFinished = true;
       }
     } finally {
@@ -394,15 +400,20 @@ export class TokensContractHandler {
     functionName: string,
     functionArgs: ClarityValue[]
   ): Promise<ClarityValue> {
-    const result = await this.nodeRpcClient.sendReadOnlyContractCall(
-      this.contractAddress,
-      this.contractName,
-      functionName,
-      this.address,
-      functionArgs
-    );
+    let result: ReadOnlyContractCallResponse;
+    try {
+      result = await this.nodeRpcClient.sendReadOnlyContractCall(
+        this.contractAddress,
+        this.contractName,
+        functionName,
+        this.address,
+        functionArgs
+      );
+    } catch (error) {
+      throw new RetryableTokenMetadataError(`Error making read-only contract call: ${error}`);
+    }
     if (!result.okay) {
-      // Only runtime errors reported by the Stacks node are retryable during a contract call.
+      // Only runtime errors reported by the Stacks node should be retryable.
       if (result.cause.startsWith('Runtime')) {
         throw new RetryableTokenMetadataError(
           `Runtime error while calling read-only function ${functionName}`

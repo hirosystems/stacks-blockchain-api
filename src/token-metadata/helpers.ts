@@ -2,8 +2,11 @@ import { ClarityAbi, ClarityAbiFunction } from '@stacks/transactions';
 import {
   METADATA_FETCH_TIMEOUT_MS,
   METADATA_MAX_PAYLOAD_BYTE_SIZE,
+  TokenMetadataErrorMode,
+  TokenMetadataProcessingMode,
 } from './tokens-contract-handler';
 import fetch from 'node-fetch';
+import { parseArgBoolean } from '../helpers';
 
 export function isFtMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
@@ -13,6 +16,35 @@ export function isFtMetadataEnabled() {
 export function isNftMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_NFT_METADATA']?.toLowerCase().trim();
   return opt === '1' || opt === 'true';
+}
+
+/**
+ * Determines the token metadata processing mode based on .env values.
+ * @returns TokenMetadataProcessingMode
+ */
+export function getTokenMetadataProcessingMode(): TokenMetadataProcessingMode {
+  if (parseArgBoolean(process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'])) {
+    return TokenMetadataProcessingMode.strict;
+  }
+  return TokenMetadataProcessingMode.default;
+}
+
+export function getTokenMetadataMaxRetries() {
+  const opt = process.env['STACKS_API_TOKEN_METADATA_MAX_RETRIES'] ?? '5';
+  return parseInt(opt);
+}
+
+/**
+ * Determines the token metadata error handling mode based on .env values.
+ * @returns TokenMetadataMode
+ */
+export function tokenMetadataErrorMode(): TokenMetadataErrorMode {
+  switch (process.env['STACKS_API_TOKEN_METADATA_ERROR_MODE']) {
+    case 'error':
+      return TokenMetadataErrorMode.error;
+    default:
+      return TokenMetadataErrorMode.warning;
+  }
 }
 
 const FT_FUNCTIONS: ClarityAbiFunction[] = [

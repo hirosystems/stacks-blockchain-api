@@ -7676,6 +7676,21 @@ export class PgDataStore
     });
   }
 
+  async increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number> {
+    return await this.query(async client => {
+      const result = await client.query<{ retry_count: number }>(
+        `
+        UPDATE token_metadata_queue
+        SET retry_count = retry_count + 1
+        WHERE queue_id = $1
+        RETURNING retry_count
+        `,
+        [queueId]
+      );
+      return result.rows[0].retry_count;
+    });
+  }
+
   getFtMetadataList({
     limit,
     offset,

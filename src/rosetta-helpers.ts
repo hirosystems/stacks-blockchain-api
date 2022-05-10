@@ -59,10 +59,7 @@ import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import {
-  tokenMetadataErrorMode,
-  TokenMetadataErrorMode,
-} from './token-metadata/tokens-contract-handler';
+import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 import {
   ClarityTypeID,
   decodeClarityValue,
@@ -78,7 +75,7 @@ import {
   TxPayloadTokenTransfer,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { isFtMetadataEnabled } from './token-metadata/helpers';
+import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
