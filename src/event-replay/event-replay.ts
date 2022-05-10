@@ -6,7 +6,7 @@ import {
   parseNewBlockMessage,
   startEventServer,
 } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { getApiConfiguredChainID, httpPostRequest, I32_MAX, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
@@ -224,7 +224,13 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   if (fs.existsSync(filePath + '.entitydata')) {
     tsvEntityData = JSON.parse(fs.readFileSync(filePath + '.entitydata', 'utf8'));
   } else {
+    const scanTsvEntityDataStartTime = Date.now();
     tsvEntityData = await getCanonicalEntityList(filePath);
+    logger.warn(
+      `Scanning tsv file for canonical entity data took ${Math.round(
+        (Date.now() - scanTsvEntityDataStartTime) / 1000
+      )} seconds`
+    );
     fs.writeFileSync(filePath + '.entitydata', JSON.stringify(tsvEntityData));
   }
   logger.warn(`[Tsv entity data]: block height: ${tsvEntityData.indexBlockHashes.length}`);
@@ -257,7 +263,7 @@ async function preOrgTsvInsert(filePath: string): Promise<void> {
   await insertRawEvents(tsvEntityData, db, preOrgFilePath);
   await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID);
-  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, chainID);
+  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath);
 
   /*
   const inputLineReader = readLines(filePath);
@@ -534,7 +540,7 @@ async function insertNewBlockEvents(
       }
     }
 
-    logger.warn(`Re-enabling indexs...`);
+    logger.warn(`Re-enabling indexs on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
   logger.warn(
@@ -545,7 +551,7 @@ async function insertNewBlockEvents(
 
   const reindexStartTime = Date.now();
   for (const table of tables) {
-    logger.warn(`Re-indexing table "${table}"...`);
+    logger.warn(`Re-indexing table ${table}...`);
     await db.sql`REINDEX TABLE ${db.sql(table)}`;
   }
   logger.warn(
@@ -558,12 +564,11 @@ async function insertNewBlockEvents(
 async function insertNewAttachmentEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
-  filePath: string,
-  chainID: ChainID
+  filePath: string
 ) {
   const preOrgStream = readPreorgTsv(filePath, '/attachments/new');
   let lastStatusUpdatePercent = 0;
-  const tables = ['zonefiles'];
+  const tables = ['zonefiles', 'subdomains'];
   const newBlockInsertStartTime = Date.now();
   await db.sql.begin(async sql => {
     // Temporarily disable indexing and contraints on tables to speed up insertion
@@ -571,10 +576,29 @@ async function insertNewAttachmentEvents(
 
     for await (const event of preOrgStream) {
       const attatchmentMsg: CoreNodeAttachmentMessage[] = JSON.parse(event.payload);
-      const parsedAttachments = parseAttachmentMessage(attatchmentMsg);
-      for (const entry of parsedAttachments.zoneFiles) {
+      const attachments = parseAttachmentMessage(attatchmentMsg);
+
+      for (const entry of attachments.zoneFiles) {
         // INSERT INTO zonefiles
-        await db.insertZonefileContent(sql, entry.zonefile, entry.zonefileHash);
+        // TODO: probably remove this since `updateBatchSubdomains` inserts into both the subdomains and zonefile tables
+        // await db.insertZonefileContent(sql, entry.zonefile, entry.zonefileHash);
+      }
+
+      for (const subdomain of attachments.subdomains) {
+        // TODO: the `microblock_*` and `parent_index_block_hash` fields need populated
+        // this could potentially done by scanning the tsv file in `getCanonicalEntityList(..)`,
+        // otherwise, this would need a second pass after indexes are applied. Pros/cons to both
+        // approaches.
+        const blockData = {
+          index_block_hash: subdomain.index_block_hash ?? '',
+          parent_index_block_hash: '',
+          microblock_hash: '',
+          microblock_sequence: I32_MAX,
+          microblock_canonical: true,
+        };
+        // INSERT INTO zonefiles
+        // INSERT INTO subdomains
+        await db.updateBatchSubdomains(sql, blockData, [subdomain], true);
       }
 
       const readLineCount: number = event.readLineCount;
@@ -586,7 +610,7 @@ async function insertNewAttachmentEvents(
       }
     }
 
-    logger.warn(`Re-enabling indexs...`);
+    logger.warn(`Re-enabling indexs on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
   logger.warn(
@@ -597,7 +621,7 @@ async function insertNewAttachmentEvents(
 
   const reindexStartTime = Date.now();
   for (const table of tables) {
-    logger.warn(`Re-indexing table "${table}"...`);
+    logger.warn(`Re-indexing table ${table}...`);
     await db.sql`REINDEX TABLE ${db.sql(table)}`;
   }
   logger.warn(

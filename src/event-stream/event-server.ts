@@ -687,7 +687,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
   const attachments = parseAttachmentMessage(msg);
   for (const subdomain of attachments.subdomains) {
     const blockData = {
-      index_block_hash: subdomain.index_block_hash,
+      index_block_hash: subdomain.index_block_hash as string,
       parent_index_block_hash: '',
       microblock_hash: '',
       microblock_sequence: I32_MAX,
@@ -696,7 +696,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
     // get unresolved subdomain
     const dbTx = await db.getTxStrict({
       txId: subdomain.tx_id,
-      indexBlockHash: subdomain.index_block_hash,
+      indexBlockHash: subdomain.index_block_hash as string,
     });
     if (dbTx.found) {
       subdomain.canonical = dbTx.result.canonical;

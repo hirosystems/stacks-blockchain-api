@@ -780,13 +780,14 @@ export class PgWriteStore extends PgStore {
       microblock_sequence: number;
       microblock_canonical: boolean;
     },
-    subdomains: DbBnsSubdomain[]
+    subdomains: DbBnsSubdomain[],
+    skipReorg?: boolean
   ) {
     const subdomainValues: BnsSubdomainInsertValues[] = [];
     const zonefileValues: BnsZonefileInsertValues[] = [];
     for (const subdomain of subdomains) {
       let txIndex = subdomain.tx_index;
-      if (txIndex === -1) {
+      if (!skipReorg && txIndex === -1) {
         const txQuery = await sql<{ tx_index: number }[]>`
           SELECT tx_index from txs
           WHERE tx_id = ${subdomain.tx_id}
