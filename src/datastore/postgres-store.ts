@@ -712,6 +712,7 @@ interface DbTokenMetadataQueueEntryQuery {
   contract_abi: string;
   block_height: number;
   processed: boolean;
+  retry_count: number;
 }
 
 interface StxEventQueryResult {
@@ -1501,6 +1502,7 @@ export class PgDataStore
               contractAbi: contractAbi,
               blockHeight: entry.tx.block_height,
               processed: false,
+              retry_count: 0,
             };
             return queueEntry;
           })
@@ -5126,6 +5128,7 @@ export class PgDataStore
       contractAbi: JSON.parse(row.contract_abi),
       blockHeight: row.block_height,
       processed: row.processed,
+      retry_count: row.retry_count,
     };
     return { found: true, result: entry };
   }
@@ -5156,6 +5159,7 @@ export class PgDataStore
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
         processed: row.processed,
+        retry_count: row.retry_count,
       };
       return entry;
     });
@@ -5237,7 +5241,7 @@ export class PgDataStore
     });
   }
 
-  async getSmartContract(contractId: string) {
+  async getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>> {
     return this.query(async client => {
       const result = await client.query<{
         tx_id: Buffer;

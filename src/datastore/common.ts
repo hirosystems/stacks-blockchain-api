@@ -603,6 +603,7 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface DbChainTip {

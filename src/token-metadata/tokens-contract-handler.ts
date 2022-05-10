@@ -153,7 +153,7 @@ export class TokensContractHandler {
         const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
         if (
           getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
-          retries < getTokenMetadataMaxRetries()
+          retries <= getTokenMetadataMaxRetries()
         ) {
           logger.info(
             `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
