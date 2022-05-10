@@ -50,12 +50,12 @@ export interface Neighbor {
   authenticated: boolean;
 }
 
-export interface ReadOnlyContractCallSuccessResponse {
+interface ReadOnlyContractCallSuccessResponse {
   okay: true;
   result: string;
 }
 
-export interface ReadOnlyContractCallFailResponse {
+interface ReadOnlyContractCallFailResponse {
   okay: false;
   cause: string;
 }
