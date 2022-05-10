@@ -745,7 +745,7 @@ export interface Stopwatch {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
   /** Seconds since stopwatch was created. */
-  getElapsedSeconds: () => number;
+  getElapsedSeconds: (roundDecimals?: number) => number;
   getElapsedAndRestart: () => number;
   restart(): void;
 }
@@ -753,9 +753,10 @@ export interface Stopwatch {
 export function stopwatch(): Stopwatch {
   let start = process.hrtime.bigint();
   const result: Stopwatch = {
-    getElapsedSeconds: () => {
+    getElapsedSeconds: (roundDecimals?: number) => {
       const elapsedMs = result.getElapsed();
-      return elapsedMs / 1000;
+      const seconds = elapsedMs / 1000;
+      return roundDecimals === undefined ? seconds : +seconds.toFixed(roundDecimals);
     },
     getElapsed: () => {
       const end = process.hrtime.bigint();
