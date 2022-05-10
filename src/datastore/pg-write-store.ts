@@ -130,6 +130,25 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
+  /** Enable or disable indexes for the provided set of tables. */
+  async toggleTableIndexes(sql: PgSqlClient, tables: string[], enabled: boolean): Promise<void> {
+    const tableSchema = this.sql.options.connection.search_path ?? 'public';
+    const result = await sql`
+      UPDATE pg_index
+      SET ${sql({ indisready: enabled, indisvalid: enabled })}
+      WHERE indrelid = ANY (
+        SELECT oid FROM pg_class
+        WHERE relname IN ${sql(tables)}
+        AND relnamespace = (
+          SELECT oid FROM pg_namespace WHERE nspname = ${tableSchema}
+        )
+      )
+    `;
+    if (result.count === 0) {
+      throw new Error(`No updates made while toggling table indexes`);
+    }
+  }
+
   async getChainTip(
     sql: PgSqlClient
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {

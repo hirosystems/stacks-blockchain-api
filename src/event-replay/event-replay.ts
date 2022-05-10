@@ -459,14 +459,8 @@ async function insertNewBlockEvents(
   const newBlockInsertStartTime = Date.now();
   await db.sql.begin(async sql => {
     // Temporarily disable indexing and contraints on tables to speed up insertion
-    await sql`
-      UPDATE pg_index
-      SET indisready = false, indisvalid = false
-      WHERE indrelid = ANY (
-        SELECT oid FROM pg_class
-        WHERE relname IN ${sql(tables)}
-      )
-    `;
+    await db.toggleTableIndexes(sql, tables, false);
+
     for await (const event of preOrgStream) {
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(chainID, newBlockMsg);
@@ -489,10 +483,14 @@ async function insertNewBlockEvents(
 
           // INSERT INTO contract_logs
           await db.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+
+          // INSERT INTO stx_lock_events
+          for (const stxLockEvent of entry.stxLockEvents) {
+            await db.updateStxLockEvent(sql, entry.tx, stxLockEvent);
+          }
         }
       }
 
-      // INSERT INTO stx_lock_events
       // INSERT INTO ft_events
       // INSERT INTO nft_events
       // INSERT INTO smart_contracts
@@ -508,6 +506,9 @@ async function insertNewBlockEvents(
         );
       }
     }
+
+    logger.warn(`Re-enabling indexs...`);
+    await db.toggleTableIndexes(sql, tables, true);
   });
   logger.warn(
     `Inserting /new_block data took ${Math.round(
