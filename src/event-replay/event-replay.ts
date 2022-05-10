@@ -456,6 +456,7 @@ async function insertNewBlockEvents(
     'names',
     'namespaces',
   ];
+  const newBlockInsertStartTime = Date.now();
   await db.sql.begin(async sql => {
     await sql`
       UPDATE pg_index
@@ -481,10 +482,12 @@ async function insertNewBlockEvents(
 
           // INSERT INTO stx_events
           await db.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
+
+          // INSERT INTO principal_stx_txs
+          await db.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents, true);
         }
       }
 
-      // INSERT INTO principal_stx_txs
       // INSERT INTO contract_logs
       // INSERT INTO stx_lock_events
       // INSERT INTO ft_events
@@ -503,13 +506,21 @@ async function insertNewBlockEvents(
       }
     }
   });
+  logger.warn(
+    `Inserting /new_block data took ${Math.round(
+      (Date.now() - newBlockInsertStartTime) / 1000
+    )} seconds`
+  );
+
   const reindexStartTime = Date.now();
   for (const table of tables) {
     logger.warn(`Re-indexing table "${table}"...`);
     await db.sql`REINDEX TABLE ${db.sql(table)}`;
   }
   logger.warn(
-    `Re-indexing tables took ${Math.round((Date.now() - reindexStartTime) / 1000)} seconds`
+    `Re-indexing /new_block tables took ${Math.round(
+      (Date.now() - reindexStartTime) / 1000
+    )} seconds`
   );
 }
 

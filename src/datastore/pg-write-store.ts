@@ -688,41 +688,62 @@ export class PgWriteStore extends PgStore {
    * @param tx - Transaction
    * @param events - Transaction STX events
    */
-  async updatePrincipalStxTxs(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    const insertPrincipalStxTxs = async (principals: string[]) => {
-      principals = [...new Set(principals)]; // Remove duplicates
-      const values: PrincipalStxTxsInsertValues[] = principals.map(principal => ({
-        principal: principal,
-        tx_id: tx.tx_id,
-        block_height: tx.block_height,
-        index_block_hash: tx.index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        tx_index: tx.tx_index,
-        canonical: tx.canonical,
-        microblock_canonical: tx.microblock_canonical,
-      }));
-      await sql`
-        INSERT INTO principal_stx_txs ${sql(values)}
-        ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
-      `;
+  async updatePrincipalStxTxs(
+    sql: PgSqlClient,
+    tx: DbTx,
+    events: DbStxEvent[],
+    skipReorg?: boolean
+  ) {
+    // principal, tx_id, index_block_hash, microblock_hash
+    const alreadyInsertedContraint = new Set<string>();
+    const insertPrincipalStxTxs = async (principals: Set<string>) => {
+      const values: PrincipalStxTxsInsertValues[] = [];
+      principals.forEach(principal => {
+        const contraintKey = `${principal},${tx.tx_id},${tx.index_block_hash},${tx.microblock_hash}`;
+        if (!alreadyInsertedContraint.has(contraintKey)) {
+          alreadyInsertedContraint.add(contraintKey);
+          values.push({
+            principal: principal,
+            tx_id: tx.tx_id,
+            block_height: tx.block_height,
+            index_block_hash: tx.index_block_hash,
+            microblock_hash: tx.microblock_hash,
+            microblock_sequence: tx.microblock_sequence,
+            tx_index: tx.tx_index,
+            canonical: tx.canonical,
+            microblock_canonical: tx.microblock_canonical,
+          });
+        }
+      });
+      if (values.length > 0) {
+        await sql`
+          INSERT INTO principal_stx_txs ${sql(values)}
+          ${
+            skipReorg
+              ? sql``
+              : sql`ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING`
+          }
+        `;
+      }
     };
     // Insert tx data
     await insertPrincipalStxTxs(
-      [
-        tx.sender_address,
-        tx.token_transfer_recipient_address,
-        tx.contract_call_contract_id,
-        tx.smart_contract_contract_id,
-      ].filter((p): p is string => !!p) // Remove undefined
+      new Set(
+        [
+          tx.sender_address,
+          tx.token_transfer_recipient_address,
+          tx.contract_call_contract_id,
+          tx.smart_contract_contract_id,
+        ].filter((p): p is string => !!p)
+      ) // Remove undefined
     );
     // Insert stx_event data
     const batchSize = 500;
     for (const eventBatch of batchIterate(events, batchSize)) {
-      const principals: string[] = [];
+      const principals = new Set<string>();
       for (const event of eventBatch) {
-        if (event.sender) principals.push(event.sender);
-        if (event.recipient) principals.push(event.recipient);
+        if (event.sender) principals.add(event.sender);
+        if (event.recipient) principals.add(event.recipient);
       }
       await insertPrincipalStxTxs(principals);
     }
