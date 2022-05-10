@@ -488,12 +488,24 @@ async function insertNewBlockEvents(
           for (const stxLockEvent of entry.stxLockEvents) {
             await db.updateStxLockEvent(sql, entry.tx, stxLockEvent);
           }
+
+      // INSERT INTO ft_events
+          for (const ftEvent of entry.ftEvents) {
+            await db.updateFtEvent(sql, entry.tx, ftEvent);
+          }
+
+      // INSERT INTO nft_events
+          for (const nftEvent of entry.nftEvents) {
+            await db.updateNftEvent(sql, entry.tx, nftEvent);
+          }
+
+      // INSERT INTO smart_contracts
+          for (const smartContract of entry.smartContracts) {
+            await db.updateSmartContract(sql, entry.tx, smartContract);
+          }
         }
       }
 
-      // INSERT INTO ft_events
-      // INSERT INTO nft_events
-      // INSERT INTO smart_contracts
       // INSERT INTO zonefiles
       // INSERT INTO names
       // INSERT INTO namespaces
