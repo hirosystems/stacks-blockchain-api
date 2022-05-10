@@ -418,9 +418,8 @@ export class PgWriteStore extends PgStore {
     };
     const result = await sql`
       INSERT INTO miner_rewards ${sql(values)}
-      RETURNING *
     `;
-    return result.length;
+    return result.count;
   }
 
   async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
@@ -446,9 +445,8 @@ export class PgWriteStore extends PgStore {
     const result = await sql`
       INSERT INTO blocks ${sql(values)}
       ON CONFLICT (index_block_hash) DO NOTHING
-      RETURNING *
     `;
-    return result.length;
+    return result.count;
   }
 
   async updateBurnchainRewardSlotHolders({
@@ -467,11 +465,10 @@ export class PgWriteStore extends PgStore {
         WHERE canonical = true
           AND (burn_block_hash = ${burnchainBlockHash}
             OR burn_block_height >= ${burnchainBlockHeight})
-        RETURNING address
       `;
-      if (existingSlotHolders.length > 0) {
+      if (existingSlotHolders.count > 0) {
         logger.warn(
-          `Invalidated ${existingSlotHolders.length} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
+          `Invalidated ${existingSlotHolders.count} burnchain reward slot holders after fork detected at burnchain block ${burnchainBlockHash}`
         );
       }
       if (slotHolders.length === 0) {
@@ -486,11 +483,10 @@ export class PgWriteStore extends PgStore {
       }));
       const result = await sql`
         INSERT INTO reward_slot_holders ${sql(values)}
-        RETURNING *
       `;
-      if (result.length !== slotHolders.length) {
+      if (result.count !== slotHolders.length) {
         throw new Error(
-          `Unexpected row count after inserting reward slot holders: ${result.length} vs ${slotHolders.length}`
+          `Unexpected row count after inserting reward slot holders: ${result.count} vs ${slotHolders.length}`
         );
       }
     });
@@ -688,10 +684,9 @@ export class PgWriteStore extends PgStore {
       }));
       const res = await sql`
         INSERT INTO stx_events ${sql(values)}
-        RETURNING *
       `;
-      if (res.length !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.length}`);
+      if (res.count !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
       }
     }
   }
@@ -801,18 +796,16 @@ export class PgWriteStore extends PgStore {
     try {
       const bnsRes = await sql`
         INSERT INTO subdomains ${sql(subdomainValues)}
-        RETURNING *
       `;
-      if (bnsRes.length !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.length} for BNS`);
+      if (bnsRes.count !== subdomains.length) {
+        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.count} for BNS`);
       }
       const zonefilesRes = await sql`
         INSERT INTO zonefiles ${sql(zonefileValues)}
-        RETURNING *
       `;
-      if (zonefilesRes.length !== subdomains.length) {
+      if (zonefilesRes.count !== subdomains.length) {
         throw new Error(
-          `Expected ${subdomains.length} inserts, got ${zonefilesRes.length} for zonefiles`
+          `Expected ${subdomains.length} inserts, got ${zonefilesRes.count} for zonefiles`
         );
       }
     } catch (e: any) {
@@ -925,10 +918,9 @@ export class PgWriteStore extends PgStore {
       }));
       const res = await sql`
         INSERT INTO contract_logs ${sql(values)}
-        RETURNING *
       `;
-      if (res.length !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.length}`);
+      if (res.count !== eventBatch.length) {
+        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
       }
     }
   }
@@ -1078,11 +1070,10 @@ export class PgWriteStore extends PgStore {
         WHERE canonical = true AND
           (burn_block_hash = ${burnchainBlockHash}
             OR burn_block_height >= ${burnchainBlockHeight})
-        RETURNING reward_recipient, reward_amount
       `;
-      if (existingRewards.length > 0) {
+      if (existingRewards.count > 0) {
         logger.warn(
-          `Invalidated ${existingRewards.length} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
+          `Invalidated ${existingRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
         );
       }
 
@@ -1098,9 +1089,8 @@ export class PgWriteStore extends PgStore {
         };
         const rewardInsertResult = await sql`
           INSERT into burnchain_rewards ${sql(values)}
-          RETURNING *
         `;
-        if (rewardInsertResult.length !== 1) {
+        if (rewardInsertResult.count !== 1) {
           throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
         }
       }
@@ -1156,9 +1146,8 @@ export class PgWriteStore extends PgStore {
     const result = await sql`
       INSERT INTO txs ${sql(values)}
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
-      RETURNING ${sql(TX_COLUMNS)}
     `;
-    return result.length;
+    return result.count;
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
@@ -1198,9 +1187,8 @@ export class PgWriteStore extends PgStore {
         const result = await sql`
           INSERT INTO mempool_txs ${sql(values)}
           ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
-          RETURNING ${sql(MEMPOOL_TX_COLUMNS)}
         `;
-        if (result.length !== 1) {
+        if (result.count !== 1) {
           const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
           logger.warn(errMsg);
         } else {
@@ -1367,14 +1355,13 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
-        RETURNING *
       `;
       await sql`
         UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = ${dbQueueId}
       `;
-      return result.length;
+      return result.count;
     });
     await this.notifier?.sendTokens({ contractID: ftMetadata.contract_id });
     return length;
@@ -1397,14 +1384,13 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
-        RETURNING *
       `;
       await sql`
         UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = ${dbQueueId}
       `;
-      return result.length;
+      return result.count;
     });
     await this.notifier?.sendTokens({ contractID: nftMetadata.contract_id });
     return length;
@@ -1414,10 +1400,9 @@ export class PgWriteStore extends PgStore {
     try {
       const res = await sql`
         INSERT INTO token_offering_locked ${sql(lockedInfos, 'address', 'value', 'block')}
-        RETURNING *
       `;
-      if (res.length !== lockedInfos.length) {
-        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.length}`);
+      if (res.count !== lockedInfos.length) {
+        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.count}`);
       }
     } catch (e: any) {
       logError(`Locked Info errors ${e.message}`, e);
@@ -1436,10 +1421,9 @@ export class PgWriteStore extends PgStore {
         bns_names_onchain_imported = ${configState.bns_names_onchain_imported},
         bns_subdomains_imported = ${configState.bns_subdomains_imported},
         token_offering_imported = ${configState.token_offering_imported}
-      RETURNING *
     `;
-    if (queryResult.length !== 1) {
-      throw new Error(`Unexpected config update row count: ${queryResult.length}`);
+    if (queryResult.count !== 1) {
+      throw new Error(`Unexpected config update row count: ${queryResult.count}`);
     }
   }
 
@@ -1534,9 +1518,8 @@ export class PgWriteStore extends PgStore {
       const mbResult = await sql`
         INSERT INTO microblocks ${sql(values)}
         ON CONFLICT ON CONSTRAINT unique_microblock_hash DO NOTHING
-        RETURNING ${sql(MICROBLOCK_COLUMNS)}
       `;
-      if (mbResult.length !== 1) {
+      if (mbResult.count !== 1) {
         const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
         logger.warn(errMsg);
         // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
@@ -1594,9 +1577,8 @@ export class PgWriteStore extends PgStore {
       SET microblock_canonical = ${args.isMicroCanonical}, canonical = ${args.isCanonical},
         index_block_hash = ${args.indexBlockHash}, block_hash = ${args.blockHash}
       WHERE microblock_hash IN ${sql(args.microblocks)}
-      RETURNING *
     `;
-    if (updatedMicroblocksQuery.length !== args.microblocks.length) {
+    if (updatedMicroblocksQuery.count !== args.microblocks.length) {
       throw new Error(`Unexpected number of rows updated when setting microblock_canonical`);
     }
 
@@ -1827,120 +1809,110 @@ export class PgWriteStore extends PgStore {
       UPDATE miner_rewards
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.minerRewards += minerRewardResults.length;
+      updatedEntities.markedCanonical.minerRewards += minerRewardResults.count;
     } else {
-      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.length;
+      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.count;
     }
 
     const stxLockResults = await sql`
       UPDATE stx_lock_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.length;
+      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.count;
     } else {
-      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.length;
+      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.count;
     }
 
     const stxResults = await sql`
       UPDATE stx_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.stxEvents += stxResults.length;
+      updatedEntities.markedCanonical.stxEvents += stxResults.count;
     } else {
-      updatedEntities.markedNonCanonical.stxEvents += stxResults.length;
+      updatedEntities.markedNonCanonical.stxEvents += stxResults.count;
     }
 
     const ftResult = await sql`
       UPDATE ft_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.ftEvents += ftResult.length;
+      updatedEntities.markedCanonical.ftEvents += ftResult.count;
     } else {
-      updatedEntities.markedNonCanonical.ftEvents += ftResult.length;
+      updatedEntities.markedNonCanonical.ftEvents += ftResult.count;
     }
 
     const nftResult = await sql`
       UPDATE nft_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.nftEvents += nftResult.length;
+      updatedEntities.markedCanonical.nftEvents += nftResult.count;
     } else {
-      updatedEntities.markedNonCanonical.nftEvents += nftResult.length;
+      updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
     }
 
     const contractLogResult = await sql`
       UPDATE contract_logs
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.contractLogs += contractLogResult.length;
+      updatedEntities.markedCanonical.contractLogs += contractLogResult.count;
     } else {
-      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.length;
+      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.count;
     }
 
     const smartContractResult = await sql`
       UPDATE smart_contracts
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.smartContracts += smartContractResult.length;
+      updatedEntities.markedCanonical.smartContracts += smartContractResult.count;
     } else {
-      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.length;
+      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.count;
     }
 
     const nameResult = await sql`
       UPDATE names
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.names += nameResult.length;
+      updatedEntities.markedCanonical.names += nameResult.count;
     } else {
-      updatedEntities.markedNonCanonical.names += nameResult.length;
+      updatedEntities.markedNonCanonical.names += nameResult.count;
     }
 
     const namespaceResult = await sql`
       UPDATE namespaces
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.namespaces += namespaceResult.length;
+      updatedEntities.markedCanonical.namespaces += namespaceResult.count;
     } else {
-      updatedEntities.markedNonCanonical.namespaces += namespaceResult.length;
+      updatedEntities.markedNonCanonical.namespaces += namespaceResult.count;
     }
 
     const subdomainResult = await sql`
       UPDATE subdomains
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING *
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.subdomains += subdomainResult.length;
+      updatedEntities.markedCanonical.subdomains += subdomainResult.count;
     } else {
-      updatedEntities.markedNonCanonical.subdomains += subdomainResult.length;
+      updatedEntities.markedNonCanonical.subdomains += subdomainResult.count;
     }
 
     return {
