@@ -458,6 +458,7 @@ async function insertNewBlockEvents(
   ];
   const newBlockInsertStartTime = Date.now();
   await db.sql.begin(async sql => {
+    // Temporarily disable indexing and contraints on tables to speed up insertion
     await sql`
       UPDATE pg_index
       SET indisready = false, indisvalid = false
@@ -485,10 +486,12 @@ async function insertNewBlockEvents(
 
           // INSERT INTO principal_stx_txs
           await db.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents, true);
+
+          // INSERT INTO contract_logs
+          await db.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
         }
       }
 
-      // INSERT INTO contract_logs
       // INSERT INTO stx_lock_events
       // INSERT INTO ft_events
       // INSERT INTO nft_events

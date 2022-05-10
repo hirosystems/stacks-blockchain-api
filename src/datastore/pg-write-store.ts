@@ -699,6 +699,9 @@ export class PgWriteStore extends PgStore {
     const insertPrincipalStxTxs = async (principals: Set<string>) => {
       const values: PrincipalStxTxsInsertValues[] = [];
       principals.forEach(principal => {
+        // Check if this row has already been inserted by comparing the same columns used in the
+        // sql unique constraint defined on the table. This prevents later errors during re-indexing
+        // when the table indexes/contraints are temporarily disabled during inserts.
         const contraintKey = `${principal},${tx.tx_id},${tx.index_block_hash},${tx.microblock_hash}`;
         if (!alreadyInsertedContraint.has(contraintKey)) {
           alreadyInsertedContraint.add(contraintKey);
