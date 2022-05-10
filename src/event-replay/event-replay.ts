@@ -503,12 +503,19 @@ async function insertNewBlockEvents(
           for (const smartContract of entry.smartContracts) {
             await db.updateSmartContract(sql, entry.tx, smartContract);
           }
-        }
-      }
 
       // INSERT INTO zonefiles
       // INSERT INTO names
+          for (const bnsName of entry.names) {
+            await db.updateNames(sql, entry.tx, bnsName);
+          }
+
       // INSERT INTO namespaces
+          for (const namespace of entry.namespaces) {
+            await db.updateNamespaces(sql, entry.tx, namespace);
+          }
+        }
+      }
 
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 10) {
