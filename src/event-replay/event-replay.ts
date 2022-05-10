@@ -475,13 +475,15 @@ async function insertNewBlockEvents(
         await db.insertMicroblock(sql, dbData.microblocks);
       }
       if (dbData.txs.length > 0) {
-        // INSERT INTO txs
-        for (const { tx } of dbData.txs) {
-          await db.updateTx(sql, tx, true);
+        for (const entry of dbData.txs) {
+          // INSERT INTO txs
+          await db.updateTx(sql, entry.tx, true);
+
+          // INSERT INTO stx_events
+          await db.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
         }
       }
 
-      // INSERT INTO stx_events
       // INSERT INTO principal_stx_txs
       // INSERT INTO contract_logs
       // INSERT INTO stx_lock_events
@@ -501,10 +503,14 @@ async function insertNewBlockEvents(
       }
     }
   });
+  const reindexStartTime = Date.now();
   for (const table of tables) {
     logger.warn(`Re-indexing table "${table}"...`);
     await db.sql`REINDEX TABLE ${db.sql(table)}`;
   }
+  logger.warn(
+    `Re-indexing tables took ${Math.round((Date.now() - reindexStartTime) / 1000)} seconds`
+  );
 }
 
 async function insertNewBurnBlockEvents(
