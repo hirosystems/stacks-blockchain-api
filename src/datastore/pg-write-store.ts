@@ -662,6 +662,12 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertStxEventBatch(sql: PgSqlClient, values: StxEventInsertValues[]) {
+    await sql`
+      INSERT INTO stx_events ${sql(values)}
+    `;
+  }
+
   async updateBatchStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {

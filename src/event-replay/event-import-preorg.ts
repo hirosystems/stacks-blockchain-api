@@ -33,6 +33,7 @@ import {
   DbTx,
   PrincipalStxTxsInsertValues,
   RawEventRequestInsertValues,
+  StxEventInsertValues,
 } from '../datastore/common';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
@@ -198,6 +199,14 @@ async function insertNewBlockEvents(
       await timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries));
     });
 
+    // batches of 1000: 31 seconds
+    const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(
+      1000,
+      async entries => {
+        await timeTracker.track('updateBatchStxEvents', () => db.insertStxEventBatch(sql, entries));
+      }
+    );
+
     // batches of 1000: 56 seconds
     const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
       1000,
@@ -277,8 +286,23 @@ async function insertNewBlockEvents(
           await dbTxBatchInserter.push([entry.tx]);
 
           // INSERT INTO stx_events
-          await timeTracker.track('updateBatchStxEvents', () =>
-            db.updateBatchStxEvents(sql, entry.tx, entry.stxEvents)
+          await dbStxEventBatchInserter.push(
+            entry.stxEvents.map(stxEvent => ({
+              event_index: stxEvent.event_index,
+              tx_id: stxEvent.tx_id,
+              tx_index: stxEvent.tx_index,
+              block_height: stxEvent.block_height,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+              canonical: stxEvent.canonical,
+              asset_event_type_id: stxEvent.asset_event_type_id,
+              sender: stxEvent.sender ?? null,
+              recipient: stxEvent.recipient ?? null,
+              amount: stxEvent.amount,
+            }))
           );
 
           // INSERT INTO principal_stx_txs
@@ -344,6 +368,7 @@ async function insertNewBlockEvents(
     }
 
     await dbTxBatchInserter.flush();
+    await dbStxEventBatchInserter.flush();
     await dbPrincipalStxTxBatchInserter.flush();
 
     logger.info(`Processed '/new_block' events: 100%`);
