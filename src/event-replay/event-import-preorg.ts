@@ -12,7 +12,14 @@ import {
   parseNewBlockMessage,
 } from '../event-stream/event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { getApiConfiguredChainID, I32_MAX, logger, stopwatch } from '../helpers';
+import {
+  createTimeTracker,
+  getApiConfiguredChainID,
+  I32_MAX,
+  logger,
+  stopwatch,
+  TimeTracker,
+} from '../helpers';
 import { readLines } from './reverse-line-reader';
 import {
   createTsvReorgStream,
@@ -69,17 +76,33 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     logger.info(`Writing preorg tsv file took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
 
+  const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
+  logger.info(
+    `Using max_parallel_maintenance_workers: ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
+  );
+
+  const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
+  logger.info(`Using maintenance_work_mem: ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`);
+
   logger.info(`Inserting event data to db...`);
-  await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath);
-  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath);
-  await insertRawEvents(tsvEntityData, db, preOrgFilePath);
-  await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID);
+  const timeTracker = createTimeTracker();
+  await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
+
+  console.table(timeTracker.getDurations(2));
 
   await db.close();
   logger.info(`Event import took: ${startTime.getElapsedSeconds(2)} seconds`);
 }
 
-async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, filePath: string) {
+async function insertRawEvents(
+  tsvEntityData: TsvEntityData,
+  db: PgWriteStore,
+  filePath: string,
+  timeTracker: TimeTracker
+) {
   const preOrgStream = readPreorgTsv(filePath);
   let lastStatusUpdatePercent = 0;
   const tables = ['event_observer_requests'];
@@ -90,7 +113,9 @@ async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, f
 
     for await (const event of preOrgStream) {
       // INSERT INTO event_observer_requests
-      await db.storeRawEventRequest1(event.path, event.payload, sql);
+      await timeTracker.track('storeRawEventRequest', () =>
+        db.storeRawEventRequest1(event.path, event.payload, sql)
+      );
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
@@ -108,19 +133,18 @@ async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, f
 
   const reindexSw = stopwatch();
   for (const table of tables) {
-    logger.info(`Re-indexing table ${table}...`);
-    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+    logger.info(`Reindexing table ${table}...`);
+    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
-  logger.info(`Re-indexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
-}
-  });
+  logger.info(`Reindexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
 async function insertNewBlockEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
   filePath: string,
-  chainID: ChainID
+  chainID: ChainID,
+  timeTracker: TimeTracker
 ) {
   const preOrgStream = readPreorgTsv(filePath, '/new_block');
   let lastStatusUpdatePercent = 0;
@@ -147,53 +171,73 @@ async function insertNewBlockEvents(
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(chainID, newBlockMsg);
       // INSERT INTO blocks
-      await db.updateBlock(sql, dbData.block, true);
+      await timeTracker.track('updateBlock', () => db.updateBlock(sql, dbData.block, true));
       if (dbData.microblocks.length > 0) {
         // INSERT INTO microblocks
-        await db.insertMicroblock(sql, dbData.microblocks);
+        await timeTracker.track('insertMicroblock', () =>
+          db.insertMicroblock(sql, dbData.microblocks)
+        );
       }
       if (dbData.txs.length > 0) {
         for (const entry of dbData.txs) {
           // INSERT INTO txs
-          await db.updateTx(sql, entry.tx, true);
+          await timeTracker.track('updateTx', () => db.updateTx(sql, entry.tx, true));
 
           // INSERT INTO stx_events
-          await db.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
+          await timeTracker.track('updateBatchStxEvents', () =>
+            db.updateBatchStxEvents(sql, entry.tx, entry.stxEvents)
+          );
 
           // INSERT INTO principal_stx_txs
-          await db.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents, true);
+          await timeTracker.track('updatePrincipalStxTxs', () =>
+            db.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents, true)
+          );
 
           // INSERT INTO contract_logs
-          await db.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+          await timeTracker.track('updateBatchSmartContractEvent', () =>
+            db.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents)
+          );
 
           // INSERT INTO stx_lock_events
           for (const stxLockEvent of entry.stxLockEvents) {
-            await db.updateStxLockEvent(sql, entry.tx, stxLockEvent);
+            await timeTracker.track('updateStxLockEvent', () =>
+              db.updateStxLockEvent(sql, entry.tx, stxLockEvent)
+            );
           }
 
           // INSERT INTO ft_events
           for (const ftEvent of entry.ftEvents) {
-            await db.updateFtEvent(sql, entry.tx, ftEvent);
+            await timeTracker.track('updateFtEvent', () =>
+              db.updateFtEvent(sql, entry.tx, ftEvent)
+            );
           }
 
           // INSERT INTO nft_events
           for (const nftEvent of entry.nftEvents) {
-            await db.updateNftEvent(sql, entry.tx, nftEvent);
+            await timeTracker.track('updateNftEvent', () =>
+              db.updateNftEvent(sql, entry.tx, nftEvent)
+            );
           }
 
           // INSERT INTO smart_contracts
           for (const smartContract of entry.smartContracts) {
-            await db.updateSmartContract(sql, entry.tx, smartContract);
+            await timeTracker.track('updateSmartContract', () =>
+              db.updateSmartContract(sql, entry.tx, smartContract)
+            );
           }
 
           // INSERT INTO names
           for (const bnsName of entry.names) {
-            await db.updateNames(sql, entry.tx, bnsName, true);
+            await timeTracker.track('updateNames', () =>
+              db.updateNames(sql, entry.tx, bnsName, true)
+            );
           }
 
           // INSERT INTO namespaces
           for (const namespace of entry.namespaces) {
-            await db.updateNamespaces(sql, entry.tx, namespace);
+            await timeTracker.track('updateNamespaces', () =>
+              db.updateNamespaces(sql, entry.tx, namespace)
+            );
           }
         }
       }
@@ -214,16 +258,17 @@ async function insertNewBlockEvents(
 
   const reindexSw = stopwatch();
   for (const table of tables) {
-    logger.info(`Re-indexing table ${table}...`);
-    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+    logger.info(`Reindexing table ${table}...`);
+    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
-  logger.info(`Re-indexing /new_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
+  logger.info(`Reindexing /new_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
 async function insertNewAttachmentEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
-  filePath: string
+  filePath: string,
+  timeTracker: TimeTracker
 ) {
   const preOrgStream = readPreorgTsv(filePath, '/attachments/new');
   let lastStatusUpdatePercent = 0;
@@ -257,7 +302,9 @@ async function insertNewAttachmentEvents(
         };
         // INSERT INTO zonefiles
         // INSERT INTO subdomains
-        await db.updateBatchSubdomains(sql, blockData, [subdomain], true);
+        await timeTracker.track('updateBatchSubdomains', () =>
+          db.updateBatchSubdomains(sql, blockData, [subdomain], true)
+        );
       }
 
       const readLineCount: number = event.readLineCount;
@@ -278,16 +325,17 @@ async function insertNewAttachmentEvents(
 
   const reindexSw = stopwatch();
   for (const table of tables) {
-    logger.info(`Re-indexing table ${table}...`);
-    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+    logger.info(`Reindexing table ${table}...`);
+    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
-  logger.info(`Re-indexing /attachments/new tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
+  logger.info(`Reindexing /attachments/new tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
 async function insertNewBurnBlockEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
-  filePath: string
+  filePath: string,
+  timeTracker: TimeTracker
 ) {
   const preOrgStream = readPreorgTsv(filePath, '/new_burn_block');
   let lastStatusUpdatePercent = 0;
@@ -302,22 +350,26 @@ async function insertNewBurnBlockEvents(
       const burnBlockData = parseBurnBlockMessage(burnBlockMsg);
 
       if (burnBlockData.rewards.length > 0) {
-        await db.updateBurnchainRewards({
-          burnchainBlockHash: burnBlockMsg.burn_block_hash,
-          burnchainBlockHeight: burnBlockMsg.burn_block_height,
-          rewards: burnBlockData.rewards,
-          skipReorg: true,
-          sqlTx: sql,
-        });
+        await timeTracker.track('updateBurnchainRewards', () =>
+          db.updateBurnchainRewards({
+            burnchainBlockHash: burnBlockMsg.burn_block_hash,
+            burnchainBlockHeight: burnBlockMsg.burn_block_height,
+            rewards: burnBlockData.rewards,
+            skipReorg: true,
+            sqlTx: sql,
+          })
+        );
       }
       if (burnBlockData.slotHolders.length > 0) {
-        await db.updateBurnchainRewardSlotHolders({
-          burnchainBlockHash: burnBlockMsg.burn_block_hash,
-          burnchainBlockHeight: burnBlockMsg.burn_block_height,
-          slotHolders: burnBlockData.slotHolders,
-          skipReorg: true,
-          sqlTx: sql,
-        });
+        await timeTracker.track('updateBurnchainRewardSlotHolders', () =>
+          db.updateBurnchainRewardSlotHolders({
+            burnchainBlockHash: burnBlockMsg.burn_block_hash,
+            burnchainBlockHeight: burnBlockMsg.burn_block_height,
+            slotHolders: burnBlockData.slotHolders,
+            skipReorg: true,
+            sqlTx: sql,
+          })
+        );
       }
 
       const readLineCount: number = event.readLineCount;
@@ -338,8 +390,8 @@ async function insertNewBurnBlockEvents(
 
   const reindexSw = stopwatch();
   for (const table of tables) {
-    logger.info(`Re-indexing table ${table}...`);
-    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+    logger.info(`Reindexing table ${table}...`);
+    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
-  logger.info(`Re-indexing /new_burn_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
+  logger.info(`Reindexing /new_burn_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }

@@ -787,6 +787,47 @@ export async function time<T>(
   }
 }
 
+export interface TimeTracker {
+  track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
+  getDurations: (
+    roundDecimals?: number
+  ) => {
+    name: string;
+    seconds: number;
+  }[];
+}
+
+export function createTimeTracker(): TimeTracker {
+  const durations = new Map<string, { totalTime: bigint }>();
+  return {
+    track<T = void>(name: string, fn: () => Promise<T>) {
+      let duration = durations.get(name);
+      if (duration === undefined) {
+        duration = { totalTime: 0n };
+        durations.set(name, duration);
+      }
+      const start = process.hrtime.bigint();
+      return fn().finally(() => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        duration!.totalTime += process.hrtime.bigint() - start;
+      });
+    },
+    getDurations: (roundDecimals?: number) => {
+      const durationEntries = [...durations.entries()].map(entry => {
+        let seconds = Number(entry[1].totalTime) / 1_000_000_000;
+        if (roundDecimals) {
+          seconds = +seconds.toFixed(roundDecimals);
+        }
+        return {
+          name: entry[0],
+          seconds,
+        };
+      });
+      return durationEntries.sort((a, b) => b.seconds - a.seconds);
+    },
+  };
+}
+
 /**
  * Escape a string for use as a css selector name.
  * From https://github.com/mathiasbynens/CSS.escape/blob/master/css.escape.js
