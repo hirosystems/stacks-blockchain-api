@@ -27,6 +27,7 @@ import {
   readPreorgTsv,
   TsvEntityData,
 } from './tsv-pre-org';
+import { DbTx } from '../datastore/common';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const chainID = getApiConfiguredChainID();
@@ -139,6 +140,30 @@ async function insertRawEvents(
   logger.info(`Reindexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
+function createBatchInserter<T>(
+  batchSize: number,
+  insertFn: (entries: T[]) => Promise<void>
+): {
+  push(entry: T): Promise<void>;
+  flush(): Promise<void>;
+} {
+  const entries: T[] = [];
+  return {
+    async push(entry: T) {
+      entries.push(entry);
+      if (entries.length >= batchSize) {
+        await insertFn(entries);
+        entries.length = 0;
+      }
+    },
+    async flush() {
+      if (entries.length > 0) {
+        await insertFn(entries);
+      }
+    },
+  };
+}
+
 async function insertNewBlockEvents(
   tsvEntityData: TsvEntityData,
   db: PgWriteStore,
@@ -167,6 +192,14 @@ async function insertNewBlockEvents(
     // Temporarily disable indexing and contraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
+    // batches of 500: 94 seconds
+    // batches of 1000: 85 seconds
+    // batches of 1500: 80 seconds
+    const dbTxBatchInserter = createBatchInserter<DbTx>(1000, async entries => {
+      await timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries));
+    });
+    let txsInserted = 0;
+
     for await (const event of preOrgStream) {
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(chainID, newBlockMsg);
@@ -181,7 +214,8 @@ async function insertNewBlockEvents(
       if (dbData.txs.length > 0) {
         for (const entry of dbData.txs) {
           // INSERT INTO txs
-          await timeTracker.track('updateTx', () => db.updateTx(sql, entry.tx, true));
+          await dbTxBatchInserter.push(entry.tx);
+          txsInserted++;
 
           // INSERT INTO stx_events
           await timeTracker.track('updateBatchStxEvents', () =>
@@ -250,6 +284,9 @@ async function insertNewBlockEvents(
         );
       }
     }
+
+    await dbTxBatchInserter.flush();
+    logger.info(`Processed '/new_block' events: 100%`);
 
     logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
