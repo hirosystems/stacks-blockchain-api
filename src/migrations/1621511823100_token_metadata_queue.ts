@@ -28,11 +28,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     processed: {
       type: 'boolean',
       notNull: true,
-    },
-    retry_count: {
-      type: 'integer',
-      notNull: true,
-      default: 0,
     }
   });
 
