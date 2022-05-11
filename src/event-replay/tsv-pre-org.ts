@@ -96,7 +96,7 @@ export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEn
     } else if (parts[2] === '/new_burn_block') {
       processBurnBlockLine(parts);
     } else if (parts[2] === '/attachments/new') {
-      // TODO: can these events be left as-is?
+      // ignore
     } else if (PRUNABLE_EVENT_PATHS.includes(parts[2])) {
       // ignore
     } else {
