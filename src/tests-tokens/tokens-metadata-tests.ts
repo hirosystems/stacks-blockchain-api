@@ -20,7 +20,7 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { logger, timeout } from '../helpers';
+import { logger, timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
@@ -164,6 +164,28 @@ describe('api tests', () => {
     expect(query1.body).toHaveProperty('image_canonical_uri');
     expect(query1.body).toHaveProperty('tx_id');
     expect(query1.body).toHaveProperty('sender_address');
+  });
+
+  test('failed processing is retried in next block', async () => {
+    const entryProcessedWaiter: Waiter<string> = waiter();
+    const blockHandler = async (blockHash: string) => {
+      const entry = await db.getTokenMetadataQueueEntry(1);
+      if (entry.result?.processed) {
+        entryProcessedWaiter.finish(blockHash);
+      }
+    };
+    db.on('blockUpdate', blockHandler);
+    // Set as not processed.
+    await db.query(async client => {
+      await client.query(
+        `UPDATE token_metadata_queue
+        SET processed = false
+        WHERE queue_id = 1`
+      );
+    });
+    // This will resolve when processed is true again.
+    await entryProcessedWaiter;
+    db.off('blockUpdate', blockHandler);
   });
 
   test('token nft-metadata data URL base64 w/o media type', async () => {

@@ -44,6 +44,7 @@ export class TokensProcessorQueue {
 
   close() {
     this.db.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.db.off('blockUpdate', this.onBlockUpdate);
     this.queue.pause();
     this.queue.clear();
   }
