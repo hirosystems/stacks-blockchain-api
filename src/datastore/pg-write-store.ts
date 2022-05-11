@@ -700,6 +700,12 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async insertPrincipalStxTxsBatched(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
+    await sql`
+      INSERT INTO principal_stx_txs ${sql(values)}
+    `;
+  }
+
   /**
    * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
    * transfer relevant to a principal (stx address or contract id).
@@ -707,12 +713,7 @@ export class PgWriteStore extends PgStore {
    * @param tx - Transaction
    * @param events - Transaction STX events
    */
-  async updatePrincipalStxTxs(
-    sql: PgSqlClient,
-    tx: DbTx,
-    events: DbStxEvent[],
-    skipReorg?: boolean
-  ) {
+  async updatePrincipalStxTxs(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
     // principal, tx_id, index_block_hash, microblock_hash
     const alreadyInsertedContraint = new Set<string>();
     const insertPrincipalStxTxs = async (principals: Set<string>) => {
@@ -740,11 +741,7 @@ export class PgWriteStore extends PgStore {
       if (values.length > 0) {
         await sql`
           INSERT INTO principal_stx_txs ${sql(values)}
-          ${
-            skipReorg
-              ? sql``
-              : sql`ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING`
-          }
+          ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
         `;
       }
     };

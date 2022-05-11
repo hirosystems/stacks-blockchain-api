@@ -13,6 +13,7 @@ import {
 } from '../event-stream/event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import {
+  batchIterate,
   createTimeTracker,
   getApiConfiguredChainID,
   I32_MAX,
@@ -27,7 +28,7 @@ import {
   readPreorgTsv,
   TsvEntityData,
 } from './tsv-pre-org';
-import { DbTx } from '../datastore/common';
+import { DataStoreTxEventData, DbTx, PrincipalStxTxsInsertValues } from '../datastore/common';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const chainID = getApiConfiguredChainID();
@@ -144,21 +145,28 @@ function createBatchInserter<T>(
   batchSize: number,
   insertFn: (entries: T[]) => Promise<void>
 ): {
-  push(entry: T): Promise<void>;
+  push(entries: T[]): Promise<void>;
   flush(): Promise<void>;
 } {
-  const entries: T[] = [];
+  const entryBuffer: T[] = [];
   return {
-    async push(entry: T) {
-      entries.push(entry);
-      if (entries.length >= batchSize) {
-        await insertFn(entries);
-        entries.length = 0;
+    async push(entries: T[]) {
+      entries.length === 1
+        ? entryBuffer.push(entries[0])
+        : entries.forEach(e => entryBuffer.push(e));
+      if (entryBuffer.length === batchSize) {
+        await insertFn(entryBuffer);
+        entryBuffer.length = 0;
+      } else if (entryBuffer.length > batchSize) {
+        for (const batch of batchIterate(entryBuffer, batchSize)) {
+          await insertFn(batch);
+        }
+        entryBuffer.length = 0;
       }
     },
     async flush() {
-      if (entries.length > 0) {
-        await insertFn(entries);
+      if (entryBuffer.length > 0) {
+        await insertFn(entryBuffer);
       }
     },
   };
@@ -187,10 +195,12 @@ async function insertNewBlockEvents(
     'names',
     'namespaces',
   ];
-  const newBlockInsertSw = stopwatch();
+  const blockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
     // Temporarily disable indexing and contraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
+
+    let blocksInserted = 0;
 
     // batches of 500: 94 seconds
     // batches of 1000: 85 seconds
@@ -198,9 +208,70 @@ async function insertNewBlockEvents(
     const dbTxBatchInserter = createBatchInserter<DbTx>(1000, async entries => {
       await timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries));
     });
-    let txsInserted = 0;
+
+    // batches of 1000: 56 seconds
+    const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
+      1000,
+      async entries => {
+        await timeTracker.track('insertPrincipalStxTxsBatched', () =>
+          db.insertPrincipalStxTxsBatched(sql, entries)
+        );
+      }
+    );
+
+    const processStxEvents = async (entry: DataStoreTxEventData) => {
+      // string key: `principal, tx_id, index_block_hash, microblock_hash`
+      const alreadyInsertedRowKeys = new Set<string>();
+      const values: PrincipalStxTxsInsertValues[] = [];
+      const push = (principal: string) => {
+        // Check if this row has already been inserted by comparing the same columns used in the
+        // sql unique constraint defined on the table. This prevents later errors during re-indexing
+        // when the table indexes/contraints are temporarily disabled during inserts.
+        const contraintKey = `${principal},${entry.tx.tx_id},${entry.tx.index_block_hash},${entry.tx.microblock_hash}`;
+        if (!alreadyInsertedRowKeys.has(contraintKey)) {
+          alreadyInsertedRowKeys.add(contraintKey);
+          values.push({
+            principal: principal,
+            tx_id: entry.tx.tx_id,
+            block_height: entry.tx.block_height,
+            index_block_hash: entry.tx.index_block_hash,
+            microblock_hash: entry.tx.microblock_hash,
+            microblock_sequence: entry.tx.microblock_sequence,
+            tx_index: entry.tx.tx_index,
+            canonical: entry.tx.canonical,
+            microblock_canonical: entry.tx.microblock_canonical,
+          });
+        }
+      };
+
+      const principals = new Set<string>();
+
+      // Insert tx data
+      [
+        entry.tx.sender_address,
+        entry.tx.token_transfer_recipient_address,
+        entry.tx.contract_call_contract_id,
+        entry.tx.smart_contract_contract_id,
+      ]
+        .filter((p): p is string => !!p)
+        .forEach(p => principals.add(p));
+
+      // Insert stx_event data
+      entry.stxEvents.forEach(event => {
+        if (event.sender) {
+          principals.add(event.sender);
+        }
+        if (event.recipient) {
+          principals.add(event.recipient);
+        }
+      });
+
+      principals.forEach(principal => push(principal));
+      await dbPrincipalStxTxBatchInserter.push(values);
+    };
 
     for await (const event of preOrgStream) {
+      blocksInserted++;
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(chainID, newBlockMsg);
       // INSERT INTO blocks
@@ -214,8 +285,7 @@ async function insertNewBlockEvents(
       if (dbData.txs.length > 0) {
         for (const entry of dbData.txs) {
           // INSERT INTO txs
-          await dbTxBatchInserter.push(entry.tx);
-          txsInserted++;
+          await dbTxBatchInserter.push([entry.tx]);
 
           // INSERT INTO stx_events
           await timeTracker.track('updateBatchStxEvents', () =>
@@ -223,9 +293,7 @@ async function insertNewBlockEvents(
           );
 
           // INSERT INTO principal_stx_txs
-          await timeTracker.track('updatePrincipalStxTxs', () =>
-            db.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents, true)
-          );
+          await processStxEvents(entry);
 
           // INSERT INTO contract_logs
           await timeTracker.track('updateBatchSmartContractEvent', () =>
@@ -278,20 +346,23 @@ async function insertNewBlockEvents(
 
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
+        const insertsPerSecond = (blocksInserted / blockInsertSw.getElapsedSeconds()).toFixed(2);
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
         logger.info(
-          `Processed '/new_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
+          `Processed '/new_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount}), ${insertsPerSecond} blocks/sec`
         );
       }
     }
 
     await dbTxBatchInserter.flush();
+    await dbPrincipalStxTxBatchInserter.flush();
+
     logger.info(`Processed '/new_block' events: 100%`);
 
     logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
-  logger.info(`Inserting /new_block data took ${newBlockInsertSw.getElapsedSeconds(2)} seconds`);
+  logger.info(`Inserting /new_block data took ${blockInsertSw.getElapsedSeconds(2)} seconds`);
 
   const reindexSw = stopwatch();
   for (const table of tables) {
