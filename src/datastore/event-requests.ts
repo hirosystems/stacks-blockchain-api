@@ -48,7 +48,7 @@ export async function* getRawEventRequests(
           id bigint PRIMARY KEY,
           receive_timestamp timestamptz NOT NULL,
           event_path text NOT NULL,
-          payload jsonb NOT NULL
+          payload text NOT NULL
         ) ON COMMIT DROP
       `);
       // Use a `temp_raw_tsv` table first to store the raw TSV data as it might come with duplicate

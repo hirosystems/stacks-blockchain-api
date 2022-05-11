@@ -16,7 +16,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     payload: {
-      type: 'jsonb',
+      type: 'text',
       notNull: true,
     },
   });

@@ -28,7 +28,12 @@ import {
   readPreorgTsv,
   TsvEntityData,
 } from './tsv-pre-org';
-import { DataStoreTxEventData, DbTx, PrincipalStxTxsInsertValues } from '../datastore/common';
+import {
+  DataStoreTxEventData,
+  DbTx,
+  PrincipalStxTxsInsertValues,
+  RawEventRequestInsertValues,
+} from '../datastore/common';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const chainID = getApiConfiguredChainID();
@@ -109,15 +114,28 @@ async function insertRawEvents(
   let lastStatusUpdatePercent = 0;
   const tables = ['event_observer_requests'];
   const newBlockInsertSw = stopwatch();
+
   await db.sql.begin(async sql => {
     // Temporarily disable indexing and contraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
+    // individual inserts: 90 seconds
+    // batches of 1000: 90 seconds
+    // batches of 5000: 95 seconds
+    // batches of 1000 w/ text instead of json data type: 67 seconds
+    const dbTxBatchInserter = createBatchInserter<RawEventRequestInsertValues>(
+      1000,
+      async entries => {
+      await timeTracker.track('storeRawEventRequest', () =>
+          db.insertRawEventRequestBatch(sql, entries)
+      );
+      }
+    );
+
     for await (const event of preOrgStream) {
       // INSERT INTO event_observer_requests
-      await timeTracker.track('storeRawEventRequest', () =>
-        db.storeRawEventRequest1(event.path, event.payload, sql)
-      );
+      await dbTxBatchInserter.push([{ event_path: event.path, payload: event.payload }]);
+
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
@@ -127,6 +145,8 @@ async function insertRawEvents(
       }
     }
 
+    await dbTxBatchInserter.flush();
+    logger.info(`Raw event requests processed: 100%`);
     logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
@@ -139,37 +159,6 @@ async function insertRawEvents(
     await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
   logger.info(`Reindexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
-}
-
-function createBatchInserter<T>(
-  batchSize: number,
-  insertFn: (entries: T[]) => Promise<void>
-): {
-  push(entries: T[]): Promise<void>;
-  flush(): Promise<void>;
-} {
-  const entryBuffer: T[] = [];
-  return {
-    async push(entries: T[]) {
-      entries.length === 1
-        ? entryBuffer.push(entries[0])
-        : entries.forEach(e => entryBuffer.push(e));
-      if (entryBuffer.length === batchSize) {
-        await insertFn(entryBuffer);
-        entryBuffer.length = 0;
-      } else if (entryBuffer.length > batchSize) {
-        for (const batch of batchIterate(entryBuffer, batchSize)) {
-          await insertFn(batch);
-        }
-        entryBuffer.length = 0;
-      }
-    },
-    async flush() {
-      if (entryBuffer.length > 0) {
-        await insertFn(entryBuffer);
-      }
-    },
-  };
 }
 
 async function insertNewBlockEvents(
@@ -502,4 +491,35 @@ async function insertNewBurnBlockEvents(
     await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
   }
   logger.info(`Reindexing /new_burn_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
+}
+
+function createBatchInserter<T>(
+  batchSize: number,
+  insertFn: (entries: T[]) => Promise<void>
+): {
+  push(entries: T[]): Promise<void>;
+  flush(): Promise<void>;
+} {
+  const entryBuffer: T[] = [];
+  return {
+    async push(entries: T[]) {
+      entries.length === 1
+        ? entryBuffer.push(entries[0])
+        : entries.forEach(e => entryBuffer.push(e));
+      if (entryBuffer.length === batchSize) {
+        await insertFn(entryBuffer);
+        entryBuffer.length = 0;
+      } else if (entryBuffer.length > batchSize) {
+        for (const batch of batchIterate(entryBuffer, batchSize)) {
+          await insertFn(batch);
+        }
+        entryBuffer.length = 0;
+      }
+    },
+    async flush() {
+      if (entryBuffer.length > 0) {
+        await insertFn(entryBuffer);
+      }
+    },
+  };
 }

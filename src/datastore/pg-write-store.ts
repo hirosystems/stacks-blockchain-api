@@ -56,6 +56,7 @@ import {
   TxQueryResult,
   UpdatedEntities,
   BlockQueryResult,
+  RawEventRequestInsertValues,
 } from './common';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
@@ -177,24 +178,13 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest1(eventPath: string, payload: string, sqlTx?: Sql<any>): Promise<void> {
-    await (sqlTx ?? this.sql)`
-      INSERT INTO event_observer_requests (event_path, payload) values (${eventPath}, ${payload})
+  async insertRawEventRequestBatch(
+    sql: PgSqlClient,
+    events: RawEventRequestInsertValues[]
+  ): Promise<void> {
+    await sql`
+      INSERT INTO event_observer_requests ${this.sql(events)}
     `;
-  }
-
-  async storeRawEventRequest2(events: { event_path: string; payload: string }[]): Promise<void> {
-    await this.sql`
-      INSERT INTO event_observer_requests ${this.sql(events, 'event_path', 'payload')}
-    `;
-  }
-
-  async storeRawEventRequest3(): Promise<Writable> {
-    const query = this.sql`
-      COPY event_observer_requests (event_path, payload) FROM STDIN
-    `;
-    const inputStream = await Promise.resolve(query.writable());
-    return inputStream;
   }
 
   async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
