@@ -130,7 +130,7 @@ async function insertRawEvents(
     const dbTxBatchInserter = createBatchInserter<RawEventRequestInsertValues>(
       1000,
       async entries => {
-      await timeTracker.track('storeRawEventRequest', () =>
+        await timeTracker.track('insertRawEventRequestBatch', () =>
           db.insertRawEventRequestBatch(sql, entries)
       );
       }
@@ -199,20 +199,20 @@ async function insertNewBlockEvents(
     // batches of 1000: 85 seconds
     // batches of 1500: 80 seconds
     const dbTxBatchInserter = createBatchInserter<DbTx>(1000, entries =>
-      timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries))
+      timeTracker.track('insertTxBatch', () => db.insertTxBatch(sql, entries))
     );
 
     // batches of 1000: 31 seconds
     const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(1000, entries =>
-      timeTracker.track('updateBatchStxEvents', () => db.insertStxEventBatch(sql, entries))
+      timeTracker.track('insertStxEventBatch', () => db.insertStxEventBatch(sql, entries))
     );
 
     // batches of 1000: 56 seconds
     const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
       1000,
       entries =>
-        timeTracker.track('insertPrincipalStxTxsBatched', () =>
-          db.insertPrincipalStxTxsBatched(sql, entries)
+        timeTracker.track('insertPrincipalStxTxsBatch', () =>
+          db.insertPrincipalStxTxsBatch(sql, entries)
         )
         );
 
@@ -433,7 +433,6 @@ async function insertNewBlockEvents(
     await dbNftEventBatchInserter.flush();
     await dbContractEventBatchInserter.flush();
     await dbPrincipalStxTxBatchInserter.flush();
-
     logger.info(`Processed '/new_block' events: 100%`);
 
     logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);

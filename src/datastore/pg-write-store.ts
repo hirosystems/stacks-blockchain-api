@@ -696,7 +696,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async insertPrincipalStxTxsBatched(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
+  async insertPrincipalStxTxsBatch(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
     await sql`
       INSERT INTO principal_stx_txs ${sql(values)}
     `;
@@ -1171,7 +1171,7 @@ export class PgWriteStore extends PgStore {
     }, sqlTx);
   }
 
-  async updateTxBatch(sql: PgSqlClient, txs: DbTx[]): Promise<void> {
+  async insertTxBatch(sql: PgSqlClient, txs: DbTx[]): Promise<void> {
     const values: TxInsertValues[] = txs.map(tx => ({
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
