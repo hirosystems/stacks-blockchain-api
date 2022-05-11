@@ -4,8 +4,13 @@ import { PoolClient } from 'pg';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
-import { TokensContractHandler } from '../token-metadata/tokens-contract-handler';
+import {
+  METADATA_FETCH_TIMEOUT_MS,
+  METADATA_MAX_PAYLOAD_BYTE_SIZE,
+  TokensContractHandler,
+} from '../token-metadata/tokens-contract-handler';
 import { DbTxTypeId } from '../datastore/common';
+import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
 
 const NFT_CONTRACT_ABI: ClarityAbi = {
   maps: [],
@@ -255,6 +260,60 @@ describe('token metadata strict mode', () => {
     const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
+  });
+
+  test('metadata timeout errors get retried', async () => {
+    const mockTokenUri = {
+      okay: true,
+      result: cvToHex(stringCV('http://indigo.com/nft.jpeg', 'ascii')),
+    };
+    nock('http://127.0.0.1:20443')
+      .post(
+        '/v2/contracts/call-read/SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD/project-indigo-act1/get-token-uri'
+      )
+      .reply(200, mockTokenUri);
+    nock('http://indigo.com')
+      .get('/nft.jpeg')
+      .delay(METADATA_FETCH_TIMEOUT_MS + 1000)
+      .reply(200);
+    const handler = new TokensContractHandler({
+      contractId: contractId,
+      smartContractAbi: NFT_CONTRACT_ABI,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: contractTxId,
+      dbQueueId: 1,
+    });
+    await handler.start();
+    const entry = await db.getTokenMetadataQueueEntry(1);
+    expect(entry.result?.retry_count).toEqual(1);
+    expect(entry.result?.processed).toBe(false);
+  });
+
+  test('metadata size exceeded errors fail immediately', async () => {
+    const mockTokenUri = {
+      okay: true,
+      result: cvToHex(stringCV('http://indigo.com/nft.jpeg', 'ascii')),
+    };
+    nock('http://127.0.0.1:20443')
+      .post(
+        '/v2/contracts/call-read/SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD/project-indigo-act1/get-token-uri'
+      )
+      .reply(200, mockTokenUri);
+    const bigAssBuffer = Buffer.alloc(METADATA_MAX_PAYLOAD_BYTE_SIZE + 100);
+    nock('http://indigo.com').get('/nft.jpeg').reply(200, bigAssBuffer);
+    const handler = new TokensContractHandler({
+      contractId: contractId,
+      smartContractAbi: NFT_CONTRACT_ABI,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: contractTxId,
+      dbQueueId: 1,
+    });
+    await handler.start();
+    const entry = await db.getTokenMetadataQueueEntry(1);
+    expect(entry.result?.retry_count).toEqual(0);
+    expect(entry.result?.processed).toBe(true);
   });
 
   afterEach(async () => {

@@ -26,6 +26,7 @@ import {
   performFetch,
 } from './helpers';
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
+import { FetchError } from 'node-fetch';
 
 /**
  * Amount of milliseconds to wait when fetching token metadata.
@@ -390,10 +391,19 @@ export class TokensContractHandler {
       }
     }
     const httpUrl = this.getFetchableUrl(token_uri);
-    return await performFetch(httpUrl.toString(), {
-      timeoutMs: METADATA_FETCH_TIMEOUT_MS,
-      maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
-    });
+    try {
+      return await performFetch(httpUrl.toString(), {
+        timeoutMs: METADATA_FETCH_TIMEOUT_MS,
+        maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
+      });
+    } catch (error) {
+      if (error instanceof FetchError && error.type === 'request-timeout') {
+        throw new RetryableTokenMetadataError(
+          `Network timeout when retrieving metadata from uri: ${error}`
+        );
+      }
+      throw error;
+    }
   }
 
   private async makeReadOnlyContractCall(

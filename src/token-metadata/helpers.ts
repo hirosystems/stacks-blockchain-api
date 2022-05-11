@@ -246,7 +246,6 @@ export async function performFetch<Type>(
     try {
       msg = await result.text();
     } catch (error) {
-      // FIXME:
       // ignore errors from fetching error text
     }
     throw new Error(`Response ${result.status}: ${result.statusText} fetching ${url} - ${msg}`);
