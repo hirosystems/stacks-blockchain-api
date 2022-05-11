@@ -935,6 +935,12 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertContractEventBatch(sql: PgSqlClient, values: SmartContractEventInsertValues[]) {
+    await sql`
+      INSERT INTO contract_logs ${sql(values)}
+    `;
+  }
+
   async updateBatchSmartContractEvent(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
     const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
     for (const eventBatch of batchIterate(events, batchSize)) {

@@ -35,6 +35,7 @@ import {
   NftEventInsertValues,
   PrincipalStxTxsInsertValues,
   RawEventRequestInsertValues,
+  SmartContractEventInsertValues,
   StxEventInsertValues,
 } from '../datastore/common';
 
@@ -225,6 +226,15 @@ async function insertNewBlockEvents(
       timeTracker.track('insertNftEventBatch', () => db.insertNftEventBatch(sql, entries))
     );
 
+    // batches of 1000: 18 seconds
+    const dbContractEventBatchInserter = createBatchInserter<SmartContractEventInsertValues>(
+      1000,
+      entries =>
+        timeTracker.track('insertContractEventBatch', () =>
+          db.insertContractEventBatch(sql, entries)
+        )
+    );
+
     const processStxEvents = async (entry: DataStoreTxEventData) => {
       // string key: `principal, tx_id, index_block_hash, microblock_hash`
       const alreadyInsertedRowKeys = new Set<string>();
@@ -317,8 +327,22 @@ async function insertNewBlockEvents(
           await processStxEvents(entry);
 
           // INSERT INTO contract_logs
-          await timeTracker.track('updateBatchSmartContractEvent', () =>
-            db.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents)
+          await dbContractEventBatchInserter.push(
+            entry.contractLogEvents.map(contractEvent => ({
+              event_index: contractEvent.event_index,
+              tx_id: contractEvent.tx_id,
+              tx_index: contractEvent.tx_index,
+              block_height: contractEvent.block_height,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+              canonical: contractEvent.canonical,
+              contract_identifier: contractEvent.contract_identifier,
+              topic: contractEvent.topic,
+              value: contractEvent.value,
+            }))
           );
 
           // INSERT INTO stx_lock_events
@@ -407,6 +431,7 @@ async function insertNewBlockEvents(
     await dbStxEventBatchInserter.flush();
     await dbFtEventBatchInserter.flush();
     await dbNftEventBatchInserter.flush();
+    await dbContractEventBatchInserter.flush();
     await dbPrincipalStxTxBatchInserter.flush();
 
     logger.info(`Processed '/new_block' events: 100%`);
