@@ -82,8 +82,14 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
 async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, filePath: string) {
   const preOrgStream = readPreorgTsv(filePath);
   let lastStatusUpdatePercent = 0;
+  const tables = ['event_observer_requests'];
+  const newBlockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
+    // Temporarily disable indexing and contraints on tables to speed up insertion
+    await db.toggleTableIndexes(sql, tables, false);
+
     for await (const event of preOrgStream) {
+      // INSERT INTO event_observer_requests
       await db.storeRawEventRequest1(event.path, event.payload, sql);
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
@@ -93,6 +99,20 @@ async function insertRawEvents(tsvEntityData: TsvEntityData, db: PgWriteStore, f
         );
       }
     }
+
+    logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
+    await db.toggleTableIndexes(sql, tables, true);
+  });
+
+  logger.info(`Inserting all event data took ${newBlockInsertSw.getElapsedSeconds(2)} seconds`);
+
+  const reindexSw = stopwatch();
+  for (const table of tables) {
+    logger.info(`Re-indexing table ${table}...`);
+    await db.sql`REINDEX TABLE ${db.sql(table)}`;
+  }
+  logger.info(`Re-indexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
+}
   });
 }
 
