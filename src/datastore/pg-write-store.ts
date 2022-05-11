@@ -879,6 +879,12 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertFtEventBatch(sql: PgSqlClient, values: FtEventInsertValues[]) {
+    await sql`
+      INSERT INTO ft_events ${sql(values)}
+    `;
+  }
+
   async updateFtEvent(sql: PgSqlClient, tx: DbTx, event: DbFtEvent) {
     const values: FtEventInsertValues = {
       event_index: event.event_index,

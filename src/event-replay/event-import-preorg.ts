@@ -31,6 +31,7 @@ import {
 import {
   DataStoreTxEventData,
   DbTx,
+  FtEventInsertValues,
   PrincipalStxTxsInsertValues,
   RawEventRequestInsertValues,
   StxEventInsertValues,
@@ -195,26 +196,27 @@ async function insertNewBlockEvents(
     // batches of 500: 94 seconds
     // batches of 1000: 85 seconds
     // batches of 1500: 80 seconds
-    const dbTxBatchInserter = createBatchInserter<DbTx>(1000, async entries => {
-      await timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries));
-    });
+    const dbTxBatchInserter = createBatchInserter<DbTx>(1000, entries =>
+      timeTracker.track('updateTxBatch', () => db.updateTxBatch(sql, entries))
+    );
 
     // batches of 1000: 31 seconds
-    const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(
-      1000,
-      async entries => {
-        await timeTracker.track('updateBatchStxEvents', () => db.insertStxEventBatch(sql, entries));
-      }
+    const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(1000, entries =>
+      timeTracker.track('updateBatchStxEvents', () => db.insertStxEventBatch(sql, entries))
     );
 
     // batches of 1000: 56 seconds
     const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
       1000,
-      async entries => {
-        await timeTracker.track('insertPrincipalStxTxsBatched', () =>
+      entries =>
+        timeTracker.track('insertPrincipalStxTxsBatched', () =>
           db.insertPrincipalStxTxsBatched(sql, entries)
+        )
         );
-      }
+
+    // batches of 1000: _ seconds
+    const dbFtEventBatchInserter = createBatchInserter<FtEventInsertValues>(1000, entries =>
+      timeTracker.track('insertFtEventBatch', () => db.insertFtEventBatch(sql, entries))
     );
 
     const processStxEvents = async (entry: DataStoreTxEventData) => {
@@ -321,11 +323,25 @@ async function insertNewBlockEvents(
           }
 
           // INSERT INTO ft_events
-          for (const ftEvent of entry.ftEvents) {
-            await timeTracker.track('updateFtEvent', () =>
-              db.updateFtEvent(sql, entry.tx, ftEvent)
+          await dbFtEventBatchInserter.push(
+            entry.ftEvents.map(ftEvent => ({
+              event_index: ftEvent.event_index,
+              tx_id: ftEvent.tx_id,
+              tx_index: ftEvent.tx_index,
+              block_height: ftEvent.block_height,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+              canonical: ftEvent.canonical,
+              asset_event_type_id: ftEvent.asset_event_type_id,
+              sender: ftEvent.sender ?? null,
+              recipient: ftEvent.recipient ?? null,
+              asset_identifier: ftEvent.asset_identifier,
+              amount: ftEvent.amount.toString(),
+            }))
             );
-          }
 
           // INSERT INTO nft_events
           for (const nftEvent of entry.nftEvents) {
@@ -369,6 +385,7 @@ async function insertNewBlockEvents(
 
     await dbTxBatchInserter.flush();
     await dbStxEventBatchInserter.flush();
+    await dbFtEventBatchInserter.flush();
     await dbPrincipalStxTxBatchInserter.flush();
 
     logger.info(`Processed '/new_block' events: 100%`);
