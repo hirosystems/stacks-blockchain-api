@@ -51,6 +51,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result1.total).toEqual(1);
     expect(result1.results[0].asset_identifier).toEqual(assetId1);
     expect(result1.results[0].tx_id).toEqual('0x5454');
+    expect(result1.results[0].block_height).toEqual(block1.block.block_height);
 
     // Request: with metadata
     const request2 = await supertest(api.server).get(
@@ -62,6 +63,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result2.total).toEqual(1);
     expect(result2.results[0].asset_identifier).toEqual(assetId1);
     expect(result2.results[0].tx.tx_id).toEqual('0x5454');
+    expect(result2.results[0].block_height).toEqual(block1.block.block_height);
 
     // Mint another NFT
     const block2 = new TestBlockBuilder({
@@ -89,6 +91,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result3.total).toEqual(2);
     expect(result3.results[0].asset_identifier).toEqual(assetId2);
     expect(result3.results[0].tx_id).toEqual('0x5464');
+    expect(result3.results[0].block_height).toEqual(block2.block.block_height);
 
     // Request: filtered by asset id
     const request4 = await supertest(api.server).get(
@@ -100,6 +103,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result4.total).toEqual(1); // 1 result only
     expect(result4.results[0].asset_identifier).toEqual(assetId2);
     expect(result4.results[0].tx_id).toEqual('0x5464');
+    expect(result4.results[0].block_height).toEqual(block2.block.block_height);
 
     // Transfer one NFT from addr1 to addr2
     const block3 = new TestBlockBuilder({
@@ -127,6 +131,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result5.total).toEqual(1);
     expect(result5.results[0].asset_identifier).toEqual(assetId1);
     expect(result5.results[0].tx_id).toEqual('0x5454');
+    expect(result5.results[0].block_height).toEqual(block1.block.block_height);
 
     // Request: addr2 has the other
     const request6 = await supertest(api.server).get(
@@ -138,6 +143,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(result6.total).toEqual(1);
     expect(result6.results[0].asset_identifier).toEqual(assetId2);
     expect(result6.results[0].tx_id).toEqual('0x5484');
+    expect(result6.results[0].block_height).toEqual(block3.block.block_height);
 
     // Transfer NFT from addr2 to addr3 in microblock
     const microblock1 = new TestMicroblockStreamBuilder()

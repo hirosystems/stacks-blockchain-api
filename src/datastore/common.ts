@@ -363,6 +363,7 @@ export interface NftHoldingInfo {
   // TODO(perf): use hex string since that is what we already get from deserializing event payloads
   //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
+  block_height: number;
   recipient: string;
   tx_id: Buffer;
 }

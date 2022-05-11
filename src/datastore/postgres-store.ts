@@ -6544,6 +6544,7 @@ export class PgDataStore
             value: row.value,
             recipient: row.recipient,
             tx_id: row.tx_id,
+            block_height: row.block_height,
           },
           tx: args.includeTxMetadata ? this.parseTxQueryResult(row) : undefined,
         })),

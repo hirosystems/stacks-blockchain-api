@@ -82,6 +82,7 @@ export function createTokenRouter(db: DataStore): express.Router {
             hex: bufferToHexPrefixString(result.nft_holding_info.value),
             repr: parsedClarityValue,
           },
+          block_height: result.nft_holding_info.block_height,
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };

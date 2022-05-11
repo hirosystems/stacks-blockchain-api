@@ -3253,6 +3253,7 @@ export interface NonFungibleTokenHoldingWithTxId {
      */
     repr: string;
   };
+  block_height: number;
   tx_id: string;
 }
 /**
@@ -3273,6 +3274,7 @@ export interface NonFungibleTokenHoldingWithTxMetadata {
      */
     repr: string;
   };
+  block_height: number;
   tx: Transaction;
 }
 /**
