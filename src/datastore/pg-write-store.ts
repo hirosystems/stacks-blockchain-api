@@ -908,6 +908,10 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertNftEventBatch(sql: PgSqlClient, values: NftEventInsertValues[]) {
+    await sql`INSERT INTO nft_events ${sql(values)}`;
+  }
+
   async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent) {
     const values: NftEventInsertValues = {
       tx_id: event.tx_id,

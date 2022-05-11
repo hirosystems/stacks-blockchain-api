@@ -32,6 +32,7 @@ import {
   DataStoreTxEventData,
   DbTx,
   FtEventInsertValues,
+  NftEventInsertValues,
   PrincipalStxTxsInsertValues,
   RawEventRequestInsertValues,
   StxEventInsertValues,
@@ -214,9 +215,14 @@ async function insertNewBlockEvents(
         )
         );
 
-    // batches of 1000: _ seconds
+    // batches of 1000: 14 seconds
     const dbFtEventBatchInserter = createBatchInserter<FtEventInsertValues>(1000, entries =>
       timeTracker.track('insertFtEventBatch', () => db.insertFtEventBatch(sql, entries))
+    );
+
+    // batches of 1000: 15 seconds
+    const dbNftEventBatchInserter = createBatchInserter<NftEventInsertValues>(1000, entries =>
+      timeTracker.track('insertNftEventBatch', () => db.insertNftEventBatch(sql, entries))
     );
 
     const processStxEvents = async (entry: DataStoreTxEventData) => {
@@ -344,11 +350,25 @@ async function insertNewBlockEvents(
             );
 
           // INSERT INTO nft_events
-          for (const nftEvent of entry.nftEvents) {
-            await timeTracker.track('updateNftEvent', () =>
-              db.updateNftEvent(sql, entry.tx, nftEvent)
+          await dbNftEventBatchInserter.push(
+            entry.nftEvents.map(nftEvent => ({
+              tx_id: nftEvent.tx_id,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+              sender: nftEvent.sender ?? null,
+              recipient: nftEvent.recipient ?? null,
+              event_index: nftEvent.event_index,
+              tx_index: nftEvent.tx_index,
+              block_height: nftEvent.block_height,
+              canonical: nftEvent.canonical,
+              asset_event_type_id: nftEvent.asset_event_type_id,
+              asset_identifier: nftEvent.asset_identifier,
+              value: nftEvent.value,
+            }))
             );
-          }
 
           // INSERT INTO smart_contracts
           for (const smartContract of entry.smartContracts) {
@@ -386,6 +406,7 @@ async function insertNewBlockEvents(
     await dbTxBatchInserter.flush();
     await dbStxEventBatchInserter.flush();
     await dbFtEventBatchInserter.flush();
+    await dbNftEventBatchInserter.flush();
     await dbPrincipalStxTxBatchInserter.flush();
 
     logger.info(`Processed '/new_block' events: 100%`);
