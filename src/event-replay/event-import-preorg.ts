@@ -109,6 +109,9 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
+  logger.info(`Refreshing materialized views...`);
+  await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
+
   console.log('Tracked function times:');
   console.table(timeTracker.getDurations(2));
 
