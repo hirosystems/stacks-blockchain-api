@@ -531,12 +531,6 @@ async function insertNewAttachmentEvents(
       const attatchmentMsg: CoreNodeAttachmentMessage[] = JSON.parse(event.payload);
       const attachments = parseAttachmentMessage(attatchmentMsg);
 
-      for (const entry of attachments.zoneFiles) {
-        // INSERT INTO zonefiles
-        // TODO: probably remove this since `updateBatchSubdomains` inserts into both the subdomains and zonefile tables
-        // await db.insertZonefileContent(sql, entry.zonefile, entry.zonefileHash);
-      }
-
       for (const subdomain of attachments.subdomains) {
         // TODO: the `microblock_*` and `parent_index_block_hash` fields need populated
         // this could potentially done by scanning the tsv file in `getCanonicalEntityList(..)`,

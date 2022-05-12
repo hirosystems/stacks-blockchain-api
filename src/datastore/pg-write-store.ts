@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import { Writable } from 'stream';
 import { logger, logError, getOrAdd, batchIterate, isProdEnv } from '../helpers';
 import {
   DbBlock,
@@ -77,7 +76,6 @@ import { PgStore } from './pg-store';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
-import { Sql, TransactionSql } from 'postgres';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -478,7 +476,7 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     slotHolders: DbRewardSlotHolder[];
     skipReorg?: boolean;
-    sqlTx?: TransactionSql<any>;
+    sqlTx?: PgSqlClient;
   }): Promise<void> {
     await this.beginSqlTx(async sql => {
       if (!skipReorg) {
@@ -1131,10 +1129,7 @@ export class PgWriteStore extends PgStore {
     await this.notifier?.sendName({ nameInfo: tx_id });
   }
 
-  async beginSqlTx<T = void>(
-    fn: (sql: TransactionSql<any>) => Promise<T>,
-    existingTx?: TransactionSql<any>
-  ) {
+  async beginSqlTx<T = void>(fn: (sql: PgSqlClient) => Promise<T>, existingTx?: PgSqlClient) {
     if (existingTx) {
       return fn(existingTx);
     } else {
@@ -1153,7 +1148,7 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
     skipReorg?: boolean;
-    sqlTx?: TransactionSql<any>;
+    sqlTx?: PgSqlClient;
   }): Promise<void> {
     return this.beginSqlTx(async sql => {
       if (!skipReorg) {
