@@ -122,7 +122,7 @@ export class PgWriteStore extends PgStore {
         })
       );
     }
-    const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
+    const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgWriteStore(sql, notifier, isEventReplay);
     await store.connectPgNotifier();
     return store;

@@ -114,7 +114,7 @@ export class PgStore {
     withNotifier?: boolean;
   }): Promise<PgStore> {
     const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.default });
-    const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
+    const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgStore(sql, notifier);
     await store.connectPgNotifier();
     return store;
