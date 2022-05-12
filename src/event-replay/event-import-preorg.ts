@@ -94,11 +94,13 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
 
   const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
   logger.info(
-    `Using max_parallel_maintenance_workers: ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
+    `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
   );
 
   const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
-  logger.info(`Using maintenance_work_mem: ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`);
+  logger.info(
+    `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
+  );
 
   logger.info(`Inserting event data to db...`);
   const timeTracker = createTimeTracker();
@@ -126,7 +128,7 @@ async function insertRawEvents(
   const newBlockInsertSw = stopwatch();
 
   await db.sql.begin(async sql => {
-    // Temporarily disable indexing and contraints on tables to speed up insertion
+    // Temporarily disable indexing and constraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
     // individual inserts: 90 seconds
@@ -197,7 +199,7 @@ async function insertNewBlockEvents(
   ];
   const blockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
-    // Temporarily disable indexing and contraints on tables to speed up insertion
+    // Temporarily disable indexing and constraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
     let blocksInserted = 0;
@@ -284,10 +286,10 @@ async function insertNewBlockEvents(
       const push = (principal: string) => {
         // Check if this row has already been inserted by comparing the same columns used in the
         // sql unique constraint defined on the table. This prevents later errors during re-indexing
-        // when the table indexes/contraints are temporarily disabled during inserts.
-        const contraintKey = `${principal},${entry.tx.tx_id},${entry.tx.index_block_hash},${entry.tx.microblock_hash}`;
-        if (!alreadyInsertedRowKeys.has(contraintKey)) {
-          alreadyInsertedRowKeys.add(contraintKey);
+        // when the table indexes/constraints are temporarily disabled during inserts.
+        const constraintKey = `${principal},${entry.tx.tx_id},${entry.tx.index_block_hash},${entry.tx.microblock_hash}`;
+        if (!alreadyInsertedRowKeys.has(constraintKey)) {
+          alreadyInsertedRowKeys.add(constraintKey);
           values.push({
             principal: principal,
             tx_id: entry.tx.tx_id,
@@ -522,7 +524,7 @@ async function insertNewAttachmentEvents(
   const tables = ['zonefiles', 'subdomains'];
   const newBlockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
-    // Temporarily disable indexing and contraints on tables to speed up insertion
+    // Temporarily disable indexing and constraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
     for await (const event of preOrgStream) {
@@ -589,7 +591,7 @@ async function insertNewBurnBlockEvents(
   const tables = ['burnchain_rewards', 'reward_slot_holders'];
   const newBurnBlockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
-    // Temporarily disable indexing and contraints on tables to speed up insertion
+    // Temporarily disable indexing and constraints on tables to speed up insertion
     await db.toggleTableIndexes(sql, tables, false);
 
     for await (const event of preOrgStream) {
