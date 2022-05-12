@@ -115,7 +115,7 @@ export function getPostgres({
     ssl: pgEnvValue('SSL'),
     schema: pgEnvValue('SCHEMA'),
     applicationName: pgEnvValue('APPLICATION_NAME'),
-    poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '') ?? 10,
+    poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '10'),
   };
   const defaultAppName = 'stacks-blockchain-api';
   const pgConnectionUri = pgEnvValue('CONNECTION_URI');
