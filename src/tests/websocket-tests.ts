@@ -2,7 +2,6 @@ import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
 import { DbTxTypeId, DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
-import { PoolClient } from 'pg';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
