@@ -1414,6 +1414,18 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async insertZonefileBatch(sql: PgSqlClient, values: BnsZonefileInsertValues[]) {
+    await sql`
+      INSERT INTO zonefiles ${sql(values)}
+    `;
+  }
+
+  async insertNameBatch(sql: PgSqlClient, values: BnsNameInsertValues[]) {
+    await sql`
+      INSERT INTO names ${sql(values)}
+    `;
+  }
+
   async updateNames(
     sql: PgSqlClient,
     blockData: {
@@ -1423,11 +1435,9 @@ export class PgWriteStore extends PgStore {
       microblock_sequence: number;
       microblock_canonical: boolean;
     },
-    bnsName: DbBnsName,
-    skipZonefile?: boolean
+    bnsName: DbBnsName
   ) {
     const validZonefileHash = validateZonefileHash(bnsName.zonefile_hash);
-    if (!skipZonefile) {
     const zonefileValues: BnsZonefileInsertValues = {
       zonefile: bnsName.zonefile,
       zonefile_hash: validZonefileHash,
@@ -1435,7 +1445,7 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO zonefiles ${sql(zonefileValues)}
     `;
-    }
+
     const nameValues: BnsNameInsertValues = {
       name: bnsName.name,
       address: bnsName.address,

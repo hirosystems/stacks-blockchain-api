@@ -29,6 +29,8 @@ import {
   TsvEntityData,
 } from './tsv-pre-org';
 import {
+  BnsNameInsertValues,
+  BnsZonefileInsertValues,
   DataStoreTxEventData,
   DbBlock,
   DbMicroblock,
@@ -40,6 +42,7 @@ import {
   SmartContractEventInsertValues,
   StxEventInsertValues,
 } from '../datastore/common';
+import { validateZonefileHash } from '../datastore/helpers';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const chainID = getApiConfiguredChainID();
@@ -104,6 +107,7 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
+  console.log('Tracked function times:');
   console.table(timeTracker.getDurations(2));
 
   await db.close();
@@ -189,6 +193,7 @@ async function insertNewBlockEvents(
     'smart_contracts',
     'names',
     'namespaces',
+    'zonefiles',
   ];
   const blockInsertSw = stopwatch();
   await db.sql.begin(async sql => {
@@ -258,6 +263,19 @@ async function insertNewBlockEvents(
         )
     );
     batchInserters.push(dbContractEventBatchInserter);
+
+    // single inserts: 10 seconds
+    // batches of 1000: 0.6 seconds
+    const dbNameBatchInserter = createBatchInserter<BnsNameInsertValues>(1000, entries =>
+      timeTracker.track('insertNameBatch', () => db.insertNameBatch(sql, entries))
+    );
+    batchInserters.push(dbNameBatchInserter);
+
+    // batches of 1000: 0.1 seconds
+    const dbZonefileBatchInserter = createBatchInserter<BnsZonefileInsertValues>(1000, entries =>
+      timeTracker.track('insertZonefileBatch', () => db.insertZonefileBatch(sql, entries))
+    );
+    batchInserters.push(dbZonefileBatchInserter);
 
     const processStxEvents = async (entry: DataStoreTxEventData) => {
       // string key: `principal, tx_id, index_block_hash, microblock_hash`
@@ -427,11 +445,33 @@ async function insertNewBlockEvents(
           }
 
           // INSERT INTO names
-          for (const bnsName of entry.names) {
-            await timeTracker.track('updateNames', () =>
-              db.updateNames(sql, entry.tx, bnsName, true)
+          await dbNameBatchInserter.push(
+            entry.names.map(bnsName => ({
+              name: bnsName.name,
+              address: bnsName.address,
+              registered_at: bnsName.registered_at,
+              expire_block: bnsName.expire_block,
+              zonefile_hash: validateZonefileHash(bnsName.zonefile_hash),
+              namespace_id: bnsName.namespace_id,
+              tx_index: bnsName.tx_index,
+              tx_id: bnsName.tx_id,
+              status: bnsName.status ?? null,
+              canonical: bnsName.canonical,
+              index_block_hash: entry.tx.index_block_hash,
+              parent_index_block_hash: entry.tx.parent_index_block_hash,
+              microblock_hash: entry.tx.microblock_hash,
+              microblock_sequence: entry.tx.microblock_sequence,
+              microblock_canonical: entry.tx.microblock_canonical,
+            }))
+          );
+
+          // INSERT INTO zonefiles
+          await dbZonefileBatchInserter.push(
+            entry.names.map(bnsName => ({
+              zonefile: bnsName.zonefile,
+              zonefile_hash: validateZonefileHash(bnsName.zonefile_hash),
+            }))
             );
-          }
 
           // INSERT INTO namespaces
           for (const namespace of entry.namespaces) {
