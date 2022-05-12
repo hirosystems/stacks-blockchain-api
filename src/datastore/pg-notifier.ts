@@ -109,7 +109,7 @@ export class PgNotifier {
   public async close() {
     await this.listener
       ?.unlisten()
-      .then(() => logger.info(`PgNotifier closing channel: ${this.pgChannelName}`));
+      .then(() => logger.info(`PgNotifier closed channel: ${this.pgChannelName}`));
     await this.sql.end();
   }
 
