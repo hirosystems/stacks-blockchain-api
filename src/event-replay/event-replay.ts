@@ -5,6 +5,7 @@ import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
+import { getMempoolTxGarbageCollectionThreshold } from '../datastore/helpers';
 import {
   containsAnyRawEventRequests,
   exportRawEventRequests,
@@ -116,9 +117,7 @@ export async function importEventsFromTsv(
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
-  const blockWindowSize = parseInt(
-    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
-  );
+  const blockWindowSize = getMempoolTxGarbageCollectionThreshold();
   const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
   logger.warn(`Event file's block height: ${tsvBlockHeight}`);
   if (eventImportMode === EventImportMode.pruned) {

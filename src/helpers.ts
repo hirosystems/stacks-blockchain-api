@@ -313,13 +313,15 @@ export function httpPostRequest(
   opts: http.RequestOptions & {
     /** Throw if the response was not successful (status outside the range 200-299). */
     throwOnNotOK?: boolean;
-    body: Buffer;
+    body: Buffer | string;
   }
 ): Promise<HttpClientResponse> {
   return new Promise((resolve, reject) => {
     try {
       opts.method = 'POST';
-      opts.headers = { 'Content-Length': opts.body.length, ...opts.headers };
+      const contentLength =
+        typeof opts.body === 'string' ? Buffer.byteLength(opts.body, 'utf8') : opts.body.length;
+      opts.headers = { 'Content-Length': contentLength, ...opts.headers };
       const req = http.request(opts, ((res: HttpClientResponse) => {
         const chunks: Buffer[] = [];
         res.on('data', chunk => chunks.push(chunk));
@@ -793,7 +795,7 @@ export interface TimeTracker {
     roundDecimals?: number
   ) => {
     name: string;
-    seconds: number;
+    seconds: string;
   }[];
 }
 
@@ -813,17 +815,15 @@ export function createTimeTracker(): TimeTracker {
       });
     },
     getDurations: (roundDecimals?: number) => {
-      const durationEntries = [...durations.entries()].map(entry => {
-        let seconds = Number(entry[1].totalTime) / 1_000_000_000;
-        if (roundDecimals) {
-          seconds = +seconds.toFixed(roundDecimals);
-        }
-        return {
-          name: entry[0],
-          seconds,
-        };
-      });
-      return durationEntries.sort((a, b) => b.seconds - a.seconds);
+      return [...durations.entries()]
+        .sort((a, b) => Number(b[1].totalTime - a[1].totalTime))
+        .map(entry => {
+          const seconds = Number(entry[1].totalTime) / 1e9;
+          return {
+            name: entry[0],
+            seconds: roundDecimals ? seconds.toFixed(roundDecimals) : seconds.toString(),
+          };
+        });
     },
   };
 }

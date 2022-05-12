@@ -778,3 +778,12 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;
 }
+
+const DEFAULT_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = 256;
+
+export function getMempoolTxGarbageCollectionThreshold() {
+  return parseInt(
+    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ??
+      `${DEFAULT_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD}`
+  );
+}

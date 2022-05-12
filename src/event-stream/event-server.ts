@@ -119,16 +119,20 @@ async function handleBurnBlockMessage(
     `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
   );
   const { rewards, slotHolders } = parseBurnBlockMessage(burnBlockMsg);
-  await db.updateBurnchainRewards({
-    burnchainBlockHash: burnBlockMsg.burn_block_hash,
-    burnchainBlockHeight: burnBlockMsg.burn_block_height,
-    rewards: rewards,
-  });
-  await db.updateBurnchainRewardSlotHolders({
-    burnchainBlockHash: burnBlockMsg.burn_block_hash,
-    burnchainBlockHeight: burnBlockMsg.burn_block_height,
-    slotHolders: slotHolders,
-  });
+  if (rewards.length > 0) {
+    await db.updateBurnchainRewards({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      rewards: rewards,
+    });
+  }
+  if (slotHolders.length > 0) {
+    await db.updateBurnchainRewardSlotHolders({
+      burnchainBlockHash: burnBlockMsg.burn_block_hash,
+      burnchainBlockHeight: burnBlockMsg.burn_block_height,
+      slotHolders: slotHolders,
+    });
+  }
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
@@ -338,7 +342,7 @@ async function handleBlockMessage(
   logger.verbose(`Received ${dbData.minerRewards.length} matured miner rewards`);
   dbData.txs.forEach(tx => {
     logger.verbose(`Received anchor block mined tx: ${tx.tx.tx_id}`);
-    logger.info('Transaction confirmed', {
+    logger.verbose('Transaction confirmed', {
       txid: tx.tx.tx_id,
       in_microblock: tx.tx.microblock_hash != '',
       stacks_height: tx.tx.block_height,

@@ -61,6 +61,7 @@ import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-hand
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
+  getMempoolTxGarbageCollectionThreshold,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -305,7 +306,7 @@ export class PgWriteStore extends PgStore {
           orphanedAndMissingTxs.map(tx => tx.tx_id)
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
-          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+          logger.verbose(`Anchor block update: restored micro-orphaned tx to mempool ${txId}`);
         });
 
         // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
@@ -637,7 +638,7 @@ export class PgWriteStore extends PgStore {
           microOrphanedTxs.map(tx => tx.tx_id)
         );
         restoredMempoolTxs.restoredTxs.forEach(txId => {
-          logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
+          logger.verbose(`Microblock update: restored micro-orphaned tx to mempool ${txId}`);
         });
       }
 
@@ -1339,7 +1340,7 @@ export class PgWriteStore extends PgStore {
         `;
         if (result.count !== 1) {
           const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
-          logger.warn(errMsg);
+          logger.verbose(errMsg);
         } else {
           updatedTxs.push(tx);
         }
@@ -1710,7 +1711,7 @@ export class PgWriteStore extends PgStore {
       `;
       if (mbResult.count !== 1) {
         const errMsg = `A duplicate microblock was attempted to be inserted into the microblocks table: ${mb.microblock_hash}`;
-        logger.warn(errMsg);
+        logger.verbose(errMsg);
         // A duplicate microblock entry really means we received a duplicate `/new_microblocks` node event.
         // We will ignore this whole microblock data entry in this case.
         return;
@@ -1943,7 +1944,7 @@ export class PgWriteStore extends PgStore {
    */
   async deleteGarbageCollectedMempoolTxs(sql: PgSqlClient): Promise<{ deletedTxs: string[] }> {
     // Get threshold block.
-    const blockThreshold = process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? 256;
+    const blockThreshold = getMempoolTxGarbageCollectionThreshold();
     const cutoffResults = await sql<{ block_height: number }[]>`
       SELECT (block_height - ${blockThreshold}) AS block_height FROM chain_tip
     `;

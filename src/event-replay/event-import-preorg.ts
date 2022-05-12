@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { ChainID } from '@stacks/transactions';
-import { pipeline } from 'stream/promises';
+import { finished } from 'stream/promises';
 import {
   CoreNodeAttachmentMessage,
   CoreNodeBlockMessage,
@@ -10,12 +10,14 @@ import {
   parseAttachmentMessage,
   parseBurnBlockMessage,
   parseNewBlockMessage,
+  startEventServer,
 } from '../event-stream/event-server';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   batchIterate,
   createTimeTracker,
   getApiConfiguredChainID,
+  httpPostRequest,
   I32_MAX,
   logger,
   stopwatch,
@@ -25,7 +27,7 @@ import { readLines } from './reverse-line-reader';
 import {
   createTsvReorgStream,
   getCanonicalEntityList,
-  readPreorgTsv,
+  readTsvLines,
   TsvEntityData,
 } from './tsv-pre-org';
 import {
@@ -42,7 +44,7 @@ import {
   SmartContractEventInsertValues,
   StxEventInsertValues,
 } from '../datastore/common';
-import { validateZonefileHash } from '../datastore/helpers';
+import { getMempoolTxGarbageCollectionThreshold, validateZonefileHash } from '../datastore/helpers';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const chainID = getApiConfiguredChainID();
@@ -75,21 +77,36 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   }
   logger.info(`Tsv entity data block height: ${tsvEntityData.indexBlockHashes.length}`);
 
+  const blockWindowSize = getMempoolTxGarbageCollectionThreshold();
+  const preorgBlockHeight = Math.max(tsvEntityData.indexBlockHashes.length - blockWindowSize, 0);
+
   const preOrgFilePath = filePath + '-preorg';
+  const preOrgRemainingFilePath = filePath + '-preorg-remaining';
   if (fs.existsSync(preOrgFilePath)) {
     logger.info(`Using existing preorg tsv file: ${preOrgFilePath}`);
   } else {
     logger.info(`Writing preorg tsv file: ${preOrgFilePath} ...`);
     const reorgFileSw = stopwatch();
     const inputLineReader = readLines(filePath);
-    const transformStream = createTsvReorgStream(
-      tsvEntityData.indexBlockHashes,
-      tsvEntityData.burnBlockHashes,
-      false
-    );
+    const transformStream = createTsvReorgStream({
+      canonicalIndexBlockHashes: tsvEntityData.indexBlockHashes,
+      canonicalBurnBlockHashes: tsvEntityData.burnBlockHashes,
+      preorgBlockHeight,
+      outputCells: false,
+    });
     const outputFileStream = fs.createWriteStream(preOrgFilePath);
-    await pipeline(inputLineReader, transformStream, outputFileStream);
-    logger.info(`Writing preorg tsv file took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
+    const remainderOutputFileStream = fs.createWriteStream(preOrgRemainingFilePath);
+    transformStream.on('blockFound', () => {
+      // On max reorg block find, end writing to preorg file and start writing to the remainder file
+      logger.info(`Writing non-org'd remainder events...`);
+      transformStream.unpipe();
+      outputFileStream.end();
+      transformStream.pipe(remainderOutputFileStream);
+    });
+    inputLineReader.pipe(transformStream).pipe(outputFileStream);
+    await finished(remainderOutputFileStream);
+
+    logger.info(`Writing preorg tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
 
   const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
@@ -109,14 +126,51 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
+  logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
+  await importRemainderEvents(db, preOrgRemainingFilePath, timeTracker);
+
   logger.info(`Refreshing materialized views...`);
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
 
   console.log('Tracked function times:');
-  console.table(timeTracker.getDurations(2));
+  console.table(timeTracker.getDurations(3));
 
   await db.close();
   logger.info(`Event import took: ${startTime.getElapsedSeconds(2)} seconds`);
+}
+
+async function importRemainderEvents(
+  db: PgWriteStore,
+  remainderFilePath: string,
+  timeTracker: TimeTracker
+) {
+  const importRemainderSw = stopwatch();
+  const eventServer = await startEventServer({
+    datastore: db,
+    chainId: getApiConfiguredChainID(),
+    serverHost: '127.0.0.1',
+    serverPort: 0,
+    httpLogLevel: 'debug',
+  });
+  const lineStream = readTsvLines(remainderFilePath);
+  for await (const event of lineStream) {
+    if (!event) {
+      continue;
+    }
+    await timeTracker.track(`POST ${event.path}`, () =>
+      httpPostRequest({
+        host: '127.0.0.1',
+        port: eventServer.serverAddress.port,
+        path: event.path,
+        headers: { 'Content-Type': 'application/json' },
+        body: event.payload,
+        throwOnNotOK: true,
+      })
+    );
+  }
+  await eventServer.closeAsync();
+  const elapsed = importRemainderSw.getElapsedSeconds(2);
+  logger.info(`Event import for remainder non-org'd data took ${elapsed} seconds`);
 }
 
 async function insertRawEvents(
@@ -125,7 +179,7 @@ async function insertRawEvents(
   filePath: string,
   timeTracker: TimeTracker
 ) {
-  const preOrgStream = readPreorgTsv(filePath);
+  const preOrgStream = readTsvLines(filePath);
   let lastStatusUpdatePercent = 0;
   const tables = ['event_observer_requests'];
   const newBlockInsertSw = stopwatch();
@@ -183,7 +237,7 @@ async function insertNewBlockEvents(
   chainID: ChainID,
   timeTracker: TimeTracker
 ) {
-  const preOrgStream = readPreorgTsv(filePath, '/new_block');
+  const preOrgStream = readTsvLines(filePath, '/new_block');
   let lastStatusUpdatePercent = 0;
   const tables = [
     'blocks',
@@ -522,7 +576,7 @@ async function insertNewAttachmentEvents(
   filePath: string,
   timeTracker: TimeTracker
 ) {
-  const preOrgStream = readPreorgTsv(filePath, '/attachments/new');
+  const preOrgStream = readTsvLines(filePath, '/attachments/new');
   let lastStatusUpdatePercent = 0;
   const tables = ['zonefiles', 'subdomains'];
   const newBlockInsertSw = stopwatch();
@@ -583,7 +637,7 @@ async function insertNewBurnBlockEvents(
   filePath: string,
   timeTracker: TimeTracker
 ) {
-  const preOrgStream = readPreorgTsv(filePath, '/new_burn_block');
+  const preOrgStream = readTsvLines(filePath, '/new_burn_block');
   let lastStatusUpdatePercent = 0;
   const tables = ['burnchain_rewards', 'reward_slot_holders'];
   const newBurnBlockInsertSw = stopwatch();

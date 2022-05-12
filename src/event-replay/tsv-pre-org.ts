@@ -114,7 +114,7 @@ export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEn
   };
 }
 
-export function readPreorgTsv(
+export function readTsvLines(
   filePath: string,
   pathFilter?: '/new_block' | '/new_burn_block' | '/attachments/new'
 ): Readable {
@@ -131,23 +131,20 @@ export function readPreorgTsv(
       const [, , path, payload] = line.split('\t');
       if (pathFilter !== undefined) {
         if (path === pathFilter) {
-          transformStream.push({
+          callback(null, {
             path,
             payload,
             readLineCount,
           });
-        }
-      } else {
-        if (path == '/new_block' || path === '/new_burn_block' || path === '/attachments/new') {
-          transformStream.push({
-            path,
-            payload,
-            readLineCount,
-          });
-        } else {
-          callback(new Error(`Unexpected event type: ${line}`));
           return;
         }
+      } else {
+          callback(null, {
+            path,
+            payload,
+            readLineCount,
+          });
+          return;
       }
       callback();
     },
@@ -156,14 +153,21 @@ export function readPreorgTsv(
   return readLineStream.pipe(transformStream);
 }
 
-export function createTsvReorgStream(
-  canonicalIndexBlockHashes: string[],
-  canonicalBurnBlockHashes: string[],
-  outputCells = false
-): Transform {
+export function createTsvReorgStream({
+  canonicalIndexBlockHashes,
+  canonicalBurnBlockHashes,
+  preorgBlockHeight,
+  outputCells = false,
+}: {
+  canonicalIndexBlockHashes: string[];
+  canonicalBurnBlockHashes: string[];
+  preorgBlockHeight: number;
+  outputCells?: boolean;
+}): Transform {
   let nextCanonicalStacksBlockIndex = 0;
   let nextCanonicalBurnBlockIndex = 0;
   let readLineCount = 0;
+  let blockLimitFound = false;
   const canonicalIndexBlockHashesSet = new Set(canonicalIndexBlockHashes);
   const eventIdsRead = new Set<number>();
   const filterStream = new Transform({
@@ -183,9 +187,17 @@ export function createTsvReorgStream(
         return;
       }
       eventIdsRead.add(eventId);
-      if (parts[2] === '/new_block') {
+      if (blockLimitFound) {
+        // stop performing reorg logic and passthrough lines as-is
+      } else if (parts[2] === '/new_block') {
         const block: CoreNodeBlockMessage = JSON.parse(parts[3]);
-        if (block.index_block_hash === canonicalIndexBlockHashes[nextCanonicalStacksBlockIndex]) {
+        if (block.block_height === preorgBlockHeight) {
+          // emit `blockFound` so consumers of this stream can switch read behavior
+          blockLimitFound = true;
+          filterStream.emit('blockFound');
+        } else if (
+          block.index_block_hash === canonicalIndexBlockHashes[nextCanonicalStacksBlockIndex]
+        ) {
           nextCanonicalStacksBlockIndex++;
         } else {
           // ignore orphaned block
@@ -225,15 +237,14 @@ export function createTsvReorgStream(
         return;
       }
       if (outputCells) {
-        filterStream.push({
+        callback(null, {
           path: parts[2],
           payload: parts[3],
           readLineCount,
         });
       } else {
-        filterStream.push(line + '\n');
+        callback(null, line + '\n');
       }
-      callback();
     },
   });
   return filterStream;
