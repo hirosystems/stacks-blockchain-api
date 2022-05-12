@@ -633,26 +633,6 @@ export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
         const zoneFileTxt = zoneFileContents.txt;
         // Case for subdomain
         if (zoneFileTxt) {
-          /*
-          let isCanonical = true;
-          const dbTx = await db.getTxStrict({
-            txId: attachment.tx_id,
-            indexBlockHash: attachment.index_block_hash,
-          });
-          if (dbTx.found) {
-            isCanonical = dbTx.result.canonical;
-            blockData.index_block_hash = dbTx.result.index_block_hash;
-            blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
-            blockData.microblock_hash = dbTx.result.microblock_hash;
-            blockData.microblock_sequence = dbTx.result.microblock_sequence;
-            blockData.microblock_canonical = dbTx.result.microblock_canonical;
-          } else {
-            logger.warn(
-              `Could not find transaction ${attachment.tx_id} associated with attachment`
-            );
-          }
-          */
-          // case for subdomain
           for (let i = 0; i < zoneFileTxt.length; i++) {
             const zoneFile = zoneFileTxt[i];
             const parsedTxt = parseZoneFileTxt(zoneFile.txt);

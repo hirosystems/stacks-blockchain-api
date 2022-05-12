@@ -415,7 +415,32 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async updateBlock(sql: PgSqlClient, block: DbBlock, skipReorg?: boolean): Promise<number> {
+  async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
+    const values: BlockInsertValues[] = blocks.map(block => ({
+      block_hash: block.block_hash,
+      index_block_hash: block.index_block_hash,
+      parent_index_block_hash: block.parent_index_block_hash,
+      parent_block_hash: block.parent_block_hash,
+      parent_microblock_hash: block.parent_microblock_hash,
+      parent_microblock_sequence: block.parent_microblock_sequence,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      burn_block_hash: block.burn_block_hash,
+      burn_block_height: block.burn_block_height,
+      miner_txid: block.miner_txid,
+      canonical: block.canonical,
+      execution_cost_read_count: block.execution_cost_read_count,
+      execution_cost_read_length: block.execution_cost_read_length,
+      execution_cost_runtime: block.execution_cost_runtime,
+      execution_cost_write_count: block.execution_cost_write_count,
+      execution_cost_write_length: block.execution_cost_write_length,
+    }));
+    await sql`
+      INSERT INTO blocks ${sql(values)}
+    `;
+  }
+
+  async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
     const values: BlockInsertValues = {
       block_hash: block.block_hash,
       index_block_hash: block.index_block_hash,
@@ -437,7 +462,7 @@ export class PgWriteStore extends PgStore {
     };
     const result = await sql`
       INSERT INTO blocks ${sql(values)}
-      ${skipReorg ? sql`` : sql`ON CONFLICT (index_block_hash) DO NOTHING`}
+      ON CONFLICT (index_block_hash) DO NOTHING
     `;
     return result.count;
   }

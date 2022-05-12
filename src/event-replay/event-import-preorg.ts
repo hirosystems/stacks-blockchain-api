@@ -30,6 +30,8 @@ import {
 } from './tsv-pre-org';
 import {
   DataStoreTxEventData,
+  DbBlock,
+  DbMicroblock,
   DbTx,
   FtEventInsertValues,
   NftEventInsertValues,
@@ -127,7 +129,7 @@ async function insertRawEvents(
     // batches of 1000: 90 seconds
     // batches of 5000: 95 seconds
     // batches of 1000 w/ text instead of json data type: 67 seconds
-    const dbTxBatchInserter = createBatchInserter<RawEventRequestInsertValues>(
+    const dbRawEventBatchInserter = createBatchInserter<RawEventRequestInsertValues>(
       1000,
       async entries => {
         await timeTracker.track('insertRawEventRequestBatch', () =>
@@ -138,7 +140,7 @@ async function insertRawEvents(
 
     for await (const event of preOrgStream) {
       // INSERT INTO event_observer_requests
-      await dbTxBatchInserter.push([{ event_path: event.path, payload: event.payload }]);
+      await dbRawEventBatchInserter.push([{ event_path: event.path, payload: event.payload }]);
 
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
@@ -149,9 +151,9 @@ async function insertRawEvents(
       }
     }
 
-    await dbTxBatchInserter.flush();
+    await dbRawEventBatchInserter.flush();
     logger.info(`Raw event requests processed: 100%`);
-    logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
+    logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
 
@@ -195,17 +197,35 @@ async function insertNewBlockEvents(
 
     let blocksInserted = 0;
 
+    const batchInserters: BatchInserter[] = [];
+
+    // single inserts: 14 seconds
+    // batches of 1000: 0.81 seconds
+    const dbBlockBatchInserter = createBatchInserter<DbBlock>(1000, entries =>
+      timeTracker.track('insertBlockBatch', () => db.insertBlockBatch(sql, entries))
+    );
+    batchInserters.push(dbBlockBatchInserter);
+
+    // single inserts: 4.6 seconds
+    // batches of 1000: 1.2 seconds
+    const dbMicroblockBatchInserter = createBatchInserter<DbMicroblock>(1000, entries =>
+      timeTracker.track('insertMicroblock', () => db.insertMicroblock(sql, entries))
+    );
+    batchInserters.push(dbMicroblockBatchInserter);
+
     // batches of 500: 94 seconds
     // batches of 1000: 85 seconds
     // batches of 1500: 80 seconds
     const dbTxBatchInserter = createBatchInserter<DbTx>(1000, entries =>
       timeTracker.track('insertTxBatch', () => db.insertTxBatch(sql, entries))
     );
+    batchInserters.push(dbTxBatchInserter);
 
     // batches of 1000: 31 seconds
     const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(1000, entries =>
       timeTracker.track('insertStxEventBatch', () => db.insertStxEventBatch(sql, entries))
     );
+    batchInserters.push(dbStxEventBatchInserter);
 
     // batches of 1000: 56 seconds
     const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
@@ -215,16 +235,19 @@ async function insertNewBlockEvents(
           db.insertPrincipalStxTxsBatch(sql, entries)
         )
         );
+    batchInserters.push(dbPrincipalStxTxBatchInserter);
 
     // batches of 1000: 14 seconds
     const dbFtEventBatchInserter = createBatchInserter<FtEventInsertValues>(1000, entries =>
       timeTracker.track('insertFtEventBatch', () => db.insertFtEventBatch(sql, entries))
     );
+    batchInserters.push(dbFtEventBatchInserter);
 
     // batches of 1000: 15 seconds
     const dbNftEventBatchInserter = createBatchInserter<NftEventInsertValues>(1000, entries =>
       timeTracker.track('insertNftEventBatch', () => db.insertNftEventBatch(sql, entries))
     );
+    batchInserters.push(dbNftEventBatchInserter);
 
     // batches of 1000: 18 seconds
     const dbContractEventBatchInserter = createBatchInserter<SmartContractEventInsertValues>(
@@ -234,6 +257,7 @@ async function insertNewBlockEvents(
           db.insertContractEventBatch(sql, entries)
         )
     );
+    batchInserters.push(dbContractEventBatchInserter);
 
     const processStxEvents = async (entry: DataStoreTxEventData) => {
       // string key: `principal, tx_id, index_block_hash, microblock_hash`
@@ -290,14 +314,15 @@ async function insertNewBlockEvents(
       blocksInserted++;
       const newBlockMsg: CoreNodeBlockMessage = JSON.parse(event.payload);
       const dbData = parseNewBlockMessage(chainID, newBlockMsg);
+
       // INSERT INTO blocks
-      await timeTracker.track('updateBlock', () => db.updateBlock(sql, dbData.block, true));
+      await dbBlockBatchInserter.push([dbData.block]);
+
       if (dbData.microblocks.length > 0) {
         // INSERT INTO microblocks
-        await timeTracker.track('insertMicroblock', () =>
-          db.insertMicroblock(sql, dbData.microblocks)
-        );
+        await dbMicroblockBatchInserter.push(dbData.microblocks);
       }
+
       if (dbData.txs.length > 0) {
         for (const entry of dbData.txs) {
           // INSERT INTO txs
@@ -427,15 +452,13 @@ async function insertNewBlockEvents(
       }
     }
 
-    await dbTxBatchInserter.flush();
-    await dbStxEventBatchInserter.flush();
-    await dbFtEventBatchInserter.flush();
-    await dbNftEventBatchInserter.flush();
-    await dbContractEventBatchInserter.flush();
-    await dbPrincipalStxTxBatchInserter.flush();
+    for (const batchInserter of batchInserters) {
+      await batchInserter.flush();
+    }
+
     logger.info(`Processed '/new_block' events: 100%`);
 
-    logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
+    logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
   logger.info(`Inserting /new_block data took ${blockInsertSw.getElapsedSeconds(2)} seconds`);
@@ -500,7 +523,7 @@ async function insertNewAttachmentEvents(
       }
     }
 
-    logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
+    logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
   logger.info(
@@ -565,7 +588,7 @@ async function insertNewBurnBlockEvents(
       }
     }
 
-    logger.info(`Re-enabling indexs on ${tables.join(', ')}...`);
+    logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
   });
   logger.info(
@@ -580,13 +603,15 @@ async function insertNewBurnBlockEvents(
   logger.info(`Reindexing /new_burn_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
+interface BatchInserter<T = any> {
+  push(entries: T[]): Promise<void>;
+  flush(): Promise<void>;
+}
+
 function createBatchInserter<T>(
   batchSize: number,
   insertFn: (entries: T[]) => Promise<void>
-): {
-  push(entries: T[]): Promise<void>;
-  flush(): Promise<void>;
-} {
+): BatchInserter<T> {
   const entryBuffer: T[] = [];
   return {
     async push(entries: T[]) {
@@ -606,6 +631,7 @@ function createBatchInserter<T>(
     async flush() {
       if (entryBuffer.length > 0) {
         await insertFn(entryBuffer);
+        entryBuffer.length = 0;
       }
     },
   };
