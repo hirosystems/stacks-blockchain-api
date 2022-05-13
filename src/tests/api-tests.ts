@@ -9755,6 +9755,35 @@ describe('api tests', () => {
         },
       ],
     };
+
+    const totalCost = dataStoreUpdate.txs.reduce(
+      (prev, cur) => {
+        return {
+          execution_cost_read_count:
+            prev.execution_cost_read_count + cur.tx.execution_cost_read_count,
+          execution_cost_read_length:
+            prev.execution_cost_read_length + cur.tx.execution_cost_read_length,
+          execution_cost_runtime: prev.execution_cost_runtime + cur.tx.execution_cost_runtime,
+          execution_cost_write_count:
+            prev.execution_cost_write_count + cur.tx.execution_cost_write_count,
+          execution_cost_write_length:
+            prev.execution_cost_write_length + cur.tx.execution_cost_write_length,
+        };
+      },
+      {
+        execution_cost_read_count: 0,
+        execution_cost_read_length: 0,
+        execution_cost_runtime: 0,
+        execution_cost_write_count: 0,
+        execution_cost_write_length: 0,
+      }
+    );
+    dataStoreUpdate.block.execution_cost_read_count = totalCost.execution_cost_read_count;
+    dataStoreUpdate.block.execution_cost_read_length = totalCost.execution_cost_read_length;
+    dataStoreUpdate.block.execution_cost_runtime = totalCost.execution_cost_runtime;
+    dataStoreUpdate.block.execution_cost_write_count = totalCost.execution_cost_write_count;
+    dataStoreUpdate.block.execution_cost_write_length = totalCost.execution_cost_write_length;
+
     await db.update(dataStoreUpdate);
 
     const blockQuery = await supertest(api.server).get(`/extended/v1/block/${dbBlock.block_hash}`);
