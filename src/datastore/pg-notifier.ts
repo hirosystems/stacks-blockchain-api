@@ -75,6 +75,7 @@ export class PgNotifier {
       );
     } catch (error) {
       logError('PgNotifier fatal connection error', error);
+      throw error;
     }
   }
 
