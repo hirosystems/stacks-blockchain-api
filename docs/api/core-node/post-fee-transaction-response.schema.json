@@ -1,14 +1,11 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "POST response for estimated fee",
   "title": "TransactionFeeEstimateResponse",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "estimated_cost",
-    "estimated_cost_scalar",
-    "estimated_fee_rates",
-    "estimated_fees"
+    "estimated_cost_scalar"
   ],
   "properties": {
     "estimated_cost_scalar": {

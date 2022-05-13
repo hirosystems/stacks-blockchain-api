@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AbstractTransaction",
   "description": "Anchored transaction metadata. All mined/anchored Stacks transactions have these properties.",
   "type": "object",

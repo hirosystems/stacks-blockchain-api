@@ -1,5 +1,4 @@
 {
-  "$id": "rosetta-network-peers.schema.json",
   "type": "object",
   "title": "RosettaPeers",
   "description": "A Peer is a representation of a node's peer.",

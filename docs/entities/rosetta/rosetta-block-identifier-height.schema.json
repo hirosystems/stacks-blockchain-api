@@ -1,5 +1,4 @@
 {
-  "$id": "rosetta-block-identifier-height.schema.json",
   "type": "object",
   "title": "RosettaBlockIdentifierHeight",
   "description": "This is also known as the block height.",

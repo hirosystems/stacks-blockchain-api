@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "non-fungible-token-metadata",
   "title": "NonFungibleTokenMetadata",
   "type": "object",
   "additionalProperties": false,

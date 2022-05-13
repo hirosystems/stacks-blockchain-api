@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
   "type": "object",
   "title": "OtherTransactionIdentifier",
   "description": "The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.",

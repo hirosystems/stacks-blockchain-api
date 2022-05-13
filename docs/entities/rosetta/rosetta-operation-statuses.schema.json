@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-operation-statuses.schema.json",
   "type": "object",
   "title": "RosettaOperationStatus",
   "description": "OperationStatus is utilized to indicate which Operation status are considered successful.",

@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "subdomains-list-in-name",
   "title": "GetAllSubdomainsInName",
   "description": "Fetch a list of subdomains in a name.",
   "type": "array",

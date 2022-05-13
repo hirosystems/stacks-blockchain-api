@@ -1,5 +1,4 @@
 {
-  "$id": "rosetta-block-identifier.schema.json",
   "title": "RosettaBlockIdentifier",
   "description": "The block_identifier uniquely identifies a block in a particular network.",
   "allOf": [

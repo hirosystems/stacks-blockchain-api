@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "construction-derive-request",
   "type": "object",
   "title": "RosettaConstructionDeriveRequest",
   "description": "Network is provided in the request because some blockchains have different address formats for different networks",

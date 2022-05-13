@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-construction-combine-response",
   "type": "object",
   "title": "RosettaConstructionCombineResponse",
   "description": "RosettaConstructionCombineResponse is returned by /construction/combine. The network payload will be sent directly to the construction/submit endpoint.",

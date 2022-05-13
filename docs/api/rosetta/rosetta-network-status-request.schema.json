@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "Rosetta-status-request",
   "type": "object",
   "title": "RosettaStatusRequest",
   "description": "This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here.",
@@ -12,8 +10,7 @@
     },
     "metadata": {
       "type": "object",
-      "description": "",
-      "required": []
+      "description": ""
     }
   }
 }

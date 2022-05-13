@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BurnchainRewardSlotHolder",
   "description": "Reward slot holder on the burnchain",
   "type": "object",

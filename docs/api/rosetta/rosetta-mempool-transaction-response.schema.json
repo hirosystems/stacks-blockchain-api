@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
   "type": "object",
   "title": "RosettaMempoolTransactionResponse",
   "description": "A MempoolTransactionResponse contains an estimate of a mempool transaction. It may not be possible to know the full impact of a transaction in the mempool (ex: fee paid).",
