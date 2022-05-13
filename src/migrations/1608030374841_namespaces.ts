@@ -1,5 +1,7 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
@@ -91,7 +93,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('namespaces', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('namespaces', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('namespaces', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('namespaces', 'microblock_hash', { method: INDEX_METHOD });
   pgm.createIndex('namespaces', [{ name: 'ready_block', sort: 'DESC' }]);
 }

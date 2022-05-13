@@ -1,5 +1,7 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('mempool_txs', {
     id: {
@@ -92,13 +94,13 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     coinbase_payload: 'bytea',
   });
 
-  pgm.createIndex('mempool_txs', 'tx_id', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'contract_call_contract_id', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'contract_call_contract_id', { method: INDEX_METHOD });
   pgm.createIndex('mempool_txs', 'nonce');
-  pgm.createIndex('mempool_txs', 'sender_address', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'smart_contract_contract_id', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'sponsor_address', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'sender_address', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'smart_contract_contract_id', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'sponsor_address', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: INDEX_METHOD });
   pgm.createIndex('mempool_txs', [{ name: 'receipt_time', sort: 'DESC' }]);
 
   pgm.addConstraint('mempool_txs', 'unique_tx_id', `UNIQUE(tx_id)`);

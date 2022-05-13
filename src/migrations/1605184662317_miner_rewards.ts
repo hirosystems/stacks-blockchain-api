@@ -1,4 +1,7 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 // block_hash, index_block_hash, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('miner_rewards', {
@@ -48,7 +51,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  pgm.createIndex('miner_rewards', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('miner_rewards', 'recipient', { method: 'hash' });
+  pgm.createIndex('miner_rewards', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('miner_rewards', 'recipient', { method: INDEX_METHOD });
   pgm.createIndex('miner_rewards', [{ name: 'mature_block_height', sort: 'DESC' }]);
 }

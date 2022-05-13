@@ -2,6 +2,8 @@ import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('blocks', {
     index_block_hash: {
@@ -74,9 +76,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('blocks', 'block_hash', { method: 'hash' });
-  pgm.createIndex('blocks', 'burn_block_hash', { method: 'hash' });
-  pgm.createIndex('blocks', 'index_block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', 'block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('blocks', 'burn_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('blocks', 'index_block_hash', { method: INDEX_METHOD });
   pgm.createIndex('blocks', [{ name: 'block_height', sort: 'DESC' }]);
   pgm.createIndex('blocks', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }

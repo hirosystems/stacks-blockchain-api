@@ -1,5 +1,7 @@
 import {  MigrationBuilder } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('smart_contracts', {
     id: {
@@ -52,7 +54,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('smart_contracts', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('smart_contracts', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('smart_contracts', 'contract_id', { method: 'hash' });
+  pgm.createIndex('smart_contracts', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('smart_contracts', 'microblock_hash', { method: INDEX_METHOD });
+  pgm.createIndex('smart_contracts', 'contract_id', { method: INDEX_METHOD });
 }

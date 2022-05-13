@@ -1,5 +1,7 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('faucet_requests', {
     id: {
@@ -24,5 +26,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('faucet_requests', 'address', { method: 'hash' });
+  pgm.createIndex('faucet_requests', 'address', { method: INDEX_METHOD });
 }

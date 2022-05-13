@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/camelcase */
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
@@ -84,10 +86,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('subdomains', 'owner', { method: 'hash' });
-  pgm.createIndex('subdomains', 'zonefile_hash', { method: 'hash' });
-  pgm.createIndex('subdomains', 'fully_qualified_subdomain', { method: 'hash' });
-  pgm.createIndex('subdomains', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('subdomains', 'microblock_hash', { method: 'hash' });
+  pgm.createIndex('subdomains', 'owner', { method: INDEX_METHOD });
+  pgm.createIndex('subdomains', 'zonefile_hash', { method: INDEX_METHOD });
+  pgm.createIndex('subdomains', 'fully_qualified_subdomain', { method: INDEX_METHOD });
+  pgm.createIndex('subdomains', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('subdomains', 'microblock_hash', { method: INDEX_METHOD });
   pgm.createIndex('subdomains', [{ name: 'block_height', sort: 'DESC' }]);
 }

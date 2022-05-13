@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/camelcase */
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export const shorthands: ColumnDefinitions | undefined = undefined;
 
 export async function up(pgm: MigrationBuilder): Promise<void> {
@@ -51,8 +53,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('principal_stx_txs', 'tx_id', { method: 'hash' });
-  pgm.createIndex('principal_stx_txs', 'principal', { method: 'hash' });
+  pgm.createIndex('principal_stx_txs', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('principal_stx_txs', 'principal', { method: INDEX_METHOD });
   pgm.createIndex('principal_stx_txs', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },

@@ -1,5 +1,7 @@
 import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
 
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE as any;
+
 export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createTable('txs', {
     id: {
@@ -159,14 +161,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     coinbase_payload: 'bytea',
   });
 
-  pgm.createIndex('txs', 'tx_id', { method: 'hash' });
-  pgm.createIndex('txs', 'contract_call_contract_id', { method: 'hash' });
-  pgm.createIndex('txs', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('txs', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('txs', 'sender_address', { method: 'hash' });
-  pgm.createIndex('txs', 'smart_contract_contract_id', { method: 'hash' });
-  pgm.createIndex('txs', 'sponsor_address', { method: 'hash' });
-  pgm.createIndex('txs', 'token_transfer_recipient_address', { method: 'hash' });
+  pgm.createIndex('txs', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'contract_call_contract_id', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'microblock_hash', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'sender_address', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'smart_contract_contract_id', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'sponsor_address', { method: INDEX_METHOD });
+  pgm.createIndex('txs', 'token_transfer_recipient_address', { method: INDEX_METHOD });
   pgm.createIndex('txs', 'type_id');
   pgm.createIndex('txs', [{ name: 'tx_index', sort: 'DESC' }]);
   pgm.createIndex('txs', [
