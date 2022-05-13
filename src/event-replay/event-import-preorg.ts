@@ -47,6 +47,8 @@ import {
 import { getMempoolTxGarbageCollectionThreshold, validateZonefileHash } from '../datastore/helpers';
 
 export async function preOrgTsvImport(filePath: string): Promise<void> {
+  const timeTracker = createTimeTracker();
+
   const chainID = getApiConfiguredChainID();
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
@@ -69,19 +71,21 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     tsvEntityData = JSON.parse(fs.readFileSync(filePath + '.entitydata', 'utf8'));
   } else {
     const scanTsvEntityDataSw = stopwatch();
-    tsvEntityData = await getCanonicalEntityList(filePath);
+    tsvEntityData = await timeTracker.track('getCanonicalEntityList', () =>
+      getCanonicalEntityList(filePath)
+    );
     logger.info(
       `Scanning tsv for canonical data took ${scanTsvEntityDataSw.getElapsedSeconds(2)} seconds`
     );
     fs.writeFileSync(filePath + '.entitydata', JSON.stringify(tsvEntityData));
   }
-  logger.info(`Tsv entity data block height: ${tsvEntityData.indexBlockHashes.length}`);
+  logger.info(`Tsv entity data block height: ${tsvEntityData.stacksBlockHashes.length}`);
 
   const blockWindowSize = getMempoolTxGarbageCollectionThreshold();
-  const preorgBlockHeight = Math.max(tsvEntityData.indexBlockHashes.length - blockWindowSize, 0);
+  const preorgBlockHeight = Math.max(tsvEntityData.stacksBlockHashes.length - blockWindowSize, 0);
 
   const preOrgFilePath = filePath + '-preorg';
-  const preOrgRemainingFilePath = filePath + '-preorg-remaining';
+  const remainingFilePath = filePath + '-preorg-remaining';
   if (fs.existsSync(preOrgFilePath)) {
     logger.info(`Using existing preorg tsv file: ${preOrgFilePath}`);
   } else {
@@ -89,47 +93,47 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     const reorgFileSw = stopwatch();
     const inputLineReader = readLines(filePath);
     const transformStream = createTsvReorgStream({
-      canonicalIndexBlockHashes: tsvEntityData.indexBlockHashes,
+      canonicalStacksBlockHashes: tsvEntityData.stacksBlockHashes,
       canonicalBurnBlockHashes: tsvEntityData.burnBlockHashes,
       preorgBlockHeight,
       outputCells: false,
     });
     const outputFileStream = fs.createWriteStream(preOrgFilePath);
-    const remainderOutputFileStream = fs.createWriteStream(preOrgRemainingFilePath);
+    const remainderOutputFileStream = fs.createWriteStream(remainingFilePath);
+    // First, pipe data to a 'preorg' file while it is being preprocessed (pruned & reorg'd)
+    inputLineReader.pipe(transformStream).pipe(outputFileStream);
+    // Second, when max reorg block is find, end writing to 'preorg' file and start writing the unmodified data to the 'remainder' file
     transformStream.on('blockFound', () => {
-      // On max reorg block find, end writing to preorg file and start writing to the remainder file
-      logger.info(`Writing non-org'd remainder events...`);
+      logger.info(`Writing unprocessed remainder events to tsv ${remainingFilePath} ...`);
       transformStream.unpipe();
       outputFileStream.end();
       transformStream.pipe(remainderOutputFileStream);
     });
-    inputLineReader.pipe(transformStream).pipe(outputFileStream);
-    await finished(remainderOutputFileStream);
+    await timeTracker.track('tsv preprocessing', () => finished(remainderOutputFileStream));
 
-    logger.info(`Writing preorg tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
+    logger.info(`Processing tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
 
-  const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
-  logger.info(
-    `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
-  );
+    const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
+    logger.info(
+      `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
+    );
 
-  const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
-  logger.info(
-    `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
-  );
+    const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
+    logger.info(
+      `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
+    );
 
-  logger.info(`Inserting event data to db...`);
-  const timeTracker = createTimeTracker();
+    logger.info(`Inserting event data to db...`);
   await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+    await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
-  logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
-  await importRemainderEvents(db, preOrgRemainingFilePath, timeTracker);
+    logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
+  await importRemainderEvents(db, remainingFilePath, timeTracker);
 
-  logger.info(`Refreshing materialized views...`);
+    logger.info(`Refreshing materialized views...`);
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
 
   console.log('Tracked function times:');
@@ -197,7 +201,7 @@ async function insertRawEvents(
       async entries => {
         await timeTracker.track('insertRawEventRequestBatch', () =>
           db.insertRawEventRequestBatch(sql, entries)
-      );
+        );
       }
     );
 
@@ -298,7 +302,7 @@ async function insertNewBlockEvents(
         timeTracker.track('insertPrincipalStxTxsBatch', () =>
           db.insertPrincipalStxTxsBatch(sql, entries)
         )
-        );
+    );
     batchInserters.push(dbPrincipalStxTxBatchInserter);
 
     // batches of 1000: 14 seconds
@@ -473,7 +477,7 @@ async function insertNewBlockEvents(
               asset_identifier: ftEvent.asset_identifier,
               amount: ftEvent.amount.toString(),
             }))
-            );
+          );
 
           // INSERT INTO nft_events
           await dbNftEventBatchInserter.push(
@@ -494,7 +498,7 @@ async function insertNewBlockEvents(
               asset_identifier: nftEvent.asset_identifier,
               value: nftEvent.value,
             }))
-            );
+          );
 
           // INSERT INTO smart_contracts
           for (const smartContract of entry.smartContracts) {
@@ -530,7 +534,7 @@ async function insertNewBlockEvents(
               zonefile: bnsName.zonefile,
               zonefile_hash: validateZonefileHash(bnsName.zonefile_hash),
             }))
-            );
+          );
 
           // INSERT INTO namespaces
           for (const namespace of entry.namespaces) {
@@ -589,15 +593,25 @@ async function insertNewAttachmentEvents(
       const attachments = parseAttachmentMessage(attatchmentMsg);
 
       for (const subdomain of attachments.subdomains) {
-        // TODO: the `microblock_*` and `parent_index_block_hash` fields need populated
-        // this could potentially done by scanning the tsv file in `getCanonicalEntityList(..)`,
-        // otherwise, this would need a second pass after indexes are applied. Pros/cons to both
-        // approaches.
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const indexBlockHash = subdomain.index_block_hash!;
+        const blockEntityData = tsvEntityData.stacksBlockHashes[subdomain.block_height - 1];
+        const parentIndexBlockHash = tsvEntityData.stacksBlockHashes[subdomain.block_height - 2][0];
+        const microblocks = blockEntityData[1];
+        const microblockIndex = microblocks.findIndex(
+          (mb, index) => index > 0 && mb[1].includes(subdomain.tx_id)
+        );
+
+        // derive from entity hash index
+        subdomain.tx_index = blockEntityData[1]
+          .flatMap(m => m[1])
+          .findIndex(tx => tx === subdomain.tx_id);
+
         const blockData = {
-          index_block_hash: subdomain.index_block_hash ?? '',
-          parent_index_block_hash: '',
-          microblock_hash: '',
-          microblock_sequence: I32_MAX,
+          index_block_hash: indexBlockHash,
+          parent_index_block_hash: parentIndexBlockHash,
+          microblock_hash: microblockIndex !== -1 ? microblocks[microblockIndex][0] : '',
+          microblock_sequence: microblockIndex !== -1 ? microblockIndex - 1 : I32_MAX,
           microblock_canonical: true,
         };
         // INSERT INTO zonefiles

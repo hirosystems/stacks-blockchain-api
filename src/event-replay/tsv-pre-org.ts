@@ -9,7 +9,7 @@ import {
 const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 export interface TsvEntityData {
-  indexBlockHashes: string[];
+  stacksBlockHashes: StacksBlockHashes;
   canonicalStacksBlockCount: number;
   orphanStacksBlockCount: number;
   burnBlockHashes: string[];
@@ -18,10 +18,15 @@ export interface TsvEntityData {
   tsvLineCount: number;
 }
 
+export type StacksBlockHashes = [
+  indexBlockHash: string,
+  microblocks: [microblockHash: string, txIds: string[]][]
+][];
+
 export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEntityData> {
   const readStream = readLinesReversed(tsvFilePath);
 
-  const indexBlockHashes: string[] = [];
+  const stacksBlockHashes: StacksBlockHashes = [];
   let findLastStacksBlock = true;
   let stacksBlockOrphanCount = 0;
   let stacksBlockCanonicalCount = 0;
@@ -29,15 +34,39 @@ export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEn
 
   let tsvLineCount = 0;
 
+  const getMicroblockHashes = (msg: CoreNodeBlockMessage) => {
+    const microblockTxs = new Map<string, { mbSequence: number; txs: string[] }>();
+    msg.transactions.forEach(tx => {
+      const mbHash = tx.microblock_hash ?? '';
+      const mb = microblockTxs.get(mbHash);
+        if (mb) {
+          mb.txs.push(tx.txid);
+        } else {
+        microblockTxs.set(mbHash, {
+          mbSequence: tx.microblock_sequence ?? -1,
+            txs: [tx.txid],
+          });
+        }
+    });
+    const result: [microblockHash: string, txIds: string[]][] = [
+      ...microblockTxs.entries(),
+    ].map(mb => [mb[0], mb[1].txs]);
+    return result;
+  };
+
   const processStacksBlockLine = (parts: string[]) => {
     const stacksBlock: CoreNodeBlockMessage = JSON.parse(parts[3]);
     if (findLastStacksBlock) {
-      indexBlockHashes.push(stacksBlock.parent_index_block_hash, stacksBlock.index_block_hash);
+      stacksBlockHashes.unshift(
+        [stacksBlock.parent_index_block_hash, []],
+        [stacksBlock.index_block_hash, getMicroblockHashes(stacksBlock)]
+      );
       findLastStacksBlock = false;
     } else {
-      if (indexBlockHashes[0] === stacksBlock.index_block_hash) {
+      if (stacksBlockHashes[0][0] === stacksBlock.index_block_hash) {
+        stacksBlockHashes[0][1] = getMicroblockHashes(stacksBlock);
         if (stacksBlock.block_height !== 1) {
-          indexBlockHashes.unshift(stacksBlock.parent_index_block_hash);
+          stacksBlockHashes.unshift([stacksBlock.parent_index_block_hash, []]);
         }
         stacksBlockCanonicalCount++;
         if (lastStacksBlockHeight !== -1) {
@@ -104,7 +133,7 @@ export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEn
     }
   }
   return {
-    indexBlockHashes,
+    stacksBlockHashes: stacksBlockHashes,
     canonicalStacksBlockCount: stacksBlockCanonicalCount,
     orphanStacksBlockCount: stacksBlockOrphanCount,
     burnBlockHashes,
@@ -139,12 +168,12 @@ export function readTsvLines(
           return;
         }
       } else {
-          callback(null, {
-            path,
-            payload,
-            readLineCount,
-          });
-          return;
+        callback(null, {
+          path,
+          payload,
+          readLineCount,
+        });
+        return;
       }
       callback();
     },
@@ -154,12 +183,12 @@ export function readTsvLines(
 }
 
 export function createTsvReorgStream({
-  canonicalIndexBlockHashes,
+  canonicalStacksBlockHashes,
   canonicalBurnBlockHashes,
   preorgBlockHeight,
   outputCells = false,
 }: {
-  canonicalIndexBlockHashes: string[];
+  canonicalStacksBlockHashes: StacksBlockHashes;
   canonicalBurnBlockHashes: string[];
   preorgBlockHeight: number;
   outputCells?: boolean;
@@ -168,7 +197,7 @@ export function createTsvReorgStream({
   let nextCanonicalBurnBlockIndex = 0;
   let readLineCount = 0;
   let blockLimitFound = false;
-  const canonicalIndexBlockHashesSet = new Set(canonicalIndexBlockHashes);
+  const canonicalIndexBlockHashesSet = new Map(canonicalStacksBlockHashes);
   const eventIdsRead = new Set<number>();
   const filterStream = new Transform({
     objectMode: true,
@@ -196,7 +225,7 @@ export function createTsvReorgStream({
           blockLimitFound = true;
           filterStream.emit('blockFound');
         } else if (
-          block.index_block_hash === canonicalIndexBlockHashes[nextCanonicalStacksBlockIndex]
+          block.index_block_hash === canonicalStacksBlockHashes[nextCanonicalStacksBlockIndex][0]
         ) {
           nextCanonicalStacksBlockIndex++;
         } else {
