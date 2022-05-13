@@ -1,4 +1,6 @@
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
+import * as tty from 'tty';
 import { ChainID } from '@stacks/transactions';
 import { finished } from 'stream/promises';
 import {
@@ -18,6 +20,7 @@ import {
   createTimeTracker,
   getApiConfiguredChainID,
   httpPostRequest,
+  humanFileSize,
   I32_MAX,
   logger,
   stopwatch,
@@ -77,12 +80,17 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   // Disable this feature so a redundant export file isn't created while importing from an existing one.
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
 
-  logger.info('Indexing canonical data from tsv file...');
+  const fileStat = await fsPromises.stat(filePath);
+
+  const preorgTmpFilePrefix = `/tmp/stacks-api-event-import-${fileStat.mtime.toISOString()}`;
+  const tsvEntityDataFilePath = preorgTmpFilePrefix + '.canonical-metadata.json';
 
   let tsvEntityData: TsvEntityData;
-  if (fs.existsSync(filePath + '.entitydata')) {
-    tsvEntityData = JSON.parse(fs.readFileSync(filePath + '.entitydata', 'utf8'));
+  if (fs.existsSync(tsvEntityDataFilePath)) {
+    logger.info(`Using existing canonical metadata file: ${tsvEntityDataFilePath}`);
+    tsvEntityData = JSON.parse(fs.readFileSync(tsvEntityDataFilePath, 'utf8'));
   } else {
+    logger.info('Indexing canonical metadata from tsv file...');
     const scanTsvEntityDataSw = stopwatch();
     tsvEntityData = await timeTracker.track('getCanonicalEntityList', () =>
       getCanonicalEntityList(filePath)
@@ -90,21 +98,26 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     logger.info(
       `Scanning tsv for canonical data took ${scanTsvEntityDataSw.getElapsedSeconds(2)} seconds`
     );
-    fs.writeFileSync(filePath + '.entitydata', JSON.stringify(tsvEntityData));
+    logger.info(`Writing canonical metadata file: ${tsvEntityDataFilePath} ...`);
+    await timeTracker.track('write entity file', () =>
+      fsPromises.writeFile(tsvEntityDataFilePath, JSON.stringify(tsvEntityData))
+    );
   }
 
   logger.info(
-    `Tsv line count: ${tsvEntityData.tsvLineCount}, block height: ${tsvEntityData.stacksBlockHashes.length}`
+    `Tsv line count: ${tsvEntityData.tsvLineCount}, ` +
+      `file size: ${humanFileSize(fileStat.size)}, ` +
+      `block height: ${tsvEntityData.stacksBlockHashes.length}`
   );
 
   const blockWindowSize = getMempoolTxGarbageCollectionThreshold();
   const preorgBlockHeight = Math.max(tsvEntityData.stacksBlockHashes.length - blockWindowSize, 0);
   logger.info(
-    `Pre-org importing up to block ${preorgBlockHeight}, inserting the remaining events as is`
+    `Pre-org importing events up to block ${preorgBlockHeight}, inserting the remaining as is`
   );
 
-  const preOrgFilePath = filePath + '-preorg';
-  const remainingFilePath = filePath + '-preorg-remaining';
+  const preOrgFilePath = preorgTmpFilePrefix + '-preorg.tsv';
+  const remainingFilePath = preorgTmpFilePrefix + '-remaining.tsv';
   if (fs.existsSync(preOrgFilePath)) {
     logger.info(`Using existing preorg tsv file: ${preOrgFilePath}`);
   } else {
@@ -121,6 +134,7 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     const remainderOutputFileStream = fs.createWriteStream(remainingFilePath);
     // First, pipe data to a 'preorg' file while it is being preprocessed (pruned & reorg'd)
     inputLineReader.pipe(transformStream).pipe(outputFileStream);
+    void timeTracker.track('tsv preorg output', () => finished(outputFileStream));
     // Second, when max reorg block is find, end writing to 'preorg' file and start writing the unmodified data to the 'remainder' file
     transformStream.on('blockFound', () => {
       logger.info(`Writing unprocessed remainder events to tsv ${remainingFilePath} ...`);
@@ -128,7 +142,7 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
       outputFileStream.end();
       transformStream.pipe(remainderOutputFileStream);
     });
-    await timeTracker.track('tsv preprocessing', () => finished(remainderOutputFileStream));
+    await timeTracker.track('tsv remainder output', () => finished(remainderOutputFileStream));
 
     logger.info(`Processing tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
@@ -156,8 +170,12 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
   logger.info(`Refreshing materialized views took: ${finishReplaySw.getElapsedSeconds(2)} seconds`);
 
+  if (tty.isatty(1)) {
   console.log('Tracked function times:');
   console.table(timeTracker.getDurations(3));
+  } else {
+    logger.info(`Tracked function times`, timeTracker.getDurations(3));
+  }
 
   await db.close();
   logger.info(`Event import took: ${startTime.getElapsedSeconds(2)} seconds`);

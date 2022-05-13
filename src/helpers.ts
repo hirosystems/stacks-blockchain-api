@@ -536,6 +536,11 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
+export function humanFileSize(size: number): string {
+  const i = Math.floor(Math.log(size) / Math.log(1000));
+  return (size / Math.pow(1000, i)).toFixed(2) + ' ' + ['B', 'KB', 'MB', 'GB', 'TB'][i];
+}
+
 export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
