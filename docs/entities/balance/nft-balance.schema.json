@@ -1,5 +1,5 @@
 {
-  "description": "NftBalance",
+  "title": "NftBalance",
   "type": "object",
   "additionalProperties": false,
   "required": ["count", "total_sent", "total_received"],

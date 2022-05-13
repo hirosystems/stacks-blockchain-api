@@ -10,13 +10,27 @@
     "fungible_tokens": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/balance/ft-balance.schema.json"
+        "type": "object",
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "$ref": "../../entities/balance/ft-balance.schema.json"
+            }
+          ]
+        }
       }
     },
     "non_fungible_tokens": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/balance/nft-balance.schema.json"
+        "type": "object",
+        "additionalProperties": {
+          "anyOf": [
+            {
+              "$ref": "../../entities/balance/nft-balance.schema.json"
+            }
+          ]
+        }
       }
     },
     "token_offering_locked": {

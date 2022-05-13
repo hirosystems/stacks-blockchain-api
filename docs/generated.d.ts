@@ -18,7 +18,6 @@ export type SchemaMergeRootStub =
   | BnsGetAllNamesResponse
   | BnsGetAllSubdomainsResponse
   | BnsFetchHistoricalZoneFileResponse
-  | BnsGetNameHistoryResponse
   | BnsGetNameInfoResponse
   | BnsGetNamePriceResponse
   | BnsNamesOwnByAddressResponse
@@ -26,6 +25,7 @@ export type SchemaMergeRootStub =
   | BnsGetAllNamespacesNamesResponse
   | BnsGetAllNamespacesResponse
   | BnsGetNamespacePriceResponse
+  | GetAllSubdomainsInName
   | BurnchainRewardSlotHolderListResponse
   | BurnchainRewardListResponse
   | ReadOnlyFunctionSuccessResponse
@@ -108,16 +108,8 @@ export type SchemaMergeRootStub =
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
   | AddressUnlockSchedule
-  | {
-      balance: string;
-      total_sent: string;
-      total_received: string;
-    }
-  | {
-      count: string;
-      total_sent: string;
-      total_received: string;
-    }
+  | FtBalance
+  | NftBalance
   | {
       balance: string;
       total_sent: string;
@@ -664,7 +656,7 @@ export type MempoolPoisonMicroblockTransaction = AbstractMempoolTransaction & Po
  */
 export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & CoinbaseTransactionMetadata;
 /**
- * Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
+ * Fetch a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
  */
 export type BnsFetchFileZoneResponse =
   | {
@@ -719,6 +711,10 @@ export type BnsGetSubdomainAtTx = {
  * Fetch a list of names from the namespace.
  */
 export type BnsGetAllNamespacesNamesResponse = string[];
+/**
+ * Fetch a list of subdomains in a name.
+ */
+export type GetAllSubdomainsInName = string[];
 /**
  * GET fee estimates
  */
@@ -861,33 +857,23 @@ export interface AddressBalanceResponse {
     burnchain_unlock_height: number;
   };
   fungible_tokens: {
-    /**
-     * FtBalance
-     *
-     * This interface was referenced by `undefined`'s JSON-Schema definition
-     * via the `patternProperty` "*".
-     */
-    [k: string]: {
-      balance: string;
-      total_sent: string;
-      total_received: string;
-    };
-  };
+    [k: string]: FtBalance | undefined;
+  }[];
   non_fungible_tokens: {
-    /**
-     * NftBalance
-     *
-     * This interface was referenced by `undefined`'s JSON-Schema definition
-     * via the `patternProperty` "*".
-     */
-    [k: string]: {
-      count: string;
-      total_sent: string;
-      total_received: string;
-    };
-  };
+    [k: string]: NftBalance | undefined;
+  }[];
   token_offering_locked?: AddressTokenOfferingLocked;
   [k: string]: unknown | undefined;
+}
+export interface FtBalance {
+  balance: string;
+  total_sent: string;
+  total_received: string;
+}
+export interface NftBalance {
+  count: string;
+  total_sent: string;
+  total_received: string;
 }
 /**
  * Token Offering Locked
@@ -1298,45 +1284,6 @@ export interface BnsError {
   [k: string]: unknown | undefined;
 }
 /**
- * Get a history of all blockchain records of a registered name.
- */
-export interface BnsGetNameHistoryResponse {
-  /**
-   * This interface was referenced by `BnsGetNameHistoryResponse`'s JSON-Schema definition
-   * via the `patternProperty` "^[0-9]+".
-   */
-  [k: string]: {
-    address?: string;
-    base?: number;
-    buckets?: number[] | null;
-    block_number?: number;
-    coeff?: number | null;
-    consensus_hash?: string | null;
-    domain?: string;
-    fee?: number;
-    first_registered?: number;
-    history_snapshot?: boolean;
-    importer?: string | null;
-    importer_address?: string | null;
-    last_renewed?: number;
-    name?: string;
-    op?: string;
-    op_fee?: number;
-    opcode?: string;
-    revoked?: boolean;
-    sender?: string;
-    sender_pubkey?: string | null;
-    sequence?: number;
-    recipient?: string | null;
-    recipient_address?: string | null;
-    recipient_pubkey?: string | null;
-    txid: string;
-    value_hash?: string | null;
-    vtxindex: number;
-    [k: string]: unknown | undefined;
-  }[];
-}
-/**
  * Get name details
  */
 export interface BnsGetNameInfoResponse {
@@ -1363,7 +1310,7 @@ export interface BnsGetNamePriceResponse {
  * Retrieves a list of names owned by the address provided.
  */
 export interface BnsNamesOwnByAddressResponse {
-  names?: string[];
+  names: string[];
   [k: string]: unknown | undefined;
 }
 /**
@@ -2451,7 +2398,7 @@ export interface RosettaOptions {
   /**
    * This value indicates the state of the operations
    */
-  status?: string | null;
+  status?: string;
   /**
    * Recipient's address
    */
@@ -3139,7 +3086,6 @@ export interface FungibleTokensMetadataList {
    */
   total: number;
   results: FungibleTokenMetadata[];
-  [k: string]: unknown | undefined;
 }
 export interface FungibleTokenMetadata {
   /**
