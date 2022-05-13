@@ -3,6 +3,7 @@
   "title": "RosettaNetworkListResponse",
   "description": "A NetworkListResponse contains all NetworkIdentifiers that the node can serve information for.",
   "required": ["network_identifiers"],
+  "additionalProperties": false,
   "properties": {
     "network_identifiers": {
       "type": "array",

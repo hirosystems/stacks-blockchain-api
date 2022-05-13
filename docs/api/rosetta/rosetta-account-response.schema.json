@@ -3,6 +3,7 @@
   "title": "RosettaAccountBalanceResponse",
   "description": "An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.",
   "required": ["block_identifier", "balances"],
+  "additionalProperties": false,
   "properties": {
     "block_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"

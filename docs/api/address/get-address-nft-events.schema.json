@@ -1,6 +1,7 @@
 {
   "type": "object",
   "title": "AddressNftListResponse",
+  "additionalProperties": false,
   "required": [
     "limit",
     "offset",

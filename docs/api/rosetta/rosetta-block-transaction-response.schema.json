@@ -3,6 +3,7 @@
   "title": "RosettaBlockTransactionResponse",
   "description": "A BlockTransactionResponse contains information about a block transaction.",
   "required": ["transaction"],
+  "additionalProperties": false,
   "properties": {
     "transaction": {
       "$ref": "./../../entities/rosetta/rosetta-transaction.schema.json"

@@ -2,6 +2,7 @@
   "description": "GET request that returns address assets",
   "title": "AddressAssetsListResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": ["results", "limit", "offset", "total"],
   "properties": {
     "limit": {

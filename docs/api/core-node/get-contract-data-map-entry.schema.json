@@ -2,6 +2,7 @@
   "description": "Response of get data map entry request",
   "title": "MapEntryResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": ["data"],
   "properties": {
     "data": {

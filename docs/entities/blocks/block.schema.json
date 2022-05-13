@@ -2,6 +2,7 @@
   "title": "Block",
   "description": "A block",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "canonical",
     "height",

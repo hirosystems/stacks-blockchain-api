@@ -2,6 +2,7 @@
   "title": "BnsError",
   "description": "Error",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "error": { "type": "string" }
   }

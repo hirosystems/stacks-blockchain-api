@@ -3,6 +3,7 @@
   "title": "RosettaTransaction",
   "description": "Transactions contain an array of Operations that are attributable to the same TransactionIdentifier.",
   "required": ["transaction_identifier", "operations"],
+  "additionalProperties": false,
   "properties": {
     "transaction_identifier": {
       "$ref": "./rosetta-transaction-identifier.schema.json"
@@ -17,7 +18,7 @@
     "metadata": {
       "type": "object",
       "description": "Transactions that are related to other transactions (like a cross-shard transaction) should include the tranaction_identifier of these transactions in the metadata.",
-          "properties": {
+      "properties": {
         "memo": {
           "type": "string",
           "description": "STX token transfer memo."

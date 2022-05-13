@@ -2,6 +2,7 @@
   "type": "object",
   "title": "RosettaConstructionDeriveResponse",
   "description": "ConstructionDeriveResponse is returned by the /construction/derive endpoint.",
+  "additionalProperties": false,
   "properties": {
     "address": {
       "type": "string",

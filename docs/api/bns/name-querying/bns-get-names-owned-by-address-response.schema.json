@@ -1,6 +1,7 @@
 {
   "title": "BnsNamesOwnByAddressResponse",
   "description": "Retrieves a list of names owned by the address provided.",
+  "additionalProperties": false,
   "required": ["names"],
   "type": "object",
   "properties": {

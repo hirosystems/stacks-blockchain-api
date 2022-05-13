@@ -125,7 +125,7 @@ export type SchemaMergeRootStub =
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
   | MempoolCoinbaseTransaction
-  | MempoolTransactionStatus1
+  | MempoolTransactionStatus
   | MempoolTransaction
   | Microblock
   | NftEvent
@@ -157,7 +157,7 @@ export type SchemaMergeRootStub =
   | NetworkIdentifier
   | RosettaPeers
   | RosettaOldestBlockIdentifier
-  | RosettaOperationIdentifier1
+  | RosettaOperationIdentifier
   | RosettaOperationStatus
   | RosettaOperation
   | OtherTransactionIdentifier
@@ -210,7 +210,7 @@ export type SchemaMergeRootStub =
   | TransactionList
   | TransactionMetadata
   | TransactionNotFound
-  | TransactionStatus1
+  | TransactionStatus
   | TransactionType
   | Transaction
   | InboundStxTransfer
@@ -256,7 +256,6 @@ export type TransactionEventSmartContractLog = AbstractTransactionEvent & {
       repr: string;
     };
   };
-  [k: string]: unknown | undefined;
 };
 /**
  * Only present in `smart_contract` and `contract_call` tx types.
@@ -269,7 +268,6 @@ export type TransactionEventStxLock = AbstractTransactionEvent & {
     unlock_height: number;
     locked_address: string;
   };
-  [k: string]: unknown | undefined;
 };
 /**
  * Only present in `smart_contract` and `contract_call` tx types.
@@ -278,7 +276,6 @@ export type TransactionEventStxAsset = AbstractTransactionEvent & {
   event_type: "stx_asset";
   tx_id: string;
   asset: TransactionEventAsset;
-  [k: string]: unknown | undefined;
 };
 export type TransactionEventAssetType = "transfer" | "mint" | "burn";
 export type TransactionEventFungibleAsset = AbstractTransactionEvent & {
@@ -291,7 +288,6 @@ export type TransactionEventFungibleAsset = AbstractTransactionEvent & {
     recipient: string;
     amount: string;
   };
-  [k: string]: unknown | undefined;
 };
 export type TransactionEventNonFungibleAsset = AbstractTransactionEvent & {
   event_type: "non_fungible_token_asset";
@@ -306,14 +302,12 @@ export type TransactionEventNonFungibleAsset = AbstractTransactionEvent & {
       repr: string;
     };
   };
-  [k: string]: unknown | undefined;
 };
 /**
  * GET request that returns address balances
  */
 export type AddressStxBalanceResponse = StxBalance & {
   token_offering_locked?: AddressTokenOfferingLocked;
-  [k: string]: unknown | undefined;
 };
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
@@ -434,12 +428,10 @@ export type PostConditionMode = "allow" | "deny";
 export type PostCondition = PostConditionStx | PostConditionFungible | PostConditionNonFungible;
 export type PostConditionStx = {
   principal: PostConditionPrincipal;
-  [k: string]: unknown | undefined;
 } & {
   condition_code: PostConditionFungibleConditionCode;
   amount: string;
   type: "stx";
-  [k: string]: unknown | undefined;
 };
 export type PostConditionPrincipal =
   | {
@@ -474,7 +466,6 @@ export type PostConditionFungibleConditionCode =
   | "sent_less_than_or_equal_to";
 export type PostConditionFungible = {
   principal: PostConditionPrincipal;
-  [k: string]: unknown | undefined;
 } & {
   condition_code: PostConditionFungibleConditionCode;
   type: "fungible";
@@ -484,11 +475,9 @@ export type PostConditionFungible = {
     contract_address: string;
     contract_name: string;
   };
-  [k: string]: unknown | undefined;
 };
 export type PostConditionNonFungible = {
   principal: PostConditionPrincipal;
-  [k: string]: unknown | undefined;
 } & {
   condition_code: PostConditionNonFungibleConditionCode;
   type: "non_fungible";
@@ -501,7 +490,6 @@ export type PostConditionNonFungible = {
     contract_address: string;
     contract_name: string;
   };
-  [k: string]: unknown | undefined;
 };
 /**
  * A non-fungible condition code encodes a statement being made about a non-fungible token, with respect to whether or not the particular non-fungible token is owned by the account.
@@ -512,7 +500,7 @@ export type PostConditionNonFungibleConditionCode = "sent" | "not_sent";
  */
 export type TransactionAnchorModeType = "on_chain_only" | "off_chain_only" | "any";
 /**
- * Status of the transaction. Can be included in a block with a success or aborted status. Or pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.
+ * Status of the transaction
  */
 export type TransactionStatus = "success" | "abort_by_response" | "abort_by_post_condition";
 /**
@@ -559,7 +547,7 @@ export type AbstractMempoolTransaction = BaseTransaction & {
   receipt_time_iso: string;
 };
 /**
- * Status of the transaction in the mempool. Can be pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.
+ * Status of the transaction
  */
 export type MempoolTransactionStatus =
   | "pending"
@@ -589,11 +577,9 @@ export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & CoinbaseTr
 export type BnsFetchFileZoneResponse =
   | {
       zonefile?: string;
-      [k: string]: unknown | undefined;
     }
   | {
       error?: string;
-      [k: string]: unknown | undefined;
     };
 /**
  * Fetch a list of all names known to the node.
@@ -609,11 +595,9 @@ export type BnsGetAllSubdomainsResponse = string[];
 export type BnsFetchHistoricalZoneFileResponse =
   | {
       zonefile?: string;
-      [k: string]: unknown | undefined;
     }
   | {
       error?: string;
-      [k: string]: unknown | undefined;
     };
 /**
  * Fetches the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
@@ -633,7 +617,6 @@ export type BnsGetSubdomainAtTx = {
   txid?: string;
   zonefile_hash?: string;
   zonefile_offset?: number;
-  [k: string]: unknown | undefined;
 }[];
 /**
  * Fetch a list of names from the namespace.
@@ -662,7 +645,7 @@ export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | Rosetta
 /**
  * The block_identifier uniquely identifies a block in a particular network.
  */
-export type RosettaBlockIdentifier = RosettaBlockIdentifierHash1 & RosettaBlockIdentifierHeight1;
+export type RosettaBlockIdentifier = RosettaBlockIdentifierHash & RosettaBlockIdentifierHeight;
 /**
  * SignatureType is the type of a cryptographic signature.
  */
@@ -694,15 +677,6 @@ export type NonFungibleTokenHolding = NonFungibleTokenHoldingWithTxId | NonFungi
  * Describes the minting of a Non-Fungible Token
  */
 export type NonFungibleTokenMint = NonFungibleTokenMintWithTxId | NonFungibleTokenMintWithTxMetadata;
-/**
- * Status of the transaction
- */
-export type MempoolTransactionStatus1 =
-  | "pending"
-  | "dropped_replace_by_fee"
-  | "dropped_replace_across_fork"
-  | "dropped_too_expensive"
-  | "dropped_stale_garbage_collect";
 export type PostConditionPrincipalType = "principal_origin" | "principal_standard" | "principal_contract";
 export type PostConditionType = "stx" | "non_fungible" | "fungible";
 /**
@@ -720,10 +694,6 @@ export type TransactionMetadata =
   | ContractCallTransactionMetadata
   | PoisonMicroblockTransactionMetadata
   | CoinbaseTransactionMetadata;
-/**
- * Status of the transaction
- */
-export type TransactionStatus1 = "success" | "abort_by_response" | "abort_by_post_condition";
 /**
  * String literal of all Stacks 2.0 transaction types
  */
@@ -744,7 +714,6 @@ export interface AddressAssetsListResponse {
   offset: number;
   total: number;
   results: TransactionEvent[];
-  [k: string]: unknown | undefined;
 }
 export interface AbstractTransactionEvent {
   event_index: number;
@@ -836,7 +805,6 @@ export interface AddressNftListResponse {
   offset: number;
   total: number;
   nft_events: NftEvent[];
-  [k: string]: unknown | undefined;
 }
 export interface NftEvent {
   sender: string;
@@ -857,7 +825,6 @@ export interface NftEvent {
   };
   tx_id: string;
   block_height: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -867,7 +834,6 @@ export interface AddressStxInboundListResponse {
   offset: number;
   total: number;
   results: InboundStxTransfer[];
-  [k: string]: unknown | undefined;
 }
 /**
  * A inbound STX transfer with a memo
@@ -901,7 +867,6 @@ export interface InboundStxTransfer {
    * Index of the transaction within a block
    */
   tx_index: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns account transactions
@@ -1206,14 +1171,12 @@ export interface Block {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * Error
  */
 export interface BnsError {
   error?: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Get name details
@@ -1228,7 +1191,6 @@ export interface BnsGetNameInfoResponse {
   status: string;
   zonefile: string;
   zonefile_hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Fetch price for name.
@@ -1236,21 +1198,18 @@ export interface BnsGetNameInfoResponse {
 export interface BnsGetNamePriceResponse {
   units: string;
   amount: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Retrieves a list of names owned by the address provided.
  */
 export interface BnsNamesOwnByAddressResponse {
   names: string[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Fetch a list of all namespaces known to the node.
  */
 export interface BnsGetAllNamespacesResponse {
   namespaces: string[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Fetch price for namespace.
@@ -1258,7 +1217,6 @@ export interface BnsGetAllNamespacesResponse {
 export interface BnsGetNamespacePriceResponse {
   units: string;
   amount: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns reward slot holders
@@ -1302,7 +1260,6 @@ export interface BurnchainRewardSlotHolder {
    * The index position of the reward entry, useful for ordering when there's more than one slot per burnchain block
    */
   slot_index: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns blocks
@@ -1350,7 +1307,6 @@ export interface BurnchainReward {
    * The index position of the reward entry, useful for ordering when there's more than one recipient per burnchain block
    */
   reward_index: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request to get contract source
@@ -1407,7 +1363,6 @@ export interface MapEntryResponse {
    * Hex-encoded string of the MARF proof for the data
    */
   proof?: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request to get contract interface
@@ -1443,7 +1398,6 @@ export interface ContractInterfaceResponse {
   non_fungible_tokens: {
     [k: string]: unknown | undefined;
   }[];
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request to get contract source
@@ -1814,9 +1768,7 @@ export interface NetworkIdentifier {
       producer: string;
       [k: string]: unknown | undefined;
     };
-    [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
@@ -1833,7 +1785,6 @@ export interface RosettaAccount {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * An account may have state specific to a contract address (ERC-20 token) and/or a stake (delegated balance). The sub_account_identifier should specify which state (if applicable) an account instantiation refers to.
@@ -1849,7 +1800,6 @@ export interface RosettaSubAccount {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * This is also known as the block hash.
@@ -1859,7 +1809,6 @@ export interface RosettaBlockIdentifierHash {
    * This is also known as the block hash.
    */
   hash?: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * This is also known as the block height.
@@ -1869,7 +1818,6 @@ export interface RosettaBlockIdentifierHeight {
    * This is also known as the block height.
    */
   index?: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.
@@ -1891,27 +1839,6 @@ export interface RosettaAccountBalanceResponse {
     sequence_number: number;
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
-}
-/**
- * This is also known as the block hash.
- */
-export interface RosettaBlockIdentifierHash1 {
-  /**
-   * This is also known as the block hash.
-   */
-  hash: string;
-  [k: string]: unknown | undefined;
-}
-/**
- * This is also known as the block height.
- */
-export interface RosettaBlockIdentifierHeight1 {
-  /**
-   * This is also known as the block height.
-   */
-  index: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
@@ -1976,7 +1903,6 @@ export interface RosettaBlockResponse {
    * Some blockchains may require additional transactions to be fetched that weren't returned in the block response (ex: block only returns transaction hashes). For blockchains with a lot of transactions in each block, this can be very useful as consumers can concurrently fetch all transactions returned.
    */
   other_transactions?: OtherTransactionIdentifier[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Blocks contain an array of Transactions that occurred at a particular BlockIdentifier. A hard requirement for blocks returned by Rosetta implementations is that they MUST be inalterable: once a client has requested and received a block identified by a specific BlockIndentifier, all future calls for that same BlockIdentifier must return the same block contents.
@@ -2000,7 +1926,6 @@ export interface RosettaBlock {
     difficulty: string;
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * The block_identifier uniquely identifies a block in a particular network.
@@ -2014,7 +1939,6 @@ export interface RosettaParentBlockIdentifier {
    * Block hash
    */
   hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Transactions contain an array of Operations that are attributable to the same TransactionIdentifier.
@@ -2043,7 +1967,6 @@ export interface RosettaTransaction {
     lockTime?: number;
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
@@ -2053,7 +1976,6 @@ export interface TransactionIdentifier {
    * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
    */
   hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Operations contain all balance-changing information within a transaction. They are always one-sided (only affect 1 AccountIdentifier) and can succeed or fail independently from a Transaction.
@@ -2081,7 +2003,6 @@ export interface RosettaOperation {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * The operation_identifier uniquely identifies an operation within a transaction.
@@ -2095,7 +2016,6 @@ export interface RosettaOperationIdentifier {
    * Some blockchains specify an operation index that is essential for client use. For example, Bitcoin uses a network_index to identify which UTXO was used in a transaction. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
    */
   network_index?: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
@@ -2109,7 +2029,6 @@ export interface RosettaRelatedOperation {
    * Some blockchains specify an operation index that is essential for client use. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
    */
   network_index?: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
@@ -2129,7 +2048,6 @@ export interface RosettaCoinChange {
    * CoinActions are different state changes that a Coin can undergo. When a Coin is created, it is coin_created. When a Coin is spent, it is coin_spent. It is assumed that a single Coin cannot be created or spent more than once.
    */
   coin_action: "coin_created" | "coin_spent";
-  [k: string]: unknown | undefined;
 }
 /**
  * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
@@ -2139,7 +2057,6 @@ export interface OtherTransactionIdentifier {
    * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
    */
   hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * A BlockTransactionRequest is used to fetch a Transaction included in a block that is not returned in a BlockResponse.
@@ -2154,7 +2071,6 @@ export interface RosettaBlockTransactionRequest {
  */
 export interface RosettaBlockTransactionResponse {
   transaction: RosettaTransaction;
-  [k: string]: unknown | undefined;
 }
 /**
  * RosettaConstructionCombineRequest is the input to the /construction/combine endpoint. It contains the unsigned transaction blob returned by /construction/payloads and all required signatures to create a network transaction.
@@ -2163,7 +2079,6 @@ export interface RosettaConstructionCombineRequest {
   network_identifier: NetworkIdentifier;
   unsigned_transaction: string;
   signatures: RosettaSignature[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Signature contains the payload that was signed, the public keys of the keypairs used to produce the signature, the signature (encoded in hex), and the SignatureType. PublicKey is often times not known during construction of the signing payloads but may be needed to combine signatures properly.
@@ -2173,7 +2088,6 @@ export interface RosettaSignature {
   public_key: RosettaPublicKey;
   signature_type: SignatureType;
   hex_bytes: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.
@@ -2189,7 +2103,6 @@ export interface SigningPayload {
    * SignatureType is the type of a cryptographic signature.
    */
   signature_type?: "ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon";
-  [k: string]: unknown | undefined;
 }
 /**
  * PublicKey contains a public key byte array for a particular CurveType encoded in hex. Note that there is no PrivateKey struct as this is NEVER the concern of an implementation.
@@ -2203,7 +2116,6 @@ export interface RosettaPublicKey {
    * CurveType is the type of cryptographic curve associated with a PublicKey.
    */
   curve_type: "secp256k1" | "edwards25519";
-  [k: string]: unknown | undefined;
 }
 /**
  * RosettaConstructionCombineResponse is returned by /construction/combine. The network payload will be sent directly to the construction/submit endpoint.
@@ -2213,7 +2125,6 @@ export interface RosettaConstructionCombineResponse {
    * Signed transaction bytes in hex
    */
   signed_transaction: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Network is provided in the request because some blockchains have different address formats for different networks
@@ -2224,7 +2135,6 @@ export interface RosettaConstructionDeriveRequest {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * ConstructionDeriveResponse is returned by the /construction/derive endpoint.
@@ -2238,7 +2148,6 @@ export interface RosettaConstructionDeriveResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * The account_identifier uniquely identifies an account within a network. All fields in the account_identifier are utilized to determine this uniqueness (including the metadata field, if populated).
@@ -2266,7 +2175,6 @@ export interface RosettaConstructionHashRequest {
    * Signed transaction
    */
   signed_transaction: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * TransactionIdentifier contains the transaction_identifier of a transaction that was submitted to either /construction/hash or /construction/submit.
@@ -2276,7 +2184,6 @@ export interface RosettaConstructionHashResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * A ConstructionMetadataRequest is utilized to get information required to construct a transaction. The Options object used to specify which metadata to return is left purposely unstructured to allow flexibility for implementers. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.
@@ -2285,7 +2192,6 @@ export interface RosettaConstructionMetadataRequest {
   network_identifier: NetworkIdentifier;
   options: RosettaOptions;
   public_keys?: RosettaPublicKey[];
-  [k: string]: unknown | undefined;
 }
 /**
  * The options that will be sent directly to /construction/metadata by the caller.
@@ -2371,7 +2277,6 @@ export interface RosettaOptions {
    * The reward address for stacking transaction. It should be a valid Bitcoin address
    */
   pox_addr?: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
@@ -2383,7 +2288,6 @@ export interface RosettaConstructionMetadataResponse {
     [k: string]: unknown | undefined;
   };
   suggested_fee?: RosettaAmount[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after /construction/payloads) and before broadcast (after /construction/combine).
@@ -2398,7 +2302,6 @@ export interface RosettaConstructionParseRequest {
    * This must be either the unsigned transaction blob returned by /construction/payloads or the signed transaction blob returned by /construction/combine.
    */
   transaction: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * RosettaConstructionParseResponse contains an array of operations that occur in a transaction blob. This should match the array of operations provided to /construction/preprocess and /construction/payloads.
@@ -2413,7 +2316,6 @@ export interface RosettaConstructionParseResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * ConstructionPayloadsRequest is the request to /construction/payloads. It contains the network, a slice of operations, and arbitrary metadata that was returned by the call to /construction/metadata. Optionally, the request can also include an array of PublicKeys associated with the AccountIdentifiers returned in ConstructionPreprocessResponse.
@@ -2427,7 +2329,6 @@ export interface RosettaConstructionPayloadsRequest {
     recent_block_hash?: string;
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * RosettaConstructionPayloadResponse is returned by /construction/payloads. It contains an unsigned transaction blob (that is usually needed to construct the a network transaction from a collection of signatures) and an array of payloads that must be signed by the caller.
@@ -2441,7 +2342,6 @@ export interface RosettaConstructionPayloadResponse {
    * An array of payloads that must be signed by the caller
    */
   payloads: SigningPayload[];
-  [k: string]: unknown | undefined;
 }
 /**
  * ConstructionPreprocessRequest is passed to the /construction/preprocess endpoint so that a Rosetta implementation can determine which metadata it needs to request for construction
@@ -2457,7 +2357,6 @@ export interface RosettaConstructionPreprocessRequest {
    *  The caller can also provide a suggested fee multiplier to indicate that the suggested fee should be scaled. This may be used to set higher fees for urgent transactions or to pay lower fees when there is less urgency. It is assumed that providing a very low multiplier (like 0.0001) will never lead to a transaction being created with a fee less than the minimum network fee (if applicable). In the case that the caller provides both a max fee and a suggested fee multiplier, the max fee will set an upper bound on the suggested fee (regardless of the multiplier provided).
    */
   suggested_fee_multiplier?: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
@@ -2479,7 +2378,6 @@ export interface RosettaMaxFeeAmount {
 export interface RosettaConstructionPreprocessResponse {
   options?: RosettaOptions;
   required_public_keys?: RosettaAccount[];
-  [k: string]: unknown | undefined;
 }
 /**
  * Submit the transaction in blockchain
@@ -2490,7 +2388,6 @@ export interface RosettaConstructionSubmitRequest {
    * Signed transaction
    */
   signed_transaction: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * TransactionIdentifier contains the transaction_identifier of a transaction that was submitted to either /construction/submit.
@@ -2500,51 +2397,15 @@ export interface RosettaConstructionSubmitResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * Get all Transaction Identifiers in the mempool
  */
 export interface RosettaMempoolRequest {
-  network_identifier: NetworkIdentifier1;
+  network_identifier: NetworkIdentifier;
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
-}
-/**
- * The network_identifier specifies which network a particular object is associated with.
- */
-export interface NetworkIdentifier1 {
-  /**
-   * Blockchain name
-   */
-  blockchain: string;
-  /**
-   * If a blockchain has a specific chain-id or network identifier, it should go in this field. It is up to the client to determine which network-specific identifier is mainnet or testnet.
-   */
-  network: string;
-  /**
-   * In blockchains with sharded state, the SubNetworkIdentifier is required to query some object on a specific shard. This identifier is optional for all non-sharded blockchains.
-   */
-  sub_network_identifier?: {
-    /**
-     * Network name
-     */
-    network: string;
-    /**
-     * Meta data from subnetwork identifier
-     */
-    metadata?: {
-      /**
-       * producer
-       */
-      producer: string;
-      [k: string]: unknown | undefined;
-    };
-    [k: string]: unknown | undefined;
-  };
-  [k: string]: unknown | undefined;
 }
 /**
  * A MempoolResponse contains all transaction identifiers in the mempool for a particular network_identifier.
@@ -2554,7 +2415,6 @@ export interface RosettaMempoolResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.
@@ -2571,7 +2431,6 @@ export interface RosettaMempoolTransactionResponse {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * This endpoint returns a list of NetworkIdentifiers that the Rosetta server supports.
@@ -2592,7 +2451,6 @@ export interface RosettaNetworkListResponse {
    * The network_identifier specifies which network a particular object is associated with.
    */
   network_identifiers: NetworkIdentifier[];
-  [k: string]: unknown | undefined;
 }
 /**
  * This endpoint returns the version information and allowed network-specific types for a NetworkIdentifier. Any NetworkIdentifier returned by /network/list should be accessible here. Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.
@@ -2629,7 +2487,6 @@ export interface RosettaNetworkOptionsResponse {
     metadata?: {
       [k: string]: unknown | undefined;
     };
-    [k: string]: unknown | undefined;
   };
   /**
    * Allow specifies supported Operation status, Operation types, and all possible error statuses. This Allow object is used by clients to validate the correctness of a Rosetta Server implementation. It is expected that these clients will error if they receive some response that contains any of the above information that is not specified here.
@@ -2651,9 +2508,7 @@ export interface RosettaNetworkOptionsResponse {
      * Any Rosetta implementation that supports querying the balance of an account at any height in the past should set this to true.
      */
     historical_balance_lookup: boolean;
-    [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * OperationStatus is utilized to indicate which Operation status are considered successful.
@@ -2667,7 +2522,6 @@ export interface RosettaOperationStatus {
    * An Operation is considered successful if the Operation.Amount should affect the Operation.Account. Some blockchains (like Bitcoin) only include successful operations in blocks but other blockchains (like Ethereum) include unsuccessful operations that incur a fee. To reconcile the computed balance from the stream of Operations, it is critical to understand which Operation.Status indicate an Operation is successful and should affect an Account.
    */
   successful: boolean;
-  [k: string]: unknown | undefined;
 }
 /**
  * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
@@ -2711,7 +2565,6 @@ export interface RosettaNetworkStatusResponse {
    * Peers information
    */
   peers: RosettaPeers[];
-  [k: string]: unknown | undefined;
 }
 /**
  * The block_identifier uniquely identifies a block in a particular network.
@@ -2725,7 +2578,6 @@ export interface RosettaGenesisBlockIdentifier {
    * Block hash
    */
   hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * The block_identifier uniquely identifies a block in a particular network.
@@ -2739,7 +2591,6 @@ export interface RosettaOldestBlockIdentifier {
    * Block hash
    */
   hash: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * SyncStatus is used to provide additional context about an implementation's sync status. It is often used to indicate that an implementation is healthy when it cannot be queried until some sync phase occurs. If an implementation is immediately queryable, this model is often not populated.
@@ -2761,7 +2612,6 @@ export interface RosettaSyncStatus {
    * Synced indicates if an implementation has synced up to the most recent block.
    */
   synced?: boolean;
-  [k: string]: unknown | undefined;
 }
 /**
  * A Peer is a representation of a node's peer.
@@ -2777,7 +2627,6 @@ export interface RosettaPeers {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * Address search result
@@ -3258,7 +3107,6 @@ export interface TransactionResults {
    */
   total: number;
   results: Transaction[];
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns transactions
@@ -3352,23 +3200,7 @@ export interface RosettaError {
   details?: {
     address?: string;
     error?: string;
-    [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
-}
-/**
- * The operation_identifier uniquely identifies an operation within a transaction.
- */
-export interface RosettaOperationIdentifier1 {
-  /**
-   * The operation index is used to ensure each operation has a unique identifier within a transaction. This index is only relative to the transaction and NOT GLOBAL. The operations in each transaction should start from index 0. To clarify, there may not be any notion of an operation index in the blockchain being described.
-   */
-  index: number;
-  /**
-   * Some blockchains specify an operation index that is essential for client use. For example, Bitcoin uses a network_index to identify which UTXO was used in a transaction. network_index should not be populated if there is no notion of an operation index in a blockchain (typically most account-based blockchains).
-   */
-  network_index?: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * This object returns transaction for found true
@@ -3412,7 +3244,7 @@ export interface RpcAddressTxNotificationParams {
   address: string;
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus1 | MempoolTransactionStatus1;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 export interface RpcAddressTxNotificationResponse {
   jsonrpc: "2.0";
@@ -3474,7 +3306,7 @@ export interface RpcMicroblockSubscriptionRequest {
 export interface RpcTxUpdateNotificationParams {
   tx_id: string;
   tx_type: TransactionType;
-  tx_status: TransactionStatus1 | MempoolTransactionStatus1;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";

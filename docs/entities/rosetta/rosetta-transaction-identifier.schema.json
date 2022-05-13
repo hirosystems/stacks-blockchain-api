@@ -3,6 +3,7 @@
   "title": "TransactionIdentifier",
   "description": "The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.",
   "required": ["hash"],
+  "additionalProperties": false,
   "properties": {
     "hash": {
       "type": "string",

@@ -1,6 +1,7 @@
 {
   "title": "BnsGetNamespacePriceResponse",
   "description": "Fetch price for namespace.",
+  "additionalProperties": false,
   "required": [ "units", "amount" ],
   "type": "object",
   "properties": {

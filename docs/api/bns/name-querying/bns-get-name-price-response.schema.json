@@ -1,6 +1,7 @@
 {
   "title": "BnsGetNamePriceResponse",
   "description": "Fetch price for name.",
+  "additionalProperties": false,
   "required": [ "units", "amount" ],
   "type": "object",
   "properties": {

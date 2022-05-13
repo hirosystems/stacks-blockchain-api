@@ -2,6 +2,7 @@
   "title": "InboundStxTransfer",
   "description": "A inbound STX transfer with a memo",
   "type": "object",
+  "additionalProperties": false,
   "required": ["sender", "amount", "memo", "block_height", "tx_id", "transfer_type", "tx_index"],
   "properties": {
     "sender": {

@@ -3,6 +3,7 @@
   "title": "TransactionResults",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
+  "additionalProperties": false,
   "properties": {
     "limit": {
       "type": "integer",

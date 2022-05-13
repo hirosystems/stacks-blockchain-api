@@ -2,6 +2,7 @@
   "title": "RosettaOptions",
   "type": "object",
   "description": "The options that will be sent directly to /construction/metadata by the caller.",
+  "additionalProperties": false,
   "properties": {
     "sender_address": {
       "type": "string",

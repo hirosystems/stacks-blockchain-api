@@ -3,12 +3,10 @@
   "description": "The block_identifier uniquely identifies a block in a particular network.",
   "allOf": [
     {
-      "$ref": "./rosetta-block-identifier-hash.schema.json",
-      "required": ["hash"]
+      "$ref": "./rosetta-block-identifier-hash.schema.json"
     },
     {
-      "$ref": "./rosetta-block-identifier-height.schema.json",
-      "required": ["index"]
+      "$ref": "./rosetta-block-identifier-height.schema.json"
     }
   ]
 }

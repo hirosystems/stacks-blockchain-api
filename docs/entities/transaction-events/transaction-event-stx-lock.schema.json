@@ -9,6 +9,7 @@
     {
       "type": "object",
       "required": ["event_type", "tx_id", "stx_lock_event"],
+      "additionalProperties": false,
       "properties": {
         "event_type": {
           "type": "string",

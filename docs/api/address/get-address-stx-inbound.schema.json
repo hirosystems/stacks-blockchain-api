@@ -1,6 +1,7 @@
 {
   "description": "GET request that returns a list of inbound STX transfers with a memo",
   "title": "AddressStxInboundListResponse",
+  "additionalProperties": false,
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
   "properties": {

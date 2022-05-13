@@ -5,6 +5,7 @@
     {
       "type": "object",
       "required": ["principal"],
+      "additionalProperties": false,
       "properties": {
         "principal": {
           "$ref": "./post-condition-principal.schema.json"
@@ -14,6 +15,7 @@
     {
       "type": "object",
       "required": ["condition_code", "amount", "type"],
+      "additionalProperties": false,
       "properties": {
         "condition_code": {
           "$ref": "./post-condition-fungible-condition-code.schema.json"

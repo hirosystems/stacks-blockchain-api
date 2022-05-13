@@ -3,6 +3,7 @@
   "title": "RosettaOperationStatus",
   "description": "OperationStatus is utilized to indicate which Operation status are considered successful.",
   "required": ["status", "successful"],
+  "additionalProperties": false,
   "properties": {
     "status": {
       "type": "string",

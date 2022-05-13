@@ -3,6 +3,7 @@
   "title": "RosettaConstructionParseRequest",
   "description": "Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after /construction/payloads) and before broadcast (after /construction/combine).",
   "required": ["network_identifier", "signed", "transaction"],
+  "additionalProperties": false,
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"

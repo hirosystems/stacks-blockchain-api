@@ -7,6 +7,8 @@
       "$ref": "../../entities/balance/stx-balance.schema.json"
     },
     {
+      "type": "object",
+      "additionalProperties": false,
       "properties": {
         "token_offering_locked": {
           "$ref": "../../entities/address/token-offering-locked.schema.json"

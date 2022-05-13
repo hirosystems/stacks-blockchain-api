@@ -1,6 +1,7 @@
 {
   "title": "BnsGetAllNamespacesResponse",
   "description": "Fetch a list of all namespaces known to the node.",
+  "additionalProperties": false,
   "required": ["namespaces"],
   "type": "object",
   "properties": {

@@ -1,6 +1,7 @@
 {
   "type": "object",
   "title": "NftEvent",
+  "additionalProperties": false,
   "required": [
     "sender",
     "recipient",
