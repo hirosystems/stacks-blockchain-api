@@ -114,26 +114,26 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     logger.info(`Processing tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
 
-    const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
-    logger.info(
-      `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
-    );
+  const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
+  logger.info(
+    `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
+  );
 
-    const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
-    logger.info(
-      `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
-    );
+  const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
+  logger.info(
+    `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
+  );
 
-    logger.info(`Inserting event data to db...`);
+  logger.info(`Inserting event data to db...`);
   await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-    await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
-    logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
+  logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
   await importRemainderEvents(db, remainingFilePath, timeTracker);
 
-    logger.info(`Refreshing materialized views...`);
+  logger.info(`Refreshing materialized views...`);
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
 
   console.log('Tracked function times:');

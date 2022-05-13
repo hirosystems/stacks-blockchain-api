@@ -39,14 +39,14 @@ export async function getCanonicalEntityList(tsvFilePath: string): Promise<TsvEn
     msg.transactions.forEach(tx => {
       const mbHash = tx.microblock_hash ?? '';
       const mb = microblockTxs.get(mbHash);
-        if (mb) {
-          mb.txs.push(tx.txid);
-        } else {
+      if (mb) {
+        mb.txs.push(tx.txid);
+      } else {
         microblockTxs.set(mbHash, {
           mbSequence: tx.microblock_sequence ?? -1,
-            txs: [tx.txid],
-          });
-        }
+          txs: [tx.txid],
+        });
+      }
     });
     const result: [microblockHash: string, txIds: string[]][] = [
       ...microblockTxs.entries(),
