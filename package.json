@@ -133,7 +133,6 @@
     "pg": "8.7.1",
     "pg-copy-streams": "5.1.1",
     "pg-cursor": "2.7.1",
-    "pg-listen": "1.7.0",
     "postgres": "github:porsager/postgres#master",
     "prom-client": "14.0.1",
     "rpc-bitcoin": "2.0.0",
