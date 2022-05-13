@@ -206,13 +206,9 @@ async function insertRawEvents(
 ) {
   const preOrgStream = readTsvLines(filePath);
   let lastStatusUpdatePercent = 0;
-  const tables = ['event_observer_requests'];
   const newBlockInsertSw = stopwatch();
 
   await db.sql.begin(async sql => {
-    // Temporarily disable indexing and constraints on tables to speed up insertion
-    await db.toggleTableIndexes(sql, tables, false);
-
     // individual inserts: 90 seconds
     // batches of 1000: 90 seconds
     // batches of 5000: 95 seconds
@@ -241,18 +237,9 @@ async function insertRawEvents(
 
     await dbRawEventBatchInserter.flush();
     logger.info(`Raw event requests processed: 100%`);
-    logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
-    await db.toggleTableIndexes(sql, tables, true);
   });
 
   logger.info(`Inserting raw event data took ${newBlockInsertSw.getElapsedSeconds(2)} seconds`);
-
-  const reindexSw = stopwatch();
-  for (const table of tables) {
-    logger.info(`Reindexing table ${table}...`);
-    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
-  }
-  logger.info(`Reindexing event_observer_requests took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
 async function insertNewBlockEvents(
