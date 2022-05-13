@@ -171,8 +171,8 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   logger.info(`Refreshing materialized views took: ${finishReplaySw.getElapsedSeconds(2)} seconds`);
 
   if (tty.isatty(1)) {
-  console.log('Tracked function times:');
-  console.table(timeTracker.getDurations(3));
+    console.log('Tracked function times:');
+    console.table(timeTracker.getDurations(3));
   } else {
     logger.info(`Tracked function times`, timeTracker.getDurations(3));
   }
@@ -597,7 +597,7 @@ async function insertNewBlockEvents(
   // parallel indexing: 56.16
   await Promise.all(
     tables.map(table => {
-    logger.info(`Reindexing table ${table}...`);
+      logger.info(`Reindexing table ${table}...`);
       return timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
     })
   );
