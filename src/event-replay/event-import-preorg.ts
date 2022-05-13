@@ -140,16 +140,21 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   );
 
   logger.info(`Inserting event data to db...`);
-  await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
+  // Running inserts in parallel saves ~20% on local testing
+  await Promise.all([
+    insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker),
+    insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker),
+    insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker),
+    insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker),
+  ]);
 
   logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
   await importRemainderEvents(db, remainingFilePath, chainID, timeTracker);
 
   logger.info(`Refreshing materialized views...`);
+  const finishReplaySw = stopwatch();
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
+  logger.info(`Refreshing materialized views took: ${finishReplaySw.getElapsedSeconds(2)} seconds`);
 
   console.log('Tracked function times:');
   console.table(timeTracker.getDurations(3));
