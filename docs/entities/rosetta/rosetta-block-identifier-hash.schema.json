@@ -3,6 +3,7 @@
   "title": "RosettaBlockIdentifierHash",
   "description": "This is also known as the block hash.",
   "additionalProperties": false,
+  "required": ["hash"],
   "properties": {
     "hash": {
       "type": "string",

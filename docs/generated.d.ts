@@ -641,7 +641,12 @@ export type GetStxTotalSupplyPlainResponse = string;
 /**
  * When fetching data by BlockIdentifier, it may be possible to only specify the index or hash. If neither property is specified, it is assumed that the client is making a request at the current block.
  */
-export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | RosettaBlockIdentifierHeight;
+export type RosettaPartialBlockIdentifier =
+  | RosettaBlockIdentifierHash
+  | RosettaBlockIdentifierHeight
+  | {
+      [k: string]: unknown | undefined;
+    };
 /**
  * The block_identifier uniquely identifies a block in a particular network.
  */
@@ -1808,7 +1813,7 @@ export interface RosettaBlockIdentifierHash {
   /**
    * This is also known as the block hash.
    */
-  hash?: string;
+  hash: string;
 }
 /**
  * This is also known as the block height.
@@ -1817,7 +1822,7 @@ export interface RosettaBlockIdentifierHeight {
   /**
    * This is also known as the block height.
    */
-  index?: number;
+  index: number;
 }
 /**
  * An AccountBalanceResponse is returned on the /account/balance endpoint. If an account has a balance for each AccountIdentifier describing it (ex: an ERC-20 token balance on a few smart contracts), an account balance request must be made with each AccountIdentifier.
@@ -3200,6 +3205,7 @@ export interface RosettaError {
   details?: {
     address?: string;
     error?: string;
+    [k: string]: unknown | undefined;
   };
 }
 /**
