@@ -1,6 +1,7 @@
 {
   "description": "List of non fungible tokens metadata",
   "title": "NonFungibleTokensMetadataList",
+  "additionalProperties": false,
   "type": "object",
   "required": [
     "results",

@@ -2,6 +2,7 @@
   "title": "BurnchainRewardsTotal",
   "description": "Total burnchain rewards made to a recipient",
   "type": "object",
+  "additionalProperties": false,
   "required": ["reward_recipient", "reward_amount"],
   "properties": {
     "reward_recipient": {

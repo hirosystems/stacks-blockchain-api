@@ -2,6 +2,7 @@
   "description": "GET request that returns transactions",
   "title": "MempoolTransactionListResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": ["results", "limit", "offset", "total"],
   "properties": {
     "limit": {

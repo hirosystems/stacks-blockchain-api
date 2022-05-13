@@ -150,7 +150,7 @@ export type SchemaMergeRootStub =
   | RosettaCoinChange
   | RosettaCoin
   | RosettaOptions
-  | RosettaCurrency2
+  | RosettaCurrency
   | RosettaErrorNoDetails
   | RosettaError
   | RosettaGenesisBlockIdentifier
@@ -769,7 +769,6 @@ export interface AddressBalanceResponse {
     [k: string]: NftBalance | undefined;
   };
   token_offering_locked?: AddressTokenOfferingLocked;
-  [k: string]: unknown | undefined;
 }
 export interface StxBalance {
   balance: string;
@@ -1926,7 +1925,6 @@ export interface RosettaAmount {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
@@ -1946,7 +1944,6 @@ export interface RosettaCurrency {
   metadata?: {
     [k: string]: unknown | undefined;
   };
-  [k: string]: unknown | undefined;
 }
 /**
  * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
@@ -1960,24 +1957,8 @@ export interface RosettaCoin {
      * Identifier should be populated with a globally unique identifier of a Coin. In Bitcoin, this identifier would be transaction_hash:index.
      */
     identifier: string;
-    [k: string]: unknown | undefined;
   };
-  amount: RosettaAmount1;
-  [k: string]: unknown | undefined;
-}
-/**
- * Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.
- */
-export interface RosettaAmount1 {
-  /**
-   * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
-   */
-  value: string;
-  currency: RosettaCurrency;
-  metadata?: {
-    [k: string]: unknown | undefined;
-  };
-  [k: string]: unknown | undefined;
+  amount: RosettaAmount;
 }
 /**
  * A BlockRequest is utilized to make a block request on the /block endpoint.
@@ -2486,27 +2467,7 @@ export interface RosettaMaxFeeAmount {
    * Value of the transaction in atomic units represented as an arbitrary-sized signed integer. For example, 1 BTC would be represented by a value of 100000000.
    */
   value: string;
-  currency: RosettaCurrency1;
-  metadata?: {
-    [k: string]: unknown | undefined;
-  };
-  [k: string]: unknown | undefined;
-}
-/**
- * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
- */
-export interface RosettaCurrency1 {
-  /**
-   * Canonical symbol associated with a currency.
-   */
-  symbol: string;
-  /**
-   * Number of decimal places in the standard unit representation of the amount. For example, BTC has 8 decimals. Note that it is not possible to represent the value of some currency in atomic units that is not base 10.
-   */
-  decimals: number;
-  /**
-   * Any additional information related to the currency itself. For example, it would be useful to populate this object with the contract address of an ERC-20 token.
-   */
+  currency: RosettaCurrency;
   metadata?: {
     [k: string]: unknown | undefined;
   };
@@ -3223,7 +3184,6 @@ export interface NonFungibleTokensMetadataList {
    */
   total: number;
   results: NonFungibleTokenMetadata[];
-  [k: string]: unknown | undefined;
 }
 export interface NonFungibleTokenMetadata {
   /**
@@ -3263,7 +3223,6 @@ export interface MempoolTransactionListResponse {
   offset: number;
   total: number;
   results: MempoolTransaction[];
-  [k: string]: unknown | undefined;
 }
 /**
  * GET raw transaction
@@ -3273,7 +3232,6 @@ export interface GetRawTransactionResult {
    * A hex encoded serialized transaction
    */
   raw_tx: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET event for the given transaction
@@ -3324,7 +3282,6 @@ export interface PostCoreNodeTransactionsError {
    * The relevant transaction id
    */
   txid: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * The latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions
@@ -3359,7 +3316,6 @@ export interface BurnchainRewardsTotal {
    * The total amount of burnchain tokens rewarded to the recipient, in the smallest unit (e.g. satoshis for Bitcoin)
    */
   reward_amount: string;
-  [k: string]: unknown | undefined;
 }
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
@@ -3373,27 +3329,6 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
-  [k: string]: unknown | undefined;
-}
-/**
- * Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).
- */
-export interface RosettaCurrency2 {
-  /**
-   * Canonical symbol associated with a currency.
-   */
-  symbol: string;
-  /**
-   * Number of decimal places in the standard unit representation of the amount. For example, BTC has 8 decimals. Note that it is not possible to represent the value of some currency in atomic units that is not base 10.
-   */
-  decimals: number;
-  /**
-   * Any additional information related to the currency itself. For example, it would be useful to populate this object with the contract address of an ERC-20 token.
-   */
-  metadata?: {
-    [k: string]: unknown | undefined;
-  };
-  [k: string]: unknown | undefined;
 }
 /**
  * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.

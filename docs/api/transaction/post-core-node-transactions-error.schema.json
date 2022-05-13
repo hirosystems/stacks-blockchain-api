@@ -2,6 +2,7 @@
   "description": "GET request that returns transactions",
   "title": "PostCoreNodeTransactionsError",
   "type": "object",
+  "additionalProperties": false,
   "required": ["error", "reason", "reason_data", "txid"],
   "properties": {
     "error": {

@@ -2,6 +2,7 @@
   "description": "GET raw transaction",
   "title": "GetRawTransactionResult",
   "type": "object",
+  "additionalProperties": false,
   "required": ["raw_tx"],
   "properties": {
     "raw_tx": {

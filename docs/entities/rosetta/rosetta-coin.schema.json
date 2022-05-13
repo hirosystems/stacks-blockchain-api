@@ -1,6 +1,7 @@
 {
   "type": "object",
   "title": "RosettaCoin",
+  "additionalProperties": false,
   "description": "If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.",
   "required": ["coin_identifier", "amount"],
   "properties": {
@@ -8,6 +9,7 @@
       "type": "object",
       "description": "CoinIdentifier uniquely identifies a Coin.",
       "required": ["identifier"],
+      "additionalProperties": false,
       "properties": {
         "identifier": {
           "type": "string",
@@ -16,7 +18,6 @@
       }
     },
     "amount": {
-      "description": "Amount is some Value of a Currency. It is considered invalid to specify a Value without a Currency.",
       "$ref": "./rosetta-amount.schema.json"
     }
   }
