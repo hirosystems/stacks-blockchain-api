@@ -593,10 +593,14 @@ async function insertNewBlockEvents(
   logger.info(`Inserting /new_block data took ${blockInsertSw.getElapsedSeconds(2)} seconds`);
 
   const reindexSw = stopwatch();
-  for (const table of tables) {
+  // one at a time indexing: 97.57
+  // parallel indexing: 56.16
+  await Promise.all(
+    tables.map(table => {
     logger.info(`Reindexing table ${table}...`);
-    await timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
-  }
+      return timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
+    })
+  );
   logger.info(`Reindexing /new_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
 }
 
