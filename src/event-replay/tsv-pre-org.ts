@@ -18,7 +18,7 @@ export interface TsvEntityData {
   tsvLineCount: number;
 }
 
-export type StacksBlockHashes = [
+type StacksBlockHashes = [
   indexBlockHash: string,
   microblocks: [microblockHash: string, txIds: string[]][]
 ][];

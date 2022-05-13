@@ -1,12 +1,12 @@
 import { Transform, Readable } from 'stream';
 import * as fs from 'fs';
 
-export interface ReadableFileStream extends Readable {
+interface ReadableFileStream extends Readable {
   getFileSize(): number;
   getBytesRead(): number;
 }
 
-export function createReverseFileReadStream(
+function createReverseFileReadStream(
   filePath: fs.PathLike,
   readBufferSize = 5_000_000
 ): ReadableFileStream {
