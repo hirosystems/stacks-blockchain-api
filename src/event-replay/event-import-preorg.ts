@@ -598,7 +598,14 @@ async function insertNewBlockEvents(
   await Promise.all(
     tables.map(table => {
       logger.info(`Reindexing table ${table}...`);
-      return timeTracker.track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`);
+      const reindexTableSw = stopwatch();
+      return timeTracker
+        .track(`reindex ${table}`, () => db.sql`REINDEX TABLE ${db.sql(table)}`)
+        .finally(() => {
+          logger.info(
+            `Reindexing table ${table} took ${reindexTableSw.getElapsedSeconds(2)} seconds`
+          );
+        });
     })
   );
   logger.info(`Reindexing /new_block tables took ${reindexSw.getElapsedSeconds(2)} seconds`);
