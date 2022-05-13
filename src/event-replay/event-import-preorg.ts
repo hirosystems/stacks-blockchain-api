@@ -49,6 +49,19 @@ import { getMempoolTxGarbageCollectionThreshold, validateZonefileHash } from '..
 export async function preOrgTsvImport(filePath: string): Promise<void> {
   const timeTracker = createTimeTracker();
 
+  if (process.env.NODE_ENV !== 'production') {
+    logger.warn(
+      `For best performance run with NODE_ENV=production, currenly running with NODE_ENV=${process.env.NODE_ENV}`
+    );
+  }
+
+  const pgIndexMethodEnvVar = 'PG_IDENT_INDEX_TYPE';
+  const pgIndexMethod = process.env[pgIndexMethodEnvVar];
+  logger.info(`Running with \`${pgIndexMethodEnvVar}=${pgIndexMethod ?? 'btree'}\``);
+  logger.info(
+    `For fasted event import use \`${pgIndexMethodEnvVar}=btree\`, for serving production traffic use \`${pgIndexMethodEnvVar}=hash\``
+  );
+
   const chainID = getApiConfiguredChainID();
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
@@ -58,8 +71,8 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   });
   const startTime = stopwatch();
 
-  // Set logger to only output for warnings/errors, otherwise the event replay will result
-  // in the equivalent of months/years of API log output.
+  // Set logger to only output for info or above, otherwise the event replay will result
+  // in the equivalent of months/years of verbose API log output.
   logger.level = 'info';
   // Disable this feature so a redundant export file isn't created while importing from an existing one.
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
@@ -79,10 +92,16 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     );
     fs.writeFileSync(filePath + '.entitydata', JSON.stringify(tsvEntityData));
   }
-  logger.info(`Tsv entity data block height: ${tsvEntityData.stacksBlockHashes.length}`);
+
+  logger.info(
+    `Tsv line count: ${tsvEntityData.tsvLineCount}, block height: ${tsvEntityData.stacksBlockHashes.length}`
+  );
 
   const blockWindowSize = getMempoolTxGarbageCollectionThreshold();
   const preorgBlockHeight = Math.max(tsvEntityData.stacksBlockHashes.length - blockWindowSize, 0);
+  logger.info(
+    `Pre-org importing up to block ${preorgBlockHeight}, inserting the remaining events as is`
+  );
 
   const preOrgFilePath = filePath + '-preorg';
   const remainingFilePath = filePath + '-preorg-remaining';
@@ -114,14 +133,10 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     logger.info(`Processing tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
 
-  const pgInfoMaxParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
+  const pgParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
+  const pgMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
   logger.info(
-    `Using pgconf: max_parallel_maintenance_workers = ${pgInfoMaxParallelWorkers[0].max_parallel_maintenance_workers}`
-  );
-
-  const pgInfoMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
-  logger.info(
-    `Using pgconf: maintenance_work_mem = ${pgInfoMaxWorkingMem[0].maintenance_work_mem}`
+    `Using pgconf: maintenance_work_mem=${pgMaxWorkingMem[0].maintenance_work_mem}, max_parallel_maintenance_workers=${pgParallelWorkers[0].max_parallel_maintenance_workers}`
   );
 
   logger.info(`Inserting event data to db...`);
@@ -131,7 +146,7 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
   await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
   logger.info(`Inserting non-org'd events after block ${preorgBlockHeight}...`);
-  await importRemainderEvents(db, remainingFilePath, timeTracker);
+  await importRemainderEvents(db, remainingFilePath, chainID, timeTracker);
 
   logger.info(`Refreshing materialized views...`);
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
@@ -146,12 +161,13 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
 async function importRemainderEvents(
   db: PgWriteStore,
   remainderFilePath: string,
+  chainID: ChainID,
   timeTracker: TimeTracker
 ) {
   const importRemainderSw = stopwatch();
   const eventServer = await startEventServer({
     datastore: db,
-    chainId: getApiConfiguredChainID(),
+    chainId: chainID,
     serverHost: '127.0.0.1',
     serverPort: 0,
     httpLogLevel: 'debug',
@@ -224,7 +240,7 @@ async function insertRawEvents(
     await db.toggleTableIndexes(sql, tables, true);
   });
 
-  logger.info(`Inserting all event data took ${newBlockInsertSw.getElapsedSeconds(2)} seconds`);
+  logger.info(`Inserting raw event data took ${newBlockInsertSw.getElapsedSeconds(2)} seconds`);
 
   const reindexSw = stopwatch();
   for (const table of tables) {
@@ -550,7 +566,7 @@ async function insertNewBlockEvents(
         const insertsPerSecond = (blocksInserted / blockInsertSw.getElapsedSeconds()).toFixed(2);
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
         logger.info(
-          `Processed '/new_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount}), ${insertsPerSecond} blocks/sec`
+          `Processed '/new_block' events: ${lastStatusUpdatePercent}%, ${insertsPerSecond} blocks/sec`
         );
       }
     }
@@ -624,11 +640,10 @@ async function insertNewAttachmentEvents(
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
-        logger.info(
-          `Processed '/attachments/new' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
-        );
+        logger.info(`Processed '/attachments/new' events: ${lastStatusUpdatePercent}%`);
       }
     }
+    logger.info(`Processed '/attachments/new' events: 100%`);
 
     logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
@@ -689,11 +704,10 @@ async function insertNewBurnBlockEvents(
       const readLineCount: number = event.readLineCount;
       if ((readLineCount / tsvEntityData.tsvLineCount) * 100 > lastStatusUpdatePercent + 20) {
         lastStatusUpdatePercent = Math.floor((readLineCount / tsvEntityData.tsvLineCount) * 100);
-        logger.info(
-          `Processed '/new_burn_block' events: ${lastStatusUpdatePercent}% (${readLineCount} / ${tsvEntityData.tsvLineCount})`
-        );
+        logger.info(`Processed '/new_burn_block' events: ${lastStatusUpdatePercent}%`);
       }
     }
+    logger.info(`Processed '/new_burn_block' events: 100%`);
 
     logger.info(`Re-enabling indexes on ${tables.join(', ')}...`);
     await db.toggleTableIndexes(sql, tables, true);
