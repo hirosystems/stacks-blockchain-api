@@ -1,8 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore, DbTx, DbMempoolTx, DbEventTypeId } from '../../datastore/common';
 import {
-  getTxFromDataStore,
   parseTxTypeStrings,
   parseDbMempoolTx,
   searchTx,
@@ -43,6 +41,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -62,7 +61,7 @@ const parseTxQueryEventsLimit = parseLimitQuery({
   errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
 });
 
-export function createTxRouter(db: DataStore): express.Router {
+export function createTxRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   const cacheHandler = getETagCacheHandler(db);
@@ -214,56 +213,6 @@ export function createTxRouter(db: DataStore): express.Router {
   );
 
   router.get(
-    '/stream',
-    asyncHandler(async (req, res) => {
-      const protocol = req.query['protocol'];
-      const useEventSource = protocol === 'eventsource';
-      const useWebSocket = protocol === 'websocket';
-      if (!useEventSource && !useWebSocket) {
-        throw new Error(`Unsupported stream protocol "${protocol}"`);
-      }
-
-      if (useEventSource) {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        });
-      } else if (useWebSocket) {
-        throw new Error('WebSocket stream not yet implemented');
-      }
-
-      const dbTxUpdate = async (txId: string): Promise<void> => {
-        try {
-          const txQuery = await searchTx(db, { txId, includeUnanchored: true });
-          if (!txQuery.found) {
-            throw new Error('error in tx stream, tx not found');
-          }
-          if (useEventSource) {
-            res.write(`event: tx\ndata: ${JSON.stringify(txQuery.result)}\n\n`);
-          }
-        } catch (error) {
-          // TODO: real error handling
-          logError('error streaming tx updates', error);
-        }
-      };
-
-      // EventEmitters don't like being passed Promise functions so wrap the async handler
-      const onTxUpdate = (txId: string): void => {
-        void dbTxUpdate(txId);
-      };
-
-      const endWaiter = waiter();
-      db.addListener('txUpdate', onTxUpdate);
-      res.on('close', () => {
-        endWaiter.finish();
-        db.removeListener('txUpdate', onTxUpdate);
-      });
-      await endWaiter;
-    })
-  );
-
-  router.get(
     '/events',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
@@ -334,7 +283,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
       if (rawTxQuery.found) {
         const response: GetRawTransactionResult = {
-          raw_tx: bufferToHexPrefixString(rawTxQuery.result.raw_tx),
+          raw_tx: rawTxQuery.result.raw_tx,
         };
         res.json(response);
       } else {

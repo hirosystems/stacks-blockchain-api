@@ -1,5 +1,3 @@
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { validate } from '../api/rosetta-validate';
@@ -7,6 +5,9 @@ import { DbBlock, DbBnsName, DbBnsNamespace, DbBnsSubdomain } from '../datastore
 import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 import { I32_MAX } from '../helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -42,8 +43,8 @@ jest.mock('@stacks/transactions', () => {
 });
 
 describe('BNS API tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   const dbBlock: DbBlock = {
@@ -69,8 +70,8 @@ describe('BNS API tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
     await db.update({
@@ -756,7 +757,6 @@ describe('BNS API tests', () => {
 
   afterAll(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

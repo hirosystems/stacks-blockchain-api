@@ -1,24 +1,27 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { useWithCleanup, withEnvVars } from './test-helpers';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as nock from 'nock';
-import { DbBlock } from 'src/datastore/common';
+import { DbBlock } from '../datastore/common';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('v2-proxy tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
   });
 
   test('tx post multicast', async () => {
@@ -108,7 +111,6 @@ describe('v2-proxy tests', () => {
   });
 
   afterEach(async () => {
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

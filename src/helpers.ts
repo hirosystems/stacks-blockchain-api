@@ -228,12 +228,6 @@ export function microStxToStx(microStx: bigint | BigNumber): string {
   return bigNumResult.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
 }
 
-export function digestSha512_256(input: Buffer): Buffer {
-  const hash = crypto.createHash('sha512-256');
-  const digest = hash.update(input).digest();
-  return digest;
-}
-
 /**
  * Checks if a string is a valid Bitcoin address.
  * Supports mainnet and testnet address.
@@ -628,19 +622,6 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   }
 }
 
-export function distinctBy<T, V>(items: Iterable<T>, selector: (value: T) => V): T[] {
-  const result: T[] = [];
-  const set = new Set<V>();
-  for (const item of items) {
-    const key = selector(item);
-    if (!set.has(key)) {
-      set.add(key);
-      result.push(item);
-    }
-  }
-  return result;
-}
-
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
 function intMax(args: BN[]): BN;
@@ -950,33 +931,6 @@ export function getSendManyContract(chainId: ChainID) {
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
-}
-
-/**
- * Determines if a transaction involved a smart contract.
- * @param dbTx - Transaction DB entry
- * @param stxEvents - Associated STX Events for this tx
- * @returns true if tx involved a smart contract, false otherwise
- */
-export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boolean {
-  if (
-    dbTx.smart_contract_contract_id ||
-    dbTx.contract_call_contract_id ||
-    isValidContractName(dbTx.sender_address) ||
-    (dbTx.token_transfer_recipient_address &&
-      isValidContractName(dbTx.token_transfer_recipient_address))
-  ) {
-    return true;
-  }
-  for (const stxEvent of stxEvents) {
-    if (
-      (stxEvent.sender && isValidContractName(stxEvent.sender)) ||
-      (stxEvent.recipient && isValidContractName(stxEvent.recipient))
-    ) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**

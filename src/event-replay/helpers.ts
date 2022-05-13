@@ -1,4 +1,4 @@
-import { PgDataStore } from '../datastore/postgres-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { ReverseFileStream } from './reverse-file-stream';
 
 /**
@@ -34,14 +34,12 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
  * @param db - Data store
  * @returns Block height
  */
-export async function getDbBlockHeight(db: PgDataStore): Promise<number> {
-  const result = await db.query(async client => {
-    return await client.query<{ block_height: number }>(
-      `SELECT MAX(block_height) as block_height FROM blocks WHERE canonical = TRUE`
-    );
-  });
-  if (result.rowCount === 0) {
+export async function getDbBlockHeight(db: PgWriteStore): Promise<number> {
+  const result = await db.sql<{ block_height: number }[]>`
+    SELECT MAX(block_height) as block_height FROM blocks WHERE canonical = TRUE
+  `;
+  if (result.length === 0) {
     return 0;
   }
-  return result.rows[0].block_height;
+  return result[0].block_height;
 }

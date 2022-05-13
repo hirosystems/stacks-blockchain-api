@@ -1,11 +1,11 @@
 import * as express from 'express';
 import * as fs from 'fs';
-import { DataStore } from '../../datastore/common';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
 import { logger } from '../../helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
+import { PgStore } from '../../datastore/pg-store';
 
-export function createStatusRouter(db: DataStore): express.Router {
+export function createStatusRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   const statusHandler = async (_: Request, res: any) => {

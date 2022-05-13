@@ -1,5 +1,4 @@
 import { asyncHandler } from '../../async-handler';
-import { address as btcAddress } from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
@@ -20,7 +19,6 @@ import {
   RosettaConstructionCombineResponse,
   RosettaAmount,
   RosettaCurrency,
-  RosettaTransaction,
   RosettaError,
   RosettaConstructionParseResponse,
 } from '@stacks/stacks-blockchain-api-types';
@@ -52,7 +50,8 @@ import {
 import { decodeBtcAddress } from '@stacks/stacking';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
-import { DataStore, DbBlock } from '../../../datastore/common';
+import { DbBlock } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
 import {
   RosettaConstants,
@@ -78,7 +77,7 @@ import {
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 
-export function createRosettaConstructionRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   router.use(express.json());
 

@@ -33,10 +33,10 @@ import {
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
-import { DataStore } from '../../datastore/common';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, assertNotNullish, logger, unwrapOptional } from '../../helpers';
+import { cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
+import { PgStore } from '../../datastore/pg-store';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -85,7 +85,7 @@ export function getStacksTestnetNetwork() {
   return stacksNetwork;
 }
 
-export function createDebugRouter(db: DataStore): express.Router {
+export function createDebugRouter(db: PgStore): express.Router {
   const defaultTxFee = 12345;
   const stacksNetwork = getStacksTestnetNetwork();
 

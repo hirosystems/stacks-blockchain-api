@@ -1,19 +1,24 @@
 import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
+import { PgSqlClient } from '../datastore/connection';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('mempool tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -48,7 +53,6 @@ describe('mempool tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

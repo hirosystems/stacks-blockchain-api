@@ -21,10 +21,9 @@ import {
   RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
   RpcTxUpdateNotificationParams,
-  Transaction,
 } from '@stacks/stacks-blockchain-api-types';
 
-import { DataStore, DbTx, DbMempoolTx } from '../../../datastore/common';
+import { DbTx, DbMempoolTx } from '../../../datastore/common';
 import { normalizeHashString, logError, isValidPrincipal, isProdEnv } from '../../../helpers';
 import {
   getBlockFromDataStore,
@@ -34,6 +33,7 @@ import {
   getTxTypeString,
 } from '../../controllers/db-controller';
 import { WebSocketPrometheus } from './metrics';
+import { PgStore } from '../../../datastore/pg-store';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -122,7 +122,7 @@ class SubscriptionManager {
   }
 }
 
-export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket.Server {
+export function createWsRpcRouter(db: PgStore, server: http.Server): WebSocket.Server {
   let prometheus: WebSocketPrometheus | null;
   if (isProdEnv) {
     prometheus = new WebSocketPrometheus('websocket');
@@ -514,21 +514,21 @@ export function createWsRpcRouter(db: DataStore, server: http.Server): WebSocket
     }
   }
 
-  db.addListener('txUpdate', async txId => {
+  db.eventEmitter.addListener('txUpdate', async txId => {
     await processTxUpdate(txId);
     await processMempoolUpdate(txId);
   });
 
-  db.addListener('addressUpdate', async (address, blockHeight) => {
+  db.eventEmitter.addListener('addressUpdate', async (address, blockHeight) => {
     await processAddressUpdate(address, blockHeight);
     await processAddressBalanceUpdate(address);
   });
 
-  db.addListener('blockUpdate', async blockHash => {
+  db.eventEmitter.addListener('blockUpdate', async blockHash => {
     await processBlockUpdate(blockHash);
   });
 
-  db.addListener('microblockUpdate', async microblockHash => {
+  db.eventEmitter.addListener('microblockUpdate', async microblockHash => {
     await processMicroblockUpdate(microblockHash);
   });
 

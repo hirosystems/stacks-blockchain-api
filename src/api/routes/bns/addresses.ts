@@ -1,11 +1,11 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { isUnanchoredRequest } from '../../query-helpers';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
-export function createBnsAddressesRouter(db: DataStore): express.Router {
+export function createBnsAddressesRouter(db: PgStore): express.Router {
   const router = express.Router();
   router.get(
     '/:blockchain/:address',

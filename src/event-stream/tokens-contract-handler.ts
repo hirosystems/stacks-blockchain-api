@@ -1,6 +1,5 @@
 import * as child_process from 'child_process';
 import {
-  DataStore,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
   DbTokenMetadataQueueEntry,
@@ -27,6 +26,7 @@ import PQueue from 'p-queue';
 import * as querystring from 'querystring';
 import fetch from 'node-fetch';
 import { Evt } from 'evt';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -224,7 +224,7 @@ interface FtTokenMetadata {
 interface TokenHandlerArgs {
   contractId: string;
   smartContractAbi: ClarityAbi;
-  datastore: DataStore;
+  datastore: PgWriteStore;
   chainId: ChainID;
   txId: string;
   dbQueueId: number;
@@ -293,7 +293,7 @@ class TokensContractHandler {
   readonly txId: string;
   readonly dbQueueId: number;
   private readonly contractAbi: ClarityAbi;
-  private readonly db: DataStore;
+  private readonly db: PgWriteStore;
   private readonly randomPrivKey = makeRandomPrivKey();
   private readonly chainId: ChainID;
   private readonly stacksNetwork: StacksNetwork;
@@ -732,7 +732,7 @@ class TokensContractHandler {
 
 export class TokensProcessorQueue {
   readonly queue: PQueue;
-  readonly db: DataStore;
+  readonly db: PgWriteStore;
   readonly chainId: ChainID;
 
   readonly processStartedEvent: Evt<{
@@ -750,16 +750,16 @@ export class TokensProcessorQueue {
 
   readonly onTokenMetadataUpdateQueued: (queueId: number) => void;
 
-  constructor(db: DataStore, chainId: ChainID) {
+  constructor(db: PgWriteStore, chainId: ChainID) {
     this.db = db;
     this.chainId = chainId;
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
     this.onTokenMetadataUpdateQueued = entry => this.queueNotificationHandler(entry);
-    this.db.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.db.eventEmitter.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
   }
 
   close() {
-    this.db.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.db.eventEmitter.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
     this.queue.pause();
     this.queue.clear();
   }

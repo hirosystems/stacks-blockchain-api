@@ -1,8 +1,6 @@
 import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
-import { cycleMigrations, runMigrations, PgDataStore } from '../datastore/postgres-store';
 import { DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
 import {
@@ -18,17 +16,17 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
-  let db: PgDataStore;
-  let dbClient: PoolClient;
+  let db: PgWriteStore;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    dbClient = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
@@ -303,7 +301,6 @@ describe('socket-io', () => {
 
   afterEach(async () => {
     await apiServer.terminate();
-    dbClient.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -8,7 +8,6 @@ import * as cors from 'cors';
 import * as WebSocket from 'ws';
 import * as SocketIO from 'socket.io';
 
-import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createInfoRouter } from './routes/info';
@@ -47,6 +46,8 @@ import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { PgStore } from '../datastore/pg-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -54,13 +55,14 @@ export interface ApiServer {
   wss: WebSocket.Server;
   io: SocketIO.Server;
   address: string;
-  datastore: DataStore;
+  datastore: PgStore;
   terminate: () => Promise<void>;
   forceKill: () => Promise<void>;
 }
 
 export async function startApiServer(opts: {
-  datastore: DataStore;
+  datastore: PgStore;
+  writeDatastore?: PgWriteStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;
@@ -68,7 +70,7 @@ export async function startApiServer(opts: {
   serverPort?: number;
   httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+  const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -202,8 +204,10 @@ export async function startApiServer(opts: {
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/faucets', createFaucetRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
+      if (writeDatastore) {
+        router.use('/faucets', createFaucetRouter(writeDatastore));
+      }
       return router;
     })()
   );

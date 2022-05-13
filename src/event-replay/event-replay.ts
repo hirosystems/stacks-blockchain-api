@@ -1,9 +1,15 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
+import {
+  containsAnyRawEventRequests,
+  exportRawEventRequests,
+  getRawEventRequests,
+} from '../datastore/event-requests';
 
 enum EventImportMode {
   /**
@@ -47,7 +53,7 @@ export async function exportEventsAsTsv(
   console.log(`Export event data to file: ${resolvedFilePath}`);
   const writeStream = fs.createWriteStream(resolvedFilePath);
   console.log(`Export started...`);
-  await PgDataStore.exportRawEventRequests(writeStream);
+  await exportRawEventRequests(writeStream);
   console.log('Export successful.');
 }
 
@@ -83,7 +89,7 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await PgDataStore.containsAnyRawEventRequests();
+  const hasData = await containsAnyRawEventRequests();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
@@ -108,11 +114,11 @@ export async function importEventsFromTsv(
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
   }
 
-  const db = await PgDataStore.connect({
+  const db = await PgWriteStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
     withNotifier: false,
-    eventReplay: true,
+    isEventReplay: true,
   });
   const eventServer = await startEventServer({
     datastore: db,
@@ -123,7 +129,7 @@ export async function importEventsFromTsv(
   });
 
   const readStream = fs.createReadStream(resolvedFilePath);
-  const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
+  const rawEventsIterator = getRawEventRequests(readStream, status => {
     console.log(status);
   });
   // Set logger to only output for warnings/errors, otherwise the event replay will result

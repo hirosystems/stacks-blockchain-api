@@ -1,6 +1,5 @@
 import { asyncHandler } from '../../async-handler';
 import * as express from 'express';
-import { DataStore } from '../../../datastore/common';
 import {
   FungibleTokenMetadata,
   FungibleTokensMetadataList,
@@ -23,6 +22,7 @@ import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-he
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
+import { PgStore } from '../../../datastore/pg-store';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -30,7 +30,7 @@ const parseTokenQueryLimit = parseLimitQuery({
   errorMsg: '`limit` must be equal to or less than ' + MAX_TOKENS_PER_REQUEST,
 });
 
-export function createTokenRouter(db: DataStore): express.Router {
+export function createTokenRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   router.use(express.json());
@@ -79,14 +79,14 @@ export function createTokenRouter(db: DataStore): express.Router {
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
-            hex: bufferToHexPrefixString(result.nft_holding_info.value),
+            hex: result.nft_holding_info.value,
             repr: parsedClarityValue,
           },
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };
         }
-        return { ...parsedNftData, tx_id: bufferToHexPrefixString(result.nft_holding_info.tx_id) };
+        return { ...parsedNftData, tx_id: result.nft_holding_info.tx_id };
       });
 
       const response: NonFungibleTokenHoldingsList = {
@@ -196,7 +196,7 @@ export function createTokenRouter(db: DataStore): express.Router {
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,
           value: {
-            hex: bufferToHexPrefixString(result.nft_event.value),
+            hex: result.nft_event.value,
             repr: parsedClarityValue,
           },
         };

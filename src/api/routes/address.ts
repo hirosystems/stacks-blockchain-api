@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as Bluebird from 'bluebird';
-import { BlockIdentifier, DataStore } from '../../datastore/common';
+import { BlockIdentifier } from '../../datastore/common';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import {
   isUnanchoredRequest,
@@ -48,6 +48,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
+import { PgStore } from '../../datastore/pg-store';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -73,7 +74,7 @@ async function getBlockHeight(
   req: Request,
   res: Response,
   next: NextFunction,
-  db: DataStore
+  db: PgStore
 ): Promise<number> {
   let blockHeight = 0;
   if (typeof untilBlock === 'number') {
@@ -110,7 +111,7 @@ interface AddressAssetEvents {
   total: number;
 }
 
-export function createAddressRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createAddressRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
   const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
@@ -359,7 +360,7 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
             const nftTransfer = {
               asset_identifier: transfer.asset_identifier,
               value: {
-                hex: bufferToHexPrefixString(transfer.value),
+                hex: transfer.value,
                 repr: parsedClarityValue,
               },
               sender: transfer.sender,
@@ -504,10 +505,10 @@ export function createAddressRouter(db: DataStore, chainId: ChainID): express.Ro
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
           value: {
-            hex: bufferToHexPrefixString(row.value),
+            hex: row.value,
             repr: parsedClarityValue,
           },
-          tx_id: bufferToHexPrefixString(row.tx_id),
+          tx_id: row.tx_id,
           block_height: row.block_height,
         };
         return r;

@@ -27,6 +27,7 @@ import {
 } from '../datastore/common';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { bufferToHexPrefixString } from '../helpers';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;
@@ -97,7 +98,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
     parent_index_block_hash: args?.parent_index_block_hash ?? '',
     parent_block_hash: args?.parent_block_hash ?? '',
-    parent_microblock_hash: args?.parent_microblock_hash ?? '',
+    parent_microblock_hash: args?.parent_microblock_hash ?? '0x00',
     parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
     burn_block_time: BURN_BLOCK_TIME,
@@ -145,7 +146,7 @@ interface TestTxArgs {
   microblock_canonical?: boolean;
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
-  contract_call_function_args?: Buffer;
+  contract_call_function_args?: string;
   abi?: string;
   fee_rate?: bigint;
   index_block_hash?: string;
@@ -158,7 +159,7 @@ interface TestTxArgs {
   status?: DbTxStatus;
   token_transfer_amount?: bigint;
   token_transfer_recipient_address?: string;
-  token_transfer_memo?: Buffer;
+  token_transfer_memo?: string;
   tx_id?: string;
   tx_index?: number;
   type_id?: DbTxTypeId;
@@ -177,7 +178,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       tx_index: args?.tx_index ?? 0,
       anchor_mode: 3,
       nonce: args?.nonce ?? 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
@@ -187,13 +188,13 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       status: args?.status ?? DbTxStatus.Success,
       raw_result: args?.raw_result ?? '0x0703',
       canonical: args?.canonical ?? true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '0x01f5',
       fee_rate: args?.fee_rate ?? FEE_RATE,
       sponsored: false,
       sponsor_address: undefined,
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
-      coinbase_payload: Buffer.from('hi'),
+      coinbase_payload: 'hi',
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
@@ -227,7 +228,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
 
 interface TestMempoolTxArgs {
   contract_call_contract_id?: string;
-  contract_call_function_args?: Buffer;
+  contract_call_function_args?: string;
   contract_call_function_name?: string;
   pruned?: boolean;
   sender_address?: string;
@@ -250,24 +251,25 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     tx_id: args?.tx_id ?? TX_ID,
     anchor_mode: 3,
     nonce: args?.nonce ?? 0,
-    raw_tx: Buffer.from('test-raw-tx'),
+    raw_tx: 'test-raw-tx',
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
-    post_conditions: Buffer.from([0x01, 0xf5]),
+    post_conditions: '0x01f5',
     fee_rate: 1234n,
     sponsored: false,
     sponsor_address: undefined,
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
     token_transfer_amount: 1234n,
-    token_transfer_memo: Buffer.alloc(0),
+    token_transfer_memo: '',
     token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,
     contract_call_contract_id: args?.contract_call_contract_id ?? CONTRACT_ID,
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
     contract_call_function_args:
-      args?.contract_call_function_args ?? createClarityValueArray(uintCV(123456)),
+      args?.contract_call_function_args ??
+      bufferToHexPrefixString(createClarityValueArray(uintCV(123456))),
   };
 }
 
@@ -311,7 +313,7 @@ interface TestNftEventArgs {
   sender?: string;
   tx_id?: string;
   tx_index?: number;
-  value?: Buffer;
+  value?: string;
 }
 
 /**
@@ -331,7 +333,7 @@ function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
     sender: args?.sender, // No default as this can be undefined.
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
-    value: args?.value ?? serializeCV(bufferCV(Buffer.from([2051]))),
+    value: args?.value ?? bufferToHexPrefixString(serializeCV(bufferCV(Buffer.from([2051])))),
   };
 }
 
@@ -402,7 +404,7 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: 'some-topic',
-    value: serializeCV(bufferCVFromString('some val')),
+    value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
   };
 }
 

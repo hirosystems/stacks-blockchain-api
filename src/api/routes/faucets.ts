@@ -8,11 +8,12 @@ import { BigNumber } from 'bignumber.js';
 import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
 import { StacksNetwork } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
-import { DataStore, DbFaucetRequestCurrency } from '../../datastore/common';
+import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { intMax, logger, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
+import { PgWriteStore } from '../../datastore/pg-write-store';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -59,7 +60,7 @@ function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   return new StacksCoreRpcClient({ host: coreUrl.hostname, port: coreUrl.port });
 }
 
-export function createFaucetRouter(db: DataStore): express.Router {
+export function createFaucetRouter(db: PgWriteStore): express.Router {
   const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(express.json());

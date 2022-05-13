@@ -1,9 +1,7 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { DbTxTypeId, DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
-import { PoolClient } from 'pg';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
@@ -29,18 +27,17 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
-
-  let db: PgDataStore;
-  let dbClient: PoolClient;
+  let db: PgWriteStore;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    dbClient = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
@@ -121,7 +118,7 @@ describe('websocket notifications', () => {
       expect(txStatus2).toBe('pending');
 
       // update DB with TX after WS server is sent txid to monitor
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
@@ -132,7 +129,7 @@ describe('websocket notifications', () => {
       expect(unsubscribeResult).toEqual({ tx_id: txId });
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[3].isFinished).toBe(false);
     } finally {
@@ -399,7 +396,6 @@ describe('websocket notifications', () => {
 
   afterEach(async () => {
     await apiServer.terminate();
-    dbClient.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
