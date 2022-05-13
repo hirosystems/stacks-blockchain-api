@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "TransactionEventStxLock",
   "description": "Only present in `smart_contract` and `contract_call` tx types.",
@@ -10,6 +9,7 @@
     {
       "type": "object",
       "required": ["event_type", "tx_id", "stx_lock_event"],
+      "additionalProperties": false,
       "properties": {
         "event_type": {
           "type": "string",

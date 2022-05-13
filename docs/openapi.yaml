@@ -1138,9 +1138,11 @@ paths:
                 $ref: ./api/contract/post-call-read-only-fn.schema.json
               examples:
                 success:
-                  $ref: ./api/contract/post-call-read-only-fn-success.example.json
+                  value:
+                    $ref: ./api/contract/post-call-read-only-fn-success.example.json
                 fail:
-                  $ref: ./api/contract/post-call-read-only-fn-fail.example.json
+                  value:
+                    $ref: ./api/contract/post-call-read-only-fn-fail.example.json
       parameters:
         - name: contract_address
           in: path
@@ -2488,54 +2490,6 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-no-such-name.example.json
 
-  /v1/names/{name}/history:
-    get:
-      summary: Get Name History
-      description: Retrieves a history of all blockchain records of a registered name.
-      tags:
-        - Names
-      operationId: get_name_history
-      parameters:
-        - name: name
-          in: path
-          description: name to query
-          required: true
-          example: muneeb.id
-          schema:
-            type: string
-        - name: page
-          in: query
-          description: the page (in 20-entry pages) of the history to fetch
-          required: true
-          example: 0
-          schema:
-            type: integer
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/name-querying/bns-get-name-history-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-name-history-response.example.json
-        400:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-invalid-page.example.json
-        404:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: ./api/bns/errors/bns-error.schema.json
-              example:
-                $ref: ./api/bns/errors/bns-no-such-name.example.json
-
   /v1/names/{name}/subdomains:
     get:
       summary: Get Name Subdomains
@@ -2560,7 +2514,7 @@ paths:
                 $ref: ./api/bns/subdomains/subdomains-list.schema.json
               example:
                 $ref: ./api/bns/subdomains/subdomains-list.example.json
-        
+
 
   /v1/names/{name}/zonefile:
     get:
@@ -3339,7 +3293,7 @@ paths:
           required: false
           schema:
             type: array
-            items: 
+            items:
               type: string
               enum: [smart_contract_log, stx_lock, stx_asset, fungible_token_asset, non_fungible_token_asset]
               example: stx_lock

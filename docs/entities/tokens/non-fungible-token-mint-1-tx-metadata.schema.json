@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "NonFungibleTokenMintWithTxMetadata",
   "description": "Non-Fungible Token mint event with transaction metadata",

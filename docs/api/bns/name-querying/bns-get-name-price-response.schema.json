@@ -1,8 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "bns-get-name-price-response",
   "title": "BnsGetNamePriceResponse",
   "description": "Fetch price for name.",
+  "additionalProperties": false,
   "required": [ "units", "amount" ],
   "type": "object",
   "properties": {

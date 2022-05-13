@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "MempoolCoinbaseTransaction",
   "description": "Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock",

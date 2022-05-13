@@ -3,6 +3,7 @@
   "title": "RosettaOperationIdentifier",
   "description": "The operation_identifier uniquely identifies an operation within a transaction.",
   "required": ["index"],
+  "additionalProperties": false,
   "properties": {
     "index": {
       "type": "integer",

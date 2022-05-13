@@ -1,13 +1,13 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-network-options-response",
   "type": "object",
   "title": "RosettaNetworkOptionsResponse",
   "description": "NetworkOptionsResponse contains information about the versioning of the node and the allowed operation statuses, operation types, and errors.",
   "required": ["version", "allow"],
+  "additionalProperties": false,
   "properties": {
     "version": {
       "type": "object",
+      "additionalProperties": false,
       "description": "The Version object is utilized to inform the client of the versions of different components of the Rosetta implementation.",
       "required": ["rosetta_version", "node_version"],
       "properties": {
@@ -33,6 +33,7 @@
       "type": "object",
       "description": "Allow specifies supported Operation status, Operation types, and all possible error statuses. This Allow object is used by clients to validate the correctness of a Rosetta Server implementation. It is expected that these clients will error if they receive some response that contains any of the above information that is not specified here.",
       "required": ["operation_statuses", "operation_types", "errors", "historical_balance_lookup"],
+      "additionalProperties": false,
       "properties": {
         "operation_statuses": {
           "type": "array",

@@ -1,8 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request to get contract interface",
   "title": "ContractInterfaceResponse",
   "type": "object",
+  "additionalProperties": false,
   "required": ["functions", "variables", "maps", "fungible_tokens", "non_fungible_tokens"],
   "properties": {
     "functions": {

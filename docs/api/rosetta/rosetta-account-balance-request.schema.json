@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-account-request",
   "type": "object",
   "title": "RosettaAccountBalanceRequest",
   "description": "An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.",
