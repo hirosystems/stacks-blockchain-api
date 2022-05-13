@@ -1,5 +1,5 @@
 {
-  "description": "TargetBlockTime",
+  "title": "TargetBlockTime",
   "type": "object",
   "additionalProperties": false,
   "required": [

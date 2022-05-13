@@ -1,5 +1,5 @@
 {
-  "description": "StxBalance",
+  "title": "StxBalance",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -110,42 +110,14 @@ export type SchemaMergeRootStub =
   | AddressUnlockSchedule
   | FtBalance
   | NftBalance
-  | {
-      balance: string;
-      total_sent: string;
-      total_received: string;
-      total_fees_sent: string;
-      total_miner_rewards_received: string;
-      /**
-       * The transaction where the lock event occurred. Empty if no tokens are locked.
-       */
-      lock_tx_id: string;
-      /**
-       * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
-       */
-      locked: string;
-      /**
-       * The STX chain block height of when the lock event occurred. Zero if no tokens are locked.
-       */
-      lock_height: number;
-      /**
-       * The burnchain block height of when the lock event occurred. Zero if no tokens are locked.
-       */
-      burnchain_lock_height: number;
-      /**
-       * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
-       */
-      burnchain_unlock_height: number;
-    }
+  | StxBalance
   | Block
   | BurnchainRewardSlotHolder
   | BurnchainReward
   | BurnchainRewardsTotal
   | ReadOnlyFunctionArgs
   | SmartContract
-  | {
-      target_block_time: number;
-    }
+  | TargetBlockTime
   | ChainTip
   | AbstractMempoolTransaction
   | MempoolTokenTransferTransaction
@@ -193,7 +165,7 @@ export type SchemaMergeRootStub =
   | RosettaPartialBlockIdentifier
   | RosettaPublicKey
   | RosettaRelatedOperation
-  | ("ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon")
+  | SignatureType
   | RosettaSignature
   | SigningPayload
   | RosettaSubAccount
@@ -211,10 +183,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenMintWithTxMetadata
   | NonFungibleTokenMint
   | NonFungibleTokenMetadata
-  | {
-      event_index: number;
-      [k: string]: unknown | undefined;
-    }
+  | AbstractTransactionEvent
   | TransactionEventAssetType
   | TransactionEventAsset
   | TransactionEventFungibleAsset
@@ -276,10 +245,7 @@ export type TransactionEvent =
 /**
  * Only present in `smart_contract` and `contract_call` tx types.
  */
-export type TransactionEventSmartContractLog = {
-  event_index: number;
-  [k: string]: unknown | undefined;
-} & {
+export type TransactionEventSmartContractLog = AbstractTransactionEvent & {
   event_type: "smart_contract_log";
   tx_id: string;
   contract_log: {
@@ -295,10 +261,7 @@ export type TransactionEventSmartContractLog = {
 /**
  * Only present in `smart_contract` and `contract_call` tx types.
  */
-export type TransactionEventStxLock = {
-  event_index: number;
-  [k: string]: unknown | undefined;
-} & {
+export type TransactionEventStxLock = AbstractTransactionEvent & {
   event_type: "stx_lock";
   tx_id: string;
   stx_lock_event: {
@@ -311,20 +274,14 @@ export type TransactionEventStxLock = {
 /**
  * Only present in `smart_contract` and `contract_call` tx types.
  */
-export type TransactionEventStxAsset = {
-  event_index: number;
-  [k: string]: unknown | undefined;
-} & {
+export type TransactionEventStxAsset = AbstractTransactionEvent & {
   event_type: "stx_asset";
   tx_id: string;
   asset: TransactionEventAsset;
   [k: string]: unknown | undefined;
 };
 export type TransactionEventAssetType = "transfer" | "mint" | "burn";
-export type TransactionEventFungibleAsset = {
-  event_index: number;
-  [k: string]: unknown | undefined;
-} & {
+export type TransactionEventFungibleAsset = AbstractTransactionEvent & {
   event_type: "fungible_token_asset";
   tx_id: string;
   asset: {
@@ -336,10 +293,7 @@ export type TransactionEventFungibleAsset = {
   };
   [k: string]: unknown | undefined;
 };
-export type TransactionEventNonFungibleAsset = {
-  event_index: number;
-  [k: string]: unknown | undefined;
-} & {
+export type TransactionEventNonFungibleAsset = AbstractTransactionEvent & {
   event_type: "non_fungible_token_asset";
   tx_id: string;
   asset: {
@@ -357,33 +311,7 @@ export type TransactionEventNonFungibleAsset = {
 /**
  * GET request that returns address balances
  */
-export type AddressStxBalanceResponse = {
-  balance: string;
-  total_sent: string;
-  total_received: string;
-  total_fees_sent: string;
-  total_miner_rewards_received: string;
-  /**
-   * The transaction where the lock event occurred. Empty if no tokens are locked.
-   */
-  lock_tx_id: string;
-  /**
-   * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
-   */
-  locked: string;
-  /**
-   * The STX chain block height of when the lock event occurred. Zero if no tokens are locked.
-   */
-  lock_height: number;
-  /**
-   * The burnchain block height of when the lock event occurred. Zero if no tokens are locked.
-   */
-  burnchain_lock_height: number;
-  /**
-   * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
-   */
-  burnchain_unlock_height: number;
-} & {
+export type AddressStxBalanceResponse = StxBalance & {
   token_offering_locked?: AddressTokenOfferingLocked;
   [k: string]: unknown | undefined;
 };
@@ -736,6 +664,10 @@ export type RosettaPartialBlockIdentifier = RosettaBlockIdentifierHash | Rosetta
  */
 export type RosettaBlockIdentifier = RosettaBlockIdentifierHash1 & RosettaBlockIdentifierHeight1;
 /**
+ * SignatureType is the type of a cryptographic signature.
+ */
+export type SignatureType = "ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon";
+/**
  * Search success result
  */
 export type SearchSuccessResult =
@@ -814,6 +746,9 @@ export interface AddressAssetsListResponse {
   results: TransactionEvent[];
   [k: string]: unknown | undefined;
 }
+export interface AbstractTransactionEvent {
+  event_index: number;
+}
 export interface TransactionEventAsset {
   asset_event_type?: TransactionEventAssetType;
   asset_id?: string;
@@ -826,44 +761,42 @@ export interface TransactionEventAsset {
  * GET request that returns address balances
  */
 export interface AddressBalanceResponse {
-  /**
-   * StxBalance
-   */
-  stx: {
-    balance: string;
-    total_sent: string;
-    total_received: string;
-    total_fees_sent: string;
-    total_miner_rewards_received: string;
-    /**
-     * The transaction where the lock event occurred. Empty if no tokens are locked.
-     */
-    lock_tx_id: string;
-    /**
-     * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
-     */
-    locked: string;
-    /**
-     * The STX chain block height of when the lock event occurred. Zero if no tokens are locked.
-     */
-    lock_height: number;
-    /**
-     * The burnchain block height of when the lock event occurred. Zero if no tokens are locked.
-     */
-    burnchain_lock_height: number;
-    /**
-     * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
-     */
-    burnchain_unlock_height: number;
-  };
+  stx: StxBalance;
   fungible_tokens: {
     [k: string]: FtBalance | undefined;
-  }[];
+  };
   non_fungible_tokens: {
     [k: string]: NftBalance | undefined;
-  }[];
+  };
   token_offering_locked?: AddressTokenOfferingLocked;
   [k: string]: unknown | undefined;
+}
+export interface StxBalance {
+  balance: string;
+  total_sent: string;
+  total_received: string;
+  total_fees_sent: string;
+  total_miner_rewards_received: string;
+  /**
+   * The transaction where the lock event occurred. Empty if no tokens are locked.
+   */
+  lock_tx_id: string;
+  /**
+   * The amount of locked STX, as string quoted micro-STX. Zero if no tokens are locked.
+   */
+  locked: string;
+  /**
+   * The STX chain block height of when the lock event occurred. Zero if no tokens are locked.
+   */
+  lock_height: number;
+  /**
+   * The burnchain block height of when the lock event occurred. Zero if no tokens are locked.
+   */
+  burnchain_lock_height: number;
+  /**
+   * The burnchain block height of when the tokens unlock. Zero if no tokens are locked.
+   */
+  burnchain_unlock_height: number;
 }
 export interface FtBalance {
   balance: string;
@@ -1660,18 +1593,11 @@ export interface NetworkBlockTimeResponse {
  * GET request that returns network target block times
  */
 export interface NetworkBlockTimesResponse {
-  /**
-   * TargetBlockTime
-   */
-  mainnet: {
-    target_block_time: number;
-  };
-  /**
-   * TargetBlockTime
-   */
-  testnet: {
-    target_block_time: number;
-  };
+  mainnet: TargetBlockTime;
+  testnet: TargetBlockTime;
+}
+export interface TargetBlockTime {
+  target_block_time: number;
 }
 /**
  * GET blockchain API status
@@ -2264,10 +2190,7 @@ export interface RosettaConstructionCombineRequest {
 export interface RosettaSignature {
   signing_payload: SigningPayload;
   public_key: RosettaPublicKey;
-  /**
-   * SignatureType is the type of a cryptographic signature.
-   */
-  signature_type: "ecdsa" | "ecdsa_recovery" | "ed25519" | "schnorr_1" | "schnorr_poseidon";
+  signature_type: SignatureType;
   hex_bytes: string;
   [k: string]: unknown | undefined;
 }

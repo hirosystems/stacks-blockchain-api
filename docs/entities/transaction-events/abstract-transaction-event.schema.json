@@ -1,6 +1,8 @@
 {
+  "title": "AbstractTransactionEvent",
   "type": "object",
   "required": ["event_index"],
+  "additionalProperties": false,
   "properties": {
     "event_index": {
       "type": "integer"
