@@ -19,6 +19,7 @@ import {
 import { logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import * as querystring from 'querystring';
 import {
+  getTokenMetadataFetchTimeoutMs,
   getTokenMetadataMaxRetries,
   getTokenMetadataProcessingMode,
   isCompliantFt,
@@ -27,12 +28,6 @@ import {
 } from './helpers';
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { FetchError } from 'node-fetch';
-
-/**
- * Amount of milliseconds to wait when fetching token metadata.
- * If the fetch takes longer then it throws and the metadata is not processed.
- */
-export const METADATA_FETCH_TIMEOUT_MS: number = 10_000; // 10 seconds
 
 /**
  * The maximum number of bytes of metadata to fetch.
@@ -393,7 +388,7 @@ export class TokensContractHandler {
     const httpUrl = this.getFetchableUrl(token_uri);
     try {
       return await performFetch(httpUrl.toString(), {
-        timeoutMs: METADATA_FETCH_TIMEOUT_MS,
+        timeoutMs: getTokenMetadataFetchTimeoutMs(),
         maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
       });
     } catch (error) {

@@ -1,6 +1,5 @@
 import { ClarityAbi, ClarityAbiFunction } from '@stacks/transactions';
 import {
-  METADATA_FETCH_TIMEOUT_MS,
   METADATA_MAX_PAYLOAD_BYTE_SIZE,
   TokenMetadataErrorMode,
   TokenMetadataProcessingMode,
@@ -31,6 +30,11 @@ export function getTokenMetadataProcessingMode(): TokenMetadataProcessingMode {
 
 export function getTokenMetadataMaxRetries() {
   const opt = process.env['STACKS_API_TOKEN_METADATA_MAX_RETRIES'] ?? '5';
+  return parseInt(opt);
+}
+
+export function getTokenMetadataFetchTimeoutMs() {
+  const opt = process.env['STACKS_API_TOKEN_METADATA_FETCH_TIMEOUT_MS'] ?? '10000';
   return parseInt(opt);
 }
 
@@ -239,7 +243,7 @@ export async function performFetch<Type>(
 ): Promise<Type> {
   const result = await fetch(url, {
     size: opts?.maxResponseBytes ?? METADATA_MAX_PAYLOAD_BYTE_SIZE,
-    timeout: opts?.timeoutMs ?? METADATA_FETCH_TIMEOUT_MS,
+    timeout: opts?.timeoutMs ?? getTokenMetadataFetchTimeoutMs(),
   });
   if (!result.ok) {
     let msg = '';

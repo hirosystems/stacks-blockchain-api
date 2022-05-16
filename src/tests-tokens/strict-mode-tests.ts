@@ -5,12 +5,12 @@ import { TestBlockBuilder } from '../test-utils/test-builders';
 import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import {
-  METADATA_FETCH_TIMEOUT_MS,
   METADATA_MAX_PAYLOAD_BYTE_SIZE,
   TokensContractHandler,
 } from '../token-metadata/tokens-contract-handler';
 import { DbTxTypeId } from '../datastore/common';
 import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
+import { getTokenMetadataFetchTimeoutMs } from '../token-metadata/helpers';
 
 const NFT_CONTRACT_ABI: ClarityAbi = {
   maps: [],
@@ -263,6 +263,7 @@ describe('token metadata strict mode', () => {
   });
 
   test('metadata timeout errors get retried', async () => {
+    process.env['STACKS_API_TOKEN_METADATA_FETCH_TIMEOUT_MS'] = '500';
     const mockTokenUri = {
       okay: true,
       result: cvToHex(stringCV('http://indigo.com/nft.jpeg', 'ascii')),
@@ -274,7 +275,7 @@ describe('token metadata strict mode', () => {
       .reply(200, mockTokenUri);
     nock('http://indigo.com')
       .get('/nft.jpeg')
-      .delay(METADATA_FETCH_TIMEOUT_MS + 1000)
+      .delay(getTokenMetadataFetchTimeoutMs() + 100)
       .reply(200);
     const handler = new TokensContractHandler({
       contractId: contractId,
