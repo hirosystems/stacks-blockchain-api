@@ -10817,7 +10817,7 @@ describe('api tests', () => {
     const microblock_hash = '0x0fff';
     const microblock = new TestMicroblockStreamBuilder().addMicroblock({ microblock_hash }).build();
     // adding a tx in a block with canonical and microblock_canonical true
-    const block1 = new TestBlockBuilder({ block_hash: '0x1234' })
+    const block1 = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 })
       .addTx({
         microblock_canonical: true,
         // tx is in the same microblock_hash
@@ -10829,21 +10829,38 @@ describe('api tests', () => {
     // adding same tx in another block with canonical and microblock_canonical false
     const block2 = new TestBlockBuilder({
       block_hash: '0x123456',
-      index_block_hash: '0xdeadmeet',
+      index_block_hash: '0x00abcd',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      block_height: 2,
     })
       .addTx({
-        microblock_canonical: true,
+        microblock_canonical: false,
         // tx is in the same microblock_hash
         microblock_hash,
-        canonical: true,
+        canonical: false,
         block_hash: '0x123456',
       })
       .build();
+
+    block2.microblocks = [
+      {
+        ...microblock.microblocks[0],
+        canonical: true,
+        microblock_canonical: true,
+        block_height: block2.block.block_height,
+        parent_block_hash: block1.block.block_hash,
+        parent_block_height: block2.block.block_height,
+        index_block_hash: block2.block.index_block_hash,
+        block_hash: block2.block.block_hash,
+      },
+    ];
+
     await db.update(block1);
     await db.update(block2);
-    await db.updateMicroblocks(microblock);
 
     const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
+
     expect(result.body.txs).toHaveLength(1);
     expect(result.body.txs[0]).toEqual(block1.txs[0].tx.tx_id);
   });
