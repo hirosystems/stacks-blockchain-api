@@ -384,19 +384,45 @@ describe('BNS API tests', () => {
     expect(query1.type).toBe('application/json');
   });
 
-  test('Success names by address', async () => {
+  test('names by address returns the correct ownership', async () => {
     const blockchain = 'stacks';
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
-    const name = 'test-name';
+    const address2 = 'SP32YHGEETJCWCF0ABZ5D7Y79EG4PHC7P9EQ8GXHB';
+    const address3 = 'SP5PKX2FA7XXMC7YWZFF3CA0EQCGZBVCP3D3PD5S';
+    const name = 'test-name.btc';
 
-    const dbName: DbBnsName = {
-      name: name,
+    const block = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: dbBlock.index_block_hash
+    })
+      .addTx({ tx_id: '0x22' })
+      .addTxBnsName({
+        name: name,
+        address: address,
+        namespace_id: 'btc',
+        expire_block: 10000,
+        zonefile: 'test-zone-file',
+        zonefile_hash: 'zonefileHash',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: address,
+      })
+      .build();
+    await db.update(block);
+
+    // Register another name in block 0 (imported from v1, so no nft_event produced)
+    const dbName2: DbBnsName = {
+      name: 'imported.btc',
       address: address,
-      namespace_id: '',
+      namespace_id: 'btc',
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      registered_at: dbBlock.block_height,
+      registered_at: 0,
       canonical: true,
       tx_id: '',
       tx_index: 0,
@@ -410,12 +436,15 @@ describe('BNS API tests', () => {
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
-      dbName
+      dbName2
     );
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query1.status).toBe(200);
-    expect(query1.body.names[0]).toBe(name);
+    expect(query1.body.names).toStrictEqual([
+      'imported.btc',
+      'test-name.btc'
+    ]);
     expect(query1.type).toBe('application/json');
 
     const subdomain: DbBnsSubdomain = {
@@ -431,7 +460,7 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x5454',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
@@ -447,12 +476,76 @@ describe('BNS API tests', () => {
 
     const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query2.status).toBe(200);
-    expect(query2.body.names).toContain(subdomain.fully_qualified_subdomain);
-    expect(query2.body.names).toContain(name);
     expect(query2.type).toBe('application/json');
+    expect(query2.body.names).toStrictEqual([
+      'address_test.id.blockstack',
+      'imported.btc',
+      'test-name.btc'
+    ]);
+
+    // Transfer name to somebody else.
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02'
+    })
+      .addTx({ tx_id: '0xf3f3' })
+      .addTxNftEvent({
+        sender: address,
+        recipient: address2,
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        value: bnsNameCV(name)
+      })
+      .build();
+    await db.update(block3);
+    const query3 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.names).toStrictEqual([
+      'address_test.id.blockstack',
+      'imported.btc'
+    ]);
+
+    // New guy owns the name.
+    const query4 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address2}`);
+    expect(query4.status).toBe(200);
+    expect(query4.type).toBe('application/json');
+    expect(query4.body.names).toStrictEqual([
+      'test-name.btc'
+    ]);
+
+    // Transfer imported name to another user.
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      index_block_hash: '0x04',
+      parent_index_block_hash: '0x03'
+    })
+      .addTx({ tx_id: '0xf3f4' })
+      .addTxNftEvent({
+        sender: address,
+        recipient: address3,
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        value: bnsNameCV('imported.btc')
+      })
+      .build();
+    await db.update(block4);
+    const query5 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query5.status).toBe(200);
+    expect(query5.type).toBe('application/json');
+    expect(query5.body.names).toStrictEqual([
+      'address_test.id.blockstack'
+    ]);
+
+    // Other guy owns the name.
+    const query6 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address3}`);
+    expect(query6.status).toBe(200);
+    expect(query6.type).toBe('application/json');
+    expect(query6.body.names).toStrictEqual([
+      'imported.btc'
+    ]);
   });
 
-  test('Success names transfer', async () => {
+  test('name-transfer zonefile change is reflected', async () => {
     const blockchain = 'stacks';
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKA';
     const name = 'test-name1';

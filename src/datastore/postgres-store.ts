@@ -40,6 +40,8 @@ import {
   isValidPrincipal,
   isSmartContractTx,
   bnsNameCV,
+  getBnsSmartContractId,
+  bnsHexValueToName,
 } from '../helpers';
 import {
   DataStore,
@@ -104,7 +106,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
-import { ChainID, ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi, hexToCV, TupleCV } from '@stacks/transactions';
 import {
   PgAddressNotificationPayload,
   PgBlockNotificationPayload,
@@ -7032,18 +7034,13 @@ export class PgDataStore
         } catch (error) {
           return;
         }
-        const assetIdentifier =
-          chainId === ChainID.Mainnet
-            ? 'SP000000000000000000002Q6VF78.bns::names'
-            : 'ST000000000000000000002AMW42H.bns::names';
-        const nftCustody = includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
         const nameCustody = await client.query<{ recipient: string }>(
           `
           SELECT recipient
-          FROM ${nftCustody}
+          FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
           WHERE asset_identifier = $1 AND value = $2
           `,
-          [assetIdentifier, value]
+          [getBnsSmartContractId(chainId), value]
         );
         if (nameCustody.rowCount === 0) {
           return;
@@ -7167,59 +7164,88 @@ export class PgDataStore
   async getNamesByAddressList({
     address,
     includeUnanchored,
+    chainId,
   }: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const query = await client.query<{ name: string }>(
+      // 1. Get subdomains owned by this address.
+      // These don't produce NFT events so we have to look directly at the `subdomains` table.
+      const subdomainsQuery = await client.query<{ fully_qualified_subdomain: string }>(
         `
-      WITH address_names AS(
-        (
-          SELECT name
-          FROM names
-          WHERE address = $1
-          AND registered_at <= $2
-          AND canonical = true AND microblock_canonical = true
+        WITH addr_subdomains AS (
+          SELECT DISTINCT ON (fully_qualified_subdomain)
+            fully_qualified_subdomain
+          FROM
+            subdomains
+          WHERE
+            owner = $1
+            AND block_height <= $2
+            AND canonical = TRUE
+            AND microblock_canonical = TRUE
         )
-        UNION ALL (
-          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
-          FROM subdomains
-          WHERE owner = $1
-          AND block_height <= $2
-          AND canonical = true AND microblock_canonical = true
-        )),
-
-      latest_names AS(
-      (
-        SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
-        FROM names, address_names
-        WHERE address_names.name = names.name
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY names.name, registered_at DESC, tx_index DESC
-      )
-      UNION ALL(
-        SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
-        FROM subdomains, address_names
-        WHERE fully_qualified_subdomain = address_names.name
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-      ))
-
-      SELECT name from latest_names
-      WHERE address = $1
-      ORDER BY name, block_height DESC, tx_index DESC
+        SELECT DISTINCT ON (fully_qualified_subdomain)
+          fully_qualified_subdomain
+        FROM
+          subdomains
+          INNER JOIN addr_subdomains USING (fully_qualified_subdomain)
+        WHERE
+          canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY
+          fully_qualified_subdomain
         `,
         [address, maxBlockHeight]
       );
-      return query;
+      // 2. Get names owned by this address which were imported from Blockstack v1.
+      // These also don't have an associated NFT event so we have to look directly at the `names` table,
+      // however, we'll also check if any of these names are still owned by the same user.
+      const importedNamesQuery = await client.query<{ name: string }>(
+        `
+        SELECT
+          name
+        FROM
+          names
+        WHERE
+          address = $1
+          AND registered_at = 0
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+        `,
+        [address]
+      );
+      const oldImportedNamesQuery = await client.query<{ value: string }>(
+        `
+        SELECT value
+        FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
+        WHERE recipient <> $1 AND value = ANY($2)
+        `,
+        [address, importedNamesQuery.rows.map(i => bnsNameCV(i.name))]
+      );
+      const oldImportedNames = oldImportedNamesQuery.rows.map(i => bnsHexValueToName(i.value));
+      // 3. Get newer NFT names owned by this address.
+      const nftNamesQuery = await client.query<{ value: string }>(
+        `
+        SELECT value
+        FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
+        WHERE recipient = $1 AND asset_identifier = $2
+        `,
+        [address, getBnsSmartContractId(chainId)]
+      );
+      const results: Set<string> = new Set([
+        ...subdomainsQuery.rows.map(i => i.fully_qualified_subdomain),
+        ...importedNamesQuery.rows.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
+        ...nftNamesQuery.rows.map(i => bnsHexValueToName(i.value)),
+      ]);
+      return Array.from(results.values()).sort();
     });
-
-    if (queryResult.rowCount > 0) {
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.rows.map(r => r.name),
+        result: queryResult,
       };
     }
     return { found: false } as const;
