@@ -548,32 +548,30 @@ describe('BNS API tests', () => {
   test('name-transfer zonefile change is reflected', async () => {
     const blockchain = 'stacks';
     const address = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKA';
-    const name = 'test-name1';
+    const name = 'test-name1.test';
 
-    const dbName: DbBnsName = {
-      name: name,
-      address: address,
-      namespace_id: 'test',
-      expire_block: 10000,
-      zonefile: 'test-zone-file',
-      zonefile_hash: 'zonefileHash',
-      registered_at: 0,
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-      status: 'name-register',
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      dbName
-    );
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: dbBlock.index_block_hash
+    })
+      .addTx({ tx_id: '0x22' })
+      .addTxBnsName({
+        name: name,
+        address: address,
+        namespace_id: 'test',
+        expire_block: 10000,
+        zonefile: 'test-zone-file',
+        zonefile_hash: 'zonefileHash',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: address,
+      })
+      .build();
+    await db.update(block2);
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
     expect(query1.status).toBe(200);
@@ -581,31 +579,30 @@ describe('BNS API tests', () => {
     expect(query1.type).toBe('application/json');
 
     const address1 = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKT';
-
-    const dbNameTransfer: DbBnsName = {
-      name: name,
-      address: address1,
-      namespace_id: 'test',
-      expire_block: 10000,
-      zonefile: 'test-zone-file',
-      zonefile_hash: 'zonefileHash',
-      registered_at: 1,
-      canonical: true,
-      tx_id: '',
-      tx_index: 0,
-      status: 'name-transfer',
-    };
-    await db.updateNames(
-      client,
-      {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
-        microblock_hash: '',
-        microblock_sequence: I32_MAX,
-        microblock_canonical: true,
-      },
-      dbNameTransfer
-    );
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02'
+    })
+      .addTx({ tx_id: '0x23' })
+      .addTxBnsName({
+        name: name,
+        address: address1,
+        namespace_id: 'test',
+        expire_block: 10000,
+        zonefile: 'test-zone-file',
+        zonefile_hash: 'zonefileHash',
+        status: 'name-transfer',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Transfer,
+        value: bnsNameCV(name),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        sender: address,
+        recipient: address1,
+      })
+      .build();
+    await db.update(block3);
 
     const query2 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address1}`);
     expect(query2.status).toBe(200);
