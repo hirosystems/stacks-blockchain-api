@@ -262,7 +262,7 @@ describe('token metadata strict mode', () => {
     expect(entry.result?.processed).toBe(false);
   });
 
-  test('metadata timeout errors get retried', async () => {
+  test('metadata timeout errors get retried immediately', async () => {
     process.env['STACKS_API_TOKEN_METADATA_FETCH_TIMEOUT_MS'] = '500';
     const mockTokenUri = {
       okay: true,
@@ -273,10 +273,14 @@ describe('token metadata strict mode', () => {
         '/v2/contracts/call-read/SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD/project-indigo-act1/get-token-uri'
       )
       .reply(200, mockTokenUri);
+    // Timeout first time.
     nock('http://indigo.com')
       .get('/nft.jpeg')
+      .times(1)
       .delay(getTokenMetadataFetchTimeoutMs() + 100)
       .reply(200);
+    // Correct second time.
+    nock('http://indigo.com').get('/nft.jpeg').reply(200, {});
     const handler = new TokensContractHandler({
       contractId: contractId,
       smartContractAbi: NFT_CONTRACT_ABI,
@@ -287,8 +291,8 @@ describe('token metadata strict mode', () => {
     });
     await handler.start();
     const entry = await db.getTokenMetadataQueueEntry(1);
-    expect(entry.result?.retry_count).toEqual(1);
-    expect(entry.result?.processed).toBe(false);
+    expect(entry.result?.retry_count).toEqual(0);
+    expect(entry.result?.processed).toBe(true);
   });
 
   test('metadata size exceeded errors fail immediately', async () => {
@@ -315,6 +319,11 @@ describe('token metadata strict mode', () => {
     const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(0);
     expect(entry.result?.processed).toBe(true);
+
+    // Metadata still contains the rest of the data.
+    const metadata = await db.getNftMetadata(contractId);
+    expect(metadata.found).toBe(true);
+    expect(metadata.result?.token_uri).toBe('http://indigo.com/nft.jpeg');
   });
 
   afterEach(async () => {

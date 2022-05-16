@@ -35,6 +35,12 @@ import { FetchError } from 'node-fetch';
  */
 export const METADATA_MAX_PAYLOAD_BYTE_SIZE = 1_000_000; // 1 megabyte
 
+/**
+ * The max number of immediate attempts that will be made to retrieve metadata from external URIs before declaring
+ * the failure as a non-retryable error.
+ */
+const METADATA_MAX_IMMEDIATE_RETRY_COUNT = 5;
+
 const PUBLIC_IPFS = 'https://ipfs.io';
 
 export enum TokenMetadataProcessingMode {
@@ -190,10 +196,17 @@ export class TokensContractHandler {
 
     let metadata: FtTokenMetadata | undefined;
     if (contractCallUri) {
-      metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
-      metadata = this.patchTokenMetadataImageUri(metadata);
+      try {
+        metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
+        metadata = this.patchTokenMetadataImageUri(metadata);
+      } catch (error) {
+        // An unavailable external service failed to provide reasonable data (images, etc.).
+        // We will ignore these and fill out the remaining SIP-compliant metadata.
+        logger.warn(
+          `[token-metadata] ft metadata fetch error while processing ${this.contractId}: ${error}`
+        );
+      }
     }
-
     let imgUrl: string | undefined;
     if (metadata?.imageUri) {
       const normalizedUrl = this.getImageUrl(metadata.imageUri);
@@ -231,10 +244,17 @@ export class TokensContractHandler {
     let metadata: NftTokenMetadata | undefined;
     const contractCallUri = await this.readStringFromContract('get-token-uri', [uintCV(0)]);
     if (contractCallUri) {
-      metadata = await this.getMetadataFromUri<FtTokenMetadata>(contractCallUri);
-      metadata = this.patchTokenMetadataImageUri(metadata);
+      try {
+        metadata = await this.getMetadataFromUri<NftTokenMetadata>(contractCallUri);
+        metadata = this.patchTokenMetadataImageUri(metadata);
+      } catch (error) {
+        // An unavailable external service failed to provide reasonable data (images, etc.).
+        // We will ignore these and fill out the remaining SIP-compliant metadata.
+        logger.warn(
+          `[token-metadata] nft metadata fetch error while processing ${this.contractId}: ${error}`
+        );
+      }
     }
-
     let imgUrl: string | undefined;
     if (metadata?.imageUri) {
       const normalizedUrl = this.getImageUrl(metadata.imageUri);
@@ -386,19 +406,33 @@ export class TokensContractHandler {
       }
     }
     const httpUrl = this.getFetchableUrl(token_uri);
-    try {
-      return await performFetch(httpUrl.toString(), {
-        timeoutMs: getTokenMetadataFetchTimeoutMs(),
-        maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
-      });
-    } catch (error) {
-      if (error instanceof FetchError && error.type === 'request-timeout') {
-        throw new RetryableTokenMetadataError(
-          `Network timeout when retrieving metadata from uri: ${error}`
-        );
+
+    let fetchImmediateRetryCount = 0;
+    let result: Type | undefined;
+    // We'll try to fetch metadata and give it `METADATA_MAX_IMMEDIATE_RETRY_COUNT` attempts
+    // for the external service to return a reasonable response, otherwise we'll consider the
+    // metadata as dead.
+    do {
+      try {
+        result = await performFetch(httpUrl.toString(), {
+          timeoutMs: getTokenMetadataFetchTimeoutMs(),
+          maxResponseBytes: METADATA_MAX_PAYLOAD_BYTE_SIZE,
+        });
+        break;
+      } catch (error) {
+        fetchImmediateRetryCount++;
+        if (
+          (error instanceof FetchError && error.type === 'max-size') ||
+          fetchImmediateRetryCount >= METADATA_MAX_IMMEDIATE_RETRY_COUNT
+        ) {
+          throw error;
+        }
       }
-      throw error;
+    } while (fetchImmediateRetryCount < METADATA_MAX_IMMEDIATE_RETRY_COUNT);
+    if (result) {
+      return result;
     }
+    throw new Error(`Unable to fetch metadata from ${token_uri}`);
   }
 
   private async makeReadOnlyContractCall(
