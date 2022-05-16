@@ -10813,6 +10813,41 @@ describe('api tests', () => {
     expect(addressEvents.status).toBe(400);
   });
 
+  test('/microblock/:hash duplicate txs', async () => {
+    const microblock_hash = '0x0fff';
+    const microblock = new TestMicroblockStreamBuilder().addMicroblock({ microblock_hash }).build();
+    // adding a tx in a block with canonical and microblock_canonical true
+    const block1 = new TestBlockBuilder({ block_hash: '0x1234' })
+      .addTx({
+        microblock_canonical: true,
+        // tx is in the same microblock_hash
+        microblock_hash,
+        canonical: true,
+        block_hash: '0x1234',
+      })
+      .build();
+    // adding same tx in another block with canonical and microblock_canonical false
+    const block2 = new TestBlockBuilder({
+      block_hash: '0x123456',
+      index_block_hash: '0xdeadmeet',
+    })
+      .addTx({
+        microblock_canonical: true,
+        // tx is in the same microblock_hash
+        microblock_hash,
+        canonical: true,
+        block_hash: '0x123456',
+      })
+      .build();
+    await db.update(block1);
+    await db.update(block2);
+    await db.updateMicroblocks(microblock);
+
+    const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
+    expect(result.body.txs).toHaveLength(1);
+    expect(result.body.txs[0]).toEqual(block1.txs[0].tx.tx_id);
+  });
+
   afterEach(async () => {
     await api.terminate();
     await db?.close();
