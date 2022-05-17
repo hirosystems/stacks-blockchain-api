@@ -1,3 +1,10 @@
+# [4.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.4...v4.0.0-beta.5) (2022-05-17)
+
+
+### Features
+
+* add strict ft/nft metadata processing mode for better error handling ([#1165](https://github.com/hirosystems/stacks-blockchain-api/issues/1165)) ([b9ca4bb](https://github.com/hirosystems/stacks-blockchain-api/commit/b9ca4bb69d7f78c634c076855652937e0e1743f1))
+
 # [4.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.3...v4.0.0-beta.4) (2022-05-17)
 
 
