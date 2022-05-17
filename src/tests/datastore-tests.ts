@@ -4862,7 +4862,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr-test',
     };
 
-    const rowCount = await db.updateNFtMetadata(nftMetadata, 0);
+    const rowCount = await db.updateNFtMetadata(nftMetadata);
     expect(rowCount).toBe(1);
 
     const query = await db.getNftMetadata(nftMetadata.contract_id);
@@ -4884,7 +4884,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr-test',
     };
 
-    const rowCount = await db.updateFtMetadata(ftMetadata, 0);
+    const rowCount = await db.updateFtMetadata(ftMetadata);
     expect(rowCount).toBe(1);
 
     const query = await db.getFtMetadata(ftMetadata.contract_id);

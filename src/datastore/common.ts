@@ -604,6 +604,7 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface DbChainTip {
@@ -983,8 +984,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
   getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
 
-  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
-  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
 
   getFtMetadataList(args: {
     limit: number;
@@ -1000,6 +1001,19 @@ export interface DataStore extends DataStoreEventEmitter {
    * @param queueId - queue entry id
    */
   getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
+
+  /**
+   * Marks a token metadata queue entry as processed.
+   * @param queueId - queue entry id
+   */
+  updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void>;
+
+  /**
+   * Increases the retry count for a specific token metadata queue entry.
+   * @param queueId - queue entry id
+   * @returns new retry count
+   */
+  increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number>;
 
   getTokenMetadataQueue(
     limit: number,

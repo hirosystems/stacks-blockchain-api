@@ -167,6 +167,7 @@ interface TestTxArgs {
   raw_result?: string;
   sender_address?: string;
   smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
   status?: DbTxStatus;
   token_transfer_amount?: bigint;
   token_transfer_recipient_address?: string;
@@ -216,6 +217,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
       token_transfer_memo: args?.token_transfer_memo,
       smart_contract_contract_id: args?.smart_contract_contract_id,
+      smart_contract_source_code: args?.smart_contract_source_code,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
       execution_cost_runtime: 0,

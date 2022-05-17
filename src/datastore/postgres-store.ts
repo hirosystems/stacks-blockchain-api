@@ -105,7 +105,7 @@ import {
   Block,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
+import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import { ChainID, ClarityAbi, hexToCV, TupleCV } from '@stacks/transactions';
 import {
   PgAddressNotificationPayload,
@@ -714,6 +714,7 @@ interface DbTokenMetadataQueueEntryQuery {
   contract_abi: string;
   block_height: number;
   processed: boolean;
+  retry_count: number;
 }
 
 interface StxEventQueryResult {
@@ -1503,6 +1504,7 @@ export class PgDataStore
               contractAbi: contractAbi,
               blockHeight: entry.tx.block_height,
               processed: false,
+              retry_count: 0,
             };
             return queueEntry;
           })
@@ -5128,6 +5130,7 @@ export class PgDataStore
       contractAbi: JSON.parse(row.contract_abi),
       blockHeight: row.block_height,
       processed: row.processed,
+      retry_count: row.retry_count,
     };
     return { found: true, result: entry };
   }
@@ -5158,6 +5161,7 @@ export class PgDataStore
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
         processed: row.processed,
+        retry_count: row.retry_count,
       };
       return entry;
     });
@@ -5239,7 +5243,7 @@ export class PgDataStore
     });
   }
 
-  async getSmartContract(contractId: string) {
+  async getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>> {
     return this.query(async client => {
       const result = await client.query<{
         tx_id: Buffer;
@@ -7616,7 +7620,7 @@ export class PgDataStore
     });
   }
 
-  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
+  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number> {
     const {
       token_uri,
       name,
@@ -7629,8 +7633,7 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = ftMetadata;
-
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.query(async client => {
       const result = await client.query(
         `
         INSERT INTO ft_metadata(
@@ -7650,24 +7653,13 @@ export class PgDataStore
           sender_address,
         ]
       );
-      await client.query(
-        `
-        UPDATE token_metadata_queue
-        SET processed = true
-        WHERE queue_id = $1
-        `,
-        [dbQueueId]
-      );
       return result.rowCount;
     });
     await this.notifier?.sendTokens({ contractID: contract_id });
     return rowCount;
   }
 
-  async updateNFtMetadata(
-    nftMetadata: DbNonFungibleTokenMetadata,
-    dbQueueId: number
-  ): Promise<number> {
+  async updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number> {
     const {
       token_uri,
       name,
@@ -7678,7 +7670,7 @@ export class PgDataStore
       tx_id,
       sender_address,
     } = nftMetadata;
-    const rowCount = await this.queryTx(async client => {
+    const rowCount = await this.query(async client => {
       const result = await client.query(
         `
         INSERT INTO nft_metadata(
@@ -7696,18 +7688,38 @@ export class PgDataStore
           sender_address,
         ]
       );
+      return result.rowCount;
+    });
+    await this.notifier?.sendTokens({ contractID: contract_id });
+    return rowCount;
+  }
+
+  async updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void> {
+    await this.query(async client => {
       await client.query(
         `
         UPDATE token_metadata_queue
         SET processed = true
         WHERE queue_id = $1
         `,
-        [dbQueueId]
+        [queueId]
       );
-      return result.rowCount;
     });
-    await this.notifier?.sendTokens({ contractID: contract_id });
-    return rowCount;
+  }
+
+  async increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number> {
+    return await this.query(async client => {
+      const result = await client.query<{ retry_count: number }>(
+        `
+        UPDATE token_metadata_queue
+        SET retry_count = retry_count + 1
+        WHERE queue_id = $1
+        RETURNING retry_count
+        `,
+        [queueId]
+      );
+      return result.rows[0].retry_count;
+    });
   }
 
   getFtMetadataList({
