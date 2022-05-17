@@ -20,7 +20,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 
 export interface DbBlock {
@@ -947,6 +947,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getNamesByAddressList(args: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>>;
   getNamesList(args: {
     page: number;

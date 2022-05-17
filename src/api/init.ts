@@ -245,7 +245,7 @@ export async function startApiServer(opts: {
       router.use(cors());
       router.use('/namespaces', createBnsNamespacesRouter(datastore));
       router.use('/names', createBnsNamesRouter(datastore, chainId));
-      router.use('/addresses', createBnsAddressesRouter(datastore));
+      router.use('/addresses', createBnsAddressesRouter(datastore, chainId));
       return router;
     })()
   );
