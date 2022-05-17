@@ -20,7 +20,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 
 export interface DbBlock {
@@ -363,6 +363,7 @@ export interface NftHoldingInfo {
   // TODO(perf): use hex string since that is what we already get from deserializing event payloads
   //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
+  block_height: number;
   recipient: string;
   tx_id: Buffer;
 }
@@ -947,6 +948,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getNamesByAddressList(args: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>>;
   getNamesList(args: {
     page: number;

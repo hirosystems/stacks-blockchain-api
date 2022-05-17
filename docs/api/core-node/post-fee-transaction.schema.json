@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "POST request for estimated fee",
   "title": "TransactionFeeEstimateRequest",
   "type": "object",

@@ -2,10 +2,11 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { DataStore } from '../../../datastore/common';
 import { isUnanchoredRequest } from '../../query-helpers';
+import { ChainID } from '@stacks/transactions';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
-export function createBnsAddressesRouter(db: DataStore): express.Router {
+export function createBnsAddressesRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
   router.get(
     '/:blockchain/:address',
@@ -20,6 +21,7 @@ export function createBnsAddressesRouter(db: DataStore): express.Router {
       const namesByAddress = await db.getNamesByAddressList({
         address: address,
         includeUnanchored,
+        chainId,
       });
       if (namesByAddress.found) {
         res.json({ names: namesByAddress.result });

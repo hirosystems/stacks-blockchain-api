@@ -1,9 +1,9 @@
 {
-  "$id": "rosetta-block-oldest-identifier.schema.json",
   "type": "object",
   "title": "RosettaOldestBlockIdentifier",
   "description": "The block_identifier uniquely identifies a block in a particular network.",
   "required": ["index", "hash"],
+  "additionalProperties": false,
   "properties": {
     "index": {
       "type": "integer",

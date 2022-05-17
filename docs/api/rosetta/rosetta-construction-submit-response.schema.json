@@ -1,10 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-construction-submit-response",
   "type": "object",
   "title": "RosettaConstructionSubmitResponse",
   "description": "TransactionIdentifier contains the transaction_identifier of a transaction that was submitted to either /construction/submit.",
   "required": ["transaction_identifier"],
+  "additionalProperties": false,
   "properties": {
     "transaction_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"

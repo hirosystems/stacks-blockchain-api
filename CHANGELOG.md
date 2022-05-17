@@ -1,3 +1,10 @@
+# [4.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.2...v4.0.0-beta.3) (2022-05-11)
+
+
+### Features
+
+* add block height to responses in `/extended/v1/tokens/nft/holdings` ([#1151](https://github.com/hirosystems/stacks-blockchain-api/issues/1151)) ([7cc8bd0](https://github.com/hirosystems/stacks-blockchain-api/commit/7cc8bd06339a9bf53ef5d133ef4885b26e48cd18))
+
 # [4.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.1...v4.0.0-beta.2) (2022-05-04)
 
 

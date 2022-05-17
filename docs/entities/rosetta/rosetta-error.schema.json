@@ -1,9 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "Rosetta-errors",
   "type": "object",
   "title": "RosettaError",
   "description": "Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.",
+  "additionalProperties": false,
   "required": ["code", "message", "retriable"],
   "properties": {
     "code": {
@@ -21,7 +20,6 @@
     "details": {
       "type": "object",
       "description": "Often times it is useful to return context specific to the request that caused the error (i.e. a sample of the stack trace or impacted account) in addition to the standard error message.",
-      "required": [],
       "properties": {
         "address": {
           "type": "string"

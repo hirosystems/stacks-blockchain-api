@@ -3,6 +3,7 @@
   "title": "RosettaSyncStatus",
   "description": "SyncStatus is used to provide additional context about an implementation's sync status. It is often used to indicate that an implementation is healthy when it cannot be queried until some sync phase occurs. If an implementation is immediately queryable, this model is often not populated.",
   "required": ["current_index"],
+  "additionalProperties": false,
   "properties": {
     "current_index": {
       "type": "integer",
