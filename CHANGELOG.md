@@ -1,3 +1,10 @@
+# [4.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.3...v4.0.0-beta.4) (2022-05-17)
+
+
+### Bug Fixes
+
+* resolve bns names correctly in `/v1/addresses/stacks/[:address]` ([#1175](https://github.com/hirosystems/stacks-blockchain-api/issues/1175)) ([8797ded](https://github.com/hirosystems/stacks-blockchain-api/commit/8797ded691acab322c6c671403ea60bf1bc27294))
+
 # [4.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.2...v4.0.0-beta.3) (2022-05-11)
 
 
