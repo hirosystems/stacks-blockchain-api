@@ -10846,6 +10846,30 @@ describe('api tests', () => {
     const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
     expect(result.body.txs).toHaveLength(1);
     expect(result.body.txs[0]).toEqual(tx_id);
+  test('/microblock', async () => {
+    const microblocks = new TestMicroblockStreamBuilder().addMicroblock().build();
+    const microblock = microblocks.microblocks[0];
+    const block = new TestBlockBuilder()
+      .addTx({
+        microblock_hash: microblock.microblock_hash,
+        tx_id: '0xffff',
+      })
+      .addTx({
+        microblock_hash: microblock.microblock_hash,
+        tx_id: '0x1234',
+      })
+      .build();
+    await db.update(block);
+    await db.updateMicroblocks(microblocks);
+    const microblockResult = await supertest(api.server).get(`/extended/v1/microblock/`);
+    const response = microblockResult.body;
+    const expectedTxs = ['0xffff', '0x1234'];
+
+    expect(response.total).toEqual(1);
+    expect(response.results).toHaveLength(1);
+    expect(response.results[0].microblock_hash).toEqual(microblock.microblock_hash);
+    expect(response.results[0].txs).toHaveLength(2);
+    expect(response.results[0].txs).toEqual(expectedTxs);
   });
 
   afterEach(async () => {
