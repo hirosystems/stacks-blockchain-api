@@ -936,7 +936,11 @@ export interface DataStore extends DataStoreEventEmitter {
     namespace: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace>>;
-  getName(args: { name: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbBnsName>>;
+  getName(args: {
+    name: string;
+    includeUnanchored: boolean;
+    chainId: ChainID;
+  }): Promise<FoundOrNot<DbBnsName>>;
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
