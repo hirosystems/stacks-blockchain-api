@@ -1,3 +1,10 @@
+# [4.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.5...v4.0.0-beta.6) (2022-05-20)
+
+
+### Bug Fixes
+
+* propagate chain id correctly to bns router ([#1180](https://github.com/hirosystems/stacks-blockchain-api/issues/1180)) ([3a0ead1](https://github.com/hirosystems/stacks-blockchain-api/commit/3a0ead18fd3d65ec8221feada334477ebb576805))
+
 # [4.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.4...v4.0.0-beta.5) (2022-05-17)
 
 
