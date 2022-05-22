@@ -10816,12 +10816,11 @@ describe('api tests', () => {
   test('/microblock/:hash duplicate txs', async () => {
     const microblock_hash = '0x0fff',
       tx_id = '0x1234';
-    // adding a tx in a block with canonical and microblock_canonical true
-    const block1 = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
-    await db.update(block1);
+    const block = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
+    await db.update(block);
 
     const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({ microblock_hash, parent_index_block_hash: block1.block.index_block_hash })
+      .addMicroblock({ microblock_hash, parent_index_block_hash: block.block.index_block_hash })
       .addTx({
         tx_id,
         microblock_canonical: true,
@@ -10835,7 +10834,6 @@ describe('api tests', () => {
         index_block_hash: '0x123456',
       })
       .build();
-
     await db.updateMicroblocks(microblock);
 
     const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
