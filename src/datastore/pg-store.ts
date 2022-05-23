@@ -468,39 +468,33 @@ export class PgStore {
       const countQuery = await sql<
         { total: number }[]
       >`SELECT microblock_count AS total FROM chain_tip`;
-      const microblockQuery = await sql<MicroblockQueryResult[]>`
-        SELECT ${sql(MICROBLOCK_COLUMNS)}
-        FROM microblocks
-        WHERE canonical = true AND microblock_canonical = true
-        ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC
-        LIMIT ${args.limit}
-        OFFSET ${args.offset}
+      const microblockQuery = await sql<
+        (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
+      >`
+      SELECT microblocks.*, txs.tx_id 
+      FROM microblocks LEFT JOIN txs USING(microblock_hash)
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+        ((txs.canonical = true AND txs.microblock_canonical = true) OR (txs.canonical IS NULL OR txs.microblock_canonical IS NULL))
+      ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset};
       `;
-
-      if (microblockQuery.length === 0) {
-        return { result: [], total: 0 };
-      }
-
-      const microblockValues = microblockQuery
-        .map(mb => `('\\x${mb.microblock_hash.slice(2)}'::bytea)`)
-        .join(', ');
-      const txsQuery = await sql<{ tx_id: string; microblock_hash: string }[]>`
-        SELECT tx_id, microblock_hash
-        FROM txs
-        WHERE canonical = true AND microblock_canonical = true AND 
-          microblock_hash = ANY(VALUES ${sql.unsafe(microblockValues)})
-        ORDER BY tx_id DESC
-      `;
-
-      const result = microblockQuery.map(mb => {
-        return {
-          microblock: mb,
-          txs: txsQuery.filter(tx => tx.microblock_hash === mb.microblock_hash).map(tx => tx.tx_id),
-        };
+      const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
+      microblockQuery.forEach(row => {
+        const mb = parseMicroblockQueryResult(row);
+        let existing = microblocks.find(
+          item => item.microblock.microblock_hash === mb.microblock_hash
+        );
+        if (!existing) {
+          existing = { microblock: mb, txs: [] };
+          microblocks.push(existing);
+        }
+        if (row.tx_id) {
+          existing.txs.push(row.tx_id);
+        }
       });
-
       return {
-        result: result,
+        result: microblocks,
         total: countQuery[0].total,
       };
     });
