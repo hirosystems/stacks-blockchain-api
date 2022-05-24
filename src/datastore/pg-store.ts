@@ -431,7 +431,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${args.microblockHash}
+        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true 
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
