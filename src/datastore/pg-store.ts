@@ -218,8 +218,8 @@ export class PgStore {
         return { found: false };
       }
       let txs: DbTx[] | null = null;
-      let microblocksAccepted: DbMicroblock[] | null = null;
-      let microblocksStreamed: DbMicroblock[] | null = null;
+      const microblocksAccepted: DbMicroblock[] = [];
+      const microblocksStreamed: DbMicroblock[] = [];
       const microblock_tx_count: Record<string, number> = {};
       if (metadata?.txs) {
         const txQuery = await sql<ContractTxQueryResult[]>`
@@ -247,8 +247,6 @@ export class PgStore {
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
         `;
-        microblocksAccepted = [];
-        microblocksStreamed = [];
         for (const mb of microblocksQuery) {
           const parsedMicroblock = parseMicroblockQueryResult(mb);
           const count = mb.transaction_count;
