@@ -506,6 +506,7 @@ export interface DbGetBlockWithMetadataResponse<
   microblocks: TWithMicroblocks extends true
     ? { accepted: DbMicroblock[]; streamed: DbMicroblock[] }
     : null;
+  microblock_tx_count: Record<string, number>;
 }
 
 export interface DbRawEventRequest {

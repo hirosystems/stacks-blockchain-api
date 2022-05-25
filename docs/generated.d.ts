@@ -1288,6 +1288,12 @@ export interface Block {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
+  /**
+   * List of txs counts in each accepted microblock
+   */
+  microblock_tx_count: {
+    [k: string]: number | undefined;
+  };
   [k: string]: unknown | undefined;
 }
 /**
