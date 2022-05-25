@@ -1,3 +1,10 @@
+# [4.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.6...v4.0.0-beta.7) (2022-05-25)
+
+
+### Bug Fixes
+
+* use 128 max size when deserializing contract principals [#1181](https://github.com/hirosystems/stacks-blockchain-api/issues/1181) ([#1182](https://github.com/hirosystems/stacks-blockchain-api/issues/1182)) ([f4d4733](https://github.com/hirosystems/stacks-blockchain-api/commit/f4d4733ad4956c6acc36f73337cc55b6aae5c5fb))
+
 # [4.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.5...v4.0.0-beta.6) (2022-05-20)
 
 
