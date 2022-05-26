@@ -474,7 +474,7 @@ export class PgStore {
       SELECT microblocks.*, txs.tx_id 
       FROM microblocks LEFT JOIN txs USING(microblock_hash)
       WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
-        ((txs.canonical = true AND txs.microblock_canonical = true) OR (txs.canonical IS NULL OR txs.microblock_canonical IS NULL))
+        txs.canonical = true AND txs.microblock_canonical = true
       ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
       LIMIT ${args.limit}
       OFFSET ${args.offset};
