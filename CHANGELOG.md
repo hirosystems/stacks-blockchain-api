@@ -1,3 +1,10 @@
+# [4.0.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.7...v4.0.0-beta.8) (2022-05-26)
+
+
+### Bug Fixes
+
+* treat incorrect `get-token-uri` none values as undefined ([#1183](https://github.com/hirosystems/stacks-blockchain-api/issues/1183)) ([33313b1](https://github.com/hirosystems/stacks-blockchain-api/commit/33313b1d78e75a1900de9162cd97a76ff0a64ee0))
+
 # [4.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.6...v4.0.0-beta.7) (2022-05-25)
 
 
