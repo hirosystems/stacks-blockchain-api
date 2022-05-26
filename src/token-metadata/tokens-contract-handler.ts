@@ -505,13 +505,15 @@ export class TokensContractHandler {
     );
   }
 
-  private checkAndParseString(responseCV: ClarityValue): string {
+  private checkAndParseString(responseCV: ClarityValue): string | undefined {
     const unwrappedClarityValue = this.unwrapClarityType(responseCV);
     if (
       unwrappedClarityValue.type === ClarityType.StringASCII ||
       unwrappedClarityValue.type === ClarityType.StringUTF8
     ) {
       return unwrappedClarityValue.data;
+    } else if (unwrappedClarityValue.type === ClarityType.OptionalNone) {
+      return undefined;
     }
     throw new RetryableTokenMetadataError(
       `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`

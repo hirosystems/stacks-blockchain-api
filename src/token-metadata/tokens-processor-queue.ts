@@ -144,9 +144,6 @@ export class TokensProcessorQueue {
           contractId: queueEntry.contractId,
           txId: queueEntry.txId,
         });
-        logger.info(
-          `[token-metadata] finished token contract processing for: ${queueEntry.contractId} from tx ${queueEntry.txId}`
-        );
         if (this.queuedEntries.size < this.queue.concurrency) {
           void this.checkDbQueue();
         }
