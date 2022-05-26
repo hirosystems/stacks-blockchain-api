@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
-import { createClarityValueArray } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 describe('/block tests', () => {
   let db: PgDataStore;
@@ -124,7 +124,7 @@ describe('/block tests', () => {
       sender_address: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5',
       contract_id: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token'
     };
-    await db.updateFtMetadata(ftMetadata, 1);
+    await db.updateFtMetadata(ftMetadata);
 
     // FT transfer
     const block1 = new TestBlockBuilder({

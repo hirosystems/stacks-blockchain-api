@@ -9,12 +9,8 @@ import {
 import {
   addressToString,
   AuthType,
-  BufferCV,
   BufferReader,
   ChainID,
-  ClarityType,
-  cvToString,
-  deserializeCV,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
@@ -22,14 +18,11 @@ import {
   MessageSignature,
   parseRecoverableSignature,
   PayloadType,
-  SomeCV,
   StacksTransaction,
-  txidFromData,
 } from '@stacks/transactions';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
-import * as c32check from 'c32check';
 import {
   getAssetEventTypeString,
   getEventTypeString,
@@ -63,16 +56,26 @@ import {
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
-import { readTransaction, TransactionPayloadTypeID } from './p2p/tx';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { serializeCV, TupleCV } from '@stacks/transactions';
 import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 import {
-  tokenMetadataErrorMode,
-  isFtMetadataEnabled,
-  TokenMetadataErrorMode,
-} from './event-stream/tokens-contract-handler';
+  ClarityTypeID,
+  decodeClarityValue,
+  decodeTransaction,
+  ClarityValueBuffer,
+  ClarityValueOptional,
+  ClarityValueOptionalBool,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponse,
+  ClarityValueTuple,
+  ClarityValueUInt,
+  PrincipalTypeID,
+  TxPayloadTokenTransfer,
+  TxPayloadTypeID,
+} from 'stacks-encoding-native-js';
+import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -644,10 +647,6 @@ export function publicKeyToBitcoinAddress(publicKey: string, network: string): s
   return address.address;
 }
 
-export function bitcoinAddressToSTXAddress(btcAddress: string): string {
-  return c32check.b58ToC32(btcAddress);
-}
-
 export function getOptionsFromOperations(operations: RosettaOperation[]): RosettaOptions | null {
   const options: RosettaOptions = {};
 
@@ -755,8 +754,11 @@ function parseRevokeDelegateStxArgs(
   }
 
   // Call result
-  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+  const result = decodeClarityValue<ClarityValueOptionalBool>(contract.tx_result.hex);
+  args.result =
+    result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
+      ? 'true'
+      : 'false';
 
   return args;
 }
@@ -786,7 +788,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (!delegate_to) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  args.delegate_to = delegate_to.repr;
+  args.delegate_to = delegate_to.repr.replace(/^'/, '');
 
   // Height on which the relation between delegator-delagatee will end  - OPTIONAL
   argName = 'until-burn-ht';
@@ -803,16 +805,18 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
-    const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
-    if (pox_address_cv.type === ClarityType.OptionalSome) {
-      if (pox_address_cv.value.type === ClarityType.Tuple)
-        args.pox_addr = bufferToHexPrefixString(serializeCV(pox_address_cv.value));
+    const pox_address_cv = decodeClarityValue<ClarityValueOptional>(pox_address_raw.hex);
+    if (pox_address_cv.type_id === ClarityTypeID.OptionalSome) {
+      args.pox_addr = pox_address_cv.value.hex;
     }
   }
 
   // Call result
-  const result: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  args.result = result.value.type === ClarityType.BoolTrue ? 'true' : 'false';
+  const result = decodeClarityValue<ClarityValueOptionalBool>(contract.tx_result.hex);
+  args.result =
+    result.type_id === ClarityTypeID.OptionalSome && result.value.type_id === ClarityTypeID.BoolTrue
+      ? 'true'
+      : 'false';
 
   return args;
 }
@@ -853,16 +857,22 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   args.start_burn_height = start_burn_height.repr.replace(/[^\d.-]/g, '');
 
   // Unlock burn height
-  const temp: SomeCV = deserializeCV(hexToBuffer(contract.tx_result.hex));
-  const resultTuple = temp.value as TupleCV;
-  if (resultTuple.data !== undefined) {
-    args.unlock_burn_height = cvToString(resultTuple.data['unlock-burn-height']).replace(
-      /[^\d.-]/g,
-      ''
-    );
+  const temp = decodeClarityValue<
+    ClarityValueResponse<
+      ClarityValueTuple<{
+        'unlock-burn-height': ClarityValueUInt;
+        stacker: ClarityValuePrincipalStandard;
+      }>
+    >
+  >(contract.tx_result.hex);
+  if (temp.type_id === ClarityTypeID.ResponseOk) {
+    const resultTuple = temp.value;
+    if (resultTuple.data !== undefined) {
+      args.unlock_burn_height = resultTuple.data['unlock-burn-height'].value;
 
-    // Stacker address
-    args.stacker_address = cvToString(resultTuple.data['stacker']);
+      // Stacker address
+      args.stacker_address = resultTuple.data.stacker.address;
+    }
   }
 
   // BTC reward address
@@ -871,12 +881,18 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
   if (!pox_address_raw) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
-  const pox_address_cv = deserializeCV(hexToBuffer(pox_address_raw.hex));
-  if (pox_address_cv.type === ClarityType.Tuple) {
+  const pox_address_cv = decodeClarityValue(pox_address_raw.hex);
+  if (pox_address_cv.type_id === ClarityTypeID.Tuple) {
     const chainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
     try {
+      const addressCV = pox_address_cv as ClarityValueTuple<{
+        version: ClarityValueBuffer;
+        hashbytes: ClarityValueBuffer;
+      }>;
+      // TODO(perf): this should be able to use stacks-native-encoding stx-to-btc address fn
       args.pox_addr = poxAddressToBtcAddress(
-        pox_address_cv,
+        hexToBuffer(addressCV.data.version.buffer),
+        hexToBuffer(addressCV.data.hashbytes.buffer),
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
     } catch (error) {
@@ -945,42 +961,36 @@ export function isSignedTransaction(transaction: StacksTransaction): boolean {
 }
 
 export function rawTxToBaseTx(raw_tx: string): BaseTx {
-  const txBuffer = Buffer.from(raw_tx.substring(2), 'hex');
-  const txId = '0x' + txidFromData(txBuffer);
-  const bufferReader = BufferReader.fromBuffer(txBuffer);
-  const transaction = readTransaction(bufferReader);
+  const transaction = decodeTransaction(raw_tx);
+  const txId = transaction.tx_id;
 
   const txSender = getTxSenderAddress(transaction);
   const sponsorAddress = getTxSponsorAddress(transaction);
-  const payload: any = transaction.payload;
-  const fee = transaction.auth.originCondition.feeRate;
-  const amount = payload.amount;
-  transaction.auth.originCondition;
-  const recipientAddr =
-    payload.recipient && payload.recipient.address
-      ? addressToString({
-          type: payload.recipient.typeId,
-          version: payload.recipient.address.version,
-          hash160: payload.recipient.address.bytes.toString('hex'),
-        })
-      : '';
+  const fee = BigInt(transaction.auth.origin_condition.tx_fee);
+  let amount: bigint | undefined = undefined;
+  let recipientAddr = '';
   const sponsored = sponsorAddress ? true : false;
 
   let transactionType = DbTxTypeId.TokenTransfer;
-  switch (transaction.payload.typeId) {
-    case TransactionPayloadTypeID.TokenTransfer:
+  switch (transaction.payload.type_id) {
+    case TxPayloadTypeID.TokenTransfer:
+      amount = BigInt(transaction.payload.amount);
+      recipientAddr = transaction.payload.recipient.address;
+      if (transaction.payload.recipient.type_id === PrincipalTypeID.Contract) {
+        recipientAddr += '.' + transaction.payload.recipient.contract_name;
+      }
       transactionType = DbTxTypeId.TokenTransfer;
       break;
-    case TransactionPayloadTypeID.SmartContract:
+    case TxPayloadTypeID.SmartContract:
       transactionType = DbTxTypeId.SmartContract;
       break;
-    case TransactionPayloadTypeID.ContractCall:
+    case TxPayloadTypeID.ContractCall:
       transactionType = DbTxTypeId.ContractCall;
       break;
-    case TransactionPayloadTypeID.Coinbase:
+    case TxPayloadTypeID.Coinbase:
       transactionType = DbTxTypeId.Coinbase;
       break;
-    case TransactionPayloadTypeID.PoisonMicroblock:
+    case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
       break;
   }
@@ -990,7 +1000,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     anchor_mode: 3,
     type_id: transactionType,
     status: '' as any,
-    nonce: Number(transaction.auth.originCondition.nonce),
+    nonce: Number(transaction.auth.origin_condition.nonce),
     fee_rate: fee,
     sender_address: txSender,
     token_transfer_amount: amount,
@@ -999,8 +1009,8 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   };
 
   const txPayload = transaction.payload;
-  if (txPayload.typeId === TransactionPayloadTypeID.TokenTransfer) {
-    dbtx.token_transfer_memo = txPayload.memo;
+  if (txPayload.type_id === TxPayloadTypeID.TokenTransfer) {
+    dbtx.token_transfer_memo = hexToBuffer(txPayload.memo_hex);
   }
 
   return dbtx;

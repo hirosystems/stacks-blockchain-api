@@ -1,12 +1,13 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
-import { DbBlock, DbMicroblockPartial, DbTx, DbTxTypeId } from '../datastore/common';
+import { DbBlock, DbMicroblockPartial, DbTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
+import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 
 describe('cache-control tests', () => {
   let db: PgDataStore;
@@ -16,7 +17,7 @@ describe('cache-control tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
@@ -324,6 +325,104 @@ describe('cache-control tests', () => {
       .set('If-None-Match', `"${mb1.microblock_hash}"`);
     expect(fetchBlockByHashCached2.status).toBe(304);
     expect(fetchBlockByHashCached2.text).toBe('');
+  });
+
+  test('mempool digest cache control', async () => {
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+    })
+      .addTx()
+      .build();
+    await db.update(block1);
+
+    // ETag zero.
+    const request1 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+    expect(request1.headers['etag']).toEqual('"0"');
+
+    // Add mempool txs.
+    const mempoolTx1 = testMempoolTx({ tx_id: '0x1101' });
+    const mempoolTx2 = testMempoolTx({ tx_id: '0x1102' });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
+
+    // Valid ETag.
+    const request2 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    expect(request2.status).toBe(200);
+    expect(request2.type).toBe('application/json');
+    expect(request2.headers['etag']).toBeTruthy();
+    const etag1 = request2.headers['etag'];
+
+    // Cache works with valid ETag.
+    const request3 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag1);
+    expect(request3.status).toBe(304);
+    expect(request3.text).toBe('');
+
+    // Drop one tx.
+    await db.dropMempoolTxs({ status: DbTxStatus.DroppedReplaceByFee, txIds: ['0x1101'] });
+
+    // Cache is now a miss.
+    const request4 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag1);
+    expect(request4.status).toBe(200);
+    expect(request4.type).toBe('application/json');
+    expect(request4.headers['etag'] !== etag1).toEqual(true);
+    const etag2 = request4.headers['etag'];
+
+    // Restore dropped tx.
+    await db.restoreMempoolTxs(client, ['0x1101']);
+
+    // Cache with new ETag now a miss, new ETag is the same as the original.
+    const request5 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag2);
+    expect(request5.status).toBe(200);
+    expect(request5.type).toBe('application/json');
+    expect(request5.headers['etag']).toEqual(etag1);
+
+    // Prune same tx.
+    await db.pruneMempoolTxs(client, ['0x1101']);
+
+    // ETag is now the same as when dropped.
+    const request6 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag1);
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    expect(request6.headers['etag']).toEqual(etag2);
+
+    // Garbage collect all txs.
+    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx()
+      .build();
+    await db.update(block2);
+
+    // ETag zero once again.
+    const request7 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    expect(request7.status).toBe(200);
+    expect(request7.type).toBe('application/json');
+    expect(request7.headers['etag']).toEqual('"0"');
+
+    // Simulate an incompatible pg version (without `bit_xor`).
+    await db.queryTx(async client => {
+      await client.query(`DROP MATERIALIZED VIEW mempool_digest`);
+      await client.query(`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`);
+    });
+
+    // ETag is undefined as if mempool cache did not exist.
+    const request8 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    expect(request8.status).toBe(200);
+    expect(request8.type).toBe('application/json');
+    expect(request8.headers['etag']).toBeUndefined();
   });
 
   afterEach(async () => {

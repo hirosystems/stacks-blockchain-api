@@ -1,4 +1,3 @@
-import { MemoryDataStore } from '../datastore/memory-store';
 import {
   DbBlock,
   DbTx,
@@ -32,42 +31,8 @@ import { PoolClient } from 'pg';
 import * as pgConnectionString from 'pg-connection-string';
 import { parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
-import { I32_MAX } from '../helpers';
-import { intCV, serializeCV } from '@stacks/transactions';
-
-describe('in-memory datastore', () => {
-  let db: MemoryDataStore;
-
-  beforeEach(() => {
-    db = new MemoryDataStore();
-  });
-
-  test('in-memory block store and retrieve', async () => {
-    const block: DbBlock = {
-      block_hash: '123',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x00',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      block_height: 123,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: false,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(block);
-    const blockQuery = await db.getBlock({ hash: block.block_hash });
-    assert(blockQuery.found);
-    expect(blockQuery.result).toEqual(block);
-  });
-});
+import { bnsNameCV, I32_MAX } from '../helpers';
+import { ChainID, intCV, serializeCV } from '@stacks/transactions';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -114,7 +79,7 @@ describe('postgres datastore', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 
@@ -999,6 +964,12 @@ describe('postgres datastore', () => {
         tx_id: '0x12340003',
         tx_index: 3,
       },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340002',
+        tx_index: 2,
+      },
     ]);
     expect(mapAddrTxResults(addrBResult.results)).toEqual([
       {
@@ -1012,6 +983,12 @@ describe('postgres datastore', () => {
         token_transfer_recipient_address: 'addrB',
         tx_id: '0x12340003',
         tx_index: 3,
+      },
+      {
+        sender_address: 'addrA',
+        token_transfer_recipient_address: 'addrB',
+        tx_id: '0x12340002',
+        tx_index: 2,
       },
     ]);
     expect(mapAddrTxResults(addrCResult.results)).toEqual([
@@ -1129,8 +1106,8 @@ describe('postgres datastore', () => {
       atSingleBlock: false,
     });
 
-    expect(addrAAtBlockResult.total).toBe(4);
-    expect(addrAAllBlockResult.total).toBe(9);
+    expect(addrAAtBlockResult.total).toBe(3);
+    expect(addrAAllBlockResult.total).toBe(7);
   });
 
   test('pg get address asset events', async () => {
@@ -3614,25 +3591,6 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const block3: DbBlock = {
-      block_hash: '0x33',
-      index_block_hash: '0xcc',
-      parent_index_block_hash: block2.index_block_hash,
-      parent_block_hash: block2.block_hash,
-      parent_microblock_hash: '',
-      block_height: 3,
-      burn_block_time: 1234,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
 
     const minerReward1: DbMinerReward = {
       ...block1,
@@ -3772,12 +3730,25 @@ describe('postgres datastore', () => {
           stxLockEvents: [stxLockEvent2],
           stxEvents: [],
           ftEvents: [],
-          nftEvents: [],
+          nftEvents: [
+            {
+              event_type: DbEventTypeId.NonFungibleTokenAsset,
+              asset_event_type_id: DbAssetEventTypeId.Mint,
+              value: bnsNameCV('xyz.abc'),
+              asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+              recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              tx_id: tx2.tx_id,
+              tx_index: tx2.tx_index,
+              block_height: 2,
+              event_index: 1,
+              canonical: true,
+            },
+          ],
           contractLogEvents: [],
           smartContracts: [],
           names: [
             {
-              name: 'xyz',
+              name: 'xyz.abc',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
               registered_at: 2,
@@ -3841,7 +3812,11 @@ describe('postgres datastore', () => {
       ]
     );
 
-    let name = await db.getName({ name: 'xyz', includeUnanchored: false });
+    let name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2.index_block_hash);
@@ -3856,6 +3831,25 @@ describe('postgres datastore', () => {
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
 
+    const block3: DbBlock = {
+      block_hash: '0x33',
+      index_block_hash: '0xcc',
+      parent_index_block_hash: block2.index_block_hash,
+      parent_block_hash: block2.block_hash,
+      parent_microblock_hash: '',
+      block_height: 3,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
     const block2b: DbBlock = {
@@ -3930,22 +3924,35 @@ describe('postgres datastore', () => {
           stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
-          nftEvents: [],
+          nftEvents: [
+            {
+              event_type: DbEventTypeId.NonFungibleTokenAsset,
+              asset_event_type_id: DbAssetEventTypeId.Mint,
+              value: bnsNameCV('xyz.abc'),
+              asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+              recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+              tx_id: tx3.tx_id,
+              tx_index: tx3.tx_index,
+              block_height: block2b.block_height,
+              event_index: 0,
+              canonical: true,
+            },
+          ],
           contractLogEvents: [],
           smartContracts: [contract1],
           names: [
             {
-              name: 'xyz',
+              name: 'xyz.abc',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
-              registered_at: 2,
+              registered_at: block2b.block_height,
               expire_block: 14,
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
               canonical: true,
-              tx_id: tx2.tx_id,
-              tx_index: tx2.tx_index,
+              tx_id: tx3.tx_id,
+              tx_index: tx3.tx_index,
             },
           ],
           namespaces: [
@@ -3963,8 +3970,8 @@ describe('postgres datastore', () => {
               status: 'ready',
               buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
               canonical: true,
-              tx_id: tx2.tx_id,
-              tx_index: tx2.tx_index,
+              tx_id: tx3.tx_id,
+              tx_index: tx3.tx_index,
             },
           ],
         },
@@ -4012,7 +4019,11 @@ describe('postgres datastore', () => {
     });
     expect(names.results.length).toBe(1);
 
-    name = await db.getName({ name: 'xyz', includeUnanchored: false });
+    name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4073,7 +4084,11 @@ describe('postgres datastore', () => {
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
-    name = await db.getName({ name: 'xyz', includeUnanchored: false });
+    name = await db.getName({
+      name: 'xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
     expect(name.result.index_block_hash).toBe(block2b.index_block_hash);
@@ -4847,7 +4862,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr-test',
     };
 
-    const rowCount = await db.updateNFtMetadata(nftMetadata, 0);
+    const rowCount = await db.updateNFtMetadata(nftMetadata);
     expect(rowCount).toBe(1);
 
     const query = await db.getNftMetadata(nftMetadata.contract_id);
@@ -4869,7 +4884,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr-test',
     };
 
-    const rowCount = await db.updateFtMetadata(ftMetadata, 0);
+    const rowCount = await db.updateFtMetadata(ftMetadata);
     expect(rowCount).toBe(1);
 
     const query = await db.getFtMetadata(ftMetadata.contract_id);

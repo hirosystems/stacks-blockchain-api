@@ -20,9 +20,10 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { logger, timeout } from '../helpers';
+import { logger, timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
-import { performFetch, TokensProcessorQueue } from './../event-stream/tokens-contract-handler';
+import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
+import { performFetch } from '../token-metadata/helpers';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -163,6 +164,28 @@ describe('api tests', () => {
     expect(query1.body).toHaveProperty('image_canonical_uri');
     expect(query1.body).toHaveProperty('tx_id');
     expect(query1.body).toHaveProperty('sender_address');
+  });
+
+  test('failed processing is retried in next block', async () => {
+    const entryProcessedWaiter: Waiter<string> = waiter();
+    const blockHandler = async (blockHash: string) => {
+      const entry = await db.getTokenMetadataQueueEntry(1);
+      if (entry.result?.processed) {
+        entryProcessedWaiter.finish(blockHash);
+      }
+    };
+    db.on('blockUpdate', blockHandler);
+    // Set as not processed.
+    await db.query(async client => {
+      await client.query(
+        `UPDATE token_metadata_queue
+        SET processed = false
+        WHERE queue_id = 1`
+      );
+    });
+    // This will resolve when processed is true again.
+    await entryProcessedWaiter;
+    db.off('blockUpdate', blockHandler);
   });
 
   test('token nft-metadata data URL base64 w/o media type', async () => {
@@ -307,7 +330,7 @@ describe('api tests', () => {
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
       };
-      await db.updateFtMetadata(ftMetadata, 0);
+      await db.updateFtMetadata(ftMetadata);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
@@ -340,7 +363,7 @@ describe('api tests', () => {
         sender_address: 'ABCDEFGHIJ',
       };
 
-      await db.updateNFtMetadata(nftMetadata, 0);
+      await db.updateNFtMetadata(nftMetadata);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);

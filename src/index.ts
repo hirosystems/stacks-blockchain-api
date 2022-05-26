@@ -5,32 +5,28 @@ import {
   logError,
   isProdEnv,
   numberToHex,
-  httpPostRequest,
   parseArgBoolean,
+  getApiConfiguredChainID,
+  getStacksNodeChainID,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { DataStore } from './datastore/common';
-import { cycleMigrations, dangerousDropAllTables, PgDataStore } from './datastore/postgres-store';
-import { MemoryDataStore } from './datastore/memory-store';
+import { PgDataStore } from './datastore/postgres-store';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
-import {
-  isFtMetadataEnabled,
-  isNftMetadataEnabled,
-  TokensProcessorQueue,
-} from './event-stream/tokens-contract-handler';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
-import { ChainID } from '@stacks/transactions';
 import { registerShutdownConfig } from './shutdown-handler';
 import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
-import * as path from 'path';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
+import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
+import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
+import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 
 enum StacksApiMode {
   /**
@@ -79,7 +75,10 @@ function getApiMode(): StacksApiMode {
 
 loadDotEnv();
 
-sourceMapSupport.install({ handleUncaughtExceptions: false });
+// ts-node has automatic source map support, avoid clobbering
+if (!process.execArgv.some(r => r.includes('ts-node'))) {
+  sourceMapSupport.install({ handleUncaughtExceptions: false });
+}
 
 injectC32addressEncodeCache();
 
@@ -104,29 +103,6 @@ async function monitorCoreRpcConnection(): Promise<void> {
   }
 }
 
-async function getCoreChainID(): Promise<ChainID> {
-  const client = new StacksCoreRpcClient();
-  await client.waitForConnection(Infinity);
-  const coreInfo = await client.getInfo();
-  if (coreInfo.network_id === ChainID.Mainnet) {
-    return ChainID.Mainnet;
-  } else if (coreInfo.network_id === ChainID.Testnet) {
-    return ChainID.Testnet;
-  } else {
-    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
-  }
-}
-
-function getConfiguredChainID() {
-  if (!('STACKS_CHAIN_ID' in process.env)) {
-    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logError(error.message, error);
-    throw error;
-  }
-  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
-  return configuredChainID;
-}
-
 async function init(): Promise<void> {
   if (isProdEnv && !fs.existsSync('.git-info')) {
     throw new Error(
@@ -140,27 +116,11 @@ async function init(): Promise<void> {
   if (apiMode === StacksApiMode.offline) {
     db = OfflineDummyStore;
   } else {
-    switch (process.env['STACKS_BLOCKCHAIN_API_DB']) {
-      case 'memory': {
-        logger.info('using in-memory db');
-        db = new MemoryDataStore();
-        break;
-      }
-      case 'pg':
-      case undefined: {
-        const skipMigrations = apiMode === StacksApiMode.readOnly;
-        db = await PgDataStore.connect({
-          usageName: `datastore-${apiMode}`,
-          skipMigrations: skipMigrations,
-        });
-        break;
-      }
-      default: {
-        throw new Error(
-          `Invalid STACKS_BLOCKCHAIN_API_DB option: "${process.env['STACKS_BLOCKCHAIN_API_DB']}"`
-        );
-      }
-    }
+    const skipMigrations = apiMode === StacksApiMode.readOnly;
+    db = await PgDataStore.connect({
+      usageName: `datastore-${apiMode}`,
+      skipMigrations: skipMigrations,
+    });
 
     if (apiMode !== StacksApiMode.readOnly) {
       if (db instanceof PgDataStore) {
@@ -178,7 +138,7 @@ async function init(): Promise<void> {
         }
       }
 
-      const configuredChainID = getConfiguredChainID();
+      const configuredChainID = getApiConfiguredChainID();
 
       const eventServer = await startEventServer({
         datastore: db,
@@ -190,7 +150,7 @@ async function init(): Promise<void> {
         forceKillable: false,
       });
 
-      const networkChainId = await getCoreChainID();
+      const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
         const chainIdConfig = numberToHex(configuredChainID);
         const chainIdNode = numberToHex(networkChainId);
@@ -224,7 +184,7 @@ async function init(): Promise<void> {
   }
 
   if (apiMode !== StacksApiMode.writeOnly) {
-    const apiServer = await startApiServer({ datastore: db, chainId: getConfiguredChainID() });
+    const apiServer = await startApiServer({ datastore: db, chainId: getApiConfiguredChainID() });
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
@@ -303,6 +263,7 @@ function getProgramArgs() {
         operand: 'import-events';
         options: {
           ['file']?: string;
+          ['mode']?: string;
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
@@ -313,83 +274,14 @@ function getProgramArgs() {
 async function handleProgramArgs() {
   const { args, parsedOpts } = getProgramArgs();
   if (args.operand === 'export-events') {
-    if (!args.options.file) {
-      throw new Error(`A file path should be specified with the --file option`);
-    }
-    const filePath = path.resolve(args.options.file);
-    if (fs.existsSync(filePath) && args.options['overwrite-file'] !== true) {
-      throw new Error(
-        `A file already exists at ${filePath}. Add --overwrite-file to truncate an existing file`
-      );
-    }
-    console.log(`Export event data to file: ${filePath}`);
-    const writeStream = fs.createWriteStream(filePath);
-    console.log(`Export started...`);
-    await PgDataStore.exportRawEventRequests(writeStream);
-    console.log('Export successful.');
+    await exportEventsAsTsv(args.options.file, args.options['overwrite-file']);
   } else if (args.operand === 'import-events') {
-    if (!args.options.file) {
-      throw new Error(`A file path should be specified with the --file option`);
-    }
-    const filePath = path.resolve(args.options.file);
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File does not exist: ${filePath}`);
-    }
-    const hasData = await PgDataStore.containsAnyRawEventRequests();
-    if (!args.options['wipe-db'] && hasData) {
-      throw new Error(
-        `Database contains existing data. Add --wipe-db to drop the existing tables.`
-      );
-    }
-
-    if (args.options['force']) {
-      await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
-    }
-
-    // This performs a "migration down" which drops the tables, then re-creates them.
-    // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
-    // or the `--force` option can be used.
-    await cycleMigrations({ dangerousAllowDataLoss: true });
-
-    const db = await PgDataStore.connect({
-      usageName: 'import-events',
-      skipMigrations: true,
-      withNotifier: false,
-      eventReplay: true,
-    });
-    const eventServer = await startEventServer({
-      datastore: db,
-      chainId: getConfiguredChainID(),
-      serverHost: '127.0.0.1',
-      serverPort: 0,
-      httpLogLevel: 'debug',
-    });
-
-    const readStream = fs.createReadStream(filePath);
-    const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
-      console.log(status);
-    });
-    // Set logger to only output for warnings/errors, otherwise the event replay will result
-    // in the equivalent of months/years of API log output.
-    logger.level = 'warn';
-    // Disable this feature so a redundant export file isn't created while importing from an existing one.
-    delete process.env['STACKS_EXPORT_EVENTS_FILE'];
-    for await (const rawEvents of rawEventsIterator) {
-      for (const rawEvent of rawEvents) {
-        await httpPostRequest({
-          host: '127.0.0.1',
-          port: eventServer.serverAddress.port,
-          path: rawEvent.event_path,
-          headers: { 'Content-Type': 'application/json' },
-          body: Buffer.from(rawEvent.payload, 'utf8'),
-          throwOnNotOK: true,
-        });
-      }
-    }
-    await db.finishEventReplay();
-    console.log(`Event import and playback successful.`);
-    await eventServer.closeAsync();
-    await db.close();
+    await importEventsFromTsv(
+      args.options.file,
+      args.options.mode,
+      args.options['wipe-db'],
+      args.options.force
+    );
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {

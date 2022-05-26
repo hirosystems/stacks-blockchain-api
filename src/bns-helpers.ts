@@ -1,30 +1,29 @@
-import {
-  deserializeCV,
-  ClarityType,
-  ClarityValue,
-  BufferCV,
-  StandardPrincipalCV,
-  TupleCV,
-  BufferReader,
-  Address,
-  IntCV,
-  addressToString,
-  StringAsciiCV,
-  SomeCV,
-  UIntCV,
-  ListCV,
-  ChainID,
-} from '@stacks/transactions';
+import { Address, ChainID, StacksMessageType } from '@stacks/transactions';
 import { DbBnsNamespace } from './datastore/common';
-import { hexToBuffer } from './helpers';
-import BN = require('bn.js');
+import { hexToBuffer, hexToUtf8String } from './helpers';
 import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
-import { TransactionPayloadTypeID } from './p2p/tx';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
 import { BnsContractIdentifier } from './bns-constants';
 import * as crypto from 'crypto';
+import {
+  ClarityTypeID,
+  decodeClarityValue,
+  ClarityValue,
+  ClarityValueBuffer,
+  ClarityValueInt,
+  ClarityValueList,
+  ClarityValueOptional,
+  ClarityValueOptionalSome,
+  ClarityValueOptionalUInt,
+  ClarityValuePrincipalStandard,
+  ClarityValueStringAscii,
+  ClarityValueTuple,
+  ClarityValueUInt,
+  TxPayloadTypeID,
+  ClarityValuePrincipalContract,
+} from 'stacks-encoding-native-js';
 
 interface Attachment {
   attachment: {
@@ -32,45 +31,64 @@ interface Attachment {
     metadata: {
       name: string;
       namespace: string;
-      tx_sender: Address;
+      tx_sender: {
+        address: string;
+        version: number;
+        hash160: string;
+      };
       op: string;
     };
   };
 }
 
 export function parseNameRawValue(rawValue: string): Attachment {
-  const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
-  if (cl_val.type == ClarityType.Tuple) {
-    const attachment = cl_val.data['attachment'] as TupleCV;
-
-    const hash: BufferCV = attachment.data['hash'] as BufferCV;
-    const contentHash = hash.buffer.toString('hex');
-
-    const metadataCV: TupleCV = attachment.data['metadata'] as TupleCV;
-
-    const nameCV: BufferCV = metadataCV.data['name'] as BufferCV;
-    const name = nameCV.buffer.toString();
-    const namespaceCV: BufferCV = metadataCV.data['namespace'] as BufferCV;
-    const namespace = namespaceCV.buffer.toString();
-    const opCV: StringAsciiCV = metadataCV.data['op'] as StringAsciiCV;
-    const op = opCV.data;
-    const addressCV: StandardPrincipalCV = metadataCV.data['tx-sender'] as StandardPrincipalCV;
-    const address = addressCV.address;
-
-    const result: Attachment = {
-      attachment: {
-        hash: contentHash,
-        metadata: {
-          name: name,
-          namespace: namespace,
-          tx_sender: address,
-          op: op,
-        },
-      },
-    };
-    return result;
+  const cl_val = decodeClarityValue<
+    ClarityValueTuple<{
+      attachment: ClarityValueTuple<{
+        hash: ClarityValueBuffer;
+        metadata: ClarityValueTuple<{
+          name: ClarityValueBuffer;
+          namespace: ClarityValueBuffer;
+          op: ClarityValueStringAscii;
+          'tx-sender': ClarityValuePrincipalStandard;
+        }>;
+      }>;
+    }>
+  >(rawValue);
+  if (cl_val.type_id !== ClarityTypeID.Tuple) {
+    throw Error('Invalid clarity type');
   }
-  throw Error('Invalid clarity type');
+  const attachment = cl_val.data.attachment;
+
+  const hash = attachment.data.hash;
+  const contentHash = hexToBuffer(hash.buffer).toString('hex');
+
+  const metadataCV = attachment.data.metadata;
+
+  const nameCV = metadataCV.data.name;
+  const name = hexToUtf8String(nameCV.buffer);
+  const namespaceCV = metadataCV.data.namespace;
+  const namespace = hexToUtf8String(namespaceCV.buffer);
+  const opCV = metadataCV.data.op;
+  const op = opCV.data;
+  const addressCV = metadataCV.data['tx-sender'];
+
+  const result: Attachment = {
+    attachment: {
+      hash: contentHash,
+      metadata: {
+        name: name,
+        namespace: namespace,
+        tx_sender: {
+          address: addressCV.address,
+          version: addressCV.address_version,
+          hash160: hexToBuffer(addressCV.address_hash_bytes).toString('hex'),
+        },
+        op: op,
+      },
+    },
+  };
+  return result;
 }
 
 export function parseNamespaceRawValue(
@@ -79,77 +97,92 @@ export function parseNamespaceRawValue(
   txid: string,
   txIndex: number
 ): DbBnsNamespace | undefined {
-  const cl_val: ClarityValue = deserializeCV(hexToBuffer(rawValue));
-  if (cl_val.type == ClarityType.Tuple) {
-    const namespaceCV: BufferCV = cl_val.data['namespace'] as BufferCV;
-    const namespace = namespaceCV.buffer.toString();
-    const statusCV: StringAsciiCV = cl_val.data['status'] as StringAsciiCV;
-    const status = statusCV.data;
-
-    const properties = cl_val.data['properties'] as TupleCV;
-
-    const launched_atCV = properties.data['launched-at'] as SomeCV;
-    const launch_atintCV = launched_atCV.value as UIntCV;
-    const launched_at = parseInt(launch_atintCV.value.toString());
-    const lifetimeCV = properties.data['lifetime'] as IntCV;
-    const lifetime: bigint = lifetimeCV.value;
-    const revealed_atCV = properties.data['revealed-at'] as IntCV;
-    const revealed_at: bigint = revealed_atCV.value;
-    const addressCV: StandardPrincipalCV = properties.data[
-      'namespace-import'
-    ] as StandardPrincipalCV;
-    const address = addressCV.address;
-
-    const price_function = properties.data['price-function'] as TupleCV;
-
-    const baseCV = price_function.data['base'] as IntCV;
-    const base: bigint = baseCV.value;
-    const coeffCV = price_function.data['coeff'] as IntCV;
-    const coeff: bigint = coeffCV.value;
-    const no_vowel_discountCV = price_function.data['no-vowel-discount'] as IntCV;
-    const no_vowel_discount: bigint = no_vowel_discountCV.value;
-    const nonalpha_discountCV = price_function.data['nonalpha-discount'] as IntCV;
-    const nonalpha_discount: bigint = nonalpha_discountCV.value;
-    const bucketsCV = price_function.data['buckets'] as ListCV;
-
-    const buckets: bigint[] = [];
-    const listCV = bucketsCV.list;
-    for (let i = 0; i < listCV.length; i++) {
-      const cv = listCV[i];
-      if (cv.type === ClarityType.UInt) {
-        buckets.push(cv.value);
-      }
-    }
-
-    const namespaceBns: DbBnsNamespace = {
-      namespace_id: namespace,
-      address: addressToString(address),
-      base: Number(base),
-      coeff: Number(coeff),
-      launched_at: launched_at,
-      lifetime: Number(lifetime),
-      no_vowel_discount: Number(no_vowel_discount),
-      nonalpha_discount: Number(nonalpha_discount),
-      ready_block: readyBlock,
-      reveal_block: Number(revealed_at),
-      status: status,
-      buckets: buckets.toString(),
-      tx_id: txid,
-      tx_index: txIndex,
-      canonical: true,
-    };
-    return namespaceBns;
+  const cl_val = decodeClarityValue<
+    ClarityValueTuple<{
+      namespace: ClarityValueBuffer;
+      status: ClarityValueStringAscii;
+      properties: ClarityValueTuple<{
+        'launched-at': ClarityValueOptionalUInt;
+        lifetime: ClarityValueUInt;
+        'revealed-at': ClarityValueUInt;
+        'namespace-import': ClarityValuePrincipalStandard;
+        'price-function': ClarityValueTuple<{
+          base: ClarityValueUInt;
+          coeff: ClarityValueUInt;
+          'no-vowel-discount': ClarityValueUInt;
+          'nonalpha-discount': ClarityValueUInt;
+          buckets: ClarityValueList<ClarityValueUInt>;
+        }>;
+      }>;
+    }>
+  >(rawValue);
+  if (cl_val.type_id !== ClarityTypeID.Tuple) {
+    throw new Error('Invalid clarity type');
   }
 
-  throw new Error('Invalid clarity type');
+  const namespaceCV = cl_val.data.namespace;
+  const namespace = hexToUtf8String(namespaceCV.buffer);
+  const statusCV = cl_val.data.status;
+  const status = statusCV.data;
+  const properties = cl_val.data.properties;
+
+  const launched_atCV = properties.data['launched-at'];
+  const launched_at =
+    launched_atCV.type_id === ClarityTypeID.OptionalSome ? parseInt(launched_atCV.value.value) : 0;
+  const lifetimeCV = properties.data.lifetime;
+  const lifetime = BigInt(lifetimeCV.value);
+  const revealed_atCV = properties.data['revealed-at'];
+  const revealed_at = BigInt(revealed_atCV.value);
+  const addressCV = properties.data['namespace-import'];
+  const address = addressCV.address;
+
+  const price_function = properties.data['price-function'];
+
+  const baseCV = price_function.data.base;
+  const base = BigInt(baseCV.value);
+  const coeffCV = price_function.data.coeff;
+  const coeff = BigInt(coeffCV.value);
+  const no_vowel_discountCV = price_function.data['no-vowel-discount'];
+  const no_vowel_discount = BigInt(no_vowel_discountCV.value);
+  const nonalpha_discountCV = price_function.data['nonalpha-discount'];
+  const nonalpha_discount = BigInt(nonalpha_discountCV.value);
+  const bucketsCV = price_function.data.buckets;
+
+  const buckets: bigint[] = [];
+  const listCV = bucketsCV.list;
+  for (let i = 0; i < listCV.length; i++) {
+    const cv = listCV[i];
+    if (cv.type_id === ClarityTypeID.UInt) {
+      buckets.push(BigInt(cv.value));
+    }
+  }
+
+  const namespaceBns: DbBnsNamespace = {
+    namespace_id: namespace,
+    address: address,
+    base: Number(base),
+    coeff: Number(coeff),
+    launched_at: launched_at,
+    lifetime: Number(lifetime),
+    no_vowel_discount: Number(no_vowel_discount),
+    nonalpha_discount: Number(nonalpha_discount),
+    ready_block: readyBlock,
+    reveal_block: Number(revealed_at),
+    status: status,
+    buckets: buckets.toString(),
+    tx_id: txid,
+    tx_index: txIndex,
+    canonical: true,
+  };
+  return namespaceBns;
 }
 
 export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMessage[]): string {
   const contract_function_name: string = '';
   for (const tx of transactions) {
     if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.ContractCall) {
-        return tx.parsed_tx.payload.functionName;
+      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
+        return tx.parsed_tx.payload.function_name;
       }
     }
   }
@@ -159,18 +192,22 @@ export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMes
 export function getNewOwner(
   tx_id: string,
   transactions: CoreNodeParsedTxMessage[]
-): Address | undefined {
+): string | undefined {
   for (const tx of transactions) {
     if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.typeId === TransactionPayloadTypeID.ContractCall) {
+      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
         if (
-          tx.parsed_tx.payload.functionArgs.length >= 3 &&
-          tx.parsed_tx.payload.functionArgs[2].type === ClarityType.PrincipalStandard
-        )
-          return tx.parsed_tx.payload.functionArgs[2].address;
+          tx.parsed_tx.payload.function_args.length >= 3 &&
+          tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
+        ) {
+          const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
+          const principal = decoded as ClarityValuePrincipalStandard;
+          principal.address;
+        }
       }
     }
   }
+  return undefined;
 }
 
 export function GetStacksNetwork(chainId: ChainID) {

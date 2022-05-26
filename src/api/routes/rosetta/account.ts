@@ -16,7 +16,7 @@ import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../roset
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 import { getValidatedFtMetadata } from '../../../rosetta-helpers';
-import { isFtMetadataEnabled } from '../../../event-stream/tokens-contract-handler';
+import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
 
 export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -36,11 +36,6 @@ export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): exp
       const blockIdentifier: RosettaBlockIdentifier = req.body.block_identifier;
       let blockQuery: FoundOrNot<DbBlock>;
       let blockHash: string = '0x';
-
-      if (accountIdentifier === undefined) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.emptyAccountIdentifier]);
-        return;
-      }
 
       // we need to return the block height/hash in the response, so we
       // need to fetch the block first.

@@ -1,7 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BurnchainReward",
   "description": "Reward payment made on the burnchain",
+  "additionalProperties": false,
   "type": "object",
   "required": ["canonical", "burn_block_hash", "burn_block_height", "burn_amount", "reward_recipient", "reward_amount", "reward_index"],
   "properties": {

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "BaseTransaction",
   "description": "Transaction properties that are available from a raw serialized transactions. These are available for transactions in the mempool as well as mined transactions.",
   "type": "object",
@@ -30,6 +29,9 @@
     "sender_address": {
       "type": "string",
       "description": "Address of the transaction initiator"
+    },
+    "sponsor_nonce": {
+      "type": "integer"
     },
     "sponsored": {
       "type": "boolean",

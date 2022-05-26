@@ -1,6 +1,7 @@
 {
   "type": "object",
   "title": "RosettaParentBlockIdentifier",
+  "additionalProperties": false,
   "description": "The block_identifier uniquely identifies a block in a particular network.",
   "required": ["index", "hash"],
   "properties": {

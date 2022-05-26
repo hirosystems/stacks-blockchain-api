@@ -1,9 +1,23 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Microblock",
   "description": "A microblock",
   "type": "object",
-  "required": ["canonical", "microblock_canonical", "microblock_hash", "microblock_sequence", "microblock_parent_hash", "parent_index_block_hash", "block_height", "parent_block_height", "parent_block_hash", "block_hash", "txs", "parent_burn_block_time", "parent_burn_block_time_iso", "parent_burn_block_hash", "parent_burn_block_height"],
+  "required": [
+    "canonical",
+    "microblock_canonical",
+    "microblock_hash",
+    "microblock_sequence",
+    "microblock_parent_hash",
+    "block_height",
+    "parent_block_height",
+    "parent_block_hash",
+    "block_hash",
+    "txs",
+    "parent_burn_block_time",
+    "parent_burn_block_time_iso",
+    "parent_burn_block_hash",
+    "parent_burn_block_height"
+  ],
   "additionalProperties": false,
   "properties": {
     "canonical": {

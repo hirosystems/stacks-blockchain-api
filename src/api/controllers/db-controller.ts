@@ -1,13 +1,15 @@
 import {
   abiFunctionToString,
-  BufferReader,
   ClarityAbi,
   ClarityAbiFunction,
-  cvToString,
-  deserializeCV,
   getTypeString,
-  serializeCV,
 } from '@stacks/transactions';
+import {
+  decodeClarityValueList,
+  decodeClarityValueToRepr,
+  decodeClarityValueToTypeName,
+  decodePostConditions,
+} from 'stacks-encoding-native-js';
 
 import {
   AbstractMempoolTransaction,
@@ -22,6 +24,7 @@ import {
   MempoolTransactionStatus,
   Microblock,
   PoisonMicroblockTransactionMetadata,
+  PostCondition,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
@@ -59,6 +62,8 @@ import {
   DbSmartContract,
   DbSearchResultWithMetadata,
   BaseTx,
+  DbMinerReward,
+  StxUnlockEvent,
 } from '../../datastore/common';
 import {
   unwrapOptional,
@@ -70,7 +75,6 @@ import {
   unixEpochToIso,
   EMPTY_HASH_256,
 } from '../../helpers';
-import { readClarityValueArray, readTransactionPostConditions } from '../../p2p/tx';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
 
@@ -212,8 +216,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
       const valueBuffer = dbEvent.value;
-      const valueHex = bufferToHexPrefixString(valueBuffer);
-      const valueRepr = cvToString(deserializeCV(valueBuffer));
+      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -221,7 +224,10 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
         contract_log: {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
-          value: { hex: valueHex, repr: valueRepr },
+          value: {
+            hex: bufferToHexPrefixString(valueBuffer),
+            repr: parsedClarityValue,
+          },
         },
       };
       return event;
@@ -270,8 +276,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
       const valueBuffer = dbEvent.value;
-      const valueHex = bufferToHexPrefixString(valueBuffer);
-      const valueRepr = cvToString(deserializeCV(valueBuffer));
+      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -282,8 +287,8 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           sender: dbEvent.sender || '',
           recipient: dbEvent.recipient || '',
           value: {
-            hex: valueHex,
-            repr: valueRepr,
+            hex: bufferToHexPrefixString(valueBuffer),
+            repr: parsedClarityValue,
           },
         },
       };
@@ -480,6 +485,71 @@ function parseDbBlock(
   return apiBlock;
 }
 
+async function parseRosettaTxDetail(opts: {
+  block_height: number;
+  indexBlockHash: string;
+  tx: DbTx;
+  db: DataStore;
+  minerRewards: DbMinerReward[];
+  unlockingEvents: StxUnlockEvent[];
+}): Promise<RosettaTransaction> {
+  let events: DbEvent[] = [];
+  if (opts.block_height > 1) {
+    // only return events of blocks at height greater than 1
+    const eventsQuery = await opts.db.getTxEvents({
+      txId: opts.tx.tx_id,
+      indexBlockHash: opts.indexBlockHash,
+      limit: 5000,
+      offset: 0,
+    });
+    events = eventsQuery.results;
+  }
+  const operations = await getOperations(
+    opts.tx,
+    opts.db,
+    opts.minerRewards,
+    events,
+    opts.unlockingEvents
+  );
+  const txMemo = parseTransactionMemo(opts.tx);
+  const rosettaTx: RosettaTransaction = {
+    transaction_identifier: { hash: opts.tx.tx_id },
+    operations: operations,
+  };
+  if (txMemo) {
+    rosettaTx.metadata = {
+      memo: txMemo,
+    };
+  }
+  return rosettaTx;
+}
+
+async function getRosettaBlockTxFromDataStore(opts: {
+  tx: DbTx;
+  block: DbBlock;
+  db: DataStore;
+}): Promise<FoundOrNot<RosettaTransaction>> {
+  let minerRewards: DbMinerReward[] = [],
+    unlockingEvents: StxUnlockEvent[] = [];
+
+  if (opts.tx.type_id === DbTxTypeId.Coinbase) {
+    minerRewards = await opts.db.getMinersRewardsAtHeight({
+      blockHeight: opts.block.block_height,
+    });
+    unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.block);
+  }
+
+  const rosettaTx = await parseRosettaTxDetail({
+    block_height: opts.block.block_height,
+    indexBlockHash: opts.tx.index_block_hash,
+    tx: opts.tx,
+    db: opts.db,
+    minerRewards,
+    unlockingEvents,
+  });
+  return { found: true, result: rosettaTx };
+}
+
 async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
@@ -504,28 +574,14 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
   const transactions: RosettaTransaction[] = [];
 
   for (const tx of txsQuery.result) {
-    let events: DbEvent[] = [];
-    if (blockQuery.result.block_height > 1) {
-      // only return events of blocks at height greater than 1
-      const eventsQuery = await opts.db.getTxEvents({
-        txId: tx.tx_id,
-        indexBlockHash: opts.indexBlockHash,
-        limit: 5000,
-        offset: 0,
-      });
-      events = eventsQuery.results;
-    }
-    const operations = await getOperations(tx, opts.db, minerRewards, events, unlockingEvents);
-    const txMemo = parseTransactionMemo(tx);
-    const rosettaTx: RosettaTransaction = {
-      transaction_identifier: { hash: tx.tx_id },
-      operations: operations,
-    };
-    if (txMemo) {
-      rosettaTx.metadata = {
-        memo: txMemo,
-      };
-    }
+    const rosettaTx = await parseRosettaTxDetail({
+      block_height: blockQuery.result.block_height,
+      indexBlockHash: opts.indexBlockHash,
+      tx,
+      db: opts.db,
+      minerRewards,
+      unlockingEvents,
+    });
     transactions.push(rosettaTx);
   }
 
@@ -540,30 +596,27 @@ export async function getRosettaTransactionFromDataStore(
   if (!txQuery.found) {
     return { found: false };
   }
-  const blockOperations = await getRosettaBlockTransactionsFromDataStore({
-    blockHash: txQuery.result.block_hash,
-    indexBlockHash: txQuery.result.index_block_hash,
-    db,
-  });
-  if (!blockOperations.found) {
+
+  const blockQuery = await db.getBlock({ hash: txQuery.result.block_hash });
+  if (!blockQuery.found) {
     throw new Error(
       `Could not find block for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
     );
   }
-  const rosettaTx = blockOperations.result.find(
-    op => op.transaction_identifier.hash === txQuery.result.tx_id
-  );
-  if (!rosettaTx) {
+
+  const rosettaTx = await getRosettaBlockTxFromDataStore({
+    tx: txQuery.result,
+    block: blockQuery.result,
+    db,
+  });
+
+  if (!rosettaTx.found) {
     throw new Error(
       `Rosetta block missing operations for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
     );
   }
-  const result: RosettaTransaction = {
-    transaction_identifier: rosettaTx.transaction_identifier,
-    operations: rosettaTx.operations,
-    metadata: rosettaTx.metadata,
-  };
-  return { found: true, result };
+
+  return rosettaTx;
 }
 
 interface GetTxArgs {
@@ -591,22 +644,20 @@ interface GetTxWithEventsArgs extends GetTxArgs {
 }
 
 function parseDbBaseTx(dbTx: DbTx | DbMempoolTx): BaseTransaction {
-  const postConditions =
-    dbTx.post_conditions.byteLength > 2
-      ? readTransactionPostConditions(
-          BufferReader.fromBuffer(dbTx.post_conditions.slice(1))
-        ).map(pc => serializePostCondition(pc))
-      : [];
-
+  const decodedPostConditions = decodePostConditions(dbTx.post_conditions);
+  const normalizedPostConditions = decodedPostConditions.post_conditions.map(pc =>
+    serializePostCondition(pc)
+  );
   const tx: BaseTransaction = {
     tx_id: dbTx.tx_id,
     nonce: dbTx.nonce,
+    sponsor_nonce: dbTx.sponsor_nonce,
     fee_rate: dbTx.fee_rate.toString(10),
     sender_address: dbTx.sender_address,
     sponsored: dbTx.sponsored,
     sponsor_address: dbTx.sponsor_address,
-    post_condition_mode: serializePostConditionMode(dbTx.post_conditions.readUInt8(0)),
-    post_conditions: postConditions,
+    post_condition_mode: serializePostConditionMode(decodedPostConditions.post_condition_mode),
+    post_conditions: normalizedPostConditions,
     anchor_mode: getTxAnchorModeString(dbTx.anchor_mode),
   };
   return tx;
@@ -701,31 +752,30 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
       throw new Error(`Could not find function name "${functionName}" in ABI for ${contractId}`);
     }
   }
+
+  const functionArgs = tx.contract_call_function_args
+    ? decodeClarityValueList(tx.contract_call_function_args).map((c, fnArgIndex) => {
+        const functionArgAbi = functionAbi
+          ? functionAbi.args[fnArgIndex++]
+          : { name: '', type: undefined };
+        return {
+          hex: c.hex,
+          repr: c.repr,
+          name: functionArgAbi.name,
+          type: functionArgAbi.type
+            ? getTypeString(functionArgAbi.type)
+            : decodeClarityValueToTypeName(c.hex),
+        };
+      })
+    : undefined;
+
   const metadata: ContractCallTransactionMetadata = {
     tx_type: 'contract_call',
     contract_call: {
       contract_id: contractId,
       function_name: functionName,
       function_signature: functionAbi ? abiFunctionToString(functionAbi) : '',
-      function_args: tx.contract_call_function_args
-        ? readClarityValueArray(tx.contract_call_function_args).map((c, fnArgIndex) => {
-            const functionArgAbi = functionAbi
-              ? functionAbi.args[fnArgIndex++]
-              : { name: '', type: undefined };
-            return {
-              hex: bufferToHexPrefixString(serializeCV(c)),
-              repr: cvToString(c),
-              name: functionArgAbi.name,
-              // TODO: This stacks.js function throws when given an empty `list` clarity value.
-              //    This is only used to provide function signature type information if the contract
-              //    ABI is unavailable, which should only happen during rare re-org situations.
-              //    Typically this will be filled in with more accurate type data in a later step before
-              //    being sent to client.
-              // type: getCVTypeString(c),
-              type: functionArgAbi.type ? getTypeString(functionArgAbi.type) : '',
-            };
-          })
-        : undefined,
+      function_args: functionArgs,
     },
   };
   return metadata;
@@ -748,7 +798,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     tx_status: getTxStatusString(dbTx.status) as TransactionStatus,
     tx_result: {
       hex: dbTx.raw_result,
-      repr: cvToString(deserializeCV(hexToBuffer(dbTx.raw_result))),
+      repr: decodeClarityValueToRepr(dbTx.raw_result),
     },
     microblock_hash: dbTx.microblock_hash,
     microblock_sequence: dbTx.microblock_sequence,

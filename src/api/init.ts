@@ -244,8 +244,8 @@ export async function startApiServer(opts: {
       const router = express.Router();
       router.use(cors());
       router.use('/namespaces', createBnsNamespacesRouter(datastore));
-      router.use('/names', createBnsNamesRouter(datastore));
-      router.use('/addresses', createBnsAddressesRouter(datastore));
+      router.use('/names', createBnsNamesRouter(datastore, chainId));
+      router.use('/addresses', createBnsAddressesRouter(datastore, chainId));
       return router;
     })()
   );

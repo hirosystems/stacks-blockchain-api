@@ -1,7 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AbstractTransactionEvent",
   "type": "object",
   "required": ["event_index"],
+  "additionalProperties": false,
   "properties": {
     "event_index": {
       "type": "integer"

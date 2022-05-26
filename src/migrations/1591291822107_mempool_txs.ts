@@ -45,6 +45,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     sponsor_address: {
       type: 'string'
     },
+    sponsor_nonce: {
+      type: 'integer'
+    },
     sender_address: {
       type: 'string',
       notNull: true,
@@ -59,6 +62,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     receipt_time: {
+      type: 'integer',
+      notNull: true,
+    },
+    receipt_block_height: {
       type: 'integer',
       notNull: true,
     },

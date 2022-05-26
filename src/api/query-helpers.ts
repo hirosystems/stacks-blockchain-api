@@ -1,7 +1,8 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix, hexToBuffer, isValidPrincipal } from './../helpers';
+import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
+import { DbEventTypeId } from './../datastore/common';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
@@ -220,5 +221,76 @@ export function validatePrincipal(stxAddress: string) {
       `invalid STX address "${stxAddress}"`,
       InvalidRequestErrorType.invalid_address
     );
+  }
+}
+
+export function parseAddressOrTxId(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): { address: string; txId: undefined } | { address: undefined; txId: string } | never {
+  const address = req.query.address;
+  const txId = req.query.tx_id;
+  if (!address && !txId) {
+    handleBadRequest(res, next, `can not find 'address' or 'tx_id' in the request`);
+  }
+  if (address && txId) {
+    //if mutually exclusive address and txId specified throw
+    handleBadRequest(res, next, `can't handle both 'address' and 'tx_id' in the same request`);
+  }
+  if (address) {
+    if (typeof address === 'string') {
+      validatePrincipal(address);
+      return { address, txId: undefined };
+    }
+    handleBadRequest(res, next, `invalid 'address'`);
+  }
+  if (typeof txId === 'string') {
+    const txIdHex = has0xPrefix(txId) ? txId : '0x' + txId;
+    validateRequestHexInput(txIdHex);
+    return { address: undefined, txId: txIdHex };
+  }
+  handleBadRequest(res, next, `invalid 'tx_id'`);
+}
+
+export function parseEventTypeFilter(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): DbEventTypeId[] {
+  const typeQuery = req.query.type;
+  let eventTypeFilter: DbEventTypeId[];
+  if (Array.isArray(typeQuery)) {
+    try {
+      eventTypeFilter = parseEventTypeStrings(typeQuery as string[]);
+    } catch (error) {
+      handleBadRequest(res, next, `invalid 'event type'`);
+    }
+  } else if (typeof typeQuery === 'string') {
+    try {
+      eventTypeFilter = parseEventTypeStrings([typeQuery]);
+    } catch (error) {
+      handleBadRequest(res, next, `invalid 'event type'`);
+    }
+  } else if (typeQuery) {
+    handleBadRequest(res, next, `invalid 'event type format'`);
+  } else {
+    eventTypeFilter = [
+      DbEventTypeId.SmartContractLog,
+      DbEventTypeId.StxAsset,
+      DbEventTypeId.FungibleTokenAsset,
+      DbEventTypeId.NonFungibleTokenAsset,
+      DbEventTypeId.StxLock,
+    ]; //no filter provided , return all types of events
+  }
+
+  return eventTypeFilter;
+}
+export function isValidTxId(tx_id: string) {
+  try {
+    validateRequestHexInput(tx_id);
+    return true;
+  } catch {
+    return false;
   }
 }

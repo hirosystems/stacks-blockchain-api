@@ -8,12 +8,10 @@ import {
   ClarityAbi,
   ClarityType,
   makeContractDeploy,
-  serializeCV,
   sponsorTransaction,
   createNonFungiblePostCondition,
   createFungiblePostCondition,
   createSTXPostCondition,
-  BufferReader,
   ChainID,
   AnchorMode,
   intCV,
@@ -23,9 +21,11 @@ import {
   publicKeyToAddress,
   AddressVersion,
   bufferCV,
+  serializeCV,
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
-import { createClarityValueArray, readTransaction } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { decodeTransaction } from 'stacks-encoding-native-js';
 import { getTxFromDataStore, getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   createDbTxFromCoreMsg,
@@ -70,7 +70,7 @@ describe('api tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
@@ -748,7 +748,7 @@ describe('api tests', () => {
       origin_hash_mode: 1,
     };
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
-    const source_code = `;; pg-mdomains-v1\n;;\n;; Decentralized domain names manager for Paradigma\n;; To facilitate acquisition of Stacks decentralized domain names\n(use-trait sip-010-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait )\n(use-trait token-trait 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.paradigma-token-trait-v1.paradigma-token-trait)\n\n\n;; constants\n(define-constant ERR_INSUFFICIENT_FUNDS 101)\n(define-constant ERR_UNAUTHORIZED 109)\n(define-constant ERR_NAME_PREORDER_FUNDS_INSUFFICIENT 203)              ;; transfer to sponsored  \n(define-constant ERR_DOMAINNAME_MANAGER_NOT_FOUND 501)\n\n;; set constant for contract owner, used for updating token-uri\n(define-constant CONTRACT_OWNER tx-sender)\n\n;; initial value for domain wallet, set to this contract until initialized\n(define-data-var domainWallet principal 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n\n(define-data-var platformDomainWallet principal 'SPRK2JVQ988PYT19JSAJNR3K9YZAZGVY04XMC2Z7)  ;; Wallet where to transfer share fee services\n\n;; Manage domain name service fees\n;;  by accepted tokens\n(define-map DomainServiceFeeIndex\n   {\n     serviceId: uint\n   }\n   {\n     tokenSymbol: (string-ascii 32),\n   }  \n)\n\n(define-read-only (get-domain-service-fee-index (id uint))\n     (map-get? DomainServiceFeeIndex\n        {\n            serviceId: id\n        }\n     ) \n)\n\n(define-map DomainServiceFee\n   {\n     tokenSymbol: (string-ascii 32),\n   }\n   {\n     fee: uint\n   }\n)\n(define-read-only (get-domain-service-fee (tokenSymbol (string-ascii 32)))\n  (unwrap-panic (get fee \n                  (map-get? DomainServiceFee\n                     {tokenSymbol: tokenSymbol}\n                  )\n                )\n  )\n)\n(define-data-var domainServiceFeeCount uint u0)\n(define-read-only (get-domain-service-fee-count)\n  (var-get domainServiceFeeCount)\n)\n\n;; Set reference info for domain service fee\n;; protected function to update domain service fee variable\n(define-public (create-domain-service-fee \n                            (tokenSymbol (string-ascii 32))\n                            (fee uint) \n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n          (map-get? DomainServiceFee\n             {\n                tokenSymbol: tokenSymbol\n             }\n          )       \n        )\n        (begin\n          (var-set domainServiceFeeCount (+ (var-get domainServiceFeeCount) u1))\n          (map-insert DomainServiceFeeIndex\n          { \n            serviceId: (var-get domainServiceFeeCount)\n          }\n           {\n            tokenSymbol: tokenSymbol\n           } \n          )\n          (map-insert DomainServiceFee \n           {\n             tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainServiceFee \n           {\n            tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; check if contract caller is contract owner\n(define-private (is-authorized-owner)\n  (is-eq contract-caller CONTRACT_OWNER)\n)\n\n;; Token flow management\n\n;; Stores participants DomainName service sell\n\n;; (define-data-var domainNameManagerCount -list (list 2000 uint) (list))\n\n(define-data-var domainNameManagerCount uint u0)\n\n(define-read-only (get-domain-name-manager-count)\n  (var-get domainNameManagerCount)\n)\n(define-map DomainNameManagersIndex\n  { domainNMId: uint }\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n)\n\n(define-read-only (get-domain-name-managers-index (id uint))\n     (map-get? DomainNameManagersIndex\n        {\n            domainNMId: id\n        }\n     ) \n)\n\n(define-map DomainNameManagers\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n  {\n    domainNameWallet: principal,           ;; DomainName manager account - branding and domainName token\n    domainNameFeePerc: uint,               ;; DomainName share percentage of fee (ie u10)\n    domainNameFeeTokenMint: uint,          ;; Tokens considered reciprocity to domainName token\n    domainNameTokenSymbol: (string-utf8 5), ;; Token Symbol used to mint domainName token\n    sponsoredWallet: principal,            ;; Sponsored institution account\n    sponsoredFeePerc: uint,                ;; Sponsored share percentage of fee (ie u10)\n    sponsoredDID: (string-utf8 256),       ;; Sponsored Stacks ID\n    sponsoredUri: (string-utf8 256),       ;; Sponsored website Uri\n    referencerFeeTokenMint: uint           ;; Tokens for promoters references as reciprocity \n  }\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-domain-wallet)\n  (var-get domainWallet)\n)\n\n;; checks if caller is Auth contract\n(define-private (is-authorized-auth)   \n  (is-eq contract-caller 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n) \n\n;; protected function to update domain wallet variable\n(define-public (set-domain-wallet (newDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set domainWallet newDomainWallet))\n  )\n)\n\n;; check if contract caller is domain wallet\n(define-private (is-authorized-domain)\n    (is-eq contract-caller (var-get domainWallet))\n)\n\n;; Set reference info for domainName managers\n(define-public (create-domainname-manager \n                            (nameSpace (buff 48))\n                            (domainName (buff 48)) \n                            (domainNameWallet principal) \n                            (domainNameFeePerc uint) \n                            (domainNameFeeTokenMint uint) \n                            (tokenSymbol (string-utf8 5))\n                            (sponsoredWallet principal) \n                            (sponsoredFeePerc uint)\n                            (sponsoredDID (string-utf8 256))\n                            (sponsoredUri (string-utf8 256))\n                            (referencerFeeTokenMint uint)\n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n           (map-get? DomainNameManagers \n             {\n                nameSpace: nameSpace,\n                domainName: domainName\n             }\n           )       \n        )\n        (begin\n          (var-set domainNameManagerCount (+ (var-get domainNameManagerCount) u1))\n          (map-insert DomainNameManagersIndex\n          { \n            domainNMId: (var-get domainNameManagerCount)\n          }\n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n          )\n          (map-insert DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; Gets the principal for domainName managers\n(define-read-only (get-ref-domainname-manager (nameSpace (buff 48)) (domainName (buff 48)))\n   (ok (unwrap! (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n               (err ERR_DOMAINNAME_MANAGER_NOT_FOUND)\n      )\n   )\n)\n\n\n;; Makes the name-preorder\n(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n  (begin\n    (asserts! (> (stx-get-balance tx-sender) stxToBurn) (err ERR_NAME_PREORDER_FUNDS_INSUFFICIENT))\n    (let \n        (\n          (symbol (unwrap-panic (contract-call? paymentSIP010Trait get-symbol)))\n          (fee (get-domain-service-fee symbol))\n          (toBurn (- stxToBurn fee))\n          (tr (order-to-register-domain tx-sender fee 0x616c6c 0x616c6c 0x737461636b73 paymentSIP010Trait reciprocityTokenTrait referencerWallet))  ;; Includes subdomain:all namespace:all name:stacks as domainnames\n        )\n        (ok (try! (contract-call? 'SP000000000000000000002Q6VF78.bns name-preorder hashedSaltedFqn toBurn)))\n    )     \n  )\n)\n\n;; 
+    const source_code = `;; pg-mdomains-v1\n;;\n;; Decentralized domain names manager for Paradigma\n;; To facilitate acquisition of Stacks decentralized domain names\n(use-trait sip-010-trait 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.sip-010-trait-ft-standard.sip-010-trait )\n(use-trait token-trait 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.paradigma-token-trait-v1.paradigma-token-trait)\n\n\n;; constants\n(define-constant ERR_INSUFFICIENT_FUNDS 101)\n(define-constant ERR_UNAUTHORIZED 109)\n(define-constant ERR_NAME_PREORDER_FUNDS_INSUFFICIENT 203)              ;; transfer to sponsored  \n(define-constant ERR_DOMAINNAME_MANAGER_NOT_FOUND 501)\n\n;; set constant for contract owner, used for updating token-uri\n(define-constant CONTRACT_OWNER tx-sender)\n\n;; initial value for domain wallet, set to this contract until initialized\n(define-data-var domainWallet principal 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n\n(define-data-var platformDomainWallet principal 'SPRK2JVQ988PYT19JSAJNR3K9YZAZGVY04XMC2Z7)  ;; Wallet where to transfer share fee services\n\n;; Manage domain name service fees\n;;  by accepted tokens\n(define-map DomainServiceFeeIndex\n   {\n     serviceId: uint\n   }\n   {\n     tokenSymbol: (string-ascii 32),\n   }  \n)\n\n(define-read-only (get-domain-service-fee-index (id uint))\n     (map-get? DomainServiceFeeIndex\n        {\n            serviceId: id\n        }\n     ) \n)\n\n(define-map DomainServiceFee\n   {\n     tokenSymbol: (string-ascii 32),\n   }\n   {\n     fee: uint\n   }\n)\n(define-read-only (get-domain-service-fee (tokenSymbol (string-ascii 32)))\n  (unwrap-panic (get fee \n                  (map-get? DomainServiceFee\n                     {tokenSymbol: tokenSymbol}\n                  )\n                )\n  )\n)\n(define-data-var domainServiceFeeCount uint u0)\n(define-read-only (get-domain-service-fee-count)\n  (var-get domainServiceFeeCount)\n)\n\n;; Set reference info for domain service fee\n;; protected function to update domain service fee variable\n(define-public (create-domain-service-fee \n                            (tokenSymbol (string-ascii 32))\n                            (fee uint) \n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n          (map-get? DomainServiceFee\n             {\n                tokenSymbol: tokenSymbol\n             }\n          )       \n        )\n        (begin\n          (var-set domainServiceFeeCount (+ (var-get domainServiceFeeCount) u1))\n          (map-insert DomainServiceFeeIndex\n          { \n            serviceId: (var-get domainServiceFeeCount)\n          }\n           {\n            tokenSymbol: tokenSymbol\n           } \n          )\n          (map-insert DomainServiceFee \n           {\n             tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainServiceFee \n           {\n            tokenSymbol: tokenSymbol\n           } \n           {\n             fee: fee\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; check if contract caller is contract owner\n(define-private (is-authorized-owner)\n  (is-eq contract-caller CONTRACT_OWNER)\n)\n\n;; Token flow management\n\n;; Stores participants DomainName service sell\n\n;; (define-data-var domainNameManagerCount -list (list 2000 uint) (list))\n\n(define-data-var domainNameManagerCount uint u0)\n\n(define-read-only (get-domain-name-manager-count)\n  (var-get domainNameManagerCount)\n)\n(define-map DomainNameManagersIndex\n  { domainNMId: uint }\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n)\n\n(define-read-only (get-domain-name-managers-index (id uint))\n     (map-get? DomainNameManagersIndex\n        {\n            domainNMId: id\n        }\n     ) \n)\n\n(define-map DomainNameManagers\n  {\n   nameSpace: (buff 48),                  ;; domain namespace defined in Blockchain Name Service (BNS) like .app\n   domainName: (buff 48)                  ;; domain name under a namespace like xck in xck.app\n  }\n  {\n    domainNameWallet: principal,           ;; DomainName manager account - branding and domainName token\n    domainNameFeePerc: uint,               ;; DomainName share percentage of fee (ie u10)\n    domainNameFeeTokenMint: uint,          ;; Tokens considered reciprocity to domainName token\n    domainNameTokenSymbol: (string-utf8 5), ;; Token Symbol used to mint domainName token\n    sponsoredWallet: principal,            ;; Sponsored institution account\n    sponsoredFeePerc: uint,                ;; Sponsored share percentage of fee (ie u10)\n    sponsoredDID: (string-utf8 256),       ;; Sponsored Stacks ID\n    sponsoredUri: (string-utf8 256),       ;; Sponsored website Uri\n    referencerFeeTokenMint: uint           ;; Tokens for promoters references as reciprocity \n  }\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-domain-wallet)\n  (var-get domainWallet)\n)\n\n;; checks if caller is Auth contract\n(define-private (is-authorized-auth)   \n  (is-eq contract-caller 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8)\n) \n\n;; protected function to update domain wallet variable\n(define-public (set-domain-wallet (newDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set domainWallet newDomainWallet))\n  )\n)\n\n;; check if contract caller is domain wallet\n(define-private (is-authorized-domain)\n    (is-eq contract-caller (var-get domainWallet))\n)\n\n;; Set reference info for domainName managers\n(define-public (create-domainname-manager \n                            (nameSpace (buff 48))\n                            (domainName (buff 48)) \n                            (domainNameWallet principal) \n                            (domainNameFeePerc uint) \n                            (domainNameFeeTokenMint uint) \n                            (tokenSymbol (string-utf8 5))\n                            (sponsoredWallet principal) \n                            (sponsoredFeePerc uint)\n                            (sponsoredDID (string-utf8 256))\n                            (sponsoredUri (string-utf8 256))\n                            (referencerFeeTokenMint uint)\n                )\n  (begin\n    (if (is-authorized-domain) \n      (if\n        (is-none \n           (map-get? DomainNameManagers \n             {\n                nameSpace: nameSpace,\n                domainName: domainName\n             }\n           )       \n        )\n        (begin\n          (var-set domainNameManagerCount (+ (var-get domainNameManagerCount) u1))\n          (map-insert DomainNameManagersIndex\n          { \n            domainNMId: (var-get domainNameManagerCount)\n          }\n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n          )\n          (map-insert DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          ) \n         (ok true)\n        )\n        (begin\n         (ok \n          (map-set DomainNameManagers \n           {\n            nameSpace: nameSpace,\n            domainName: domainName\n           } \n           {\n            domainNameWallet:  domainNameWallet,\n            domainNameFeePerc: domainNameFeePerc,\n            domainNameFeeTokenMint: domainNameFeeTokenMint,\n            domainNameTokenSymbol: tokenSymbol,\n            sponsoredWallet: sponsoredWallet,\n            sponsoredFeePerc: sponsoredFeePerc,\n            sponsoredDID: sponsoredDID,\n            sponsoredUri: sponsoredUri,\n            referencerFeeTokenMint: referencerFeeTokenMint\n           }\n          )\n         )\n        )\n      )\n      (err ERR_UNAUTHORIZED)\n    )\n  )\n)\n\n;; Gets the principal for domainName managers\n(define-read-only (get-ref-domainname-manager (nameSpace (buff 48)) (domainName (buff 48)))\n   (ok (unwrap! (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n               (err ERR_DOMAINNAME_MANAGER_NOT_FOUND)\n      )\n   )\n)\n\n\n;; Makes the name-preorder\n(define-public (bns-name-preorder (hashedSaltedFqn (buff 20)) (stxToBurn uint) (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n  (begin\n    (asserts! (> (stx-get-balance tx-sender) stxToBurn) (err ERR_NAME_PREORDER_FUNDS_INSUFFICIENT))\n    (let \n        (\n          (symbol (unwrap-panic (contract-call? paymentSIP010Trait get-symbol)))\n          (fee (get-domain-service-fee symbol))\n          (toBurn (- stxToBurn fee))\n          (tr (order-to-register-domain tx-sender fee 0x616c6c 0x616c6c 0x737461636b73 paymentSIP010Trait reciprocityTokenTrait referencerWallet))  ;; Includes subdomain:all namespace:all name:stacks as domainnames\n        )\n        (ok (try! (contract-call? 'SP000000000000000000002Q6VF78.bns name-preorder hashedSaltedFqn toBurn)))\n    )     \n  )\n)\n\n;;
     Gives the order to register a domain and subdomain associated to a domainName and transfers to the domain managers\n(define-public (order-to-register-domain (sender principal) (fee uint) (nameSpace (buff 48)) (domainName (buff 48)) (subDomain (buff 48)) \n                                         (paymentSIP010Trait <sip-010-trait>) (reciprocityTokenTrait <token-trait>) (referencerWallet principal))\n   (begin\n    (asserts! (is-eq tx-sender sender) (err ERR_UNAUTHORIZED))\n    (asserts! (> (unwrap-panic (contract-call? paymentSIP010Trait get-balance tx-sender)) fee) (err ERR_INSUFFICIENT_FUNDS))\n    (let \n    (\n       (domainNameRef  \n             (unwrap-panic (map-get? DomainNameManagers \n                        {\n                         nameSpace: nameSpace,\n                         domainName: domainName\n                        }\n               )\n             )\n       )\n       (sponsoredFeePerc \n             (get sponsoredFeePerc domainNameRef)\n       )\n       (sponsoredWallet \n            (get sponsoredWallet domainNameRef)\n       )\n       (domainNameFeePerc \n          (get domainNameFeePerc domainNameRef)\n       )    \n      (domainNameWallet \n             (get domainNameWallet domainNameRef)\n       )\n      (domainNameFeeTokenMint \n              (get domainNameFeeTokenMint domainNameRef)\n       )\n      (referencerFeeTokenMint\n               (get referencerFeeTokenMint domainNameRef))\n       (transferToSponsored (/ (* sponsoredFeePerc  fee) u100) )\n       (transferToDomainManager (/ (* domainNameFeePerc  fee) u100))\n       (transferToPlatform (/ (* (- u100 (+ domainNameFeePerc sponsoredFeePerc ) ) fee) u100))\n       (platformDWallet (get-platform-domain-wallet))\n     )  \n       ;; transfer to sponsored  \n     (if (> transferToSponsored u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer \n                             transferToSponsored \n                             sender \n                             sponsoredWallet\n                             none\n                      )\n        )\n        true\n     )\n         ;; transfer to domain name manager\n      (if (> transferToDomainManager u0)\n        (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                             transferToDomainManager\n                             sender\n                             domainNameWallet\n                             none\n                     )\n        )\n        true\n      )\n        ;; transfer to platform manager\n      (if (> transferToPlatform u0)\n         (unwrap-panic (contract-call? paymentSIP010Trait transfer\n                              transferToPlatform\n                              sender \n                              platformDWallet\n                              none\n                )\n         )\n          true\n      )\n         ;; mint token to sender as reciprocity\n      (if (> domainNameFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            domainNameFeeTokenMint\n                            sender\n                                   )\n                      )\n        )\n        true\n      )\n         ;; mint token for referencer (if there is) as reciprocity\n      (if (> referencerFeeTokenMint u0)\n        (unwrap-panic (as-contract (contract-call? reciprocityTokenTrait \n                            mint \n                            referencerFeeTokenMint\n                            referencerWallet\n                                   )\n                      )\n        )\n        true\n      )\n    )\n   (ok true)\n  )\n)\n\n;; returns set domain wallet principal\n(define-read-only (get-platform-domain-wallet)\n  (var-get platformDomainWallet)\n)\n;; protected function to update domain wallet variable\n(define-public (set-platform-domain-wallet (newPDomainWallet principal))\n  (begin\n    (asserts! (is-authorized-auth) (err ERR_UNAUTHORIZED))  \n    (ok (var-set platformDomainWallet newPDomainWallet))\n  )\n)`;
     const abi = `{\"maps\":[{\"key\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]},\"name\":\"DomainNameManagers\",\"value\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]}},{\"key\":{\"tuple\":[{\"name\":\"domainNMId\",\"type\":\"uint128\"}]},\"name\":\"DomainNameManagersIndex\",\"value\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}},{\"key\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]},\"name\":\"DomainServiceFee\",\"value\":{\"tuple\":[{\"name\":\"fee\",\"type\":\"uint128\"}]}},{\"key\":{\"tuple\":[{\"name\":\"serviceId\",\"type\":\"uint128\"}]},\"name\":\"DomainServiceFeeIndex\",\"value\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}],\"functions\":[{\"args\":[],\"name\":\"is-authorized-auth\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-domain\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[],\"name\":\"is-authorized-owner\",\"access\":\"private\",\"outputs\":{\"type\":\"bool\"}},{\"args\":[{\"name\":\"hashedSaltedFqn\",\"type\":{\"buffer\":{\"length\":20}}},{\"name\":\"stxToBurn\",\"type\":\"uint128\"},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"bns-name-preorder\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"uint128\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}},{\"name\":\"fee\",\"type\":\"uint128\"}],\"name\":\"create-domain-service-fee\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"tokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"}],\"name\":\"create-domainname-manager\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"sender\",\"type\":\"principal\"},{\"name\":\"fee\",\"type\":\"uint128\"},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"subDomain\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"paymentSIP010Trait\",\"type\":\"trait_reference\"},{\"name\":\"reciprocityTokenTrait\",\"type\":\"trait_reference\"},{\"name\":\"referencerWallet\",\"type\":\"principal\"}],\"name\":\"order-to-register-domain\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[{\"name\":\"newPDomainWallet\",\"type\":\"principal\"}],\"name\":\"set-platform-domain-wallet\",\"access\":\"public\",\"outputs\":{\"type\":{\"response\":{\"ok\":\"bool\",\"error\":\"int128\"}}}},{\"args\":[],\"name\":\"get-domain-name-manager-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-name-managers-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}}]}}}},{\"args\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}],\"name\":\"get-domain-service-fee\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[],\"name\":\"get-domain-service-fee-count\",\"access\":\"read_only\",\"outputs\":{\"type\":\"uint128\"}},{\"args\":[{\"name\":\"id\",\"type\":\"uint128\"}],\"name\":\"get-domain-service-fee-index\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"optional\":{\"tuple\":[{\"name\":\"tokenSymbol\",\"type\":{\"string-ascii\":{\"length\":32}}}]}}}},{\"args\":[],\"name\":\"get-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[],\"name\":\"get-platform-domain-wallet\",\"access\":\"read_only\",\"outputs\":{\"type\":\"principal\"}},{\"args\":[{\"name\":\"nameSpace\",\"type\":{\"buffer\":{\"length\":48}}},{\"name\":\"domainName\",\"type\":{\"buffer\":{\"length\":48}}}],\"name\":\"get-ref-domainname-manager\",\"access\":\"read_only\",\"outputs\":{\"type\":{\"response\":{\"ok\":{\"tuple\":[{\"name\":\"domainNameFeePerc\",\"type\":\"uint128\"},{\"name\":\"domainNameFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"domainNameTokenSymbol\",\"type\":{\"string-utf8\":{\"length\":5}}},{\"name\":\"domainNameWallet\",\"type\":\"principal\"},{\"name\":\"referencerFeeTokenMint\",\"type\":\"uint128\"},{\"name\":\"sponsoredDID\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredFeePerc\",\"type\":\"uint128\"},{\"name\":\"sponsoredUri\",\"type\":{\"string-utf8\":{\"length\":256}}},{\"name\":\"sponsoredWallet\",\"type\":\"principal\"}]},\"error\":\"int128\"}}}}],\"variables\":[{\"name\":\"CONTRACT_OWNER\",\"type\":\"principal\",\"access\":\"constant\"},{\"name\":\"ERR_DOMAINNAME_MANAGER_NOT_FOUND\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_INSUFFICIENT_FUNDS\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_NAME_PREORDER_FUNDS_INSUFFICIENT\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"ERR_UNAUTHORIZED\",\"type\":\"int128\",\"access\":\"constant\"},{\"name\":\"domainNameManagerCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainServiceFeeCount\",\"type\":\"uint128\",\"access\":\"variable\"},{\"name\":\"domainWallet\",\"type\":\"principal\",\"access\":\"variable\"},{\"name\":\"platformDomainWallet\",\"type\":\"principal\",\"access\":\"variable\"}],\"fungible_tokens\":[],\"non_fungible_tokens\":[]}`;
     const tx1: DbTx = {
@@ -2095,7 +2095,9 @@ describe('api tests', () => {
     );
     expect(result2.status).toBe(200);
     expect(result2.type).toBe('application/json');
-    expect(JSON.parse(result2.text).total).toEqual(1);
+    const json2 = JSON.parse(result2.text);
+    expect(json2.total).toEqual(1);
+    expect(json2.results.length).toEqual(1);
 
     // New canonical block restores previous non-canonical block
     const block5 = new TestBlockBuilder({
@@ -2117,6 +2119,7 @@ describe('api tests', () => {
     expect(result3.type).toBe('application/json');
     const json3 = JSON.parse(result3.text);
     expect(json3.total).toEqual(2);
+    expect(json3.results.length).toEqual(2);
     expect(json3.results[0].tx_id).toEqual('0x11a1');
 
     // Microblock with non-canonical tx
@@ -2143,7 +2146,9 @@ describe('api tests', () => {
     );
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('application/json');
-    expect(JSON.parse(result4.text).total).toEqual(2);
+    const json4 = JSON.parse(result4.text);
+    expect(json4.total).toEqual(2);
+    expect(json4.results.length).toEqual(2);
     */
 
     // Confirm with anchor block
@@ -2162,13 +2167,60 @@ describe('api tests', () => {
 
     // Transaction is now reported in results
     const result5 = await supertest(api.server).get(
-      `/extended/v1/address/${contractId}/transactions?unanchored=true`
+      `/extended/v1/address/${contractId}/transactions`
     );
     expect(result5.status).toBe(200);
     expect(result5.type).toBe('application/json');
     const json5 = JSON.parse(result5.text);
     expect(json5.total).toEqual(3);
+    expect(json5.results.length).toEqual(3);
     expect(json5.results[0].tx_id).toEqual('0x11a2');
+
+    // New anchor block with included tx.
+    const block7 = new TestBlockBuilder({
+      block_height: 7,
+      block_hash: '0x07',
+      index_block_hash: '0x07',
+      parent_block_hash: '0x06',
+      parent_index_block_hash: '0x06',
+    })
+      .addTx({
+        tx_id: '0xffa1',
+        smart_contract_contract_id: contractId,
+        index_block_hash: '0x07',
+      })
+      .build();
+    await db.update(block7);
+
+    // New non-canonical anchor block **also with block height = 7**
+    // Includes the same transaction with the same `tx_id` but on a different `index_block_hash`.
+    const block7_b = new TestBlockBuilder({
+      block_height: 7,
+      block_hash: '0x07',
+      index_block_hash: '0x07bb',
+      parent_block_hash: '0x06',
+      parent_index_block_hash: '0x06',
+      canonical: false, // Block marked as non-canonical.
+    })
+      .addTx({
+        tx_id: '0xffa1',
+        smart_contract_contract_id: contractId,
+        index_block_hash: '0x07bb',
+        canonical: false,
+      })
+      .build();
+    await db.update(block7_b);
+
+    // Transaction is reported in results.
+    const result6 = await supertest(api.server).get(
+      `/extended/v1/address/${contractId}/transactions`
+    );
+    expect(result6.status).toBe(200);
+    expect(result6.type).toBe('application/json');
+    const json6 = JSON.parse(result6.text);
+    expect(json6.total).toEqual(4);
+    expect(json6.results.length).toEqual(4);
+    expect(json6.results[0].tx_id).toEqual('0xffa1');
   });
 
   test('search term - hash with metadata', async () => {
@@ -4933,7 +4985,7 @@ describe('api tests', () => {
     const expectedResp4 = {
       limit: 20,
       offset: 0,
-      total: 6,
+      total: 5,
       results: [
         {
           tx_id: '0x12340005',
@@ -7439,7 +7491,7 @@ describe('api tests', () => {
       sponsorNonce: new BN(2),
     });
     const serialized = sponsoredTx.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -7544,7 +7596,7 @@ describe('api tests', () => {
       tx_type: 'contract_call',
       fee_rate: '300',
       is_unanchored: false,
-      nonce: 2,
+      nonce: 0,
       anchor_mode: 'any',
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -7566,6 +7618,7 @@ describe('api tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      sponsor_nonce: 2,
     };
     const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
     expect(fetchTx.status).toBe(200);
@@ -7644,7 +7697,7 @@ describe('api tests', () => {
       sponsorNonce: new BN(3),
     });
     const serialized = sponsoredTx.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -7769,6 +7822,238 @@ describe('api tests', () => {
     expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
   });
 
+  test('address - sponsor nonces', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const txBuilder = await makeContractCall({
+      contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      contractName: 'hello-world',
+      functionName: 'fn-name',
+      functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
+      fee: new BN(200),
+      senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
+      nonce: new BN(0),
+      sponsored: true,
+      anchorMode: AnchorMode.Any,
+    });
+    const sponsoredTx = await sponsorTransaction({
+      transaction: txBuilder,
+      sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
+      fee: new BN(300),
+      sponsorNonce: new BN(2),
+    });
+    const serialized = sponsoredTx.serialize();
+    const tx = decodeTransaction(serialized);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: '0x' + serialized.toString('hex'),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: '0x' + txBuilder.txid(),
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: Buffer.alloc(0),
+      parsed_tx: tx,
+      sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    const contractAbi: ClarityAbi = {
+      functions: [
+        {
+          name: 'fn-name',
+          args: [{ name: 'arg1', type: 'int128' }],
+          access: 'public',
+          outputs: { type: 'bool' },
+        },
+      ],
+      variables: [],
+      maps: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const smartContract: DbSmartContract = {
+      tx_id: dbTx.tx_id,
+      canonical: true,
+      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+      block_height: dbBlock.block_height,
+      source_code: '()',
+      abi: JSON.stringify(contractAbi),
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [smartContract],
+        },
+      ],
+    });
+
+    const senderAddress = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
+    const sponsor_address = 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0';
+
+    //sender nonce
+    const expectedResp = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 0,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 1,
+    };
+    const sender_nonces = await supertest(api.server).get(
+      `/extended/v1/address/${senderAddress}/nonces`
+    );
+    expect(sender_nonces.status).toBe(200);
+    expect(sender_nonces.type).toBe('application/json');
+    expect(JSON.parse(sender_nonces.text)).toEqual(expectedResp);
+
+    //sponsor_nonce
+    const expectedResp2 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: null,
+      possible_next_nonce: 3,
+    };
+    const sponsor_nonces = await supertest(api.server).get(
+      `/extended/v1/address/${sponsor_address}/nonces`
+    );
+    expect(sponsor_nonces.status).toBe(200);
+    expect(sponsor_nonces.type).toBe('application/json');
+    expect(JSON.parse(sponsor_nonces.text)).toEqual(expectedResp2);
+
+    const mempoolTx: DbMempoolTx = {
+      tx_id: '0x521234',
+      anchor_mode: 3,
+      nonce: 1,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sponsor_address: sponsor_address,
+      sender_address: senderAddress,
+      sponsor_nonce: 3,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    //mempool sender nonce
+    const expectedResp3 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 0,
+      last_mempool_tx_nonce: 1,
+      possible_next_nonce: 2,
+    };
+    const mempool_sender_nonces = await supertest(api.server).get(
+      `/extended/v1/address/${senderAddress}/nonces`
+    );
+    expect(mempool_sender_nonces.status).toBe(200);
+    expect(mempool_sender_nonces.type).toBe('application/json');
+    expect(JSON.parse(mempool_sender_nonces.text)).toEqual(expectedResp3);
+
+    //mempool sponsor_nonce
+    const expectedResp4 = {
+      detected_missing_nonces: [],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: 3,
+      possible_next_nonce: 4,
+    };
+    const mempool_sponsor_nonces = await supertest(api.server).get(
+      `/extended/v1/address/${sponsor_address}/nonces`
+    );
+    expect(mempool_sponsor_nonces.status).toBe(200);
+    expect(mempool_sponsor_nonces.type).toBe('application/json');
+    expect(JSON.parse(mempool_sponsor_nonces.text)).toEqual(expectedResp4);
+
+    /**
+     * Sponsor detected missin gnonce
+     */
+
+    const mempoolTx1: DbMempoolTx = {
+      tx_id: '0x52123456',
+      anchor_mode: 3,
+      nonce: 1,
+      raw_tx: Buffer.from('test-raw-mempool-tx'),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      post_conditions: Buffer.from([0x01, 0xf5]),
+      fee_rate: 1234n,
+      sponsored: true,
+      sponsor_address: sponsor_address,
+      sender_address: senderAddress,
+      sponsor_nonce: 6,
+      origin_hash_mode: 1,
+      coinbase_payload: Buffer.from('hi'),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1] });
+
+    const expectedResp5 = {
+      detected_missing_nonces: [5, 4],
+      last_executed_tx_nonce: 2,
+      last_mempool_tx_nonce: 6,
+      possible_next_nonce: 7,
+    };
+    const detected_missing_nonce = await supertest(api.server).get(
+      `/extended/v1/address/${sponsor_address}/nonces`
+    );
+    expect(detected_missing_nonce.status).toBe(200);
+    expect(detected_missing_nonce.type).toBe('application/json');
+    expect(JSON.parse(detected_missing_nonce.text)).toEqual(expectedResp5);
+  });
+
   test('tx store and processing', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
@@ -7822,7 +8107,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -8039,7 +8324,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -8179,7 +8464,7 @@ describe('api tests', () => {
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
-    const tx = readTransaction(new BufferReader(serialized));
+    const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
@@ -9053,7 +9338,6 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateBlock(client, block);
     const tx: DbTx = {
       tx_id: '0x1234',
       tx_index: 4,
@@ -9088,15 +9372,41 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await db.updateTx(client, tx);
+    await db.update({
+      block,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
     const result = await supertest(api.server).get(
       `/extended/v1/tx/block/${block.block_hash}?limit=20&offset=0`
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
+
+    // fetch all blocks
+    const result1 = await supertest(api.server).get(`/extended/v1/block`);
+    expect(result1.body.total).toBe(1);
+    expect(result1.body.results[0].hash).toBe(tx.tx_id);
   });
 
   test('fetch transactions from block', async () => {
+    const not_updated_tx_id = '0x1111';
+    const tx_not_found = {
+      error: `could not find transaction by ID ${not_updated_tx_id}`,
+    };
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -9185,6 +9495,11 @@ describe('api tests', () => {
     expect(result4.body.offset).toBe(15);
     expect(result4.body.total).toBe(1);
     expect(result4.body.results.length).toBe(0);
+
+    // not available tx
+    const result5 = await supertest(api.server).get(`/extended/v1/tx/${not_updated_tx_id}`);
+    console.log('result5 printing', result5.body);
+    expect(JSON.parse(result5.text)).toEqual(tx_not_found);
   });
 
   test('paginate transactions by block', async () => {
@@ -9750,13 +10065,13 @@ describe('api tests', () => {
             hex: '0x020000000474657374',
             name: '',
             repr: '0x74657374',
-            type: '',
+            type: '(buff 4)',
           },
           {
             hex: '0x01000000000000000000000000000004d2',
             name: '',
             repr: 'u1234',
-            type: '',
+            type: 'uint',
           },
         ],
       },
@@ -9832,13 +10147,13 @@ describe('api tests', () => {
             hex: '0x020000000474657374',
             name: '',
             repr: '0x74657374',
-            type: '',
+            type: '(buff 4)',
           },
           {
             hex: '0x01000000000000000000000000000004d2',
             name: '',
             repr: 'u1234',
-            type: '',
+            type: 'uint',
           },
         ],
       },
@@ -9919,6 +10234,578 @@ describe('api tests', () => {
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
     expect(mempoolTxResult2.status).toBe(200);
     expect(mempoolTxResult2.body).toEqual(expectedMempoolResult2);
+  });
+
+  test('active status', async () => {
+    const result = await supertest(api.server).get(`/extended/v1/status/`);
+    expect(result.body.status).toBe('ready');
+  });
+  test('/tx/events address filter', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
+    );
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            amount: '50',
+          },
+        },
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            amount: '100',
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events address filter -empty events returned', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}`
+    );
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events address filter -no filter applied', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}`
+    );
+
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            amount: '50',
+          },
+        },
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            amount: '100',
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events address filter -limit and offset', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}&limit=2`
+    );
+
+    const expectedResponse = {
+      limit: 2,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            amount: '50',
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents.status).toBe(200);
+    expect(addressEvents.body).toEqual(expectedResponse);
+
+    const addressEvents2 = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}&limit=2&offset=2`
+    );
+
+    const expectedResponse2 = {
+      limit: 2,
+      offset: 2,
+      events: [
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents2.status).toBe(200);
+    expect(addressEvents2.body).toEqual(expectedResponse2);
+  });
+
+  test('/tx/events address filter -invalid address', async () => {
+    const address = 'invalid address';
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${address}`
+    );
+
+    expect(addressEvents.status).toBe(400);
+  });
+
+  test('/tx/events tx_id filter', async () => {
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const txId = '0x1234';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: txId,
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const events = await supertest(api.server).get(
+      `/extended/v1/tx/events?tx_id=${txId}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
+    );
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            amount: '50',
+          },
+        },
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            amount: '100',
+          },
+        },
+      ],
+    };
+
+    expect(events.status).toBe(200);
+    expect(events.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events tx_id filter -no filter applied', async () => {
+    const address = 'address with no filter applied';
+    const txId = '0x1234';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: txId,
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'address with no filter applied',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'address with no filter applied',
+            recipient: '',
+            amount: '50',
+          },
+        },
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'address with no filter applied',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'address with no filter applied',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+        {
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            sender: 'address with no filter applied',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            amount: '100',
+          },
+        },
+      ],
+    };
+
+    expect(events.status).toBe(200);
+    expect(events.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events tx_id filter -empty events returned', async () => {
+    const txId = '0x1234';
+    const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
+    const expectedResponse = {
+      limit: 96,
+      offset: 0,
+      events: [],
+    };
+
+    expect(events.status).toBe(200);
+    expect(events.body).toEqual(expectedResponse);
+  });
+
+  test('/tx/events tx_id filter -invalid type', async () => {
+    const txId = '0x1234';
+    const events = await supertest(api.server).get(
+      `/extended/v1/tx/events?tx_id=${txId}&type=invalid`
+    );
+
+    expect(events.status).toBe(400);
+  });
+
+  test('/tx/events tx_id filter -limit and offset', async () => {
+    const txId = '0x1234';
+    const address = 'address with no filter applied';
+    const block = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: txId,
+      })
+      .addTxStxEvent({ amount: 100n, sender: address })
+      .addTxContractLogEvent({ contract_identifier: address })
+      .addTxNftEvent({ asset_identifier: 'test_asset_id', sender: address })
+      .addTxFtEvent({ sender: address, asset_identifier: 'test_ft_asset_id', amount: 50n })
+      .addTxStxLockEvent({ unlock_height: 100, locked_amount: 10000, locked_address: address })
+      .build();
+
+    await db.update(block);
+    const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}&limit=2`);
+
+    const expectedResponse = {
+      limit: 2,
+      offset: 0,
+      events: [
+        {
+          event_index: 4,
+          event_type: 'stx_lock',
+          tx_id: '0x1234',
+          stx_lock_event: {
+            locked_amount: '10000',
+            unlock_height: 100,
+            locked_address: 'address with no filter applied',
+          },
+        },
+        {
+          event_index: 3,
+          event_type: 'fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_ft_asset_id',
+            sender: 'address with no filter applied',
+            recipient: '',
+            amount: '50',
+          },
+        },
+      ],
+    };
+
+    expect(events.status).toBe(200);
+    expect(events.body).toEqual(expectedResponse);
+
+    const addressEvents2 = await supertest(api.server).get(
+      `/extended/v1/tx/events?tx_id=${txId}&limit=2&offset=2`
+    );
+
+    const expectedResponse2 = {
+      limit: 2,
+      offset: 2,
+      events: [
+        {
+          event_index: 2,
+          event_type: 'non_fungible_token_asset',
+          tx_id: '0x1234',
+          asset: {
+            asset_event_type: 'transfer',
+            asset_id: 'test_asset_id',
+            sender: 'address with no filter applied',
+            recipient: '',
+            value: { hex: '0x020000000103', repr: '0x03' },
+          },
+        },
+        {
+          event_index: 1,
+          event_type: 'smart_contract_log',
+          tx_id: '0x1234',
+          contract_log: {
+            contract_id: 'address with no filter applied',
+            topic: 'some-topic',
+            value: { hex: '0x0200000008736f6d652076616c', repr: '0x736f6d652076616c' },
+          },
+        },
+      ],
+    };
+
+    expect(addressEvents2.status).toBe(200);
+    expect(addressEvents2.body).toEqual(expectedResponse2);
+  });
+
+  test('/tx/events tx_id filter -invalid txId', async () => {
+    const txId = 'invalid id';
+    const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
+    expect(events.status).toBe(400);
+  });
+
+  test('/tx/events -mutually exclusive query params', async () => {
+    const txId = '0x1234';
+    const address = 'ST3RJJS96F4GH90XDQQPFQ2023JVFNXPWCSV6BN1Z';
+    const addressEvents = await supertest(api.server).get(
+      `/extended/v1/tx/events?tx_id=${txId}&address=${address}&type=invalid`
+    );
+
+    expect(addressEvents.status).toBe(400);
   });
 
   afterEach(async () => {

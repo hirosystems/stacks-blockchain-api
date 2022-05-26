@@ -1,5 +1,5 @@
 import { importV1TokenOfferingData } from '../import-v1';
-import { b58ToC32 } from '../import-v1/c32helper';
+import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 
 describe('import genesis data tests', () => {
@@ -8,7 +8,7 @@ describe('import genesis data tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
   });
 
   test('import token offering data', async () => {
@@ -50,7 +50,7 @@ describe('fast b58 to c32 address conversion', () => {
       ['3QuovALTyVTTvR1tBB1hrHLfAQrA61hPsZ', 'SM3ZBCHS6W603C6QJJPQFVC49QE9VQ1ZVFQY1DZX7'],
     ];
     addrs.forEach(([b58, c32]) => {
-      const converted = b58ToC32(b58);
+      const converted = bitcoinToStacksAddress(b58);
       expect(converted).toEqual(c32);
     });
   });

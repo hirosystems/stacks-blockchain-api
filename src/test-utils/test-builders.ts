@@ -12,19 +12,22 @@ import {
   DataStoreTxEventData,
   DbAssetEventTypeId,
   DbBlock,
+  DbBnsName,
   DbEventTypeId,
   DbFtEvent,
   DbMempoolTx,
   DbMicroblockPartial,
+  DbMinerReward,
   DbNftEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
+  DbStxLockEvent,
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
-import { bufferCV, bufferCVFromString, intCV, serializeCV, uintCV } from '@stacks/transactions';
-import { createClarityValueArray } from '../p2p/tx';
+import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;
@@ -66,12 +69,25 @@ const CONTRACT_ABI = {
   fungible_tokens: [],
   non_fungible_tokens: [],
 };
+const MINER_RECIPIENT = 'testAddr2';
+const COINBASE_AMOUNT = 15_000_000_000_000n;
+const TX_FEES_ANCHORED = 1_000_000_000_000n;
+const TX_FEES_STREAMED_CONFIRMED = 2_000_000_000_000n;
+const TX_FEES_STREAMED_PRODUCED = 3_000_000_000_000n;
+const BNS_NAME = 'test.btc';
+const BNS_NAMESPACE_ID = 'btc';
+const ZONEFILE =
+  '$ORIGIN test.btc\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/test.btc"\n';
+const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 
 interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   index_block_hash?: string;
   burn_block_hash?: string;
+  burn_block_time?: number;
+  burn_block_height?: number;
+  miner_txid?: string;
   parent_index_block_hash?: string;
   parent_block_hash?: string;
   parent_microblock_hash?: string;
@@ -93,10 +109,10 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     parent_microblock_hash: args?.parent_microblock_hash ?? '',
     parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
-    burn_block_time: BURN_BLOCK_TIME,
+    burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
-    burn_block_height: BURN_BLOCK_HEIGHT,
-    miner_txid: '0x4321',
+    burn_block_height: args?.burn_block_height ?? BURN_BLOCK_HEIGHT,
+    miner_txid: args?.miner_txid ?? '0x4321',
     canonical: args?.canonical ?? true,
     execution_cost_read_count: 0,
     execution_cost_read_length: 0,
@@ -111,6 +127,9 @@ interface TestMicroblockArgs {
   microblock_parent_hash?: string;
   microblock_sequence?: number;
   parent_index_block_hash?: string;
+  parent_burn_block_time?: number;
+  parent_burn_block_hash?: string;
+  parent_burn_block_height?: number;
 }
 
 /**
@@ -124,9 +143,9 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
     microblock_sequence: args?.microblock_sequence ?? 0,
     microblock_parent_hash: args?.microblock_parent_hash ?? BLOCK_HASH,
     parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-    parent_burn_block_height: BURN_BLOCK_HEIGHT,
-    parent_burn_block_hash: BURN_BLOCK_HASH,
-    parent_burn_block_time: BURN_BLOCK_TIME,
+    parent_burn_block_height: args?.parent_burn_block_height ?? BURN_BLOCK_HEIGHT,
+    parent_burn_block_hash: args?.parent_burn_block_hash ?? BURN_BLOCK_HASH,
+    parent_burn_block_time: args?.parent_burn_block_time ?? BURN_BLOCK_TIME,
   };
 }
 
@@ -148,9 +167,11 @@ interface TestTxArgs {
   raw_result?: string;
   sender_address?: string;
   smart_contract_contract_id?: string;
+  smart_contract_source_code?: string;
   status?: DbTxStatus;
   token_transfer_amount?: bigint;
   token_transfer_recipient_address?: string;
+  token_transfer_memo?: Buffer;
   tx_id?: string;
   tx_index?: number;
   type_id?: DbTxTypeId;
@@ -194,7 +215,9 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
+      token_transfer_memo: args?.token_transfer_memo,
       smart_contract_contract_id: args?.smart_contract_contract_id,
+      smart_contract_source_code: args?.smart_contract_source_code,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
       execution_cost_runtime: 0,
@@ -387,6 +410,35 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
   };
 }
 
+interface TestStxEventLockArgs {
+  tx_id?: string;
+  block_height?: number;
+  event_index?: number;
+  tx_index?: number;
+  locked_amount?: number;
+  unlock_height?: number;
+  locked_address?: string;
+}
+
+/**
+ * Generate a test stx lock event.
+ * @param args - Optional event data
+ * @returns `DbStxLockEvent`
+ */
+function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
+  return {
+    event_index: args?.event_index ?? 0,
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    block_height: args?.block_height ?? BLOCK_HEIGHT,
+    canonical: true,
+    event_type: DbEventTypeId.StxLock,
+    locked_amount: BigInt(args?.locked_amount ?? 500),
+    unlock_height: args?.unlock_height ?? 1,
+    locked_address: args?.locked_address ?? 'lock-addr',
+  };
+}
+
 interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
@@ -408,6 +460,80 @@ function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContr
     contract_id: args?.contract_id ?? CONTRACT_ID,
     source_code: args?.contract_source ?? CONTRACT_SOURCE,
     abi: args?.abi ?? JSON.stringify(CONTRACT_ABI),
+  };
+}
+
+interface TestMinerRewardArgs {
+  block_hash?: string;
+  index_block_hash?: string;
+  from_index_block_hash?: string;
+  mature_block_height?: number;
+  canonical?: boolean;
+  recipient?: string;
+  coinbase_amount?: bigint;
+  tx_fees_anchored?: bigint;
+  tx_fees_streamed_confirmed?: bigint;
+  tx_fees_streamed_produced?: bigint;
+}
+
+/**
+ * Generate a test miner reward
+ * @param args - Optional miner reward data
+ * @returns `DbMinerReward`
+ */
+function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
+  return {
+    block_hash: args?.block_hash ?? BLOCK_HASH,
+    index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
+    from_index_block_hash: args?.from_index_block_hash ?? INDEX_BLOCK_HASH,
+    mature_block_height: args?.mature_block_height ?? BLOCK_HEIGHT,
+    canonical: args?.canonical ?? true,
+    recipient: args?.recipient ?? MINER_RECIPIENT,
+    coinbase_amount: args?.coinbase_amount ?? COINBASE_AMOUNT,
+    tx_fees_anchored: args?.tx_fees_anchored ?? TX_FEES_ANCHORED,
+    tx_fees_streamed_confirmed: args?.tx_fees_streamed_confirmed ?? TX_FEES_STREAMED_CONFIRMED,
+    tx_fees_streamed_produced: args?.tx_fees_streamed_produced ?? TX_FEES_STREAMED_PRODUCED,
+  };
+}
+
+interface TestBnsNameArgs {
+  name?: string;
+  address?: string;
+  namespace_id?: string;
+  registered_at?: number;
+  expire_block?: number;
+  grace_period?: number;
+  renewal_deadline?: number;
+  resolver?: string;
+  zonefile?: string;
+  zonefile_hash?: string;
+  tx_id?: string;
+  tx_index?: number;
+  status?: string;
+  canonical?: boolean;
+}
+
+/**
+ * Generate a test BNS name
+ * @param args - Optional name data
+ * @returns `DbBnsName`
+ */
+function testBnsName(args?: TestBnsNameArgs): DbBnsName {
+  return {
+    name: args?.name ?? BNS_NAME,
+    address: args?.address ?? SENDER_ADDRESS,
+    namespace_id: args?.namespace_id ?? BNS_NAMESPACE_ID,
+    registered_at: args?.registered_at ?? BLOCK_HEIGHT,
+    expire_block: args?.expire_block ?? 0,
+    grace_period: args?.grace_period,
+    renewal_deadline: args?.renewal_deadline,
+    resolver: args?.resolver,
+    zonefile: args?.zonefile ?? ZONEFILE,
+    zonefile_hash: args?.zonefile_hash ?? ZONEFILE_HASH,
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    status: args?.status ?? 'name-register',
+    canonical: args?.canonical ?? true,
   };
 }
 
@@ -506,6 +632,35 @@ export class TestBlockBuilder {
     return this;
   }
 
+  addMinerReward(args?: TestMinerRewardArgs): TestBlockBuilder {
+    const defaultArgs: TestMinerRewardArgs = {
+      mature_block_height: this.block.block_height,
+      block_hash: this.block.block_hash,
+      index_block_hash: this.block.index_block_hash,
+    };
+    this.data.minerRewards.push(testMinerReward({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxStxLockEvent(args?: TestStxEventLockArgs): TestBlockBuilder {
+    const defaultArgs: TestStxEventLockArgs = {
+      tx_id: this.txData.tx.tx_id,
+      block_height: this.block.block_height,
+      event_index: ++this.eventIndex,
+    };
+    this.txData.stxLockEvents.push(testStxLockEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxBnsName(args?: TestBnsNameArgs): TestBlockBuilder {
+    const defaultArgs: TestBnsNameArgs = {
+      tx_id: this.txData.tx.tx_id,
+      registered_at: this.block.block_height,
+    };
+    this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
+    return this;
+  }
+
   build(): DataStoreBlockUpdateData {
     return this.data;
   }
@@ -556,6 +711,7 @@ export class TestMicroblockStreamBuilder {
       microblock_hash: this.microblock.microblock_hash,
       microblock_sequence: this.microblock.microblock_sequence,
       tx_index: ++this.txIndex,
+      index_block_hash: '',
     };
     this.data.txs.push(testTx({ ...defaultBlockArgs, ...args }));
     this.eventIndex = -1;
@@ -578,6 +734,15 @@ export class TestMicroblockStreamBuilder {
       event_index: ++this.eventIndex,
     };
     this.txData.nftEvents.push(testNftEvent({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxBnsName(args?: TestBnsNameArgs): TestMicroblockStreamBuilder {
+    const defaultArgs: TestBnsNameArgs = {
+      tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
+    };
+    this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
     return this;
   }
 

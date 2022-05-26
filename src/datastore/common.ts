@@ -8,12 +8,11 @@ import {
   CoreNodeTxStatus,
 } from '../event-stream/core-node-message';
 import {
-  TransactionAuthTypeID,
-  TransactionPayloadTypeID,
-  RecipientPrincipalTypeId,
-  Transaction,
-} from '../p2p/tx';
-import { c32address } from 'c32check';
+  DecodedTxResult,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+  PostConditionAuthFlag,
+} from 'stacks-encoding-native-js';
 import {
   AddressTokenOfferingLocked,
   MempoolTransaction,
@@ -21,7 +20,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 
 export interface DbBlock {
@@ -121,6 +120,8 @@ export enum DbTxStatus {
   DroppedTooExpensive = -12,
   /** Transaction was dropped because it became stale. */
   DroppedStaleGarbageCollect = -13,
+  /** Dropped by the API (even though the Stacks node hadn't dropped it) because it exceeded maximum mempool age */
+  DroppedApiGarbageCollect = -14,
 }
 
 export enum DbTxAnchorMode {
@@ -134,7 +135,8 @@ export interface BaseTx {
   fee_rate: bigint;
   sender_address: string;
   sponsored: boolean;
-  sponsor_address: string | undefined;
+  sponsor_address?: string;
+  sponsor_nonce?: number;
   nonce: number;
   tx_id: string;
   anchor_mode: DbTxAnchorMode;
@@ -142,6 +144,8 @@ export interface BaseTx {
   token_transfer_recipient_address?: string;
   /** 64-bit unsigned integer. */
   token_transfer_amount?: bigint;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded arbitrary message, up to 34 bytes length (should try decoding to an ASCII string). */
   token_transfer_memo?: Buffer;
   status: DbTxStatus;
@@ -149,6 +153,8 @@ export interface BaseTx {
   /** Only valid for `contract_call` tx types */
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: Buffer;
   abi?: string;
@@ -178,6 +184,8 @@ export interface DbTx extends BaseTx {
   // TODO(mb): should probably be (string | null) rather than empty string for batched tx
   microblock_hash: string;
 
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  // and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   post_conditions: Buffer;
 
   /** u8 */
@@ -310,6 +318,8 @@ export interface DbFtEvent extends DbContractAssetEvent {
 
 export interface DbNftEvent extends DbContractAssetEvent {
   event_type: DbEventTypeId.NonFungibleTokenAsset;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   /** Raw Clarity value */
   value: Buffer;
 }
@@ -340,6 +350,8 @@ export interface DbTxWithAssetTransfers {
   }[];
   nft_transfers: {
     asset_identifier: string;
+    // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+    //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
     value: Buffer;
     sender?: string;
     recipient?: string;
@@ -348,7 +360,10 @@ export interface DbTxWithAssetTransfers {
 
 export interface NftHoldingInfo {
   asset_identifier: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
+  block_height: number;
   recipient: string;
   tx_id: Buffer;
 }
@@ -367,6 +382,8 @@ export interface AddressNftEventIdentifier {
   sender: string;
   recipient: string;
   asset_identifier: string;
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
   value: Buffer;
   block_height: number;
   tx_id: Buffer;
@@ -387,7 +404,7 @@ export type DataStoreEventEmitter = StrictEventEmitter<
     addressUpdate: (address: string, blockHeight: number) => void;
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
-    tokenMetadataUpdateQueued: (entry: TokenMetadataUpdateInfo) => void;
+    tokenMetadataUpdateQueued: (queueId: number) => void;
   }
 >;
 
@@ -587,6 +604,7 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface DbChainTip {
@@ -651,6 +669,14 @@ export interface DataStore extends DataStoreEventEmitter {
     recipientAddress?: string;
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
+
+  /**
+   * Returns a string that represents a digest of all the current pending transactions
+   * in the mempool. This digest can be used to calculate an `ETag` for mempool endpoint cache handlers.
+   * @returns `FoundOrNot` object with a possible `digest` string.
+   */
+  getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>>;
+
   getDroppedTxs(args: {
     limit: number;
     offset: number;
@@ -676,6 +702,21 @@ export interface DataStore extends DataStoreEventEmitter {
       txId: string;
       indexBlockHash: string;
     }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  /**
+   * It retrieves filtered events from the db based on transaction, principal or event type. Note: It does not accept both principal and txId at the same time
+   * @param args - addressOrTxId: filter for either transaction id or address
+   * @param args - eventTypeFilter: filter based on event types ids
+   * @param args - limit: returned that many rows
+   * @param args - offset: skip that any rows
+   * @returns returns array of events
+   */
+  getTransactionEvents(args: {
+    addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
+    eventTypeFilter: DbEventTypeId[];
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[] }>;
@@ -895,7 +936,11 @@ export interface DataStore extends DataStoreEventEmitter {
     namespace: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace>>;
-  getName(args: { name: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbBnsName>>;
+  getName(args: {
+    name: string;
+    includeUnanchored: boolean;
+    chainId: ChainID;
+  }): Promise<FoundOrNot<DbBnsName>>;
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
@@ -907,6 +952,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getNamesByAddressList(args: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>>;
   getNamesList(args: {
     page: number;
@@ -914,6 +960,14 @@ export interface DataStore extends DataStoreEventEmitter {
   }): Promise<{
     results: string[];
   }>;
+  /**
+   * This function returns the subdomains for a specific name
+   * @param name - The name for which subdomains are required
+   */
+  getSubdomainsListInName(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }>;
   getSubdomainsList(args: {
     page: number;
     includeUnanchored: boolean;
@@ -934,8 +988,8 @@ export interface DataStore extends DataStoreEventEmitter {
   getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
   getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
 
-  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata, dbQueueId: number): Promise<number>;
-  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number>;
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
 
   getFtMetadataList(args: {
     limit: number;
@@ -945,6 +999,25 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  /**
+   * Returns a single entry from the `token_metadata_queue` table.
+   * @param queueId - queue entry id
+   */
+  getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
+
+  /**
+   * Marks a token metadata queue entry as processed.
+   * @param queueId - queue entry id
+   */
+  updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void>;
+
+  /**
+   * Increases the retry count for a specific token metadata queue entry.
+   * @param queueId - queue entry id
+   * @returns new retry count
+   */
+  increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number>;
 
   getTokenMetadataQueue(
     limit: number,
@@ -982,44 +1055,38 @@ export function getTxDbStatus(
  * @param txData - Transaction data to extract from.
  * @param dbTx - The tx db object to write to.
  */
-function extractTransactionPayload(txData: Transaction, dbTx: DbTx | DbMempoolTx) {
-  switch (txData.payload.typeId) {
-    case TransactionPayloadTypeID.TokenTransfer: {
-      let recipientPrincipal = c32address(
-        txData.payload.recipient.address.version,
-        txData.payload.recipient.address.bytes.toString('hex')
-      );
-      if (txData.payload.recipient.typeId === RecipientPrincipalTypeId.Contract) {
-        recipientPrincipal += '.' + txData.payload.recipient.contractName;
+function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempoolTx) {
+  switch (txData.payload.type_id) {
+    case TxPayloadTypeID.TokenTransfer: {
+      let recipientPrincipal = txData.payload.recipient.address;
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Contract) {
+        recipientPrincipal += '.' + txData.payload.recipient.contract_name;
       }
       dbTx.token_transfer_recipient_address = recipientPrincipal;
-      dbTx.token_transfer_amount = txData.payload.amount;
-      dbTx.token_transfer_memo = txData.payload.memo;
+      dbTx.token_transfer_amount = BigInt(txData.payload.amount);
+      dbTx.token_transfer_memo = hexToBuffer(txData.payload.memo_hex);
       break;
     }
-    case TransactionPayloadTypeID.SmartContract: {
+    case TxPayloadTypeID.SmartContract: {
       const sender_address = getTxSenderAddress(txData);
-      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.name;
-      dbTx.smart_contract_source_code = txData.payload.codeBody;
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
+      dbTx.smart_contract_source_code = txData.payload.code_body;
       break;
     }
-    case TransactionPayloadTypeID.ContractCall: {
-      const contractAddress = c32address(
-        txData.payload.address.version,
-        txData.payload.address.bytes.toString('hex')
-      );
-      dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contractName}`;
-      dbTx.contract_call_function_name = txData.payload.functionName;
-      dbTx.contract_call_function_args = txData.payload.rawFunctionArgs;
+    case TxPayloadTypeID.ContractCall: {
+      const contractAddress = txData.payload.address;
+      dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
+      dbTx.contract_call_function_name = txData.payload.function_name;
+      dbTx.contract_call_function_args = hexToBuffer(txData.payload.function_args_buffer);
       break;
     }
-    case TransactionPayloadTypeID.PoisonMicroblock: {
-      dbTx.poison_microblock_header_1 = txData.payload.microblockHeader1;
-      dbTx.poison_microblock_header_2 = txData.payload.microblockHeader2;
+    case TxPayloadTypeID.PoisonMicroblock: {
+      dbTx.poison_microblock_header_1 = hexToBuffer(txData.payload.microblock_header_1.buffer);
+      dbTx.poison_microblock_header_2 = hexToBuffer(txData.payload.microblock_header_2.buffer);
       break;
     }
-    case TransactionPayloadTypeID.Coinbase: {
-      dbTx.coinbase_payload = txData.payload.payload;
+    case TxPayloadTypeID.Coinbase: {
+      dbTx.coinbase_payload = hexToBuffer(txData.payload.payload_buffer);
       break;
     }
     default:
@@ -1028,7 +1095,7 @@ function extractTransactionPayload(txData: Transaction, dbTx: DbTx | DbMempoolTx
 }
 
 export function createDbMempoolTxFromCoreMsg(msg: {
-  txData: Transaction;
+  txData: DecodedTxResult;
   txId: string;
   sender: string;
   sponsorAddress: string | undefined;
@@ -1037,19 +1104,26 @@ export function createDbMempoolTxFromCoreMsg(msg: {
 }): DbMempoolTx {
   const dbTx: DbMempoolTx = {
     pruned: false,
-    nonce: Number(msg.txData.auth.originCondition.nonce),
+    nonce: Number(msg.txData.auth.origin_condition.nonce),
+    sponsor_nonce:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? Number(msg.txData.auth.sponsor_condition.nonce)
+        : undefined,
     tx_id: msg.txId,
     raw_tx: msg.rawTx,
-    type_id: parseEnum(DbTxTypeId, msg.txData.payload.typeId as number),
-    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchorMode as number),
+    type_id: parseEnum(DbTxTypeId, msg.txData.payload.type_id as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchor_mode as number),
     status: DbTxStatus.Pending,
     receipt_time: msg.receiptDate,
-    fee_rate: msg.txData.auth.originCondition.feeRate,
+    fee_rate:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? BigInt(msg.txData.auth.sponsor_condition.tx_fee)
+        : BigInt(msg.txData.auth.origin_condition.tx_fee),
     sender_address: msg.sender,
-    origin_hash_mode: msg.txData.auth.originCondition.hashMode as number,
-    sponsored: msg.txData.auth.typeId === TransactionAuthTypeID.Sponsored,
+    origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
+    sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
     sponsor_address: msg.sponsorAddress,
-    post_conditions: msg.txData.rawPostConditions,
+    post_conditions: hexToBuffer(msg.txData.post_conditions_buffer),
   };
   extractTransactionPayload(msg.txData, dbTx);
   return dbTx;
@@ -1061,11 +1135,11 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   const dbTx: DbTx = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
-    nonce: Number(
-      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
-        ? parsedTx.auth.sponsorCondition.nonce
-        : parsedTx.auth.originCondition.nonce
-    ),
+    nonce: Number(parsedTx.auth.origin_condition.nonce),
+    sponsor_nonce:
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? Number(parsedTx.auth.sponsor_condition.nonce)
+        : undefined,
     raw_tx: msg.raw_tx,
     index_block_hash: msg.index_block_hash,
     parent_index_block_hash: msg.parent_index_block_hash,
@@ -1074,23 +1148,23 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     parent_burn_block_time: msg.parent_burn_block_time,
-    type_id: parseEnum(DbTxTypeId, parsedTx.payload.typeId as number),
-    anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchorMode as number),
+    type_id: parseEnum(DbTxTypeId, parsedTx.payload.type_id as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchor_mode as number),
     status: getTxDbStatus(coreTx.status),
     raw_result: coreTx.raw_result,
     fee_rate:
-      parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored
-        ? parsedTx.auth.sponsorCondition.feeRate
-        : parsedTx.auth.originCondition.feeRate,
+      parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? BigInt(parsedTx.auth.sponsor_condition.tx_fee)
+        : BigInt(parsedTx.auth.origin_condition.tx_fee),
     sender_address: msg.sender_address,
     sponsor_address: msg.sponsor_address,
-    origin_hash_mode: parsedTx.auth.originCondition.hashMode as number,
-    sponsored: parsedTx.auth.typeId === TransactionAuthTypeID.Sponsored,
+    origin_hash_mode: parsedTx.auth.origin_condition.hash_mode as number,
+    sponsored: parsedTx.auth.type_id === PostConditionAuthFlag.Sponsored,
     canonical: true,
     microblock_canonical: true,
     microblock_sequence: msg.microblock_sequence,
     microblock_hash: msg.microblock_hash,
-    post_conditions: parsedTx.rawPostConditions,
+    post_conditions: hexToBuffer(parsedTx.post_conditions_buffer),
     event_count: 0,
     execution_cost_read_count: coreTx.execution_cost.read_count,
     execution_cost_read_length: coreTx.execution_cost.read_length,

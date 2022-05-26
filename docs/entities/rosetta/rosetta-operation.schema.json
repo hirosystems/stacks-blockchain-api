@@ -3,9 +3,9 @@
   "title": "RosettaOperation",
   "description": "Operations contain all balance-changing information within a transaction. They are always one-sided (only affect 1 AccountIdentifier) and can succeed or fail independently from a Transaction.",
   "required": ["operation_identifier", "type"],
+  "additionalProperties": false,
   "properties": {
     "operation_identifier": {
-      "description": "The operation_identifier uniquely identifies an operation within a transaction.",
       "$ref": "./rosetta-operation-identifier.schema.json"
     },
     "related_operations": {

@@ -1,27 +1,15 @@
-import { c32address } from 'c32check';
-import { serializeCV, cvToString } from '@stacks/transactions';
-
 import {
   PostCondition,
-  PostConditionFungible,
-  PostConditionNonFungible,
-  PostConditionPrincipal,
-  PostConditionFungibleConditionCode,
-  PostConditionNonFungibleConditionCode,
-  PostConditionPrincipalType,
+  PostConditionPrincipal as PostConditionPrincipalDocsType,
   PostConditionMode,
 } from '@stacks/stacks-blockchain-api-types';
 
 import {
-  TransactionPostCondition,
-  AssetInfoTypeID,
-  PostConditionPrincipal as TxPostConditionPrincipal,
+  TxPostCondition,
+  PostConditionAssetInfoID,
+  PostConditionPrincipal,
   PostConditionPrincipalTypeID,
-  AssetInfo,
-  FungibleConditionCode,
-  NonfungibleConditionCode,
-} from '../../p2p/tx';
-import { bufferToHexPrefixString } from '../../helpers';
+} from 'stacks-encoding-native-js';
 
 const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Origin]: 'principal_origin',
@@ -30,109 +18,77 @@ const assetPrincipalTypeMap = {
 } as const;
 
 function serializePostConditionPrincipal(
-  principal: TxPostConditionPrincipal
-): PostConditionPrincipal {
-  if (principal.typeId === PostConditionPrincipalTypeID.Standard) {
+  principal: PostConditionPrincipal
+): PostConditionPrincipalDocsType {
+  if (principal.type_id === PostConditionPrincipalTypeID.Standard) {
     return {
-      type_id: assetPrincipalTypeMap[principal.typeId],
-      address: c32address(principal.address.version, principal.address.bytes.toString('hex')),
+      type_id: assetPrincipalTypeMap[principal.type_id],
+      address: principal.address,
     };
   }
-  if (principal.typeId === PostConditionPrincipalTypeID.Contract) {
+  if (principal.type_id === PostConditionPrincipalTypeID.Contract) {
     return {
-      type_id: assetPrincipalTypeMap[principal.typeId],
-      contract_name: principal.contractName,
-      address: c32address(principal.address.version, principal.address.bytes.toString('hex')),
+      type_id: assetPrincipalTypeMap[principal.type_id],
+      contract_name: principal.contract_name,
+      address: principal.address,
     };
   }
   return {
-    type_id: assetPrincipalTypeMap[principal.typeId],
-  };
-}
-
-type SerializedPostConditionAsset =
-  | PostConditionFungible['asset']
-  | PostConditionNonFungible['asset'];
-
-function serializePostConditionAsset(asset: AssetInfo): SerializedPostConditionAsset {
-  return {
-    contract_name: asset.contractName,
-    asset_name: asset.assetName,
-    contract_address: c32address(
-      asset.contractAddress.version,
-      asset.contractAddress.bytes.toString('hex')
-    ),
+    type_id: assetPrincipalTypeMap[principal.type_id],
   };
 }
 
 const assetInfoTypeMap = {
-  [AssetInfoTypeID.STX]: 'stx',
-  [AssetInfoTypeID.FungibleAsset]: 'fungible',
-  [AssetInfoTypeID.NonfungibleAsset]: 'non_fungible',
+  [PostConditionAssetInfoID.STX]: 'stx',
+  [PostConditionAssetInfoID.FungibleAsset]: 'fungible',
+  [PostConditionAssetInfoID.NonfungibleAsset]: 'non_fungible',
 } as const;
 
-export function serializePostCondition(pc: TransactionPostCondition): PostCondition {
-  switch (pc.assetInfoId) {
-    case AssetInfoTypeID.STX:
+export function serializePostCondition(pc: TxPostCondition): PostCondition {
+  switch (pc.asset_info_id) {
+    case PostConditionAssetInfoID.STX:
       return {
-        type: assetInfoTypeMap[pc.assetInfoId],
-        condition_code: serializeFungibleConditionCode(pc.conditionCode),
-        amount: pc.amount.toString(),
+        type: assetInfoTypeMap[pc.asset_info_id],
+        condition_code: pc.condition_name,
+        amount: pc.amount,
         principal: serializePostConditionPrincipal(pc.principal),
       };
-    case AssetInfoTypeID.FungibleAsset:
+    case PostConditionAssetInfoID.FungibleAsset:
       return {
-        type: assetInfoTypeMap[pc.assetInfoId],
-        condition_code: serializeFungibleConditionCode(pc.conditionCode),
-        amount: pc.amount.toString(),
+        type: assetInfoTypeMap[pc.asset_info_id],
+        condition_code: pc.condition_name,
+        amount: pc.amount,
         principal: serializePostConditionPrincipal(pc.principal),
-        asset: serializePostConditionAsset(pc.asset),
+        asset: {
+          contract_name: pc.asset.contract_name,
+          asset_name: pc.asset.asset_name,
+          contract_address: pc.asset.contract_address,
+        },
       };
-    case AssetInfoTypeID.NonfungibleAsset:
+    case PostConditionAssetInfoID.NonfungibleAsset:
       return {
-        type: assetInfoTypeMap[pc.assetInfoId],
-        condition_code: serializeNonFungibleConditionCode(pc.conditionCode),
+        type: assetInfoTypeMap[pc.asset_info_id],
+        condition_code: pc.condition_name,
         principal: serializePostConditionPrincipal(pc.principal),
-        asset: serializePostConditionAsset(pc.asset),
+        asset: {
+          contract_name: pc.asset.contract_name,
+          asset_name: pc.asset.asset_name,
+          contract_address: pc.asset.contract_address,
+        },
         asset_value: {
-          hex: bufferToHexPrefixString(serializeCV(pc.assetValue)),
-          repr: cvToString(pc.assetValue),
+          hex: pc.asset_value.hex,
+          repr: pc.asset_value.repr,
         },
       };
   }
 }
 
-const fungibleConditionCodeMap = {
-  [FungibleConditionCode.SentEq]: 'sent_equal_to',
-  [FungibleConditionCode.SentGt]: 'sent_greater_than',
-  [FungibleConditionCode.SentGe]: 'sent_greater_than_or_equal_to',
-  [FungibleConditionCode.SentLt]: 'sent_less_than',
-  [FungibleConditionCode.SentLe]: 'sent_less_than_or_equal_to',
-} as const;
-
-function serializeFungibleConditionCode(
-  code: FungibleConditionCode
-): PostConditionFungibleConditionCode {
-  return fungibleConditionCodeMap[code];
-}
-
-const fungibleNonConditionCodeMap = {
-  [NonfungibleConditionCode.NotSent]: 'not_sent',
-  [NonfungibleConditionCode.Sent]: 'sent',
-} as const;
-
-function serializeNonFungibleConditionCode(
-  code: NonfungibleConditionCode
-): PostConditionNonFungibleConditionCode {
-  return fungibleNonConditionCodeMap[code];
-}
-
 export function serializePostConditionMode(byte: number): PostConditionMode {
-  if (byte === 1) {
-    return 'allow';
-  }
-  if (byte === 2) {
-    return 'deny';
+  switch (byte) {
+    case 1:
+      return 'allow';
+    case 2:
+      return 'deny';
   }
   throw new Error(`PostConditionMode byte must be either 1 or 2 but was ${byte}`);
 }

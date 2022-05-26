@@ -2,9 +2,9 @@ import * as supertest from 'supertest';
 import {
   bufferCVFromString,
   ChainID,
-  serializeCV,
   stringAsciiCV,
   uintCV,
+  serializeCV,
 } from '@stacks/transactions';
 import {
   DbBlock,
@@ -38,7 +38,7 @@ import {
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
-import { createClarityValueArray } from '../p2p/tx';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 describe('microblock tests', () => {
   let db: PgDataStore;
@@ -47,7 +47,7 @@ describe('microblock tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
+    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
     client = await db.pool.connect();
   });
 

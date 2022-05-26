@@ -1,7 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "List of non fungible tokens metadata",
   "title": "NonFungibleTokensMetadataList",
+  "additionalProperties": false,
   "type": "object",
   "required": [
     "results",

@@ -1,10 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "construction-derive-request",
   "type": "object",
   "title": "RosettaConstructionDeriveRequest",
   "description": "Network is provided in the request because some blockchains have different address formats for different networks",
   "required": ["network_identifier", "public_key"],
+  "additionalProperties": false,
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"

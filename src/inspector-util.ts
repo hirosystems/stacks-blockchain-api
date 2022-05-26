@@ -4,11 +4,20 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { asyncHandler } from './api/async-handler';
-import { logError, logger, parsePort, stopwatch, timeout, pipelineAsync } from './helpers';
+import {
+  logError,
+  logger,
+  parsePort,
+  stopwatch,
+  timeout,
+  pipelineAsync,
+  Stopwatch,
+} from './helpers';
 import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
+import { createProfiler, startProfiler, stopProfiler } from 'stacks-encoding-native-js';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 
@@ -17,6 +26,8 @@ interface ProfilerInstance<TStopResult = void> {
   stop: () => Promise<TStopResult>;
   dispose: () => Promise<void>;
   session: inspector.Session;
+  sessionType: 'cpu' | 'memory';
+  stopwatch: Stopwatch;
 }
 
 function isInspectorNotConnectedError(error: unknown): boolean {
@@ -33,10 +44,10 @@ function isInspectorNotConnectedError(error: unknown): boolean {
  * @param samplingInterval - Optionally set sampling interval in microseconds, default is 1000 microseconds.
  */
 function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfileResult> {
-  const sw = stopwatch();
+  const sessionStopwatch = stopwatch();
   const session = new inspector.Session();
   session.connect();
-  logger.info(`[CpuProfiler] Connect session took ${sw.getElapsedAndRestart()}ms`);
+  logger.info(`[CpuProfiler] Connect session took ${sessionStopwatch.getElapsedAndRestart()}ms`);
   const start = async () => {
     const sw = stopwatch();
     logger.info(`[CpuProfiler] Enabling profiling...`);
@@ -87,6 +98,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
             logError(`[CpuProfiler] Error starting profiling: ${error}`, error);
             reject(error);
           } else {
+            sessionStopwatch.restart();
             logger.info(`[CpuProfiler] Profiling started`);
             resolve();
           }
@@ -158,7 +170,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
     }
   };
 
-  return { start, stop, dispose, session };
+  return { start, stop, dispose, session, sessionType: 'cpu', stopwatch: sessionStopwatch };
 }
 
 /**
@@ -170,6 +182,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
 function initHeapSnapshot(
   outputStream: stream.Writable
 ): ProfilerInstance<{ totalSnapshotByteSize: number }> {
+  const sw = stopwatch();
   const session = new inspector.Session();
   session.connect();
   let totalSnapshotByteSize = 0;
@@ -182,6 +195,7 @@ function initHeapSnapshot(
             logError(`[HeapProfiler] Error enabling profiling: ${error}`, error);
             reject(error);
           } else {
+            sw.restart();
             logger.info(`[HeapProfiler] Profiling enabled`);
             resolve();
           }
@@ -273,7 +287,7 @@ function initHeapSnapshot(
     }
   };
 
-  return { start, stop, dispose, session };
+  return { start, stop, dispose, session, sessionType: 'memory', stopwatch: sw };
 }
 
 export async function startProfilerServer(
@@ -342,8 +356,116 @@ export async function startProfilerServer(
         );
         res.end(resultString);
       } finally {
-        await existingSession?.instance.dispose().catch();
+        const session = existingSession;
         existingSession = undefined;
+        await session?.instance.dispose().catch();
+      }
+    })
+  );
+
+  let neonProfilerRunning: boolean = false;
+
+  app.get(
+    '/profile/cpu/start',
+    asyncHandler(async (req, res) => {
+      if (existingSession) {
+        res.status(409).json({ error: 'Profile session already in progress' });
+        return;
+      }
+      const samplingIntervalParam = req.query['sampling_interval'];
+      let samplingInterval: number | undefined;
+      if (samplingIntervalParam !== undefined) {
+        samplingInterval = Number.parseFloat(samplingIntervalParam as string);
+        if (!Number.isInteger(samplingInterval) || samplingInterval < 0) {
+          res.status(400).json({
+            error: `Invalid 'sampling_interval' query parameter "${samplingIntervalParam}"`,
+          });
+          return;
+        }
+      }
+      const cpuProfiler = initCpuProfiling(samplingInterval);
+      existingSession = { instance: cpuProfiler, response: res };
+      await cpuProfiler.start();
+      const profilerRunningLogger = setInterval(() => {
+        if (existingSession) {
+          logger.error(`CPU profiler has been enabled for a long time`);
+        } else {
+          clearInterval(profilerRunningLogger);
+        }
+      }, 10_000).unref();
+      res.end('CPU profiler started');
+    })
+  );
+
+  app.get('/profile/native/cpu/start', (req, res) => {
+    if (neonProfilerRunning) {
+      res.status(500).end('error: profiler already started');
+      return;
+    }
+    neonProfilerRunning = true;
+    try {
+      const startResponse = startProfiler();
+      console.log(startResponse);
+      res.end(startResponse);
+    } catch (error) {
+      console.error(error);
+      res.status(500).end(error);
+    }
+  });
+
+  app.get('/profile/native/cpu/stop', (req, res) => {
+    if (!neonProfilerRunning) {
+      res.status(500).end('error: no profiler running');
+      return;
+    }
+    neonProfilerRunning = false;
+    let profilerResults: Buffer;
+    try {
+      profilerResults = stopProfiler();
+    } catch (error: any) {
+      console.error(error);
+      res.status(500).end(error);
+      return;
+    }
+    const fileName = `profile-${Date.now()}.svg`;
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.status(200).send(profilerResults);
+  });
+
+  app.get(
+    '/profile/cpu/stop',
+    asyncHandler(async (req, res) => {
+      if (!existingSession) {
+        res.status(409).json({ error: 'No profile session in progress' });
+        return;
+      }
+      if (existingSession.instance.sessionType !== 'cpu') {
+        res.status(409).json({ error: 'No CPU profile session in progress' });
+        return;
+      }
+      try {
+        const elapsedSeconds = existingSession.instance.stopwatch.getElapsedSeconds();
+        const timestampSeconds = Math.round(Date.now() / 1000);
+        const filename = `cpu_${timestampSeconds}_${elapsedSeconds}-seconds.cpuprofile`;
+        const result = await (existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>).stop();
+        const resultString = JSON.stringify(result);
+        logger.info(
+          `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
+        );
+
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Transfer-Encoding', 'chunked');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        // await new Promise<void>(resolve => res.end(resultString, () => resolve()));
+        res.end(resultString);
+      } finally {
+        const session = existingSession;
+        existingSession = undefined;
+        await session?.instance.dispose().catch();
       }
     })
   );
@@ -376,8 +498,9 @@ export async function startProfilerServer(
         );
         await pipelineAsync(fs.createReadStream(tmpFile), res);
       } finally {
-        await existingSession.instance.dispose().catch();
+        const session = existingSession;
         existingSession = undefined;
+        await session?.instance.dispose().catch();
         try {
           fileWriteStream.destroy();
         } catch (_) {}

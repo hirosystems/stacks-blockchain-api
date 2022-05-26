@@ -14,18 +14,12 @@ import {
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
-import {
-  isFtMetadataEnabled,
-  isNftMetadataEnabled,
-} from '../../../event-stream/tokens-contract-handler';
+import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
 import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
-import { cvToString, deserializeCV } from '@stacks/transactions';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
-import {
-  getChainTipCacheHandler,
-  setChainTipCacheHeaders,
-} from '../../controllers/cache-controller';
+import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 
 const MAX_TOKENS_PER_REQUEST = 200;
 const parseTokenQueryLimit = parseLimitQuery({
@@ -35,7 +29,7 @@ const parseTokenQueryLimit = parseLimitQuery({
 
 export function createTokenRouter(db: DataStore): express.Router {
   const router = express.Router();
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
   router.use(express.json());
 
   router.get(
@@ -78,12 +72,14 @@ export function createTokenRouter(db: DataStore): express.Router {
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults: NonFungibleTokenHolding[] = results.map(result => {
+        const parsedClarityValue = decodeClarityValueToRepr(result.nft_holding_info.value);
         const parsedNftData = {
           asset_identifier: result.nft_holding_info.asset_identifier,
           value: {
             hex: bufferToHexPrefixString(result.nft_holding_info.value),
-            repr: cvToString(deserializeCV(result.nft_holding_info.value)),
+            repr: parsedClarityValue,
           },
+          block_height: result.nft_holding_info.block_height,
         };
         if (includeTxMetadata && result.tx) {
           return { ...parsedNftData, tx: parseDbTx(result.tx) };
@@ -97,7 +93,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
@@ -158,7 +154,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );
@@ -193,12 +189,13 @@ export function createTokenRouter(db: DataStore): express.Router {
         includeTxMetadata: includeTxMetadata,
       });
       const parsedResults: NonFungibleTokenMint[] = results.map(result => {
+        const parsedClarityValue = decodeClarityValueToRepr(result.nft_event.value);
         const parsedNftData = {
           recipient: result.nft_event.recipient,
           event_index: result.nft_event.event_index,
           value: {
             hex: bufferToHexPrefixString(result.nft_event.value),
-            repr: cvToString(deserializeCV(result.nft_event.value)),
+            repr: parsedClarityValue,
           },
         };
         if (includeTxMetadata && result.tx) {
@@ -212,7 +209,7 @@ export function createTokenRouter(db: DataStore): express.Router {
         total: total,
         results: parsedResults,
       };
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.status(200).json(response);
     })
   );

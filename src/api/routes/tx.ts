@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore, DbTx, DbMempoolTx } from '../../datastore/common';
+import { DataStore, DbTx, DbMempoolTx, DbEventTypeId } from '../../datastore/common';
 import {
   getTxFromDataStore,
   parseTxTypeStrings,
@@ -8,6 +8,7 @@ import {
   searchTx,
   searchTxs,
   parseDbTx,
+  parseDbEvent,
 } from '../controllers/db-controller';
 import {
   waiter,
@@ -18,12 +19,15 @@ import {
   bufferToHexPrefixString,
   isValidPrincipal,
   hexToBuffer,
+  parseEventTypeStrings,
 } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
   getBlockHeightPathParam,
   validateRequestHexInput,
+  parseAddressOrTxId,
+  parseEventTypeFilter,
 } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
@@ -34,7 +38,11 @@ import {
   GetRawTransactionResult,
   Transaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { getChainTipCacheHandler, setChainTipCacheHeaders } from '../controllers/cache-controller';
+import {
+  ETagType,
+  getETagCacheHandler,
+  setETagCacheHeaders,
+} from '../controllers/cache-controller';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -57,7 +65,8 @@ const parseTxQueryEventsLimit = parseLimitQuery({
 export function createTxRouter(db: DataStore): express.Router {
   const router = express.Router();
 
-  const cacheHandler = getChainTipCacheHandler(db);
+  const cacheHandler = getETagCacheHandler(db);
+  const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
 
   router.get(
     '/',
@@ -92,7 +101,7 @@ export function createTxRouter(db: DataStore): express.Router {
           '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
         await validate(schemaPath, response);
       }
-      setChainTipCacheHeaders(res);
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
@@ -128,6 +137,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   router.get(
     '/mempool',
+    mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
       const limit = parseTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -181,12 +191,14 @@ export function createTxRouter(db: DataStore): express.Router {
 
       const results = txResults.map(tx => parseDbMempoolTx(tx));
       const response: MempoolTransactionListResponse = { limit, offset, total, results };
+      setETagCacheHeaders(res, ETagType.mempool);
       res.json(response);
     })
   );
 
   router.get(
     '/mempool/dropped',
+    mempoolCacheHandler,
     asyncHandler(async (req, res) => {
       const limit = parseTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -196,6 +208,7 @@ export function createTxRouter(db: DataStore): express.Router {
       });
       const results = txResults.map(tx => parseDbMempoolTx(tx));
       const response: MempoolTransactionListResponse = { limit, offset, total, results };
+      setETagCacheHeaders(res, ETagType.mempool);
       res.json(response);
     })
   );
@@ -251,6 +264,29 @@ export function createTxRouter(db: DataStore): express.Router {
   );
 
   router.get(
+    '/events',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+
+      const principalOrTxId = parseAddressOrTxId(req, res, next);
+      const eventTypeFilter = parseEventTypeFilter(req, res, next);
+
+      const { results } = await db.getTransactionEvents({
+        addressOrTxId: principalOrTxId,
+        eventTypeFilter,
+        offset,
+        limit,
+      });
+      const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+      setETagCacheHeaders(res);
+      res.status(200).json(response);
+    })
+  );
+
+  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
+  router.get(
     '/:tx_id',
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
@@ -284,6 +320,7 @@ export function createTxRouter(db: DataStore): express.Router {
     })
   );
 
+  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id/raw',
     asyncHandler(async (req, res) => {
@@ -308,6 +345,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   router.get(
     '/block/:block_hash',
+    cacheHandler,
     asyncHandler(async (req, res) => {
       const { block_hash } = req.params;
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
@@ -332,12 +370,14 @@ export function createTxRouter(db: DataStore): express.Router {
           '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
         await validate(schemaPath, response);
       }
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
 
   router.get(
     '/block_height/:height',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const height = getBlockHeightPathParam(req, res, next);
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
@@ -361,6 +401,7 @@ export function createTxRouter(db: DataStore): express.Router {
           '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
         await validate(schemaPath, response);
       }
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );

@@ -6,17 +6,26 @@ import * as util from 'util';
 import * as stream from 'stream';
 import * as http from 'http';
 import * as winston from 'winston';
-import * as c32check from 'c32check';
+import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
-import { ChainID } from '@stacks/transactions';
+import {
+  BufferCV,
+  bufferCV,
+  ChainID,
+  cvToHex,
+  hexToCV,
+  TupleCV,
+  tupleCV,
+} from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import {
   CliConfigSetColors,
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbStxEvent, DbTx } from './datastore/common';
+import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
+import { StacksCoreRpcClient } from './core-rpc/client';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -257,7 +266,7 @@ export function isValidBitcoinAddress(address: string): boolean {
 
 export function tryConvertC32ToBtc(address: string): string | false {
   try {
-    const result = c32check.c32ToB58(address);
+    const result = stacksToBitcoinAddress(address);
     return result;
   } catch (e) {
     return false;
@@ -266,8 +275,7 @@ export function tryConvertC32ToBtc(address: string): string | false {
 
 export function isValidC32Address(stxAddress: string): boolean {
   try {
-    c32check.c32addressDecode(stxAddress);
-    return true;
+    return isValidStacksAddress(stxAddress);
   } catch (error) {
     return false;
   }
@@ -524,6 +532,11 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+export function hexToUtf8String(hex: string): string {
+  const buffer = hexToBuffer(hex);
+  return buffer.toString('utf8');
+}
+
 export function numberToHex(number: number, paddingBytes: number = 4): string {
   let result = number.toString(16);
   if (result.length % 2 > 0) {
@@ -755,24 +768,37 @@ export function waiter<T = void>(): Waiter<T> {
   return Object.assign(promise, completer);
 }
 
-export function stopwatch(): {
+export interface Stopwatch {
   /** Milliseconds since stopwatch was created. */
   getElapsed: () => number;
+  /** Seconds since stopwatch was created. */
+  getElapsedSeconds: () => number;
   getElapsedAndRestart: () => number;
-} {
-  let start = process.hrtime();
-  return {
+  restart(): void;
+}
+
+export function stopwatch(): Stopwatch {
+  let start = process.hrtime.bigint();
+  const result: Stopwatch = {
+    getElapsedSeconds: () => {
+      const elapsedMs = result.getElapsed();
+      return elapsedMs / 1000;
+    },
     getElapsed: () => {
-      const hrend = process.hrtime(start);
-      return hrend[0] * 1000 + hrend[1] / 1000000;
+      const end = process.hrtime.bigint();
+      return Number((end - start) / 1_000_000n);
     },
     getElapsedAndRestart: () => {
-      const hrend = process.hrtime(start);
-      const result = hrend[0] * 1000 + hrend[1] / 1000000;
-      start = process.hrtime();
+      const end = process.hrtime.bigint();
+      const result = Number((end - start) / 1_000_000n);
+      start = process.hrtime.bigint();
       return result;
     },
+    restart: () => {
+      start = process.hrtime.bigint();
+    },
   };
+  return result;
 }
 
 export async function time<T>(
@@ -926,6 +952,40 @@ export function parseDataUrl(
   }
 }
 
+/**
+ * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
+ * received NFT events.
+ */
+export function bnsNameCV(name: string): Buffer {
+  const components = name.split('.');
+  return hexToBuffer(
+    cvToHex(
+      tupleCV({
+        name: bufferCV(Buffer.from(components[0])),
+        namespace: bufferCV(Buffer.from(components[1])),
+      })
+    )
+  );
+}
+
+/**
+ * Converts a hex Clarity value for a BNS name NFT into the string name
+ * @param hex - hex encoded Clarity value of BNS name NFT
+ * @returns BNS name string
+ */
+export function bnsHexValueToName(hex: string): string {
+  const tuple = hexToCV(hex) as TupleCV;
+  const name = tuple.data.name as BufferCV;
+  const namespace = tuple.data.namespace as BufferCV;
+  return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
+}
+
+export function getBnsSmartContractId(chainId: ChainID): string {
+  return chainId === ChainID.Mainnet
+    ? 'SP000000000000000000002Q6VF78.bns::names'
+    : 'ST000000000000000000002AMW42H.bns::names';
+}
+
 export function getSendManyContract(chainId: ChainID) {
   const contractId =
     chainId === ChainID.Mainnet
@@ -959,4 +1019,54 @@ export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boo
     }
   }
   return false;
+}
+
+/**
+ * Gets the chain id as reported by the Stacks node.
+ * @returns `ChainID` Chain id
+ */
+export async function getStacksNodeChainID(): Promise<ChainID> {
+  const client = new StacksCoreRpcClient();
+  await client.waitForConnection(Infinity);
+  const coreInfo = await client.getInfo();
+  if (coreInfo.network_id === ChainID.Mainnet) {
+    return ChainID.Mainnet;
+  } else if (coreInfo.network_id === ChainID.Testnet) {
+    return ChainID.Testnet;
+  } else {
+    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
+  }
+}
+
+/**
+ * Gets the chain id as configured by the `STACKS_CHAIN_ID` API env variable.
+ * @returns `ChainID` Chain id
+ */
+export function getApiConfiguredChainID() {
+  if (!('STACKS_CHAIN_ID' in process.env)) {
+    const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
+    logError(error.message, error);
+    throw error;
+  }
+  const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
+  return configuredChainID;
+}
+
+export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
+  return values.map(v => {
+    switch (v) {
+      case 'smart_contract_log':
+        return DbEventTypeId.SmartContractLog;
+      case 'stx_lock':
+        return DbEventTypeId.StxLock;
+      case 'stx_asset':
+        return DbEventTypeId.StxAsset;
+      case 'fungible_token_asset':
+        return DbEventTypeId.FungibleTokenAsset;
+      case 'non_fungible_token_asset':
+        return DbEventTypeId.NonFungibleTokenAsset;
+      default:
+        throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
+    }
+  });
 }

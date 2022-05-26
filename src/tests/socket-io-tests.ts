@@ -224,6 +224,83 @@ describe('socket-io', () => {
     }
   });
 
+  test('socket-io > invalid topic connection', async () => {
+    const faultyAddr = 'faulty address';
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: `address-stx-balance:${faultyAddr}` },
+    });
+    const updateWaiter: Waiter<Error> = waiter();
+
+    socket.on(`connect_error`, err => {
+      updateWaiter.finish(err);
+    });
+
+    const result = await updateWaiter;
+    try {
+      throw result;
+    } catch (err: any) {
+      expect(err.message).toEqual(`Invalid topic: address-stx-balance:${faultyAddr}`);
+    } finally {
+      socket.close();
+    }
+  });
+
+  test('socket-io > multiple invalid topic connection', async () => {
+    const faultyAddrStx = 'address-stx-balance:faulty address';
+    const faultyTx = 'transaction:0x1';
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: `${faultyAddrStx},${faultyTx}` },
+    });
+    const updateWaiter: Waiter<Error> = waiter();
+
+    socket.on(`connect_error`, err => {
+      updateWaiter.finish(err);
+    });
+
+    const result = await updateWaiter;
+    try {
+      throw result;
+    } catch (err: any) {
+      expect(err.message).toEqual(`Invalid topic: ${faultyAddrStx}, ${faultyTx}`);
+    } finally {
+      socket.close();
+    }
+  });
+
+  test('socket-io > valid socket subscription', async () => {
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: '' },
+    });
+    const updateWaiter: Waiter<Block> = waiter();
+
+    socket.on('block', block => {
+      updateWaiter.finish(block);
+    });
+
+    socket.emit('subscribe', 'block');
+
+    const block = new TestBlockBuilder({ block_hash: '0x1234', burn_block_hash: '0x5454' })
+      .addTx({ tx_id: '0x4321' })
+      .build();
+    await db.update(block);
+
+    const result = await updateWaiter;
+    try {
+      expect(result.hash).toEqual('0x1234');
+      expect(result.burn_block_hash).toEqual('0x5454');
+      expect(result.txs[0]).toEqual('0x4321');
+    } finally {
+      socket.emit('unsubscribe', 'block');
+      socket.close();
+    }
+  });
+
   afterEach(async () => {
     await apiServer.terminate();
     dbClient.release();

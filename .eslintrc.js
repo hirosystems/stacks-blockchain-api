@@ -30,5 +30,6 @@ module.exports = {
 
     // TODO: temporarily disable this until the express async handler is typed correctly
     '@typescript-eslint/no-misused-promises': 'off',
+    '@typescript-eslint/no-unsafe-argument': 'off',
   },
 };

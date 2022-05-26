@@ -1,8 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "InboundStxTransfer",
   "description": "A inbound STX transfer with a memo",
   "type": "object",
+  "additionalProperties": false,
   "required": ["sender", "amount", "memo", "block_height", "tx_id", "transfer_type", "tx_index"],
   "properties": {
     "sender": {

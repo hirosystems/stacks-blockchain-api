@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "TransactionAnchorModeType",
   "type": "string",
   "enum": ["on_chain_only", "off_chain_only", "any"],
