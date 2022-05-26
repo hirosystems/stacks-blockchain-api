@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v3.0.3
+  version: v4.0.0
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
@@ -140,7 +140,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: POST request that initiates a transfer of tokens to a specified
                   testnet address
                 title: RunFaucetResponse
@@ -269,7 +268,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns transactions
                 title: TransactionResults
                 type: object
@@ -278,6 +276,7 @@ paths:
                   - limit
                   - offset
                   - total
+                additionalProperties: false
                 properties:
                   limit:
                     type: integer
@@ -292,7 +291,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: Transaction
                       description: Describes all transaction types on Stacks 2.0 blockchain
@@ -402,10 +400,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns transactions
                 title: MempoolTransactionListResponse
                 type: object
+                additionalProperties: false
                 required:
                   - results
                   - limit
@@ -421,19 +419,16 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: MempoolTransaction
                       description: Describes all transaction types on Stacks 2.0 blockchain
                       anyOf:
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          title: MempoolTokenTransferTransaction
+                        - title: MempoolTokenTransferTransaction
                           description: Describes representation of a Type-0 Stacks 2.0 transaction.
                             https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
                           type: object
                           allOf:
-                            - $schema: http://json-schema.org/draft-07/schema#
-                              title: AbstractMempoolTransaction
+                            - title: AbstractMempoolTransaction
                               description: Abstract transaction. This schema makes up all properties common
                                 between all Stacks 2.0 transaction types
                               type: object
@@ -448,7 +443,6 @@ paths:
                                   additionalProperties: false
                                   properties:
                                     tx_status:
-                                      $schema: http://json-schema.org/draft-07/schema#
                                       title: MempoolTransactionStatus
                                       description: Status of the transaction
                                       type: string
@@ -469,8 +463,7 @@ paths:
                                         by the node.
                             - $ref: "#/paths/~1extended~1v1~1tx~1%7Btx_id%7D/get/responses/200/content/applic\
                                 ation~1json/schema/anyOf/0/allOf/1"
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: MempoolSmartContractTransaction
                           description: Describes representation of a Type-1 Stacks 2.0 transaction.
                             https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
@@ -480,8 +473,7 @@ paths:
                                 /allOf/0"
                             - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                                 ntent/application~1json/schema/allOf/1"
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: MempoolContractCallTransaction
                           description: "Describes representation of a Type 2 Stacks 2.0 transaction:
                             Contract Call"
@@ -491,8 +483,7 @@ paths:
                                 /allOf/0"
                             - $ref: "#/paths/~1extended~1v1~1tx~1%7Btx_id%7D/get/responses/200/content/applic\
                                 ation~1json/schema/anyOf/2/allOf/1"
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: MempoolPoisonMicroblockTransaction
                           description: "Describes representation of a Type 3 Stacks 2.0 transaction:
                             Poison Microblock"
@@ -502,8 +493,7 @@ paths:
                                 /allOf/0"
                             - $ref: "#/paths/~1extended~1v1~1tx~1%7Btx_id%7D/get/responses/200/content/applic\
                                 ation~1json/schema/anyOf/3/allOf/1"
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: MempoolCoinbaseTransaction
                           description: "Describes representation of a Type 3 Stacks 2.0 transaction:
                             Poison Microblock"
@@ -823,13 +813,11 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-04/schema#
                 type: object
                 title: TransactionList
                 additionalProperties:
                   anyOf:
-                    - $schema: http://json-schema.org/draft-04/schema#
-                      type: object
+                    - type: object
                       title: TransactionFound
                       description: This object returns transaction for found true
                       additionalProperties: false
@@ -847,8 +835,7 @@ paths:
                                 n~1json/schema/properties/results/items"
                             - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
                                 chema/properties/results/items"
-                    - $schema: http://json-schema.org/draft-04/schema#
-                      type: object
+                    - type: object
                       title: TransactionNotFound
                       description: This object returns the id for not found transaction
                       additionalProperties: false
@@ -1001,21 +988,18 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 type: object
                 title: Transaction
                 description: Describes all transaction types on Stacks 2.0 blockchain
                 anyOf:
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    title: TokenTransferTransaction
+                  - title: TokenTransferTransaction
                     description: Describes representation of a Type-0 Stacks 2.0 transaction.
                       https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
                     type: object
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                           ntent/application~1json/schema/allOf/0"
-                      - $schema: http://json-schema.org/draft-07/schema#
-                        title: TokenTransferTransactionMetadata
+                      - title: TokenTransferTransactionMetadata
                         description: Metadata associated with token-transfer type transactions
                         type: object
                         required:
@@ -1044,8 +1028,7 @@ paths:
                                 type: string
                                 description: Hex encoded arbitrary message, up to 34 bytes length (should try
                                   decoding to an ASCII string)
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: SmartContractTransaction
                     description: Describes representation of a Type-1 Stacks 2.0 transaction.
                       https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
@@ -1054,16 +1037,14 @@ paths:
                           ntent/application~1json/schema/allOf/0"
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                           ntent/application~1json/schema/allOf/1"
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: ContractCallTransaction
                     description: "Describes representation of a Type 2 Stacks 2.0 transaction:
                       Contract Call"
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                           ntent/application~1json/schema/allOf/0"
-                      - $schema: http://json-schema.org/draft-07/schema#
-                        type: object
+                      - type: object
                         title: ContractCallTransactionMetadata
                         description: Metadata associated with a contract-call type transaction
                         required:
@@ -1114,16 +1095,14 @@ paths:
                                       type: string
                                     type:
                                       type: string
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: PoisonMicroblockTransaction
                     description: "Describes representation of a Type 3 Stacks 2.0 transaction:
                       Poison Microblock"
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                           ntent/application~1json/schema/allOf/0"
-                      - $schema: http://json-schema.org/draft-07/schema#
-                        type: object
+                      - type: object
                         title: PoisonMicroblockTransactionMetadata
                         description: Metadata associated with a poison-microblock type transaction
                         required:
@@ -1148,16 +1127,14 @@ paths:
                               microblock_header_2:
                                 type: string
                                 description: Hex encoded microblock header
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: CoinbaseTransaction
                     description: "Describes representation of a Type 3 Stacks 2.0 transaction:
                       Poison Microblock"
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
                           ntent/application~1json/schema/allOf/0"
-                      - $schema: http://json-schema.org/draft-07/schema#
-                        type: object
+                      - type: object
                         title: CoinbaseTransactionMetadata
                         description: "Describes representation of a Type 3 Stacks 2.0 transaction:
                           Poison Microblock"
@@ -1224,10 +1201,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET raw transaction
                 title: GetRawTransactionResult
                 type: object
+                additionalProperties: false
                 required:
                   - raw_tx
                 properties:
@@ -1268,10 +1245,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns transactions
                 title: PostCoreNodeTransactionsError
                 type: object
+                additionalProperties: false
                 required:
                   - error
                   - reason
@@ -1331,7 +1308,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns microblocks
                 additionalProperties: false
                 title: MicroblockListResponse
@@ -1356,7 +1332,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: Microblock
                       description: A microblock
                       type: object
@@ -1366,7 +1341,6 @@ paths:
                         - microblock_hash
                         - microblock_sequence
                         - microblock_parent_hash
-                        - parent_index_block_hash
                         - block_height
                         - parent_block_height
                         - parent_block_hash
@@ -1451,7 +1425,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 title: Microblock
                 description: A microblock
                 type: object
@@ -1461,7 +1434,6 @@ paths:
                   - microblock_hash
                   - microblock_sequence
                   - microblock_parent_hash
-                  - parent_index_block_hash
                   - block_height
                   - parent_block_height
                   - parent_block_hash
@@ -1547,7 +1519,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns unanchored transactions
                 additionalProperties: false
                 title: UnanchoredTransactionListResponse
@@ -1596,7 +1567,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns blocks
                 additionalProperties: false
                 title: BlockListResponse
@@ -1621,10 +1591,10 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: Block
                       description: A block
                       type: object
+                      additionalProperties: false
                       required:
                         - canonical
                         - height
@@ -1803,10 +1773,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 title: Block
                 description: A block
                 type: object
+                additionalProperties: false
                 required:
                   - canonical
                   - height
@@ -2086,7 +2056,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns reward slot holders
                 additionalProperties: false
                 title: BurnchainRewardSlotHolderListResponse
@@ -2111,10 +2080,10 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: BurnchainRewardSlotHolder
                       description: Reward slot holder on the burnchain
                       type: object
+                      additionalProperties: false
                       required:
                         - canonical
                         - burn_block_hash
@@ -2228,7 +2197,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns blocks
                 additionalProperties: false
                 title: BurnchainRewardListResponse
@@ -2249,9 +2217,9 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: BurnchainReward
                       description: Reward payment made on the burnchain
+                      additionalProperties: false
                       type: object
                       required:
                         - canonical
@@ -2374,10 +2342,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 title: BurnchainRewardsTotal
                 description: Total burnchain rewards made to a recipient
                 type: object
+                additionalProperties: false
                 required:
                   - reward_recipient
                   - reward_amount
@@ -2407,20 +2375,17 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 type: object
                 title: SmartContractTransaction
                 description: Describes representation of a Type-1 Stacks 2.0 transaction.
                   https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
                 allOf:
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    title: AbstractTransaction
+                  - title: AbstractTransaction
                     description: Anchored transaction metadata. All mined/anchored Stacks
                       transactions have these properties.
                     type: object
                     allOf:
-                      - $schema: http://json-schema.org/draft-07/schema#
-                        title: BaseTransaction
+                      - title: BaseTransaction
                         description: Transaction properties that are available from a raw serialized
                           transactions. These are available for transactions in
                           the mempool as well as mined transactions.
@@ -2455,6 +2420,8 @@ paths:
                           sender_address:
                             type: string
                             description: Address of the transaction initiator
+                          sponsor_nonce:
+                            type: integer
                           sponsored:
                             type: boolean
                             description: Denotes whether the originating account is the same as the paying
@@ -2462,7 +2429,6 @@ paths:
                           sponsor_address:
                             type: string
                           post_condition_mode:
-                            $schema: http://json-schema.org/draft-07/schema#
                             title: PostConditionMode
                             description: ""
                             type: string
@@ -2472,20 +2438,18 @@ paths:
                           post_conditions:
                             type: array
                             items:
-                              $schema: http://json-schema.org/draft-07/schema#
                               title: PostCondition
                               description: Post-conditionscan limit the damage done to a user's assets
                               anyOf:
-                                - $schema: http://json-schema.org/draft-07/schema#
-                                  title: PostConditionStx
+                                - title: PostConditionStx
                                   type: object
                                   allOf:
                                     - type: object
                                       required:
                                         - principal
+                                      additionalProperties: false
                                       properties:
                                         principal:
-                                          $schema: http://json-schema.org/draft-07/schema#
                                           title: PostConditionPrincipal
                                           type: object
                                           anyOf:
@@ -2536,9 +2500,9 @@ paths:
                                         - condition_code
                                         - amount
                                         - type
+                                      additionalProperties: false
                                       properties:
                                         condition_code:
-                                          $schema: http://json-schema.org/draft-07/schema#
                                           title: PostConditionFungibleConditionCode
                                           description: A fungible condition code encodes a statement being made for either
                                             STX or a fungible token, with
@@ -2556,13 +2520,13 @@ paths:
                                           enum:
                                             - stx
                                           type: string
-                                - $schema: http://json-schema.org/draft-07/schema#
-                                  title: PostConditionFungible
+                                - title: PostConditionFungible
                                   type: object
                                   allOf:
                                     - type: object
                                       required:
                                         - principal
+                                      additionalProperties: false
                                       properties:
                                         principal:
                                           $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
@@ -2576,6 +2540,7 @@ paths:
                                         - amount
                                         - type
                                         - asset
+                                      additionalProperties: false
                                       properties:
                                         condition_code:
                                           $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
@@ -2603,13 +2568,13 @@ paths:
                                               type: string
                                             contract_name:
                                               type: string
-                                - $schema: http://json-schema.org/draft-07/schema#
-                                  title: PostConditionNonFungible
+                                - title: PostConditionNonFungible
                                   type: object
                                   allOf:
                                     - type: object
                                       required:
                                         - principal
+                                      additionalProperties: false
                                       properties:
                                         principal:
                                           $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D/get/responses/200/co\
@@ -2623,9 +2588,9 @@ paths:
                                         - type
                                         - asset_value
                                         - asset
+                                      additionalProperties: false
                                       properties:
                                         condition_code:
-                                          $schema: http://json-schema.org/draft-07/schema#
                                           title: PostConditionNonFungibleConditionCode
                                           description: A non-fungible condition code encodes a statement being made about
                                             a non-fungible token, with respect
@@ -2666,7 +2631,6 @@ paths:
                                             contract_name:
                                               type: string
                           anchor_mode:
-                            $schema: http://json-schema.org/draft-07/schema#
                             title: TransactionAnchorModeType
                             type: string
                             enum:
@@ -2731,7 +2695,6 @@ paths:
                             description: Index of the transaction, indicating the order. Starts at `0` and
                               increases with each transaction
                           tx_status:
-                            $schema: http://json-schema.org/draft-07/schema#
                             title: TransactionStatus
                             description: Status of the transaction
                             type: string
@@ -2808,8 +2771,7 @@ paths:
                               $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1assets/get/responses/2\
                                 00/content/application~1json/schema/properties/\
                                 results/items"
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: SmartContractTransactionMetadata
                     description: Metadata associated with a contract-deploy type transaction.
                       https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
@@ -2991,7 +2953,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET list of contracts
                 title: ContractListResponse
                 type: object
@@ -3010,7 +2971,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: SmartContract
                       description: A Smart Contract Detail
@@ -3189,19 +3149,18 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 type: object
                 title: TransactionEvent
                 anyOf:
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: TransactionEventSmartContractLog
                     description: Only present in `smart_contract` and `contract_call` tx types.
                     allOf:
-                      - $schema: http://json-schema.org/draft-07/schema#
+                      - title: AbstractTransactionEvent
                         type: object
                         required:
                           - event_index
+                        additionalProperties: false
                         properties:
                           event_index:
                             type: integer
@@ -3210,6 +3169,7 @@ paths:
                           - event_type
                           - tx_id
                           - contract_log
+                        additionalProperties: false
                         properties:
                           event_type:
                             type: string
@@ -3240,8 +3200,7 @@ paths:
                                     type: string
                                   repr:
                                     type: string
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: TransactionEventStxLock
                     description: Only present in `smart_contract` and `contract_call` tx types.
                     allOf:
@@ -3253,6 +3212,7 @@ paths:
                           - event_type
                           - tx_id
                           - stx_lock_event
+                        additionalProperties: false
                         properties:
                           event_type:
                             type: string
@@ -3274,8 +3234,7 @@ paths:
                                 type: integer
                               locked_address:
                                 type: string
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: TransactionEventStxAsset
                     description: Only present in `smart_contract` and `contract_call` tx types.
                     allOf:
@@ -3287,6 +3246,7 @@ paths:
                           - event_type
                           - tx_id
                           - asset
+                        additionalProperties: false
                         properties:
                           event_type:
                             type: string
@@ -3295,13 +3255,11 @@ paths:
                           tx_id:
                             type: string
                           asset:
-                            $schema: http://json-schema.org/draft-07/schema#
                             type: object
                             title: TransactionEventAsset
                             additionalProperties: false
                             properties:
                               asset_event_type:
-                                $schema: http://json-schema.org/draft-07/schema#
                                 title: TransactionEventAssetType
                                 type: string
                                 enum:
@@ -3318,8 +3276,7 @@ paths:
                                 type: string
                               value:
                                 type: string
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: TransactionEventFungibleAsset
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D~1events/get/response\
@@ -3330,6 +3287,7 @@ paths:
                           - event_type
                           - tx_id
                           - asset
+                        additionalProperties: false
                         properties:
                           event_type:
                             type: string
@@ -3357,8 +3315,7 @@ paths:
                                 type: string
                               amount:
                                 type: string
-                  - $schema: http://json-schema.org/draft-07/schema#
-                    type: object
+                  - type: object
                     title: TransactionEventNonFungibleAsset
                     allOf:
                       - $ref: "#/paths/~1extended~1v1~1contract~1%7Bcontract_id%7D~1events/get/response\
@@ -3369,6 +3326,7 @@ paths:
                           - event_type
                           - tx_id
                           - asset
+                        additionalProperties: false
                         properties:
                           event_type:
                             type: string
@@ -3431,10 +3389,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request to get contract interface
                 title: ContractInterfaceResponse
                 type: object
+                additionalProperties: false
                 required:
                   - functions
                   - variables
@@ -3580,10 +3538,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: Response of get data map entry request
                 title: MapEntryResponse
                 type: object
+                additionalProperties: false
                 required:
                   - data
                 properties:
@@ -3651,7 +3609,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request to get contract source
                 title: ContractSourceResponse
                 type: object
@@ -3760,7 +3717,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request to get contract source
                 title: ReadOnlyFunctionSuccessResponse
                 type: object
@@ -3776,11 +3732,13 @@ paths:
                     type: string
               examples:
                 success:
-                  okay: true
-                  result: 0x111...
+                  value:
+                    okay: true
+                    result: 0x111...
                 fail:
-                  okay: false
-                  cause: Unchecked(PublicFunctionNotReadOnly(...
+                  value:
+                    okay: false
+                    cause: Unchecked(PublicFunctionNotReadOnly(...
       parameters:
         - name: contract_address
           in: path
@@ -3814,11 +3772,11 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema#
               title: ReadOnlyFunctionArgs
               description: Describes representation of a Type-0 Stacks 2.0 transaction.
                 https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
               type: object
+              additionalProperties: false
               required:
                 - sender
                 - arguments
@@ -3869,9 +3827,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns address balances
                 title: AddressBalanceResponse
+                additionalProperties: false
                 type: object
                 required:
                   - stx
@@ -3879,8 +3837,7 @@ paths:
                   - non_fungible_tokens
                 properties:
                   stx:
-                    $schema: http://json-schema.org/draft-07/schema#
-                    description: StxBalance
+                    title: StxBalance
                     type: object
                     additionalProperties: false
                     required:
@@ -3927,44 +3884,41 @@ paths:
                           tokens are locked.
                   fungible_tokens:
                     type: object
-                    patternProperties:
-                      "*":
-                        $schema: http://json-schema.org/draft-07/schema#
-                        description: FtBalance
-                        type: object
-                        additionalProperties: false
-                        required:
-                          - balance
-                          - total_sent
-                          - total_received
-                        properties:
-                          balance:
-                            type: string
-                          total_sent:
-                            type: string
-                          total_received:
-                            type: string
+                    additionalProperties:
+                      anyOf:
+                        - title: FtBalance
+                          type: object
+                          additionalProperties: false
+                          required:
+                            - balance
+                            - total_sent
+                            - total_received
+                          properties:
+                            balance:
+                              type: string
+                            total_sent:
+                              type: string
+                            total_received:
+                              type: string
                   non_fungible_tokens:
                     type: object
-                    patternProperties:
-                      "*":
-                        $schema: http://json-schema.org/draft-07/schema#
-                        description: NftBalance
-                        type: object
-                        additionalProperties: false
-                        required:
-                          - count
-                          - total_sent
-                          - total_received
-                        properties:
-                          count:
-                            type: string
-                          total_sent:
-                            type: string
-                          total_received:
-                            type: string
+                    additionalProperties:
+                      anyOf:
+                        - title: NftBalance
+                          type: object
+                          additionalProperties: false
+                          required:
+                            - count
+                            - total_sent
+                            - total_received
+                          properties:
+                            count:
+                              type: string
+                            total_sent:
+                              type: string
+                            total_received:
+                              type: string
                   token_offering_locked:
-                    $schema: http://json-schema.org/draft-07/schema#
                     description: Token Offering Locked
                     title: AddressTokenOfferingLocked
                     type: object
@@ -3983,7 +3937,6 @@ paths:
                       unlock_schedule:
                         type: array
                         items:
-                          $schema: http://json-schema.org/draft-07/schema#
                           description: Unlock schedule amount and block height
                           title: AddressUnlockSchedule
                           type: object
@@ -4045,14 +3998,15 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns address balances
                 title: AddressStxBalanceResponse
                 type: object
                 allOf:
                   - $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
                       /200/content/application~1json/schema/properties/stx"
-                  - properties:
+                  - type: object
+                    additionalProperties: false
+                    properties:
                       token_offering_locked:
                         $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
                           /200/content/application~1json/schema/properties/toke\
@@ -4126,7 +4080,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns account transactions
                 title: AddressTransactionsListResponse
                 type: object
@@ -4204,7 +4157,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 title: AddressTransactionWithTransfers
                 description: Transaction with STX transfers for a given address
                 type: object
@@ -4408,7 +4360,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns account transactions
                 title: AddressTransactionsWithTransfersListResponse
                 type: object
@@ -4429,7 +4380,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: AddressTransactionWithTransfers
                       description: Transaction with STX transfers for a given address
                       type: object
@@ -4668,7 +4618,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: The latest nonce values used by an account by inspecting the
                   mempool, microblock transactions, and anchored transactions
                 title: AddressNonces
@@ -4762,10 +4711,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns address assets
                 title: AddressAssetsListResponse
                 type: object
+                additionalProperties: false
                 required:
                   - results
                   - limit
@@ -4782,7 +4731,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: TransactionEvent
                       anyOf:
@@ -4867,10 +4815,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns a list of inbound STX transfers with a
                   memo
                 title: AddressStxInboundListResponse
+                additionalProperties: false
                 type: object
                 required:
                   - results
@@ -4888,10 +4836,10 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       title: InboundStxTransfer
                       description: A inbound STX transfer with a memo
                       type: object
+                      additionalProperties: false
                       required:
                         - sender
                         - amount
@@ -4992,9 +4940,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-04/schema#
                 type: object
                 title: AddressNftListResponse
+                additionalProperties: false
                 required:
                   - limit
                   - offset
@@ -5010,9 +4958,9 @@ paths:
                   nft_events:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-04/schema#
                       type: object
                       title: NftEvent
+                      additionalProperties: false
                       required:
                         - sender
                         - recipient
@@ -5094,7 +5042,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request for account data
                 title: AccountDataResponse
                 type: object
@@ -5140,7 +5087,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET fee estimates
                 title: CoreNodeFeeResponse
                 type: string
@@ -5159,7 +5105,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that core node information
                 title: CoreNodeInfoResponse
                 type: object
@@ -5264,7 +5209,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET blockchain API status
                 title: ServerStatusResponse
                 type: object
@@ -5279,7 +5223,6 @@ paths:
                     type: string
                     description: the current server status
                   chain_tip:
-                    $schema: http://json-schema.org/draft-07/schema#
                     title: ChainTip
                     description: Current chain tip information
                     type: object
@@ -5335,7 +5278,6 @@ paths:
                 mainnet:
                   target_block_time: 600
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns network target block times
                 title: NetworkBlockTimesResponse
                 type: object
@@ -5345,14 +5287,11 @@ paths:
                   - testnet
                 properties:
                   mainnet:
-                    $schema: http://json-schema.org/draft-07/schema#
-                    description: TargetBlockTime
+                    title: TargetBlockTime
                     type: object
                     additionalProperties: false
                     required:
                       - target_block_time
-                      - total_sent
-                      - total_received
                     properties:
                       target_block_time:
                         type: integer
@@ -5416,7 +5355,6 @@ paths:
                 unlocked_stx: "973705260.219817"
                 block_height: 3210
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns network target block times
                 title: GetStxSupplyResponse
                 type: object
@@ -5455,7 +5393,6 @@ paths:
             text/plain:
               example: "123.456789"
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns network target block times
                 title: GetStxTotalSupplyPlainResponse
                 type: string
@@ -5474,7 +5411,6 @@ paths:
             text/plain:
               example: "123.456789"
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns network target block times
                 title: GetStxCirculatingSupplyPlainResponse
                 type: string
@@ -5508,7 +5444,6 @@ paths:
                 unlockedSupplyFormatted: 973,705,260.219817
                 blockHeight: "665746"
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: GET request that returns network target block times
                 title: GetStxSupplyLegacyFormatResponse
                 type: object
@@ -5555,7 +5490,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: Get Proof of Transfer (PoX) information
                 title: CoreNodePoxResponse
                 type: object
@@ -5625,14 +5559,12 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
                 type: object
                 title: SearchResult
                 description: complete search result for terms
                 additionalProperties: false
                 anyOf:
-                  - $schema: http://json-schema.org/draft-07/schema
-                    type: object
+                  - type: object
                     title: SearchErrorResult
                     description: Error search result
                     required:
@@ -5661,14 +5593,12 @@ paths:
                               - invalid_term
                       error:
                         type: string
-                  - $schema: http://json-schema.org/draft-07/schema
-                    type: object
+                  - type: object
                     title: SearchSuccessResult
                     description: Search success result
                     additionalProperties: false
                     anyOf:
-                      - $schema: http://json-schema.org/draft-07/schema
-                        type: object
+                      - type: object
                         title: AddressSearchResult
                         description: Address search result
                         required:
@@ -5698,22 +5628,22 @@ paths:
                               metadata:
                                 type: object
                                 anyOf:
-                                  - $schema: http://json-schema.org/draft-07/schema#
-                                    description: GET request that returns address balances
+                                  - description: GET request that returns address balances
                                     title: AddressStxBalanceResponse
                                     type: object
                                     allOf:
                                       - $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
                                           /200/content/application~1json/schema\
                                           /properties/stx"
-                                      - properties:
+                                      - type: object
+                                        additionalProperties: false
+                                        properties:
                                           token_offering_locked:
                                             $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1balances/get/responses\
                                               /200/content/application~1json/sc\
                                               hema/properties/token_offering_lo\
                                               cked"
-                      - $schema: http://json-schema.org/draft-07/schema
-                        type: object
+                      - type: object
                         title: BlockSearchResult
                         description: Block search result
                         required:
@@ -5765,13 +5695,9 @@ paths:
                                   height:
                                     type: integer
                               metadata:
-                                type: object
-                                anyOf:
-                                  - $ref: "#/paths/~1extended~1v1~1block/get/responses/200/content/application~1jso\
-                                      n/schema/properties/results/items"
-                                additionalItems: false
-                      - $schema: http://json-schema.org/draft-07/schema
-                        type: object
+                                $ref: "#/paths/~1extended~1v1~1block/get/responses/200/content/application~1jso\
+                                  n/schema/properties/results/items"
+                      - type: object
                         title: ContractSearchResult
                         description: Contract search result
                         required:
@@ -5825,9 +5751,7 @@ paths:
                                       n~1json/schema/properties/results/items"
                                   - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
                                       chema/properties/results/items"
-                                additionalItems: false
-                      - $schema: http://json-schema.org/draft-07/schema
-                        type: object
+                      - type: object
                         title: MempoolTxSearchResult
                         description: Contract search result
                         required:
@@ -5865,13 +5789,9 @@ paths:
                                   tx_type:
                                     type: string
                               metadata:
-                                type: object
-                                anyOf:
-                                  - $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
-                                      n~1json/schema/properties/results/items"
-                                additionalItems: false
-                      - $schema: http://json-schema.org/draft-07/schema
-                        type: object
+                                $ref: "#/paths/~1extended~1v1~1tx~1mempool/get/responses/200/content/applicatio\
+                                  n~1json/schema/properties/results/items"
+                      - type: object
                         title: TxSearchResult
                         description: Transaction search result
                         additionalProperties: false
@@ -5923,11 +5843,8 @@ paths:
                                   tx_type:
                                     type: string
                               metadata:
-                                type: object
-                                anyOf:
-                                  - $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
-                                      chema/properties/results/items"
-                                additionalItems: false
+                                $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
+                                  chema/properties/results/items"
               example:
                 found: true
                 result:
@@ -5961,21 +5878,19 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-network-list-response.schema.json
                 type: object
                 title: RosettaNetworkListResponse
                 description: A NetworkListResponse contains all NetworkIdentifiers that the node
                   can serve information for.
                 required:
                   - network_identifiers
+                additionalProperties: false
                 properties:
                   network_identifiers:
                     type: array
                     description: The network_identifier specifies which network a particular object
                       is associated with.
                     items:
-                      $schema: http://json-schema.org/draft-07/schema
                       type: object
                       title: NetworkIdentifier
                       description: The network_identifier specifies which network a particular object
@@ -5983,6 +5898,7 @@ paths:
                       required:
                         - blockchain
                         - network
+                      additionalProperties: false
                       properties:
                         blockchain:
                           type: string
@@ -6001,6 +5917,7 @@ paths:
                             blockchains.
                           required:
                             - network
+                          additionalProperties: false
                           properties:
                             network:
                               type: string
@@ -6019,8 +5936,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: Rosetta-errors
                 type: object
                 title: RosettaError
                 description: Instead of utilizing HTTP status codes to describe node errors
@@ -6028,6 +5943,7 @@ paths:
                   returned using this object. Both the code and message fields
                   can be individually used to correctly identify an error.
                   Implementations MUST use unique values for both fields.
+                additionalProperties: false
                 required:
                   - code
                   - message
@@ -6053,7 +5969,6 @@ paths:
                       that caused the error (i.e. a sample of the stack trace or
                       impacted account) in addition to the standard error
                       message.
-                    required: []
                     properties:
                       address:
                         type: string
@@ -6078,8 +5993,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-network-options-response
                 type: object
                 title: RosettaNetworkOptionsResponse
                 description: NetworkOptionsResponse contains information about the versioning of
@@ -6088,9 +6001,11 @@ paths:
                 required:
                   - version
                   - allow
+                additionalProperties: false
                 properties:
                   version:
                     type: object
+                    additionalProperties: false
                     description: The Version object is utilized to inform the client of the versions
                       of different components of the Rosetta implementation.
                     required:
@@ -6128,6 +6043,7 @@ paths:
                       - operation_types
                       - errors
                       - historical_balance_lookup
+                    additionalProperties: false
                     properties:
                       operation_statuses:
                         type: array
@@ -6135,8 +6051,6 @@ paths:
                           is returned during parsing that is not listed here
                           will cause client validation to error.
                         items:
-                          $schema: http://json-schema.org/draft-07/schema
-                          $id: rosetta-operation-statuses.schema.json
                           type: object
                           title: RosettaOperationStatus
                           description: OperationStatus is utilized to indicate which Operation status are
@@ -6144,6 +6058,7 @@ paths:
                           required:
                             - status
                             - successful
+                          additionalProperties: false
                           properties:
                             status:
                               type: string
@@ -6174,8 +6089,6 @@ paths:
                           returned during parsing that is not listed here will
                           cause client validation to error.
                         items:
-                          $schema: http://json-schema.org/draft-07/schema
-                          $id: Rosetta-errors-no-details
                           type: object
                           title: RosettaErrorNoDetails
                           description: Instead of utilizing HTTP status codes to describe node errors
@@ -6221,8 +6134,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: Rosetta-options-request
               type: object
               title: RosettaOptionsRequest
               description: This endpoint returns the version information and allowed
@@ -6256,8 +6167,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-network-status-response.schema.json
                 type: object
                 title: RosettaNetworkStatusResponse
                 description: NetworkStatusResponse contains basic information about the node's
@@ -6280,23 +6189,26 @@ paths:
                   - peers
                 properties:
                   current_block_identifier:
-                    $id: rosetta-block-identifier.schema.json
                     title: RosettaBlockIdentifier
                     description: The block_identifier uniquely identifies a block in a particular
                       network.
                     allOf:
-                      - $id: rosetta-block-identifier-hash.schema.json
-                        type: object
+                      - type: object
                         title: RosettaBlockIdentifierHash
                         description: This is also known as the block hash.
+                        additionalProperties: false
+                        required:
+                          - hash
                         properties:
                           hash:
                             type: string
                             description: This is also known as the block hash.
-                      - $id: rosetta-block-identifier-height.schema.json
-                        type: object
+                      - type: object
                         title: RosettaBlockIdentifierHeight
                         description: This is also known as the block height.
+                        additionalProperties: false
+                        required:
+                          - index
                         properties:
                           index:
                             type: integer
@@ -6307,7 +6219,6 @@ paths:
                       The timestamp is stored in milliseconds because some
                       blockchains produce blocks more often than once a second.
                   genesis_block_identifier:
-                    $id: rosetta-block-genesis-identifier.schema.json
                     type: object
                     title: RosettaGenesisBlockIdentifier
                     description: The block_identifier uniquely identifies a block in a particular
@@ -6315,6 +6226,7 @@ paths:
                     required:
                       - index
                       - hash
+                    additionalProperties: false
                     properties:
                       index:
                         type: integer
@@ -6323,7 +6235,6 @@ paths:
                         type: string
                         description: Block hash
                   oldest_block_identifier:
-                    $id: rosetta-block-oldest-identifier.schema.json
                     type: object
                     title: RosettaOldestBlockIdentifier
                     description: The block_identifier uniquely identifies a block in a particular
@@ -6331,6 +6242,7 @@ paths:
                     required:
                       - index
                       - hash
+                    additionalProperties: false
                     properties:
                       index:
                         type: integer
@@ -6349,6 +6261,7 @@ paths:
                       populated.
                     required:
                       - current_index
+                    additionalProperties: false
                     properties:
                       current_index:
                         type: integer
@@ -6369,12 +6282,12 @@ paths:
                     type: array
                     description: Peers information
                     items:
-                      $id: rosetta-network-peers.schema.json
                       type: object
                       title: RosettaPeers
                       description: A Peer is a representation of a node's peer.
                       required:
                         - peer_id
+                      additionalProperties: false
                       properties:
                         peer_id:
                           type: string
@@ -6382,7 +6295,7 @@ paths:
                         metadata:
                           type: object
                           description: meta data
-                additionalProperties: true
+                additionalProperties: false
         "400":
           description: Error
           content:
@@ -6395,8 +6308,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: Rosetta-status-request
               type: object
               title: RosettaStatusRequest
               description: This endpoint returns the current status of the network requested.
@@ -6411,8 +6322,6 @@ paths:
                     ion~1json/schema/properties/network_identifiers/items"
                 metadata:
                   type: object
-                  description: ""
-                  required: []
   /rosetta/v1/account/balance:
     post:
       tags:
@@ -6430,8 +6339,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-account-response
                 type: object
                 title: RosettaAccountBalanceResponse
                 description: "An AccountBalanceResponse is returned on the /account/balance
@@ -6442,6 +6349,7 @@ paths:
                 required:
                   - block_identifier
                   - balances
+                additionalProperties: false
                 properties:
                   block_identifier:
                     $ref: "#/paths/~1rosetta~1v1~1network~1status/post/responses/200/content/applic\
@@ -6452,6 +6360,7 @@ paths:
                     items:
                       type: object
                       title: RosettaAmount
+                      additionalProperties: false
                       description: Amount is some Value of a Currency. It is considered invalid to
                         specify a Value without a Currency.
                       required:
@@ -6466,6 +6375,7 @@ paths:
                         currency:
                           title: RosettaCurrency
                           type: object
+                          additionalProperties: false
                           description: Currency is composed of a canonical Symbol and Decimals. This
                             Decimals value is used to convert an Amount.Value
                             from atomic units (Satoshis) to standard units
@@ -6493,7 +6403,6 @@ paths:
                         metadata:
                           type: object
                           description: ""
-                          required: []
                   coins:
                     type: array
                     description: If a blockchain is UTXO-based, all unspent Coins owned by an
@@ -6504,6 +6413,7 @@ paths:
                     items:
                       type: object
                       title: RosettaCoin
+                      additionalProperties: false
                       description: If a blockchain is UTXO-based, all unspent Coins owned by an
                         account_identifier should be returned alongside the
                         balance. It is highly recommended to populate this field
@@ -6518,6 +6428,7 @@ paths:
                           description: CoinIdentifier uniquely identifies a Coin.
                           required:
                             - identifier
+                          additionalProperties: false
                           properties:
                             identifier:
                               type: string
@@ -6525,8 +6436,6 @@ paths:
                                 a Coin. In Bitcoin, this identifier would be
                                 transaction_hash:index.
                         amount:
-                          description: Amount is some Value of a Currency. It is considered invalid to
-                            specify a Value without a Currency.
                           $ref: "#/paths/~1rosetta~1v1~1account~1balance/post/responses/200/content/appli\
                             cation~1json/schema/properties/balances/items"
                   metadata:
@@ -6552,8 +6461,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-account-request
               type: object
               title: RosettaAccountBalanceRequest
               description: An AccountBalanceRequest is utilized to make a balance request on
@@ -6576,6 +6483,7 @@ paths:
                     if populated).
                   required:
                     - address
+                  additionalProperties: false
                   properties:
                     address:
                       type: string
@@ -6590,6 +6498,7 @@ paths:
                         applicable) an account instantiation refers to.
                       required:
                         - address
+                      additionalProperties: false
                       properties:
                         address:
                           type: string
@@ -6602,16 +6511,13 @@ paths:
                             stored here. It is important to note that two
                             SubAccounts with identical addresses but differing
                             metadata will not be considered equal by clients.
-                          required: []
                     metadata:
                       type: object
                       description: Blockchains that utilize a username model (where the address is not
                         a derivative of a cryptographic public key) should
                         specify the public key(s) owned by the address in
                         metadata.
-                      required: []
                 block_identifier:
-                  $id: rosetta-partial-block-identifier.schema.json
                   type: object
                   title: RosettaPartialBlockIdentifier
                   description: When fetching data by BlockIdentifier, it may be possible to only
@@ -6625,6 +6531,7 @@ paths:
                     - $ref: "#/paths/~1rosetta~1v1~1network~1status/post/responses/200/content/applic\
                         ation~1json/schema/properties/current_block_identifier/\
                         allOf/1"
+                    - type: object
   /rosetta/v1/block:
     post:
       tags:
@@ -6639,10 +6546,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-block-response.schema.json
                 type: object
                 title: RosettaBlockResponse
+                additionalProperties: false
                 description: A BlockResponse includes a fully-populated block or a
                   partially-populated block with a list of other transactions to
                   fetch (other_transactions). As a result of the consensus
@@ -6654,10 +6560,8 @@ paths:
                   block has a unique index. In other words, the
                   PartialBlockIdentifier of a block after an omitted block
                   should reference the last non-omitted block.
-                required: []
                 properties:
                   block:
-                    $id: rosetta-block.schema.json
                     type: object
                     title: RosettaBlock
                     description: "Blocks contain an array of Transactions that occurred at a
@@ -6672,6 +6576,7 @@ paths:
                       - parent_block_identifier
                       - timestamp
                       - transactions
+                    additionalProperties: false
                     properties:
                       block_identifier:
                         $ref: "#/paths/~1rosetta~1v1~1network~1status/post/responses/200/content/applic\
@@ -6680,6 +6585,7 @@ paths:
                       parent_block_identifier:
                         type: object
                         title: RosettaParentBlockIdentifier
+                        additionalProperties: false
                         description: The block_identifier uniquely identifies a block in a particular
                           network.
                         required:
@@ -6726,13 +6632,13 @@ paths:
                       as consumers can concurrently fetch all transactions
                       returned."
                     items:
-                      $schema: http://json-schema.org/draft-07/schema
                       type: object
                       title: OtherTransactionIdentifier
                       description: The transaction_identifier uniquely identifies a transaction in a
                         particular network and block or in the mempool.
                       required:
                         - hash
+                      additionalProperties: false
                       properties:
                         hash:
                           type: string
@@ -6751,8 +6657,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-block-request
               type: object
               title: RosettaBlockRequest
               description: A BlockRequest is utilized to make a block request on the /block
@@ -6782,17 +6686,15 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-block-transaction-response
                 type: object
                 title: RosettaBlockTransactionResponse
                 description: A BlockTransactionResponse contains information about a block
                   transaction.
                 required:
                   - transaction
+                additionalProperties: false
                 properties:
                   transaction:
-                    $schema: http://json-schema.org/draft-07/schema
                     type: object
                     title: RosettaTransaction
                     description: Transactions contain an array of Operations that are attributable
@@ -6800,6 +6702,7 @@ paths:
                     required:
                       - transaction_identifier
                       - operations
+                    additionalProperties: false
                     properties:
                       transaction_identifier:
                         $ref: "#/paths/~1rosetta~1v1~1block~1transaction/post/requestBody/content/appli\
@@ -6816,7 +6719,6 @@ paths:
                           cross-shard transaction) should include the
                           tranaction_identifier of these transactions in the
                           metadata.
-                        required: []
                         properties:
                           memo:
                             type: string
@@ -6839,8 +6741,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-block-transaction-request.schema.json
               type: object
               title: RosettaBlockTransactionRequest
               description: A BlockTransactionRequest is used to fetch a Transaction included
@@ -6858,13 +6758,13 @@ paths:
                   $ref: "#/paths/~1rosetta~1v1~1account~1balance/post/requestBody/content/applica\
                     tion~1json/schema/properties/block_identifier"
                 transaction_identifier:
-                  $schema: http://json-schema.org/draft-07/schema
                   type: object
                   title: TransactionIdentifier
                   description: The transaction_identifier uniquely identifies a transaction in a
                     particular network and block or in the mempool.
                   required:
                     - hash
+                  additionalProperties: false
                   properties:
                     hash:
                       type: string
@@ -6885,13 +6785,13 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
                 type: object
                 title: RosettaMempoolResponse
                 description: A MempoolResponse contains all transaction identifiers in the
                   mempool for a particular network_identifier.
                 required:
                   - transaction_identifiers
+                additionalProperties: false
                 properties:
                   transaction_identifiers:
                     type: array
@@ -6913,12 +6813,12 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
               type: object
               title: RosettaMempoolRequest
               description: Get all Transaction Identifiers in the mempool
               required:
                 - network_identifier
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -6939,7 +6839,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
                 type: object
                 title: RosettaMempoolTransactionResponse
                 description: "A MempoolTransactionResponse contains an estimate of a mempool
@@ -6947,6 +6846,7 @@ paths:
                   a transaction in the mempool (ex: fee paid)."
                 required:
                   - transaction
+                additionalProperties: false
                 properties:
                   transaction:
                     $ref: "#/paths/~1rosetta~1v1~1block~1transaction/post/responses/200/content/app\
@@ -6965,8 +6865,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-mempool-transaction-request
               type: object
               title: RosettaMempoolTransactionRequest
               description: A MempoolTransactionRequest is utilized to retrieve a transaction
@@ -6996,13 +6894,11 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-derive-response
                 type: object
                 title: RosettaConstructionDeriveResponse
                 description: ConstructionDeriveResponse is returned by the /construction/derive
                   endpoint.
-                required: []
+                additionalProperties: false
                 properties:
                   address:
                     type: string
@@ -7032,7 +6928,6 @@ paths:
                           a derivative of a cryptographic public key) should
                           specify the public key(s) owned by the address in
                           metadata.
-                        required: []
                   metadata:
                     type: object
         "400":
@@ -7047,8 +6942,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: construction-derive-request
               type: object
               title: RosettaConstructionDeriveRequest
               description: Network is provided in the request because some blockchains have
@@ -7056,13 +6949,12 @@ paths:
               required:
                 - network_identifier
                 - public_key
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
                     ion~1json/schema/properties/network_identifiers/items"
                 public_key:
-                  $schema: http://json-schema.org/draft-07/schema
-                  $id: rosetta-public-key-schema
                   type: object
                   title: RosettaPublicKey
                   description: PublicKey contains a public key byte array for a particular
@@ -7071,6 +6963,7 @@ paths:
                   required:
                     - hex_bytes
                     - curve_type
+                  additionalProperties: false
                   properties:
                     hex_bytes:
                       type: string
@@ -7098,8 +6991,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-hash-response
                 type: object
                 title: RosettaConstructionHashResponse
                 description: TransactionIdentifier contains the transaction_identifier of a
@@ -7107,6 +6998,7 @@ paths:
                   /construction/submit.
                 required:
                   - transaction_identifier
+                additionalProperties: false
                 properties:
                   transaction_identifier:
                     $ref: "#/paths/~1rosetta~1v1~1block~1transaction/post/requestBody/content/appli\
@@ -7125,8 +7017,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-construction-hash-request
               type: object
               title: RosettaConstructionHashRequest
               description: TransactionHash returns the network-specific transaction hash for a
@@ -7134,6 +7024,7 @@ paths:
               required:
                 - network_identifier
                 - signed_transaction
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7154,8 +7045,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-metadata-response
                 type: object
                 title: RosettaConstructionMetadataResponse
                 description: The ConstructionMetadataResponse returns network-specific metadata
@@ -7168,10 +7057,10 @@ paths:
                   currencies.
                 required:
                   - metadata
+                additionalProperties: false
                 properties:
                   metadata:
                     type: object
-                    required: []
                     properties:
                       account_sequence:
                         type: integer
@@ -7194,8 +7083,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: http://example.com/example.json
               type: object
               title: RosettaConstructionMetadataRequest
               description: A ConstructionMetadataRequest is utilized to get information
@@ -7207,17 +7094,17 @@ paths:
               required:
                 - network_identifier
                 - options
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
                     ion~1json/schema/properties/network_identifiers/items"
                 options:
-                  $id: rosetta-construction-options
                   title: RosettaOptions
                   type: object
                   description: The options that will be sent directly to /construction/metadata by
                     the caller.
-                  required: []
+                  additionalProperties: false
                   properties:
                     sender_address:
                       type: string
@@ -7226,9 +7113,7 @@ paths:
                       type: string
                       description: Type of operation e.g transfer
                     status:
-                      type:
-                        - string
-                        - "null"
+                      type: string
                       description: This value indicates the state of the operations
                     token_transfer_recipient_address:
                       type: string
@@ -7303,8 +7188,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-parse-response
                 type: object
                 title: RosettaConstructionParseResponse
                 description: RosettaConstructionParseResponse contains an array of operations
@@ -7313,6 +7196,7 @@ paths:
                   /construction/payloads.
                 required:
                   - operations
+                additionalProperties: false
                 properties:
                   operations:
                     type: array
@@ -7326,6 +7210,7 @@ paths:
                       required:
                         - operation_identifier
                         - type
+                      additionalProperties: false
                       properties:
                         operation_identifier:
                           type: object
@@ -7334,6 +7219,7 @@ paths:
                             transaction.
                           required:
                             - index
+                          additionalProperties: false
                           properties:
                             index:
                               type: integer
@@ -7372,6 +7258,7 @@ paths:
                               linking operations in a call tree.
                             required:
                               - index
+                            additionalProperties: false
                             properties:
                               index:
                                 type: integer
@@ -7417,6 +7304,7 @@ paths:
                           required:
                             - coin_identifier
                             - coin_action
+                          additionalProperties: false
                           properties:
                             coin_identifier:
                               type: object
@@ -7469,8 +7357,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-construction-parse-request
               type: object
               title: RosettaConstructionParseRequest
               description: Parse is called on both unsigned and signed transactions to
@@ -7481,6 +7367,7 @@ paths:
                 - network_identifier
                 - signed
                 - transaction
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7506,10 +7393,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-preprocess-response
                 type: object
                 title: RosettaConstructionPreprocessResponse
+                additionalProperties: false
                 description: RosettaConstructionPreprocessResponse contains options that will be
                   sent unmodified to /construction/metadata. If it is not
                   necessary to make a request to /construction/metadata, options
@@ -7520,7 +7406,6 @@ paths:
                   with the desired PublicKeys. If it is not necessary to
                   retrieve any PublicKeys for construction, required_public_keys
                   should be omitted.
-                required: []
                 properties:
                   options:
                     $ref: "#/paths/~1rosetta~1v1~1construction~1metadata/post/requestBody/content/a\
@@ -7530,6 +7415,21 @@ paths:
                     items:
                       $ref: "#/paths/~1rosetta~1v1~1account~1balance/post/requestBody/content/applica\
                         tion~1json/schema/properties/account_identifier"
+              example:
+                options:
+                  sender_address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
+                  type: stack_stx
+                  number_of_cycles: 5
+                  amount: "5000"
+                  symbol: STX
+                  decimals: 6
+                  pox_addr: 1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3
+                  suggested_fee_multiplier: 1
+                  max_fee: "12380898"
+                  size: 260
+                  memo: SAMPLE MEMO
+                required_public_keys:
+                  - address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
         "400":
           description: Error
           content:
@@ -7542,8 +7442,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosett-construction-preprocess-schema
               type: object
               title: RosettaConstructionPreprocessRequest
               description: ConstructionPreprocessRequest is passed to the
@@ -7553,6 +7451,7 @@ paths:
               required:
                 - network_identifier
                 - operations
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7567,7 +7466,6 @@ paths:
                 max_fee:
                   type: array
                   items:
-                    $id: rosetta-max-fee
                     type: object
                     title: RosettaMaxFeeAmount
                     description: Amount is some Value of a Currency. It is considered invalid to
@@ -7588,7 +7486,6 @@ paths:
                       metadata:
                         type: object
                         description: ""
-                        required: []
                 suggested_fee_multiplier:
                   type: integer
                   description: " The caller can also provide a suggested fee multiplier to
@@ -7614,14 +7511,13 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-submit-response
                 type: object
                 title: RosettaConstructionSubmitResponse
                 description: TransactionIdentifier contains the transaction_identifier of a
                   transaction that was submitted to either /construction/submit.
                 required:
                   - transaction_identifier
+                additionalProperties: false
                 properties:
                   transaction_identifier:
                     $ref: "#/paths/~1rosetta~1v1~1block~1transaction/post/requestBody/content/appli\
@@ -7640,14 +7536,13 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: rosetta-construction-submit-request
               type: object
               title: RosettaConstructionSubmitRequest
               description: Submit the transaction in blockchain
               required:
                 - network_identifier
                 - signed_transaction
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7668,8 +7563,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: http://example.com/example.json
                 type: object
                 title: RosettaConstructionPayloadResponse
                 description: RosettaConstructionPayloadResponse is returned by
@@ -7680,6 +7573,7 @@ paths:
                 required:
                   - unsigned_transaction
                   - payloads
+                additionalProperties: false
                 properties:
                   unsigned_transaction:
                     type: string
@@ -7690,8 +7584,6 @@ paths:
                     type: array
                     description: An array of payloads that must be signed by the caller
                     items:
-                      $schema: http://json-schema.org/draft-07/schema
-                      $id: rosetta-signing-payload
                       type: object
                       title: SigningPayload
                       description: SigningPayload is signed by the client with the keypair associated
@@ -7701,6 +7593,7 @@ paths:
                         sign the payload.
                       required:
                         - hex_bytes
+                      additionalProperties: false
                       properties:
                         address:
                           type: string
@@ -7733,8 +7626,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: http://example.com/example.json
               type: object
               title: RosettaConstructionPayloadsRequest
               description: ConstructionPayloadsRequest is the request to
@@ -7746,6 +7637,7 @@ paths:
               required:
                 - network_identifier
                 - operations
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7762,7 +7654,6 @@ paths:
                       lication~1json/schema/properties/public_key"
                 metadata:
                   type: object
-                  required: []
                   properties:
                     account_sequence:
                       type: integer
@@ -7782,8 +7673,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: rosetta-construction-combine-response
                 type: object
                 title: RosettaConstructionCombineResponse
                 description: RosettaConstructionCombineResponse is returned by
@@ -7791,6 +7680,7 @@ paths:
                   directly to the construction/submit endpoint.
                 required:
                   - signed_transaction
+                additionalProperties: false
                 properties:
                   signed_transaction:
                     type: string
@@ -7807,8 +7697,6 @@ paths:
         content:
           application/json:
             schema:
-              $schema: http://json-schema.org/draft-07/schema
-              $id: http://example.com/example.json
               type: object
               title: RosettaConstructionCombineRequest
               description: RosettaConstructionCombineRequest is the input to the
@@ -7819,6 +7707,7 @@ paths:
                 - network_identifier
                 - unsigned_transaction
                 - signatures
+              additionalProperties: false
               properties:
                 network_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1network~1list/post/responses/200/content/applicat\
@@ -7828,8 +7717,6 @@ paths:
                 signatures:
                   type: array
                   items:
-                    $schema: http://json-schema.org/draft-07/schema
-                    $id: rosetta-signature
                     type: object
                     title: RosettaSignature
                     description: Signature contains the payload that was signed, the public keys of
@@ -7842,6 +7729,7 @@ paths:
                       - public_key
                       - signature_type
                       - hex_bytes
+                    additionalProperties: false
                     properties:
                       signing_payload:
                         $ref: "#/paths/~1rosetta~1v1~1construction~1payloads/post/responses/200/content\
@@ -7850,8 +7738,7 @@ paths:
                         $ref: "#/paths/~1rosetta~1v1~1construction~1derive/post/requestBody/content/app\
                           lication~1json/schema/properties/public_key"
                       signature_type:
-                        $schema: http://json-schema.org/draft-07/schema
-                        $id: rosetta-signature-type
+                        title: SignatureType
                         type: string
                         description: SignatureType is the type of a cryptographic signature.
                         enum:
@@ -7884,10 +7771,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-namespace-price-response
                 title: BnsGetNamespacePriceResponse
                 description: Fetch price for namespace.
+                additionalProperties: false
                 required:
                   - units
                   - amount
@@ -7923,10 +7809,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-name-price-response
                 title: BnsGetNamePriceResponse
                 description: Fetch price for name.
+                additionalProperties: false
                 required:
                   - units
                   - amount
@@ -7954,10 +7839,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-all-namespaces-response
                 title: BnsGetAllNamespacesResponse
                 description: Fetch a list of all namespaces known to the node.
+                additionalProperties: false
                 required:
                   - namespaces
                 type: object
@@ -8001,8 +7885,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-all-namespaces-names-response
                 title: BnsGetAllNamespacesNamesResponse
                 description: Fetch a list of names from the namespace.
                 type: array
@@ -8021,11 +7903,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-error
                 title: BnsError
                 description: Error
                 type: object
+                additionalProperties: false
                 properties:
                   error:
                     type: string
@@ -8061,11 +7942,8 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-all-names-response
                 title: BnsGetAllNamesResponse
                 description: Fetch a list of all names known to the node.
-                required: []
                 type: array
                 items:
                   type: string
@@ -8109,11 +7987,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-name-info
                 title: BnsGetNameInfoResponse
                 description: Get name details
                 type: object
+                additionalProperties: false
                 required:
                   - address
                   - blockchain
@@ -8177,178 +8054,39 @@ paths:
                   lication~1json/schema"
               example:
                 error: No such name
-  "/v1/names/{name}/history":
+  "/v1/names/{name}/subdomains":
     get:
-      summary: Get Name History
-      description: Retrieves a history of all blockchain records of a registered name.
+      summary: Get Name Subdomains
+      description: Retrieves the list of subdomains for a specific name
       tags:
         - Names
-      operationId: get_name_history
+      operationId: fetch_subdomains_list_for_name
       parameters:
         - name: name
           in: path
-          description: name to query
+          description: fully-qualified name
           required: true
-          example: muneeb.id
+          example: id.blockstack
           schema:
             type: string
-        - name: page
-          in: query
-          description: the page (in 20-entry pages) of the history to fetch
-          required: true
-          example: 0
-          schema:
-            type: integer
       responses:
         "200":
           description: Success
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-name-history
-                title: BnsGetNameHistoryResponse
-                description: Get a history of all blockchain records of a registered name.
-                type: object
-                patternProperties:
-                  "^[0-9]+":
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        address:
-                          type: string
-                          pattern: ^([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+)$
-                        base:
-                          type: integer
-                          minimum: 0
-                          maximum: 255
-                        buckets:
-                          anyOf:
-                            - type: array
-                              items:
-                                type: integer
-                                minItems: 16
-                                maxItems: 16
-                            - type: "null"
-                        block_number:
-                          type: integer
-                          minimum: 0
-                        coeff:
-                          anyOf:
-                            - type: integer
-                              minimum: 0
-                              maximum: 255
-                            - type: "null"
-                        consensus_hash:
-                          anyOf:
-                            - type: string
-                              pattern: ^[0-9a-fA-F]{32}
-                            - type: "null"
-                        domain:
-                          type: string
-                          pattern: ^([a-z0-9\-_.+]{3,37})$
-                        fee:
-                          type: integer
-                          minimum: 0
-                        first_registered:
-                          type: integer
-                          minimum: 0
-                        history_snapshot:
-                          type: boolean
-                        importer:
-                          anyOf:
-                            - type: string
-                              pattern: ^76[aA]914[0-9a-fA-F]{40}88[aA][cC]$
-                            - type: "null"
-                        importer_address:
-                          anyOf:
-                            - type: string
-                              pattern: ^([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+)$
-                            - type: "null"
-                        last_renewed:
-                          type: integer
-                          minimum: 0
-                        name:
-                          type: string
-                          pattern: ^([a-z0-9\-_.+]{3,37}).([a-z0-9\-_.+]{3,37})$
-                        op:
-                          type: string
-                          pattern: ^([>?+~:!&*:;#]{1}|>>|>~|::)$
-                        op_fee:
-                          type: number
-                        opcode:
-                          type: string
-                          pattern: ^NAME_TRANSFER|NAME_PREORDER|NAME_UPDATE|NAME_REVOKE|NAME_REGISTRATION|NAMESPACE_READY|NAMESPACE_REVEAL|NAMESPACE_PREORDER|NAME_RENEWAL|NAME_IMPORT|ANNOUNCE$
-                        revoked:
-                          type: boolean
-                        sender:
-                          type: string
-                          pattern: ^([0-9a-fA-F]+)$
-                        sender_pubkey:
-                          anyOf:
-                            - type: string
-                              pattern: ^([0-9a-fA-F]+)$
-                            - type: "null"
-                        sequence:
-                          type: integer
-                          minimum: 0
-                        recipient:
-                          anyOf:
-                            - type: string
-                              pattern: ^([0-9a-fA-F]+)$
-                            - type: "null"
-                        recipient_address:
-                          anyOf:
-                            - type: string
-                              pattern: ^([123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz]+)$
-                            - type: "null"
-                        recipient_pubkey:
-                          anyOf:
-                            - type: string
-                              pattern: ^([0-9a-fA-F]+)$
-                            - type: "null"
-                        txid:
-                          type: string
-                          pattern: ^([0-9a-fA-F]+)$
-                        value_hash:
-                          anyOf:
-                            - type: string
-                              pattern: ^([0-9a-fA-F]{40})$
-                            - type: "null"
-                        vtxindex:
-                          type: integer
-                          minimum: 0
-                      required:
-                        - txid
-                        - vtxindex
+                title: GetAllSubdomainsInName
+                description: Fetch a list of subdomains in a name.
+                type: array
+                items:
+                  type: string
+                  pattern: ^([a-z0-9-_.+]{3,37})$
               example:
-                zonefile: >
-                  $ORIGIN muneeb.id
-
-                  $TTL 3600
-
-                  _http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"
-        "400":
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/paths/~1v1~1namespaces~1%7Btld%7D~1names/get/responses/400/content/app\
-                  lication~1json/schema"
-              example:
-                $ref: "#/paths/~1v1~1namespaces~1%7Btld%7D~1names/get/responses/400/content/app\
-                  lication~1json/example"
-        "404":
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/paths/~1v1~1namespaces~1%7Btld%7D~1names/get/responses/400/content/app\
-                  lication~1json/schema"
-              example:
-                $ref: "#/paths/~1v1~1names~1%7Bname%7D/get/responses/404/content/application~1j\
-                  son/example"
+                - address_test.id.blockstack
+                - previous_subdomain.id.blockstack
+                - subdomain.id.blockstack
+                - zonefile_test.id.blockstack
+                - zone_test.id.blockstack
   "/v1/names/{name}/zonefile":
     get:
       summary: Get Zone File
@@ -8372,20 +8110,19 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-fetch-zone-file-response
                 title: BnsFetchFileZoneResponse
-                description: Fetch a user’s raw zone file. This only works for RFC-compliant
+                description: Fetch a user's raw zone file. This only works for RFC-compliant
                   zone files. This method returns an error for names that have
                   non-standard zone files.
-                required: []
                 anyOf:
                   - type: object
+                    additionalProperties: false
                     properties:
                       zonefile:
                         type: string
                         pattern: .+
                   - type: object
+                    additionalProperties: false
                     properties:
                       error:
                         type: string
@@ -8445,28 +8182,24 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-fetch-historical-zone-file-response
                 title: BnsFetchHistoricalZoneFileResponse
                 description: Fetches the historical zonefile specified by the username and zone
                   hash.
-                required: []
                 anyOf:
                   - type: object
+                    additionalProperties: false
                     properties:
                       zonefile:
                         type: string
                   - type: object
+                    additionalProperties: false
                     properties:
                       error:
                         type: string
               example:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-fetch-historical-zone-file-response
                 title: BnsFetchHistoricalZoneFileResponse
                 description: Fetches the historical zonefile specified by the username and zone
                   hash.
-                required: []
                 anyOf:
                   - type: object
                     properties:
@@ -8524,11 +8257,11 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: bns-get-names-own-by-address-response
                 title: BnsNamesOwnByAddressResponse
                 description: Retrieves a list of names owned by the address provided.
-                required: []
+                additionalProperties: false
+                required:
+                  - names
                 type: object
                 properties:
                   names:
@@ -8705,10 +8438,10 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: List of fungible tokens metadata
                 title: FungibleTokensMetadataList
                 type: object
+                additionalProperties: false
                 required:
                   - results
                   - limit
@@ -8728,8 +8461,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema
-                      $id: fungible-token-metadata
                       title: FungibleTokenMetadata
                       type: object
                       additionalProperties: false
@@ -8866,7 +8597,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: List of Non-Fungible Token holdings
                 title: NonFungibleTokenHoldingsList
                 type: object
@@ -8890,20 +8620,19 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: NonFungibleTokenHolding
                       description: Describes the ownership of a Non-Fungible Token
                       additionalProperties: false
                       anyOf:
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenHoldingWithTxId
                           description: Ownership of a Non-Fungible Token
                           required:
                             - asset_identifier
                             - value
                             - tx_id
+                            - block_height
                           additionalProperties: false
                           properties:
                             asset_identifier:
@@ -8922,16 +8651,18 @@ paths:
                                 repr:
                                   type: string
                                   description: Readable string of the Non-Fungible Token identifier
+                            block_height:
+                              type: number
                             tx_id:
                               type: string
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenHoldingWithTxMetadata
                           description: Ownership of a Non-Fungible Token with transaction metadata
                           required:
                             - asset_identifier
                             - value
                             - tx
+                            - block_height
                           additionalProperties: false
                           properties:
                             asset_identifier:
@@ -8950,6 +8681,8 @@ paths:
                                 repr:
                                   type: string
                                   description: Readable string of the Non-Fungible Token identifier
+                            block_height:
+                              type: number
                             tx:
                               $ref: "#/paths/~1extended~1v1~1tx/get/responses/200/content/application~1json/s\
                                 chema/properties/results/items"
@@ -8964,17 +8697,20 @@ paths:
                         value:
                           hex: "0x0100000000000000000000000000000803"
                           repr: u2051
+                        block_height: 36442
                         tx_id: "0x12e6f88724d0e630de26c376f172cf1781e25435e2b4ee54d36a949b244e429c"
                       - asset_identifier: SP2BE8TZATXEVPGZ8HAFZYE5GKZ02X0YDKAN7ZTGW.arties::arties
                         value:
                           hex: "0x01000000000000000000000000000004f3"
                           repr: u1267
+                        block_height: 37477
                         tx_id: "0xddc464c5e20a78dc5ac351913e0d9b9cce76fc955cc4599e0cccad960998f130"
                       - asset_identifier: SP000000000000000000002Q6VF78.bns::names
                         value:
                           hex: "0x0c00000002046e616d65020000000672616661656c096e616d657370616365020000000\
                             3627463"
                           repr: (tuple (name 0x72616661656c) (namespace 0x627463))
+                        block_height: 17250
                         tx_id: "0x0153a41ed24a0e1d32f66ea98338df09f942571ca66359e28bdca79ccd0305cf"
                 with transaction metadata:
                   value:
@@ -8986,6 +8722,7 @@ paths:
                         value:
                           hex: "0x0100000000000000000000000000000803"
                           repr: u2051
+                        block_height: 36442
                         tx:
                           tx_id: "0x12e6f88724d0e630de26c376f172cf1781e25435e2b4ee54d36a949b244e429c"
                           nonce: 7
@@ -9035,6 +8772,7 @@ paths:
                         value:
                           hex: "0x01000000000000000000000000000004f3"
                           repr: u1267
+                        block_height: 37477
                         tx:
                           tx_id: "0xddc464c5e20a78dc5ac351913e0d9b9cce76fc955cc4599e0cccad960998f130"
                           nonce: 10
@@ -9086,6 +8824,7 @@ paths:
                           hex: "0x0c00000002046e616d65020000000672616661656c096e616d657370616365020000000\
                             3627463"
                           repr: (tuple (name 0x72616661656c) (namespace 0x627463))
+                        block_height: 17250
                         tx:
                           tx_id: "0x0153a41ed24a0e1d32f66ea98338df09f942571ca66359e28bdca79ccd0305cf"
                           nonce: 4
@@ -9207,7 +8946,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: List of Non-Fungible Token history events
                 title: NonFungibleTokenHistoryEventList
                 type: object
@@ -9231,14 +8969,12 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: NonFungibleTokenHistoryEvent
                       description: Describes an event from the history of a Non-Fungible Token
                       additionalProperties: false
                       anyOf:
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenHistoryEventWithTxId
                           description: Non-Fungible Token history event with transaction id
                           required:
@@ -9258,8 +8994,7 @@ paths:
                               type: string
                             tx_id:
                               type: string
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenHistoryEventWithTxMetadata
                           description: Non-Fungible Token history event with transaction metadata
                           required:
@@ -9482,7 +9217,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: List of Non-Fungible Token mint events for an asset identifier
                 title: NonFungibleTokenMintList
                 type: object
@@ -9506,14 +9240,12 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema#
                       type: object
                       title: NonFungibleTokenMint
                       description: Describes the minting of a Non-Fungible Token
                       additionalProperties: false
                       anyOf:
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenMintWithTxId
                           description: Non-Fungible Token mint event with transaction id
                           required:
@@ -9542,8 +9274,7 @@ paths:
                                   description: Readable string of the Non-Fungible Token identifier
                             tx_id:
                               type: string
-                        - $schema: http://json-schema.org/draft-07/schema#
-                          type: object
+                        - type: object
                           title: NonFungibleTokenMintWithTxMetadata
                           description: Non-Fungible Token mint event with transaction metadata
                           required:
@@ -9896,9 +9627,9 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema#
                 description: List of non fungible tokens metadata
                 title: NonFungibleTokensMetadataList
+                additionalProperties: false
                 type: object
                 required:
                   - results
@@ -9919,8 +9650,6 @@ paths:
                   results:
                     type: array
                     items:
-                      $schema: http://json-schema.org/draft-07/schema
-                      $id: non-fungible-token-metadata
                       title: NonFungibleTokenMetadata
                       type: object
                       additionalProperties: false
@@ -9999,8 +9728,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: non-fungible-token-metadata
                 title: NonFungibleTokenMetadata
                 type: object
                 additionalProperties: false
@@ -10071,8 +9798,6 @@ paths:
           content:
             application/json:
               schema:
-                $schema: http://json-schema.org/draft-07/schema
-                $id: fungible-token-metadata
                 title: FungibleTokenMetadata
                 type: object
                 additionalProperties: false
@@ -10140,8 +9865,14 @@ paths:
   /extended/v1/fee_rate:
     post:
       operationId: fetch_fee_rate
-      summary: fetch fee rate
-      description: Retrieves estimated fee rate.
+      summary: Fetch fee rate
+      deprecated: true
+      description: >
+        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees
+        for the given transaction](#operation/post_fee_transaction).
+
+
+        Retrieves estimated fee rate.
       tags:
         - Fees
       responses:
@@ -10179,3 +9910,275 @@ paths:
             example:
               transaction: "0x5e9f3933e358df6a73fec0d47ce3e1062c20812c129f5294e6f37a8d27c051d\
                 9"
+  /v2/fees/transaction:
+    post:
+      summary: Get approximate fees for the given transaction
+      tags:
+        - Fees
+      description: >
+        Get an estimated fee for the supplied transaction.  This
+
+        estimates the execution cost of the transaction, the current
+
+        fee rate of the network, and returns estimates for fee
+
+        amounts.
+
+        * `transaction_payload` is a hex-encoded serialization of
+          the TransactionPayload for the transaction.
+        * `estimated_len` is an optional argument that provides the
+          endpoint with an estimation of the final length (in bytes)
+          of the transaction, including any post-conditions and
+          signatures
+        If the node cannot provide an estimate for the transaction
+
+        (e.g., if the node has never seen a contract-call for the
+
+        given contract and function) or if estimation is not
+
+        configured on this node, a 400 response is returned.
+
+        The 400 response will be a JSON error containing a `reason`
+
+        field which can be one of the following:
+
+        * `DatabaseError` - this Stacks node has had an internal
+          database error while trying to estimate the costs of the
+          supplied transaction.
+        * `NoEstimateAvailable` - this Stacks node has not seen this
+          kind of contract-call before, and it cannot provide an
+          estimate yet.
+        * `CostEstimationDisabled` - this Stacks node does not perform
+          fee or cost estimation, and it cannot respond on this
+          endpoint.
+        The 200 response contains the following data:
+
+        * `estimated_cost` - the estimated multi-dimensional cost of
+          executing the Clarity VM on the provided transaction.
+        * `estimated_cost_scalar` - a unitless integer that the Stacks
+          node uses to compare how much of the block limit is consumed
+          by different transactions. This value incorporates the
+          estimated length of the transaction and the estimated
+          execution cost of the transaction. The range of this integer
+          may vary between different Stacks nodes. In order to compute
+          an estimate of total fee amount for the transaction, this
+          value is multiplied by the same Stacks node's estimated fee
+          rate.
+        * `cost_scalar_change_by_byte` - a float value that indicates how
+          much the `estimated_cost_scalar` value would increase for every
+          additional byte in the final transaction.
+        * `estimations` - an array of estimated fee rates and total fees to
+          pay in microSTX for the transaction. This array provides a range of
+          estimates (default: 3) that may be used. Each element of the array
+          contains the following fields:
+            * `fee_rate` - the estimated value for the current fee
+              rates in the network
+            * `fee` - the estimated value for the total fee in
+              microSTX that the given transaction should pay. These
+              values are the result of computing:
+              `fee_rate` x `estimated_cost_scalar`.
+              If the estimated fees are less than the minimum relay
+              fee `(1 ustx x estimated_len)`, then that minimum relay
+              fee will be returned here instead.
+        Note: If the final transaction's byte size is larger than
+
+        supplied to `estimated_len`, then applications should increase
+
+        this fee amount by:
+          `fee_rate` x `cost_scalar_change_by_byte` x (`final_size` - `estimated_size`)
+      operationId: post_fee_transaction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              description: POST request for estimated fee
+              title: TransactionFeeEstimateRequest
+              type: object
+              additionalProperties: false
+              required:
+                - transaction_payload
+              properties:
+                transaction_payload:
+                  type: string
+                estimated_len:
+                  type: integer
+            example:
+              estimated_len: 350
+              transaction_payload: 021af942874ce525e87f21bbe8c121b12fac831d02f4086765742d696e666f0b7570646174652d696e666f00000000
+      responses:
+        "200":
+          description: Estimated fees for the transaction
+          content:
+            application/json:
+              schema:
+                description: POST response for estimated fee
+                title: TransactionFeeEstimateResponse
+                type: object
+                additionalProperties: false
+                required:
+                  - estimated_cost
+                  - estimated_cost_scalar
+                properties:
+                  estimated_cost_scalar:
+                    type: integer
+                  cost_scalar_change_by_byte:
+                    type: number
+                  estimated_cost:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - read_count
+                      - write_count
+                      - read_length
+                      - write_length
+                      - runtime
+                    properties:
+                      read_count:
+                        type: integer
+                      read_length:
+                        type: integer
+                      runtime:
+                        type: integer
+                      write_count:
+                        type: integer
+                      write_length:
+                        type: integer
+                  estimations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        fee_rate:
+                          type: number
+                        fee:
+                          type: number
+              example:
+                cost_scalar_change_by_byte: 0.00476837158203125
+                estimated_cost:
+                  read_count: 19
+                  read_length: 4814
+                  runtime: 7175000
+                  write_count: 2
+                  write_length: 1020
+                estimated_cost_scalar: 14
+                estimations:
+                  - fee: 17
+                    fee_rate: 1.2410714285714286
+                  - fee: 125
+                    fee_rate: 8.958333333333332
+                  - fee: 140
+                    fee_rate: 10
+  /extended/v1/tx/events:
+    get:
+      summary: Transaction Events
+      description: Retrieves the list of events filtered by principal (STX address or
+        Smart Contract ID), transaction id or event types. The list of event
+        types is ('smart_contract_log', 'stx_lock', 'stx_asset',
+        'fungible_token_asset', 'non_fungible_token_asset').
+      tags:
+        - Transactions
+      operationId: get_filtered_events
+      parameters:
+        - name: tx_id
+          in: query
+          description: Hash of transaction
+          required: false
+          schema:
+            type: string
+            example: "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5"
+        - name: address
+          in: query
+          description: Stacks address or a Contract identifier
+          required: false
+          schema:
+            type: string
+            example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+            example: 100
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+            example: 50
+        - name: type
+          in: query
+          description: Filter the events on event type
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - smart_contract_log
+                - stx_lock
+                - stx_asset
+                - fungible_token_asset
+                - non_fungible_token_asset
+              example: stx_lock
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                description: GET event for the given transaction
+                title: TransactionEventsResponse
+                type: object
+                additionalProperties: false
+                required:
+                  - results
+                  - limit
+                  - offset
+                properties:
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+                  results:
+                    type: array
+                    items:
+                      $ref: "#/paths/~1extended~1v1~1address~1%7Bprincipal%7D~1assets/get/responses/2\
+                        00/content/application~1json/schema/properties/results/\
+                        items"
+              example:
+                limit: 96
+                offset: 0
+                events:
+                  - event_index: 0
+                    event_type: non_fungible_token_asset
+                    tx_id: "0x05ccc123db703a2808afaaf88b6b3240f14391d14fde701bd20d7206c9133af6"
+                    asset:
+                      asset_event_type: transfer
+                      asset_id: ST000000000000000000002AMW42H.bns::names
+                      sender: STKVDRCTN8C81T22QHR9PG9GPD3V3WPQYBYFHPT4
+                      recipient: STRWN68C36Z7WTDD1TJERTAZ4SXDRMMDB29M4VNQ
+                      value:
+                        hex: "0x0c00000002046e616d65020000000a62696c616c7465737435096e616d6573706163650\
+                          200000003627463"
+                        repr: (tuple (name 0x62696c616c7465737435) (namespace 0x627463))
+                  - event_index: 1
+                    event_type: smart_contract_log
+                    tx_id: "0x05ccc123db703a2808afaaf88b6b3240f14391d14fde701bd20d7206c9133af6"
+                    contract_log:
+                      contract_id: ST000000000000000000002AMW42H.bns
+                      topic: print
+                      value:
+                        hex: "0x0c000000010a6174746163686d656e740c00000003106174746163686d656e742d696e6\
+                          46578010000000000000000000000000000028304686173680200\
+                          000014b472a266d0bd89c13706a4132ccfb16f7c3b9fcb086d657\
+                          461646174610c00000004046e616d65020000000a62696c616c74\
+                          65737435096e616d6573706163650200000003627463026f700d0\
+                          000000d6e616d652d7472616e736665720974782d73656e646572\
+                          051a27b6e19aaa1880e842bc709b4130b347b1f2d7f2"
+                        repr: (tuple (attachment (tuple (attachment-index u643) (hash
+                          0xb472a266d0bd89c13706a4132ccfb16f7c3b9fcb) (metadata
+                          (tuple (name 0x62696c616c7465737435) (namespace
+                          0x627463) (op "name-transfer") (tx-sender
+                          STKVDRCTN8C81T22QHR9PG9GPD3V3WPQYBYFHPT4))))))
