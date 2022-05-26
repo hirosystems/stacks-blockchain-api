@@ -1,5 +1,5 @@
 import * as nock from 'nock';
-import { ChainID, ClarityAbi, cvToHex, uintCV } from '@stacks/transactions';
+import { ChainID, ClarityAbi, cvToHex, noneCV, uintCV } from '@stacks/transactions';
 import { PoolClient } from 'pg';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { ApiServer, startApiServer } from '../api/init';
@@ -260,6 +260,34 @@ describe('token metadata strict mode', () => {
     const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
+  });
+
+  test('incorrect none uri strings are parsed as undefined', async () => {
+    const mockResponse = {
+      okay: true,
+      result: cvToHex(noneCV()),
+    };
+    nock('http://127.0.0.1:20443')
+      .post(
+        '/v2/contracts/call-read/SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD/project-indigo-act1/get-token-uri'
+      )
+      .reply(200, mockResponse);
+    const handler = new TokensContractHandler({
+      contractId: contractId,
+      smartContractAbi: NFT_CONTRACT_ABI,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: contractTxId,
+      dbQueueId: 1,
+    });
+    await handler.start();
+    const entry = await db.getTokenMetadataQueueEntry(1);
+    expect(entry.result?.retry_count).toEqual(0);
+    expect(entry.result?.processed).toBe(true);
+    const metadata = await db.getNftMetadata(
+      'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1'
+    );
+    expect(metadata.result?.token_uri).toEqual('');
   });
 
   test('metadata timeout errors get retried immediately', async () => {
