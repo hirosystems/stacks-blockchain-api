@@ -403,6 +403,80 @@ export class PgStore {
     });
   }
 
+  async getMetadataBlocks({ limit, offset }: { limit: number; offset: number }) {
+    return await this.sql.begin(async sql => {
+      // get block list
+      const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
+      const blockHashValues = blocks
+        .map(block => `('\\x${block.index_block_hash.slice(2)}'::bytea)`)
+        .join(', ');
+
+      // get txs in those blocks
+      const txQuery = await sql<ContractTxQueryResult[]>`
+        SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
+        FROM txs
+        WHERE index_block_hash = ANY(VALUES ${sql.unsafe(blockHashValues)})
+          AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC, tx_index DESC
+      `;
+      const txs = txQuery.map(r => parseTxQueryResult(r));
+
+      // get microblocks in those blocks
+      const indexBlockHashValues = blocks
+        .map(
+          block =>
+            `('\\x${block.index_block_hash.slice(
+              2
+            )}'::bytea), ('\\x${block.parent_index_block_hash.slice(2)}'::bytea)`
+        )
+        .join(', ');
+      const microblocksQuery = await sql<(MicroblockQueryResult & { transaction_count: number })[]>`
+          SELECT ${sql(MICROBLOCK_COLUMNS)}, (
+            SELECT COUNT(tx_id)::integer as transaction_count
+            FROM txs
+            WHERE txs.microblock_hash = microblocks.microblock_hash
+            AND canonical = true AND microblock_canonical = true
+          )
+          FROM microblocks
+          WHERE parent_index_block_hash = ANY(VALUES ${sql.unsafe(indexBlockHashValues)})
+          AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
+        `;
+
+      // parse data to return
+      const results = blocks.map(block => {
+        const transactions = txs
+          .filter(tx => tx.index_block_hash === block.index_block_hash)
+          .map(tx => tx.tx_id);
+        const microblocksAccepted = microblocksQuery
+          .filter(
+            microblock => block.parent_index_block_hash === microblock.parent_index_block_hash
+          )
+          .map(mb => {
+            return {
+              microblock_hash: mb.microblock_hash,
+              transaction_count: mb.transaction_count,
+            };
+          });
+        const microblocksStreamed = microblocksQuery
+          .filter(microblock => block.parent_index_block_hash === microblock.index_block_hash)
+          .map(mb => mb.microblock_hash);
+        const microblock_tx_count: Record<string, number> = {};
+        microblocksAccepted.forEach(mb => {
+          microblock_tx_count[mb.microblock_hash] = mb.transaction_count;
+        });
+        return {
+          block,
+          txs: transactions,
+          microblocks_accepted: microblocksAccepted.map(mb => mb.microblock_hash),
+          microblocks_streamed: microblocksStreamed,
+          microblock_tx_count,
+        };
+      });
+      return { results, total: block_count };
+    });
+  }
+
   async getBlockTxs(indexBlockHash: string) {
     const result = await this.sql<{ tx_id: string; tx_index: number }[]>`
       SELECT tx_id, tx_index
