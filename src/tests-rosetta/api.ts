@@ -7,6 +7,8 @@ import * as assert from 'assert';
 import {
   AnchorMode,
   ChainID,
+  ClarityAbi,
+  uintCV,
 } from '@stacks/transactions';
 import {
   RosettaAccount,
@@ -27,6 +29,7 @@ import {
   RosettaConstants,
 } from '../api/rosetta-constants';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { createClarityValueArray } from '../stacks-encoding-helpers';
 
 
 describe('Rosetta API', () => {
@@ -399,6 +402,108 @@ describe('Rosetta API', () => {
             coin_identifier: {
               identifier: `${tx.tx_id}:2`,
             },
+          },
+        },
+      ],
+    });
+  });
+
+  test('block/transaction - contract call with null args', async () => {
+    const contractJsonAbi: ClarityAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: { optional: 'uint128' }, name: 'desc' }, // Optional
+          ],
+          name: 'test-contract-fn',
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const block1 = new TestBlockBuilder({
+      index_block_hash: '0x01',
+      block_height: 1
+    })
+      .addTx({
+        tx_id: '0x1001',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        smart_contract_source_code: '(some-contract-src)',
+      })
+      .addTxSmartContract({
+        contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        contract_source: '(some-contract-src)',
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .build();
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+      block_height: 2
+    })
+      .addTx({
+        tx_id: '0x2001',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+        contract_call_function_name: 'test-contract-fn',
+        contract_call_function_args: createClarityValueArray(uintCV(123456))
+      })
+      .build();
+    await db.update(block2);
+
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: block2.block.block_height, hash: block2.block.block_hash },
+        transaction_identifier: { hash: '0x2001' },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      transaction_identifier: {
+        hash: '0x2001',
+      },
+      operations: [
+        {
+          operation_identifier: { index: 0 },
+          type: 'fee',
+          status: 'success',
+          account: { address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27' },
+          amount: { value: '-50', currency: { symbol: 'STX', decimals: 6 } },
+        },
+        {
+          operation_identifier: { index: 1 },
+          type: 'contract_call',
+          status: 'success',
+          account: { address: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27' },
+          metadata: {
+            contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
+            function_name: 'test-contract-fn',
+            function_signature: '(define-public (test-contract-fn (amount uint) (desc (optional uint))))',
+            function_args: [
+              {
+                hex: '0x010000000000000000000000000001e240',
+                name: 'amount',
+                repr: 'u123456',
+                type: 'uint',
+              }
+            ]
           },
         },
       ],

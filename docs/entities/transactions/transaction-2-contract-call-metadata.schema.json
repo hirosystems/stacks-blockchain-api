@@ -30,23 +30,30 @@
           "type": "array",
           "description": "List of arguments used to invoke the function",
           "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["hex", "repr", "name", "type"],
-            "properties": {
-              "hex": {
-                "type": "string"
+            "oneOf": [
+              {
+                "type": "null"
               },
-              "repr": {
-                "type": "string"
-              },
-              "name": {
-                "type": "string"
-              },
-              "type": {
-                "type": "string"
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["hex", "repr", "name", "type"],
+                "properties": {
+                  "hex": {
+                    "type": "string"
+                  },
+                  "repr": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                }
               }
-            }
+            ]
           }
         }
       }

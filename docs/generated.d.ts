@@ -1033,12 +1033,12 @@ export interface ContractCallTransactionMetadata {
     /**
      * List of arguments used to invoke the function
      */
-    function_args?: {
+    function_args?: (null | {
       hex: string;
       repr: string;
       name: string;
       type: string;
-    }[];
+    })[];
   };
 }
 /**
