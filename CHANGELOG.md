@@ -1,3 +1,10 @@
+## [4.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0...v4.0.1) (2022-06-01)
+
+
+### Bug Fixes
+
+* contract-call txs returning null args in some situations, closes [#1188](https://github.com/hirosystems/stacks-blockchain-api/issues/1188) ([#1192](https://github.com/hirosystems/stacks-blockchain-api/issues/1192)) ([9b77ca2](https://github.com/hirosystems/stacks-blockchain-api/commit/9b77ca22fcaa814ef0266ce3ab4efd32d5ae2da7))
+
 # [4.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v4.0.0) (2022-05-26)
 
 
