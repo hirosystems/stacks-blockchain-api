@@ -11,6 +11,11 @@ import { PgStore } from '../../../datastore/pg-store';
 import { WebSocketChannel } from './web-socket-channel';
 import { SocketIOChannel } from './channels/socket-io-channel';
 
+/**
+ * This object matches real time update `WebSocketTopics` subscriptions with internal
+ * `PgStoreEventEmitter` notifications. If a match is found, the relevant data is queried from the
+ * database and returned to users using all available WebSocket channels.
+ */
 export class WebSocketTransmitter {
   readonly db: PgStore;
   readonly server: http.Server;
