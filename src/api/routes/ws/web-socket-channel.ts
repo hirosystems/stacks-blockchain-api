@@ -10,7 +10,8 @@ import {
 import { WebSocketPrometheus } from './metrics';
 
 /**
- * x
+ * Topics that external API users may subscribe to when looking for real time updates.
+ * Not to be confused with `PgStoreEventEmitter` internal events or `WebSocketPayload` messages.
  */
 export type WebSocketTopics = {
   block: () => void;
@@ -22,7 +23,9 @@ export type WebSocketTopics = {
 };
 
 /**
- * y
+ * Payloads that can be sent to external API users depending on which `WebSocketTopics` they are
+ * subscribed to. Each of these contains a full database object relevant to the response so each
+ * channel may format the output according to its needs.
  */
 export type WebSocketPayload = {
   block: (block: Block) => void;
@@ -34,7 +37,8 @@ export type WebSocketPayload = {
 };
 
 /**
- * z
+ * Type hack taken from https://github.com/bterlson/strict-event-emitter-types to dynamically set
+ * the argument types depending on the selected topic or payload.
  */
 export type ListenerType<T> = [T] extends [(...args: infer U) => any]
   ? U
@@ -43,7 +47,8 @@ export type ListenerType<T> = [T] extends [(...args: infer U) => any]
   : [T];
 
 /**
- * xx
+ * A channel that accepts user subscriptions to real time updates and responds with relevant
+ * payloads through WebSockets (or its flavors like Socket.IO).
  */
 export abstract class WebSocketChannel {
   readonly server: http.Server;
