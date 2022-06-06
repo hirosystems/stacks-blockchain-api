@@ -115,14 +115,14 @@ describe('websocket notifications', () => {
 
       // check for microblock tx update notification
       const txStatus2 = await txUpdates[1];
-      expect(txStatus2).toBe('pending');
+      expect(txStatus2).toBe('success');
 
       // update DB with TX after WS server is sent txid to monitor
       db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
-      expect(txStatus3).toBe('pending');
+      expect(txStatus3).toBe('success');
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
