@@ -123,7 +123,10 @@ class SubscriptionManager {
   }
 }
 
-class WsRpcChannel extends WebSocketChannel {
+/**
+ * WebSocket RPC channel for sending real time API updates.
+ */
+export class WsRpcChannel extends WebSocketChannel {
   private subscriptions = new Map<keyof WebSocketTopics, SubscriptionManager>();
   private wsServer?: WebSocket.Server;
 
@@ -174,7 +177,11 @@ class WsRpcChannel extends WebSocketChannel {
   }
 
   close(callback?: (err?: Error) => void): void {
-    throw new Error('Method not implemented.');
+    if (!this.wsServer && callback) {
+      callback();
+    }
+    this.wsServer?.close(callback);
+    this.wsServer = undefined;
   }
 
   hasListeners<P extends keyof WebSocketTopics>(

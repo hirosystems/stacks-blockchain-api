@@ -8,7 +8,7 @@ import {
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
-import { isValidTxId } from 'src/api/query-helpers';
+import { isValidTxId } from '../../../../api/query-helpers';
 import { isProdEnv, isValidPrincipal, logger } from '../../../../helpers';
 import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
@@ -110,6 +110,7 @@ export class SocketIOChannel extends WebSocketChannel {
       callback();
     }
     this.io?.close(callback);
+    this.io = undefined;
   }
 
   hasListeners<P extends keyof WebSocketTopics>(

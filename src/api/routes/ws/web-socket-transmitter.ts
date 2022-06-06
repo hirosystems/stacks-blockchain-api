@@ -10,6 +10,7 @@ import {
 import { PgStore } from '../../../datastore/pg-store';
 import { WebSocketChannel } from './web-socket-channel';
 import { SocketIOChannel } from './channels/socket-io-channel';
+import { WsRpcChannel } from './channels/ws-rpc-channel';
 
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal
@@ -37,16 +38,31 @@ export class WebSocketTransmitter {
     );
 
     this.channels.push(new SocketIOChannel(this.server));
+    this.channels.push(new WsRpcChannel(this.server));
     this.channels.forEach(c => c.connect());
   }
 
-  close(callback?: (err?: Error | undefined) => void) {
-    // FIXME: callback
-    this.channels.forEach(c => c.close());
+  close(callback: (err?: Error | undefined) => void) {
+    Promise.all(
+      this.channels.map(
+        c =>
+          new Promise<void>((resolve, reject) => {
+            c.close(error => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve();
+              }
+            });
+          })
+      )
+    )
+      .then(_ => callback())
+      .catch(error => callback(error));
   }
 
   private async blockUpdate(blockHash: string) {
-    if (this.channels.filter(c => c.hasListeners('block'))) {
+    if (this.channels.find(c => c.hasListeners('block'))) {
       const blockQuery = await getBlockFromDataStore({
         blockIdentifer: { hash: blockHash },
         db: this.db,
@@ -58,7 +74,7 @@ export class WebSocketTransmitter {
   }
 
   private async microblockUpdate(microblockHash: string) {
-    if (this.channels.filter(c => c.hasListeners('microblock'))) {
+    if (this.channels.find(c => c.hasListeners('microblock'))) {
       const microblockQuery = await getMicroblockFromDataStore({
         db: this.db,
         microblockHash: microblockHash,
@@ -70,7 +86,7 @@ export class WebSocketTransmitter {
   }
 
   private async txUpdate(txId: string) {
-    if (this.channels.filter(c => c.hasListeners('mempool'))) {
+    if (this.channels.find(c => c.hasListeners('mempool'))) {
       const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
         txIds: [txId],
         includeUnanchored: true,
@@ -80,7 +96,8 @@ export class WebSocketTransmitter {
       }
     }
 
-    if (this.channels.filter(c => c.hasListeners('transaction', txId))) {
+    if (this.channels.find(c => c.hasListeners('transaction', txId))) {
+      // Look at the `txs` table first so we always prefer the confirmed transaction.
       const txQuery = await getTxFromDataStore(this.db, {
         txId: txId,
         includeUnanchored: true,
@@ -88,6 +105,7 @@ export class WebSocketTransmitter {
       if (txQuery.found) {
         this.channels.forEach(c => c.send('transaction', txQuery.result));
       } else {
+        // Tx is not yet confirmed, look at `mempool_txs`.
         const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
           txIds: [txId],
           includeUnanchored: true,
@@ -100,13 +118,7 @@ export class WebSocketTransmitter {
   }
 
   private async addressUpdate(address: string, blockHeight: number) {
-    if (
-      this.channels.filter(
-        c =>
-          c.hasListeners('principalTransactions', address) ||
-          c.hasListeners('principalStxBalance', address)
-      )
-    ) {
+    if (this.channels.find(c => c.hasListeners('principalTransactions', address))) {
       const dbTxsQuery = await this.db.getAddressTxsWithAssetTransfers({
         stxAddress: address,
         blockHeight: blockHeight,
@@ -132,10 +144,9 @@ export class WebSocketTransmitter {
         };
         this.channels.forEach(c => c.send('principalTransaction', address, result));
       });
+    }
 
-      // Get latest balance (in case multiple txs come in from different blocks)
-      // const blockHeights = addressTxs.map(tx => tx.tx.block_height);
-      // const latestBlock = Math.max(...blockHeights);
+    if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
       const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
       const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
       const balance: AddressStxBalanceResponse = {

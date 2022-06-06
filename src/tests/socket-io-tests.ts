@@ -132,7 +132,7 @@ describe('socket-io', () => {
       expect(txResult.tx_status).toEqual('pending');
       expect(txResult.tx_id).toEqual('0x01');
       expect(txMicroblockResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_status).toEqual('pending');
+      expect(txMicroblockResult.tx_status).toEqual('success');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.emit('unsubscribe', 'transaction:0x01');

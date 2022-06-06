@@ -345,12 +345,8 @@ export async function startApiServer(opts: {
     });
   });
 
-  // Setup WebSocket channels
   const ws = new WebSocketTransmitter(datastore, server);
   ws.connect();
-
-  // Setup websockets RPC endpoint
-  // const wss = createWsRpcRouter(datastore, server);
 
   await new Promise<void>((resolve, reject) => {
     try {
