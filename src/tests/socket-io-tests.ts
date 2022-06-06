@@ -1,6 +1,5 @@
 import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';

@@ -2343,6 +2343,7 @@ describe('api tests', () => {
       parent_microblock_hash: '0x',
       parent_microblock_sequence: 0,
       txs: ['0x4567000000000000000000000000000000000000000000000000000000000000'],
+      microblock_tx_count: {},
     };
 
     const searchResult1 = await supertest(api.server).get(
@@ -7288,6 +7289,7 @@ describe('api tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      microblock_tx_count: {},
     };
 
     expect(blockQuery.result).toEqual(expectedResp);
@@ -7409,6 +7411,7 @@ describe('api tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       txs: ['0x0001'],
+      microblock_tx_count: {},
     };
     const fetch1 = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block1.block.block_height}`
@@ -7455,7 +7458,11 @@ describe('api tests', () => {
       parent_microblock_sequence: microblock1.microblocks[0].microblock_sequence,
       // Ensure micro-orphaned tx `0x1002` is not included
       txs: ['0x0002', '0x1001'],
+      microblock_tx_count: {
+        '0xff01': microblock1.txs.length,
+      },
     };
+
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
     expect(JSON.parse(fetch2.text)).toEqual(expectedResp2);
@@ -10840,6 +10847,34 @@ describe('api tests', () => {
     );
 
     expect(addressEvents.status).toBe(400);
+  });
+
+  test('/microblock/:hash duplicate txs', async () => {
+    const microblock_hash = '0x0fff',
+      tx_id = '0x1234';
+    const block = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
+    await db.update(block);
+
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({ microblock_hash, parent_index_block_hash: block.block.index_block_hash })
+      .addTx({
+        tx_id,
+        microblock_canonical: true,
+        canonical: true,
+        index_block_hash: '0x1234',
+      })
+      .addTx({
+        tx_id,
+        microblock_canonical: false,
+        canonical: false,
+        index_block_hash: '0x123456',
+      })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
+    expect(result.body.txs).toHaveLength(1);
+    expect(result.body.txs[0]).toEqual(tx_id);
   });
 
   afterEach(async () => {

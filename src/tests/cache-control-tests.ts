@@ -173,6 +173,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      microblock_tx_count: {},
     };
 
     expect(blockQuery.result).toEqual(expectedResp1);
@@ -316,6 +317,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      microblock_tx_count: {},
     };
 
     const fetchBlockByHash2 = await supertest(api.server).get(

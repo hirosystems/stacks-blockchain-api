@@ -114,7 +114,7 @@ export class PgStore {
     withNotifier?: boolean;
   }): Promise<PgStore> {
     const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.default });
-    const notifier = withNotifier ? PgNotifier.create(usageName) : undefined;
+    const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgStore(sql, notifier);
     await store.connectPgNotifier();
     return store;
@@ -218,8 +218,9 @@ export class PgStore {
         return { found: false };
       }
       let txs: DbTx[] | null = null;
-      let microblocksAccepted: DbMicroblock[] | null = null;
-      let microblocksStreamed: DbMicroblock[] | null = null;
+      const microblocksAccepted: DbMicroblock[] = [];
+      const microblocksStreamed: DbMicroblock[] = [];
+      const microblock_tx_count: Record<string, number> = {};
       if (metadata?.txs) {
         const txQuery = await sql<ContractTxQueryResult[]>`
           SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -231,21 +232,32 @@ export class PgStore {
         txs = txQuery.map(r => parseTxQueryResult(r));
       }
       if (metadata?.microblocks) {
-        const microblocksQuery = await sql<MicroblockQueryResult[]>`
-          SELECT ${sql(MICROBLOCK_COLUMNS)}
+        const microblocksQuery = await sql<
+          (MicroblockQueryResult & { transaction_count: number })[]
+        >`
+          SELECT ${sql(MICROBLOCK_COLUMNS)}, (
+            SELECT COUNT(tx_id)::integer as transaction_count
+            FROM txs
+            WHERE txs.microblock_hash = microblocks.microblock_hash
+            AND canonical = true AND microblock_canonical = true
+          )
           FROM microblocks
           WHERE parent_index_block_hash
             IN ${sql([block.result.index_block_hash, block.result.parent_index_block_hash])}
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
         `;
-        const parsedMicroblocks = microblocksQuery.map(r => parseMicroblockQueryResult(r));
-        microblocksAccepted = parsedMicroblocks.filter(
-          mb => mb.parent_index_block_hash === block.result.parent_index_block_hash
-        );
-        microblocksStreamed = parsedMicroblocks.filter(
-          mb => mb.parent_index_block_hash === block.result.index_block_hash
-        );
+        for (const mb of microblocksQuery) {
+          const parsedMicroblock = parseMicroblockQueryResult(mb);
+          const count = mb.transaction_count;
+          if (parsedMicroblock.parent_index_block_hash === block.result.parent_index_block_hash) {
+            microblocksAccepted.push(parsedMicroblock);
+            microblock_tx_count[parsedMicroblock.microblock_hash] = count;
+          }
+          if (parsedMicroblock.parent_index_block_hash === block.result.index_block_hash) {
+            microblocksStreamed.push(parsedMicroblock);
+          }
+        }
       }
       type ResultType = DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>;
       const result: ResultType = {
@@ -255,6 +267,7 @@ export class PgStore {
           accepted: microblocksAccepted,
           streamed: microblocksStreamed,
         } as ResultType['microblocks'],
+        microblock_tx_count,
       };
       return {
         found: true,
@@ -431,7 +444,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${args.microblockHash}
+        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true 
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);

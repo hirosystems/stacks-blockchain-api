@@ -507,6 +507,7 @@ export interface DbGetBlockWithMetadataResponse<
   microblocks: TWithMicroblocks extends true
     ? { accepted: DbMicroblock[]; streamed: DbMicroblock[] }
     : null;
+  microblock_tx_count: Record<string, number>;
 }
 
 export interface DbRawEventRequest {
@@ -1090,6 +1091,7 @@ export interface FaucetRequestInsertValues {
   ip: string;
   occurred_at: number;
 }
+
 export interface RawEventRequestInsertValues {
   event_path: string;
   payload: string;
