@@ -2,7 +2,7 @@ import * as http from 'http';
 import * as WebSocket from 'ws';
 import * as net from 'net';
 import { isProdEnv, isValidPrincipal, logError, normalizeHashString } from '../../../../helpers';
-import { WebSocketPrometheus } from '../metrics';
+import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
   ListenerType,
   WebSocketChannel,

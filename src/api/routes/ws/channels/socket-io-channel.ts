@@ -10,7 +10,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
 import { isValidTxId } from 'src/api/query-helpers';
 import { isProdEnv, isValidPrincipal, logger } from '../../../../helpers';
-import { WebSocketPrometheus } from '../metrics';
+import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
   ListenerType,
   WebSocketChannel,

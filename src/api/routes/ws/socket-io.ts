@@ -17,7 +17,7 @@ import {
   parseDbTx,
 } from '../../controllers/db-controller';
 import { isProdEnv, isValidPrincipal, logError, logger } from '../../../helpers';
-import { WebSocketPrometheus } from './metrics';
+import { WebSocketPrometheus } from './web-socket-prometheus';
 import { PgStore } from '../../../datastore/pg-store';
 import { isValidTxId } from '../../../api/query-helpers';
 

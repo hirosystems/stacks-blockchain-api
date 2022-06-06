@@ -7,7 +7,7 @@ import {
   Microblock,
   Transaction,
 } from 'docs/generated';
-import { WebSocketPrometheus } from './metrics';
+import { WebSocketPrometheus } from './web-socket-prometheus';
 
 /**
  * Topics that external API users may subscribe to when looking for real time updates.
