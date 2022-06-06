@@ -128,7 +128,7 @@ export class WebSocketTransmitter {
         return;
       }
       const addressTxs = dbTxsQuery.results;
-      addressTxs.forEach(addressTx => {
+      for (const addressTx of addressTxs) {
         const parsedTx = parseDbTx(addressTx.tx);
         const result: AddressTransactionWithTransfers = {
           tx: parsedTx,
@@ -143,7 +143,7 @@ export class WebSocketTransmitter {
           }),
         };
         this.channels.forEach(c => c.send('principalTransaction', address, result));
-      });
+      }
     }
 
     if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
