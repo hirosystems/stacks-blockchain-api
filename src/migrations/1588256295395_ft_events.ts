@@ -67,8 +67,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('ft_events', 'tx_id', { method: INDEX_METHOD });
   pgm.createIndex('ft_events', 'index_block_hash', { method: INDEX_METHOD });
   pgm.createIndex('ft_events', 'microblock_hash', { method: INDEX_METHOD });
-  pgm.createIndex('ft_events', 'sender', { method: INDEX_METHOD });
-  pgm.createIndex('ft_events', 'recipient', { method: INDEX_METHOD });
+  pgm.createIndex('ft_events', 'sender');
+  pgm.createIndex('ft_events', 'recipient');
   pgm.createIndex('ft_events', 'event_index');
   pgm.createIndex('ft_events', [{ name: 'block_height', sort: 'DESC' }]);
 

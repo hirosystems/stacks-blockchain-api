@@ -67,8 +67,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('nft_events', 'tx_id', { method: INDEX_METHOD });
   pgm.createIndex('nft_events', 'index_block_hash', { method: INDEX_METHOD });
   pgm.createIndex('nft_events', 'microblock_hash', { method: INDEX_METHOD });
-  pgm.createIndex('nft_events', 'sender', { method: INDEX_METHOD });
-  pgm.createIndex('nft_events', 'recipient', { method: INDEX_METHOD });
+  pgm.createIndex('nft_events', 'sender');
+  pgm.createIndex('nft_events', 'recipient');
   pgm.createIndex('nft_events', 'event_index');
   pgm.createIndex('nft_events', ['asset_identifier', 'value']);
   pgm.createIndex('nft_events', 'asset_identifier', { where: 'asset_event_type_id = 2', method: INDEX_METHOD }); // Mints
