@@ -32,7 +32,7 @@ import {
   getTxStatusString,
   getTxTypeString,
 } from '../../controllers/db-controller';
-import { WebSocketPrometheus } from './metrics';
+import { WebSocketPrometheus } from './web-socket-prometheus';
 import { PgStore } from '../../../datastore/pg-store';
 
 type Subscription =
