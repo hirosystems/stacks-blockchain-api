@@ -19,7 +19,7 @@ import {
 } from '../web-socket-channel';
 
 /**
- * Ssss
+ * SocketIO channel for sending real time API updates.
  */
 export class SocketIOChannel extends WebSocketChannel {
   private io?: SocketIOServer<ClientToServerMessages, ServerToClientMessages>;
@@ -106,6 +106,9 @@ export class SocketIOChannel extends WebSocketChannel {
   }
 
   close(callback?: (err?: Error) => void): void {
+    if (!this.io && callback) {
+      callback();
+    }
     this.io?.close(callback);
   }
 
@@ -123,12 +126,18 @@ export class SocketIOChannel extends WebSocketChannel {
         return this.adapter.rooms.has('microblock');
       case 'mempool':
         return this.adapter.rooms.has('mempool');
-      case 'transaction':
-        return this.adapter.rooms.has(`transaction:${args[0]}`);
-      case 'principalTransactions':
-        return this.adapter.rooms.has(`address-transaction:${args[0]}`);
-      case 'principalStxBalance':
-        return this.adapter.rooms.has(`address-stx-balance:${args[0]}`);
+      case 'transaction': {
+        const [txId] = args as ListenerType<WebSocketTopics['transaction']>;
+        return this.adapter.rooms.has(`transaction:${txId}`);
+      }
+      case 'principalTransactions': {
+        const [principal] = args as ListenerType<WebSocketTopics['principalTransactions']>;
+        return this.adapter.rooms.has(`address-transaction:${principal}`);
+      }
+      case 'principalStxBalance': {
+        const [principal] = args as ListenerType<WebSocketTopics['principalStxBalance']>;
+        return this.adapter.rooms.has(`address-stx-balance:${principal}`);
+      }
     }
     return false;
   }
