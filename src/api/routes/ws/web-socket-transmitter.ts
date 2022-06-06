@@ -37,12 +37,12 @@ export class WebSocketTransmitter {
     );
 
     this.channels.push(new SocketIOChannel(this.server));
-    this.channels.map(c => c.connect());
+    this.channels.forEach(c => c.connect());
   }
 
   close(callback?: (err?: Error | undefined) => void) {
     // FIXME: callback
-    this.channels.map(c => c.close());
+    this.channels.forEach(c => c.close());
   }
 
   private async blockUpdate(blockHash: string) {
@@ -52,7 +52,7 @@ export class WebSocketTransmitter {
         db: this.db,
       });
       if (blockQuery.found) {
-        this.channels.map(c => c.send('block', blockQuery.result));
+        this.channels.forEach(c => c.send('block', blockQuery.result));
       }
     }
   }
@@ -64,7 +64,7 @@ export class WebSocketTransmitter {
         microblockHash: microblockHash,
       });
       if (microblockQuery.found) {
-        this.channels.map(c => c.send('microblock', microblockQuery.result));
+        this.channels.forEach(c => c.send('microblock', microblockQuery.result));
       }
     }
   }
@@ -76,26 +76,24 @@ export class WebSocketTransmitter {
         includeUnanchored: true,
       });
       if (mempoolTxs.length > 0) {
-        this.channels.map(c => c.send('mempoolTransaction', mempoolTxs[0]));
+        this.channels.forEach(c => c.send('mempoolTransaction', mempoolTxs[0]));
       }
     }
 
     if (this.channels.filter(c => c.hasListeners('transaction', txId))) {
-      const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
-        txIds: [txId],
+      const txQuery = await getTxFromDataStore(this.db, {
+        txId: txId,
         includeUnanchored: true,
       });
-      if (mempoolTxs.length > 0) {
-        // prometheus?.sendEvent('transaction');
-        // io.to(mempoolTopic).emit('transaction', mempoolTxs[0]);
+      if (txQuery.found) {
+        this.channels.forEach(c => c.send('transaction', txQuery.result));
       } else {
-        const txQuery = await getTxFromDataStore(this.db, {
-          txId: txId,
+        const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
+          txIds: [txId],
           includeUnanchored: true,
         });
-        if (txQuery.found) {
-          // prometheus?.sendEvent('transaction');
-          // io.to(mempoolTopic).emit('transaction', txQuery.result);
+        if (mempoolTxs.length > 0) {
+          this.channels.forEach(c => c.send('transaction', mempoolTxs[0]));
         }
       }
     }
@@ -132,9 +130,7 @@ export class WebSocketTransmitter {
             };
           }),
         };
-        // prometheus?.sendEvent('address-transaction');
-        // io.to(addrTxTopic).emit('address-transaction', address, result);
-        // io.to(addrTxTopic).emit(addrTxTopic, address, result);
+        this.channels.forEach(c => c.send('principalTransaction', address, result));
       });
 
       // Get latest balance (in case multiple txs come in from different blocks)
@@ -157,16 +153,7 @@ export class WebSocketTransmitter {
       if (tokenOfferingLocked.found) {
         balance.token_offering_locked = tokenOfferingLocked.result;
       }
-      // return result;
-      // getAddressStxBalance(address, latestBlock)
-      //   .then(balance => {
-      //     prometheus?.sendEvent('address-stx-balance');
-      //     io.to(addrStxBalanceTopic).emit('address-stx-balance', address, balance);
-      //     io.to(addrStxBalanceTopic).emit(addrStxBalanceTopic, address, balance);
-      //   })
-      //   .catch(error => {
-      //     logError(`[socket.io] Error querying STX balance update for ${address}`, error);
-      //   });
+      this.channels.forEach(c => c.send('principalStxBalance', address, balance));
     }
   }
 }
