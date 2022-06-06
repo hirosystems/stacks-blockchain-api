@@ -130,6 +130,19 @@
       "request": "launch",
       "name": "Launch: import-events",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: import-events - preorg mode",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": [
         "${workspaceFolder}/src/index.ts", 
         "import-events",
@@ -138,7 +151,7 @@
         "--mode",
         "preorg",
         "--file", 
-        "/Users/matt/Downloads/pre-orgd-events.tsv"
+        "/tmp/test-events-export.csv"
       ],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
