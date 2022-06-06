@@ -7,11 +7,12 @@ import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
+  FoundOrNot,
+  hexToBuffer,
+  unwrapOptional,
   bnsHexValueToName,
   bnsNameCV,
-  FoundOrNot,
   getBnsSmartContractId,
-  unwrapOptional,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -403,33 +404,30 @@ export class PgStore {
     });
   }
 
-  async getMetadataBlocks({ limit, offset }: { limit: number; offset: number }) {
+  async getBlocksWithMetadata({ limit, offset }: { limit: number; offset: number }) {
     return await this.sql.begin(async sql => {
       // get block list
       const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
-      const blockHashValues = blocks
-        .map(block => `('\\x${block.index_block_hash.slice(2)}'::bytea)`)
-        .join(', ');
+      const blockHashValues: Buffer[] = [];
+      const indexBlockHashValues: Buffer[] = [];
+      blocks.forEach(block => {
+        const indexBytea = hexToBuffer(block.index_block_hash);
+        const parentBytea = hexToBuffer(block.parent_index_block_hash);
+        indexBlockHashValues.push(indexBytea, parentBytea);
+        blockHashValues.push(indexBytea);
+      });
 
       // get txs in those blocks
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs
-        WHERE index_block_hash = ANY(VALUES ${sql.unsafe(blockHashValues)})
+        WHERE index_block_hash IN ${sql(blockHashValues)}
           AND canonical = true AND microblock_canonical = true
         ORDER BY microblock_sequence DESC, tx_index DESC
       `;
       const txs = txQuery.map(r => parseTxQueryResult(r));
 
       // get microblocks in those blocks
-      const indexBlockHashValues = blocks
-        .map(
-          block =>
-            `('\\x${block.index_block_hash.slice(
-              2
-            )}'::bytea), ('\\x${block.parent_index_block_hash.slice(2)}'::bytea)`
-        )
-        .join(', ');
       const microblocksQuery = await sql<(MicroblockQueryResult & { transaction_count: number })[]>`
           SELECT ${sql(MICROBLOCK_COLUMNS)}, (
             SELECT COUNT(tx_id)::integer as transaction_count
@@ -438,11 +436,10 @@ export class PgStore {
             AND canonical = true AND microblock_canonical = true
           )
           FROM microblocks
-          WHERE parent_index_block_hash = ANY(VALUES ${sql.unsafe(indexBlockHashValues)})
+          WHERE parent_index_block_hash IN ${sql(indexBlockHashValues)}
           AND microblock_canonical = true
           ORDER BY microblock_sequence DESC
         `;
-
       // parse data to return
       const results = blocks.map(block => {
         const transactions = txs
