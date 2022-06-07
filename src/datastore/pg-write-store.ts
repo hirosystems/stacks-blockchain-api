@@ -1772,7 +1772,9 @@ export class PgWriteStore extends PgStore {
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
-    // FIXME: Update txs
+    for (const txId of deletedTxs) {
+      await this.notifier?.sendTx({ txId: txId });
+    }
     return { deletedTxs: deletedTxs };
   }
 

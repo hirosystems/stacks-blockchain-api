@@ -931,6 +931,7 @@ export class PgStore {
         DbTxStatus.DroppedReplaceAcrossFork,
         DbTxStatus.DroppedTooExpensive,
         DbTxStatus.DroppedStaleGarbageCollect,
+        DbTxStatus.DroppedApiGarbageCollect,
       ];
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
         SELECT ${unsafeCols(sql, [
