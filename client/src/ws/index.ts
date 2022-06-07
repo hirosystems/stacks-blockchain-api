@@ -2,11 +2,8 @@ import * as JsonRpcLite from 'jsonrpc-lite';
 import { EventEmitter } from 'eventemitter3';
 import {
   RpcTxUpdateSubscriptionParams,
-  RpcTxUpdateNotificationParams,
   RpcAddressTxSubscriptionParams,
-  RpcAddressTxNotificationParams,
   RpcAddressBalanceSubscriptionParams,
-  RpcAddressBalanceNotificationParams,
   RpcSubscriptionType,
   Block,
   RpcBlockSubscriptionParams,
@@ -14,6 +11,9 @@ import {
   Transaction,
   RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
+  MempoolTransaction,
+  RpcAddressBalanceNotificationParams,
+  RpcAddressTxNotificationParams,
 } from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
@@ -35,7 +35,7 @@ export class StacksApiWebSocketClient {
     block: (event: Block) => void;
     microblock: (event: Microblock) => void;
     mempool: (event: Transaction) => void;
-    txUpdate: (event: RpcTxUpdateNotificationParams) => any;
+    txUpdate: (event: Transaction | MempoolTransaction) => any;
     addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
     addressBalanceUpdate: (event: RpcAddressBalanceNotificationParams) => void;
   }>();
@@ -93,10 +93,11 @@ export class StacksApiWebSocketClient {
     const method = data.method as RpcSubscriptionType;
     switch (method) {
       case 'tx_update':
-        this.eventEmitter.emit('txUpdate', data.params as RpcTxUpdateNotificationParams);
+        this.eventEmitter.emit('txUpdate', data.params as (Transaction | MempoolTransaction));
         break;
       case 'address_tx_update':
-        this.eventEmitter.emit('addressTxUpdate', data.params as RpcAddressTxNotificationParams);
+        this.eventEmitter.emit('addressTxUpdate',
+          data.params as RpcAddressTxNotificationParams);
         break;
       case 'address_balance_update':
         this.eventEmitter.emit(
@@ -171,11 +172,11 @@ export class StacksApiWebSocketClient {
 
   async subscribeTxUpdates(
     txId: string,
-    update: (event: RpcTxUpdateNotificationParams) => any
+    update: (event: Transaction | MempoolTransaction) => any
   ): Promise<Subscription> {
     const params: RpcTxUpdateSubscriptionParams = { event: 'tx_update', tx_id: txId };
     const subscribed = await this.rpcCall<{ tx_id: string }>('subscribe', params);
-    const listener = (event: RpcTxUpdateNotificationParams) => {
+    const listener = (event: Transaction | MempoolTransaction) => {
       if (event.tx_id === subscribed.tx_id) {
         update(event);
       }

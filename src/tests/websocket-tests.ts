@@ -6,7 +6,6 @@ import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
   RpcTxUpdateSubscriptionParams,
-  RpcTxUpdateNotificationParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressTxNotificationParams,
   RpcAddressBalanceSubscriptionParams,
@@ -84,7 +83,7 @@ describe('websocket notifications', () => {
       const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
-          const txUpdate: RpcTxUpdateNotificationParams = msg.params;
+          const txUpdate: RpcAddressTxNotificationParams = msg.params;
           txUpdates[updateIndex++]?.finish(txUpdate.tx_status);
         }
         if (msg.method === 'mempool') {
