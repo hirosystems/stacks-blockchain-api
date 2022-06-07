@@ -10846,6 +10846,7 @@ describe('api tests', () => {
     const result = await supertest(api.server).get(`/extended/v1/microblock/${microblock_hash}`);
     expect(result.body.txs).toHaveLength(1);
     expect(result.body.txs[0]).toEqual(tx_id);
+  });
   test('/microblock', async () => {
     const microblock_hash = '0x0fff';
     const block = new TestBlockBuilder({ block_hash: '0x1234', block_height: 1 }).build();
