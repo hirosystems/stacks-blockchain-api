@@ -51,7 +51,7 @@
     "jsonlint-cli": "1.0.1",
     "npm-run-all": "4.1.5",
     "openapi-to-postmanv2": "2.13.0",
-    "redoc-cli": "0.9.13",
+    "redoc-cli": "0.13.16",
     "shx": "0.3.3",
     "speccy": "0.11.0",
     "ts-node": "9.1.1",
@@ -60,6 +60,9 @@
   },
   "overrides": {
     "redoc-cli": {
+      "mobx": "5.15.7"
+    },
+    "redoc": {
       "mobx": "5.15.7"
     }
   }
