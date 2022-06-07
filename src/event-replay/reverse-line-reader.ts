@@ -8,7 +8,7 @@ interface ReadableFileStream extends Readable {
 
 function createReverseFileReadStream(
   filePath: fs.PathLike,
-  readBufferSize = 5_000_000
+  readBufferSize = 1_000_000
 ): ReadableFileStream {
   let fileDescriptor: number;
   let fileSize: number;
@@ -85,11 +85,11 @@ function splitBuffer(input: Buffer, matcher: number): Buffer[] {
 
 /**
  * @param filePath - Path to the file to read.
- * @param readBufferSize - Defaults to ~5 megabytes
+ * @param readBufferSize - Defaults to ~1 megabytes
  */
 export function readLinesReversed(
   filePath: fs.PathLike,
-  readBufferSize = 5_000_000
+  readBufferSize = 1_000_000
 ): ReadableFileStream {
   let last: Buffer | undefined = undefined;
   const matcher = '\n'.charCodeAt(0);
@@ -146,15 +146,16 @@ export function readLinesReversed(
 
 /**
  * @param filePath - Path to the file to read.
- * @param readBufferSize - Defaults to ~5 megabytes
+ * @param readBufferSize - Defaults to ~1 megabytes
  */
-export function readLines(filePath: fs.PathLike, readBufferSize = 5_000_000): ReadableFileStream {
+export function readLines(filePath: fs.PathLike, readBufferSize = 1_000_000): ReadableFileStream {
   let last: Buffer | undefined = undefined;
   const matcher = '\n'.charCodeAt(0);
 
   const fileReadStream = fs.createReadStream(filePath, {
     flags: 'r',
     highWaterMark: readBufferSize,
+    autoClose: true,
   });
 
   const transformStream = new Transform({

@@ -231,14 +231,14 @@ async function insertRawEvents(
     // batches of 1000: 90 seconds
     // batches of 5000: 95 seconds
     // batches of 1000 w/ text instead of json data type: 67 seconds
-    const dbRawEventBatchInserter = createBatchInserter<RawEventRequestInsertValues>(
-      1000,
-      async entries => {
+    const dbRawEventBatchInserter = createBatchInserter<RawEventRequestInsertValues>({
+      batchSize: 500,
+      insertFn: async entries => {
         await timeTracker.track('insertRawEventRequestBatch', () =>
           db.insertRawEventRequestBatch(sql, entries)
         );
-      }
-    );
+      },
+    });
 
     for await (const event of preOrgStream) {
       // INSERT INTO event_observer_requests
@@ -295,75 +295,90 @@ async function insertNewBlockEvents(
 
     // single inserts: 14 seconds
     // batches of 1000: 0.81 seconds
-    const dbBlockBatchInserter = createBatchInserter<DbBlock>(1000, entries =>
-      timeTracker.track('insertBlockBatch', () => db.insertBlockBatch(sql, entries))
-    );
+    const dbBlockBatchInserter = createBatchInserter<DbBlock>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertBlockBatch', () => db.insertBlockBatch(sql, entries)),
+    });
     batchInserters.push(dbBlockBatchInserter);
 
     // single inserts: 4.6 seconds
     // batches of 1000: 1.2 seconds
-    const dbMicroblockBatchInserter = createBatchInserter<DbMicroblock>(1000, entries =>
-      timeTracker.track('insertMicroblock', () => db.insertMicroblock(sql, entries))
-    );
+    const dbMicroblockBatchInserter = createBatchInserter<DbMicroblock>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertMicroblock', () => db.insertMicroblock(sql, entries)),
+    });
     batchInserters.push(dbMicroblockBatchInserter);
 
     // batches of 500: 94 seconds
     // batches of 1000: 85 seconds
     // batches of 1500: 80 seconds
-    const dbTxBatchInserter = createBatchInserter<DbTx>(1000, entries =>
-      timeTracker.track('insertTxBatch', () => db.insertTxBatch(sql, entries))
-    );
+    const dbTxBatchInserter = createBatchInserter<DbTx>({
+      batchSize: 500,
+      insertFn: entries => timeTracker.track('insertTxBatch', () => db.insertTxBatch(sql, entries)),
+    });
     batchInserters.push(dbTxBatchInserter);
 
     // batches of 1000: 31 seconds
-    const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>(1000, entries =>
-      timeTracker.track('insertStxEventBatch', () => db.insertStxEventBatch(sql, entries))
-    );
+    const dbStxEventBatchInserter = createBatchInserter<StxEventInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertStxEventBatch', () => db.insertStxEventBatch(sql, entries)),
+    });
     batchInserters.push(dbStxEventBatchInserter);
 
     // batches of 1000: 56 seconds
-    const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>(
-      1000,
-      entries =>
+    const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
         timeTracker.track('insertPrincipalStxTxsBatch', () =>
           db.insertPrincipalStxTxsBatch(sql, entries)
-        )
-    );
+        ),
+    });
     batchInserters.push(dbPrincipalStxTxBatchInserter);
 
     // batches of 1000: 14 seconds
-    const dbFtEventBatchInserter = createBatchInserter<FtEventInsertValues>(1000, entries =>
-      timeTracker.track('insertFtEventBatch', () => db.insertFtEventBatch(sql, entries))
-    );
+    const dbFtEventBatchInserter = createBatchInserter<FtEventInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertFtEventBatch', () => db.insertFtEventBatch(sql, entries)),
+    });
     batchInserters.push(dbFtEventBatchInserter);
 
     // batches of 1000: 15 seconds
-    const dbNftEventBatchInserter = createBatchInserter<NftEventInsertValues>(1000, entries =>
-      timeTracker.track('insertNftEventBatch', () => db.insertNftEventBatch(sql, entries))
-    );
+    const dbNftEventBatchInserter = createBatchInserter<NftEventInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertNftEventBatch', () => db.insertNftEventBatch(sql, entries)),
+    });
     batchInserters.push(dbNftEventBatchInserter);
 
     // batches of 1000: 18 seconds
-    const dbContractEventBatchInserter = createBatchInserter<SmartContractEventInsertValues>(
-      1000,
-      entries =>
+    const dbContractEventBatchInserter = createBatchInserter<SmartContractEventInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
         timeTracker.track('insertContractEventBatch', () =>
           db.insertContractEventBatch(sql, entries)
-        )
-    );
+        ),
+    });
     batchInserters.push(dbContractEventBatchInserter);
 
     // single inserts: 10 seconds
     // batches of 1000: 0.6 seconds
-    const dbNameBatchInserter = createBatchInserter<BnsNameInsertValues>(1000, entries =>
-      timeTracker.track('insertNameBatch', () => db.insertNameBatch(sql, entries))
-    );
+    const dbNameBatchInserter = createBatchInserter<BnsNameInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertNameBatch', () => db.insertNameBatch(sql, entries)),
+    });
     batchInserters.push(dbNameBatchInserter);
 
     // batches of 1000: 0.1 seconds
-    const dbZonefileBatchInserter = createBatchInserter<BnsZonefileInsertValues>(1000, entries =>
-      timeTracker.track('insertZonefileBatch', () => db.insertZonefileBatch(sql, entries))
-    );
+    const dbZonefileBatchInserter = createBatchInserter<BnsZonefileInsertValues>({
+      batchSize: 500,
+      insertFn: entries =>
+        timeTracker.track('insertZonefileBatch', () => db.insertZonefileBatch(sql, entries)),
+    });
     batchInserters.push(dbZonefileBatchInserter);
 
     const processStxEvents = async (entry: DataStoreTxEventData) => {
@@ -750,11 +765,14 @@ interface BatchInserter<T = any> {
   flush(): Promise<void>;
 }
 
-function createBatchInserter<T>(
-  batchSize: number,
-  insertFn: (entries: T[]) => Promise<void>
-): BatchInserter<T> {
-  const entryBuffer: T[] = [];
+function createBatchInserter<T>({
+  batchSize,
+  insertFn,
+}: {
+  batchSize: number;
+  insertFn: (entries: T[]) => Promise<void>;
+}): BatchInserter<T> {
+  let entryBuffer: T[] = [];
   return {
     async push(entries: T[]) {
       entries.length === 1
@@ -773,7 +791,7 @@ function createBatchInserter<T>(
     async flush() {
       if (entryBuffer.length > 0) {
         await insertFn(entryBuffer);
-        entryBuffer.length = 0;
+        entryBuffer = [];
       }
     },
   };

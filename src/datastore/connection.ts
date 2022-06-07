@@ -21,13 +21,22 @@ const PG_TYPE_MAPPINGS = {
   bytea: {
     to: 17,
     from: [17],
-    serialize: (x: any) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      x instanceof Uint8Array
-        ? `\\x${Buffer.from(x, x.byteOffset, x.byteLength).toString('hex')}`
-        : typeof x === 'string' && has0xPrefix(x)
-        ? `\\x${x.slice(2)}`
-        : x,
+    serialize: (x: any) => {
+      if (typeof x === 'string') {
+        if (has0xPrefix(x)) {
+          return `\\x${x.slice(2)}`;
+        } else {
+          return x;
+        }
+      } else if (Buffer.isBuffer(x)) {
+        return `\\x${x.toString('hex')}`;
+      } else if (ArrayBuffer.isView(x)) {
+        const buff = Buffer.from(x.buffer, x.byteOffset, x.byteLength);
+        return `\\x${buff.toString('hex')}`;
+      } else {
+        throw new Error(`Unexpected input for bytea type: ${x.constructor.name}`);
+      }
+    },
     parse: (x: any) => `0x${x.slice(2)}`,
   },
 };

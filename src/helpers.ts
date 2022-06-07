@@ -908,7 +908,7 @@ export function cssEscape(value: string): string {
   return result;
 }
 
-export const has0xPrefix = (id: string) => id.substr(0, 2).toLowerCase() === '0x';
+export const has0xPrefix = (id: string) => id.startsWith('0x') || id.startsWith('0X');
 
 /**
  * Check if the input is a valid 32-byte hex string. If valid, returns a
