@@ -57,13 +57,5 @@
     "ts-node": "9.1.1",
     "typescript": "4.2.4",
     "yaml-lint": "1.2.4"
-  },
-  "overrides": {
-    "redoc-cli": {
-      "mobx": "5.15.7"
-    },
-    "redoc": {
-      "mobx": "5.15.7"
-    }
   }
 }
