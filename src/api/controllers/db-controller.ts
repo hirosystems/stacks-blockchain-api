@@ -143,6 +143,7 @@ function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTra
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
     case DbTxStatus.DroppedStaleGarbageCollect:
+    case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
