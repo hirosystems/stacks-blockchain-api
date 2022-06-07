@@ -22,12 +22,9 @@ import {
   RpcTxUpdateSubscriptionParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
-  RpcAddressBalanceNotificationParams,
-  RpcAddressTxNotificationParams,
   RpcBlockSubscriptionParams,
   RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
-  RpcTxUpdateNotificationParams,
   Block,
   Microblock,
   MempoolTransaction,
@@ -472,15 +469,7 @@ export class WsRpcChannel extends WebSocketChannel {
     try {
       const subscribers = this.subscriptions.get('transaction')?.subscriptions.get(tx.tx_id);
       if (subscribers) {
-        const updateNotification: RpcTxUpdateNotificationParams = {
-          tx_id: tx.tx_id,
-          tx_status: tx.tx_status,
-          tx_type: tx.tx_type,
-        };
-        const rpcNotificationPayload = jsonRpcNotification(
-          'tx_update',
-          updateNotification
-        ).serialize();
+        const rpcNotificationPayload = jsonRpcNotification('tx_update', tx).serialize();
         subscribers.forEach(client => client.send(rpcNotificationPayload));
         this.prometheus?.sendEvent('transaction');
       }
@@ -495,11 +484,12 @@ export class WsRpcChannel extends WebSocketChannel {
         .get('principalTransactions')
         ?.subscriptions.get(principal);
       if (subscribers) {
-        const updateNotification: RpcAddressTxNotificationParams = {
+        const updateNotification = {
           address: principal,
           tx_id: tx.tx.tx_id,
           tx_status: tx.tx.tx_status,
           tx_type: tx.tx.tx_type,
+          ...tx,
         };
         const rpcNotificationPayload = jsonRpcNotification(
           'address_tx_update',
@@ -517,9 +507,9 @@ export class WsRpcChannel extends WebSocketChannel {
     const subscribers = this.subscriptions.get('principalStxBalance')?.subscriptions.get(principal);
     if (subscribers) {
       try {
-        const balanceNotification: RpcAddressBalanceNotificationParams = {
+        const balanceNotification = {
           address: principal,
-          balance: balance.balance.toString(),
+          ...balance,
         };
         const rpcNotificationPayload = jsonRpcNotification(
           'address_balance_update',
