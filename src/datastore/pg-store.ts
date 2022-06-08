@@ -2766,6 +2766,20 @@ export class PgStore {
     };
   }
 
+  async getNftEvent(args: { txId: string; eventIndex: number }): Promise<FoundOrNot<DbNftEvent>> {
+    const result = await this.sql<DbNftEvent[]>`
+      SELECT * FROM nft_event
+      WHERE canonical = TRUE
+        AND microblock_canonical = TRUE
+        AND tx_id = ${args.txId}
+        AND event_index = ${args.eventIndex}
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    return { found: true, result: result[0] } as const;
+  }
+
   /**
    * @deprecated Use `getNftHoldings` instead.
    */

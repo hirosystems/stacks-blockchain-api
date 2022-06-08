@@ -3,13 +3,12 @@
   "type": "object",
   "title": "NftEvent",
   "required": [
-    "sender",
-    "recipient",
     "asset_identifier",
     "value",
     "tx_id",
     "block_height"
   ],
+  "additionalProperties": false,
   "properties": {
     "sender": {
       "type": "string"

@@ -932,8 +932,8 @@ export interface AddressNftListResponse {
   [k: string]: unknown | undefined;
 }
 export interface NftEvent {
-  sender: string;
-  recipient: string;
+  sender?: string;
+  recipient?: string;
   asset_identifier: string;
   /**
    * Identifier of the NFT
@@ -950,7 +950,6 @@ export interface NftEvent {
   };
   tx_id: string;
   block_height: number;
-  [k: string]: unknown | undefined;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
