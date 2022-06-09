@@ -155,10 +155,9 @@ describe('socket-io', () => {
     });
 
     const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
-      .addTx()
+      .addTx({ tx_id: '0x0101' })
       .build();
     await db.update(block1);
-
     const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
     const pendingResult = await txWaiters[0];
@@ -168,16 +167,16 @@ describe('socket-io', () => {
       index_block_hash: '0x02',
       parent_index_block_hash: '0x01',
     })
-      .addTx()
+      .addTx({ tx_id: '0x0201' })
       .build();
     await db.update(block2);
-
     const droppedResult = await txWaiters[1];
+
     try {
-      expect(pendingResult.tx_status).toEqual('pending');
       expect(pendingResult.tx_id).toEqual('0x01');
-      expect(droppedResult.tx_status).toEqual('dropped_stale_garbage_collect');
+      expect(pendingResult.tx_status).toEqual('pending');
       expect(droppedResult.tx_id).toEqual('0x01');
+      expect(droppedResult.tx_status).toEqual('dropped_stale_garbage_collect');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.close();
