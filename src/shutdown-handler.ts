@@ -79,9 +79,12 @@ function registerShutdownSignals() {
     logger.error(`Shutting down... received uncaughtException.`);
     void startShutdown();
   });
-  process.once('beforeExit', () => {
-    logger.info(`Shutting down... received beforeExit.`);
+  process.once('beforeExit', code => {
+    logger.info(`Shutting down... received beforeExit, code: ${code}.`);
     void startShutdown();
+  });
+  process.on('exit', code => {
+    logger.info(`Process exiting with code: ${code}`);
   });
 }
 

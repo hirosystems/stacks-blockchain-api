@@ -179,6 +179,7 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
 
   await db.close();
   logger.info(`Event import took: ${startTime.getElapsedSeconds(2)} seconds`);
+  logger.info(`Event import and playback successful.`);
 }
 
 async function importRemainderEvents(
