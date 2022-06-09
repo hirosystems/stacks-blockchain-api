@@ -103,12 +103,15 @@ describe('socket-io', () => {
     });
     const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
     const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
-    let txWaiterIndex = 0;
     socket.on('mempool', tx => {
       mempoolWaiter.finish(tx);
     });
     socket.on('transaction', tx => {
-      txWaiters[txWaiterIndex++].finish(tx);
+      if (tx.tx_status === 'pending') {
+        txWaiters[0].finish(tx);
+      } else {
+        txWaiters[1].finish(tx);
+      }
     });
 
     const block = new TestBlockBuilder().addTx().build();
@@ -116,16 +119,16 @@ describe('socket-io', () => {
 
     const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const mempoolResult = await mempoolWaiter;
+    const txResult = await txWaiters[0];
 
     const microblock = new TestMicroblockStreamBuilder()
       .addMicroblock()
       .addTx({ tx_id: '0x01' })
       .build();
     await db.updateMicroblocks(microblock);
-
-    const mempoolResult = await mempoolWaiter;
-    const txResult = await txWaiters[0];
     const txMicroblockResult = await txWaiters[1];
+
     try {
       expect(mempoolResult.tx_status).toEqual('pending');
       expect(mempoolResult.tx_id).toEqual('0x01');
@@ -149,9 +152,12 @@ describe('socket-io', () => {
       query: { subscriptions: 'mempool' },
     });
     const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
-    let txWaiterIndex = 0;
     socket.on('mempool', tx => {
-      txWaiters[txWaiterIndex++].finish(tx);
+      if (tx.tx_status === 'pending') {
+        txWaiters[0].finish(tx);
+      } else {
+        txWaiters[1].finish(tx);
+      }
     });
 
     const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
