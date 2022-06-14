@@ -18,6 +18,7 @@ import {
   isValidPrincipal,
   hexToBuffer,
   parseEventTypeStrings,
+  queryToString,
 } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
@@ -240,7 +241,8 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id);
+        const queryParams = queryToString(req.query);
+        return res.redirect('/extended/v1/tx/0x' + tx_id + queryParams);
       }
 
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);

@@ -1019,3 +1019,12 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
     }
   });
 }
+
+export function queryToString(query: any) {
+  const queryParams = Object.keys(query)
+    .map(k => {
+      return k + '=' + query[k];
+    })
+    .join('&');
+  return queryParams ? '?' + queryParams : '';
+}
