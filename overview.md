@@ -1,12 +1,13 @@
 ![API architecture!](api-architecture.png)
 
 * The `stacks-node` has it's own minimal set of http endpoints referred to as `RPC endpoints`
-  * See: https://github.com/blockstack/stacks-blockchain/blob/master/docs/rpc-endpoints.md
-    * Some common ones:
-      `POST /v2/transactions` - broadcast a tx.
-      `GET /v2/pox` - get current PoX-relevant information.
-      `GET /v2/accounts/<address>` - used to get the current `nonce` required for creating transactions.
   * The `stacks-blockchain-api` allows clients to access these endpoints by proxying them through to a load-balanced pool of `stacks-nodes`.
+  * See: https://github.com/blockstack/stacks-blockchain/blob/master/docs/rpc-endpoints.md -- some common ones:
+    * `POST /v2/transactions` - broadcast a tx.
+    * `GET /v2/pox` - get current PoX-relevant information.
+    * `POST /v2/contracts/call-read/<contract>/<function>` - evaluates and returns the result of calling a Clarity function.
+    * `POST /v2/fees/transaction` - evaluates a given transaction and returns tx fee estimation data.
+    * `GET /v2/accounts/<address>` - used to get the current `nonce` required for creating transactions.
 
 
 * The endpoints implemented by `stacks-blockchain-api` provide data that the `stacks-node` can't due to various constraints.
