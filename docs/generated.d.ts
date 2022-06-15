@@ -1176,6 +1176,10 @@ export interface Block {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
+  /**
+   * Average fee for transactions included in the block.
+   */
+  average_fee?: string;
 }
 /**
  * Error
