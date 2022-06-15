@@ -18,7 +18,6 @@ import {
   isValidPrincipal,
   hexToBuffer,
   parseEventTypeStrings,
-  queryToString,
 } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
