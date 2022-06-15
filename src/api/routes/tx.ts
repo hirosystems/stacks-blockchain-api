@@ -43,6 +43,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
+import * as url from 'url';
 
 const MAX_TXS_PER_REQUEST = 200;
 const parseTxQueryLimit = parseLimitQuery({
@@ -241,7 +242,7 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        const queryParams = queryToString(req.query);
+        const queryParams = url.parse(req.url, true).search ?? '';
         return res.redirect('/extended/v1/tx/0x' + tx_id + queryParams);
       }
 
