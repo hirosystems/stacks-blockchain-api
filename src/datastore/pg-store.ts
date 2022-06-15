@@ -408,11 +408,11 @@ export class PgStore {
     return await this.sql.begin(async sql => {
       // get block list
       const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
-      const blockHashValues: Buffer[] = [];
-      const indexBlockHashValues: Buffer[] = [];
+      const blockHashValues: string[] = [];
+      const indexBlockHashValues: string[] = [];
       blocks.forEach(block => {
-        const indexBytea = hexToBuffer(block.index_block_hash);
-        const parentBytea = hexToBuffer(block.parent_index_block_hash);
+        const indexBytea = block.index_block_hash;
+        const parentBytea = block.parent_index_block_hash;
         indexBlockHashValues.push(indexBytea, parentBytea);
         blockHashValues.push(indexBytea);
       });
