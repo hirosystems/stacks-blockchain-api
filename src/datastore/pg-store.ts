@@ -3,9 +3,16 @@ import {
   AddressUnlockSchedule,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { assertNotNullish, FoundOrNot, unwrapOptional } from '../helpers';
+import {
+  assertNotNullish,
+  bnsHexValueToName,
+  bnsNameCV,
+  FoundOrNot,
+  getBnsSmartContractId,
+  unwrapOptional,
+} from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
@@ -2917,13 +2924,15 @@ export class PgStore {
   async getName({
     name,
     includeUnanchored,
+    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      return await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
+      const nameZonefile = await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
         LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
@@ -2931,16 +2940,42 @@ export class PgStore {
         AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY name, registered_at DESC, tx_index DESC
-        LIMIT 1
       `;
+      if (nameZonefile.length === 0) {
+        return;
+      }
+      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
+      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
+      // since they did not generate an NFT event for us to track.
+      if (nameZonefile[0].registered_at !== 0) {
+        let value: string;
+        try {
+          value = bnsNameCV(name);
+        } catch (error) {
+          return;
+        }
+        const nameCustody = await sql<{ recipient: string }[]>`
+          SELECT recipient
+          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          WHERE asset_identifier = ${getBnsSmartContractId(chainId)} AND value = ${value}
+        `;
+        if (nameCustody.length === 0) {
+          return;
+        }
+        return {
+          ...nameZonefile[0],
+          address: nameCustody[0].recipient,
+        };
+      }
+      return nameZonefile[0];
     });
-    if (queryResult.length > 0) {
+    if (queryResult) {
       return {
         found: true,
         result: {
-          ...queryResult[0],
-          tx_id: queryResult[0].tx_id,
-          index_block_hash: queryResult[0].index_block_hash,
+          ...queryResult,
+          tx_id: queryResult.tx_id,
+          index_block_hash: queryResult.index_block_hash,
         },
       };
     }
@@ -3034,56 +3069,77 @@ export class PgStore {
   async getNamesByAddressList({
     address,
     includeUnanchored,
+    chainId,
   }: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const query = await sql<{ name: string }[]>`
-        WITH address_names AS(
-          (
-            SELECT name
-            FROM names
-            WHERE address = ${address}
-            AND registered_at <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
-            FROM subdomains
-            WHERE owner = ${address}
+      // 1. Get subdomains owned by this address.
+      // These don't produce NFT events so we have to look directly at the `subdomains` table.
+      const subdomainsQuery = await sql<{ fully_qualified_subdomain: string }[]>`
+        WITH addr_subdomains AS (
+          SELECT DISTINCT ON (fully_qualified_subdomain)
+            fully_qualified_subdomain
+          FROM
+            subdomains
+          WHERE
+            owner = ${address}
             AND block_height <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-          )),
-
-        latest_names AS(
-        (
-          SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
-          FROM names, address_names
-          WHERE address_names.name = names.name
-          AND canonical = true AND microblock_canonical = true
-          ORDER BY names.name, registered_at DESC, tx_index DESC
+            AND canonical = TRUE
+            AND microblock_canonical = TRUE
         )
-        UNION ALL(
-          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
-          FROM subdomains, address_names
-          WHERE fully_qualified_subdomain = address_names.name
-          AND canonical = true AND microblock_canonical = true
-          ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-        ))
-
-        SELECT name from latest_names
-        WHERE address = ${address}
-        ORDER BY name, block_height DESC, tx_index DESC
+        SELECT DISTINCT ON (fully_qualified_subdomain)
+          fully_qualified_subdomain
+        FROM
+          subdomains
+          INNER JOIN addr_subdomains USING (fully_qualified_subdomain)
+        WHERE
+          canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY
+          fully_qualified_subdomain
       `;
-      return query;
+      // 2. Get names owned by this address which were imported from Blockstack v1.
+      // These also don't have an associated NFT event so we have to look directly at the `names` table,
+      // however, we'll also check if any of these names are still owned by the same user.
+      const importedNamesQuery = await sql<{ name: string }[]>`
+        SELECT
+          name
+        FROM
+          names
+        WHERE
+          address = ${address}
+          AND registered_at = 0
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+      `;
+      const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
+      const oldImportedNamesQuery = await sql<{ value: string }[]>`
+        SELECT value
+        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+        WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
+      `;
+      const oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
+      // 3. Get newer NFT names owned by this address.
+      const nftNamesQuery = await sql<{ value: string }[]>`
+        SELECT value
+        FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
+        WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
+      `;
+      const results: Set<string> = new Set([
+        ...subdomainsQuery.map(i => i.fully_qualified_subdomain),
+        ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
+        ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
+      ]);
+      return Array.from(results.values()).sort();
     });
-
     if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.map(r => r.name),
+        result: queryResult,
       };
     }
     return { found: false } as const;

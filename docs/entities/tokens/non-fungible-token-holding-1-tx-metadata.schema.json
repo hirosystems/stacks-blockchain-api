@@ -1,9 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "NonFungibleTokenHoldingWithTxMetadata",
   "description": "Ownership of a Non-Fungible Token with transaction metadata",
-  "required": ["asset_identifier", "value", "tx"],
+  "required": ["asset_identifier", "value", "tx", "block_height"],
   "additionalProperties": false,
   "properties": {
     "asset_identifier": {
@@ -24,6 +23,9 @@
           "description": "Readable string of the Non-Fungible Token identifier"
         }
       }
+    },
+    "block_height": {
+      "type": "number"
     },
     "tx": {
       "$ref": "../transactions/transaction.schema.json"

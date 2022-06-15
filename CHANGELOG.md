@@ -1,3 +1,118 @@
+## [4.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0...v4.0.1) (2022-06-01)
+
+
+### Bug Fixes
+
+* contract-call txs returning null args in some situations, closes [#1188](https://github.com/hirosystems/stacks-blockchain-api/issues/1188) ([#1192](https://github.com/hirosystems/stacks-blockchain-api/issues/1192)) ([9b77ca2](https://github.com/hirosystems/stacks-blockchain-api/commit/9b77ca22fcaa814ef0266ce3ab4efd32d5ae2da7))
+
+# [4.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v4.0.0) (2022-05-26)
+
+
+### Bug Fixes
+
+* `/v1/names/[:name]` name resolution ([#1159](https://github.com/hirosystems/stacks-blockchain-api/issues/1159)) ([e656520](https://github.com/hirosystems/stacks-blockchain-api/commit/e656520701bea584fe7336c1a26388406cd167fe))
+* bns download script download path ([#1091](https://github.com/hirosystems/stacks-blockchain-api/issues/1091)) ([55fa41e](https://github.com/hirosystems/stacks-blockchain-api/commit/55fa41eb31fcc1869a4c16de36ad4f01be9565a9))
+* disable notifier for tests that don't need it ([#1102](https://github.com/hirosystems/stacks-blockchain-api/issues/1102)) ([9765cf0](https://github.com/hirosystems/stacks-blockchain-api/commit/9765cf06819767cae88eab6c106bc1d0bd87e47e))
+* propagate chain id correctly to bns router ([#1180](https://github.com/hirosystems/stacks-blockchain-api/issues/1180)) ([3a0ead1](https://github.com/hirosystems/stacks-blockchain-api/commit/3a0ead18fd3d65ec8221feada334477ebb576805))
+* resolve bns names correctly in `/v1/addresses/stacks/[:address]` ([#1175](https://github.com/hirosystems/stacks-blockchain-api/issues/1175)) ([8797ded](https://github.com/hirosystems/stacks-blockchain-api/commit/8797ded691acab322c6c671403ea60bf1bc27294))
+* shorten token metadata pg notifications ([#1143](https://github.com/hirosystems/stacks-blockchain-api/issues/1143)) ([1f09c0e](https://github.com/hirosystems/stacks-blockchain-api/commit/1f09c0e2bffb42a680e899848980b13a6652d51f))
+* treat incorrect `get-token-uri` none values as undefined ([#1183](https://github.com/hirosystems/stacks-blockchain-api/issues/1183)) ([33313b1](https://github.com/hirosystems/stacks-blockchain-api/commit/33313b1d78e75a1900de9162cd97a76ff0a64ee0))
+* use 128 max size when deserializing contract principals [#1181](https://github.com/hirosystems/stacks-blockchain-api/issues/1181) ([#1182](https://github.com/hirosystems/stacks-blockchain-api/issues/1182)) ([f4d4733](https://github.com/hirosystems/stacks-blockchain-api/commit/f4d4733ad4956c6acc36f73337cc55b6aae5c5fb))
+
+
+* feat!: prune garbage collected (256 blocks old) mempool txs (#1101) ([fe56756](https://github.com/hirosystems/stacks-blockchain-api/commit/fe56756cdeb3c71dbd2ebbbf820bc2a56fc35f02)), closes [#1101](https://github.com/hirosystems/stacks-blockchain-api/issues/1101)
+
+
+### Features
+
+* [CPU optimizations] use native rust module for decoding Clarity values, binary transaction blobs, post-condition binary blobs, Stacks addresses ([#1094](https://github.com/hirosystems/stacks-blockchain-api/issues/1094)) ([f5c4da7](https://github.com/hirosystems/stacks-blockchain-api/commit/f5c4da7b87e7eacecc6cd5d7075ecd0a39127ea0))
+* add `pruned` event import mode that ignores some historical events ([#1125](https://github.com/hirosystems/stacks-blockchain-api/issues/1125)) ([da992d7](https://github.com/hirosystems/stacks-blockchain-api/commit/da992d77b18bd49eef36e32b1d96d7e924d84cfc))
+* add block height to responses in `/extended/v1/tokens/nft/holdings` ([#1151](https://github.com/hirosystems/stacks-blockchain-api/issues/1151)) ([7cc8bd0](https://github.com/hirosystems/stacks-blockchain-api/commit/7cc8bd06339a9bf53ef5d133ef4885b26e48cd18))
+* add strict ft/nft metadata processing mode for better error handling ([#1165](https://github.com/hirosystems/stacks-blockchain-api/issues/1165)) ([b9ca4bb](https://github.com/hirosystems/stacks-blockchain-api/commit/b9ca4bb69d7f78c634c076855652937e0e1743f1))
+* events-only endpoint for address and tx_id ([#1027](https://github.com/hirosystems/stacks-blockchain-api/issues/1027)) ([508afc7](https://github.com/hirosystems/stacks-blockchain-api/commit/508afc7b09641b79d5c8136b70088fc471f94433))
+* fetch subdomain list for bns name ([#1132](https://github.com/hirosystems/stacks-blockchain-api/issues/1132)) ([e34120f](https://github.com/hirosystems/stacks-blockchain-api/commit/e34120f70bcad5c6474f7631cad31fb04b9dfdfa))
+* pin exact dependencies in package.json ([#1068](https://github.com/hirosystems/stacks-blockchain-api/issues/1068)) ([303eaaa](https://github.com/hirosystems/stacks-blockchain-api/commit/303eaaa8cd520cf8db89a4ef359ca739a945cbbc))
+
+
+### BREAKING CHANGES
+
+* use event-replay to upgrade, this version includes breaking changes to the db sql schema
+
+# [4.0.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.7...v4.0.0-beta.8) (2022-05-26)
+
+
+### Bug Fixes
+
+* treat incorrect `get-token-uri` none values as undefined ([#1183](https://github.com/hirosystems/stacks-blockchain-api/issues/1183)) ([33313b1](https://github.com/hirosystems/stacks-blockchain-api/commit/33313b1d78e75a1900de9162cd97a76ff0a64ee0))
+
+# [4.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.6...v4.0.0-beta.7) (2022-05-25)
+
+
+### Bug Fixes
+
+* use 128 max size when deserializing contract principals [#1181](https://github.com/hirosystems/stacks-blockchain-api/issues/1181) ([#1182](https://github.com/hirosystems/stacks-blockchain-api/issues/1182)) ([f4d4733](https://github.com/hirosystems/stacks-blockchain-api/commit/f4d4733ad4956c6acc36f73337cc55b6aae5c5fb))
+
+# [4.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.5...v4.0.0-beta.6) (2022-05-20)
+
+
+### Bug Fixes
+
+* propagate chain id correctly to bns router ([#1180](https://github.com/hirosystems/stacks-blockchain-api/issues/1180)) ([3a0ead1](https://github.com/hirosystems/stacks-blockchain-api/commit/3a0ead18fd3d65ec8221feada334477ebb576805))
+
+# [4.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.4...v4.0.0-beta.5) (2022-05-17)
+
+
+### Features
+
+* add strict ft/nft metadata processing mode for better error handling ([#1165](https://github.com/hirosystems/stacks-blockchain-api/issues/1165)) ([b9ca4bb](https://github.com/hirosystems/stacks-blockchain-api/commit/b9ca4bb69d7f78c634c076855652937e0e1743f1))
+
+# [4.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.3...v4.0.0-beta.4) (2022-05-17)
+
+
+### Bug Fixes
+
+* resolve bns names correctly in `/v1/addresses/stacks/[:address]` ([#1175](https://github.com/hirosystems/stacks-blockchain-api/issues/1175)) ([8797ded](https://github.com/hirosystems/stacks-blockchain-api/commit/8797ded691acab322c6c671403ea60bf1bc27294))
+
+# [4.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.2...v4.0.0-beta.3) (2022-05-11)
+
+
+### Features
+
+* add block height to responses in `/extended/v1/tokens/nft/holdings` ([#1151](https://github.com/hirosystems/stacks-blockchain-api/issues/1151)) ([7cc8bd0](https://github.com/hirosystems/stacks-blockchain-api/commit/7cc8bd06339a9bf53ef5d133ef4885b26e48cd18))
+
+# [4.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0-beta.1...v4.0.0-beta.2) (2022-05-04)
+
+
+### Bug Fixes
+
+* `/v1/names/[:name]` name resolution ([#1159](https://github.com/hirosystems/stacks-blockchain-api/issues/1159)) ([e656520](https://github.com/hirosystems/stacks-blockchain-api/commit/e656520701bea584fe7336c1a26388406cd167fe))
+
+# [4.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v4.0.0-beta.1) (2022-04-20)
+
+
+### Bug Fixes
+
+* bns download script download path ([#1091](https://github.com/hirosystems/stacks-blockchain-api/issues/1091)) ([55fa41e](https://github.com/hirosystems/stacks-blockchain-api/commit/55fa41eb31fcc1869a4c16de36ad4f01be9565a9))
+* disable notifier for tests that don't need it ([#1102](https://github.com/hirosystems/stacks-blockchain-api/issues/1102)) ([9765cf0](https://github.com/hirosystems/stacks-blockchain-api/commit/9765cf06819767cae88eab6c106bc1d0bd87e47e))
+* shorten token metadata pg notifications ([#1143](https://github.com/hirosystems/stacks-blockchain-api/issues/1143)) ([1f09c0e](https://github.com/hirosystems/stacks-blockchain-api/commit/1f09c0e2bffb42a680e899848980b13a6652d51f))
+
+
+* feat!: prune garbage collected (256 blocks old) mempool txs (#1101) ([fe56756](https://github.com/hirosystems/stacks-blockchain-api/commit/fe56756cdeb3c71dbd2ebbbf820bc2a56fc35f02)), closes [#1101](https://github.com/hirosystems/stacks-blockchain-api/issues/1101)
+
+
+### Features
+
+* [CPU optimizations] use native rust module for decoding Clarity values, binary transaction blobs, post-condition binary blobs, Stacks addresses ([#1094](https://github.com/hirosystems/stacks-blockchain-api/issues/1094)) ([f5c4da7](https://github.com/hirosystems/stacks-blockchain-api/commit/f5c4da7b87e7eacecc6cd5d7075ecd0a39127ea0))
+* add `pruned` event import mode that ignores some historical events ([#1125](https://github.com/hirosystems/stacks-blockchain-api/issues/1125)) ([da992d7](https://github.com/hirosystems/stacks-blockchain-api/commit/da992d77b18bd49eef36e32b1d96d7e924d84cfc))
+* events-only endpoint for address and tx_id ([#1027](https://github.com/hirosystems/stacks-blockchain-api/issues/1027)) ([508afc7](https://github.com/hirosystems/stacks-blockchain-api/commit/508afc7b09641b79d5c8136b70088fc471f94433))
+* fetch subdomain list for bns name ([#1132](https://github.com/hirosystems/stacks-blockchain-api/issues/1132)) ([e34120f](https://github.com/hirosystems/stacks-blockchain-api/commit/e34120f70bcad5c6474f7631cad31fb04b9dfdfa))
+* pin exact dependencies in package.json ([#1068](https://github.com/hirosystems/stacks-blockchain-api/issues/1068)) ([303eaaa](https://github.com/hirosystems/stacks-blockchain-api/commit/303eaaa8cd520cf8db89a4ef359ca739a945cbbc))
+
+
+### BREAKING CHANGES
+
+* use event-replay to upgrade, this version includes breaking changes to the db sql schema
+
 ## [3.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.2...v3.0.3) (2022-04-04)
 
 

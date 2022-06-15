@@ -13,11 +13,6 @@ import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
-import {
-  isFtMetadataEnabled,
-  isNftMetadataEnabled,
-  TokensProcessorQueue,
-} from './event-stream/tokens-contract-handler';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { registerShutdownConfig } from './shutdown-handler';
@@ -28,8 +23,13 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
+<<<<<<< HEAD
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
+=======
+import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
+import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
+>>>>>>> master
 
 enum StacksApiMode {
   /**

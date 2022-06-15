@@ -1,6 +1,7 @@
 {
   "title": "RosettaCurrency",
   "type": "object",
+  "additionalProperties": false,
   "description": "Currency is composed of a canonical Symbol and Decimals. This Decimals value is used to convert an Amount.Value from atomic units (Satoshis) to standard units (Bitcoins).",
   "required": ["symbol", "decimals"],
   "properties": {

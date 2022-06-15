@@ -1,4 +1,30 @@
+<<<<<<< HEAD
 import { ClarityAbi } from '@stacks/transactions';
+=======
+import * as crypto from 'crypto';
+import { EventEmitter } from 'events';
+import StrictEventEmitter from 'strict-event-emitter-types';
+import { hexToBuffer, parseEnum, FoundOrNot } from '../helpers';
+import {
+  CoreNodeDropMempoolTxReasonType,
+  CoreNodeParsedTxMessage,
+  CoreNodeTxStatus,
+} from '../event-stream/core-node-message';
+import {
+  DecodedTxResult,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+  PostConditionAuthFlag,
+} from 'stacks-encoding-native-js';
+import {
+  AddressTokenOfferingLocked,
+  MempoolTransaction,
+  TransactionType,
+} from '@stacks/stacks-blockchain-api-types';
+import { getTxSenderAddress } from '../event-stream/reader';
+import { RawTxQueryResult } from './postgres-store';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
+>>>>>>> master
 import { Block } from '@stacks/stacks-blockchain-api-types';
 import { PgBytea, PgJsonb, PgNumeric } from './connection';
 
@@ -324,7 +350,14 @@ export interface DbTxWithAssetTransfers {
 
 export interface NftHoldingInfo {
   asset_identifier: string;
+<<<<<<< HEAD
   value: string;
+=======
+  // TODO(perf): use hex string since that is what we already get from deserializing event payloads
+  //   and from the pg-node adapter (all the pg js libs use text mode rather than binary mode)
+  value: Buffer;
+  block_height: number;
+>>>>>>> master
   recipient: string;
   tx_id: string;
 }
@@ -551,6 +584,7 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface DbChainTip {
@@ -561,6 +595,7 @@ export interface DbChainTip {
   microblockSequence?: number;
 }
 
+<<<<<<< HEAD
 export interface BlockQueryResult {
   block_hash: string;
   index_block_hash: string;
@@ -731,6 +766,517 @@ export interface UpdatedEntities {
     names: number;
     namespaces: number;
     subdomains: number;
+=======
+export interface DataStore extends DataStoreEventEmitter {
+  storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
+  getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
+  getNameCanonical(txId: string, indexBlockHash: string): Promise<FoundOrNot<boolean>>;
+  getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>>;
+  getBlockWithMetadata<TWithTxs extends boolean = false, TWithMicroblocks extends boolean = false>(
+    blockIdentifer: BlockIdentifier,
+    metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
+  ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>>;
+
+  getMicroblocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }>;
+  getMicroblock(args: {
+    microblockHash: string;
+  }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>>;
+
+  getUnanchoredTxs(): Promise<{ txs: DbTx[] }>;
+
+  getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>>;
+
+  getCurrentBlock(): Promise<FoundOrNot<DbBlock>>;
+  getCurrentBlockHeight(): Promise<FoundOrNot<number>>;
+  getBlocks(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbBlock[]; total: number }>;
+  getBlockTxs(indexBlockHash: string): Promise<{ results: string[] }>;
+  getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>>;
+  getTxsFromBlock(
+    blockIdentifer: BlockIdentifier,
+    limit: number,
+    offset: number
+  ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>>;
+
+  getMempoolTxs(args: {
+    txIds: string[];
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<DbMempoolTx[]>;
+  getMempoolTx(args: {
+    txId: string;
+    includeUnanchored: boolean;
+    includePruned?: boolean;
+  }): Promise<FoundOrNot<DbMempoolTx>>;
+  getMempoolTxList(args: {
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+    senderAddress?: string;
+    recipientAddress?: string;
+    address?: string;
+  }): Promise<{ results: DbMempoolTx[]; total: number }>;
+
+  /**
+   * Returns a string that represents a digest of all the current pending transactions
+   * in the mempool. This digest can be used to calculate an `ETag` for mempool endpoint cache handlers.
+   * @returns `FoundOrNot` object with a possible `digest` string.
+   */
+  getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>>;
+
+  getDroppedTxs(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbMempoolTx[]; total: number }>;
+  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
+  getTx(args: { txId: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbTx>>;
+  getTxList(args: {
+    limit: number;
+    offset: number;
+    txTypeFilter: TransactionType[];
+    includeUnanchored: boolean;
+  }): Promise<{ results: DbTx[]; total: number }>;
+
+  getTxEvents(args: {
+    txId: string;
+    indexBlockHash: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  getTxListEvents(args: {
+    txs: {
+      txId: string;
+      indexBlockHash: string;
+    }[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  /**
+   * It retrieves filtered events from the db based on transaction, principal or event type. Note: It does not accept both principal and txId at the same time
+   * @param args - addressOrTxId: filter for either transaction id or address
+   * @param args - eventTypeFilter: filter based on event types ids
+   * @param args - limit: returned that many rows
+   * @param args - offset: skip that any rows
+   * @returns returns array of events
+   */
+  getTransactionEvents(args: {
+    addressOrTxId: { address: string; txId: undefined } | { address: undefined; txId: string };
+    eventTypeFilter: DbEventTypeId[];
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }>;
+
+  getTxListDetails(args: { txIds: string[]; includeUnanchored: boolean }): Promise<DbTx[]>; // tx_id is returned for not found case
+
+  getSmartContractList(contractIds: string[]): Promise<DbSmartContract[]>;
+  getSmartContract(contractId: string): Promise<FoundOrNot<DbSmartContract>>;
+
+  getSmartContractEvents(args: {
+    contractId: string;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContractEvent[]>>;
+
+  getSmartContractByTrait(args: {
+    trait: ClarityAbi;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<DbSmartContract[]>>;
+
+  update(data: DataStoreBlockUpdateData): Promise<void>;
+
+  updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
+
+  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
+  resolveBnsSubdomains(
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_sequence: number;
+      microblock_hash: string;
+      microblock_canonical: boolean;
+    },
+    data: DbBnsSubdomain[]
+  ): Promise<void>;
+  updateMempoolTxs(args: { mempoolTxs: DbMempoolTx[] }): Promise<void>;
+  dropMempoolTxs(args: { status: DbTxStatus; txIds: string[] }): Promise<void>;
+
+  updateBurnchainRewards(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    rewards: DbBurnchainReward[];
+  }): Promise<void>;
+  getBurnchainRewards(args: {
+    /** Optionally search for rewards for a given address. */
+    burnchainRecipient?: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbBurnchainReward[]>;
+  getBurnchainRewardsTotal(
+    burnchainRecipient: string
+  ): Promise<{ reward_recipient: string; reward_amount: bigint }>;
+
+  updateBurnchainRewardSlotHolders(args: {
+    burnchainBlockHash: string;
+    burnchainBlockHeight: number;
+    slotHolders: DbRewardSlotHolder[];
+  }): Promise<void>;
+  getBurnchainRewardSlotHolders(args: {
+    /** Optionally search for slots for a given address. */
+    burnchainAddress?: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ total: number; slotHolders: DbRewardSlotHolder[] }>;
+
+  getStxBalance(args: { stxAddress: string; includeUnanchored: boolean }): Promise<DbStxBalance>;
+  getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance>;
+  getFungibleTokenBalances(args: {
+    stxAddress: string;
+    untilBlock: number;
+  }): Promise<Map<string, DbFtBalance>>;
+  getNonFungibleTokenCounts(args: {
+    stxAddress: string;
+    untilBlock: number;
+  }): Promise<Map<string, { count: bigint; totalSent: bigint; totalReceived: bigint }>>;
+
+  getUnlockedStxSupply(
+    args:
+      | {
+          blockHeight: number;
+        }
+      | { includeUnanchored: boolean }
+  ): Promise<{ stx: bigint; blockHeight: number }>;
+
+  getBTCFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
+
+  getSTXFaucetRequests(address: string): Promise<{ results: DbFaucetRequest[] }>;
+
+  getAddressTxs(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbTx[]; total: number }>;
+
+  getAddressTxsWithAssetTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit?: number;
+    offset?: number;
+  }): Promise<{ results: DbTxWithAssetTransfers[]; total: number }>;
+
+  getInformationTxsWithStxTransfers(args: {
+    stxAddress: string;
+    tx_id: string;
+  }): Promise<DbTxWithAssetTransfers>;
+
+  getAddressAssetEvents(args: {
+    stxAddress: string;
+    blockHeight: number;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[]; total: number }>;
+
+  getAddressNonceAtBlock(args: {
+    stxAddress: string;
+    blockIdentifier: BlockIdentifier;
+  }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>>;
+
+  getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{
+    lastExecutedTxNonce: number | null;
+    lastMempoolTxNonce: number | null;
+    possibleNextNonce: number;
+    detectedMissingNonces: number[];
+  }>;
+
+  getInboundTransfers(args: {
+    stxAddress: string;
+    blockHeight: number;
+    atSingleBlock: boolean;
+    limit: number;
+    offset: number;
+    sendManyContractId: string;
+  }): Promise<{ results: DbInboundStxTransfer[]; total: number }>;
+
+  searchHash(args: { hash: string }): Promise<FoundOrNot<DbSearchResult>>;
+
+  searchPrincipal(args: { principal: string }): Promise<FoundOrNot<DbSearchResult>>;
+
+  insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
+
+  getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
+
+  /**
+   * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
+   * including optional transaction metadata.
+   * @param args - Query arguments
+   */
+  getNftHoldings(args: {
+    principal: string;
+    assetIdentifiers?: string[];
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftHoldingInfoWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns the event history of a particular NFT.
+   * @param args - Query arguments
+   */
+  getNftHistory(args: {
+    assetIdentifier: string;
+    value: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
+   * Returns all NFT mint events for a particular asset identifier.
+   * @param args - Query arguments
+   */
+  getNftMints(args: {
+    assetIdentifier: string;
+    limit: number;
+    offset: number;
+    blockHeight: number;
+    includeTxMetadata: boolean;
+  }): Promise<{ results: NftEventWithTxMetadata[]; total: number }>;
+
+  /**
+   * @deprecated Use `getNftHoldings` instead.
+   */
+  getAddressNFTEvent(args: {
+    stxAddress: string;
+    blockHeight: number;
+    limit: number;
+    offset: number;
+    includeUnanchored: boolean;
+  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }>;
+
+  getConfigState(): Promise<DbConfigState>;
+  updateConfigState(configState: DbConfigState): Promise<void>;
+
+  getNamespaceList(args: {
+    includeUnanchored: boolean;
+  }): Promise<{
+    results: string[];
+  }>;
+
+  getNamespaceNamesList(args: {
+    namespace: string;
+    page: number;
+    includeUnanchored: boolean;
+  }): Promise<{
+    results: string[];
+  }>;
+
+  getNamespace(args: {
+    namespace: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsNamespace>>;
+  getName(args: {
+    name: string;
+    includeUnanchored: boolean;
+    chainId: ChainID;
+  }): Promise<FoundOrNot<DbBnsName>>;
+  getHistoricalZoneFile(args: {
+    name: string;
+    zoneFileHash: string;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getLatestZoneFile(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsZoneFile>>;
+  getNamesByAddressList(args: {
+    address: string;
+    includeUnanchored: boolean;
+    chainId: ChainID;
+  }): Promise<FoundOrNot<string[]>>;
+  getNamesList(args: {
+    page: number;
+    includeUnanchored: boolean;
+  }): Promise<{
+    results: string[];
+  }>;
+  /**
+   * This function returns the subdomains for a specific name
+   * @param name - The name for which subdomains are required
+   */
+  getSubdomainsListInName(args: {
+    name: string;
+    includeUnanchored: boolean;
+  }): Promise<{ results: string[] }>;
+  getSubdomainsList(args: {
+    page: number;
+    includeUnanchored: boolean;
+  }): Promise<{
+    results: string[];
+  }>;
+  getSubdomain(args: {
+    subdomain: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbBnsSubdomain>>;
+  getMinersRewardsAtHeight({ blockHeight }: { blockHeight: number }): Promise<DbMinerReward[]>;
+  getTokenOfferingLocked(
+    address: string,
+    blockHeight: number
+  ): Promise<FoundOrNot<AddressTokenOfferingLocked>>;
+  getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]>;
+
+  getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>>;
+  getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>>;
+
+  updateNFtMetadata(nftMetadata: DbNonFungibleTokenMetadata): Promise<number>;
+  updateFtMetadata(ftMetadata: DbFungibleTokenMetadata): Promise<number>;
+
+  getFtMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }>;
+  getNftMetadataList(args: {
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }>;
+
+  /**
+   * Returns a single entry from the `token_metadata_queue` table.
+   * @param queueId - queue entry id
+   */
+  getTokenMetadataQueueEntry(queueId: number): Promise<FoundOrNot<DbTokenMetadataQueueEntry>>;
+
+  /**
+   * Marks a token metadata queue entry as processed.
+   * @param queueId - queue entry id
+   */
+  updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void>;
+
+  /**
+   * Increases the retry count for a specific token metadata queue entry.
+   * @param queueId - queue entry id
+   * @returns new retry count
+   */
+  increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number>;
+
+  getTokenMetadataQueue(
+    limit: number,
+    excludingEntries: number[]
+  ): Promise<DbTokenMetadataQueueEntry[]>;
+
+  close(): Promise<void>;
+}
+
+export function getTxDbStatus(
+  txCoreStatus: CoreNodeTxStatus | CoreNodeDropMempoolTxReasonType
+): DbTxStatus {
+  switch (txCoreStatus) {
+    case 'success':
+      return DbTxStatus.Success;
+    case 'abort_by_response':
+      return DbTxStatus.AbortByResponse;
+    case 'abort_by_post_condition':
+      return DbTxStatus.AbortByPostCondition;
+    case 'ReplaceByFee':
+      return DbTxStatus.DroppedReplaceByFee;
+    case 'ReplaceAcrossFork':
+      return DbTxStatus.DroppedReplaceAcrossFork;
+    case 'TooExpensive':
+      return DbTxStatus.DroppedTooExpensive;
+    case 'StaleGarbageCollect':
+      return DbTxStatus.DroppedStaleGarbageCollect;
+    default:
+      throw new Error(`Unexpected tx status: ${txCoreStatus}`);
+  }
+}
+
+/**
+ * Extract tx-type specific data from a Transaction and into a tx db model.
+ * @param txData - Transaction data to extract from.
+ * @param dbTx - The tx db object to write to.
+ */
+function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempoolTx) {
+  switch (txData.payload.type_id) {
+    case TxPayloadTypeID.TokenTransfer: {
+      let recipientPrincipal = txData.payload.recipient.address;
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Contract) {
+        recipientPrincipal += '.' + txData.payload.recipient.contract_name;
+      }
+      dbTx.token_transfer_recipient_address = recipientPrincipal;
+      dbTx.token_transfer_amount = BigInt(txData.payload.amount);
+      dbTx.token_transfer_memo = hexToBuffer(txData.payload.memo_hex);
+      break;
+    }
+    case TxPayloadTypeID.SmartContract: {
+      const sender_address = getTxSenderAddress(txData);
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
+      dbTx.smart_contract_source_code = txData.payload.code_body;
+      break;
+    }
+    case TxPayloadTypeID.ContractCall: {
+      const contractAddress = txData.payload.address;
+      dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
+      dbTx.contract_call_function_name = txData.payload.function_name;
+      dbTx.contract_call_function_args = hexToBuffer(txData.payload.function_args_buffer);
+      break;
+    }
+    case TxPayloadTypeID.PoisonMicroblock: {
+      dbTx.poison_microblock_header_1 = hexToBuffer(txData.payload.microblock_header_1.buffer);
+      dbTx.poison_microblock_header_2 = hexToBuffer(txData.payload.microblock_header_2.buffer);
+      break;
+    }
+    case TxPayloadTypeID.Coinbase: {
+      dbTx.coinbase_payload = hexToBuffer(txData.payload.payload_buffer);
+      break;
+    }
+    default:
+      throw new Error(`Unexpected transaction type ID: ${JSON.stringify(txData.payload)}`);
+  }
+}
+
+export function createDbMempoolTxFromCoreMsg(msg: {
+  txData: DecodedTxResult;
+  txId: string;
+  sender: string;
+  sponsorAddress: string | undefined;
+  rawTx: Buffer;
+  receiptDate: number;
+}): DbMempoolTx {
+  const dbTx: DbMempoolTx = {
+    pruned: false,
+    nonce: Number(msg.txData.auth.origin_condition.nonce),
+    sponsor_nonce:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? Number(msg.txData.auth.sponsor_condition.nonce)
+        : undefined,
+    tx_id: msg.txId,
+    raw_tx: msg.rawTx,
+    type_id: parseEnum(DbTxTypeId, msg.txData.payload.type_id as number),
+    anchor_mode: parseEnum(DbTxAnchorMode, msg.txData.anchor_mode as number),
+    status: DbTxStatus.Pending,
+    receipt_time: msg.receiptDate,
+    fee_rate:
+      msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored
+        ? BigInt(msg.txData.auth.sponsor_condition.tx_fee)
+        : BigInt(msg.txData.auth.origin_condition.tx_fee),
+    sender_address: msg.sender,
+    origin_hash_mode: msg.txData.auth.origin_condition.hash_mode as number,
+    sponsored: msg.txData.auth.type_id === PostConditionAuthFlag.Sponsored,
+    sponsor_address: msg.sponsorAddress,
+    post_conditions: hexToBuffer(msg.txData.post_conditions_buffer),
+>>>>>>> master
   };
   markedNonCanonical: {
     blocks: number;

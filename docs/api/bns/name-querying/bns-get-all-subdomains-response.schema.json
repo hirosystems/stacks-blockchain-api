@@ -1,9 +1,6 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "bns-get-all-subdomains-response",
   "title": "BnsGetAllSubdomainsResponse",
   "description": "Fetch a list of all subdomains known to the node.",
-  "required": [],
   "type": "array",
   "items": {
     "type": "string",

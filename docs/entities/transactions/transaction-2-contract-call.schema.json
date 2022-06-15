@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "ContractCallTransaction",
   "description": "Describes representation of a Type 2 Stacks 2.0 transaction: Contract Call",
