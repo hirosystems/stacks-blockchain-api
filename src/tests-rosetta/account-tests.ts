@@ -36,7 +36,7 @@ describe('/account tests', () => {
       sender_address: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5',
       contract_id: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token'
     };
-    await db.updateFtMetadata(ftMetadata);
+    await db.updateFtMetadata(ftMetadata, 1);
 
     // FT transfer
     const block1 = new TestBlockBuilder({

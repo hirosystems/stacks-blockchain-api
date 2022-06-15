@@ -378,6 +378,7 @@ export class PgWriteStore extends PgStore {
               contractAbi: contractAbi,
               blockHeight: entry.tx.block_height,
               processed: false,
+              retry_count: 0,
             };
             return queueEntry;
           })

@@ -3832,7 +3832,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0xcc',
       parent_index_block_hash: block2.index_block_hash,
       parent_block_hash: block2.block_hash,
-      parent_microblock_hash: '',
+      parent_microblock_hash: '0x00',
       block_height: 3,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',

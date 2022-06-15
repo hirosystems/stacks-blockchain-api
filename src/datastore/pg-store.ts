@@ -1545,6 +1545,7 @@ export class PgStore {
       contractAbi: JSON.parse(row.contract_abi),
       blockHeight: row.block_height,
       processed: row.processed,
+      retry_count: row.retry_count,
     };
     return { found: true, result: entry };
   }
@@ -1573,6 +1574,7 @@ export class PgStore {
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
         processed: row.processed,
+        retry_count: row.retry_count,
       };
       return entry;
     });
@@ -2642,6 +2644,7 @@ export class PgStore {
           value: row.value,
           recipient: row.recipient,
           tx_id: row.tx_id,
+          block_height: row.block_height,
         },
         tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
       })),
@@ -2997,8 +3000,8 @@ export class PgStore {
       SELECT zonefile
       FROM subdomains
       LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
-      WHERE fully_qualified_subdomain = $1
-      AND subdomains.zonefile_hash = $2
+      WHERE fully_qualified_subdomain = ${args.name}
+      AND subdomains.zonefile_hash = ${validZonefileHash}
     `;
     if (queryResult.length > 0) {
       return {
@@ -3116,17 +3119,20 @@ export class PgStore {
           AND canonical = TRUE
           AND microblock_canonical = TRUE
       `;
-      const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
-      const oldImportedNamesQuery = await sql<{ value: string }[]>`
-        SELECT value
-        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
-        WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
-      `;
-      const oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
+      let oldImportedNames: string[] = [];
+      if (importedNamesQuery.length > 0) {
+        const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
+        const oldImportedNamesQuery = await sql<{ value: string }[]>`
+          SELECT value
+          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
+        `;
+        oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
+      }
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
-        FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
+        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
       const results: Set<string> = new Set([
