@@ -23,7 +23,8 @@
     "execution_cost_runtime",
     "execution_cost_write_count",
     "execution_cost_write_length",
-    "microblock_tx_count"
+    "microblock_tx_count",
+    "average_tx_fee"
   ],
   "properties": {
     "canonical": {
@@ -120,6 +121,10 @@
       "additionalProperties": {
         "type": "number"
       }
+    },
+    "average_tx_fee": {
+      "type": "string",
+      "description": "Average fee for transactions included in the block."
     }
   }
 }

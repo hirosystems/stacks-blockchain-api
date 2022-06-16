@@ -1188,6 +1188,10 @@ export interface Block {
   microblock_tx_count: {
     [k: string]: number | undefined;
   };
+  /**
+   * Average fee for transactions included in the block.
+   */
+  average_tx_fee: string;
 }
 /**
  * Error

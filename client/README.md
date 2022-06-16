@@ -99,7 +99,8 @@ Example message:
   "execution_cost_read_length": 1659409,
   "execution_cost_runtime": 2520952000,
   "execution_cost_write_count": 608,
-  "execution_cost_write_length": 80170
+  "execution_cost_write_length": 80170,
+  "average_tx_fee": "123",
 }
 ```
 Subscribe via WebSockets:
