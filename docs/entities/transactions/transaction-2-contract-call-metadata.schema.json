@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "ContractCallTransactionMetadata",
   "description": "Metadata associated with a contract-call type transaction",

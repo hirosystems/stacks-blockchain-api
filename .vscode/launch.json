@@ -90,8 +90,8 @@
       "env": {
         "STACKS_BLOCKCHAIN_API_PORT": "3998",
         "STACKS_API_MODE": "readonly",
-        "STACKS_CHAIN_ID": "0x80000000",
-        "NODE_ENV": "development",
+        "STACKS_CHAIN_ID": "0x00000001",
+        "NODE_ENV": "production",
         "TS_NODE_SKIP_IGNORE": "true"
       },
       "killBehavior": "polite",

@@ -1,9 +1,8 @@
 {
-  "$id": "rosetta-construction-options",
   "title": "RosettaOptions",
   "type": "object",
   "description": "The options that will be sent directly to /construction/metadata by the caller.",
-  "required": [],
+  "additionalProperties": false,
   "properties": {
     "sender_address": {
       "type": "string",
@@ -14,10 +13,7 @@
       "description": "Type of operation e.g transfer"
     },
     "status": {
-      "type": [
-        "string",
-        "null"
-      ],
+      "type": "string",
       "description": "This value indicates the state of the operations"
     },
     "token_transfer_recipient_address": {

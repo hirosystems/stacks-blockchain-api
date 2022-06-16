@@ -3,6 +3,7 @@
   "type": "object",
   "description": "Restrict referenced related_operations to identifier indexes < the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.",
   "required": ["index"],
+  "additionalProperties": false,
   "properties": {
     "index": {
       "type": "integer",

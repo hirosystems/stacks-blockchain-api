@@ -57,7 +57,6 @@ import {
   BlockQueryResult,
   RawEventRequestInsertValues,
 } from './common';
-import { isProcessableTokenMetadata } from '../event-stream/tokens-contract-handler';
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
@@ -77,6 +76,7 @@ import { PgStore } from './pg-store';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
+import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -370,6 +370,7 @@ export class PgWriteStore extends PgStore {
               contractAbi: contractAbi,
               blockHeight: entry.tx.block_height,
               processed: false,
+              retry_count: 0,
             };
             return queueEntry;
           })
@@ -1557,6 +1558,24 @@ export class PgWriteStore extends PgStore {
     });
     await this.notifier?.sendTokens({ contractID: nftMetadata.contract_id });
     return length;
+  }
+
+  async updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void> {
+    await this.sql`
+      UPDATE token_metadata_queue
+      SET processed = true
+      WHERE queue_id = ${queueId}
+    `;
+  }
+
+  async increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number> {
+    const result = await this.sql<{ retry_count: number }[]>`
+      UPDATE token_metadata_queue
+      SET retry_count = retry_count + 1
+      WHERE queue_id = ${queueId}
+      RETURNING retry_count
+    `;
+    return result[0].retry_count;
   }
 
   async updateBatchTokenOfferingLocked(sql: PgSqlClient, lockedInfos: DbTokenOfferingLocked[]) {

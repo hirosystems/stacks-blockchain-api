@@ -5,8 +5,9 @@ import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
+import { ChainID } from '@stacks/transactions';
 
-export function createBnsNamesRouter(db: PgStore): express.Router {
+export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
 
   router.get(
@@ -16,7 +17,7 @@ export function createBnsNamesRouter(db: PgStore): express.Router {
       const { name, zoneFileHash } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored });
+      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
       nameFound = nameQuery.found;
       if (!nameFound) {
         const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
@@ -53,7 +54,7 @@ export function createBnsNamesRouter(db: PgStore): express.Router {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored });
+      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
       nameFound = nameQuery.found;
       if (!nameFound) {
         const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
@@ -122,7 +123,11 @@ export function createBnsNamesRouter(db: PgStore): express.Router {
           zonefile_hash: result.zonefile_hash,
         };
       } else {
-        const nameQuery = await db.getName({ name, includeUnanchored: includeUnanchored });
+        const nameQuery = await db.getName({
+          name,
+          includeUnanchored: includeUnanchored,
+          chainId: chainId,
+        });
         if (!nameQuery.found) {
           res.status(404).json({ error: `cannot find name ${name}` });
           return;

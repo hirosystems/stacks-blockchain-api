@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AddressTransactionWithTransfers",
   "description": "Transaction with STX transfers for a given address",
   "type": "object",
