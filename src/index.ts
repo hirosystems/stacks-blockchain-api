@@ -23,13 +23,10 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
-<<<<<<< HEAD
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
-=======
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
->>>>>>> master
 
 enum StacksApiMode {
   /**
