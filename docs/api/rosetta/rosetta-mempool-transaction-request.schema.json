@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosetta-mempool-transaction-request",
   "type": "object",
   "title": "RosettaMempoolTransactionRequest",
   "description": "A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.",

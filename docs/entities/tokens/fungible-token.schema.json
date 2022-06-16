@@ -1,6 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "fungible-token-metadata",
   "title": "FungibleTokenMetadata",
   "type": "object",
   "additionalProperties": false,

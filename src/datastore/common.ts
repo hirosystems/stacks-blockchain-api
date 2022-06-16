@@ -327,6 +327,7 @@ export interface NftHoldingInfo {
   value: string;
   recipient: string;
   tx_id: string;
+  block_height: number;
 }
 
 export interface NftHoldingInfoWithTxMetadata {
@@ -551,6 +552,7 @@ export interface DbTokenMetadataQueueEntry {
   contractAbi: ClarityAbi;
   blockHeight: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface DbChainTip {
@@ -790,6 +792,7 @@ export interface DbTokenMetadataQueueEntryQuery {
   contract_abi: string;
   block_height: number;
   processed: boolean;
+  retry_count: number;
 }
 
 export interface RawTxQueryResult {

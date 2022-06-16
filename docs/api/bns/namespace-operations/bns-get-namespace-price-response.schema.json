@@ -1,8 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "bns-get-namespace-price-response",
   "title": "BnsGetNamespacePriceResponse",
   "description": "Fetch price for namespace.",
+  "additionalProperties": false,
   "required": [ "units", "amount" ],
   "type": "object",
   "properties": {

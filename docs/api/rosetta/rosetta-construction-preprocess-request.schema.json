@@ -1,10 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "rosett-construction-preprocess-schema",
   "type": "object",
   "title": "RosettaConstructionPreprocessRequest",
   "description": "ConstructionPreprocessRequest is passed to the /construction/preprocess endpoint so that a Rosetta implementation can determine which metadata it needs to request for construction",
   "required": ["network_identifier", "operations"],
+  "additionalProperties": false,
   "properties": {
     "network_identifier": {
       "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"

@@ -1,9 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns transactions",
   "title": "TransactionResults",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
+  "additionalProperties": false,
   "properties": {
     "limit": {
       "type": "integer",

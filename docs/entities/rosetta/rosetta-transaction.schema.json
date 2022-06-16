@@ -1,9 +1,9 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
   "type": "object",
   "title": "RosettaTransaction",
   "description": "Transactions contain an array of Operations that are attributable to the same TransactionIdentifier.",
   "required": ["transaction_identifier", "operations"],
+  "additionalProperties": false,
   "properties": {
     "transaction_identifier": {
       "$ref": "./rosetta-transaction-identifier.schema.json"
@@ -18,7 +18,6 @@
     "metadata": {
       "type": "object",
       "description": "Transactions that are related to other transactions (like a cross-shard transaction) should include the tranaction_identifier of these transactions in the metadata.",
-      "required": [],
       "properties": {
         "memo": {
           "type": "string",
