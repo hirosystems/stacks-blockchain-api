@@ -9,7 +9,7 @@ ports:
     onOpen: ignore
 
 tasks:
-  - init: npm install
+  - init: npm ci
     command: npm run dev
   - openMode: split-right
     command: stacks-node start --config=stacks-blockchain/Stacks-dev.toml

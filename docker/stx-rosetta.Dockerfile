@@ -33,7 +33,7 @@ RUN apt-get update -y \
     && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
     && npm config set unsafe-perm true \
-    && npm install \
+    && npm ci \
     && npm run build \
     && npm prune --production
 
