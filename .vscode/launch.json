@@ -151,8 +151,31 @@
         "--mode",
         "preorg",
         "--file", 
-        "/tmp/test-events-export.csv"
+        "/Users/matt/Downloads/tsv/stacks-node-events.tsv"
       ],
+      // 2.19 GB
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "env": {
+        "NODE_ENV": "production",
+        "TS_NODE_SKIP_IGNORE": "true"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: (compiled) import-events - preorg mode",
+      "args": [
+        "${workspaceFolder}/lib/index.js", 
+        "import-events",
+        "--wipe-db",
+        "--force",
+        "--mode",
+        "preorg",
+        "--file", 
+        "/Users/matt/Downloads/tsv/stacks-node-events.tsv"
+      ],
+      // 2.19 GB
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
