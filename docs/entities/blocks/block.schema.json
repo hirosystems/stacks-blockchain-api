@@ -120,6 +120,10 @@
       "additionalProperties": {
         "type": "number"
       }
+    },
+    "average_fee": {
+      "type": "string",
+      "description": "Average fee for transactions included in the block."
     }
   }
 }

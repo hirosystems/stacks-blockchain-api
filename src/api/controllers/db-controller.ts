@@ -442,12 +442,15 @@ export async function getBlockFromDataStore({
     return { found: false };
   }
   const result = blockQuery.result;
+  const averageFee =
+    result.txs.reduce((acc, tx) => acc + tx.fee_rate, BigInt(0)) / BigInt(result.txs.length);
   const apiBlock = parseDbBlock(
     result.block,
     result.txs.map(tx => tx.tx_id),
     result.microblocks.accepted.map(mb => mb.microblock_hash),
     result.microblocks.streamed.map(mb => mb.microblock_hash),
-    result.microblock_tx_count
+    result.microblock_tx_count,
+    averageFee
   );
   return { found: true, result: apiBlock };
 }
@@ -457,7 +460,8 @@ function parseDbBlock(
   txIds: string[],
   microblocksAccepted: string[],
   microblocksStreamed: string[],
-  microblock_tx_count: Record<string, number>
+  microblock_tx_count: Record<string, number>,
+  averageFee: bigint
 ): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
@@ -482,6 +486,7 @@ function parseDbBlock(
     execution_cost_write_count: dbBlock.execution_cost_write_count,
     execution_cost_write_length: dbBlock.execution_cost_write_length,
     microblock_tx_count,
+    average_fee: averageFee.toString(10),
   };
   return apiBlock;
 }
@@ -1078,7 +1083,9 @@ export async function searchHashWithMetadata(
       blockQuery.result.txs.map(tx => tx.tx_id),
       blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
       blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash),
-      blockQuery.result.microblock_tx_count
+      blockQuery.result.microblock_tx_count,
+      blockQuery.result.txs.reduce((acc, tx) => acc + tx.fee_rate, BigInt(0)) /
+      BigInt(blockQuery.result.txs.length)
     );
     return {
       found: true,

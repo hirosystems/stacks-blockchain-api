@@ -2344,6 +2344,7 @@ describe('api tests', () => {
       parent_microblock_sequence: 0,
       txs: ['0x4567000000000000000000000000000000000000000000000000000000000000'],
       microblock_tx_count: {},
+      average_fee: '1234',
     };
 
     const searchResult1 = await supertest(api.server).get(
@@ -7259,7 +7260,11 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
+
+    const tx2 = Object.assign({}, tx, { tx_id: '0x1235', fee_rate: 2222n });
+
     await db.updateTx(client, tx);
+    await db.updateTx(client, tx2);
 
     const blockQuery = await getBlockFromDataStore({
       blockIdentifer: { hash: block.block_hash },
@@ -7281,7 +7286,7 @@ describe('api tests', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x',
       parent_microblock_sequence: 0,
-      txs: ['0x1234'],
+      txs: ['0x1235', '0x1234'],
       microblocks_accepted: [],
       microblocks_streamed: [],
       execution_cost_read_count: 0,
@@ -7290,6 +7295,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       microblock_tx_count: {},
+      average_fee: '1728',
     };
 
     expect(blockQuery.result).toEqual(expectedResp);
@@ -7412,6 +7418,7 @@ describe('api tests', () => {
       parent_microblock_sequence: 0,
       txs: ['0x0001'],
       microblock_tx_count: {},
+      average_fee: '50',
     };
     const fetch1 = await supertest(api.server).get(
       `/extended/v1/block/by_height/${block1.block.block_height}`
@@ -7461,6 +7468,7 @@ describe('api tests', () => {
       microblock_tx_count: {
         '0xff01': microblock1.txs.length,
       },
+      average_fee: '50',
     };
 
     expect(fetch2.status).toBe(200);
