@@ -25,8 +25,6 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { apiDocumentationUrl, isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { InvalidRequestError } from '../errors';
-import { createWsRpcRouter } from './routes/ws/ws-rpc';
-import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
@@ -48,12 +46,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 
 export interface ApiServer {
   expressApp: express.Express;
   server: Server;
-  wss: WebSocket.Server;
-  io: SocketIO.Server;
+  ws: WebSocketTransmitter;
   address: string;
   datastore: PgStore;
   terminate: () => Promise<void>;
@@ -347,11 +345,8 @@ export async function startApiServer(opts: {
     });
   });
 
-  // Setup socket.io server
-  const io = createSocketIORouter(datastore, server);
-
-  // Setup websockets RPC endpoint
-  const wss = createWsRpcRouter(datastore, server);
+  const ws = new WebSocketTransmitter(datastore, server);
+  ws.connect();
 
   await new Promise<void>((resolve, reject) => {
     try {
@@ -368,25 +363,13 @@ export async function startApiServer(opts: {
 
   const terminate = async () => {
     await new Promise<void>((resolve, reject) => {
-      logger.info('Closing Socket.io server...');
-      io.close(error => {
+      logger.info('Closing WebSocket channels...');
+      ws.close(error => {
         if (error) {
-          logError('Failed to gracefully close Socket.io server', error);
+          logError('Failed to gracefully close WebSocket channels', error);
           reject(error);
         } else {
-          logger.info('API socket.io server closed.');
-          resolve();
-        }
-      });
-    });
-    await new Promise<void>((resolve, reject) => {
-      logger.info('Closing WebSocket server...');
-      wss.close(error => {
-        if (error) {
-          logError('Failed to gracefully close WebSocket server.');
-          reject(error);
-        } else {
-          logger.info('WebSocket server closed.');
+          logger.info('API WebSocket channels closed.');
           resolve();
         }
       });
@@ -405,14 +388,13 @@ export async function startApiServer(opts: {
 
   const forceKill = async () => {
     logger.info('Force closing API server...');
-    const [ioClosePromise, wssClosePromise, serverClosePromise] = [waiter(), waiter(), waiter()];
-    io.close(() => ioClosePromise.finish());
-    wss.close(() => wssClosePromise.finish());
+    const [wsClosePromise, serverClosePromise] = [waiter(), waiter()];
+    ws.close(() => wsClosePromise.finish());
     server.close(() => serverClosePromise.finish());
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await Promise.allSettled([ioClosePromise, wssClosePromise, serverClosePromise]);
+    await Promise.allSettled([wsClosePromise, serverClosePromise]);
   };
 
   const addr = server.address();
@@ -423,8 +405,7 @@ export async function startApiServer(opts: {
   return {
     expressApp: app,
     server: server,
-    wss: wss,
-    io: io,
+    ws: ws,
     address: addrStr,
     datastore: datastore,
     terminate: terminate,

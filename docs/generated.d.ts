@@ -214,11 +214,9 @@ export type SchemaMergeRootStub =
   | TransactionType
   | Transaction
   | InboundStxTransfer
-  | RpcAddressBalanceNotificationParams
   | RpcAddressBalanceNotificationResponse
   | RpcAddressBalanceSubscriptionParams
   | RpcAddressBalanceSubscriptionRequest
-  | RpcAddressTxNotificationParams
   | RpcAddressTxNotificationResponse
   | RpcAddressTxSubscriptionParams
   | RpcAddressTxSubscriptionRequest
@@ -232,7 +230,6 @@ export type SchemaMergeRootStub =
   | RpcMicroblockSubscriptionParams
   | RpcMicroblockSubscriptionRequest
   | RpcSubscriptionType
-  | RpcTxUpdateNotificationParams
   | RpcTxUpdateNotificationResponse
   | RpcTxUpdateSubscriptionParams
   | RpcTxUpdateSubscriptionRequest;
@@ -703,6 +700,15 @@ export type TransactionMetadata =
  * String literal of all Stacks 2.0 transaction types
  */
 export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
+export type RpcAddressBalanceNotificationParams = {
+  address: string;
+} & AddressStxBalanceResponse;
+export type RpcAddressTxNotificationParams = {
+  address: string;
+  tx_id: string;
+  tx_type: TransactionType;
+  tx_status: TransactionStatus;
+} & AddressTransactionWithTransfers;
 export type RpcSubscriptionType =
   | "tx_update"
   | "address_tx_update"
@@ -3233,10 +3239,6 @@ export interface TransactionNotFound {
     tx_id: string;
   };
 }
-export interface RpcAddressBalanceNotificationParams {
-  address: string;
-  balance: string;
-}
 export interface RpcAddressBalanceNotificationResponse {
   jsonrpc: "2.0";
   method: "address_balance_update";
@@ -3251,12 +3253,6 @@ export interface RpcAddressBalanceSubscriptionRequest {
   id: number | string;
   method: "address_balance_update";
   params: RpcAddressBalanceSubscriptionParams;
-}
-export interface RpcAddressTxNotificationParams {
-  address: string;
-  tx_id: string;
-  tx_type: TransactionType;
-  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 export interface RpcAddressTxNotificationResponse {
   jsonrpc: "2.0";
@@ -3315,15 +3311,10 @@ export interface RpcMicroblockSubscriptionRequest {
   method: "microblock";
   params: RpcMicroblockSubscriptionParams;
 }
-export interface RpcTxUpdateNotificationParams {
-  tx_id: string;
-  tx_type: TransactionType;
-  tx_status: TransactionStatus | MempoolTransactionStatus;
-}
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";
   method: "tx_update";
-  params: RpcTxUpdateNotificationParams;
+  params: Transaction | MempoolTransaction;
 }
 export interface RpcTxUpdateSubscriptionParams {
   event: "tx_update";

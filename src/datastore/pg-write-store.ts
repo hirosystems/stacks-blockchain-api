@@ -187,6 +187,7 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
+    let garbageCollectedMempoolTxs: string[] = [];
     await this.sql.begin(async sql => {
       const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
@@ -359,10 +360,13 @@ export class PgWriteStore extends PgStore {
         }
         await this.refreshNftCustody(sql, batchedTxData);
         await this.refreshMaterializedView(sql, 'chain_tip');
-        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(sql);
-        if (deletedMempoolTxs.deletedTxs.length > 0) {
-          logger.verbose(`Garbage collected ${deletedMempoolTxs.deletedTxs.length} mempool txs`);
+        const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
+        if (mempoolGarbageResults.deletedTxs.length > 0) {
+          logger.verbose(
+            `Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`
+          );
         }
+        garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -396,6 +400,9 @@ export class PgWriteStore extends PgStore {
       await this.notifier.sendBlock({ blockHash: data.block.block_hash });
       for (const tx of data.txs) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
+      }
+      for (const txId of garbageCollectedMempoolTxs) {
+        await this.notifier?.sendTx({ txId: txId });
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {

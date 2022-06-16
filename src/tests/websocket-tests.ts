@@ -6,7 +6,6 @@ import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
   RpcTxUpdateSubscriptionParams,
-  RpcTxUpdateNotificationParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressTxNotificationParams,
   RpcAddressBalanceSubscriptionParams,
@@ -84,7 +83,7 @@ describe('websocket notifications', () => {
       const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
-          const txUpdate: RpcTxUpdateNotificationParams = msg.params;
+          const txUpdate: RpcAddressTxNotificationParams = msg.params;
           txUpdates[updateIndex++]?.finish(txUpdate.tx_status);
         }
         if (msg.method === 'mempool') {
@@ -115,14 +114,14 @@ describe('websocket notifications', () => {
 
       // check for microblock tx update notification
       const txStatus2 = await txUpdates[1];
-      expect(txStatus2).toBe('pending');
+      expect(txStatus2).toBe('success');
 
       // update DB with TX after WS server is sent txid to monitor
       db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
-      expect(txStatus3).toBe('pending');
+      expect(txStatus3).toBe('success');
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
@@ -272,6 +271,56 @@ describe('websocket notifications', () => {
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '100',
+        stx_sent: '150',
+        stx_transfers: [
+          {
+            amount: '100',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+        ],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x01',
+          block_height: 1,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x123466',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x123456',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          sponsored: false,
+          token_transfer: {
+            amount: '100',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
 
       const microblock = new TestMicroblockStreamBuilder()
@@ -295,6 +344,56 @@ describe('websocket notifications', () => {
         tx_id: '0x8913',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '150',
+        stx_sent: '200',
+        stx_transfers: [
+          {
+            amount: '150',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+        ],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x123456',
+          block_height: 2,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x11',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x01',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          sponsored: false,
+          token_transfer: {
+            amount: '150',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8913',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
     } finally {
       await client.call('unsubscribe', subParams);
@@ -349,6 +448,15 @@ describe('websocket notifications', () => {
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         balance: '100',
+        burnchain_lock_height: 0,
+        burnchain_unlock_height: 0,
+        lock_height: 0,
+        lock_tx_id: '',
+        locked: '0',
+        total_fees_sent: '0',
+        total_miner_rewards_received: '0',
+        total_received: '100',
+        total_sent: '0',
       });
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
@@ -387,6 +495,50 @@ describe('websocket notifications', () => {
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '0',
+        stx_sent: '50',
+        stx_transfers: [],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x123456',
+          block_height: 1,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x123466',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x123456',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+          sponsored: false,
+          token_transfer: {
+            amount: '100',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
       await subscription.unsubscribe();
     } finally {

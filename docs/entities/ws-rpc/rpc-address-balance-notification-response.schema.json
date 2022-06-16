@@ -18,7 +18,22 @@
       "enum": ["address_balance_update"]
     },
     "params": {
-      "$ref": "./rpc-address-balance-notification-params.schema.json"
+      "title": "RpcAddressBalanceNotificationParams",
+      "allOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["address"],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "$ref": "../../api/address/get-address-stx-balance.schema.json"
+        }
+      ]
     }
   }
 }

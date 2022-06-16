@@ -103,12 +103,15 @@ describe('socket-io', () => {
     });
     const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
     const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
-    let txWaiterIndex = 0;
     socket.on('mempool', tx => {
       mempoolWaiter.finish(tx);
     });
     socket.on('transaction', tx => {
-      txWaiters[txWaiterIndex++].finish(tx);
+      if (tx.tx_status === 'pending') {
+        txWaiters[0].finish(tx);
+      } else {
+        txWaiters[1].finish(tx);
+      }
     });
 
     const block = new TestBlockBuilder().addTx().build();
@@ -116,26 +119,72 @@ describe('socket-io', () => {
 
     const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const mempoolResult = await mempoolWaiter;
+    const txResult = await txWaiters[0];
 
     const microblock = new TestMicroblockStreamBuilder()
       .addMicroblock()
       .addTx({ tx_id: '0x01' })
       .build();
     await db.updateMicroblocks(microblock);
-
-    const mempoolResult = await mempoolWaiter;
-    const txResult = await txWaiters[0];
     const txMicroblockResult = await txWaiters[1];
+
     try {
       expect(mempoolResult.tx_status).toEqual('pending');
       expect(mempoolResult.tx_id).toEqual('0x01');
       expect(txResult.tx_status).toEqual('pending');
       expect(txResult.tx_id).toEqual('0x01');
       expect(txMicroblockResult.tx_id).toEqual('0x01');
-      expect(txMicroblockResult.tx_status).toEqual('pending');
+      expect(txMicroblockResult.tx_status).toEqual('success');
     } finally {
       socket.emit('unsubscribe', 'mempool');
       socket.emit('unsubscribe', 'transaction:0x01');
+      socket.close();
+    }
+  });
+
+  test('socket-io > mempool txs', async () => {
+    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
+
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: { subscriptions: 'mempool' },
+    });
+    const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
+    socket.on('mempool', tx => {
+      if (tx.tx_status === 'pending') {
+        txWaiters[0].finish(tx);
+      } else {
+        txWaiters[1].finish(tx);
+      }
+    });
+
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({ tx_id: '0x0101' })
+      .build();
+    await db.update(block1);
+    const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const pendingResult = await txWaiters[0];
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({ tx_id: '0x0201' })
+      .build();
+    await db.update(block2);
+    const droppedResult = await txWaiters[1];
+
+    try {
+      expect(pendingResult.tx_id).toEqual('0x01');
+      expect(pendingResult.tx_status).toEqual('pending');
+      expect(droppedResult.tx_id).toEqual('0x01');
+      expect(droppedResult.tx_status).toEqual('dropped_stale_garbage_collect');
+    } finally {
+      socket.emit('unsubscribe', 'mempool');
       socket.close();
     }
   });
