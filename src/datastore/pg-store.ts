@@ -19,6 +19,7 @@ import {
   AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
+  BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
   DbBlock,
@@ -404,7 +405,17 @@ export class PgStore {
     });
   }
 
-  async getBlocksWithMetadata({ limit, offset }: { limit: number; offset: number }) {
+  /**
+   * Returns Block information with metadata, including accepted and streamed microblocks hash
+   * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   */
+  async getBlocksWithMetadata({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<BlocksWithMetadata> {
     return await this.sql.begin(async sql => {
       // get block list
       const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
@@ -418,18 +429,24 @@ export class PgStore {
       });
 
       // get txs in those blocks
-      const txQuery = await sql<ContractTxQueryResult[]>`
-        SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
+      const txs = await sql<{ tx_id: string; index_block_hash: string }[]>`
+        SELECT tx_id, index_block_hash
         FROM txs
         WHERE index_block_hash IN ${sql(blockHashValues)}
           AND canonical = true AND microblock_canonical = true
         ORDER BY microblock_sequence DESC, tx_index DESC
       `;
-      const txs = txQuery.map(r => parseTxQueryResult(r));
 
       // get microblocks in those blocks
-      const microblocksQuery = await sql<(MicroblockQueryResult & { transaction_count: number })[]>`
-          SELECT ${sql(MICROBLOCK_COLUMNS)}, (
+      const microblocksQuery = await sql<
+        {
+          parent_index_block_hash: string;
+          index_block_hash: string;
+          microblock_hash: string;
+          transaction_count: number;
+        }[]
+      >`
+          SELECT parent_index_block_hash, index_block_hash, microblock_hash, (
             SELECT COUNT(tx_id)::integer as transaction_count
             FROM txs
             WHERE txs.microblock_hash = microblocks.microblock_hash
@@ -441,7 +458,7 @@ export class PgStore {
           ORDER BY microblock_sequence DESC
         `;
       // parse data to return
-      const results = blocks.map(block => {
+      const blocksMetadata = blocks.map(block => {
         const transactions = txs
           .filter(tx => tx.index_block_hash === block.index_block_hash)
           .map(tx => tx.tx_id);
@@ -470,7 +487,11 @@ export class PgStore {
           microblock_tx_count,
         };
       });
-      return { results, total: block_count };
+      const results: BlocksWithMetadata = {
+        results: blocksMetadata,
+        total: block_count,
+      };
+      return results;
     });
   }
 

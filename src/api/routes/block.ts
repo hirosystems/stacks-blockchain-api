@@ -2,7 +2,7 @@ import * as express from 'express';
 import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 
-import { getBlockFromDataStore, getBlocksMetadata } from '../controllers/db-controller';
+import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
 import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
@@ -28,7 +28,7 @@ export function createBlockRouter(db: PgStore): express.Router {
       const limit = parseBlockQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const { results, total } = await getBlocksMetadata({ offset, limit, db });
+      const { results, total } = await getBlocksWithMetadata({ offset, limit, db });
       setETagCacheHeaders(res);
       // TODO: block schema validation
       const response: BlockListResponse = { limit, offset, total, results };

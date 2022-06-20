@@ -412,7 +412,7 @@ export async function getMicroblocksFromDataStore(args: {
   };
 }
 
-export async function getBlocksMetadata(args: { limit: number; offset: number; db: PgStore }) {
+export async function getBlocksWithMetadata(args: { limit: number; offset: number; db: PgStore }) {
   const blocks = await args.db.getBlocksWithMetadata({ limit: args.limit, offset: args.offset });
   const results = blocks.results.map(block =>
     parseDbBlock(

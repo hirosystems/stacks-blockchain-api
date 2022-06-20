@@ -761,6 +761,17 @@ export interface TransferQueryResult {
   amount: string;
 }
 
+export interface BlocksWithMetadata {
+  results: {
+    block: DbBlock;
+    txs: string[];
+    microblocks_accepted: string[];
+    microblocks_streamed: string[];
+    microblock_tx_count: Record<string, number>;
+  }[];
+  total: number;
+}
+
 export interface NonFungibleTokenMetadataQueryResult {
   token_uri: string;
   name: string;
