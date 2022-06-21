@@ -7,17 +7,19 @@ import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
+  FoundOrNot,
+  hexToBuffer,
+  unwrapOptional,
   bnsHexValueToName,
   bnsNameCV,
-  FoundOrNot,
   getBnsSmartContractId,
-  unwrapOptional,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
+  BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
   DbBlock,
@@ -400,6 +402,96 @@ export class PgStore {
       `;
       const parsed = results.map(r => parseBlockQueryResult(r));
       return { results: parsed, total: total[0].count } as const;
+    });
+  }
+
+  /**
+   * Returns Block information with metadata, including accepted and streamed microblocks hash
+   * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   */
+  async getBlocksWithMetadata({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<BlocksWithMetadata> {
+    return await this.sql.begin(async sql => {
+      // get block list
+      const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
+      const blockHashValues: string[] = [];
+      const indexBlockHashValues: string[] = [];
+      blocks.forEach(block => {
+        const indexBytea = block.index_block_hash;
+        const parentBytea = block.parent_index_block_hash;
+        indexBlockHashValues.push(indexBytea, parentBytea);
+        blockHashValues.push(indexBytea);
+      });
+
+      // get txs in those blocks
+      const txs = await sql<{ tx_id: string; index_block_hash: string }[]>`
+        SELECT tx_id, index_block_hash
+        FROM txs
+        WHERE index_block_hash IN ${sql(blockHashValues)}
+          AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC, tx_index DESC
+      `;
+
+      // get microblocks in those blocks
+      const microblocksQuery = await sql<
+        {
+          parent_index_block_hash: string;
+          index_block_hash: string;
+          microblock_hash: string;
+          transaction_count: number;
+        }[]
+      >`
+          SELECT parent_index_block_hash, index_block_hash, microblock_hash, (
+            SELECT COUNT(tx_id)::integer as transaction_count
+            FROM txs
+            WHERE txs.microblock_hash = microblocks.microblock_hash
+            AND canonical = true AND microblock_canonical = true
+          )
+          FROM microblocks
+          WHERE parent_index_block_hash IN ${sql(indexBlockHashValues)}
+          AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
+        `;
+      // parse data to return
+      const blocksMetadata = blocks.map(block => {
+        const transactions = txs
+          .filter(tx => tx.index_block_hash === block.index_block_hash)
+          .map(tx => tx.tx_id);
+        const microblocksAccepted = microblocksQuery
+          .filter(
+            microblock => block.parent_index_block_hash === microblock.parent_index_block_hash
+          )
+          .map(mb => {
+            return {
+              microblock_hash: mb.microblock_hash,
+              transaction_count: mb.transaction_count,
+            };
+          });
+        const microblocksStreamed = microblocksQuery
+          .filter(microblock => block.parent_index_block_hash === microblock.index_block_hash)
+          .map(mb => mb.microblock_hash);
+        const microblock_tx_count: Record<string, number> = {};
+        microblocksAccepted.forEach(mb => {
+          microblock_tx_count[mb.microblock_hash] = mb.transaction_count;
+        });
+        return {
+          block,
+          txs: transactions,
+          microblocks_accepted: microblocksAccepted.map(mb => mb.microblock_hash),
+          microblocks_streamed: microblocksStreamed,
+          microblock_tx_count,
+        };
+      });
+      const results: BlocksWithMetadata = {
+        results: blocksMetadata,
+        total: block_count,
+      };
+      return results;
     });
   }
 
