@@ -1,3 +1,10 @@
+## [4.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.2...v4.0.3) (2022-06-21)
+
+
+### Bug Fixes
+
+* add value indices on nft_custody views ([#1207](https://github.com/hirosystems/stacks-blockchain-api/issues/1207)) ([aac13c6](https://github.com/hirosystems/stacks-blockchain-api/commit/aac13c613044ae053e63d39a12a0e320e0104c86))
+
 ## [4.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.1...v4.0.2) (2022-06-21)
 
 
