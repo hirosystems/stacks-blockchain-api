@@ -40,7 +40,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Lint ESLint
         run: npm run lint:eslint
@@ -81,7 +81,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Build schema & docs
         run: npm run build
@@ -126,15 +126,15 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Install client deps
         working-directory: client
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Install docs deps
         working-directory: docs
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
@@ -185,7 +185,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
@@ -236,7 +236,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
@@ -287,7 +287,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
@@ -346,7 +346,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: Install deps
-        run: npm install --audit=false
+        run: npm ci --audit=false
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0">> $GITHUB_ENV
@@ -391,7 +391,7 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Install deps
-        run: npm install
+        run: npm ci
 
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV

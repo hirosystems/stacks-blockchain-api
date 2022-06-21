@@ -23,7 +23,7 @@
     "generate:git-info": "node ./git-info-generator.mjs",
     "build": "npm run generate:git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
-    "build:docs": "npm i --prefix docs && npm run build --prefix docs && npm i --prefix client && npm run generate:docs --prefix client",
+    "build:docs": "npm ci --prefix docs && npm run build --prefix docs && npm ci --prefix client && npm run generate:docs --prefix client",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:unused-exports": "ts-unused-exports tsconfig.json --ignoreFiles=src/migrations/*",
@@ -62,7 +62,7 @@
         "@semantic-release/exec",
         {
           "execCwd": "client",
-          "prepareCmd": "npm install"
+          "prepareCmd": "npm ci"
         }
       ],
       [
