@@ -130,8 +130,12 @@ export async function startApiServer(opts: {
   }
   // adding stacks-api-version in header
   app.use((_, res, next) => {
-    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
-    res.setHeader('X-Stacks-API-Version', `stacks-blockchain-api ${tag} (${branch}:${commit})`);
+    try {
+      const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
+      res.setHeader('X-Stacks-API-Version', `stacks-blockchain-api ${tag} (${branch}:${commit})`);
+    } catch (error) {
+      logger.error(`Unable to read git info`, error);
+    }
     next();
   });
   // Setup request logging
