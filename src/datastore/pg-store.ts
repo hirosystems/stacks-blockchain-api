@@ -563,22 +563,13 @@ export class PgStore {
       const microblockQuery = await sql<
         (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
-        SELECT microblocks.*, tx_id FROM (
-          SELECT ${sql(MICROBLOCK_COLUMNS)}
-          FROM microblocks
-          WHERE canonical = true AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC
-          LIMIT ${args.limit}
-          OFFSET ${args.offset}
-        ) microblocks
-        LEFT JOIN (
-          SELECT tx_id, tx_index, microblock_hash
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          ORDER BY tx_index DESC
-        ) txs
-        ON microblocks.microblock_hash = txs.microblock_hash
-        ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
+      SELECT microblocks.*, txs.tx_id 
+      FROM microblocks LEFT JOIN txs USING(microblock_hash)
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+        txs.canonical = true AND txs.microblock_canonical = true
+      ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset};
       `;
       const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
       microblockQuery.forEach(row => {
