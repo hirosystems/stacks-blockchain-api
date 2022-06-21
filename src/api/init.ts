@@ -128,6 +128,12 @@ export async function startApiServer(opts: {
     });
     app.use(promMiddleware);
   }
+  // adding stacks-api-version in header
+  app.use((_, res, next) => {
+    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
+    res.setHeader('X-Stacks-API-Version', `stacks-blockchain-api ${tag} (${branch}:${commit})`);
+    next();
+  });
   // Setup request logging
   app.use(
     expressWinston.logger({
