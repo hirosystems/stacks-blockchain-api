@@ -1363,6 +1363,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
@@ -1392,6 +1395,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
