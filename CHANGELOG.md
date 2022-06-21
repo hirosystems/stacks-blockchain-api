@@ -1,3 +1,10 @@
+## [4.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.1...v4.0.2) (2022-06-21)
+
+
+### Bug Fixes
+
+* mobx build dependencies ([#1215](https://github.com/hirosystems/stacks-blockchain-api/issues/1215)) ([6e1eceb](https://github.com/hirosystems/stacks-blockchain-api/commit/6e1eceb843d28699d9d825212cf89d12cf37413f))
+
 ## [4.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0...v4.0.1) (2022-06-01)
 
 
