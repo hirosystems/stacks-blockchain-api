@@ -11,7 +11,7 @@ import type {
 export type AddressTransactionTopic = `address-transaction:${string}`;
 export type AddressStxBalanceTopic = `address-stx-balance:${string}`;
 export type TransactionTopic = `transaction:${string}`;
-export type NftAssetEventTopic = `nft-asset-event:${string}:${string}`;
+export type NftAssetEventTopic = `nft-asset-event:${string}+${string}`;
 export type NftCollectionEventTopic = `nft-collection-event:${string}`;
 export type Topic =
   | 'block'
