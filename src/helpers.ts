@@ -9,7 +9,15 @@ import * as winston from 'winston';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
 import * as BN from 'bn.js';
-import { ChainID } from '@stacks/transactions';
+import {
+  BufferCV,
+  bufferCV,
+  ChainID,
+  cvToHex,
+  hexToCV,
+  TupleCV,
+  tupleCV,
+} from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import {
   CliConfigSetColors,
@@ -920,6 +928,38 @@ export function parseDataUrl(
   } catch (e) {
     return false;
   }
+}
+
+/**
+ * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
+ * received NFT events.
+ */
+export function bnsNameCV(name: string): string {
+  const components = name.split('.');
+  return cvToHex(
+    tupleCV({
+      name: bufferCV(Buffer.from(components[0])),
+      namespace: bufferCV(Buffer.from(components[1])),
+    })
+  );
+}
+
+/**
+ * Converts a hex Clarity value for a BNS name NFT into the string name
+ * @param hex - hex encoded Clarity value of BNS name NFT
+ * @returns BNS name string
+ */
+export function bnsHexValueToName(hex: string): string {
+  const tuple = hexToCV(hex) as TupleCV;
+  const name = tuple.data.name as BufferCV;
+  const namespace = tuple.data.namespace as BufferCV;
+  return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
+}
+
+export function getBnsSmartContractId(chainId: ChainID): string {
+  return chainId === ChainID.Mainnet
+    ? 'SP000000000000000000002Q6VF78.bns::names'
+    : 'ST000000000000000000002AMW42H.bns::names';
 }
 
 export function getSendManyContract(chainId: ChainID) {

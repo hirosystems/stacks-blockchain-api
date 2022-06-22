@@ -1,8 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Block",
   "description": "A block",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "canonical",
     "height",

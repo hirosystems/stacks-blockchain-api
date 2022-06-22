@@ -3,14 +3,23 @@ import {
   AddressUnlockSchedule,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
-import { ClarityAbi } from '@stacks/transactions';
+import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId } from '../api/controllers/db-controller';
-import { assertNotNullish, FoundOrNot, unwrapOptional } from '../helpers';
+import {
+  assertNotNullish,
+  FoundOrNot,
+  hexToBuffer,
+  unwrapOptional,
+  bnsHexValueToName,
+  bnsNameCV,
+  getBnsSmartContractId,
+} from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
+  BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
   DbBlock,
@@ -396,6 +405,96 @@ export class PgStore {
     });
   }
 
+  /**
+   * Returns Block information with metadata, including accepted and streamed microblocks hash
+   * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   */
+  async getBlocksWithMetadata({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<BlocksWithMetadata> {
+    return await this.sql.begin(async sql => {
+      // get block list
+      const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
+      const blockHashValues: string[] = [];
+      const indexBlockHashValues: string[] = [];
+      blocks.forEach(block => {
+        const indexBytea = block.index_block_hash;
+        const parentBytea = block.parent_index_block_hash;
+        indexBlockHashValues.push(indexBytea, parentBytea);
+        blockHashValues.push(indexBytea);
+      });
+
+      // get txs in those blocks
+      const txs = await sql<{ tx_id: string; index_block_hash: string }[]>`
+        SELECT tx_id, index_block_hash
+        FROM txs
+        WHERE index_block_hash IN ${sql(blockHashValues)}
+          AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC, tx_index DESC
+      `;
+
+      // get microblocks in those blocks
+      const microblocksQuery = await sql<
+        {
+          parent_index_block_hash: string;
+          index_block_hash: string;
+          microblock_hash: string;
+          transaction_count: number;
+        }[]
+      >`
+          SELECT parent_index_block_hash, index_block_hash, microblock_hash, (
+            SELECT COUNT(tx_id)::integer as transaction_count
+            FROM txs
+            WHERE txs.microblock_hash = microblocks.microblock_hash
+            AND canonical = true AND microblock_canonical = true
+          )
+          FROM microblocks
+          WHERE parent_index_block_hash IN ${sql(indexBlockHashValues)}
+          AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
+        `;
+      // parse data to return
+      const blocksMetadata = blocks.map(block => {
+        const transactions = txs
+          .filter(tx => tx.index_block_hash === block.index_block_hash)
+          .map(tx => tx.tx_id);
+        const microblocksAccepted = microblocksQuery
+          .filter(
+            microblock => block.parent_index_block_hash === microblock.parent_index_block_hash
+          )
+          .map(mb => {
+            return {
+              microblock_hash: mb.microblock_hash,
+              transaction_count: mb.transaction_count,
+            };
+          });
+        const microblocksStreamed = microblocksQuery
+          .filter(microblock => block.parent_index_block_hash === microblock.index_block_hash)
+          .map(mb => mb.microblock_hash);
+        const microblock_tx_count: Record<string, number> = {};
+        microblocksAccepted.forEach(mb => {
+          microblock_tx_count[mb.microblock_hash] = mb.transaction_count;
+        });
+        return {
+          block,
+          txs: transactions,
+          microblocks_accepted: microblocksAccepted.map(mb => mb.microblock_hash),
+          microblocks_streamed: microblocksStreamed,
+          microblock_tx_count,
+        };
+      });
+      const results: BlocksWithMetadata = {
+        results: blocksMetadata,
+        total: block_count,
+      };
+      return results;
+    });
+  }
+
   async getBlockTxs(indexBlockHash: string) {
     const result = await this.sql<{ tx_id: string; tx_index: number }[]>`
       SELECT tx_id, tx_index
@@ -464,22 +563,13 @@ export class PgStore {
       const microblockQuery = await sql<
         (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
-        SELECT microblocks.*, tx_id FROM (
-          SELECT ${sql(MICROBLOCK_COLUMNS)}
-          FROM microblocks
-          WHERE canonical = true AND microblock_canonical = true
-          ORDER BY block_height DESC, microblock_sequence DESC
-          LIMIT ${args.limit}
-          OFFSET ${args.offset}
-        ) microblocks
-        LEFT JOIN (
-          SELECT tx_id, tx_index, microblock_hash
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-          ORDER BY tx_index DESC
-        ) txs
-        ON microblocks.microblock_hash = txs.microblock_hash
-        ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
+      SELECT microblocks.*, txs.tx_id 
+      FROM microblocks LEFT JOIN txs USING(microblock_hash)
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+        txs.canonical = true AND txs.microblock_canonical = true
+      ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset};
       `;
       const microblocks: { microblock: DbMicroblock; txs: string[] }[] = [];
       microblockQuery.forEach(row => {
@@ -1539,6 +1629,7 @@ export class PgStore {
       contractAbi: JSON.parse(row.contract_abi),
       blockHeight: row.block_height,
       processed: row.processed,
+      retry_count: row.retry_count,
     };
     return { found: true, result: entry };
   }
@@ -1567,6 +1658,7 @@ export class PgStore {
         contractAbi: JSON.parse(row.contract_abi),
         blockHeight: row.block_height,
         processed: row.processed,
+        retry_count: row.retry_count,
       };
       return entry;
     });
@@ -2636,6 +2728,7 @@ export class PgStore {
           value: row.value,
           recipient: row.recipient,
           tx_id: row.tx_id,
+          block_height: row.block_height,
         },
         tx: args.includeTxMetadata ? parseTxQueryResult(row) : undefined,
       })),
@@ -2932,13 +3025,15 @@ export class PgStore {
   async getName({
     name,
     includeUnanchored,
+    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      return await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
+      const nameZonefile = await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
         FROM names
         LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
@@ -2946,16 +3041,42 @@ export class PgStore {
         AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
         ORDER BY name, registered_at DESC, tx_index DESC
-        LIMIT 1
       `;
+      if (nameZonefile.length === 0) {
+        return;
+      }
+      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
+      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
+      // since they did not generate an NFT event for us to track.
+      if (nameZonefile[0].registered_at !== 0) {
+        let value: string;
+        try {
+          value = bnsNameCV(name);
+        } catch (error) {
+          return;
+        }
+        const nameCustody = await sql<{ recipient: string }[]>`
+          SELECT recipient
+          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          WHERE asset_identifier = ${getBnsSmartContractId(chainId)} AND value = ${value}
+        `;
+        if (nameCustody.length === 0) {
+          return;
+        }
+        return {
+          ...nameZonefile[0],
+          address: nameCustody[0].recipient,
+        };
+      }
+      return nameZonefile[0];
     });
-    if (queryResult.length > 0) {
+    if (queryResult) {
       return {
         found: true,
         result: {
-          ...queryResult[0],
-          tx_id: queryResult[0].tx_id,
-          index_block_hash: queryResult[0].index_block_hash,
+          ...queryResult,
+          tx_id: queryResult.tx_id,
+          index_block_hash: queryResult.index_block_hash,
         },
       };
     }
@@ -2977,8 +3098,8 @@ export class PgStore {
       SELECT zonefile
       FROM subdomains
       LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
-      WHERE fully_qualified_subdomain = $1
-      AND subdomains.zonefile_hash = $2
+      WHERE fully_qualified_subdomain = ${args.name}
+      AND subdomains.zonefile_hash = ${validZonefileHash}
     `;
     if (queryResult.length > 0) {
       return {
@@ -3049,56 +3170,80 @@ export class PgStore {
   async getNamesByAddressList({
     address,
     includeUnanchored,
+    chainId,
   }: {
     address: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const query = await sql<{ name: string }[]>`
-        WITH address_names AS(
-          (
-            SELECT name
-            FROM names
-            WHERE address = ${address}
-            AND registered_at <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name
-            FROM subdomains
-            WHERE owner = ${address}
+      // 1. Get subdomains owned by this address.
+      // These don't produce NFT events so we have to look directly at the `subdomains` table.
+      const subdomainsQuery = await sql<{ fully_qualified_subdomain: string }[]>`
+        WITH addr_subdomains AS (
+          SELECT DISTINCT ON (fully_qualified_subdomain)
+            fully_qualified_subdomain
+          FROM
+            subdomains
+          WHERE
+            owner = ${address}
             AND block_height <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-          )),
-
-        latest_names AS(
-        (
-          SELECT DISTINCT ON (names.name) names.name, address, registered_at as block_height, tx_index
-          FROM names, address_names
-          WHERE address_names.name = names.name
-          AND canonical = true AND microblock_canonical = true
-          ORDER BY names.name, registered_at DESC, tx_index DESC
+            AND canonical = TRUE
+            AND microblock_canonical = TRUE
         )
-        UNION ALL(
-          SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, owner as address, block_height, tx_index
-          FROM subdomains, address_names
-          WHERE fully_qualified_subdomain = address_names.name
-          AND canonical = true AND microblock_canonical = true
-          ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-        ))
-
-        SELECT name from latest_names
-        WHERE address = ${address}
-        ORDER BY name, block_height DESC, tx_index DESC
+        SELECT DISTINCT ON (fully_qualified_subdomain)
+          fully_qualified_subdomain
+        FROM
+          subdomains
+          INNER JOIN addr_subdomains USING (fully_qualified_subdomain)
+        WHERE
+          canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY
+          fully_qualified_subdomain
       `;
-      return query;
+      // 2. Get names owned by this address which were imported from Blockstack v1.
+      // These also don't have an associated NFT event so we have to look directly at the `names` table,
+      // however, we'll also check if any of these names are still owned by the same user.
+      const importedNamesQuery = await sql<{ name: string }[]>`
+        SELECT
+          name
+        FROM
+          names
+        WHERE
+          address = ${address}
+          AND registered_at = 0
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+      `;
+      let oldImportedNames: string[] = [];
+      if (importedNamesQuery.length > 0) {
+        const nameCVs = importedNamesQuery.map(i => bnsNameCV(i.name));
+        const oldImportedNamesQuery = await sql<{ value: string }[]>`
+          SELECT value
+          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+          WHERE recipient <> ${address} AND value IN ${sql(nameCVs)}
+        `;
+        oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
+      }
+      // 3. Get newer NFT names owned by this address.
+      const nftNamesQuery = await sql<{ value: string }[]>`
+        SELECT value
+        FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
+        WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
+      `;
+      const results: Set<string> = new Set([
+        ...subdomainsQuery.map(i => i.fully_qualified_subdomain),
+        ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
+        ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
+      ]);
+      return Array.from(results.values()).sort();
     });
-
     if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult.map(r => r.name),
+        result: queryResult,
       };
     }
     return { found: false } as const;

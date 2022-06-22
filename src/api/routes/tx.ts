@@ -240,7 +240,9 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id);
+        const baseURL = req.protocol + '://' + req.headers.host + '/';
+        const url = new URL(req.url, baseURL);
+        return res.redirect('/extended/v1/tx/0x' + tx_id + url.search);
       }
 
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);

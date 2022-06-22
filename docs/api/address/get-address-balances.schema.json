@@ -1,7 +1,7 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns address balances",
   "title": "AddressBalanceResponse",
+  "additionalProperties": false,
   "type": "object",
   "required": ["stx", "fungible_tokens", "non_fungible_tokens"],
   "properties": {
@@ -10,18 +10,22 @@
     },
     "fungible_tokens": {
       "type": "object",
-      "patternProperties": {
-        "*": {
-          "$ref": "../../entities/balance/ft-balance.schema.json"
-        }
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "../../entities/balance/ft-balance.schema.json"
+          }
+        ]
       }
     },
     "non_fungible_tokens": {
       "type": "object",
-      "patternProperties": {
-        "*": {
-          "$ref": "../../entities/balance/nft-balance.schema.json"
-        }
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "$ref": "../../entities/balance/nft-balance.schema.json"
+          }
+        ]
       }
     },
     "token_offering_locked": {

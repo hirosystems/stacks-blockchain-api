@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AbstractMempoolTransaction",
   "description": "Abstract transaction. This schema makes up all properties common between all Stacks 2.0 transaction types",
   "type": "object",
@@ -16,8 +15,6 @@
       "additionalProperties": false,
       "properties": {
         "tx_status": {
-          "type": "string",
-          "description": "Status of the transaction in the mempool. Can be pending in the mempool. Or dropped from the mempool from being replaced by a transaction with the same nonce but a higher fee, replaced by a transaction with the same nonce but in the canonical fork, the transaction is too expensive to include in a block, or because it became stale.",
           "$ref": "./transaction-status.schema.json"
         },
         "receipt_time": {

@@ -1,5 +1,4 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "title": "TransactionEventFungibleAsset",
   "allOf": [
@@ -9,6 +8,7 @@
     {
       "type": "object",
       "required": ["event_type", "tx_id", "asset"],
+      "additionalProperties": false,
       "properties": {
         "event_type": {
           "type": "string",

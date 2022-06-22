@@ -1,8 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "description": "GET request that returns transactions",
   "title": "PostCoreNodeTransactionsError",
   "type": "object",
+  "additionalProperties": false,
   "required": ["error", "reason", "reason_data", "txid"],
   "properties": {
     "error": {

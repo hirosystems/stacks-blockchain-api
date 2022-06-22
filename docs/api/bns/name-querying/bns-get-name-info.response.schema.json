@@ -1,9 +1,8 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema",
-  "$id": "bns-get-name-info",
   "title": "BnsGetNameInfoResponse",
   "description": "Get name details",
   "type": "object",
+  "additionalProperties": false,
   "required": ["address", "blockchain", "last_txid", "status", "zonefile", "zonefile_hash"],
   "properties": {
     "address": {
