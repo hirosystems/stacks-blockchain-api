@@ -92,6 +92,7 @@ import {
   PgBlockNotificationPayload,
   PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
+  PgNftEventNotificationPayload,
   PgNotifier,
   PgTokenMetadataNotificationPayload,
   PgTokensNotificationPayload,
@@ -178,6 +179,10 @@ export class PgStore {
         case 'tokenMetadataUpdateQueued':
           const metadata = notification.payload as PgTokenMetadataNotificationPayload;
           this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
+          break;
+        case 'nftEventUpdate':
+          const nftEvent = notification.payload as PgNftEventNotificationPayload;
+          this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
           break;
       }
     });
@@ -2861,7 +2866,11 @@ export class PgStore {
 
   async getNftEvent(args: { txId: string; eventIndex: number }): Promise<FoundOrNot<DbNftEvent>> {
     const result = await this.sql<DbNftEvent[]>`
-      SELECT * FROM nft_event
+      SELECT
+        event_index, tx_id, tx_index, block_height, index_block_hash, parent_index_block_hash,
+        microblock_hash, microblock_sequence, microblock_canonical, canonical, asset_event_type_id,
+        asset_identifier, value, sender, recipient
+      FROM nft_events
       WHERE canonical = TRUE
         AND microblock_canonical = TRUE
         AND tx_id = ${args.txId}

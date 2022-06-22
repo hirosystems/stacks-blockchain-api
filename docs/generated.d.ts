@@ -818,8 +818,8 @@ export interface AddressNftListResponse {
   nft_events: NftEvent[];
 }
 export interface NftEvent {
-  sender: string;
-  recipient: string;
+  sender?: string;
+  recipient?: string;
   asset_identifier: string;
   /**
    * Identifier of the NFT
@@ -1353,6 +1353,7 @@ export interface ContractListResponse {
 export interface SmartContract {
   tx_id: string;
   canonical: boolean;
+  contract_id: string;
   block_height: number;
   source_code: string;
   abi: string;

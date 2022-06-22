@@ -1,7 +1,7 @@
 import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
-import { DbTxStatus } from '../datastore/common';
+import { DbAssetEventTypeId, DbTxStatus } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
 import {
   Block,
@@ -10,6 +10,7 @@ import {
   AddressTransactionWithTransfers,
   AddressStxBalanceResponse,
   Transaction,
+  NftEvent,
 } from '../../docs/generated';
 import {
   TestBlockBuilder,
@@ -267,6 +268,146 @@ describe('socket-io', () => {
       expect(result.balance).toEqual('100');
     } finally {
       socket.emit('unsubscribe', `address-stx-balance:${addr2}`);
+      socket.close();
+    }
+  });
+
+  test('socket-io > nft event updates', async () => {
+    const crashPunks = 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2';
+    const wastelandApes =
+      'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes';
+    const valueHex1 = '0x0100000000000000000000000000000d55';
+    const valueHex2 = '0x0100000000000000000000000000000095';
+    const stxAddress1 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      query: {
+        subscriptions: `nft-event,nft-asset-event:${crashPunks}+${valueHex1},nft-collection-event:${wastelandApes}`,
+      },
+    });
+
+    const nftEventWaiters: Waiter<NftEvent>[] = [waiter(), waiter(), waiter(), waiter()];
+    const crashPunksWaiter: Waiter<NftEvent> = waiter();
+    const apeWaiters: Waiter<NftEvent>[] = [waiter(), waiter()];
+    socket.on(`nft-event`, event => {
+      nftEventWaiters[event.event_index].finish(event);
+    });
+    socket.on(`nft-asset-event`, (assetIdentifier, value, event) => {
+      if (assetIdentifier == crashPunks && value == valueHex1) {
+        crashPunksWaiter.finish(event);
+      }
+    });
+    socket.on(`nft-collection-event`, (assetIdentifier, event) => {
+      if (assetIdentifier == wastelandApes) {
+        if (event.event_index == 2) {
+          apeWaiters[0].finish(event);
+        } else if (event.event_index == 3) {
+          apeWaiters[1].finish(event);
+        }
+      }
+    });
+
+    const block = new TestBlockBuilder()
+      .addTx({
+        tx_id: '0x01',
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        asset_identifier: crashPunks,
+        value: valueHex1,
+        recipient: stxAddress1,
+        event_index: 0,
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        asset_identifier: crashPunks,
+        value: valueHex2,
+        recipient: stxAddress1,
+        event_index: 1,
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        asset_identifier: wastelandApes,
+        value: valueHex1,
+        recipient: stxAddress1,
+        event_index: 2,
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        asset_identifier: wastelandApes,
+        value: valueHex2,
+        recipient: stxAddress1,
+        event_index: 3,
+      })
+      .build();
+    await db.update(block);
+
+    const expectedEvent0 = {
+      asset_event_type_id: 2,
+      asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+      block_height: 1,
+      event_index: 0,
+      recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      sender: null,
+      tx_id: '0x01',
+      value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+    };
+    const expectedEvent1 = {
+      asset_event_type_id: 2,
+      asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+      block_height: 1,
+      event_index: 1,
+      recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      sender: null,
+      tx_id: '0x01',
+      value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+    };
+    const expectedEvent2 = {
+      asset_event_type_id: 2,
+      asset_identifier:
+        'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+      block_height: 1,
+      event_index: 2,
+      recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      sender: null,
+      tx_id: '0x01',
+      value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+    };
+    const expectedEvent3 = {
+      asset_event_type_id: 2,
+      asset_identifier:
+        'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+      block_height: 1,
+      event_index: 3,
+      recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      sender: null,
+      tx_id: '0x01',
+      value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+    };
+
+    const event0 = await nftEventWaiters[0];
+    const event1 = await nftEventWaiters[1];
+    const event2 = await nftEventWaiters[2];
+    const event3 = await nftEventWaiters[3];
+    const crashEvent = await crashPunksWaiter;
+    const apeEvent0 = await apeWaiters[0];
+    const apeEvent1 = await apeWaiters[1];
+    try {
+      expect(event0).toEqual(expect.objectContaining(expectedEvent0));
+      expect(event1).toEqual(expect.objectContaining(expectedEvent1));
+      expect(event2).toEqual(expect.objectContaining(expectedEvent2));
+      expect(event3).toEqual(expect.objectContaining(expectedEvent3));
+
+      expect(crashEvent).toEqual(expect.objectContaining(expectedEvent0));
+
+      expect(apeEvent0).toEqual(expect.objectContaining(expectedEvent2));
+      expect(apeEvent1).toEqual(expect.objectContaining(expectedEvent3));
+    } finally {
+      socket.emit('unsubscribe', `nft-event`);
+      socket.emit('unsubscribe', `nft-asset-event:${crashPunks}+${valueHex1}`);
+      socket.emit('unsubscribe', `nft-collection-event:${wastelandApes}`);
       socket.close();
     }
   });
