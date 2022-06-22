@@ -70,6 +70,15 @@ export async function startApiServer(opts: {
 }): Promise<ApiServer> {
   const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
+  // storing stacks version to send client in header
+  let stacksVersion: string | undefined = undefined;
+  try {
+    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
+    stacksVersion = `stacks-blockchain-api ${tag} (${branch}:${commit})`;
+  } catch (error) {
+    logger.error(`Unable to read git info`, error);
+  }
+
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
@@ -130,12 +139,10 @@ export async function startApiServer(opts: {
   }
   // adding stacks-api-version in header
   app.use((_, res, next) => {
-    try {
-      const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
-      res.setHeader('X-Stacks-API-Version', `stacks-blockchain-api ${tag} (${branch}:${commit})`);
-    } catch (error) {
-      logger.error(`Unable to read git info`, error);
+    if (stacksVersion) {
+      res.setHeader('X-Stacks-API-Version', stacksVersion);
     }
+    res.setHeader('Access-Control-Expose-Headers', 'X-Stacks-API-Version');
     next();
   });
   // Setup request logging
