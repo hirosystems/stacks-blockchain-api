@@ -2907,7 +2907,7 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
+      SELECT sender, recipient, asset_identifier, value, event_index, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
       FROM address_transfers
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
@@ -2924,6 +2924,7 @@ export class PgStore {
       value: row.value,
       block_height: row.block_height,
       tx_id: row.tx_id,
+      event_index: row.event_index,
     }));
 
     return { results: nftEvents, total: count };

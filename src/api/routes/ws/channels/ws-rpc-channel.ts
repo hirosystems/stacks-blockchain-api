@@ -31,6 +31,10 @@ import {
   Transaction,
   AddressTransactionWithTransfers,
   AddressStxBalanceResponse,
+  RpcNftEventSubscriptionParams,
+  RpcNftAssetEventSubscriptionParams,
+  RpcNftCollectionEventSubscriptionParams,
+  NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 
 type Subscription =
@@ -39,7 +43,10 @@ type Subscription =
   | RpcAddressBalanceSubscriptionParams
   | RpcBlockSubscriptionParams
   | RpcMicroblockSubscriptionParams
-  | RpcMempoolSubscriptionParams;
+  | RpcMempoolSubscriptionParams
+  | RpcNftEventSubscriptionParams
+  | RpcNftAssetEventSubscriptionParams
+  | RpcNftCollectionEventSubscriptionParams;
 
 class SubscriptionManager {
   /**
@@ -152,6 +159,9 @@ export class WsRpcChannel extends WebSocketChannel {
     this.subscriptions.set('transaction', new SubscriptionManager());
     this.subscriptions.set('principalTransactions', new SubscriptionManager());
     this.subscriptions.set('principalStxBalance', new SubscriptionManager());
+    this.subscriptions.set('nftEvent', new SubscriptionManager());
+    this.subscriptions.set('nftAssetEvent', new SubscriptionManager());
+    this.subscriptions.set('nftCollectionEvent', new SubscriptionManager());
 
     wsServer.on('connection', (clientSocket, req) => {
       if (req.headers['x-forwarded-for']) {
@@ -208,6 +218,16 @@ export class WsRpcChannel extends WebSocketChannel {
         const [principal] = args as ListenerType<WebSocketTopics['principalStxBalance']>;
         return manager.subscriptions.get(principal) !== undefined;
       }
+      case 'nftEvent':
+        return manager.subscriptions.get('nft_event') !== undefined;
+      case 'nftAssetEvent': {
+        const [assetIdentifier, value] = args as ListenerType<WebSocketTopics['nftAssetEvent']>;
+        return manager.subscriptions.get(`${assetIdentifier}+${value}`) !== undefined;
+      }
+      case 'nftCollectionEvent': {
+        const [assetIdentifier] = args as ListenerType<WebSocketTopics['nftCollectionEvent']>;
+        return manager.subscriptions.get(assetIdentifier) !== undefined;
+      }
     }
     return false;
   }
@@ -248,6 +268,25 @@ export class WsRpcChannel extends WebSocketChannel {
       case 'principalStxBalance': {
         const [principal, balance] = args as ListenerType<WebSocketPayload['principalStxBalance']>;
         this.processAddressBalanceUpdate(principal, balance);
+        break;
+      }
+      case 'nftEvent': {
+        const [event] = args as ListenerType<WebSocketPayload['nftEvent']>;
+        this.processNftEventUpdate(event);
+        break;
+      }
+      case 'nftAssetEvent': {
+        const [assetIdentifier, value, event] = args as ListenerType<
+          WebSocketPayload['nftAssetEvent']
+        >;
+        this.processNftAssetEventUpdate(assetIdentifier, value, event);
+        break;
+      }
+      case 'nftCollectionEvent': {
+        const [assetIdentifier, event] = args as ListenerType<
+          WebSocketPayload['nftCollectionEvent']
+        >;
+        this.processNftCollectionEventUpdate(assetIdentifier, event);
         break;
       }
     }
@@ -347,6 +386,12 @@ export class WsRpcChannel extends WebSocketChannel {
         return this.handleMicroblockUpdateSubscription(client, req, params, subscribe);
       case 'mempool':
         return this.handleMempoolUpdateSubscription(client, req, params, subscribe);
+      case 'nft_event':
+        return this.handleNftEventUpdateSubscription(client, req, params, subscribe);
+      case 'nft_asset_event':
+        return this.handleNftAssetEventUpdateSubscription(client, req, params, subscribe);
+      case 'nft_collection_event':
+        return this.handleNftCollectionEventUpdateSubscription(client, req, params, subscribe);
       default:
         return jsonRpcError(
           req.payload.id,
@@ -465,6 +510,61 @@ export class WsRpcChannel extends WebSocketChannel {
     return jsonRpcSuccess(req.payload.id, {});
   }
 
+  private handleNftEventUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcNftEventSubscriptionParams,
+    subscribe: boolean
+  ) {
+    if (subscribe) {
+      this.subscriptions.get('nftEvent')?.addSubscription(client, params.event);
+      this.prometheus?.subscribe(client, 'nft-event');
+    } else {
+      this.subscriptions.get('nftEvent')?.removeSubscription(client, params.event);
+      this.prometheus?.unsubscribe(client, 'nft-event');
+    }
+    return jsonRpcSuccess(req.payload.id, {});
+  }
+
+  private handleNftAssetEventUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcNftAssetEventSubscriptionParams,
+    subscribe: boolean
+  ) {
+    const assetIdentifier = params.asset_identifier;
+    const value = params.value;
+    if (subscribe) {
+      this.subscriptions
+        .get('nftAssetEvent')
+        ?.addSubscription(client, `${assetIdentifier}+${value}`);
+      this.prometheus?.subscribe(client, `nft-asset-event:${assetIdentifier}+${value}`);
+    } else {
+      this.subscriptions
+        .get('nftAssetEvent')
+        ?.removeSubscription(client, `${assetIdentifier}+${value}`);
+      this.prometheus?.unsubscribe(client, `nft-asset-event:${assetIdentifier}+${value}`);
+    }
+    return jsonRpcSuccess(req.payload.id, { asset_identifier: assetIdentifier, value: value });
+  }
+
+  private handleNftCollectionEventUpdateSubscription(
+    client: WebSocket,
+    req: IParsedObjectRequest,
+    params: RpcNftCollectionEventSubscriptionParams,
+    subscribe: boolean
+  ) {
+    const assetIdentifier = params.asset_identifier;
+    if (subscribe) {
+      this.subscriptions.get('nftCollectionEvent')?.addSubscription(client, assetIdentifier);
+      this.prometheus?.subscribe(client, `nft-collection-event:${assetIdentifier}`);
+    } else {
+      this.subscriptions.get('nftCollectionEvent')?.removeSubscription(client, assetIdentifier);
+      this.prometheus?.unsubscribe(client, `nft-collection-event:${assetIdentifier}`);
+    }
+    return jsonRpcSuccess(req.payload.id, { asset_identifier: assetIdentifier });
+  }
+
   private processTxUpdate(tx: Transaction | MempoolTransaction) {
     try {
       const subscribers = this.subscriptions.get('transaction')?.subscriptions.get(tx.tx_id);
@@ -559,6 +659,58 @@ export class WsRpcChannel extends WebSocketChannel {
       }
     } catch (error) {
       logError(`error sending websocket mempool updates`, error);
+    }
+  }
+
+  private processNftEventUpdate(event: NftEvent) {
+    try {
+      const subscribers = this.subscriptions.get('nftEvent')?.subscriptions.get('nft_event');
+      if (subscribers) {
+        const rpcNotificationPayload = jsonRpcNotification('nft_event', event).serialize();
+        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        this.prometheus?.sendEvent('nft-event');
+      }
+    } catch (error) {
+      logError(`error sending websocket nft-event updates`, error);
+    }
+  }
+
+  private processNftAssetEventUpdate(assetIdentifier: string, value: string, event: NftEvent) {
+    try {
+      const subscribers = this.subscriptions
+        .get('nftAssetEvent')
+        ?.subscriptions.get(`${assetIdentifier}+${value}`);
+      if (subscribers) {
+        const rpcNotificationPayload = jsonRpcNotification('nft_asset_event', event).serialize();
+        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        this.prometheus?.sendEvent('nft-event');
+      }
+    } catch (error) {
+      logError(
+        `error sending websocket nft-asset-event updates for ${assetIdentifier} ${value}`,
+        error
+      );
+    }
+  }
+
+  private processNftCollectionEventUpdate(assetIdentifier: string, event: NftEvent) {
+    try {
+      const subscribers = this.subscriptions
+        .get('nftCollectionEvent')
+        ?.subscriptions.get(assetIdentifier);
+      if (subscribers) {
+        const rpcNotificationPayload = jsonRpcNotification(
+          'nft_collection_event',
+          event
+        ).serialize();
+        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        this.prometheus?.sendEvent('nft-event');
+      }
+    } catch (error) {
+      logError(
+        `error sending websocket nft-collection-event updates for ${assetIdentifier}`,
+        error
+      );
     }
   }
 }

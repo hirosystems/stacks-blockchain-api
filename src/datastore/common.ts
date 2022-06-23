@@ -347,6 +347,7 @@ export interface AddressNftEventIdentifier {
   value: string;
   block_height: number;
   tx_id: string;
+  event_index: number;
 }
 
 export interface TokenMetadataUpdateInfo {

@@ -510,6 +510,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           },
           tx_id: row.tx_id,
           block_height: row.block_height,
+          event_index: row.event_index,
         };
         return r;
       });

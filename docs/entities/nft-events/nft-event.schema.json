@@ -6,6 +6,7 @@
     "asset_identifier",
     "value",
     "tx_id",
+    "event_index",
     "block_height"
   ],
   "properties": {
@@ -38,6 +39,9 @@
       "type": "string"
     },
     "block_height": {
+      "type": "number"
+    },
+    "event_index": {
       "type": "number"
     }
   }

@@ -8,6 +8,9 @@
     "address_balance_update",
     "block",
     "microblock",
-    "mempool"
+    "mempool",
+    "nft_event",
+    "nft_asset_event",
+    "nft_collection_event"
   ]
 }
