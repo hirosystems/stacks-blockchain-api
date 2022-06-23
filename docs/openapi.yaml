@@ -895,6 +895,7 @@ paths:
         required: true
         schema:
           type: string
+          example: SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.staking-helper
       - name: unanchored
         in: query
         description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1842,6 +1843,7 @@ paths:
           required: true
           schema:
             type: string
+            example: 0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d
           description: The hex hash string for a block or transaction, account address, or contract address
         - in: query
           name: include_metadata

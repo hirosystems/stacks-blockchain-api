@@ -1,3 +1,10 @@
+## [4.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.3...v4.0.4) (2022-06-23)
+
+
+### Bug Fixes
+
+* arm64-alpine image, bump stacks-encoding-native-js [#1217](https://github.com/hirosystems/stacks-blockchain-api/issues/1217) ([#1220](https://github.com/hirosystems/stacks-blockchain-api/issues/1220)) ([d49f007](https://github.com/hirosystems/stacks-blockchain-api/commit/d49f007b6e099cf9bc2ba0a98798e9c431af09c7))
+
 ## [4.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.2...v4.0.3) (2022-06-21)
 
 
