@@ -415,6 +415,23 @@ Subscribe via Socket.io:
 sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
 ```
 
+### NFT event updates
+
+```json
+{
+  "asset_identifier": "SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1",
+  "value": {
+    "hex": "0x0100000000000000000000000000000095",
+    "repr": "u149"
+  },
+  "tx_id": "0xfb4bfc274007825dfd2d8f6c3f429407016779e9954775f82129108282d4c4ce",
+  "sender": null,
+  "recipient": "SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR",
+  "block_height": 45231,
+  "event_index": 0,
+}
+```
+
 ## Known Issues
 
 - The TypeScript definitions for several objects involving type unions, including transactions, are incorrectly specified as only `object`.
