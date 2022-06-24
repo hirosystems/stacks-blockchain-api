@@ -20,6 +20,7 @@ import {
   logger,
 } from '../../helpers';
 import {
+  getAssetEventTypeString,
   getTxFromDataStore,
   parseDbEvent,
   parseDbMempoolTx,
@@ -38,6 +39,7 @@ import {
   AddressTransactionWithTransfers,
   AddressTransactionsWithTransfersListResponse,
   AddressNonces,
+  NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
@@ -500,7 +502,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       });
       const nft_events = response.results.map(row => {
         const parsedClarityValue = decodeClarityValueToRepr(row.value);
-        const r = {
+        const r: NftEvent = {
           sender: row.sender,
           recipient: row.recipient,
           asset_identifier: row.asset_identifier,
@@ -511,6 +513,8 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           tx_id: row.tx_id,
           block_height: row.block_height,
           event_index: row.event_index,
+          asset_event_type: getAssetEventTypeString(row.asset_event_type_id),
+          tx_index: row.tx_index,
         };
         return r;
       });

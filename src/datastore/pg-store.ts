@@ -2895,7 +2895,7 @@ export class PgStore {
     // Join against `nft_custody` materialized view only if we're looking for canonical results.
     const result = await this.sql<(AddressNftEventIdentifier & { count: number })[]>`
       WITH address_transfers AS (
-        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
+        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id, asset_event_type_id
         FROM nft_events
         WHERE canonical = true AND microblock_canonical = true
         AND recipient = ${args.stxAddress} AND block_height <= ${args.blockHeight}
@@ -2907,7 +2907,7 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, event_index, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
+      SELECT sender, recipient, asset_identifier, value, event_index, asset_event_type_id, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
       FROM address_transfers
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
@@ -2925,6 +2925,8 @@ export class PgStore {
       block_height: row.block_height,
       tx_id: row.tx_id,
       event_index: row.event_index,
+      asset_event_type_id: row.asset_event_type_id,
+      tx_index: row.tx_index,
     }));
 
     return { results: nftEvents, total: count };

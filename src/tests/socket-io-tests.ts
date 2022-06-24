@@ -345,7 +345,8 @@ describe('socket-io', () => {
     await db.update(block);
 
     const expectedEvent0 = {
-      asset_event_type_id: 2,
+      asset_event_type: 'mint',
+      tx_index: 0,
       asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
       block_height: 1,
       event_index: 0,
@@ -355,7 +356,8 @@ describe('socket-io', () => {
       value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
     };
     const expectedEvent1 = {
-      asset_event_type_id: 2,
+      asset_event_type: 'mint',
+      tx_index: 0,
       asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
       block_height: 1,
       event_index: 1,
@@ -365,7 +367,8 @@ describe('socket-io', () => {
       value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
     };
     const expectedEvent2 = {
-      asset_event_type_id: 2,
+      asset_event_type: 'mint',
+      tx_index: 0,
       asset_identifier:
         'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
       block_height: 1,
@@ -376,7 +379,8 @@ describe('socket-io', () => {
       value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
     };
     const expectedEvent3 = {
-      asset_event_type_id: 2,
+      asset_event_type: 'mint',
+      tx_index: 0,
       asset_identifier:
         'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
       block_height: 1,
@@ -395,15 +399,15 @@ describe('socket-io', () => {
     const apeEvent0 = await apeWaiters[0];
     const apeEvent1 = await apeWaiters[1];
     try {
-      expect(event0).toEqual(expect.objectContaining(expectedEvent0));
-      expect(event1).toEqual(expect.objectContaining(expectedEvent1));
-      expect(event2).toEqual(expect.objectContaining(expectedEvent2));
-      expect(event3).toEqual(expect.objectContaining(expectedEvent3));
+      expect(event0).toEqual(expectedEvent0);
+      expect(event1).toEqual(expectedEvent1);
+      expect(event2).toEqual(expectedEvent2);
+      expect(event3).toEqual(expectedEvent3);
 
-      expect(crashEvent).toEqual(expect.objectContaining(expectedEvent0));
+      expect(crashEvent).toEqual(expectedEvent0);
 
-      expect(apeEvent0).toEqual(expect.objectContaining(expectedEvent2));
-      expect(apeEvent1).toEqual(expect.objectContaining(expectedEvent3));
+      expect(apeEvent0).toEqual(expectedEvent2);
+      expect(apeEvent1).toEqual(expectedEvent3);
     } finally {
       socket.emit('unsubscribe', `nft-event`);
       socket.emit('unsubscribe', `nft-asset-event:${crashPunks}+${valueHex1}`);

@@ -1,9 +1,5 @@
 import * as http from 'http';
-import {
-  AddressStxBalanceResponse,
-  AddressTransactionWithTransfers,
-  NftEvent,
-} from 'docs/generated';
+import { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'docs/generated';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
@@ -15,7 +11,7 @@ import { PgStore } from '../../../datastore/pg-store';
 import { WebSocketChannel } from './web-socket-channel';
 import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
-import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { parseNftEvent } from '../../../datastore/helpers';
 
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal
@@ -132,13 +128,7 @@ export class WebSocketTransmitter {
     }
     const assetIdentifier = nftEvent.result.asset_identifier;
     const value = nftEvent.result.value;
-    const event: NftEvent = {
-      ...nftEvent.result,
-      value: {
-        hex: nftEvent.result.value,
-        repr: decodeClarityValueToRepr(nftEvent.result.value),
-      },
-    };
+    const event = parseNftEvent(nftEvent.result);
 
     if (this.channels.find(c => c.hasListeners('nftEvent'))) {
       this.channels.forEach(c => c.send('nftEvent', event));

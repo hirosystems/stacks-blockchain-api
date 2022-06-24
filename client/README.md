@@ -417,19 +417,48 @@ sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
 
 ### NFT event updates
 
+Sent every time an NFT event occurs. You can subscribe to all events or events scoped to a single
+collection or a single asset.
+
 ```json
 {
+  "asset_event_type": "transfer",
   "asset_identifier": "SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1",
   "value": {
     "hex": "0x0100000000000000000000000000000095",
     "repr": "u149"
   },
   "tx_id": "0xfb4bfc274007825dfd2d8f6c3f429407016779e9954775f82129108282d4c4ce",
+  "tx_index": 0,
   "sender": null,
   "recipient": "SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR",
   "block_height": 45231,
   "event_index": 0,
 }
+```
+Subscribe via WebSockets:
+```js
+client.subscribeNftEventUpdates(event => {});
+client.subscribeNftAssetEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  '0x0100000000000000000000000000000095',
+  event => {}
+);
+client.subscribeNftCollectionEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  event => {}
+);
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeNftEventUpdates();
+sc.subscribeNftAssetEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  '0x0100000000000000000000000000000095',
+);
+sc.subscribeNftCollectionEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+);
 ```
 
 ## Known Issues

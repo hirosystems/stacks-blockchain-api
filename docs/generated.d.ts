@@ -831,6 +831,7 @@ export interface NftEvent {
   sender?: string;
   recipient?: string;
   asset_identifier: string;
+  asset_event_type: string;
   /**
    * Identifier of the NFT
    */
@@ -845,6 +846,7 @@ export interface NftEvent {
     repr: string;
   };
   tx_id: string;
+  tx_index: number;
   block_height: number;
   event_index: number;
 }
