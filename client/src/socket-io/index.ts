@@ -129,19 +129,19 @@ export class StacksApiSocketClient {
   }
 
   subscribeNftAssetEvent(assetIdentifier: string, value: string) {
-    return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, true);
+    return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, true);
   }
 
   unsubscribeNftAssetEvent(assetIdentifier: string, value: string) {
-    this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, false);
+    this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, false);
   }
 
   subscribeNftCollectionEvent(assetIdentifier: string) {
-    return this.handleSubscription(`nft-collection-event:${assetIdentifier}`, true);
+    return this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, true);
   }
 
   unsubscribeNftCollectionEvent(assetIdentifier: string) {
-    this.handleSubscription(`nft-collection-event:${assetIdentifier}`, false);
+    this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, false);
   }
 
   logEvents() {
