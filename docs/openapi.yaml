@@ -1191,8 +1191,8 @@ paths:
       parameters:
         - name: principal
           in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
-          required: true
+          description: Stacks address or a Contract identifier
+          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           schema:
             type: string
         - name: unanchored
@@ -1234,14 +1234,16 @@ paths:
             type: string
         - name: unanchored
           in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
+          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks.
+          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/stx?unanchored
           required: false
           schema:
             type: boolean
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block.
+          description: returned data representing the state up until that point in time, rather than the current block. Note - Use one parameter at a time.
+          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/stx?until_block=string
           required: false
           schema:
             type: string
@@ -1268,7 +1270,8 @@ paths:
       parameters:
         - name: principal
           in: path
-          description: Stacks address or a Contract identifier (e.g. `SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info`)
+          description: Stacks address or a Contract identifier 
+          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/transactions
           required: true
           schema:
             type: string
