@@ -278,7 +278,12 @@ async function calculateETag(
       if (!status.found) {
         return ETAG_EMPTY;
       }
-      const indexBlockHash = bufferToHexPrefixString(status.result.index_block_hash);
-      return `${normalizedTxId}:${indexBlockHash}:${status.result.status}`;
+      const elements: string[] = [
+        normalizedTxId,
+        bufferToHexPrefixString(status.result.index_block_hash),
+        bufferToHexPrefixString(status.result.microblock_hash),
+        status.result.status.toString(),
+      ];
+      return elements.join(':');
   }
 }

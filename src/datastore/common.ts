@@ -611,6 +611,12 @@ export interface DbChainTip {
   microblockSequence?: number;
 }
 
+export interface DbTxGlobalStatus {
+  status: DbTxStatus;
+  index_block_hash: Buffer;
+  microblock_hash: Buffer;
+}
+
 export interface DataStore extends DataStoreEventEmitter {
   storeRawEventRequest(eventPath: string, payload: string): Promise<void>;
   getSubdomainResolver(name: { name: string }): Promise<FoundOrNot<string>>;
@@ -861,7 +867,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
-  getTxStatus(txId: string): Promise<FoundOrNot<{ status: DbTxStatus; index_block_hash: Buffer }>>;
+  getTxStatus(txId: string): Promise<FoundOrNot<DbTxGlobalStatus>>;
 
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
