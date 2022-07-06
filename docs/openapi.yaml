@@ -217,6 +217,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
       responses:
         200:
@@ -277,6 +278,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
       responses:
         200:
@@ -354,6 +356,7 @@ paths:
         required: false
         schema:
           type: boolean
+          example: true
           default: false
     get:
       summary: Get list of details for transactions
@@ -404,6 +407,7 @@ paths:
         required: false
         schema:
           type: boolean
+          example: true
           default: false
     get:
       summary: Get transaction
@@ -604,12 +608,11 @@ paths:
           type: string
     get:
       summary: Get block by hash
-      description: Retrieves block details of a specific block for a given chain height.
+      description: Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
       tags:
         - Blocks
       operationId: get_block_by_hash
       example: hash=0xbf06705d0b8c2389eb4b3a19ce72096b7158b158e2cd4ceb27d8de9db19bb3be
-      description: Use the hash from your latest block. get_block_list API gets you the latest blocks and their hash values.
       responses:
         200:
           description: Block
@@ -903,6 +906,7 @@ paths:
         required: false
         schema:
           type: boolean
+          example: true
           default: false
 
   /extended/v1/contract/by_trait:
@@ -973,6 +977,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
       responses:
         200:
@@ -1194,6 +1199,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
+          required: true
           example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           schema:
             type: string
@@ -1203,6 +1209,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
@@ -1238,15 +1245,16 @@ paths:
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks.
-          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/stx?unanchored
+          example: true
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
           description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the parameters but no both.
-          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/stx?until_block=string
+          example: 6000
           required: false
           schema:
             type: string
@@ -1274,7 +1282,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier 
-          example: https://stacks-node-api.testnet.stacks.co/extended/v1/address/SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0/transactions
+          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1284,27 +1292,28 @@ paths:
           required: false
           schema:
             type: integer
-            example: 3
+            example: 42000
         - name: offset
           in: query
           description: index of first account transaction to fetch
           required: false
           schema:
             type: integer
-            example: 3
+            example: 42000
         - name: height
           in: query
           description: Filter for transactions only at this given block height
           required: false
           schema:
             type: number
-            example: 3
+            example: 42000
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
@@ -1397,6 +1406,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
@@ -1485,10 +1495,11 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block. Use either unanchored or until_block parameters but not both.
+          description: returned data representing the state at that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
           required: false
           schema:
             type: string
@@ -1543,10 +1554,11 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Use either unanchored or until_block parameters but not both.
+          description: returned data representing the state up until that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
           required: false
           schema:
             type: string
@@ -1597,10 +1609,11 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Use either unanchored or until_block parameters but not both.
+          description: returned data representing the state up until that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
           required: false
           schema:
             type: string
@@ -2794,6 +2807,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
       responses:
         200:
@@ -2837,6 +2851,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
       responses:
         200:
@@ -2926,6 +2941,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: tx_metadata
           in: query
@@ -2994,6 +3010,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: tx_metadata
           in: query
@@ -3055,6 +3072,7 @@ paths:
           required: false
           schema:
             type: boolean
+            example: true
             default: false
         - name: tx_metadata
           in: query
