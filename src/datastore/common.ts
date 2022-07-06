@@ -13,11 +13,7 @@ import {
   TxPayloadTypeID,
   PostConditionAuthFlag,
 } from 'stacks-encoding-native-js';
-import {
-  AddressTokenOfferingLocked,
-  MempoolTransaction,
-  TransactionType,
-} from '@stacks/stacks-blockchain-api-types';
+import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
@@ -864,6 +860,8 @@ export interface DataStore extends DataStoreEventEmitter {
   insertFaucetRequest(faucetRequest: DbFaucetRequest): Promise<void>;
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
+
+  getTxStatus(txId: string): Promise<FoundOrNot<DbTxStatus>>;
 
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,

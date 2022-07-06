@@ -103,6 +103,8 @@ import {
   TransactionType,
   AddressUnlockSchedule,
   Block,
+  MempoolTransactionStatus,
+  TransactionStatus,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -4050,6 +4052,30 @@ export class PgDataStore
       const row = result.rows[0];
       const tx = this.parseTxQueryResult(row);
       return { found: true, result: tx };
+    });
+  }
+
+  async getTxStatus(txId: string): Promise<FoundOrNot<DbTxStatus>> {
+    return this.queryTx(async client => {
+      const chainResult = await client.query<{ status: number }>(
+        `SELECT status
+        FROM txs
+        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE`,
+        [hexToBuffer(txId)]
+      );
+      if (chainResult.rowCount > 0) {
+        return { found: true, result: chainResult.rows[0].status };
+      }
+      const mempoolResult = await client.query<{ status: number }>(
+        `SELECT status
+        FROM mempool_txs
+        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE`,
+        [hexToBuffer(txId)]
+      );
+      if (mempoolResult.rowCount > 0) {
+        return { found: true, result: mempoolResult.rows[0].status };
+      }
+      return { found: false } as const;
     });
   }
 
