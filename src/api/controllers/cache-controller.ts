@@ -269,8 +269,8 @@ async function calculateETag(
       return digest.result.digest;
 
     case ETagType.transaction:
-      const { txId } = req.params;
-      const normalizedTxId = normalizeHashString(txId);
+      const { tx_id } = req.params;
+      const normalizedTxId = normalizeHashString(tx_id);
       if (normalizedTxId === false) {
         return ETAG_EMPTY;
       }
@@ -278,6 +278,6 @@ async function calculateETag(
       if (!status.found) {
         return ETAG_EMPTY;
       }
-      return `${normalizedTxId}-${status.result}`;
+      return `${normalizedTxId}:${status.result}`;
   }
 }

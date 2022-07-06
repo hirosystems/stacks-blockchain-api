@@ -67,7 +67,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   const cacheHandler = getETagCacheHandler(db);
   const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
-  const txIdCacheHandler = getETagCacheHandler(db, ETagType.transaction);
+  const txCacheHandler = getETagCacheHandler(db, ETagType.transaction);
 
   router.get(
     '/',
@@ -288,7 +288,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   router.get(
     '/:tx_id',
-    txIdCacheHandler,
+    txCacheHandler,
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
@@ -317,7 +317,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   router.get(
     '/:tx_id/raw',
-    txIdCacheHandler,
+    txCacheHandler,
     asyncHandler(async (req, res) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {

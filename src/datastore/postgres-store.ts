@@ -4069,7 +4069,7 @@ export class PgDataStore
       const mempoolResult = await client.query<{ status: number }>(
         `SELECT status
         FROM mempool_txs
-        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE`,
+        WHERE tx_id = $1`,
         [hexToBuffer(txId)]
       );
       if (mempoolResult.rowCount > 0) {
