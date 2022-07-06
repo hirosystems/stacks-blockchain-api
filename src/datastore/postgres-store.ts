@@ -4055,16 +4055,24 @@ export class PgDataStore
     });
   }
 
-  async getTxStatus(txId: string): Promise<FoundOrNot<DbTxStatus>> {
+  async getTxStatus(
+    txId: string
+  ): Promise<FoundOrNot<{ status: DbTxStatus; index_block_hash: Buffer }>> {
     return this.queryTx(async client => {
-      const chainResult = await client.query<{ status: number }>(
-        `SELECT status
+      const chainResult = await client.query<{ status: number; index_block_hash: Buffer }>(
+        `SELECT status, index_block_hash
         FROM txs
         WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE`,
         [hexToBuffer(txId)]
       );
       if (chainResult.rowCount > 0) {
-        return { found: true, result: chainResult.rows[0].status };
+        return {
+          found: true,
+          result: {
+            status: chainResult.rows[0].status,
+            index_block_hash: chainResult.rows[0].index_block_hash,
+          },
+        };
       }
       const mempoolResult = await client.query<{ status: number }>(
         `SELECT status
@@ -4073,7 +4081,10 @@ export class PgDataStore
         [hexToBuffer(txId)]
       );
       if (mempoolResult.rowCount > 0) {
-        return { found: true, result: mempoolResult.rows[0].status };
+        return {
+          found: true,
+          result: { status: mempoolResult.rows[0].status, index_block_hash: Buffer.from([]) },
+        };
       }
       return { found: false } as const;
     });

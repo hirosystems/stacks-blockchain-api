@@ -861,7 +861,7 @@ export interface DataStore extends DataStoreEventEmitter {
 
   getRawTx(txId: string): Promise<FoundOrNot<RawTxQueryResult>>;
 
-  getTxStatus(txId: string): Promise<FoundOrNot<DbTxStatus>>;
+  getTxStatus(txId: string): Promise<FoundOrNot<{ status: DbTxStatus; index_block_hash: Buffer }>>;
 
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,

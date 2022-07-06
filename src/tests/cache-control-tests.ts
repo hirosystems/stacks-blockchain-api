@@ -425,7 +425,7 @@ describe('cache-control tests', () => {
     expect(request8.headers['etag']).toBeUndefined();
   });
 
-  test('adaptive cache handler', async () => {
+  test('transaction cache control', async () => {
     const txId1 = '0x0153a41ed24a0e1d32f66ea98338df09f942571ca66359e28bdca79ccd0305cf';
     const txId2 = '0xfb4bfc274007825dfd2d8f6c3f429407016779e9954775f82129108282d4c4ce';
 
@@ -554,6 +554,25 @@ describe('cache-control tests', () => {
       .set('If-None-Match', etag4);
     expect(request10.status).toBe(304);
     expect(request10.text).toBe('');
+
+    // Mine tx in a new block
+    const block5 = new TestBlockBuilder({
+      block_height: 5,
+      index_block_hash: '0x05',
+      parent_index_block_hash: '0x04',
+    })
+      .addTx({ tx_id: txId1 })
+      .build();
+    await db.update(block5);
+
+    // Make sure old cache for confirmed tx doesn't work, because the index_block_hash has changed.
+    const request11 = await supertest(api.server)
+      .get(`/extended/v1/tx/${txId1}`)
+      .set('If-None-Match', etag2);
+    expect(request11.status).toBe(200);
+    expect(request11.headers['etag']).toBeTruthy();
+    const etag5 = request11.headers['etag'];
+    expect(etag2).not.toBe(etag5);
   });
 
   afterEach(async () => {

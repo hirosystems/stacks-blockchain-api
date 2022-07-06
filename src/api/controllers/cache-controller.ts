@@ -1,6 +1,6 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { logger, normalizeHashString } from '../../helpers';
+import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
 import { DataStore } from '../../datastore/common';
 import { asyncHandler } from '../async-handler';
 
@@ -278,6 +278,7 @@ async function calculateETag(
       if (!status.found) {
         return ETAG_EMPTY;
       }
-      return `${normalizedTxId}:${status.result}`;
+      const indexBlockHash = bufferToHexPrefixString(status.result.index_block_hash);
+      return `${normalizedTxId}:${indexBlockHash}:${status.result.status}`;
   }
 }
