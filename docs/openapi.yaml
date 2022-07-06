@@ -603,6 +603,7 @@ paths:
       - name: hash
         in: path
         description: Hash of the block
+        example: hash=0xbf06705d0b8c2389eb4b3a19ce72096b7158b158e2cd4ceb27d8de9db19bb3be
         required: true
         schema:
           type: string
@@ -612,7 +613,6 @@ paths:
       tags:
         - Blocks
       operationId: get_block_by_hash
-      example: hash=0xbf06705d0b8c2389eb4b3a19ce72096b7158b158e2cd4ceb27d8de9db19bb3be
       responses:
         200:
           description: Block
