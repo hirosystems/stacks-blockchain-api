@@ -603,7 +603,7 @@ paths:
       - name: hash
         in: path
         description: Hash of the block
-        example: hash=0xbf06705d0b8c2389eb4b3a19ce72096b7158b158e2cd4ceb27d8de9db19bb3be
+        example: 0xbf06705d0b8c2389eb4b3a19ce72096b7158b158e2cd4ceb27d8de9db19bb3be
         required: true
         schema:
           type: string
@@ -1200,7 +1200,7 @@ paths:
           in: path
           description: Stacks address or a Contract identifier
           required: true
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           schema:
             type: string
         - name: unanchored
@@ -1238,7 +1238,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier.
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1282,7 +1282,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier 
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1381,7 +1381,7 @@ paths:
           required: true
           schema:
             type: string
-            example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+            example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -1438,7 +1438,7 @@ paths:
           required: true
           schema:
             type: string
-            example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+            example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
         - name: block_height
           in: query
           description: Optionally get the nonce at a given block height.
@@ -1473,7 +1473,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1526,7 +1526,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1587,7 +1587,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
@@ -1643,7 +1643,7 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
-          example: principal=SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
+          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
