@@ -4061,7 +4061,8 @@ export class PgDataStore
       const chainResult = await client.query<DbTxGlobalStatus>(
         `SELECT status, index_block_hash, microblock_hash
         FROM txs
-        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE`,
+        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE
+        LIMIT 1`,
         [hexToBuffer(txId)]
       );
       if (chainResult.rowCount > 0) {
@@ -4077,7 +4078,8 @@ export class PgDataStore
       const mempoolResult = await client.query<{ status: number }>(
         `SELECT status
         FROM mempool_txs
-        WHERE tx_id = $1`,
+        WHERE tx_id = $1
+        LIMIT 1`,
         [hexToBuffer(txId)]
       );
       if (mempoolResult.rowCount > 0) {
