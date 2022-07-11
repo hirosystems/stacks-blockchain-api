@@ -30,6 +30,7 @@ import {
   CoreNodeTxStatus,
 } from '../event-stream/core-node-message';
 import {
+  decodeClarityValueToRepr,
   DecodedTxResult,
   PostConditionAuthFlag,
   PrincipalTypeID,
@@ -38,6 +39,8 @@ import {
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import { PgSqlClient } from './connection';
+import { NftEvent } from 'docs/generated';
+import { getAssetEventTypeString } from '../api/controllers/db-controller';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -617,6 +620,24 @@ export function parseTxsWithAssetTransfers(
     }
   }
   return txs;
+}
+
+export function parseNftEvent(dbEvent: DbNftEvent): NftEvent {
+  const event: NftEvent = {
+    asset_identifier: dbEvent.asset_identifier,
+    asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
+    value: {
+      hex: dbEvent.value,
+      repr: decodeClarityValueToRepr(dbEvent.value),
+    },
+    tx_id: dbEvent.tx_id,
+    tx_index: dbEvent.tx_index,
+    block_height: dbEvent.block_height,
+    event_index: dbEvent.event_index,
+    sender: dbEvent.sender,
+    recipient: dbEvent.recipient,
+  };
+  return event;
 }
 
 /**

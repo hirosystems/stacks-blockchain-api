@@ -5,6 +5,7 @@ import {
   Block,
   MempoolTransaction,
   Microblock,
+  NftEvent,
   Transaction,
 } from 'docs/generated';
 import { WebSocketPrometheus } from './web-socket-prometheus';
@@ -20,6 +21,9 @@ export type WebSocketTopics = {
   transaction: (txId: string) => void;
   principalTransactions: (principal: string) => void;
   principalStxBalance: (principal: string) => void;
+  nftEvent: () => void;
+  nftAssetEvent: (assetIdentifier: string, value: string) => void;
+  nftCollectionEvent: (assetIdentifier: string) => void;
 };
 
 /**
@@ -34,6 +38,9 @@ export type WebSocketPayload = {
   transaction: (transaction: Transaction | MempoolTransaction) => void;
   principalTransaction: (principal: string, transaction: AddressTransactionWithTransfers) => void;
   principalStxBalance: (principal: string, stxBalance: AddressStxBalanceResponse) => void;
+  nftEvent: (event: NftEvent) => void;
+  nftAssetEvent: (assetIdentifier: string, value: string, event: NftEvent) => void;
+  nftCollectionEvent: (assetIdentifier: string, event: NftEvent) => void;
 };
 
 /**

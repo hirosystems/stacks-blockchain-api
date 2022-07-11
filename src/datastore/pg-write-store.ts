@@ -405,6 +405,12 @@ export class PgWriteStore extends PgStore {
         await this.notifier?.sendTx({ txId: txId });
       }
       await this.emitAddressTxUpdates(data.txs);
+      for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
+        await this.notifier.sendNftEvent({
+          txId: nftEvent.tx_id,
+          eventIndex: nftEvent.event_index,
+        });
+      }
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
       }
@@ -1804,6 +1810,9 @@ export class PgWriteStore extends PgStore {
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
+    for (const txId of deletedTxs) {
+      await this.notifier?.sendTx({ txId: txId });
+    }
     return { deletedTxs: deletedTxs };
   }
 

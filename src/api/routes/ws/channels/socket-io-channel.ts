@@ -127,6 +127,16 @@ export class SocketIOChannel extends WebSocketChannel {
         return this.adapter.rooms.has('microblock');
       case 'mempool':
         return this.adapter.rooms.has('mempool');
+      case 'nftEvent':
+        return this.adapter.rooms.has('nft-event');
+      case 'nftAssetEvent': {
+        const [assetIdentifier, value] = args as ListenerType<WebSocketTopics['nftAssetEvent']>;
+        return this.adapter.rooms.has(`nft-asset-event:${assetIdentifier}+${value}`);
+      }
+      case 'nftCollectionEvent': {
+        const [assetIdentifier] = args as ListenerType<WebSocketTopics['nftCollectionEvent']>;
+        return this.adapter.rooms.has(`nft-collection-event:${assetIdentifier}`);
+      }
       case 'transaction': {
         const [txId] = args as ListenerType<WebSocketTopics['transaction']>;
         return this.adapter.rooms.has(`transaction:${txId}`);
@@ -175,6 +185,28 @@ export class SocketIOChannel extends WebSocketChannel {
         this.io.to(`transaction:${tx.tx_id}`).emit('transaction', tx);
         break;
       }
+      case 'nftEvent': {
+        const [event] = args as ListenerType<WebSocketPayload['nftEvent']>;
+        this.prometheus?.sendEvent('nft-event');
+        this.io.to('nft-event').emit('nft-event', event);
+        break;
+      }
+      case 'nftAssetEvent': {
+        const [assetIdentifier, value, event] = args as ListenerType<
+          WebSocketPayload['nftAssetEvent']
+        >;
+        this.prometheus?.sendEvent('nft-asset-event');
+        this.io.to('nft-event').emit('nft-asset-event', assetIdentifier, value, event);
+        break;
+      }
+      case 'nftCollectionEvent': {
+        const [assetIdentifier, event] = args as ListenerType<
+          WebSocketPayload['nftCollectionEvent']
+        >;
+        this.prometheus?.sendEvent('nft-collection-event');
+        this.io.to('nft-event').emit('nft-collection-event', assetIdentifier, event);
+        break;
+      }
       case 'principalTransaction': {
         const [principal, tx] = args as ListenerType<WebSocketPayload['principalTransaction']>;
         const topic: AddressTransactionTopic = `address-transaction:${principal}`;
@@ -205,6 +237,16 @@ export class SocketIOChannel extends WebSocketChannel {
             return isValidPrincipal(value) ? undefined : sub;
           case 'transaction':
             return isValidTxId(value) ? undefined : sub;
+          case 'nft-asset-event': {
+            const [assetIdentifier, token] = sub.substring(16).split('+');
+            const [contractId, tokenClass] = assetIdentifier.split('::');
+            return token && tokenClass && isValidPrincipal(contractId) != false ? undefined : sub;
+          }
+          case 'nft-collection-event': {
+            const assetIdentifier = sub.substring(21);
+            const [contractId, tokenClass] = assetIdentifier.split('::');
+            return tokenClass && isValidPrincipal(contractId) != false ? undefined : sub;
+          }
           default:
             return sub;
         }
@@ -213,6 +255,7 @@ export class SocketIOChannel extends WebSocketChannel {
         case 'block':
         case 'mempool':
         case 'microblock':
+        case 'nft-event':
           return undefined;
         default:
           return sub;

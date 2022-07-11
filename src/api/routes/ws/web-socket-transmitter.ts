@@ -11,6 +11,7 @@ import { PgStore } from '../../../datastore/pg-store';
 import { WebSocketChannel } from './web-socket-channel';
 import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
+import { parseNftEvent } from '../../../datastore/helpers';
 
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal
@@ -31,6 +32,9 @@ export class WebSocketTransmitter {
     this.db.eventEmitter.addListener('blockUpdate', blockHash => this.blockUpdate(blockHash));
     this.db.eventEmitter.addListener('microblockUpdate', microblockHash =>
       this.microblockUpdate(microblockHash)
+    );
+    this.db.eventEmitter.addListener('nftEventUpdate', (txId, eventIndex) =>
+      this.nftEventUpdate(txId, eventIndex)
     );
     this.db.eventEmitter.addListener('txUpdate', txId => this.txUpdate(txId));
     this.db.eventEmitter.addListener('addressUpdate', (address, blockHeight) =>
@@ -114,6 +118,26 @@ export class WebSocketTransmitter {
           this.channels.forEach(c => c.send('transaction', mempoolTxs[0]));
         }
       }
+    }
+  }
+
+  private async nftEventUpdate(txId: string, eventIndex: number) {
+    const nftEvent = await this.db.getNftEvent({ txId, eventIndex });
+    if (!nftEvent.found) {
+      return;
+    }
+    const assetIdentifier = nftEvent.result.asset_identifier;
+    const value = nftEvent.result.value;
+    const event = parseNftEvent(nftEvent.result);
+
+    if (this.channels.find(c => c.hasListeners('nftEvent'))) {
+      this.channels.forEach(c => c.send('nftEvent', event));
+    }
+    if (this.channels.find(c => c.hasListeners('nftAssetEvent', assetIdentifier, value))) {
+      this.channels.forEach(c => c.send('nftAssetEvent', assetIdentifier, value, event));
+    }
+    if (this.channels.find(c => c.hasListeners('nftCollectionEvent', assetIdentifier))) {
+      this.channels.forEach(c => c.send('nftCollectionEvent', assetIdentifier, event));
     }
   }
 

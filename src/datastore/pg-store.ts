@@ -92,6 +92,7 @@ import {
   PgBlockNotificationPayload,
   PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
+  PgNftEventNotificationPayload,
   PgNotifier,
   PgTokenMetadataNotificationPayload,
   PgTokensNotificationPayload,
@@ -178,6 +179,10 @@ export class PgStore {
         case 'tokenMetadataUpdateQueued':
           const metadata = notification.payload as PgTokenMetadataNotificationPayload;
           this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
+          break;
+        case 'nftEventUpdate':
+          const nftEvent = notification.payload as PgNftEventNotificationPayload;
+          this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
           break;
       }
     });
@@ -2859,6 +2864,24 @@ export class PgStore {
     };
   }
 
+  async getNftEvent(args: { txId: string; eventIndex: number }): Promise<FoundOrNot<DbNftEvent>> {
+    const result = await this.sql<DbNftEvent[]>`
+      SELECT
+        event_index, tx_id, tx_index, block_height, index_block_hash, parent_index_block_hash,
+        microblock_hash, microblock_sequence, microblock_canonical, canonical, asset_event_type_id,
+        asset_identifier, value, sender, recipient
+      FROM nft_events
+      WHERE canonical = TRUE
+        AND microblock_canonical = TRUE
+        AND tx_id = ${args.txId}
+        AND event_index = ${args.eventIndex}
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    return { found: true, result: result[0] } as const;
+  }
+
   /**
    * @deprecated Use `getNftHoldings` instead.
    */
@@ -2872,7 +2895,7 @@ export class PgStore {
     // Join against `nft_custody` materialized view only if we're looking for canonical results.
     const result = await this.sql<(AddressNftEventIdentifier & { count: number })[]>`
       WITH address_transfers AS (
-        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
+        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id, asset_event_type_id
         FROM nft_events
         WHERE canonical = true AND microblock_canonical = true
         AND recipient = ${args.stxAddress} AND block_height <= ${args.blockHeight}
@@ -2884,7 +2907,7 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
+      SELECT sender, recipient, asset_identifier, value, event_index, asset_event_type_id, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
       FROM address_transfers
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
@@ -2901,6 +2924,9 @@ export class PgStore {
       value: row.value,
       block_height: row.block_height,
       tx_id: row.tx_id,
+      event_index: row.event_index,
+      asset_event_type_id: row.asset_event_type_id,
+      tx_index: row.tx_index,
     }));
 
     return { results: nftEvents, total: count };

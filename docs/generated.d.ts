@@ -229,6 +229,13 @@ export type SchemaMergeRootStub =
   | RpcMicroblockNotificationResponse
   | RpcMicroblockSubscriptionParams
   | RpcMicroblockSubscriptionRequest
+  | RpcNftAssetEventSubscriptionParams
+  | RpcNftAssetEventSubscriptionRequest
+  | RpcNftCollectionEventSubscriptionParams
+  | RpcNftCollectionEventSubscriptionRequest
+  | RpcNftEventNotificationResponse
+  | RpcNftEventSubscriptionParams
+  | RpcNftEventSubscriptionRequest
   | RpcSubscriptionType
   | RpcTxUpdateNotificationResponse
   | RpcTxUpdateSubscriptionParams
@@ -715,7 +722,10 @@ export type RpcSubscriptionType =
   | "address_balance_update"
   | "block"
   | "microblock"
-  | "mempool";
+  | "mempool"
+  | "nft_event"
+  | "nft_asset_event"
+  | "nft_collection_event";
 
 /**
  * GET request that returns address assets
@@ -818,9 +828,10 @@ export interface AddressNftListResponse {
   nft_events: NftEvent[];
 }
 export interface NftEvent {
-  sender: string;
-  recipient: string;
+  sender?: string;
+  recipient?: string;
   asset_identifier: string;
+  asset_event_type: string;
   /**
    * Identifier of the NFT
    */
@@ -835,7 +846,9 @@ export interface NftEvent {
     repr: string;
   };
   tx_id: string;
+  tx_index: number;
   block_height: number;
+  event_index: number;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -1353,6 +1366,7 @@ export interface ContractListResponse {
 export interface SmartContract {
   tx_id: string;
   canonical: boolean;
+  contract_id: string;
   block_height: number;
   source_code: string;
   abi: string;
@@ -3310,6 +3324,41 @@ export interface RpcMicroblockSubscriptionRequest {
   id: number | string;
   method: "microblock";
   params: RpcMicroblockSubscriptionParams;
+}
+export interface RpcNftAssetEventSubscriptionParams {
+  event: "nft_asset_event";
+  asset_identifier: string;
+  value: string;
+}
+export interface RpcNftAssetEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_asset_event";
+  params: RpcNftAssetEventSubscriptionParams;
+}
+export interface RpcNftCollectionEventSubscriptionParams {
+  event: "nft_collection_event";
+  asset_identifier: string;
+}
+export interface RpcNftCollectionEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_collection_event";
+  params: RpcNftCollectionEventSubscriptionParams;
+}
+export interface RpcNftEventNotificationResponse {
+  jsonrpc: "2.0";
+  method: "block";
+  params: NftEvent;
+}
+export interface RpcNftEventSubscriptionParams {
+  event: "nft_event";
+}
+export interface RpcNftEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_event";
+  params: RpcNftEventSubscriptionParams;
 }
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";
