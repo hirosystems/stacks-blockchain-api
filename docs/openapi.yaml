@@ -1266,7 +1266,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the parameters but no both.
+          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
           required: false
           example: 60000
           schema:
@@ -1330,7 +1330,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Use either of unachored or until_block parameters.
+          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
           required: false
           example: 60000
           schema:
@@ -1517,7 +1517,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state at that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
+          description: returned data representing the state at that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
           required: false
           example: 60000
           schema:
@@ -1578,7 +1578,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
+          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
           required: false
           example: 60000
           schema:
@@ -1635,7 +1635,7 @@ paths:
             default: false
         - name: until_block
           in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Use either 'unanchored' or 'until_block' parameters but not both.
+          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
           required: false
           example: 60000
           schema:
@@ -2429,14 +2429,14 @@ paths:
       parameters:
         - name: tld
           in: path
-          description: the namespace to fetch names from
+          description: the namespace to fetch names from.
           required: true
           example: id
           schema:
             type: string
         - name: page
           in: query
-          description: namespace values are defaulted to page 1 with 100 results. You can return specific page results by entering a specific page number.
+          description: namespace values are defaulted to page 1 with 100 results. You can query specific page results by using the 'page' query parameter.
           required: false
           example: 22
           schema:
@@ -2477,7 +2477,7 @@ paths:
       parameters:
         - name: page
           in: query
-          description: names are defaulted to page 1 with 100 results. You can return specific page results by entering a page number.
+          description: names are defaulted to page 1 with 100 results. You can query specific page results by using the 'page' query parameter.
           required: false
           example: 22
           schema:
