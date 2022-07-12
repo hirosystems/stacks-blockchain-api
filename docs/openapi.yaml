@@ -131,6 +131,8 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Faucet call failed
+        429:
+          description: Too many requests
   /extended/v1/faucets/btc:
     parameters:
       - name: address
@@ -174,6 +176,8 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Faucet call failed
+        429:
+          description: Too many requests
 
   /extended/v1/tx:
     get:
@@ -660,6 +664,7 @@ paths:
         required: true
         schema:
           type: string
+          example: 0x00000000000000000002bba732926cf68b6eda3e2cdbc2a85af79f10efeeeb10
     get:
       summary: Get block by burnchain block hash
       description: Retrieves block details of a specific block for a given burnchain block hash
@@ -690,6 +695,7 @@ paths:
         required: true
         schema:
           type: number
+          example: 744603
     get:
       summary: Get block by burnchain height
       description: Retrieves block details of a specific block for a given burn chain height
@@ -1721,8 +1727,8 @@ paths:
           required: true
           schema:
             type: string
-            enum: [testnet, mainnet]
-          description: Which network to retrieve the target block time of
+            example: testnet
+          description: the target block time for a given network (testnet, mainnet).
       responses:
         200:
           description: Success
@@ -1746,7 +1752,8 @@ paths:
           required: false
           schema:
             type: number
-          description: The block height at which to query supply details from, if not provided then the latest block height is used
+            example: 200
+          description: Supply details are queried from specified block height. If the block height is not specified, the latest block height is taken as default value.
       responses:
         200:
           description: Success
@@ -1802,7 +1809,8 @@ paths:
           required: false
           schema:
             type: number
-          description: The block height at which to query supply details from, if not provided then the latest block height is used
+            example: 200
+          description: Supply details are queried from specified block height. If the block height is not specified, the latest block height is taken as default value.
       responses:
         200:
           description: Success
@@ -2843,16 +2851,18 @@ paths:
       parameters:
         - name: limit
           in: query
-          description: max number of tokens to fetch
+          description: max number of tokens to fetch. limit must be equal to or less than 200.
           required: false
           schema:
             type: integer
+            example: 200
         - name: offset
           in: query
           description: index of first tokens to fetch
           required: false
           schema:
             type: integer
+            example: 500
       responses:
         200:
           description: List of fungible tokens metadata
@@ -3131,6 +3141,7 @@ paths:
           required: true
           schema:
             type: string
+            example: SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2
       responses:
         200:
           description: Fungible tokens metadata for contract id
@@ -3147,7 +3158,7 @@ paths:
       summary: Fetch fee rate
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for the given transaction](#operation/post_fee_transaction).
+        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](#operation/post_fee_transaction).
 
         Retrieves estimated fee rate.
       tags:
@@ -3172,7 +3183,7 @@ paths:
 
   /v2/fees/transaction:
     post:
-      summary: Get approximate fees for the given transaction
+      summary: Get approximate fees for a given transaction
       tags:
         - Fees
       description: |
