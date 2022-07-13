@@ -131,8 +131,6 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Faucet call failed
-        429:
-          description: Too many requests
   /extended/v1/faucets/btc:
     parameters:
       - name: address
@@ -176,8 +174,6 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Faucet call failed
-        429:
-          description: Too many requests
 
   /extended/v1/tx:
     get:
@@ -1727,7 +1723,7 @@ paths:
           required: true
           schema:
             type: string
-            example: testnet
+            example: mainnet
           description: the target block time for a given network (testnet, mainnet).
       responses:
         200:
