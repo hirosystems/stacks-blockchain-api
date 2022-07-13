@@ -97,12 +97,15 @@ import {
   NftHoldingInfoWithTxMetadata,
   NftEventWithTxMetadata,
   DbAssetEventTypeId,
+  DbTxGlobalStatus,
 } from './common';
 import {
   AddressTokenOfferingLocked,
   TransactionType,
   AddressUnlockSchedule,
   Block,
+  MempoolTransactionStatus,
+  TransactionStatus,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -4050,6 +4053,46 @@ export class PgDataStore
       const row = result.rows[0];
       const tx = this.parseTxQueryResult(row);
       return { found: true, result: tx };
+    });
+  }
+
+  async getTxStatus(txId: string): Promise<FoundOrNot<DbTxGlobalStatus>> {
+    return this.queryTx(async client => {
+      const chainResult = await client.query<DbTxGlobalStatus>(
+        `SELECT status, index_block_hash, microblock_hash
+        FROM txs
+        WHERE tx_id = $1 AND canonical = TRUE AND microblock_canonical = TRUE
+        LIMIT 1`,
+        [hexToBuffer(txId)]
+      );
+      if (chainResult.rowCount > 0) {
+        return {
+          found: true,
+          result: {
+            status: chainResult.rows[0].status,
+            index_block_hash: chainResult.rows[0].index_block_hash,
+            microblock_hash: chainResult.rows[0].microblock_hash,
+          },
+        };
+      }
+      const mempoolResult = await client.query<{ status: number }>(
+        `SELECT status
+        FROM mempool_txs
+        WHERE tx_id = $1
+        LIMIT 1`,
+        [hexToBuffer(txId)]
+      );
+      if (mempoolResult.rowCount > 0) {
+        return {
+          found: true,
+          result: {
+            status: mempoolResult.rows[0].status,
+            index_block_hash: Buffer.from([]),
+            microblock_hash: Buffer.from([]),
+          },
+        };
+      }
+      return { found: false } as const;
     });
   }
 
