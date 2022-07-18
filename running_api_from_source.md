@@ -43,7 +43,7 @@ $ cd /stacks-node
 ## Install Requirements
 
 ```bash
-$ PG_VERSION=12 \
+$ PG_VERSION=14 \
   && NODE_VERSION=16 \
   && sudo apt-get update \
   && sudo apt-get install -y \
@@ -99,7 +99,7 @@ create database stacks_db;
 grant all on database stacks_db to stacks;
 EOF
 $ sudo su - postgres -c "psql -f /tmp/file.sql" && rm -f /tmp/file.sql
-$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/12/main/pg_hba.conf
+$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
 $ sudo systemctl restart postgresql
 ```
 
