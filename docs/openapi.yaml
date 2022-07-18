@@ -1774,6 +1774,7 @@ paths:
           required: true
           schema:
             type: string
+            enum: [testnet, mainnet]
             example: mainnet
           description: the target block time for a given network (testnet, mainnet).
       responses:
