@@ -2904,11 +2904,12 @@ paths:
       parameters:
         - name: limit
           in: query
-          description: max number of tokens to fetch. limit must be equal to or less than 200.
+          description: max number of tokens to fetch.
           required: false
           schema:
             type: integer
-            example: 200
+            example: 100
+            maximum: 200
         - name: offset
           in: query
           description: index of first tokens to fetch
