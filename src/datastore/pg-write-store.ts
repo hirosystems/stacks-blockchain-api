@@ -392,6 +392,11 @@ export class PgWriteStore extends PgStore {
           tokenMetadataQueueEntries.push(queueEntry);
         }
       }
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
@@ -643,6 +648,11 @@ export class PgWriteStore extends PgStore {
 
       await this.refreshNftCustody(sql, txs, true);
       await this.refreshMaterializedView(sql, 'chain_tip');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
 
       if (this.notifier) {
         for (const microblock of dbMicroblocks) {
@@ -1210,6 +1220,11 @@ export class PgWriteStore extends PgStore {
         }
       }
       await this.refreshMaterializedView(sql, 'mempool_digest');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });

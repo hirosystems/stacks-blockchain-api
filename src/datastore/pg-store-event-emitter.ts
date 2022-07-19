@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
+import { DbMempoolStats } from './common';
 
 type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
@@ -12,6 +13,7 @@ type DataStoreEventEmitter = StrictEventEmitter<
     nameUpdate: (info: string) => void;
     tokensUpdate: (contractID: string) => void;
     tokenMetadataUpdateQueued: (queueId: number) => void;
+    mempoolStatsUpdate: (mempoolStats: DbMempoolStats) => void;
   }
 >;
 

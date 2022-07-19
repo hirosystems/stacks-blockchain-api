@@ -37,6 +37,7 @@ import {
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
   DbInboundStxTransfer,
+  DbMempoolStats,
   DbMempoolTx,
   DbMicroblock,
   DbMinerReward,
@@ -1056,7 +1057,7 @@ export class PgStore {
     });
   }
 
-  async getMempoolStats({ lastBlockCount }: { lastBlockCount?: number }) {
+  async getMempoolStats({ lastBlockCount }: { lastBlockCount?: number }): Promise<DbMempoolStats> {
     return await this.sql.begin(async sql => {
       return await this.getMempoolStatsInternal({ sql, lastBlockCount });
     });
@@ -1068,7 +1069,7 @@ export class PgStore {
   }: {
     sql: PgSqlClient;
     lastBlockCount?: number;
-  }) {
+  }): Promise<DbMempoolStats> {
     let blockHeightCondition = sql``;
     const chainTipHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: true });
     if (lastBlockCount) {

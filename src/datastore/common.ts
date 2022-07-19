@@ -184,6 +184,28 @@ export interface DbTx extends BaseTx {
   execution_cost_write_length: number;
 }
 
+export interface DbMempoolStats {
+  txTypeCounts: Record<string, number>;
+  txSimpleFeeAverages: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+  txAges: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+}
+
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
   raw_tx: string;
