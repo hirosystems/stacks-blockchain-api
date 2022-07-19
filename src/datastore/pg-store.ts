@@ -4,7 +4,7 @@ import {
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
   FoundOrNot,
@@ -1054,6 +1054,130 @@ export class PgStore {
       const mempoolTxs = resultQuery.map(r => parseMempoolTxQueryResult(r));
       return { results: mempoolTxs, total: count };
     });
+  }
+
+  async getMempoolStats({ lastBlockCount }: { lastBlockCount?: number }) {
+    return await this.sql.begin(async sql => {
+      return await this.getMempoolStatsInternal({ sql, lastBlockCount });
+    });
+  }
+
+  async getMempoolStatsInternal({
+    sql,
+    lastBlockCount,
+  }: {
+    sql: PgSqlClient;
+    lastBlockCount?: number;
+  }) {
+    let blockHeightCondition = sql``;
+    const chainTipHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: true });
+    if (lastBlockCount) {
+      const maxBlockHeight = chainTipHeight - lastBlockCount;
+      blockHeightCondition = sql` AND receipt_block_height >= ${maxBlockHeight} `;
+    }
+
+    const txTypes = [
+      DbTxTypeId.TokenTransfer,
+      DbTxTypeId.SmartContract,
+      DbTxTypeId.ContractCall,
+      DbTxTypeId.PoisonMicroblock,
+      DbTxTypeId.Coinbase,
+    ];
+
+    const txTypeCountsQuery = await sql<{ type_id: DbTxTypeId; count: number }[]>`
+      SELECT
+        type_id,
+        count(*)::integer count
+      FROM mempool_txs
+      WHERE pruned = false
+      ${blockHeightCondition}
+      GROUP BY type_id
+    `;
+    const txTypeCounts: Record<string, number> = {};
+    for (const typeId of txTypes) {
+      const count = txTypeCountsQuery.find(r => r.type_id === typeId)?.count ?? 0;
+      txTypeCounts[getTxTypeString(typeId)] = count;
+    }
+
+    const txFeesQuery = await sql<
+      { type_id: DbTxTypeId; p25: number; p50: number; p75: number; p95: number }[]
+    >`
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by fee_rate asc) as p25,
+        percentile_cont(0.50) within group (order by fee_rate asc) as p50,
+        percentile_cont(0.75) within group (order by fee_rate asc) as p75,
+        percentile_cont(0.95) within group (order by fee_rate asc) as p95
+      FROM mempool_txs
+      WHERE pruned = false
+      ${blockHeightCondition}
+      GROUP BY type_id
+    `;
+    const txFees: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txFeesQuery.find(r => r.type_id === typeId);
+      txFees[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
+    const txAgesQuery = await sql<
+      {
+        type_id: DbTxTypeId;
+        p25: number;
+        p50: number;
+        p75: number;
+        p95: number;
+      }[]
+    >`
+      WITH mempool_unpruned AS (
+        SELECT
+          type_id,
+          receipt_block_height
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      ),
+      mempool_ages AS (
+        SELECT
+          type_id,
+          (SELECT block_height FROM chain_tip) - receipt_block_height as age
+        FROM mempool_unpruned
+      )
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by age desc) as p25,
+        percentile_cont(0.50) within group (order by age desc) as p50,
+        percentile_cont(0.75) within group (order by age desc) as p75,
+        percentile_cont(0.95) within group (order by age desc) as p95
+      FROM mempool_ages
+      GROUP BY type_id
+    `;
+    const txAges: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txAgesQuery.find(r => r.type_id === typeId);
+      txAges[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
+    return {
+      txTypeCounts: txTypeCounts,
+      txSimpleFeeAverages: txFees,
+      txAges: txAges,
+    };
   }
 
   async getMempoolTxList({
