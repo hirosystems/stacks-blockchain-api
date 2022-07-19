@@ -1962,6 +1962,7 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-network-options-response.schema.json
+                example: mainnet
         400:
           description: Error
           content:
@@ -1991,6 +1992,7 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-network-status-response.schema.json
+                example: mainnet
         400:
           description: Error
           content:
@@ -2008,10 +2010,10 @@ paths:
     post:
       tags:
         - Rosetta
-      summary: Get an Account Balance
+      summary: Get Account Balance
       operationId: rosetta_account_balance
       description: |
-        An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint.
+        AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint.
         If the block_identifier is populated, a historical balance query should be performed.
       responses:
         200:

@@ -3,6 +3,7 @@
   "title": "NetworkIdentifier",
   "description": "The network_identifier specifies which network a particular object is associated with.",
   "required": ["blockchain", "network"],
+  "examples": ["mainnet"],
   "additionalProperties": false,
   "properties": {
     "blockchain": {
