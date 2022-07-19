@@ -1081,7 +1081,6 @@ export class PgStore {
       DbTxTypeId.SmartContract,
       DbTxTypeId.ContractCall,
       DbTxTypeId.PoisonMicroblock,
-      DbTxTypeId.Coinbase,
     ];
 
     const txTypeCountsQuery = await sql<{ type_id: DbTxTypeId; count: number }[]>`
