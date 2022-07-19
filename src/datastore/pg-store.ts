@@ -1173,10 +1173,51 @@ export class PgStore {
       };
     }
 
+    const txSizesQuery = await sql<
+      {
+        type_id: DbTxTypeId;
+        p25: number;
+        p50: number;
+        p75: number;
+        p95: number;
+      }[]
+    >`
+      WITH mempool_unpruned AS (
+        SELECT
+          type_id,
+          length(raw_tx) as tx_size
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      )
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by tx_size asc) as p25,
+        percentile_cont(0.50) within group (order by tx_size asc) as p50,
+        percentile_cont(0.75) within group (order by tx_size asc) as p75,
+        percentile_cont(0.95) within group (order by tx_size asc) as p95
+      FROM mempool_unpruned
+      GROUP BY type_id
+    `;
+    const txSizes: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txSizesQuery.find(r => r.type_id === typeId);
+      txSizes[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
     return {
-      txTypeCounts: txTypeCounts,
-      txSimpleFeeAverages: txFees,
-      txAges: txAges,
+      tx_type_counts: txTypeCounts,
+      tx_simple_fee_averages: txFees,
+      tx_ages: txAges,
+      tx_byte_sizes: txSizes,
     };
   }
 

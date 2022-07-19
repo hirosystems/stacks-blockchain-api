@@ -122,21 +122,32 @@ function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
     help: 'Average age (by block) of txs in the mempool, by tx type',
     labelNames: ['type', 'percentile'] as const,
   });
+  const mempoolTxSizeGauge = new prom.Gauge({
+    name: `mempool_tx_byte_size`,
+    help: 'Average byte size of txs in the mempool, by tx type',
+    labelNames: ['type', 'percentile'] as const,
+  });
   const updatePromMempoolStats = (mempoolStats: DbMempoolStats) => {
-    for (const txType in mempoolStats.txTypeCounts) {
-      const entry = mempoolStats.txTypeCounts[txType];
+    for (const txType in mempoolStats.tx_type_counts) {
+      const entry = mempoolStats.tx_type_counts[txType];
       mempoolTxCountGauge.set({ type: txType }, entry);
     }
-    for (const txType in mempoolStats.txSimpleFeeAverages) {
-      const entries = mempoolStats.txSimpleFeeAverages[txType];
+    for (const txType in mempoolStats.tx_simple_fee_averages) {
+      const entries = mempoolStats.tx_simple_fee_averages[txType];
       Object.entries(entries).forEach(([p, num]) => {
         mempoolTxFeeAvgGauge.set({ type: txType, percentile: p }, num ?? -1);
       });
     }
-    for (const txType in mempoolStats.txAges) {
-      const entries = mempoolStats.txAges[txType];
+    for (const txType in mempoolStats.tx_ages) {
+      const entries = mempoolStats.tx_ages[txType];
       Object.entries(entries).forEach(([p, num]) => {
         mempoolTxAgeGauge.set({ type: txType, percentile: p }, num ?? -1);
+      });
+    }
+    for (const txType in mempoolStats.tx_byte_sizes) {
+      const entries = mempoolStats.tx_byte_sizes[txType];
+      Object.entries(entries).forEach(([p, num]) => {
+        mempoolTxSizeGauge.set({ type: txType, percentile: p }, num ?? -1);
       });
     }
   };

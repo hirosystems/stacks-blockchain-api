@@ -185,8 +185,8 @@ export interface DbTx extends BaseTx {
 }
 
 export interface DbMempoolStats {
-  txTypeCounts: Record<string, number>;
-  txSimpleFeeAverages: Record<
+  tx_type_counts: Record<string, number>;
+  tx_simple_fee_averages: Record<
     string,
     {
       p25: number | null;
@@ -195,7 +195,16 @@ export interface DbMempoolStats {
       p95: number | null;
     }
   >;
-  txAges: Record<
+  tx_ages: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+  tx_byte_sizes: Record<
     string,
     {
       p25: number | null;
