@@ -1303,6 +1303,7 @@ paths:
             type: integer
             default: 20
             maximum: 200
+            example: 100
         - name: offset
           in: query
           description: Index of the first microblock to fetch
@@ -1310,6 +1311,7 @@ paths:
           example: 42000
           schema:
             type: integer
+            example: 1000
       responses:
         "200":
           description: List of microblocks
@@ -1421,6 +1423,7 @@ paths:
         required: true
         schema:
           type: string
+          example: 1.9425303101036054e+75
     get:
       summary: Get microblock
       description: Retrieves a specific microblock by `hash`
