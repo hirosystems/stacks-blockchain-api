@@ -1207,7 +1207,7 @@ paths:
 
   /extended/v1/address/{principal}/balances:
     get:
-      summary: Get account balances
+      summary: Get account balance
       description: Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.
       tags:
         - Accounts
@@ -2013,7 +2013,7 @@ paths:
       summary: Get Account Balance
       operationId: rosetta_account_balance
       description: |
-        AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint.
+        Account_Balance_Request is utilized to make a balance request on the /account/balance endpoint.
         If the block_identifier is populated, a historical balance query should be performed.
       responses:
         200:
