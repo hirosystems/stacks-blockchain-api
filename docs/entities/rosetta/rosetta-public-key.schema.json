@@ -3,6 +3,7 @@
   "title": "RosettaPublicKey",
   "description": "PublicKey contains a public key byte array for a particular CurveType encoded in hex. Note that there is no PrivateKey struct as this is NEVER the concern of an implementation.",
   "required": ["hex_bytes", "curve_type"],
+  "examples": ["022d82baea2d041ac281bebafab11571f45db4f163a9e3f8640b1c804a4ac6f662"],
   "additionalProperties": false,
   "properties": {
     "hex_bytes": {
