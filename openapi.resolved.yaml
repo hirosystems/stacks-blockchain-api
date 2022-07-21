@@ -1986,6 +1986,7 @@ paths:
         required: true
         schema:
           type: string
+          example: 2.617713084789147e+53
     get:
       summary: Get block by burnchain block hash
       description: Retrieves block details of a specific block for a given burnchain
@@ -2019,6 +2020,7 @@ paths:
         required: true
         schema:
           type: number
+          example: 744603
     get:
       summary: Get block by burnchain height
       description: Retrieves block details of a specific block for a given burn chain height
@@ -5370,7 +5372,8 @@ paths:
             enum:
               - testnet
               - mainnet
-          description: Which network to retrieve the target block time of
+            example: mainnet
+          description: the target block time for a given network (testnet, mainnet).
       responses:
         "200":
           description: Success
@@ -5396,8 +5399,10 @@ paths:
           required: false
           schema:
             type: number
-          description: The block height at which to query supply details from, if not
-            provided then the latest block height is used
+            example: 200
+          description: Supply details are queried from specified block height. If the
+            block height is not specified, the latest block height is taken as
+            default value.
       responses:
         "200":
           description: Success
@@ -5483,8 +5488,10 @@ paths:
           required: false
           schema:
             type: number
-          description: The block height at which to query supply details from, if not
-            provided then the latest block height is used
+            example: 200
+          description: Supply details are queried from specified block height. If the
+            block height is not specified, the latest block height is taken as
+            default value.
       responses:
         "200":
           description: Success
@@ -8483,10 +8490,12 @@ paths:
       parameters:
         - name: limit
           in: query
-          description: max number of tokens to fetch
+          description: max number of tokens to fetch.
           required: false
           schema:
             type: integer
+            example: 100
+            maximum: 200
         - name: offset
           in: query
           description: index of first tokens to fetch
@@ -8494,6 +8503,7 @@ paths:
           example: 42000
           schema:
             type: integer
+            example: 500
       responses:
         "200":
           description: List of fungible tokens metadata
@@ -9861,6 +9871,7 @@ paths:
           required: true
           schema:
             type: string
+            example: SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2
       responses:
         "200":
           description: Fungible tokens metadata for contract id
@@ -9938,7 +9949,7 @@ paths:
       deprecated: true
       description: >
         **NOTE:** This endpoint is deprecated in favor of [Get approximate fees
-        for the given transaction](#operation/post_fee_transaction).
+        for a given transaction](#operation/post_fee_transaction).
 
 
         Retrieves estimated fee rate.
@@ -9981,7 +9992,7 @@ paths:
                 9"
   /v2/fees/transaction:
     post:
-      summary: Get approximate fees for the given transaction
+      summary: Get approximate fees for a given transaction
       tags:
         - Fees
       description: >

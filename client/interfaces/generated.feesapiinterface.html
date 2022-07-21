@@ -126,12 +126,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L61">src/generated/apis/FeesApi.ts:61</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L61">src/generated/apis/FeesApi.ts:61</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p><strong>NOTE:</strong> This endpoint is deprecated in favor of <a href="#operation/post_fee_transaction">Get approximate fees for the given transaction</a>.  Retrieves estimated fee rate.
+									<p><strong>NOTE:</strong> This endpoint is deprecated in favor of <a href="#operation/post_fee_transaction">Get approximate fees for a given transaction</a>.  Retrieves estimated fee rate.
 									Fetch fee rate</p>
 								</div>
 							</div>
@@ -158,12 +158,12 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L55">src/generated/apis/FeesApi.ts:55</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L55">src/generated/apis/FeesApi.ts:55</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
-									<p><strong>NOTE:</strong> This endpoint is deprecated in favor of <a href="#operation/post_fee_transaction">Get approximate fees for the given transaction</a>.  Retrieves estimated fee rate.</p>
+									<p><strong>NOTE:</strong> This endpoint is deprecated in favor of <a href="#operation/post_fee_transaction">Get approximate fees for a given transaction</a>.  Retrieves estimated fee rate.</p>
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
@@ -200,7 +200,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L76">src/generated/apis/FeesApi.ts:76</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L76">src/generated/apis/FeesApi.ts:76</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -229,7 +229,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L70">src/generated/apis/FeesApi.ts:70</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L70">src/generated/apis/FeesApi.ts:70</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -268,13 +268,13 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L92">src/generated/apis/FeesApi.ts:92</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L92">src/generated/apis/FeesApi.ts:92</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
 								<div class="lead">
 									<p>Get an estimated fee for the supplied transaction.  This estimates the execution cost of the transaction, the current fee rate of the network, and returns estimates for fee amounts. * <code>transaction_payload</code> is a hex-encoded serialization of   the TransactionPayload for the transaction. * <code>estimated_len</code> is an optional argument that provides the   endpoint with an estimation of the final length (in bytes)   of the transaction, including any post-conditions and   signatures If the node cannot provide an estimate for the transaction (e.g., if the node has never seen a contract-call for the given contract and function) or if estimation is not configured on this node, a 400 response is returned. The 400 response will be a JSON error containing a <code>reason</code> field which can be one of the following: * <code>DatabaseError</code> - this Stacks node has had an internal   database error while trying to estimate the costs of the   supplied transaction. * <code>NoEstimateAvailable</code> - this Stacks node has not seen this   kind of contract-call before, and it cannot provide an   estimate yet. * <code>CostEstimationDisabled</code> - this Stacks node does not perform   fee or cost estimation, and it cannot respond on this   endpoint. The 200 response contains the following data: * <code>estimated_cost</code> - the estimated multi-dimensional cost of   executing the Clarity VM on the provided transaction. * <code>estimated_cost_scalar</code> - a unitless integer that the Stacks   node uses to compare how much of the block limit is consumed   by different transactions. This value incorporates the   estimated length of the transaction and the estimated   execution cost of the transaction. The range of this integer   may vary between different Stacks nodes. In order to compute   an estimate of total fee amount for the transaction, this   value is multiplied by the same Stacks node&#39;s estimated fee   rate. * <code>cost_scalar_change_by_byte</code> - a float value that indicates how   much the <code>estimated_cost_scalar</code> value would increase for every   additional byte in the final transaction. * <code>estimations</code> - an array of estimated fee rates and total fees to   pay in microSTX for the transaction. This array provides a range of   estimates (default: 3) that may be used. Each element of the array   contains the following fields:     * <code>fee_rate</code> - the estimated value for the current fee       rates in the network     * <code>fee</code> - the estimated value for the total fee in       microSTX that the given transaction should pay. These       values are the result of computing:       <code>fee_rate</code> x <code>estimated_cost_scalar</code>.       If the estimated fees are less than the minimum relay       fee <code>(1 ustx x estimated_len)</code>, then that minimum relay       fee will be returned here instead. Note: If the final transaction&#39;s byte size is larger than supplied to <code>estimated_len</code>, then applications should increase this fee amount by:   <code>fee_rate</code> x <code>cost_scalar_change_by_byte</code> x (<code>final_size</code> - <code>estimated_size</code>)
-									Get approximate fees for the given transaction</p>
+									Get approximate fees for a given transaction</p>
 								</div>
 							</div>
 							<h4 class="tsd-parameters-title">Parameters</h4>
@@ -300,7 +300,7 @@
 						<li class="tsd-description">
 							<aside class="tsd-sources">
 								<ul>
-									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/117b76be/client/src/generated/apis/FeesApi.ts#L86">src/generated/apis/FeesApi.ts:86</a></li>
+									<li>Defined in <a href="https://github.com/hirosystems/stacks-blockchain-api/blob/edab62a1/client/src/generated/apis/FeesApi.ts#L86">src/generated/apis/FeesApi.ts:86</a></li>
 								</ul>
 							</aside>
 							<div class="tsd-comment tsd-typography">
@@ -309,7 +309,7 @@
 								</div>
 								<dl class="tsd-comment-tags">
 									<dt>summary</dt>
-									<dd><p>Get approximate fees for the given transaction</p>
+									<dd><p>Get approximate fees for a given transaction</p>
 									</dd>
 									<dt>throws</dt>
 									<dd><p>{RequiredError}</p>
