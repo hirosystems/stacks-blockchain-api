@@ -2984,7 +2984,6 @@ paths:
             type: boolean
             example: true
             default: false
-            example: true
         - name: tx_metadata
           in: query
           description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
