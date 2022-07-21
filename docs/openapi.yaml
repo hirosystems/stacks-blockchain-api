@@ -2991,10 +2991,10 @@ paths:
           in: query
           description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
           required: false
+          example: true
           schema:
             type: boolean
             default: false
-            example: true
       responses:
         200:
           description: List of Non-Fungible Token holdings
