@@ -515,7 +515,6 @@ paths:
           in: query
           description: Index of the first microblock to fetch
           required: false
-          example: 42000
           schema:
             type: integer
             example: 1000
@@ -1263,7 +1262,6 @@ paths:
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks.
-          example: true
           required: false
           schema:
             type: boolean
@@ -1315,9 +1313,9 @@ paths:
           in: query
           description: index of first account transaction to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 42000
         - name: height
           in: query
           description: Filter for transactions only at this given block height
@@ -2991,10 +2989,10 @@ paths:
           in: query
           description: whether or not to include the complete transaction metadata instead of just `tx_id`. Enabling this option can affect performance and response times.
           required: false
-          example: true
           schema:
             type: boolean
             default: false
+            example: true
       responses:
         200:
           description: List of Non-Fungible Token holdings
@@ -3112,7 +3110,6 @@ paths:
           in: query
           description: index of first event to fetch
           required: false
-          example: 42000
           schema:
             type: integer
             default: 0
