@@ -67,6 +67,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
   const cacheHandler = getETagCacheHandler(db);
   const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
+  const txCacheHandler = getETagCacheHandler(db, ETagType.transaction);
 
   router.get(
     '/',
@@ -285,9 +286,9 @@ export function createTxRouter(db: DataStore): express.Router {
     })
   );
 
-  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id',
+    txCacheHandler,
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
@@ -309,20 +310,14 @@ export function createTxRouter(db: DataStore): express.Router {
         res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
         return;
       }
-      // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
-      /*
-    const schemaPath = require.resolve(
-      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
-    );
-    await validate(schemaPath, txQuery.result);
-    */
+      setETagCacheHeaders(res, ETagType.transaction);
       res.json(txQuery.result);
     })
   );
 
-  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id/raw',
+    txCacheHandler,
     asyncHandler(async (req, res) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
@@ -336,6 +331,7 @@ export function createTxRouter(db: DataStore): express.Router {
         const response: GetRawTransactionResult = {
           raw_tx: bufferToHexPrefixString(rawTxQuery.result.raw_tx),
         };
+        setETagCacheHeaders(res, ETagType.transaction);
         res.json(response);
       } else {
         res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });

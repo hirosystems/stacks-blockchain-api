@@ -1,3 +1,10 @@
+# [4.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.4...v4.1.0) (2022-07-07)
+
+
+### Features
+
+* add cache control to `/extended/v1/tx/:tx_id` ([#1229](https://github.com/hirosystems/stacks-blockchain-api/issues/1229)) ([8d5ca2c](https://github.com/hirosystems/stacks-blockchain-api/commit/8d5ca2cce558f7f849fe3837930f66943c0738a7))
+
 ## [4.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.3...v4.0.4) (2022-06-23)
 
 
