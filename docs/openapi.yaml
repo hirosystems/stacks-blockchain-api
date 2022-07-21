@@ -2878,9 +2878,9 @@ paths:
           in: query
           description: index of first transaction to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 42000
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
