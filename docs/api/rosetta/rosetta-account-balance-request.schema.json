@@ -3,6 +3,7 @@
   "title": "RosettaAccountBalanceRequest",
   "description": "An AccountBalanceRequest is utilized to make a balance request on the /account/balance endpoint. If the block_identifier is populated, a historical balance query should be performed.",
   "required": ["network_identifier", "account_identifier"],
+  "examples": [{"network_identifier" : {"blockchain": "stacks", "network":"mainnet"}, "account_identifier":{"address":"SPZ5DJGRVZHXEEEYYGWEX84KQB8P69GC715ZRNW1"}}],
   "additionalProperties": false,
   "properties": {
     "network_identifier": {
