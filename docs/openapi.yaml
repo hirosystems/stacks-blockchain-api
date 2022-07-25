@@ -390,6 +390,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0
         schema:
           type: string
       - name: event_offset
@@ -439,6 +440,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0
         schema:
           type: string
     get:
@@ -913,9 +915,9 @@ paths:
         in: path
         description: Contract identifier formatted as `<contract_address>.<contract_name>`
         required: true
+        example: SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.staking-helper
         schema:
           type: string
-          example: SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.staking-helper
       - name: unanchored
         in: query
         description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1900,9 +1902,9 @@ paths:
         - in: path
           name: id
           required: true
+          example: 0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d
           schema:
             type: string
-            example: 0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d
           description: The hex hash string for a block or transaction, account address, or contract address
         - in: query
           name: include_metadata
@@ -2784,6 +2786,7 @@ paths:
           in: path
           description: Hash of block
           required: true
+          example: 0x789f220623de1c1e5e6a8ad6abfc2c45d5e9d2806582e494292ee54d6470ff2e
           schema:
             type: string
         - name: limit
@@ -2821,6 +2824,7 @@ paths:
           in: path
           description: Height of block
           required: true
+          example: 69057
           schema:
             type: integer
         - name: limit
@@ -2866,6 +2870,7 @@ paths:
           in: path
           description: Transactions for the address
           required: true
+          example: SP197DVH8KTJGX4STM61QN0WJV8Y9QJWXV83ZGNR9
           schema:
             type: string
         - name: limit
