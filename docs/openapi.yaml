@@ -1972,7 +1972,6 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-options-request.schema.json
-            example: mainnet
 
   /rosetta/v1/network/status:
     post:
@@ -2002,7 +2001,6 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-status-request.schema.json
-            example: mainnet
 
   /rosetta/v1/account/balance:
     post:
@@ -2032,11 +2030,6 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
-            examples:
-              network_identifier:
-                value: [mainnet]
-              account_identifier: 
-                value: [SPZ5DJGRVZHXEEEYYGWEX84KQB8P69GC715ZRNW1]
 
   /rosetta/v1/block:
     post:
