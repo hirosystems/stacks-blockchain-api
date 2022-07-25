@@ -2032,7 +2032,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
-
+            example: "SPZ5DJGRVZHXEEEYYGWEX84KQB8P69GC715ZRNW1"
   /rosetta/v1/block:
     post:
       tags:
