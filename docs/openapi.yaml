@@ -1960,7 +1960,6 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-network-options-response.schema.json
-                example: mainnet
         400:
           description: Error
           content:
@@ -1973,6 +1972,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-options-request.schema.json
+            example: mainnet
 
   /rosetta/v1/network/status:
     post:
@@ -1990,7 +1990,6 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-network-status-response.schema.json
-                example: mainnet
         400:
           description: Error
           content:
@@ -2003,6 +2002,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-status-request.schema.json
+            example: mainnet
 
   /rosetta/v1/account/balance:
     post:
@@ -2032,7 +2032,12 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
-            example: "SPZ5DJGRVZHXEEEYYGWEX84KQB8P69GC715ZRNW1"
+            examples:
+              network_identifier:
+                value: [mainnet]
+              account_identifier: 
+                value: [SPZ5DJGRVZHXEEEYYGWEX84KQB8P69GC715ZRNW1]
+
   /rosetta/v1/block:
     post:
       tags:
