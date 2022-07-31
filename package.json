@@ -126,7 +126,7 @@
     "jsonrpc-lite": "2.2.0",
     "lru-cache": "6.0.0",
     "micro-base58": "0.5.1",
-    "node-fetch": "2.6.6",
+    "node-fetch": "3.2.10",
     "node-pg-migrate": "6.2.1",
     "p-queue": "6.6.2",
     "path-to-regexp": "6.2.0",
