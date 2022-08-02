@@ -10,7 +10,6 @@ import {
   getStacksNodeChainID,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
-import * as prom from 'prom-client';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
@@ -26,10 +25,9 @@ import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
-import { PgStoreEventEmitter } from './datastore/pg-store-event-emitter';
-import { DbMempoolStats } from './datastore/common';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
+import { registerMempoolPromStats } from './datastore/helpers';
 
 enum StacksApiMode {
   /**
@@ -104,62 +102,6 @@ async function monitorCoreRpcConnection(): Promise<void> {
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
-}
-
-function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
-  const mempoolTxCountGauge = new prom.Gauge({
-    name: `mempool_tx_count`,
-    help: 'Number of txs in the mempool, by tx type',
-    labelNames: ['type'] as const,
-  });
-  const mempoolTxFeeAvgGauge = new prom.Gauge({
-    name: `mempool_tx_fee_average`,
-    help: 'Simple average of tx fees in the mempool, by tx type',
-    labelNames: ['type', 'percentile'] as const,
-  });
-  const mempoolTxAgeGauge = new prom.Gauge({
-    name: `mempool_tx_age`,
-    help: 'Average age (by block) of txs in the mempool, by tx type',
-    labelNames: ['type', 'percentile'] as const,
-  });
-  const mempoolTxSizeGauge = new prom.Gauge({
-    name: `mempool_tx_byte_size`,
-    help: 'Average byte size of txs in the mempool, by tx type',
-    labelNames: ['type', 'percentile'] as const,
-  });
-  const updatePromMempoolStats = (mempoolStats: DbMempoolStats) => {
-    for (const txType in mempoolStats.tx_type_counts) {
-      const entry = mempoolStats.tx_type_counts[txType];
-      mempoolTxCountGauge.set({ type: txType }, entry);
-    }
-    for (const txType in mempoolStats.tx_simple_fee_averages) {
-      const entries = mempoolStats.tx_simple_fee_averages[txType];
-      Object.entries(entries).forEach(([p, num]) => {
-        mempoolTxFeeAvgGauge.set({ type: txType, percentile: p }, num ?? -1);
-      });
-    }
-    for (const txType in mempoolStats.tx_ages) {
-      const entries = mempoolStats.tx_ages[txType];
-      Object.entries(entries).forEach(([p, num]) => {
-        mempoolTxAgeGauge.set({ type: txType, percentile: p }, num ?? -1);
-      });
-    }
-    for (const txType in mempoolStats.tx_byte_sizes) {
-      const entries = mempoolStats.tx_byte_sizes[txType];
-      Object.entries(entries).forEach(([p, num]) => {
-        mempoolTxSizeGauge.set({ type: txType, percentile: p }, num ?? -1);
-      });
-    }
-  };
-  pgEvents.addListener('mempoolStatsUpdate', mempoolStats => {
-    setImmediate(() => {
-      try {
-        updatePromMempoolStats(mempoolStats);
-      } catch (error) {
-        logError(`Error updating prometheus mempool stats`, error);
-      }
-    });
-  });
 }
 
 async function init(): Promise<void> {
