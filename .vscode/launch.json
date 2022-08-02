@@ -148,7 +148,9 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js"
+        "${workspaceRoot}/jest.config.js",
+        // "-t",
+        // "api tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

@@ -7,6 +7,7 @@
     "canonical",
     "height",
     "hash",
+    "index_block_hash",
     "parent_block_hash",
     "txs",
     "burn_block_time",
@@ -36,6 +37,10 @@
     "hash": {
       "type": "string",
       "description": "Hash representing the block"
+    },
+    "index_block_hash": {
+      "type": "string",
+      "description": "The only hash that can uniquely identify an anchored block or an unconfirmed state trie"
     },
     "parent_block_hash": {
       "type": "string",
