@@ -1147,7 +1147,7 @@ export class PgStore {
       mempool_ages AS (
         SELECT
           type_id,
-          (SELECT block_height FROM chain_tip) - receipt_block_height as age
+          ${chainTipHeight} - receipt_block_height as age
         FROM mempool_unpruned
       )
       SELECT

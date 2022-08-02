@@ -252,6 +252,8 @@ interface TestMempoolTxArgs {
   tx_id?: string;
   type_id?: DbTxTypeId;
   nonce?: number;
+  fee_rate?: bigint;
+  raw_tx?: string;
 }
 
 /**
@@ -265,12 +267,12 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     tx_id: args?.tx_id ?? TX_ID,
     anchor_mode: 3,
     nonce: args?.nonce ?? 0,
-    raw_tx: 'test-raw-tx',
+    raw_tx: args?.raw_tx ?? '0x01234567',
     type_id: args?.type_id ?? DbTxTypeId.TokenTransfer,
     receipt_time: (new Date().getTime() / 1000) | 0,
     status: args?.status ?? DbTxStatus.Pending,
     post_conditions: '0x01f5',
-    fee_rate: 1234n,
+    fee_rate: args?.fee_rate ?? 1234n,
     sponsored: false,
     sponsor_address: undefined,
     origin_hash_mode: 1,

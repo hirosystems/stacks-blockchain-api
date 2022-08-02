@@ -21,13 +21,30 @@ const PG_TYPE_MAPPINGS = {
   bytea: {
     to: 17,
     from: [17],
-    serialize: (x: any) =>
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      x instanceof Uint8Array
-        ? `\\x${Buffer.from(x, x.byteOffset, x.byteLength).toString('hex')}`
-        : typeof x === 'string' && has0xPrefix(x)
-        ? `\\x${x.slice(2)}`
-        : x,
+    serialize: (x: any) => {
+      if (typeof x === 'string') {
+        if (x.startsWith('0x' || x.startsWith('0X'))) {
+          if (x.length % 2 !== 0) {
+            throw new Error(`Hex string is an odd number of digits: "${x}"`);
+          }
+          return '\\x' + x.slice(2);
+        } else if (x.length === 0) {
+          return '\\x';
+        } else {
+          // TODO: safer to throw here, but some tests depend on converting utf8 strings..
+          // throw new Error(`String value for bytea column does not have 0x prefix: "${x}"`);
+          return '\\x' + Buffer.from(x).toString('hex');
+        }
+      } else if (Buffer.isBuffer(x)) {
+        return '\\x' + x.toString('hex');
+      } else if (ArrayBuffer.isView(x)) {
+        return '\\x' + Buffer.from(x.buffer, x.byteOffset, x.byteLength).toString('hex');
+      } else {
+        throw new Error(
+          `Cannot serialize unexpected type "${x.constructor.name}" to bytea hex string`
+        );
+      }
+    },
     parse: (x: any) => `0x${x.slice(2)}`,
   },
 };
