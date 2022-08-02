@@ -53,7 +53,11 @@ describe('mempool tests', () => {
       const txIds = mempoolTxs.map(e => e.tx_id).sort();
       expect(txIds).toEqual(['0x03', '0x04', '0x05']);
     } finally {
-      process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = garbageThresholdOrig;
+      if (typeof garbageThresholdOrig === 'undefined') {
+        delete process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD;
+      } else {
+        process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = garbageThresholdOrig;
+      }
     }
   });
 
