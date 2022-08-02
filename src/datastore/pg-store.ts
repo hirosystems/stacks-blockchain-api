@@ -1152,10 +1152,10 @@ export class PgStore {
       )
       SELECT
         type_id,
-        percentile_cont(0.25) within group (order by age desc) as p25,
-        percentile_cont(0.50) within group (order by age desc) as p50,
-        percentile_cont(0.75) within group (order by age desc) as p75,
-        percentile_cont(0.95) within group (order by age desc) as p95
+        percentile_cont(0.25) within group (order by age asc) as p25,
+        percentile_cont(0.50) within group (order by age asc) as p50,
+        percentile_cont(0.75) within group (order by age asc) as p75,
+        percentile_cont(0.95) within group (order by age asc) as p95
       FROM mempool_ages
       GROUP BY type_id
     `;
@@ -1184,8 +1184,7 @@ export class PgStore {
     >`
       WITH mempool_unpruned AS (
         SELECT
-          type_id,
-          length(raw_tx) as tx_size
+          type_id, tx_size
         FROM mempool_txs
         WHERE pruned = false
         ${blockHeightCondition}
