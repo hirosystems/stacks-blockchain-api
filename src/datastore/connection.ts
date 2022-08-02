@@ -23,7 +23,7 @@ const PG_TYPE_MAPPINGS = {
     from: [17],
     serialize: (x: any) => {
       if (typeof x === 'string') {
-        if (x.startsWith('0x' || x.startsWith('0X'))) {
+        if (/^(0x|0X)[a-fA-F0-9]+$/.test(x)) {
           if (x.length % 2 !== 0) {
             throw new Error(`Hex string is an odd number of digits: "${x}"`);
           }
