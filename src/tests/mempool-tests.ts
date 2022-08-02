@@ -110,9 +110,9 @@ describe('mempool tests', () => {
         poison_microblock: { p25: null, p50: null, p75: null, p95: null },
       },
       tx_ages: {
-        token_transfer: { p25: 4, p50: 3, p75: 2, p95: 1.2000000000000002 },
-        smart_contract: { p25: 4, p50: 3, p75: 2, p95: 1.2000000000000002 },
-        contract_call: { p25: 4, p50: 3, p75: 2, p95: 1.2000000000000002 },
+        token_transfer: { p25: 2, p50: 3, p75: 4, p95: 4.8 },
+        smart_contract: { p25: 2, p50: 3, p75: 4, p95: 4.8 },
+        contract_call: { p25: 2, p50: 3, p75: 4, p95: 4.8 },
         poison_microblock: { p25: null, p50: null, p75: null, p95: null },
       },
       tx_byte_sizes: {
