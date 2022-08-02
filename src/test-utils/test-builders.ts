@@ -207,7 +207,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       sponsor_address: undefined,
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
