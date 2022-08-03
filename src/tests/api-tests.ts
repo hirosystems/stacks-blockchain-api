@@ -2330,6 +2330,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
+      index_block_hash: '0xdeadbeef',
       height: 1,
       microblocks_accepted: [],
       microblocks_streamed: [],
@@ -7269,6 +7270,7 @@ describe('api tests', () => {
       canonical: true,
       hash: '0x1234',
       height: 1235,
+      index_block_hash: '0xdeadbeef',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
@@ -7390,6 +7392,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       hash: '0x0001',
+      index_block_hash: '0x0001',
       height: 1,
       microblocks_accepted: [],
       microblocks_streamed: [
@@ -7438,6 +7441,7 @@ describe('api tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       hash: '0x0002',
+      index_block_hash: '0x0002',
       height: 2,
       microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
       microblocks_streamed: [],
@@ -9399,7 +9403,8 @@ describe('api tests', () => {
     // fetch all blocks
     const result1 = await supertest(api.server).get(`/extended/v1/block`);
     expect(result1.body.total).toBe(1);
-    expect(result1.body.results[0].hash).toBe(tx.tx_id);
+    expect(result1.body.results[0].hash).toBe('0x1234');
+    expect(result1.body.results[0].index_block_hash).toBe('0xdeadbeef');
   });
 
   test('fetch transactions from block', async () => {
