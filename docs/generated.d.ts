@@ -99,6 +99,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenHoldingsList
   | NonFungibleTokenMintList
   | NonFungibleTokensMetadataList
+  | MempoolTransactionStatsResponse
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionEventsResponse
@@ -3094,6 +3095,107 @@ export interface NonFungibleTokenMetadata {
    * principle that deployed the contract
    */
   sender_address: string;
+}
+/**
+ * GET request that returns stats on mempool transactions
+ */
+export interface MempoolTransactionStatsResponse {
+  /**
+   * Number of tranasction in the mempool, broken down by transaction type.
+   */
+  tx_type_counts: {
+    token_transfer: number;
+    smart_contract: number;
+    contract_call: number;
+    poison_microblock: number;
+  };
+  /**
+   * The simple mean (average) transaction fee, broken down by transaction type. Note that this does not factor in actual execution costs. The average fee is not a reliable metric for calculating a fee for a new transaction.
+   */
+  tx_simple_fee_averages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average time (in blocks) that transactions have lived in the mempool. The start block height is simply the current chain-tip of when the attached Stacks node receives the transaction. This timing can be different across Stacks nodes / API instances due to propagation timing differences in the p2p network.
+   */
+  tx_ages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average byte size of transactions in the mempool, broken down by transaction type.
+   */
+  tx_byte_sizes: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
 }
 /**
  * GET request that returns transactions

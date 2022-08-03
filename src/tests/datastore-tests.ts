@@ -26,7 +26,7 @@ import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { getPostgres, PgSqlClient } from '../datastore/connection';
-import { bnsNameCV, I32_MAX } from '../helpers';
+import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID, intCV, serializeCV } from '@stacks/transactions';
 
 function testEnvVars(
@@ -80,6 +80,78 @@ describe('postgres datastore', () => {
       skipMigrations: true,
     });
     client = db.sql;
+  });
+
+  test('bytea column serialization', async () => {
+    const vectors = [
+      {
+        from: '0x0001',
+        to: '0x0001',
+      },
+      {
+        from: '0X0002',
+        to: '0x0002',
+      },
+      {
+        from: '0xFfF3',
+        to: '0xfff3',
+      },
+      {
+        from: Buffer.from('0004', 'hex'),
+        to: '0x0004',
+      },
+      {
+        from: new Uint16Array(new Uint8Array([0x00, 0x05]).buffer),
+        to: '0x0005',
+      },
+      {
+        from: '\\x0006',
+        to: '0x0006',
+      },
+      {
+        from: '\\xfFf7',
+        to: '0xfff7',
+      },
+      {
+        from: '\\x',
+        to: '0x',
+      },
+      {
+        from: '',
+        to: '0x',
+      },
+      {
+        from: Buffer.alloc(0),
+        to: '0x',
+      },
+    ];
+    await db.sql.begin(async sql => {
+      await sql`
+        CREATE TEMPORARY TABLE bytea_testing(
+          value bytea NOT NULL
+        ) ON COMMIT DROP
+      `;
+      for (const v of vectors) {
+        const query = await sql<{ value: string }[]>`
+          insert into bytea_testing (value) values (${v.from})
+          returning value
+        `;
+        expect(query[0].value).toBe(v.to);
+      }
+    });
+    const badInputs = ['0x123', '1234', '0xnoop', new Date(), 1234];
+    for (const input of badInputs) {
+      const query = async () =>
+        db.sql.begin(async sql => {
+          await sql`
+          CREATE TEMPORARY TABLE bytea_testing(
+            value bytea NOT NULL
+          ) ON COMMIT DROP
+        `;
+          return await sql`insert into bytea_testing (value) values (${input})`;
+        });
+      await expect(query()).rejects.toThrow();
+    }
   });
 
   test('postgres uri config', () => {
@@ -825,7 +897,7 @@ describe('postgres datastore', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: 'hi',
+        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3137,7 +3209,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
       token_transfer_amount: 1n,
-      token_transfer_memo: 'hi',
+      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
       post_conditions: '0x',
@@ -3406,7 +3478,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3441,7 +3513,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3631,7 +3703,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3666,7 +3738,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       sponsor_address: undefined,
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3888,7 +3960,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4186,7 +4258,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4249,7 +4321,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: 'abc',
+      raw_tx: bufferToHexPrefixString(Buffer.from('abc')),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4265,7 +4337,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4343,7 +4415,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 4,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',

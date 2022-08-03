@@ -138,7 +138,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = parseMempoolTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       let addrParams: (string | undefined)[];
@@ -209,6 +209,16 @@ export function createTxRouter(db: PgStore): express.Router {
       const response: MempoolTransactionListResponse = { limit, offset, total, results };
       setETagCacheHeaders(res, ETagType.mempool);
       res.json(response);
+    })
+  );
+
+  router.get(
+    '/mempool/stats',
+    mempoolCacheHandler,
+    asyncHandler(async (req, res) => {
+      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
+      setETagCacheHeaders(res, ETagType.mempool);
+      res.json(queryResult);
     })
   );
 

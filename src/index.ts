@@ -27,6 +27,7 @@ import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
+import { registerMempoolPromStats } from './datastore/helpers';
 
 enum StacksApiMode {
   /**
@@ -121,6 +122,8 @@ async function init(): Promise<void> {
     usageName: `write-datastore-${apiMode}`,
     skipMigrations: false,
   });
+
+  registerMempoolPromStats(dbWriteStore.eventEmitter);
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
     if (isProdEnv) {
