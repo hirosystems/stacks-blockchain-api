@@ -159,6 +159,7 @@ export function getTxStatusString(
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
     case DbTxStatus.DroppedStaleGarbageCollect:
+    case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
@@ -463,6 +464,7 @@ function parseDbBlock(
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
     hash: dbBlock.block_hash,
+    index_block_hash: dbBlock.index_block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
     burn_block_time_iso: unixEpochToIso(dbBlock.burn_block_time),

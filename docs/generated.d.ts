@@ -1113,6 +1113,10 @@ export interface Block {
    */
   hash: string;
   /**
+   * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
+   */
+  index_block_hash: string;
+  /**
    * Hash of the parent block
    */
   parent_block_hash: string;

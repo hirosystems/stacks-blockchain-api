@@ -1,6 +1,6 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { logger } from '../../helpers';
+import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
 import { DataStore } from '../../datastore/common';
 import { asyncHandler } from '../async-handler';
 
@@ -24,6 +24,8 @@ export enum ETagType {
   chainTip = 'chain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */
   mempool = 'mempool',
+  /** ETag based on the status of a single transaction across the mempool or canonical chain. */
+  transaction = 'transaction',
 }
 
 /** Value that means the ETag did get calculated but it is empty. */
@@ -166,7 +168,7 @@ async function checkETagCacheOK(
   etagType: ETagType
 ): Promise<ETag | undefined | typeof CACHE_OK> {
   const metrics = getETagMetrics();
-  const etag = await calculateETag(db, etagType);
+  const etag = await calculateETag(db, etagType, req);
   if (!etag || etag === ETAG_EMPTY) {
     return;
   }
@@ -240,7 +242,11 @@ export function getETagCacheHandler(
   return requestHandler;
 }
 
-async function calculateETag(db: DataStore, etagType: ETagType): Promise<ETag | undefined> {
+async function calculateETag(
+  db: DataStore,
+  etagType: ETagType,
+  req: Request
+): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:
       const chainTip = await db.getUnanchoredChainTip();
@@ -261,5 +267,23 @@ async function calculateETag(db: DataStore, etagType: ETagType): Promise<ETag | 
         return ETAG_EMPTY;
       }
       return digest.result.digest;
+
+    case ETagType.transaction:
+      const { tx_id } = req.params;
+      const normalizedTxId = normalizeHashString(tx_id);
+      if (normalizedTxId === false) {
+        return ETAG_EMPTY;
+      }
+      const status = await db.getTxStatus(normalizedTxId);
+      if (!status.found) {
+        return ETAG_EMPTY;
+      }
+      const elements: string[] = [
+        normalizedTxId,
+        bufferToHexPrefixString(status.result.index_block_hash),
+        bufferToHexPrefixString(status.result.microblock_hash),
+        status.result.status.toString(),
+      ];
+      return elements.join(':');
   }
 }
