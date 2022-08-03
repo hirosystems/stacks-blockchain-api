@@ -192,6 +192,7 @@ paths:
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 100
           schema:
             type: integer
             default: 96
@@ -200,12 +201,14 @@ paths:
           in: query
           description: index of first transaction to fetch
           required: false
+          example: 42000
           schema:
             type: integer
         - name: type
           in: query
           description: Filter by transaction type
           required: false
+          example: coinbase
           schema:
             type: array
             items:
@@ -215,6 +218,7 @@ paths:
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
           required: false
+          example: true
           schema:
             type: boolean
             default: false
@@ -243,6 +247,7 @@ paths:
           in: query
           description: Filter to only return transactions with this sender address.
           required: false
+          example: SP1GPBP8NBRXDRJBFQBV7KMAZX1Z7W2RFWJEH0V10
           schema:
             type: string
         - name: recipient_address
@@ -261,6 +266,7 @@ paths:
           in: query
           description: max number of mempool transactions to fetch
           required: false
+          example: 100
           schema:
             type: integer
             default: 96
@@ -269,6 +275,7 @@ paths:
           in: query
           description: index of first mempool transaction to fetch
           required: false
+          example: 42000
           schema:
             type: integer
         - name: unanchored
@@ -332,6 +339,7 @@ paths:
         in: query
         description: Array of transaction ids
         required: true
+        example: 0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0
         schema:
           type: array
           items:
@@ -384,6 +392,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0
         schema:
           type: string
       - name: event_offset
@@ -432,6 +441,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0
         schema:
           type: string
     get:
@@ -2723,18 +2733,21 @@ paths:
           in: path
           description: Hash of block
           required: true
+          example: 0x0a83d82a65460a9e711f85a44616350280040b75317dbe486a923c1131b5ff99
           schema:
             type: string
         - name: limit
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 10
           schema:
             type: integer
         - name: offset
           in: query
           description: index of first transaction to fetch
           required: false
+          example: 42000
           schema:
             type: integer
       responses:
@@ -2759,24 +2772,28 @@ paths:
           in: path
           description: Height of block
           required: true
+          example: 35000
           schema:
             type: integer
         - name: limit
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 10
           schema:
             type: integer
         - name: offset
           in: query
           description: index of first transaction to fetch
           required: false
+          example: 42000
           schema:
             type: integer
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
           required: false
+          example: true
           schema:
             type: boolean
             default: false
@@ -2808,18 +2825,21 @@ paths:
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 90
           schema:
             type: integer
         - name: offset
           in: query
           description: index of first transaction to fetch
           required: false
+          example: 42000
           schema:
             type: integer
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
           required: false
+          example: true
           schema:
             type: boolean
             default: false
@@ -3263,40 +3283,40 @@ paths:
           in: query
           description: Hash of transaction
           required: false
+          example: 0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5
           schema:
             type: string
-            example: '0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5'
         - name: address
           in: query
           description: Stacks address or a Contract identifier
           required: false
+          example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
           schema:
             type: string
-            example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
         - name: limit
           in: query
           description: number of items to return
           required: false
+          example: 100
           schema:
             type: integer
-            example: 100
         - name: offset
           in: query
           description: number of items to skip
           required: false
+          example: 50
           schema:
             type: integer
-            example: 50
         - name: type
           in: query
           description: Filter the events on event type
           required: false
+          example: stx_lock
           schema:
             type: array
             items:
               type: string
               enum: [smart_contract_log, stx_lock, stx_asset, fungible_token_asset, non_fungible_token_asset]
-              example: stx_lock
       responses:
         200:
           description: Success
