@@ -781,6 +781,7 @@ paths:
           in: path
           description: Reward slot holder recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
         - name: limit
@@ -850,6 +851,7 @@ paths:
           in: path
           description: Reward recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
         - name: limit
@@ -886,6 +888,7 @@ paths:
           in: path
           description: Reward recipient address. Should either be in the native burnchain's format (e.g. B58 for Bitcoin), or if a STX principal address is provided it will be encoded as into the equivalent burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
       responses:
