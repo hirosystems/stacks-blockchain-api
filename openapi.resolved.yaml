@@ -230,6 +230,7 @@ paths:
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 100
           schema:
             type: integer
             default: 96
@@ -245,6 +246,7 @@ paths:
           in: query
           description: Filter by transaction type
           required: false
+          example: coinbase
           schema:
             type: array
             items:
@@ -260,6 +262,7 @@ paths:
           description: Include transaction data from unanchored (i.e. unconfirmed)
             microblocks
           required: false
+          example: true
           schema:
             type: boolean
             example: true
@@ -358,6 +361,7 @@ paths:
           in: query
           description: Filter to only return transactions with this sender address.
           required: false
+          example: SP1GPBP8NBRXDRJBFQBV7KMAZX1Z7W2RFWJEH0V10
           schema:
             type: string
         - name: recipient_address
@@ -378,6 +382,7 @@ paths:
           in: query
           description: max number of mempool transactions to fetch
           required: false
+          example: 100
           schema:
             type: integer
             default: 96
@@ -775,6 +780,7 @@ paths:
         in: query
         description: Array of transaction ids
         required: true
+        example: 4.638132983192722e+75
         schema:
           type: array
           items:
@@ -957,6 +963,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 4.638132983192722e+75
         schema:
           type: string
       - name: event_offset
@@ -1193,6 +1200,7 @@ paths:
         in: path
         description: Hash of transaction
         required: true
+        example: 4.638132983192722e+75
         schema:
           type: string
     get:
@@ -2174,6 +2182,7 @@ paths:
             principal address is provided it will be encoded as into the
             equivalent burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
         - name: limit
@@ -2326,6 +2335,7 @@ paths:
             address is provided it will be encoded as into the equivalent
             burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
         - name: limit
@@ -2368,6 +2378,7 @@ paths:
             address is provided it will be encoded as into the equivalent
             burnchain format
           required: true
+          example: 36hQtSEXBMevo5chpxhfAGiCTSC34QKgda
           schema:
             type: string
       responses:
@@ -8369,12 +8380,14 @@ paths:
           in: path
           description: Hash of block
           required: true
+          example: 4.756077371512654e+75
           schema:
             type: string
         - name: limit
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 10
           schema:
             type: integer
         - name: offset
@@ -8407,12 +8420,14 @@ paths:
           in: path
           description: Height of block
           required: true
+          example: 35000
           schema:
             type: integer
         - name: limit
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 10
           schema:
             type: integer
         - name: offset
@@ -8427,6 +8442,7 @@ paths:
           description: Include transaction data from unanchored (i.e. unconfirmed)
             microblocks
           required: false
+          example: true
           schema:
             type: boolean
             example: true
@@ -8461,6 +8477,7 @@ paths:
           in: query
           description: max number of transactions to fetch
           required: false
+          example: 90
           schema:
             type: integer
         - name: offset
@@ -8475,6 +8492,7 @@ paths:
           description: Include transaction data from unanchored (i.e. unconfirmed)
             microblocks
           required: false
+          example: true
           schema:
             type: boolean
             example: true
@@ -10175,23 +10193,23 @@ paths:
           in: query
           description: Hash of transaction
           required: false
+          example: 1.8944721453807527e+76
           schema:
             type: string
-            example: "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5"
         - name: address
           in: query
           description: Stacks address or a Contract identifier
           required: false
+          example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
           schema:
             type: string
-            example: ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4
         - name: limit
           in: query
           description: number of items to return
           required: false
+          example: 100
           schema:
             type: integer
-            example: 100
         - name: offset
           in: query
           description: number of items to skip
@@ -10199,11 +10217,11 @@ paths:
           example: 42000
           schema:
             type: integer
-            example: 50
         - name: type
           in: query
           description: Filter the events on event type
           required: false
+          example: stx_lock
           schema:
             type: array
             items:
@@ -10214,7 +10232,6 @@ paths:
                 - stx_asset
                 - fungible_token_asset
                 - non_fungible_token_asset
-              example: stx_lock
       responses:
         "200":
           description: Success
