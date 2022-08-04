@@ -1,3 +1,10 @@
+## [4.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.0...v4.1.1) (2022-08-03)
+
+
+### Bug Fixes
+
+* include `index_block_hash` in `/block` ([#1253](https://github.com/hirosystems/stacks-blockchain-api/issues/1253)) ([8cd7606](https://github.com/hirosystems/stacks-blockchain-api/commit/8cd7606797bf1b744441d68b3db834fd11c25bfa))
+
 # [4.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.4...v4.1.0) (2022-07-07)
 
 
