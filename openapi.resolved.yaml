@@ -2974,6 +2974,7 @@ paths:
         in: path
         description: Contract identifier formatted as `<contract_address>.<contract_name>`
         required: true
+        example: SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.staking-helper
         schema:
           type: string
       - name: unanchored
@@ -5627,6 +5628,7 @@ paths:
         - in: path
           name: id
           required: true
+          example: 9.387459466107343e+76
           schema:
             type: string
           description: The hex hash string for a block or transaction, account address, or
@@ -8420,7 +8422,7 @@ paths:
           in: path
           description: Height of block
           required: true
-          example: 35000
+          example: 69057
           schema:
             type: integer
         - name: limit
@@ -8471,6 +8473,7 @@ paths:
           in: path
           description: Transactions for the address
           required: true
+          example: SP197DVH8KTJGX4STM61QN0WJV8Y9QJWXV83ZGNR9
           schema:
             type: string
         - name: limit
