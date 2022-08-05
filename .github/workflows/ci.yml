@@ -559,6 +559,8 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
           push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 
