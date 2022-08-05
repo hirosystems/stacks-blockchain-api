@@ -552,13 +552,23 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
+      - name: Select Docker Platforms
+        id: docker_platforms
+        run: |
+          if [ ${{ steps.semantic.outputs.new_release_version }} ]
+          then
+            echo "::set-output name=platforms::linux/amd64,linux/arm/v7,linux/arm64/v8"
+          else
+            echo "::set-output name=platforms::linux/amd64"
+          fi
+
       - name: Build/Tag/Push Image
         uses: docker/build-push-action@v3
         with:
           context: .
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          platforms: ${{ steps.docker_platforms.outputs.platforms }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
