@@ -54,6 +54,7 @@ import {
   DbTokenMetadataQueueEntryQuery,
   DbTokenOfferingLocked,
   DbTx,
+  DbTxGlobalStatus,
   DbTxStatus,
   DbTxTypeId,
   DbTxWithAssetTransfers,
@@ -2363,6 +2364,42 @@ export class PgStore {
       })
     );
     return assetBalances;
+  }
+
+  async getTxStatus(txId: string): Promise<FoundOrNot<DbTxGlobalStatus>> {
+    return this.sql.begin(async sql => {
+      const chainResult = await sql<DbTxGlobalStatus[]>`
+        SELECT status, index_block_hash, microblock_hash
+        FROM txs
+        WHERE tx_id = ${txId} AND canonical = TRUE AND microblock_canonical = TRUE
+        LIMIT 1
+      `;
+      if (chainResult.count > 0) {
+        return {
+          found: true,
+          result: {
+            status: chainResult[0].status,
+            index_block_hash: chainResult[0].index_block_hash,
+            microblock_hash: chainResult[0].microblock_hash,
+          },
+        };
+      }
+      const mempoolResult = await sql<{ status: number }[]>`
+        SELECT status
+        FROM mempool_txs
+        WHERE tx_id = ${txId}
+        LIMIT 1
+      `;
+      if (mempoolResult.count > 0) {
+        return {
+          found: true,
+          result: {
+            status: mempoolResult[0].status,
+          },
+        };
+      }
+      return { found: false } as const;
+    });
   }
 
   async getAddressTxs(args: {

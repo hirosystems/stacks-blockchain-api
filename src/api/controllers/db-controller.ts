@@ -462,6 +462,7 @@ function parseDbBlock(
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
     hash: dbBlock.block_hash,
+    index_block_hash: dbBlock.index_block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
     burn_block_time_iso: unixEpochToIso(dbBlock.burn_block_time),

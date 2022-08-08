@@ -2530,7 +2530,8 @@ describe('tx tests', () => {
     // fetch all blocks
     const result1 = await supertest(api.server).get(`/extended/v1/block`);
     expect(result1.body.total).toBe(1);
-    expect(result1.body.results[0].hash).toBe(tx.tx_id);
+    expect(result1.body.results[0].hash).toBe('0x1234');
+    expect(result1.body.results[0].index_block_hash).toBe('0xdeadbeef');
   });
 
   test('fetch transactions from block', async () => {

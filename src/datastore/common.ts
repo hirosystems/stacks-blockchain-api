@@ -184,6 +184,12 @@ export interface DbTx extends BaseTx {
   execution_cost_write_length: number;
 }
 
+export interface DbTxGlobalStatus {
+  status: DbTxStatus;
+  index_block_hash?: string;
+  microblock_hash?: string;
+}
+
 export interface DbMempoolStats {
   tx_type_counts: Record<string, number>;
   tx_simple_fee_averages: Record<
