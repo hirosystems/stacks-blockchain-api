@@ -58,6 +58,9 @@ export interface ApiServer {
   forceKill: () => Promise<void>;
 }
 
+/** API version as given by .git-info */
+export const API_VERSION: { branch?: string; commit?: string; tag?: string } = {};
+
 export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
@@ -70,13 +73,13 @@ export async function startApiServer(opts: {
 }): Promise<ApiServer> {
   const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
-  // storing stacks version to send client in header
-  let stacksVersion: string | undefined = undefined;
   try {
     const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
-    stacksVersion = `stacks-blockchain-api ${tag} (${branch}:${commit})`;
+    API_VERSION.branch = branch;
+    API_VERSION.commit = commit;
+    API_VERSION.tag = tag;
   } catch (error) {
-    logger.error(`Unable to read git info`, error);
+    logger.error(`Unable to read API version from .git-info`, error);
   }
 
   const app = express();
@@ -137,12 +140,13 @@ export async function startApiServer(opts: {
     });
     app.use(promMiddleware);
   }
-  // adding stacks-api-version in header
+  // Add API version to header
   app.use((_, res, next) => {
-    if (stacksVersion) {
-      res.setHeader('X-Stacks-API-Version', stacksVersion);
-    }
-    res.setHeader('Access-Control-Expose-Headers', 'X-Stacks-API-Version');
+    res.setHeader(
+      'X-API-Version',
+      `${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`
+    );
+    res.append('Access-Control-Expose-Headers', 'X-API-Version');
     next();
   });
   // Setup request logging
