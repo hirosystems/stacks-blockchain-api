@@ -99,6 +99,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenHoldingsList
   | NonFungibleTokenMintList
   | NonFungibleTokensMetadataList
+  | MempoolTransactionStatsResponse
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionEventsResponse
@@ -229,6 +230,13 @@ export type SchemaMergeRootStub =
   | RpcMicroblockNotificationResponse
   | RpcMicroblockSubscriptionParams
   | RpcMicroblockSubscriptionRequest
+  | RpcNftAssetEventSubscriptionParams
+  | RpcNftAssetEventSubscriptionRequest
+  | RpcNftCollectionEventSubscriptionParams
+  | RpcNftCollectionEventSubscriptionRequest
+  | RpcNftEventNotificationResponse
+  | RpcNftEventSubscriptionParams
+  | RpcNftEventSubscriptionRequest
   | RpcSubscriptionType
   | RpcTxUpdateNotificationResponse
   | RpcTxUpdateSubscriptionParams
@@ -715,7 +723,10 @@ export type RpcSubscriptionType =
   | "address_balance_update"
   | "block"
   | "microblock"
-  | "mempool";
+  | "mempool"
+  | "nft_event"
+  | "nft_asset_event"
+  | "nft_collection_event";
 
 /**
  * GET request that returns address assets
@@ -818,9 +829,10 @@ export interface AddressNftListResponse {
   nft_events: NftEvent[];
 }
 export interface NftEvent {
-  sender: string;
-  recipient: string;
+  sender?: string;
+  recipient?: string;
   asset_identifier: string;
+  asset_event_type: string;
   /**
    * Identifier of the NFT
    */
@@ -835,7 +847,9 @@ export interface NftEvent {
     repr: string;
   };
   tx_id: string;
+  tx_index: number;
   block_height: number;
+  event_index: number;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -1353,6 +1367,7 @@ export interface ContractListResponse {
 export interface SmartContract {
   tx_id: string;
   canonical: boolean;
+  contract_id: string;
   block_height: number;
   source_code: string;
   abi: string;
@@ -3082,6 +3097,107 @@ export interface NonFungibleTokenMetadata {
   sender_address: string;
 }
 /**
+ * GET request that returns stats on mempool transactions
+ */
+export interface MempoolTransactionStatsResponse {
+  /**
+   * Number of tranasction in the mempool, broken down by transaction type.
+   */
+  tx_type_counts: {
+    token_transfer: number;
+    smart_contract: number;
+    contract_call: number;
+    poison_microblock: number;
+  };
+  /**
+   * The simple mean (average) transaction fee, broken down by transaction type. Note that this does not factor in actual execution costs. The average fee is not a reliable metric for calculating a fee for a new transaction.
+   */
+  tx_simple_fee_averages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average time (in blocks) that transactions have lived in the mempool. The start block height is simply the current chain-tip of when the attached Stacks node receives the transaction. This timing can be different across Stacks nodes / API instances due to propagation timing differences in the p2p network.
+   */
+  tx_ages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average byte size of transactions in the mempool, broken down by transaction type.
+   */
+  tx_byte_sizes: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+}
+/**
  * GET request that returns transactions
  */
 export interface MempoolTransactionListResponse {
@@ -3310,6 +3426,41 @@ export interface RpcMicroblockSubscriptionRequest {
   id: number | string;
   method: "microblock";
   params: RpcMicroblockSubscriptionParams;
+}
+export interface RpcNftAssetEventSubscriptionParams {
+  event: "nft_asset_event";
+  asset_identifier: string;
+  value: string;
+}
+export interface RpcNftAssetEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_asset_event";
+  params: RpcNftAssetEventSubscriptionParams;
+}
+export interface RpcNftCollectionEventSubscriptionParams {
+  event: "nft_collection_event";
+  asset_identifier: string;
+}
+export interface RpcNftCollectionEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_collection_event";
+  params: RpcNftCollectionEventSubscriptionParams;
+}
+export interface RpcNftEventNotificationResponse {
+  jsonrpc: "2.0";
+  method: "block";
+  params: NftEvent;
+}
+export interface RpcNftEventSubscriptionParams {
+  event: "nft_event";
+}
+export interface RpcNftEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_event";
+  params: RpcNftEventSubscriptionParams;
 }
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";

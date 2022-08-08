@@ -14,7 +14,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 
-describe('api tests', () => {
+describe('smart contract tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let api: ApiServer;
@@ -77,7 +77,7 @@ describe('api tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -305,7 +305,7 @@ describe('api tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: 'hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,

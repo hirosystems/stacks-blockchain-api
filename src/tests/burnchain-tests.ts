@@ -6,7 +6,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 
-describe('api tests', () => {
+describe('burnchain tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let api: ApiServer;

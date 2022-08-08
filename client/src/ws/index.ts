@@ -14,6 +14,10 @@ import {
   MempoolTransaction,
   RpcAddressBalanceNotificationParams,
   RpcAddressTxNotificationParams,
+  NftEvent,
+  RpcNftEventSubscriptionParams,
+  RpcNftAssetEventSubscriptionParams,
+  RpcNftCollectionEventSubscriptionParams,
 } from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
@@ -38,6 +42,9 @@ export class StacksApiWebSocketClient {
     txUpdate: (event: Transaction | MempoolTransaction) => any;
     addressTxUpdate: (event: RpcAddressTxNotificationParams) => void;
     addressBalanceUpdate: (event: RpcAddressBalanceNotificationParams) => void;
+    nftEventUpdate: (event: NftEvent) => void;
+    nftAssetEventUpdate: (event: NftEvent) => void;
+    nftCollectionEventUpdate: (event: NftEvent) => void;
   }>();
 
   public static async connect(url: string = BASE_PATH): Promise<StacksApiWebSocketClient> {
@@ -113,6 +120,15 @@ export class StacksApiWebSocketClient {
         break;
       case 'mempool':
         this.eventEmitter.emit('mempool', data.params as Transaction);
+        break;
+      case 'nft_event':
+        this.eventEmitter.emit('nftEventUpdate', data.params as NftEvent);
+        break;
+      case 'nft_asset_event':
+        this.eventEmitter.emit('nftAssetEventUpdate', data.params as NftEvent);
+        break;
+      case 'nft_collection_event':
+        this.eventEmitter.emit('nftCollectionEventUpdate', data.params as NftEvent);
         break;
     }
   }
@@ -228,6 +244,71 @@ export class StacksApiWebSocketClient {
     return {
       unsubscribe: () => {
         this.eventEmitter.removeListener('addressBalanceUpdate', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
+  }
+
+  async subscribeNftEventUpdates(update: (event: NftEvent) => any): Promise<Subscription> {
+    const params: RpcNftEventSubscriptionParams = {
+      event: 'nft_event',
+    };
+    await this.rpcCall('subscribe', params);
+    const listener = (event: NftEvent) => {
+      update(event);
+    };
+    this.eventEmitter.addListener('nftEventUpdate', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('nftEventUpdate', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
+  }
+
+  async subscribeNftAssetEventUpdates(
+    assetIdentifier: string,
+    value: string,
+    update: (event: NftEvent) => any
+  ): Promise<Subscription> {
+    const params: RpcNftAssetEventSubscriptionParams = {
+      event: 'nft_asset_event',
+      asset_identifier: assetIdentifier,
+      value,
+    };
+    const subscribed = await this.rpcCall<{ asset_identifier: string, value: string }>('subscribe', params);
+    const listener = (event: NftEvent) => {
+      if (event.asset_identifier === subscribed.asset_identifier && event.value.hex === subscribed.value) {
+        update(event);
+      }
+    };
+    this.eventEmitter.addListener('nftAssetEventUpdate', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('nftAssetEventUpdate', listener);
+        return this.rpcCall('unsubscribe', params);
+      },
+    };
+  }
+
+  async subscribeNftCollectionEventUpdates(
+    assetIdentifier: string,
+    update: (event: NftEvent) => any
+  ): Promise<Subscription> {
+    const params: RpcNftCollectionEventSubscriptionParams = {
+      event: 'nft_collection_event',
+      asset_identifier: assetIdentifier,
+    };
+    const subscribed = await this.rpcCall<{ asset_identifier: string }>('subscribe', params);
+    const listener = (event: NftEvent) => {
+      if (event.asset_identifier === subscribed.asset_identifier) {
+        update(event);
+      }
+    };
+    this.eventEmitter.addListener('nftCollectionEventUpdate', listener);
+    return {
+      unsubscribe: () => {
+        this.eventEmitter.removeListener('nftCollectionEventUpdate', listener);
         return this.rpcCall('unsubscribe', params);
       },
     };

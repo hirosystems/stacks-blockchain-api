@@ -184,6 +184,37 @@ export interface DbTx extends BaseTx {
   execution_cost_write_length: number;
 }
 
+export interface DbMempoolStats {
+  tx_type_counts: Record<string, number>;
+  tx_simple_fee_averages: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+  tx_ages: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+  tx_byte_sizes: Record<
+    string,
+    {
+      p25: number | null;
+      p50: number | null;
+      p75: number | null;
+      p95: number | null;
+    }
+  >;
+}
+
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
   raw_tx: string;
@@ -347,6 +378,9 @@ export interface AddressNftEventIdentifier {
   value: string;
   block_height: number;
   tx_id: string;
+  event_index: number;
+  tx_index: number;
+  asset_event_type_id: number;
 }
 
 export interface TokenMetadataUpdateInfo {

@@ -4,7 +4,7 @@ import {
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
   FoundOrNot,
@@ -37,6 +37,7 @@ import {
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
   DbInboundStxTransfer,
+  DbMempoolStats,
   DbMempoolTx,
   DbMicroblock,
   DbMinerReward,
@@ -92,6 +93,7 @@ import {
   PgBlockNotificationPayload,
   PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
+  PgNftEventNotificationPayload,
   PgNotifier,
   PgTokenMetadataNotificationPayload,
   PgTokensNotificationPayload,
@@ -178,6 +180,10 @@ export class PgStore {
         case 'tokenMetadataUpdateQueued':
           const metadata = notification.payload as PgTokenMetadataNotificationPayload;
           this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
+          break;
+        case 'nftEventUpdate':
+          const nftEvent = notification.payload as PgNftEventNotificationPayload;
+          this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
           break;
       }
     });
@@ -1049,6 +1055,169 @@ export class PgStore {
       const mempoolTxs = resultQuery.map(r => parseMempoolTxQueryResult(r));
       return { results: mempoolTxs, total: count };
     });
+  }
+
+  async getMempoolStats({ lastBlockCount }: { lastBlockCount?: number }): Promise<DbMempoolStats> {
+    return await this.sql.begin(async sql => {
+      return await this.getMempoolStatsInternal({ sql, lastBlockCount });
+    });
+  }
+
+  async getMempoolStatsInternal({
+    sql,
+    lastBlockCount,
+  }: {
+    sql: PgSqlClient;
+    lastBlockCount?: number;
+  }): Promise<DbMempoolStats> {
+    let blockHeightCondition = sql``;
+    const chainTipHeight = await this.getMaxBlockHeight(sql, { includeUnanchored: true });
+    if (lastBlockCount) {
+      const maxBlockHeight = chainTipHeight - lastBlockCount;
+      blockHeightCondition = sql` AND receipt_block_height >= ${maxBlockHeight} `;
+    }
+
+    const txTypes = [
+      DbTxTypeId.TokenTransfer,
+      DbTxTypeId.SmartContract,
+      DbTxTypeId.ContractCall,
+      DbTxTypeId.PoisonMicroblock,
+    ];
+
+    const txTypeCountsQuery = await sql<{ type_id: DbTxTypeId; count: number }[]>`
+      SELECT
+        type_id,
+        count(*)::integer count
+      FROM mempool_txs
+      WHERE pruned = false
+      ${blockHeightCondition}
+      GROUP BY type_id
+    `;
+    const txTypeCounts: Record<string, number> = {};
+    for (const typeId of txTypes) {
+      const count = txTypeCountsQuery.find(r => r.type_id === typeId)?.count ?? 0;
+      txTypeCounts[getTxTypeString(typeId)] = count;
+    }
+
+    const txFeesQuery = await sql<
+      { type_id: DbTxTypeId; p25: number; p50: number; p75: number; p95: number }[]
+    >`
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by fee_rate asc) as p25,
+        percentile_cont(0.50) within group (order by fee_rate asc) as p50,
+        percentile_cont(0.75) within group (order by fee_rate asc) as p75,
+        percentile_cont(0.95) within group (order by fee_rate asc) as p95
+      FROM mempool_txs
+      WHERE pruned = false
+      ${blockHeightCondition}
+      GROUP BY type_id
+    `;
+    const txFees: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txFeesQuery.find(r => r.type_id === typeId);
+      txFees[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
+    const txAgesQuery = await sql<
+      {
+        type_id: DbTxTypeId;
+        p25: number;
+        p50: number;
+        p75: number;
+        p95: number;
+      }[]
+    >`
+      WITH mempool_unpruned AS (
+        SELECT
+          type_id,
+          receipt_block_height
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      ),
+      mempool_ages AS (
+        SELECT
+          type_id,
+          ${chainTipHeight} - receipt_block_height as age
+        FROM mempool_unpruned
+      )
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by age asc) as p25,
+        percentile_cont(0.50) within group (order by age asc) as p50,
+        percentile_cont(0.75) within group (order by age asc) as p75,
+        percentile_cont(0.95) within group (order by age asc) as p95
+      FROM mempool_ages
+      GROUP BY type_id
+    `;
+    const txAges: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txAgesQuery.find(r => r.type_id === typeId);
+      txAges[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
+    const txSizesQuery = await sql<
+      {
+        type_id: DbTxTypeId;
+        p25: number;
+        p50: number;
+        p75: number;
+        p95: number;
+      }[]
+    >`
+      WITH mempool_unpruned AS (
+        SELECT
+          type_id, tx_size
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      )
+      SELECT
+        type_id,
+        percentile_cont(0.25) within group (order by tx_size asc) as p25,
+        percentile_cont(0.50) within group (order by tx_size asc) as p50,
+        percentile_cont(0.75) within group (order by tx_size asc) as p75,
+        percentile_cont(0.95) within group (order by tx_size asc) as p95
+      FROM mempool_unpruned
+      GROUP BY type_id
+    `;
+    const txSizes: Record<
+      string,
+      { p25: number | null; p50: number | null; p75: number | null; p95: number | null }
+    > = {};
+    for (const typeId of txTypes) {
+      const percentiles = txSizesQuery.find(r => r.type_id === typeId);
+      txSizes[getTxTypeString(typeId)] = {
+        p25: percentiles?.p25 ?? null,
+        p50: percentiles?.p50 ?? null,
+        p75: percentiles?.p75 ?? null,
+        p95: percentiles?.p95 ?? null,
+      };
+    }
+
+    return {
+      tx_type_counts: txTypeCounts,
+      tx_simple_fee_averages: txFees,
+      tx_ages: txAges,
+      tx_byte_sizes: txSizes,
+    };
   }
 
   async getMempoolTxList({
@@ -2859,6 +3028,24 @@ export class PgStore {
     };
   }
 
+  async getNftEvent(args: { txId: string; eventIndex: number }): Promise<FoundOrNot<DbNftEvent>> {
+    const result = await this.sql<DbNftEvent[]>`
+      SELECT
+        event_index, tx_id, tx_index, block_height, index_block_hash, parent_index_block_hash,
+        microblock_hash, microblock_sequence, microblock_canonical, canonical, asset_event_type_id,
+        asset_identifier, value, sender, recipient
+      FROM nft_events
+      WHERE canonical = TRUE
+        AND microblock_canonical = TRUE
+        AND tx_id = ${args.txId}
+        AND event_index = ${args.eventIndex}
+    `;
+    if (result.length === 0) {
+      return { found: false } as const;
+    }
+    return { found: true, result: result[0] } as const;
+  }
+
   /**
    * @deprecated Use `getNftHoldings` instead.
    */
@@ -2872,7 +3059,7 @@ export class PgStore {
     // Join against `nft_custody` materialized view only if we're looking for canonical results.
     const result = await this.sql<(AddressNftEventIdentifier & { count: number })[]>`
       WITH address_transfers AS (
-        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id
+        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id, asset_event_type_id
         FROM nft_events
         WHERE canonical = true AND microblock_canonical = true
         AND recipient = ${args.stxAddress} AND block_height <= ${args.blockHeight}
@@ -2884,7 +3071,7 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
+      SELECT sender, recipient, asset_identifier, value, event_index, asset_event_type_id, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
       FROM address_transfers
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
@@ -2901,6 +3088,9 @@ export class PgStore {
       value: row.value,
       block_height: row.block_height,
       tx_id: row.tx_id,
+      event_index: row.event_index,
+      asset_event_type_id: row.asset_event_type_id,
+      tx_index: row.tx_index,
     }));
 
     return { results: nftEvents, total: count };

@@ -1,7 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../api/init';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -360,57 +360,6 @@ describe('/block tests', () => {
     const result5 = JSON.parse(query5.text);
     // No operation, ignored due to missing metadata.
     expect(result5.operations[1]).toEqual(undefined);
-  });
-
-  test('/block', async () => {
-    const block_hash = '0x1234',
-      index_block_hash = '0xabcd',
-      tx_id = '0x12ff';
-
-    const block1 = new TestBlockBuilder({
-      block_hash,
-      index_block_hash,
-      // parent_index_block_hash: genesis_index_block_hash,
-      block_height: 1,
-    })
-      .addTx({ block_hash, tx_id, index_block_hash })
-      .build();
-    const microblock = new TestMicroblockStreamBuilder()
-      .addMicroblock({ parent_index_block_hash: index_block_hash })
-      .build();
-    await db.update(block1);
-    await db.updateMicroblocks(microblock);
-    const expectedResp = {
-      limit: 20,
-      offset: 0,
-      total: 1,
-      results: [
-        {
-          canonical: true,
-          height: 1,
-          hash: block_hash,
-          parent_block_hash: '0x',
-          burn_block_time: 94869286,
-          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
-          burn_block_hash: '0xf44f44',
-          burn_block_height: 713000,
-          miner_txid: '0x4321',
-          parent_microblock_hash: '0x00',
-          parent_microblock_sequence: 0,
-          txs: [tx_id],
-          microblocks_accepted: [],
-          microblocks_streamed: [microblock.microblocks[0].microblock_hash],
-          execution_cost_read_count: 0,
-          execution_cost_read_length: 0,
-          execution_cost_runtime: 0,
-          execution_cost_write_count: 0,
-          execution_cost_write_length: 0,
-          microblock_tx_count: {},
-        },
-      ],
-    };
-    const result = await supertest(api.server).get(`/extended/v1/block/`);
-    expect(result.body).toEqual(expectedResp);
   });
 
   afterEach(async () => {
