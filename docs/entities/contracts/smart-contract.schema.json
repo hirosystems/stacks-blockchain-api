@@ -2,19 +2,16 @@
   "type": "object",
   "title": "SmartContract",
   "description": "A Smart Contract Detail",
-  "required": [
-    "tx_id",
-    "canonical",
-    "block_height",
-    "source_code",
-    "abi"
-  ],
+  "required": ["tx_id", "canonical", "block_height", "source_code", "contract_id", "abi"],
   "properties": {
     "tx_id": {
       "type": "string"
     },
     "canonical": {
       "type": "boolean"
+    },
+    "contract_id": {
+      "type": "string"
     },
     "block_height": {
       "type": "integer"

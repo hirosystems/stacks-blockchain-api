@@ -2,6 +2,16 @@ import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
+type PgNotificationType =
+  | 'blockUpdate'
+  | 'microblockUpdate'
+  | 'txUpdate'
+  | 'nftEventUpdate'
+  | 'addressUpdate'
+  | 'nameUpdate'
+  | 'tokenMetadataUpdateQueued'
+  | 'tokensUpdate';
+
 export type PgTxNotificationPayload = {
   txId: string;
 };
@@ -12,6 +22,11 @@ export type PgBlockNotificationPayload = {
 
 export type PgMicroblockNotificationPayload = {
   microblockHash: string;
+};
+
+export type PgNftEventNotificationPayload = {
+  txId: string;
+  eventIndex: number;
 };
 
 export type PgAddressNotificationPayload = {
@@ -32,16 +47,17 @@ export type PgTokensNotificationPayload = {
 };
 
 type PgNotificationPayload =
+  | PgAddressNotificationPayload
   | PgBlockNotificationPayload
   | PgMicroblockNotificationPayload
-  | PgTxNotificationPayload
-  | PgAddressNotificationPayload
-  | PgTokenMetadataNotificationPayload
   | PgNameNotificationPayload
-  | PgTokensNotificationPayload;
+  | PgNftEventNotificationPayload
+  | PgTokenMetadataNotificationPayload
+  | PgTokensNotificationPayload
+  | PgTxNotificationPayload;
 
 type PgNotification = {
-  type: string;
+  type: PgNotificationType;
   payload: PgNotificationPayload;
 };
 
@@ -89,6 +105,10 @@ export class PgNotifier {
 
   public async sendTx(payload: PgTxNotificationPayload) {
     await this.notify({ type: 'txUpdate', payload: payload });
+  }
+
+  public async sendNftEvent(payload: PgNftEventNotificationPayload) {
+    await this.notify({ type: 'nftEventUpdate', payload: payload });
   }
 
   public async sendAddress(payload: PgAddressNotificationPayload) {

@@ -32,6 +32,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     contract_id: {
       type: 'string', 
       notNull: true, 
+      unique: true,
     },
     tx_id: {
       type: 'bytea',

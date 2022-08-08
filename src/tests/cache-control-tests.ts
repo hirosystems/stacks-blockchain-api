@@ -4,7 +4,7 @@ import { getBlockFromDataStore } from '../api/controllers/db-controller';
 import { DbBlock, DbMicroblockPartial, DbTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PoolClient } from 'pg';
-import { I32_MAX } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -104,7 +104,7 @@ describe('cache-control tests', () => {
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: 'coinbase hi',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -248,7 +248,7 @@ describe('cache-control tests', () => {
       sponsor_address: undefined,
       origin_hash_mode: 1,
       token_transfer_amount: 50n,
-      token_transfer_memo: 'hi',
+      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
       token_transfer_recipient_address: addr2,
       event_count: 1,
       parent_index_block_hash: block1.index_block_hash,

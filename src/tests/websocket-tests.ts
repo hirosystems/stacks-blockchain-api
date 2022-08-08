@@ -1,6 +1,6 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
-import { DbTxTypeId, DbTxStatus } from '../datastore/common';
+import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
@@ -18,6 +18,10 @@ import {
   Block,
   RpcMicroblockSubscriptionParams,
   Microblock,
+  RpcNftEventSubscriptionParams,
+  RpcNftAssetEventSubscriptionParams,
+  RpcNftCollectionEventSubscriptionParams,
+  NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '../../client/src';
 import { ChainID } from '@stacks/transactions';
@@ -461,6 +465,185 @@ describe('websocket notifications', () => {
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
       expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
+    } finally {
+      socket.terminate();
+    }
+  });
+
+  test('websocket rpc - nft event updates', async () => {
+    const addr = apiServer.address;
+    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const socket = new WebSocket(wsAddress);
+
+    try {
+      await once(socket, 'open');
+      const client = new RpcWebSocketClient();
+      client.changeSocket(socket);
+      client.listenMessages();
+
+      const crashPunks = 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2';
+      const wastelandApes =
+        'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes';
+      const valueHex1 = '0x0100000000000000000000000000000d55';
+      const valueHex2 = '0x0100000000000000000000000000000095';
+      const stxAddress1 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+
+      // subscribe
+      const subParams1: RpcNftEventSubscriptionParams = {
+        event: 'nft_event',
+      };
+      const result1 = await client.call('subscribe', subParams1);
+      expect(result1).toEqual({});
+
+      const subParams2: RpcNftAssetEventSubscriptionParams = {
+        event: 'nft_asset_event',
+        asset_identifier: crashPunks,
+        value: valueHex1,
+      };
+      const result2 = await client.call('subscribe', subParams2);
+      expect(result2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+
+      const subParams3: RpcNftCollectionEventSubscriptionParams = {
+        event: 'nft_collection_event',
+        asset_identifier: wastelandApes,
+      };
+      const result3 = await client.call('subscribe', subParams3);
+      expect(result3).toEqual({ asset_identifier: wastelandApes });
+
+      const nftEventWaiters: Waiter<NftEvent>[] = [waiter(), waiter(), waiter(), waiter()];
+      const crashPunksWaiter: Waiter<NftEvent> = waiter();
+      const apeWaiters: Waiter<NftEvent>[] = [waiter(), waiter()];
+      client.onNotification.push(msg => {
+        const event: NftEvent = msg.params;
+        switch (msg.method) {
+          case 'nft_event':
+            nftEventWaiters[event.event_index].finish(event);
+            break;
+          case 'nft_asset_event':
+            if (event.asset_identifier == crashPunks && event.value.hex == valueHex1) {
+              crashPunksWaiter.finish(event);
+            }
+            break;
+          case 'nft_collection_event':
+            if (event.asset_identifier == wastelandApes) {
+              if (event.event_index == 2) {
+                apeWaiters[0].finish(event);
+              } else if (event.event_index == 3) {
+                apeWaiters[1].finish(event);
+              }
+            }
+            break;
+        }
+      });
+
+      const block = new TestBlockBuilder()
+        .addTx({
+          tx_id: '0x01',
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: crashPunks,
+          value: valueHex1,
+          recipient: stxAddress1,
+          event_index: 0,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: crashPunks,
+          value: valueHex2,
+          recipient: stxAddress1,
+          event_index: 1,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: wastelandApes,
+          value: valueHex1,
+          recipient: stxAddress1,
+          event_index: 2,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: wastelandApes,
+          value: valueHex2,
+          recipient: stxAddress1,
+          event_index: 3,
+        })
+        .build();
+      await db.update(block);
+
+      const expectedEvent0 = {
+        asset_event_type: 'mint',
+        asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+        block_height: 1,
+        event_index: 0,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+      };
+      const expectedEvent1 = {
+        asset_event_type: 'mint',
+        asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+        block_height: 1,
+        event_index: 1,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+      };
+      const expectedEvent2 = {
+        asset_event_type: 'mint',
+        asset_identifier:
+          'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+        block_height: 1,
+        event_index: 2,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+      };
+      const expectedEvent3 = {
+        asset_event_type: 'mint',
+        asset_identifier:
+          'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+        block_height: 1,
+        event_index: 3,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+      };
+
+      const event0 = await nftEventWaiters[0];
+      const event1 = await nftEventWaiters[1];
+      const event2 = await nftEventWaiters[2];
+      const event3 = await nftEventWaiters[3];
+      const crashEvent = await crashPunksWaiter;
+      const apeEvent0 = await apeWaiters[0];
+      const apeEvent1 = await apeWaiters[1];
+
+      expect(event0).toEqual(expectedEvent0);
+      expect(event1).toEqual(expectedEvent1);
+      expect(event2).toEqual(expectedEvent2);
+      expect(event3).toEqual(expectedEvent3);
+
+      expect(crashEvent).toEqual(expectedEvent0);
+
+      expect(apeEvent0).toEqual(expectedEvent2);
+      expect(apeEvent1).toEqual(expectedEvent3);
+
+      const unsubscribeResult1 = await client.call('unsubscribe', subParams1);
+      expect(unsubscribeResult1).toEqual({});
+
+      const unsubscribeResult2 = await client.call('unsubscribe', subParams2);
+      expect(unsubscribeResult2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+
+      const unsubscribeResult3 = await client.call('unsubscribe', subParams3);
+      expect(unsubscribeResult3).toEqual({ asset_identifier: wastelandApes });
     } finally {
       socket.terminate();
     }

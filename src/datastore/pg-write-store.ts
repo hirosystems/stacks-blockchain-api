@@ -392,6 +392,11 @@ export class PgWriteStore extends PgStore {
           tokenMetadataQueueEntries.push(queueEntry);
         }
       }
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
@@ -405,6 +410,12 @@ export class PgWriteStore extends PgStore {
         await this.notifier?.sendTx({ txId: txId });
       }
       await this.emitAddressTxUpdates(data.txs);
+      for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
+        await this.notifier.sendNftEvent({
+          txId: nftEvent.tx_id,
+          eventIndex: nftEvent.event_index,
+        });
+      }
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
       }
@@ -637,6 +648,11 @@ export class PgWriteStore extends PgStore {
 
       await this.refreshNftCustody(sql, txs, true);
       await this.refreshMaterializedView(sql, 'chain_tip');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
 
       if (this.notifier) {
         for (const microblock of dbMicroblocks) {
@@ -1204,6 +1220,11 @@ export class PgWriteStore extends PgStore {
         }
       }
       await this.refreshMaterializedView(sql, 'mempool_digest');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -1363,6 +1384,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
@@ -1392,6 +1416,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
@@ -1798,6 +1825,9 @@ export class PgWriteStore extends PgStore {
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
+    for (const txId of deletedTxs) {
+      await this.notifier?.sendTx({ txId: txId });
+    }
     return { deletedTxs: deletedTxs };
   }
 

@@ -1,4 +1,4 @@
-import { hexToBuffer, parseEnum } from '../helpers';
+import { hexToBuffer, logError, parseEnum } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -8,6 +8,7 @@ import {
   DbFaucetRequest,
   DbFaucetRequestCurrency,
   DbFtEvent,
+  DbMempoolStats,
   DbMempoolTx,
   DbMicroblock,
   DbNftEvent,
@@ -30,6 +31,7 @@ import {
   CoreNodeTxStatus,
 } from '../event-stream/core-node-message';
 import {
+  decodeClarityValueToRepr,
   DecodedTxResult,
   PostConditionAuthFlag,
   PrincipalTypeID,
@@ -37,7 +39,11 @@ import {
 } from 'stacks-encoding-native-js';
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
+import * as prom from 'prom-client';
 import { PgSqlClient } from './connection';
+import { NftEvent } from 'docs/generated';
+import { getAssetEventTypeString } from '../api/controllers/db-controller';
+import { PgStoreEventEmitter } from './pg-store-event-emitter';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -619,6 +625,24 @@ export function parseTxsWithAssetTransfers(
   return txs;
 }
 
+export function parseNftEvent(dbEvent: DbNftEvent): NftEvent {
+  const event: NftEvent = {
+    asset_identifier: dbEvent.asset_identifier,
+    asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
+    value: {
+      hex: dbEvent.value,
+      repr: decodeClarityValueToRepr(dbEvent.value),
+    },
+    tx_id: dbEvent.tx_id,
+    tx_index: dbEvent.tx_index,
+    block_height: dbEvent.block_height,
+    event_index: dbEvent.event_index,
+    sender: dbEvent.sender,
+    recipient: dbEvent.recipient,
+  };
+  return event;
+}
+
 /**
  * Removes the `0x` from the incoming zonefile hash, either for insertion or search.
  */
@@ -777,4 +801,60 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
   };
   extractTransactionPayload(parsedTx, dbTx);
   return dbTx;
+}
+
+export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
+  const mempoolTxCountGauge = new prom.Gauge({
+    name: `mempool_tx_count`,
+    help: 'Number of txs in the mempool, by tx type',
+    labelNames: ['type'] as const,
+  });
+  const mempoolTxFeeAvgGauge = new prom.Gauge({
+    name: `mempool_tx_fee_average`,
+    help: 'Simple average of tx fees in the mempool, by tx type',
+    labelNames: ['type', 'percentile'] as const,
+  });
+  const mempoolTxAgeGauge = new prom.Gauge({
+    name: `mempool_tx_age`,
+    help: 'Average age (by block) of txs in the mempool, by tx type',
+    labelNames: ['type', 'percentile'] as const,
+  });
+  const mempoolTxSizeGauge = new prom.Gauge({
+    name: `mempool_tx_byte_size`,
+    help: 'Average byte size of txs in the mempool, by tx type',
+    labelNames: ['type', 'percentile'] as const,
+  });
+  const updatePromMempoolStats = (mempoolStats: DbMempoolStats) => {
+    for (const txType in mempoolStats.tx_type_counts) {
+      const entry = mempoolStats.tx_type_counts[txType];
+      mempoolTxCountGauge.set({ type: txType }, entry);
+    }
+    for (const txType in mempoolStats.tx_simple_fee_averages) {
+      const entries = mempoolStats.tx_simple_fee_averages[txType];
+      Object.entries(entries).forEach(([p, num]) => {
+        mempoolTxFeeAvgGauge.set({ type: txType, percentile: p }, num ?? -1);
+      });
+    }
+    for (const txType in mempoolStats.tx_ages) {
+      const entries = mempoolStats.tx_ages[txType];
+      Object.entries(entries).forEach(([p, num]) => {
+        mempoolTxAgeGauge.set({ type: txType, percentile: p }, num ?? -1);
+      });
+    }
+    for (const txType in mempoolStats.tx_byte_sizes) {
+      const entries = mempoolStats.tx_byte_sizes[txType];
+      Object.entries(entries).forEach(([p, num]) => {
+        mempoolTxSizeGauge.set({ type: txType, percentile: p }, num ?? -1);
+      });
+    }
+  };
+  pgEvents.addListener('mempoolStatsUpdate', mempoolStats => {
+    setImmediate(() => {
+      try {
+        updatePromMempoolStats(mempoolStats);
+      } catch (error) {
+        logError(`Error updating prometheus mempool stats`, error);
+      }
+    });
+  });
 }

@@ -138,7 +138,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = parseMempoolTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       let addrParams: (string | undefined)[];
@@ -213,6 +213,16 @@ export function createTxRouter(db: PgStore): express.Router {
   );
 
   router.get(
+    '/mempool/stats',
+    mempoolCacheHandler,
+    asyncHandler(async (req, res) => {
+      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
+      setETagCacheHeaders(res, ETagType.mempool);
+      res.json(queryResult);
+    })
+  );
+
+  router.get(
     '/events',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
@@ -240,7 +250,9 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id);
+        const baseURL = req.protocol + '://' + req.headers.host + '/';
+        const url = new URL(req.url, baseURL);
+        return res.redirect('/extended/v1/tx/0x' + tx_id + url.search);
       }
 
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
