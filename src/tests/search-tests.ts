@@ -351,6 +351,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
       hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
       height: 1,
+      index_block_hash: '0xdeadbeef',
       microblocks_accepted: [],
       microblocks_streamed: [],
       miner_txid: '0x4321',
