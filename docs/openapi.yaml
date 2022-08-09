@@ -924,7 +924,7 @@ paths:
         in: path
         description: Contract identifier formatted as `<contract_address>.<contract_name>`
         required: true
-        example: SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.staking-helper
+        example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles
         schema:
           type: string
       - name: unanchored
@@ -985,6 +985,7 @@ paths:
           in: path
           description: Contract identifier formatted as `<contract_address>.<contract_name>`
           required: true
+          example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles
           schema:
             type: string
         - name: limit
@@ -1039,12 +1040,14 @@ paths:
         in: path
         required: true
         description: Stacks address
+        example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
         schema:
           type: string
       - name: contract_name
         in: path
         required: true
         description: Contract name
+        example: satoshibles
         schema:
           type: string
       - name: tip
@@ -1081,12 +1084,14 @@ paths:
           in: path
           required: true
           description: Stacks address
+          example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
           schema:
             type: string
         - name: contract_name
           in: path
           required: true
           description: Contract name
+          example: satoshibles
           schema:
             type: string
         - name: map_name
@@ -1135,12 +1140,14 @@ paths:
         in: path
         required: true
         description: Stacks address
+        example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
         schema:
           type: string
       - name: contract_name
         in: path
         required: true
         description: Contract name
+        example: satoshibles
         schema:
           type: string
       - name: proof
@@ -1184,12 +1191,14 @@ paths:
           in: path
           required: true
           description: Stacks address
+          example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
           schema:
             type: string
         - name: contract_name
           in: path
           required: true
           description: Contract name
+          example: satoshibles
           schema:
             type: string
         - name: function_name
