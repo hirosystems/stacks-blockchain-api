@@ -1896,13 +1896,6 @@ paths:
         Retrieves the version information and allowed network-specific types for a NetworkIdentifier.
         Any NetworkIdentifier returned by /network/list should be accessible here.
         Because options are retrievable in the context of a NetworkIdentifier, it is possible to define unique options for each network.
-      parameters:
-        - name: page
-          in: query
-          required: true
-          example: mainnet
-          schema:
-            type: string
       responses:
         200:
           description: Success
@@ -1922,6 +1915,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-options-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-network-options-request-body-example.json
 
   /rosetta/v1/network/status:
     post:
@@ -3152,7 +3147,7 @@ paths:
     post:
       operationId: fetch_fee_rate
       summary: Fetch fee rate
-      deprecated: true
+      deprecated: true 
       description: |
         **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for the given transaction](#operation/post_fee_transaction).
 
