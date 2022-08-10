@@ -1,11 +1,9 @@
 [
   {
-    "network_identifier": 
-  { 
-    "blockchain": "stacks", 
-    "network": "mainnet"
-  },
-  "metadata": {
-  }
+    "network_identifier": {
+      "blockchain": "stacks",
+      "network": "mainnet"
+    },
+    "metadata": {}
   }
 ]
