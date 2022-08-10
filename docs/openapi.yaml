@@ -3147,7 +3147,7 @@ paths:
     post:
       operationId: fetch_fee_rate
       summary: Fetch fee rate
-      deprecated: true 
+      deprecated: true
       description: |
         **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for the given transaction](#operation/post_fee_transaction).
 
