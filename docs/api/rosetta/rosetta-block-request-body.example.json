@@ -1,0 +1,10 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "block_identifier": {
+    "index": 71107,
+    "hash": "0xce7e16561150f3a379845f4e96c3dd8f8396e397495821c9eec6b429391c529c"
+}
+}

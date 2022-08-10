@@ -1,0 +1,11 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "public_key": {
+    "hex_bytes": "022d82baea2d041ac281bebafab11571f45db4f163a9e3f8640b1c804a4ac6f662",
+    "curve_type": "secp256k1"
+  },
+  "metadata": {}
+}

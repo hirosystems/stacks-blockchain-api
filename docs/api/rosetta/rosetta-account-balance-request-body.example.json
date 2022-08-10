@@ -1,0 +1,10 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "account_identifier": {
+    "address": "SP2W6477BT5CRWVC5D5RFNPNAR8R2NW63SMMCAWMC",
+    "metadata": {}
+  }
+}
