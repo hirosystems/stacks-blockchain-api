@@ -1916,7 +1916,7 @@ paths:
             schema:
               $ref: ./api/rosetta/rosetta-network-options-request.schema.json
             example: 
-              $ref: ./api/rosetta/rosetta-account-network-options-request-body-example.json
+              $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/network/status:
     post:
@@ -1946,6 +1946,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-status-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/account/balance:
     post:
@@ -1975,6 +1977,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-balance-request-body.example.json
 
   /rosetta/v1/block:
     post:
@@ -2002,6 +2006,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-block-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-block-request-body.example.json
 
   /rosetta/v1/block/transaction:
     post:
@@ -2029,6 +2035,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-block-transaction-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-block-transaction-request-body.example.json
 
   /rosetta/v1/mempool:
     post:
@@ -2056,6 +2064,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-mempool-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/mempool/transaction:
     post:
@@ -2206,8 +2216,6 @@ paths:
             application/json:
               schema:
                 $ref: ./api/rosetta/rosetta-construction-preprocess-response.schema.json
-              example:
-                $ref: ./api/rosetta/rosetta-construction-preprocess-response.example.json
 
         400:
           description: Error
@@ -2325,8 +2333,6 @@ paths:
             application/json:
               schema:
                 $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.schema.json
-              example:
-                $ref: ./api/bns/namespace-operations/bns-get-namespace-price-response.example.json
 
   /v2/prices/names/{name}:
     get:
@@ -2350,8 +2356,6 @@ paths:
             application/json:
               schema:
                 $ref: ./api/bns/name-querying/bns-get-name-price-response.schema.json
-              example:
-                $ref: ./api/bns/name-querying/bns-get-name-price-response.example.json
 
   /v1/namespaces:
     get:
