@@ -176,6 +176,10 @@ const defaultLogLevel: LogLevel = (() => {
   return 'http';
 })();
 
+export function checkLogLevelValid(level: string): level is LogLevel {
+  return LOG_LEVELS.includes(level as LogLevel);
+}
+
 export const logger = winston.createLogger({
   level: defaultLogLevel,
   exitOnError: false,

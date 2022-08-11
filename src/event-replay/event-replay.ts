@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { checkLogLevelValid, getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
 enum EventImportMode {
@@ -128,7 +128,16 @@ export async function importEventsFromTsv(
   });
   // Set logger to only output for warnings/errors, otherwise the event replay will result
   // in the equivalent of months/years of API log output.
-  logger.level = 'warn';
+  const logLevel = process.env.STACKS_API_EVENT_REPLAY_LOG_LEVEL;
+  if (logLevel) {
+    if (!checkLogLevelValid(logLevel)) {
+      throw new Error(`Invalid log level specified STACKS_API_EVENT_REPLAY_LOG_LEVEL=${logLevel}`);
+    }
+    console.log(`Using specified log level STACKS_API_EVENT_REPLAY_LOG_LEVEL=${logLevel}`);
+    logger.level = logLevel;
+  } else {
+    logger.level = 'warn';
+  }
   // Disable this feature so a redundant export file isn't created while importing from an existing one.
   delete process.env['STACKS_EXPORT_EVENTS_FILE'];
   // The current import block height. Will be updated with every `/new_block` event.
