@@ -6246,6 +6246,11 @@ paths:
                     ion~1json/schema/properties/network_identifiers/items"
                 metadata:
                   type: object
+            example:
+              - network_identifier:
+                  blockchain: stacks
+                  network: mainnet
+                metadata: {}
   /rosetta/v1/network/status:
     post:
       tags:
@@ -6417,6 +6422,9 @@ paths:
                     ion~1json/schema/properties/network_identifiers/items"
                 metadata:
                   type: object
+            example:
+              $ref: "#/paths/~1rosetta~1v1~1network~1options/post/requestBody/content/applica\
+                tion~1json/example"
   /rosetta/v1/account/balance:
     post:
       tags:
@@ -6627,6 +6635,13 @@ paths:
                         ation~1json/schema/properties/current_block_identifier/\
                         allOf/1"
                     - type: object
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              account_identifier:
+                address: SP2W6477BT5CRWVC5D5RFNPNAR8R2NW63SMMCAWMC
+                metadata: {}
   /rosetta/v1/block:
     post:
       tags:
@@ -6767,6 +6782,13 @@ paths:
                 block_identifier:
                   $ref: "#/paths/~1rosetta~1v1~1account~1balance/post/requestBody/content/applica\
                     tion~1json/schema/properties/block_identifier"
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              block_identifier:
+                index: 71107
+                hash: "0xce7e16561150f3a379845f4e96c3dd8f8396e397495821c9eec6b429391c529c"
   /rosetta/v1/block/transaction:
     post:
       tags:
@@ -6866,6 +6888,14 @@ paths:
                       description: "Any transactions that are attributable only to a block (ex: a
                         block event) should use the hash of the block as the
                         identifier."
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              block_identifier:
+                hash: "0xce7e16561150f3a379845f4e96c3dd8f8396e397495821c9eec6b429391c529c"
+              transaction_identifier:
+                hash: "0x49354cc7b18dc5296c945a8e89f7d758dac14f1ab38d4c33dfe45ec1765ab339"
   /rosetta/v1/mempool:
     post:
       tags:
@@ -6920,6 +6950,9 @@ paths:
                     ion~1json/schema/properties/network_identifiers/items"
                 metadata:
                   type: object
+            example:
+              $ref: "#/paths/~1rosetta~1v1~1network~1options/post/requestBody/content/applica\
+                tion~1json/example"
   /rosetta/v1/mempool/transaction:
     post:
       tags:
@@ -7510,21 +7543,6 @@ paths:
                     items:
                       $ref: "#/paths/~1rosetta~1v1~1account~1balance/post/requestBody/content/applica\
                         tion~1json/schema/properties/account_identifier"
-              example:
-                options:
-                  sender_address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
-                  type: stack_stx
-                  number_of_cycles: 5
-                  amount: "5000"
-                  symbol: STX
-                  decimals: 6
-                  pox_addr: 1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3
-                  suggested_fee_multiplier: 1
-                  max_fee: "12380898"
-                  size: 260
-                  memo: SAMPLE MEMO
-                required_public_keys:
-                  - address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
         "400":
           description: Error
           content:
@@ -7879,9 +7897,6 @@ paths:
                   amount:
                     type: string
                     pattern: ^[0-9]+$
-              example:
-                units: STX
-                amount: "4000000000"
   "/v2/prices/names/{name}":
     get:
       summary: Get Name Price
@@ -7917,10 +7932,6 @@ paths:
                   amount:
                     type: string
                     pattern: ^[0-9]+$
-              example:
-                name_price:
-                  units: STX
-                  amount: "100000"
   /v1/namespaces:
     get:
       summary: Get All Namespaces
