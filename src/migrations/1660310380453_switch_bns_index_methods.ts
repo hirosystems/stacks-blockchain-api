@@ -29,6 +29,8 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('names', 'microblock_hash');
   pgm.createIndex('namespaces', 'index_block_hash');
   pgm.createIndex('namespaces', 'microblock_hash');
+
+  pgm.createIndex('mempool_txs', 'receipt_block_height');
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
@@ -44,6 +46,7 @@ export async function down(pgm: MigrationBuilder): Promise<void> {
   pgm.dropIndex('names', 'microblock_hash');
   pgm.dropIndex('namespaces', 'index_block_hash');
   pgm.dropIndex('namespaces', 'microblock_hash');
+  pgm.dropIndex('mempool_txs', 'receipt_block_height');
 
   pgm.createIndex('subdomains', 'owner', { method: 'hash' });
   pgm.createIndex('subdomains', 'zonefile_hash', { method: 'hash' });

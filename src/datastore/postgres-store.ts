@@ -5393,6 +5393,9 @@ export class PgDataStore
     txs: DataStoreTxEventData[],
     unanchored: boolean = false
   ) {
+    if (this.eventReplay) {
+      return;
+    }
     const newNftEventCount = txs
       .map(tx => tx.nftEvents.length)
       .reduce((prev, cur) => prev + cur, 0);
