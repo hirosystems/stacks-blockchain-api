@@ -61,6 +61,7 @@ export interface ApiServer {
 
 export async function startApiServer(opts: {
   datastore: DataStore;
+  primaryDatastore?: DataStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;
@@ -68,7 +69,7 @@ export async function startApiServer(opts: {
   serverPort?: number;
   httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+  const { datastore, primaryDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
 
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -343,11 +344,9 @@ export async function startApiServer(opts: {
     });
   });
 
-  // Setup socket.io server
-  const io = createSocketIORouter(datastore, server);
-
-  // Setup websockets RPC endpoint
-  const wss = createWsRpcRouter(datastore, server);
+  // Setup WebSocket and socket.io servers
+  const io = createSocketIORouter(primaryDatastore ?? datastore, server);
+  const wss = createWsRpcRouter(primaryDatastore ?? datastore, server);
 
   await new Promise<void>((resolve, reject) => {
     try {

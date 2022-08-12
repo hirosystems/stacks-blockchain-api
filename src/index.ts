@@ -184,13 +184,32 @@ async function init(): Promise<void> {
   }
 
   if (apiMode !== StacksApiMode.writeOnly) {
-    const apiServer = await startApiServer({ datastore: db, chainId: getApiConfiguredChainID() });
+    // This is a temporary fix that allows the WebSockets and socket.io servers to query data from
+    // the primary DB after receiving LISTEN/NOTIFY messages without causing deadlocks. If you don't
+    // use a primary/replica PG setup, this will be transparent given that primary connection ENV
+    // configs always fall back to the defaults when not present.
+    const primaryDb = await PgDataStore.connect({
+      usageName: `datastore-${apiMode}-forcePrimary`,
+      skipMigrations: true,
+      forcePrimary: true,
+      withNotifier: false,
+    });
+    const apiServer = await startApiServer({
+      datastore: db,
+      primaryDatastore: primaryDb,
+      chainId: getApiConfiguredChainID(),
+    });
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
       handler: () => apiServer.terminate(),
       forceKillable: true,
       forceKillHandler: () => apiServer.forceKill(),
+    });
+    registerShutdownConfig({
+      name: 'Primary DB',
+      handler: () => primaryDb.close(),
+      forceKillable: false,
     });
   }
 

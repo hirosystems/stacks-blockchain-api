@@ -2785,11 +2785,13 @@ export class PgDataStore
     skipMigrations = false,
     withNotifier = true,
     eventReplay = false,
+    forcePrimary = false,
     usageName,
   }: {
     skipMigrations?: boolean;
     withNotifier?: boolean;
     eventReplay?: boolean;
+    forcePrimary?: boolean;
     usageName: string;
   }): Promise<PgDataStore> {
     const initTimer = stopwatch();
@@ -2797,7 +2799,10 @@ export class PgDataStore
     let connectionOkay = false;
     let lastElapsedLog = 0;
     do {
-      const clientConfig = getPgClientConfig({ usageName: `${usageName};init-connection-poll` });
+      const clientConfig = getPgClientConfig({
+        usageName: `${usageName};init-connection-poll`,
+        primary: forcePrimary,
+      });
       const client = new Client(clientConfig);
       try {
         await client.connect();
