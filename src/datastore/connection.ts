@@ -23,14 +23,14 @@ const PG_TYPE_MAPPINGS = {
     from: [17],
     serialize: (x: any) => {
       if (typeof x === 'string') {
-        if (/^(0x|0X)[a-fA-F0-9]*$/.test(x)) {
+        if (x.length === 0) {
+          return '\\x';
+        } else if (/^(0x|0X)[a-fA-F0-9]*$/.test(x)) {
           // hex string with "0x" prefix
           if (x.length % 2 !== 0) {
             throw new Error(`Hex string is an odd number of digits: "${x}"`);
           }
           return '\\x' + x.slice(2);
-        } else if (x.length === 0) {
-          return '\\x';
         } else if (/^\\x[a-fA-F0-9]*$/.test(x)) {
           // hex string with "\x" prefix (already encoded for postgres)
           if (x.length % 2 !== 0) {

@@ -4,7 +4,7 @@ import { Client } from 'pg';
 import { APP_DIR, isDevEnv, isTestEnv, logError, logger } from '../helpers';
 import { getPgClientConfig, PgClientConfig } from './connection-legacy';
 
-const MIGRATIONS_TABLE = 'pgmigrations';
+export const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
 
 export async function runMigrations(
