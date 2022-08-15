@@ -158,7 +158,7 @@ export async function getOperations(
   return operations;
 }
 
-export function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
+function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
   events.forEach(event => {
     operations.push(makeStakeUnlockOperation(event, operations.length));
   });

@@ -66,6 +66,7 @@ export function createTxRouter(db: PgStore): express.Router {
 
   const cacheHandler = getETagCacheHandler(db);
   const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
+  const txCacheHandler = getETagCacheHandler(db, ETagType.transaction);
 
   router.get(
     '/',
@@ -138,7 +139,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = parseMempoolTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       let addrParams: (string | undefined)[];
@@ -213,6 +214,16 @@ export function createTxRouter(db: PgStore): express.Router {
   );
 
   router.get(
+    '/mempool/stats',
+    mempoolCacheHandler,
+    asyncHandler(async (req, res) => {
+      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
+      setETagCacheHeaders(res, ETagType.mempool);
+      res.json(queryResult);
+    })
+  );
+
+  router.get(
     '/events',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
@@ -234,13 +245,15 @@ export function createTxRouter(db: PgStore): express.Router {
     })
   );
 
-  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id',
+    txCacheHandler,
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id);
+        const baseURL = req.protocol + '://' + req.headers.host + '/';
+        const url = new URL(req.url, baseURL);
+        return res.redirect('/extended/v1/tx/0x' + tx_id + url.search);
       }
 
       const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
@@ -258,20 +271,14 @@ export function createTxRouter(db: PgStore): express.Router {
         res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
         return;
       }
-      // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
-      /*
-    const schemaPath = require.resolve(
-      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
-    );
-    await validate(schemaPath, txQuery.result);
-    */
+      setETagCacheHeaders(res, ETagType.transaction);
       res.json(txQuery.result);
     })
   );
 
-  // TODO: Add cache headers. Impossible right now since this tx might be from a block or from the mempool.
   router.get(
     '/:tx_id/raw',
+    txCacheHandler,
     asyncHandler(async (req, res) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
@@ -285,6 +292,7 @@ export function createTxRouter(db: PgStore): express.Router {
         const response: GetRawTransactionResult = {
           raw_tx: rawTxQuery.result.raw_tx,
         };
+        setETagCacheHeaders(res, ETagType.transaction);
         res.json(response);
       } else {
         res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });

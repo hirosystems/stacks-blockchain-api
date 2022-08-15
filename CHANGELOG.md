@@ -1,3 +1,38 @@
+## [4.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.0...v4.1.1) (2022-08-03)
+
+
+### Bug Fixes
+
+* include `index_block_hash` in `/block` ([#1253](https://github.com/hirosystems/stacks-blockchain-api/issues/1253)) ([8cd7606](https://github.com/hirosystems/stacks-blockchain-api/commit/8cd7606797bf1b744441d68b3db834fd11c25bfa))
+
+# [4.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.4...v4.1.0) (2022-07-07)
+
+
+### Features
+
+* add cache control to `/extended/v1/tx/:tx_id` ([#1229](https://github.com/hirosystems/stacks-blockchain-api/issues/1229)) ([8d5ca2c](https://github.com/hirosystems/stacks-blockchain-api/commit/8d5ca2cce558f7f849fe3837930f66943c0738a7))
+
+## [4.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.3...v4.0.4) (2022-06-23)
+
+
+### Bug Fixes
+
+* arm64-alpine image, bump stacks-encoding-native-js [#1217](https://github.com/hirosystems/stacks-blockchain-api/issues/1217) ([#1220](https://github.com/hirosystems/stacks-blockchain-api/issues/1220)) ([d49f007](https://github.com/hirosystems/stacks-blockchain-api/commit/d49f007b6e099cf9bc2ba0a98798e9c431af09c7))
+
+## [4.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.2...v4.0.3) (2022-06-21)
+
+
+### Bug Fixes
+
+* add value indices on nft_custody views ([#1207](https://github.com/hirosystems/stacks-blockchain-api/issues/1207)) ([aac13c6](https://github.com/hirosystems/stacks-blockchain-api/commit/aac13c613044ae053e63d39a12a0e320e0104c86))
+
+## [4.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.1...v4.0.2) (2022-06-21)
+
+
+### Bug Fixes
+
+* mobx build dependencies ([#1215](https://github.com/hirosystems/stacks-blockchain-api/issues/1215)) ([6e1eceb](https://github.com/hirosystems/stacks-blockchain-api/commit/6e1eceb843d28699d9d825212cf89d12cf37413f))
+
 ## [4.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.0.0...v4.0.1) (2022-06-01)
 
 

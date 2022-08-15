@@ -678,9 +678,6 @@ export async function getOrAddAsync<K, V>(
   return val;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
-
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
 export function timeout(ms: number, abortController?: AbortController): Promise<void> {

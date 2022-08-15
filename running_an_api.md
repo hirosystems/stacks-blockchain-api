@@ -81,7 +81,7 @@ We'll be using:
 $ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,bns,config}
 $ docker pull blockstack/stacks-blockchain-api \
     && docker pull blockstack/stacks-blockchain \
-    && docker pull postgres:alpine
+    && docker pull postgres:14-alpine
 $ docker network create stacks-blockchain > /dev/null 2>&1
 $ cd ./stacks-node
 ```
@@ -108,7 +108,7 @@ done
 
 ## Postgres
 
-The `postgres:alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
+The `postgres:14-alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
 
 ### Starting postgres
 
@@ -119,7 +119,7 @@ docker run -d --rm \
     -e POSTGRES_PASSWORD=postgres \
     -v $(pwd)/persistent-data/postgres:/var/lib/postgresql/data \
     -p 5432:5432 \
-    postgres:alpine
+    postgres:14-alpine
 ```
 
 There should now be a running postgres instance running on port `5432`:
@@ -127,7 +127,7 @@ There should now be a running postgres instance running on port `5432`:
 ```bash
 $ docker ps --filter name=postgres
 CONTAINER ID   IMAGE             COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-f835f3a8cfd4   postgres:alpine   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   postgres
+f835f3a8cfd4   postgres:14-alpine   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   postgres
 ```
 
 ### Stopping Postgres

@@ -323,7 +323,7 @@ describe('api tests', () => {
         decimals: 5,
         image_uri: 'ft-metadata image uri example',
         image_canonical_uri: 'ft-metadata image canonical uri example',
-        contract_id: 'ABCDEFGHIJ.ft-metadata',
+        contract_id: 'ABCDEFGHIJ.ft-metadata' + i,
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
       };

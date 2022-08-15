@@ -217,6 +217,7 @@ export class PgWriteStore extends PgStore {
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
+    let garbageCollectedMempoolTxs: string[] = [];
     await this.sql.begin(async sql => {
       const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
@@ -351,10 +352,13 @@ export class PgWriteStore extends PgStore {
         }
         await this.refreshNftCustody(sql, batchedTxData);
         await this.refreshMaterializedView(sql, 'chain_tip');
-        const deletedMempoolTxs = await this.deleteGarbageCollectedMempoolTxs(sql);
-        if (deletedMempoolTxs.deletedTxs.length > 0) {
-          logger.verbose(`Garbage collected ${deletedMempoolTxs.deletedTxs.length} mempool txs`);
+        const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
+        if (mempoolGarbageResults.deletedTxs.length > 0) {
+          logger.verbose(
+            `Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`
+          );
         }
+        garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
         const tokenContractDeployments = data.txs
           .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
@@ -380,6 +384,11 @@ export class PgWriteStore extends PgStore {
           tokenMetadataQueueEntries.push(queueEntry);
         }
       }
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
@@ -389,7 +398,16 @@ export class PgWriteStore extends PgStore {
       for (const tx of data.txs) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
+      for (const txId of garbageCollectedMempoolTxs) {
+        await this.notifier?.sendTx({ txId: txId });
+      }
       await this.emitAddressTxUpdates(data.txs);
+      for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
+        await this.notifier.sendNftEvent({
+          txId: nftEvent.tx_id,
+          eventIndex: nftEvent.event_index,
+        });
+      }
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
       }
@@ -653,6 +671,11 @@ export class PgWriteStore extends PgStore {
 
       await this.refreshNftCustody(sql, txs, true);
       await this.refreshMaterializedView(sql, 'chain_tip');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
 
       if (this.notifier) {
         for (const microblock of dbMicroblocks) {
@@ -1347,6 +1370,11 @@ export class PgWriteStore extends PgStore {
         }
       }
       await this.refreshMaterializedView(sql, 'mempool_digest');
+
+      if (!this.isEventReplay) {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      }
     });
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
@@ -1519,6 +1547,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
@@ -1548,6 +1579,9 @@ export class PgWriteStore extends PgStore {
       };
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
+        ON CONFLICT (contract_id)
+        DO 
+          UPDATE SET ${sql(values)}
       `;
       await sql`
         UPDATE token_metadata_queue
@@ -1981,6 +2015,9 @@ export class PgWriteStore extends PgStore {
     `;
     await this.refreshMaterializedView(sql, 'mempool_digest');
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
+    for (const txId of deletedTxs) {
+      await this.notifier?.sendTx({ txId: txId });
+    }
     return { deletedTxs: deletedTxs };
   }
 

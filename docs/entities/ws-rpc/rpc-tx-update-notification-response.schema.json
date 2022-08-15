@@ -18,7 +18,14 @@
       "enum": ["tx_update"]
     },
     "params": {
-      "$ref": "./rpc-tx-update-notification-params.schema.json"
+      "anyOf": [
+        {
+          "$ref": "../transactions/transaction.schema.json"
+        },
+        {
+          "$ref": "../mempool-transactions/transaction.schema.json"
+        }
+      ]
     }
   }
 }

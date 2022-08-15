@@ -17,18 +17,14 @@ import {
   BaseTransaction,
   Block,
   CoinbaseTransactionMetadata,
-  ContractCallTransaction,
   ContractCallTransactionMetadata,
-  MempoolContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionStatus,
   Microblock,
   PoisonMicroblockTransactionMetadata,
-  PostCondition,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
-  SmartContractTransaction,
   SmartContractTransactionMetadata,
   TokenTransferTransactionMetadata,
   Transaction,
@@ -58,24 +54,14 @@ import {
   DbTx,
   DbTxStatus,
   DbTxTypeId,
-  DbSmartContract,
   DbSearchResultWithMetadata,
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
 } from '../../datastore/common';
-import {
-  unwrapOptional,
-  bufferToHexPrefixString,
-  ElementType,
-  FoundOrNot,
-  hexToBuffer,
-  logger,
-  unixEpochToIso,
-  EMPTY_HASH_256,
-} from '../../helpers';
+import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
@@ -140,9 +126,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-export function getTxStatusString(
-  txStatus: DbTxStatus
-): TransactionStatus | MempoolTransactionStatus {
+function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTransactionStatus {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';
@@ -159,6 +143,7 @@ export function getTxStatusString(
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
     case DbTxStatus.DroppedStaleGarbageCollect:
+    case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';
     default:
       throw new Error(`Unexpected DbTxStatus: ${txStatus}`);
@@ -427,6 +412,20 @@ export async function getMicroblocksFromDataStore(args: {
   };
 }
 
+export async function getBlocksWithMetadata(args: { limit: number; offset: number; db: PgStore }) {
+  const blocks = await args.db.getBlocksWithMetadata({ limit: args.limit, offset: args.offset });
+  const results = blocks.results.map(block =>
+    parseDbBlock(
+      block.block,
+      block.txs,
+      block.microblocks_accepted,
+      block.microblocks_streamed,
+      block.microblock_tx_count
+    )
+  );
+  return { results, total: blocks.total };
+}
+
 export async function getBlockFromDataStore({
   blockIdentifer,
   db,
@@ -463,6 +462,7 @@ function parseDbBlock(
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
     hash: dbBlock.block_hash,
+    index_block_hash: dbBlock.index_block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
     burn_block_time_iso: unixEpochToIso(dbBlock.burn_block_time),
