@@ -205,3 +205,80 @@ export function readLines(filePath: fs.PathLike, readBufferSize = 1_000_000): Re
     getBytesRead: () => fileReadStream.bytesRead,
   });
 }
+
+/**
+ * @param filePath - Path to the file to read.
+ * @param readBufferSize - Defaults to ~1 megabytes
+ */
+export function readLinesBytes(
+  filePath: fs.PathLike,
+  progress?: {
+    intervalPercent: number;
+    cb: (percent: number) => void;
+  }
+): ReadableFileStream {
+  let last: Buffer | undefined = undefined;
+  const matcher = '\n'.charCodeAt(0);
+
+  let lastStatusUpdatePercent = 0;
+  let totalBytesRead = 0;
+  const totalByteLength = fs.statSync(filePath).size;
+
+  const fileReadStream = fs.createReadStream(filePath, {
+    flags: 'r',
+    autoClose: true,
+  });
+
+  const transformStream = new Transform({
+    autoDestroy: true,
+    flush: callback => {
+      if (last) {
+        try {
+          transformStream.push(last.toString('utf8'));
+        } catch (error: any) {
+          callback(error);
+          return;
+        }
+      }
+      callback();
+    },
+    transform: (chunk: Buffer, _encoding, callback) => {
+      totalBytesRead += chunk.byteLength;
+      if (last !== undefined) {
+        last = Buffer.concat([last, chunk]);
+      } else {
+        last = chunk;
+      }
+      const list = splitBuffer(last, matcher);
+      last = list.pop();
+
+      if (progress !== undefined) {
+        if ((totalBytesRead / totalByteLength) * 100 > lastStatusUpdatePercent + 20) {
+          lastStatusUpdatePercent = Math.floor((totalBytesRead / totalByteLength) * 100);
+          progress.cb(lastStatusUpdatePercent);
+        }
+      }
+
+      for (let i = 0; i < list.length; i++) {
+        try {
+          const line = list[i].toString('utf8');
+          transformStream.push(line);
+        } catch (error: any) {
+          callback(error);
+          return;
+        }
+      }
+
+      callback();
+    },
+    destroy: (error, callback) => {
+      fileReadStream.destroy(error || undefined);
+      callback(error);
+    },
+  });
+  const pipelineResult = fileReadStream.pipe(transformStream);
+  return Object.assign(pipelineResult, {
+    getFileSize: () => fs.statSync(filePath).size,
+    getBytesRead: () => fileReadStream.bytesRead,
+  });
+}

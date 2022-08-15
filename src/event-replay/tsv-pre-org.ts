@@ -1,5 +1,5 @@
 import { Readable, Transform } from 'stream';
-import { readLines, readLinesReversed } from './reverse-line-reader';
+import { readLines, readLinesBytes, readLinesReversed } from './reverse-line-reader';
 import {
   CoreNodeAttachmentMessage,
   CoreNodeBlockMessage,
@@ -179,6 +179,35 @@ export function readTsvLines(
     },
   });
   const readLineStream = readLines(filePath);
+  return readLineStream.pipe(transformStream);
+}
+
+export function readTsvLinesMemFriendly(
+  filePath: string,
+  pathFilter: '/new_block' | '/new_burn_block' | '/attachments/new',
+  progress?: {
+    intervalPercent: number;
+    cb: (percent: number) => void;
+  }
+): Readable {
+  const transformStream = new Transform({
+    autoDestroy: true,
+    decodeStrings: false,
+    transform: (line: string, _encoding, callback) => {
+      if (!line) {
+        callback();
+        return;
+      }
+      const [, , path, payload] = line.split('\t');
+      if (path === pathFilter) {
+        callback(null, payload);
+        return;
+      }
+      callback();
+    },
+  });
+  const readLineStream = readLinesBytes(filePath, progress);
+  readLineStream.setEncoding('utf8');
   return readLineStream.pipe(transformStream);
 }
 

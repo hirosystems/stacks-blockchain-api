@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as tty from 'tty';
+import * as stream from 'stream';
+import { pipeline } from 'stream/promises';
 import { ChainID } from '@stacks/transactions';
 import { finished } from 'stream/promises';
 import {
@@ -32,6 +34,7 @@ import {
   createTsvReorgStream,
   getCanonicalEntityList,
   readTsvLines,
+  readTsvLinesMemFriendly,
   TsvEntityData,
 } from './tsv-pre-org';
 import {
@@ -193,15 +196,18 @@ async function insertTsvData(
   await db.toggleTableIndexes(db.sql, tables, false);
 
   logger.info(`Inserting event data to db...`);
-  await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
-  await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
+  // await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  // await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  // await insertNewAttachmentEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
+  // await insertNewBlockEvents(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
+
+  await insertNewBlockEventsBlocksOnly(tsvEntityData, db, preOrgFilePath, chainID, timeTracker);
 
   // Re-enable indexing and contraints on database tables
   logger.info(`Enabling indexes on tables: ${tables.join(', ')}`);
   await db.toggleTableIndexes(db.sql, tables, true);
 
+  /*
   // Re-index database
   logger.info(`Reindexing database '${dbName}'...`);
   const reindexTableSw = stopwatch();
@@ -220,8 +226,9 @@ async function insertTsvData(
   const finishReplaySw = stopwatch();
   await timeTracker.track('finishEventReplay', () => db.finishEventReplay());
   logger.info(`Refreshing materialized views took: ${finishReplaySw.getElapsedSeconds(2)} seconds`);
+  */
 
-  if (tty.isatty(1)) {
+  if (true || tty.isatty(1)) {
     console.log('Tracked function times:');
     console.table(timeTracker.getDurations(3));
   } else {
@@ -632,6 +639,67 @@ async function insertNewBlockEvents(
   for (const batchInserter of batchInserters) {
     await batchInserter.flush();
   }
+
+  logger.info(`Processed '/new_block' events: 100%`);
+  logger.info(`Inserting /new_block data took ${blockInsertSw.getElapsedSeconds(2)} seconds`);
+}
+
+async function insertNewBlockEventsBlocksOnly(
+  tsvEntityData: TsvEntityData,
+  db: PgWriteStore,
+  filePath: string,
+  chainID: ChainID,
+  timeTracker: TimeTracker
+) {
+  const preOrgStream = readTsvLinesMemFriendly(filePath, '/new_block', {
+    intervalPercent: 5,
+    cb: percent => {
+      logger.info(`Processed '/new_block' events: ${percent}%`);
+    },
+  });
+  const blockInsertSw = stopwatch();
+
+  let blocksInserted = 0;
+
+  // single inserts: 14 seconds
+  // batches of 1000: 0.81 seconds
+  const dbBlockBatchInserter = createBatchInserter<DbBlock>({
+    batchSize: 100,
+    insertFn: entries => db.insertBlockBatch(db.sql, entries),
+  });
+
+  const writableTest = new stream.Writable({
+    autoDestroy: true,
+    decodeStrings: false,
+    write: (line, _encoding, callback) => {
+      blocksInserted++;
+      let newBlockMsg: CoreNodeBlockMessage;
+      try {
+        newBlockMsg = JSON.parse(line);
+      } catch (error) {
+        console.error('Error parsing payload:');
+        console.error(line);
+        throw error;
+      }
+      const dbData = timeTracker.trackSync('parseNewBlockMessage', () =>
+        parseNewBlockMessage(chainID, newBlockMsg)
+      );
+
+      // INSERT INTO blocks
+      timeTracker
+        .track('insertBlockBatch', () => dbBlockBatchInserter.push([dbData.block]))
+        .then(() => {
+          callback();
+        })
+        .catch(error => {
+          callback(error);
+        });
+    },
+  });
+
+  await pipeline(preOrgStream, writableTest);
+
+  await timeTracker.track('insertBlockBatch', () => dbBlockBatchInserter.flush());
 
   logger.info(`Processed '/new_block' events: 100%`);
   logger.info(`Inserting /new_block data took ${blockInsertSw.getElapsedSeconds(2)} seconds`);

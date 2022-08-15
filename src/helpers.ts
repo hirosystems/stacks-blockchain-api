@@ -801,6 +801,7 @@ export async function time<T>(
 
 export interface TimeTracker {
   track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
+  trackSync<T = void>(name: string, fn: () => T): T;
   getDurations: (
     roundDecimals?: number
   ) => {
@@ -823,6 +824,19 @@ export function createTimeTracker(): TimeTracker {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         duration!.totalTime += process.hrtime.bigint() - start;
       });
+    },
+    trackSync<T = void>(name: string, fn: () => T) {
+      let duration = durations.get(name);
+      if (duration === undefined) {
+        duration = { totalTime: 0n };
+        durations.set(name, duration);
+      }
+      const start = process.hrtime.bigint();
+      try {
+        return fn();
+      } finally {
+        duration.totalTime += process.hrtime.bigint() - start;
+      }
     },
     getDurations: (roundDecimals?: number) => {
       return [...durations.entries()]
