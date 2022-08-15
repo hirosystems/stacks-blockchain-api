@@ -65,13 +65,6 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
     `For fasted event import use \`${pgIndexMethodEnvVar}=btree\`, for serving production traffic use \`${pgIndexMethodEnvVar}=hash\``
   );
 
-  const chainID = getApiConfiguredChainID();
-  const db = await PgWriteStore.connect({
-    usageName: 'import-events',
-    skipMigrations: true,
-    withNotifier: false,
-    isEventReplay: true,
-  });
   const startTime = stopwatch();
 
   // Set logger to only output for info or above, otherwise the event replay will result
@@ -146,6 +139,32 @@ export async function preOrgTsvImport(filePath: string): Promise<void> {
 
     logger.info(`Processing tsv data took ${reorgFileSw.getElapsedSeconds(2)} seconds`);
   }
+
+  await insertTsvData(
+    tsvEntityData,
+    preOrgFilePath,
+    remainingFilePath,
+    timeTracker,
+    startTime,
+    preorgBlockHeight
+  );
+}
+
+async function insertTsvData(
+  tsvEntityData: TsvEntityData,
+  preOrgFilePath: string,
+  remainingFilePath: string,
+  timeTracker: TimeTracker,
+  startTime: Stopwatch,
+  preorgBlockHeight: number
+) {
+  const chainID = getApiConfiguredChainID();
+  const db = await PgWriteStore.connect({
+    usageName: 'import-events',
+    skipMigrations: true,
+    withNotifier: false,
+    isEventReplay: true,
+  });
 
   const pgParallelWorkers = await db.sql`SHOW max_parallel_maintenance_workers`;
   const pgMaxWorkingMem = await db.sql`SHOW maintenance_work_mem`;
