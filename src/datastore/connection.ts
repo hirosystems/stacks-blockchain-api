@@ -69,9 +69,11 @@ export type PgJsonb = any;
 export async function connectPostgres({
   usageName,
   pgServer,
+  maxPoolOverride,
 }: {
   usageName: string;
   pgServer: PgServer;
+  maxPoolOverride?: number;
 }): Promise<PgSqlClient> {
   const initTimer = stopwatch();
   let connectionError: Error | undefined;
@@ -81,6 +83,7 @@ export async function connectPostgres({
     const testSql = getPostgres({
       usageName: `${usageName};conn-poll`,
       pgServer: pgServer,
+      maxPoolOverride,
     });
     try {
       await testSql`SELECT version()`;
@@ -110,6 +113,7 @@ export async function connectPostgres({
   const sql = getPostgres({
     usageName: `${usageName};datastore-crud`,
     pgServer: pgServer,
+    maxPoolOverride,
   });
   return sql;
 }
@@ -117,9 +121,11 @@ export async function connectPostgres({
 export function getPostgres({
   usageName,
   pgServer,
+  maxPoolOverride,
 }: {
   usageName: string;
   pgServer?: PgServer;
+  maxPoolOverride?: number;
 }): PgSqlClient {
   // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
   // We will fall back to read-replica values if a primary value was not given.
@@ -164,7 +170,7 @@ export function getPostgres({
     uri.searchParams.set('application_name', appName);
     sql = postgres(uri.toString(), {
       types: PG_TYPE_MAPPINGS,
-      max: pgEnvVars.poolMax,
+      max: maxPoolOverride ?? pgEnvVars.poolMax,
       connection: {
         application_name: appName,
         search_path: schema,

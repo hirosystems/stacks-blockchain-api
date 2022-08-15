@@ -109,13 +109,19 @@ export class PgWriteStore extends PgStore {
     skipMigrations = false,
     withNotifier = true,
     isEventReplay = false,
+    maxPoolOverride,
   }: {
     usageName: string;
     skipMigrations?: boolean;
     withNotifier?: boolean;
     isEventReplay?: boolean;
+    maxPoolOverride?: number;
   }): Promise<PgWriteStore> {
-    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.primary });
+    const sql = await connectPostgres({
+      usageName: usageName,
+      pgServer: PgServer.primary,
+      maxPoolOverride,
+    });
     if (!skipMigrations) {
       await runMigrations(
         getPgClientConfig({
@@ -710,7 +716,26 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async insertStxEventBatch(sql: PgSqlClient, values: StxEventInsertValues[]) {
+  async insertStxEventBatch(sql: PgSqlClient, stxEvents: StxEventInsertValues[]) {
+    const values = stxEvents.map(s => {
+      const value: StxEventInsertValues = {
+        event_index: s.event_index,
+        tx_id: s.tx_id,
+        tx_index: s.tx_index,
+        block_height: s.block_height,
+        index_block_hash: s.index_block_hash,
+        parent_index_block_hash: s.parent_index_block_hash,
+        microblock_hash: s.microblock_hash,
+        microblock_sequence: s.microblock_sequence,
+        microblock_canonical: s.microblock_canonical,
+        canonical: s.canonical,
+        asset_event_type_id: s.asset_event_type_id,
+        sender: s.sender,
+        recipient: s.recipient,
+        amount: s.amount,
+      };
+      return value;
+    });
     await sql`
       INSERT INTO stx_events ${sql(values)}
     `;

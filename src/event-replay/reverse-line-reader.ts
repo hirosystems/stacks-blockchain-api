@@ -253,7 +253,10 @@ export function readLinesBytes(
       last = list.pop();
 
       if (progress !== undefined) {
-        if ((totalBytesRead / totalByteLength) * 100 > lastStatusUpdatePercent + 20) {
+        if (
+          (totalBytesRead / totalByteLength) * 100 >
+          lastStatusUpdatePercent + progress.intervalPercent
+        ) {
           lastStatusUpdatePercent = Math.floor((totalBytesRead / totalByteLength) * 100);
           progress.cb(lastStatusUpdatePercent);
         }
