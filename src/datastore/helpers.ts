@@ -805,6 +805,13 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
 
 const DEFAULT_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = 256;
 
+export function getMempoolTxGarbageCollectionThreshold() {
+  return parseInt(
+    process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ??
+      `${DEFAULT_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD}`
+  );
+}
+
 export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
   const mempoolTxCountGauge = new prom.Gauge({
     name: `mempool_tx_count`,
@@ -831,6 +838,7 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
       const entry = mempoolStats.tx_type_counts[txType];
       mempoolTxCountGauge.set({ type: txType }, entry);
     }
+    for (const txType in mempoolStats.tx_simple_fee_averages) {
       const entries = mempoolStats.tx_simple_fee_averages[txType];
       Object.entries(entries).forEach(([p, num]) => {
         mempoolTxFeeAvgGauge.set({ type: txType, percentile: p }, num ?? -1);
@@ -853,5 +861,9 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
     setImmediate(() => {
       try {
         updatePromMempoolStats(mempoolStats);
+      } catch (error) {
+        logError(`Error updating prometheus mempool stats`, error);
+      }
+    });
   });
 }

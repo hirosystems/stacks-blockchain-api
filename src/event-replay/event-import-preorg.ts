@@ -23,6 +23,7 @@ import {
   humanFileSize,
   I32_MAX,
   logger,
+  Stopwatch,
   stopwatch,
   TimeTracker,
 } from '../helpers';
