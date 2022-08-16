@@ -619,7 +619,7 @@ paths:
       - name: hash
         in: path
         description: Hash of the block
-        example: 0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79
+        example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
         required: true
         schema:
           type: string
