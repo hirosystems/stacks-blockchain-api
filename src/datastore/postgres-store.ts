@@ -1131,7 +1131,8 @@ export class PgDataStore
   }
 
   async getChainTip(
-    client: ClientBase
+    client: ClientBase,
+    useMaterializedView = true
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
     const currentTipBlock = await client.query<{
       block_height: number;
@@ -1141,7 +1142,7 @@ export class PgDataStore
       // The `chain_tip` materialized view is not available during event replay.
       // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
       // a classic query.
-      this.eventReplay
+      this.eventReplay || !useMaterializedView
         ? `
           SELECT block_height, block_hash, index_block_hash
           FROM blocks
@@ -1181,7 +1182,7 @@ export class PgDataStore
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(client);
+      const chainTip = await this.getChainTip(client, false);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
@@ -1312,7 +1313,7 @@ export class PgDataStore
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     await this.queryTx(async client => {
-      const chainTip = await this.getChainTip(client);
+      const chainTip = await this.getChainTip(client, false);
       await this.handleReorg(client, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -3564,7 +3565,7 @@ export class PgDataStore
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.queryTx(async client => {
-      const chainTip = await this.getChainTip(client);
+      const chainTip = await this.getChainTip(client, false);
       for (const tx of txs) {
         const result = await client.query(
           `
@@ -5434,8 +5435,8 @@ export class PgDataStore
     if (this.eventReplay && skipDuringEventReplay) {
       return;
     }
-    // const concurrently = !['chain_tip', 'mempool_digest'].includes(viewName);
-    await client.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${viewName}`);
+    const concurrently = isProdEnv ? 'CONCURRENTLY' : '';
+    await client.query(`REFRESH MATERIALIZED VIEW ${concurrently} ${viewName}`);
   }
 
   async getSmartContractByTrait(args: {
