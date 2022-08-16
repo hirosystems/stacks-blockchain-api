@@ -5434,7 +5434,8 @@ export class PgDataStore
     if (this.eventReplay && skipDuringEventReplay) {
       return;
     }
-    await client.query(`REFRESH MATERIALIZED VIEW ${viewName}`);
+    // const concurrently = !['chain_tip', 'mempool_digest'].includes(viewName);
+    await client.query(`REFRESH MATERIALIZED VIEW CONCURRENTLY ${viewName}`);
   }
 
   async getSmartContractByTrait(args: {

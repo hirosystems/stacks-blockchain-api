@@ -40,5 +40,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     LEFT JOIN microblock_count ON TRUE
     LEFT JOIN tx_count ON TRUE
     LEFT JOIN tx_count_unanchored ON TRUE
+    LIMIT 1
   `);
 }
