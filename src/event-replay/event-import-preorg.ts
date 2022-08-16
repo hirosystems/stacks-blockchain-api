@@ -333,8 +333,6 @@ async function insertNewBlockEvents(
 
   const batchInserters: BatchInserter[] = [];
 
-  let lastBlockHeightReconnect = 0;
-
   // single inserts: 14 seconds
   // batches of 1000: 0.81 seconds
   const dbBlockBatchInserter = createBatchInserter<DbBlock>({
