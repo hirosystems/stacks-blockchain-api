@@ -1287,12 +1287,10 @@ export class PgWriteStore extends PgStore {
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
     }));
-    await sql`
-      INSERT INTO txs ${sql(values)}
-    `;
+    await sql`INSERT INTO txs ${sql(values)}`;
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTx, skipReorg?: boolean): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1340,11 +1338,7 @@ export class PgWriteStore extends PgStore {
     };
     const result = await sql`
       INSERT INTO txs ${sql(values)}
-      ${
-        skipReorg
-          ? sql``
-          : sql`ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING`
-      }
+      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
     `;
     return result.count;
   }

@@ -164,7 +164,7 @@ async function insertTsvData(
   preorgBlockHeight: number
 ) {
   const chainID = getApiConfiguredChainID();
-  let db = await PgWriteStore.connect({
+  const db = await PgWriteStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
     withNotifier: false,
@@ -198,15 +198,6 @@ async function insertTsvData(
 
   logger.info(`Inserting event data to db...`);
   await insertNewBlockEvents(db, preOrgFilePath, chainID, timeTracker);
-
-  await db.close();
-  db = await PgWriteStore.connect({
-    usageName: 'import-events',
-    skipMigrations: true,
-    withNotifier: false,
-    isEventReplay: true,
-    maxPoolOverride: 1,
-  });
 
   await insertRawEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
   await insertNewBurnBlockEvents(tsvEntityData, db, preOrgFilePath, timeTracker);
@@ -364,7 +355,7 @@ async function insertNewBlockEvents(
   // batches of 1000: 85 seconds
   // batches of 1500: 80 seconds
   const dbTxBatchInserter = createBatchInserter<DbTx>({
-    batchSize: 100,
+    batchSize: 5,
     insertFn: entries => db.insertTxBatch(db.sql, entries),
   });
   batchInserters.push(dbTxBatchInserter);
@@ -424,21 +415,6 @@ async function insertNewBlockEvents(
     decodeStrings: false,
     write: async (line, _encoding, callback) => {
       blocksInserted++;
-
-      // Something is triggering a memory leak in postgres, and resetting the connection fixes it.
-      // No idea why this happens, someone please find the root cause..
-      if (blocksInserted > 2000 + lastBlockHeightReconnect) {
-        logger.info(`Resetting db connection at block height ${blocksInserted}...`);
-        lastBlockHeightReconnect = blocksInserted;
-        await db.close();
-        db = await PgWriteStore.connect({
-          usageName: 'import-events',
-          skipMigrations: true,
-          withNotifier: false,
-          isEventReplay: true,
-          maxPoolOverride: 1,
-        });
-      }
 
       let newBlockMsg: CoreNodeBlockMessage;
       try {

@@ -185,7 +185,7 @@ export function getPostgres({
       host: pgEnvVars.host,
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
-      max: pgEnvVars.poolMax,
+      max: maxPoolOverride ?? pgEnvVars.poolMax,
       types: PG_TYPE_MAPPINGS,
       connection: {
         application_name: appName,
