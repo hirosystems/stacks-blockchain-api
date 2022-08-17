@@ -83,6 +83,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
+  // FIXME: Indexes
   pgm.createIndex('names', 'tx_id', { method: 'hash' });
   pgm.createIndex('names', 'name', { method: 'hash' });
   pgm.createIndex('names', 'index_block_hash', { method: 'hash' });
