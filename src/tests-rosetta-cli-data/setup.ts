@@ -13,8 +13,6 @@ export default async (): Promise<void> => {
   }
   loadDotEnv();
   const db = await PgWriteStore.connect({ skipMigrations: true, usageName: 'tests' });
-  console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection(60000);
   const globalServices: GlobalServices = {
     db: db,
   };

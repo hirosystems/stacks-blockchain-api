@@ -8,6 +8,5 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  console.log('Waiting for RPC connection to core node..');
   console.log('Jest - setup done');
 };
