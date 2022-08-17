@@ -25,7 +25,7 @@ interface CoreNodeEventBase {
   committed: boolean;
 }
 
-interface SmartContractEvent extends CoreNodeEventBase {
+export interface SmartContractEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.ContractEvent;
   contract_event: {
     /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */

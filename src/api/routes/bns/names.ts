@@ -3,7 +3,7 @@ import { asyncHandler } from '../../async-handler';
 import { DataStore } from '../../../datastore/common';
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
-import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
+import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
 

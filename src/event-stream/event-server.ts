@@ -61,23 +61,11 @@ import {
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { ChainID } from '@stacks/transactions';
-import {
-  getFunctionName,
-  getNewOwner,
-  parseNameRawValue,
-  parseNamespaceRawValue,
-  parseResolver,
-  parseZoneFileTxt,
-} from '../bns-helpers';
-
-import {
-  printTopic,
-  namespaceReadyFunction,
-  nameFunctions,
-  BnsContractIdentifier,
-} from '../bns-constants';
+import { parseResolver, parseZoneFileTxt } from './bns/bns-helpers';
+import { BnsContractIdentifier } from './bns/bns-constants';
 
 import * as zoneFileParser from 'zone-file';
+import { parseNameFromContractEvent, parseNamespaceFromContractEvent } from './bns/bns-helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -381,51 +369,18 @@ function parseDataStoreTxEventData(
           value: hexToBuffer(event.contract_event.raw_value),
         };
         dbTx.contractLogEvents.push(entry);
-        if (
-          event.contract_event.topic === printTopic &&
-          (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
-            event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
-        ) {
-          const functionName = getFunctionName(event.txid, parsedTxs);
-          if (nameFunctions.includes(functionName)) {
-            const attachment = parseNameRawValue(event.contract_event.raw_value);
-            let name_address = attachment.attachment.metadata.tx_sender.address;
-            if (functionName === 'name-transfer') {
-              const new_owner = getNewOwner(event.txid, parsedTxs);
-              if (new_owner) {
-                name_address = new_owner;
-              }
-            }
-            const name: DbBnsName = {
-              name: attachment.attachment.metadata.name.concat(
-                '.',
-                attachment.attachment.metadata.namespace
-              ),
-              namespace_id: attachment.attachment.metadata.namespace,
-              address: name_address,
-              expire_block: 0,
-              registered_at: blockData.block_height,
-              zonefile_hash: attachment.attachment.hash,
-              zonefile: '', // zone file will be updated in  /attachments/new
-              tx_id: event.txid,
-              tx_index: entry.tx_index,
-              status: attachment.attachment.metadata.op,
-              canonical: true,
-            };
-            dbTx.names.push(name);
-          }
-          if (functionName === namespaceReadyFunction) {
-            // event received for namespaces
-            const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
-              event.contract_event.raw_value,
-              blockData.block_height,
-              event.txid,
-              entry.tx_index
-            );
-            if (namespace != undefined) {
-              dbTx.namespaces.push(namespace);
-            }
-          }
+        // Check if we have new BNS names or namespaces.
+        const parsedTx = parsedTxs.find(entry => entry.core_tx.txid === event.txid);
+        if (!parsedTx) {
+          throw new Error(`Unexpected missing tx during BNS parsing by tx_id ${event.txid}`);
+        }
+        const name = parseNameFromContractEvent(event, parsedTx, blockData.block_height);
+        if (name) {
+          dbTx.names.push(name);
+        }
+        const namespace = parseNamespaceFromContractEvent(event, parsedTx, blockData.block_height);
+        if (namespace) {
+          dbTx.namespaces.push(namespace);
         }
         break;
       }

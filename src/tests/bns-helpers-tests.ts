@@ -1,4 +1,8 @@
-import { parseNamespaceRawValue, parseNameRawValue, parseZoneFileTxt } from '../bns-helpers';
+import {
+  parseNamespaceRawValue,
+  parseNameRawValue,
+  parseZoneFileTxt,
+} from '../event-stream/bns/bns-helpers';
 import * as zoneFileParser from 'zone-file';
 test('Success: namespace parsed', () => {
   const expectedNamespace = {

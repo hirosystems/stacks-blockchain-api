@@ -3,7 +3,7 @@ import { asyncHandler } from '../../async-handler';
 import { DataStore } from '../../../datastore/common';
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
-import { BnsErrors } from '../../../bns-constants';
+import { BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetAllNamespacesResponse } from '@stacks/stacks-blockchain-api-types';
 
 export function createBnsNamespacesRouter(db: DataStore): express.Router {
