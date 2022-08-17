@@ -9,6 +9,5 @@ export default async (): Promise<void> => {
   }
   loadDotEnv();
   console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection(60000);
   console.log('Jest - setup done');
 };

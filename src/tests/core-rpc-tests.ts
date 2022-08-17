@@ -1,6 +1,6 @@
 import { StacksCoreRpcClient } from '../core-rpc/client';
 
-describe('core RPC tests', () => {
+describe.skip('core RPC tests', () => {
   let client: StacksCoreRpcClient;
 
   beforeEach(() => {

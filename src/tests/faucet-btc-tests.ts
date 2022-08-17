@@ -23,7 +23,7 @@ async function getBalanceWithWalletImport(address: string): Promise<number> {
   return getBalanceResult;
 }
 
-describe('btc faucet', () => {
+describe.skip('btc faucet', () => {
   const regtest = bitcoin.networks.regtest;
 
   beforeAll(async () => {
