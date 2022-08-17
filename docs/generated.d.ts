@@ -1023,6 +1023,10 @@ export interface SmartContractTransactionMetadata {
   tx_type: "smart_contract";
   smart_contract: {
     /**
+     * The Clarity version of the contract, only specified for versioned contract transactions, otherwise null
+     */
+    clarity_version?: number;
+    /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
      */
     contract_id: string;

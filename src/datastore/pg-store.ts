@@ -1081,6 +1081,7 @@ export class PgStore {
     const txTypes = [
       DbTxTypeId.TokenTransfer,
       DbTxTypeId.SmartContract,
+      DbTxTypeId.VersionedSmartContract,
       DbTxTypeId.ContractCall,
       DbTxTypeId.PoisonMicroblock,
     ];
@@ -1359,7 +1360,7 @@ export class PgStore {
           OFFSET ${offset}
         `;
       } else {
-        const txTypeIds = txTypeFilter.map<number>(t => getTxTypeId(t));
+        const txTypeIds = txTypeFilter.flatMap<number>(t => getTxTypeId(t));
         totalQuery = await sql<{ count: number }[]>`
           SELECT COUNT(*)::integer
           FROM txs
@@ -1842,11 +1843,12 @@ export class PgStore {
         canonical: boolean;
         tx_id: string;
         block_height: number;
+        clarity_version: number | null;
         source_code: string;
         abi: unknown | null;
       }[]
     >`
-      SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
+      SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, clarity_version, source_code, abi
       FROM smart_contracts
       WHERE contract_id IN ${contractIds}
       ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
@@ -1864,11 +1866,12 @@ export class PgStore {
         canonical: boolean;
         contract_id: string;
         block_height: number;
+        clarity_version: number | null;
         source_code: string;
         abi: unknown | null;
       }[]
     >`
-      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
       FROM smart_contracts
       WHERE contract_id = ${contractId}
       ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
@@ -1950,11 +1953,12 @@ export class PgStore {
         canonical: boolean;
         contract_id: string;
         block_height: number;
+        clarity_version: number | null;
         source_code: string;
         abi: unknown | null;
       }[]
     >`
-      SELECT tx_id, canonical, contract_id, block_height, source_code, abi
+      SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
       FROM smart_contracts
       WHERE abi->'functions' @> ${traitFunctionList as any}::jsonb
         AND canonical = true AND microblock_canonical = true

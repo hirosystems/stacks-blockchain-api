@@ -167,6 +167,7 @@ interface TestTxArgs {
   parent_index_block_hash?: string;
   raw_result?: string;
   sender_address?: string;
+  smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
   status?: DbTxStatus;
@@ -217,6 +218,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
       token_transfer_memo: args?.token_transfer_memo ?? '',
+      smart_contract_clarity_version: args?.smart_contract_clarity_version,
       smart_contract_contract_id: args?.smart_contract_contract_id,
       smart_contract_source_code: args?.smart_contract_source_code,
       execution_cost_read_count: 0,
@@ -246,6 +248,7 @@ interface TestMempoolTxArgs {
   contract_call_function_name?: string;
   pruned?: boolean;
   sender_address?: string;
+  smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
   token_transfer_recipient_address?: string;
@@ -280,6 +283,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
     token_transfer_amount: 1234n,
     token_transfer_memo: '',
     token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
+    smart_contract_clarity_version: args?.smart_contract_clarity_version,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,
     contract_call_contract_id: args?.contract_call_contract_id ?? CONTRACT_ID,
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
@@ -446,6 +450,7 @@ function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
 interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
+  clarity_version?: number;
   contract_id?: string;
   contract_source?: string;
   abi?: string;
@@ -461,6 +466,7 @@ function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContr
     tx_id: args?.tx_id ?? TX_ID,
     canonical: true,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
+    clarity_version: args?.clarity_version ?? null,
     contract_id: args?.contract_id ?? CONTRACT_ID,
     source_code: args?.contract_source ?? CONTRACT_SOURCE,
     abi: args?.abi ?? JSON.stringify(CONTRACT_ABI),

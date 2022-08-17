@@ -369,7 +369,11 @@ export class PgWriteStore extends PgStore {
         garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
         const tokenContractDeployments = data.txs
-          .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
+          .filter(
+            entry =>
+              entry.tx.type_id === DbTxTypeId.SmartContract ||
+              entry.tx.type_id === DbTxTypeId.VersionedSmartContract
+          )
           .filter(entry => entry.tx.status === DbTxStatus.Success)
           .filter(entry => entry.smartContracts[0].abi && entry.smartContracts[0].abi !== 'null')
           .map(entry => {
@@ -1151,6 +1155,7 @@ export class PgWriteStore extends PgStore {
       token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
       token_transfer_amount: tx.token_transfer_amount ?? null,
       token_transfer_memo: tx.token_transfer_memo ?? null,
+      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
       smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
       smart_contract_source_code: tx.smart_contract_source_code ?? null,
       contract_call_contract_id: tx.contract_call_contract_id ?? null,
@@ -1167,6 +1172,9 @@ export class PgWriteStore extends PgStore {
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
     };
+    if (tx.type_id === DbTxTypeId.VersionedSmartContract) {
+      console.log('here');
+    }
     const result = await sql`
       INSERT INTO txs ${sql(values)}
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
@@ -1199,6 +1207,7 @@ export class PgWriteStore extends PgStore {
           token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
           token_transfer_amount: tx.token_transfer_amount ?? null,
           token_transfer_memo: tx.token_transfer_memo ?? null,
+          smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
           smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
           smart_contract_source_code: tx.smart_contract_source_code ?? null,
           contract_call_contract_id: tx.contract_call_contract_id ?? null,
@@ -1513,6 +1522,7 @@ export class PgWriteStore extends PgStore {
         case DbTxTypeId.ContractCall:
           addAddressTx(tx.contract_call_contract_id);
           break;
+        case DbTxTypeId.VersionedSmartContract:
         case DbTxTypeId.SmartContract:
           addAddressTx(tx.smart_contract_contract_id);
           break;

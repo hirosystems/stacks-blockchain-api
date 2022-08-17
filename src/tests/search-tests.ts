@@ -1221,6 +1221,7 @@ describe('search tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block.block_height,
+      clarity_version: null,
       contract_id: contractAddr1,
       source_code: '(some-src)',
       abi: '{"some-abi":1}',

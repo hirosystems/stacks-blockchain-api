@@ -2357,6 +2357,7 @@ describe('postgres datastore', () => {
       tx_id: tx.tx_id,
       canonical: true,
       block_height: dbBlock.block_height,
+      clarity_version: null,
       contract_id: 'my-contract',
       source_code: '(src)',
       abi: '{"some":"abi"}',
@@ -2811,6 +2812,7 @@ describe('postgres datastore', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block1.block_height,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -3976,6 +3978,7 @@ describe('postgres datastore', () => {
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'my-contract',
       block_height: tx3.block_height,
       source_code: '(my-src)',

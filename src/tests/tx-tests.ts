@@ -121,6 +121,7 @@ describe('tx tests', () => {
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       block_height: 1,
       source_code,
@@ -328,6 +329,7 @@ describe('tx tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -535,6 +537,7 @@ describe('tx tests', () => {
     await db.updateSmartContract(client, dbTx, {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -712,6 +715,7 @@ describe('tx tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: 123,
       source_code: '()',
@@ -2116,6 +2120,7 @@ describe('tx tests', () => {
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       block_height: 1,
       source_code,
@@ -2124,6 +2129,7 @@ describe('tx tests', () => {
     const contractCall2: DbSmartContract = {
       tx_id: '0xd8a9a4528ae833e1894eee676af8d218f8facbf95e166472df2c1a64219b5dfb',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP000000000000000000002Q6VF78.bns',
       block_height: 1,
       source_code,

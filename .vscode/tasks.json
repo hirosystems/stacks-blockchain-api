@@ -99,7 +99,7 @@
     {
       "label": "stop:pg",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml kill",
+      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml down -v -t 0",
       "presentation": {
         "echo": true,
         "reveal": "silent",
