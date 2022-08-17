@@ -19,7 +19,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     zonefile_hash: {
-      type: 'bytea',
+      type: 'string',
       notNull: true,
     },
     tx_id: {
@@ -33,5 +33,5 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   // pgm.addIndex('zonefiles', 'tx_id');
-  pgm.addConstraint('zonefiles', 'unique_name_zonefile_hash_tx_id_index_block_hash', `UNIQUE(name, zonefile_hash, tx_id, index_block_height)`);
+  pgm.addConstraint('zonefiles', 'unique_name_zonefile_hash_tx_id_index_block_hash', `UNIQUE(name, zonefile_hash, tx_id, index_block_hash)`);
 }

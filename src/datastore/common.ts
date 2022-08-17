@@ -428,6 +428,25 @@ export interface DataStoreTxEventData {
   namespaces: DbBnsNamespace[];
 }
 
+export interface DataStoreAttachmentData {
+  op: string;
+  name: string;
+  namespace: string;
+  zonefile: string;
+  zonefileHash: string;
+  txId: string;
+  indexBlockHash: string;
+  blockHeight: number;
+}
+
+export interface DataStoreSubdomainBlockData {
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
@@ -683,7 +702,6 @@ export interface DataStore extends DataStoreEventEmitter {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }>;
-  getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>>;
   getTx(args: { txId: string; includeUnanchored: boolean }): Promise<FoundOrNot<DbTx>>;
   getTxList(args: {
     limit: number;
@@ -744,7 +762,8 @@ export interface DataStore extends DataStoreEventEmitter {
 
   updateMicroblocks(data: DataStoreMicroblockUpdateData): Promise<void>;
 
-  updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void>;
+  updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void>;
+
   resolveBnsSubdomains(
     blockData: {
       index_block_hash: string;

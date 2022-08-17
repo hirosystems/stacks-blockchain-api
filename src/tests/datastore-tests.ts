@@ -4615,8 +4615,7 @@ describe('postgres datastore', () => {
 
     const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
-    await db.updateBatchSubdomains(
-      client,
+    await db.resolveBnsSubdomains(
       {
         index_block_hash: dbBlock.index_block_hash,
         parent_index_block_hash: dbBlock.parent_index_block_hash,

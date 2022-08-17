@@ -42,6 +42,7 @@ import {
   bnsNameCV,
   getBnsSmartContractId,
   bnsHexValueToName,
+  I32_MAX,
 } from '../helpers';
 import {
   DataStore,
@@ -98,6 +99,8 @@ import {
   NftEventWithTxMetadata,
   DbAssetEventTypeId,
   DbTxGlobalStatus,
+  DataStoreAttachmentData,
+  DataStoreSubdomainBlockData,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -120,6 +123,8 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './postgres-notifier';
+import * as zoneFileParser from 'zone-file';
+import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -2134,22 +2139,6 @@ export class PgDataStore
     });
   }
 
-  async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
-    await this.queryTx(async client => {
-      // inserting zonefile into zonefiles table
-      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
-      await client.query(
-        `
-        UPDATE zonefiles
-        SET zonefile = $1
-        WHERE zonefile_hash = $2
-        `,
-        [zonefile, validZonefileHash]
-      );
-    });
-    await this.notifier?.sendName({ nameInfo: tx_id });
-  }
-
   private validateZonefileHash(zonefileHash: string) {
     // this function removes the `0x` from the incoming zonefile hash, either for insertion or search.
     const index = zonefileHash.indexOf('0x');
@@ -2157,6 +2146,86 @@ export class PgDataStore
       return zonefileHash.slice(2);
     }
     return zonefileHash;
+  }
+
+  async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
+    const updateData: {
+      attachment: DataStoreAttachmentData;
+      blockData?: DataStoreSubdomainBlockData;
+      subdomains?: DbBnsSubdomain[];
+    }[] = [];
+    await this.queryTx(async client => {
+      for (const attachment of attachments) {
+        if (attachment.op === 'name-update') {
+          const zoneFileContents = zoneFileParser.parseZoneFile(attachment.zonefile);
+          const zoneFileTxt = zoneFileContents.txt;
+          if (zoneFileTxt && zoneFileTxt.length > 0) {
+            let isCanonical = true;
+            let txIndex = -1;
+            const dbTx = await this.getTxStrict(client, {
+              txId: attachment.txId,
+              indexBlockHash: attachment.indexBlockHash,
+            });
+            const blockData: DataStoreSubdomainBlockData = {
+              index_block_hash: '',
+              parent_index_block_hash: '',
+              microblock_hash: '',
+              microblock_sequence: I32_MAX,
+              microblock_canonical: true,
+            };
+            if (dbTx.found) {
+              isCanonical = dbTx.result.canonical;
+              txIndex = dbTx.result.tx_index;
+              blockData.index_block_hash = dbTx.result.index_block_hash;
+              blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
+              blockData.microblock_hash = dbTx.result.microblock_hash;
+              blockData.microblock_sequence = dbTx.result.microblock_sequence;
+              blockData.microblock_canonical = dbTx.result.microblock_canonical;
+            } else {
+              logger.warn(
+                `Could not find transaction ${attachment.txId} associated with attachment`
+              );
+            }
+            const subdomains: DbBnsSubdomain[] = [];
+            for (let i = 0; i < zoneFileTxt.length; i++) {
+              const zoneFile = zoneFileTxt[i];
+              const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+              if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
+              const subdomain: DbBnsSubdomain = {
+                name: attachment.name.concat('.', attachment.namespace),
+                namespace_id: attachment.namespace,
+                fully_qualified_subdomain: zoneFile.name.concat(
+                  '.',
+                  attachment.name,
+                  '.',
+                  attachment.namespace
+                ),
+                owner: parsedTxt.owner,
+                zonefile_hash: parsedTxt.zoneFileHash,
+                zonefile: parsedTxt.zoneFile,
+                tx_id: attachment.txId,
+                tx_index: txIndex,
+                canonical: isCanonical,
+                parent_zonefile_hash: attachment.zonefileHash.slice(2),
+                parent_zonefile_index: 0, //TODO need to figure out this field
+                block_height: attachment.blockHeight,
+                zonefile_offset: 1,
+                resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
+              };
+              subdomains.push(subdomain);
+            }
+            updateData.push({ blockData, subdomains, attachment });
+          }
+        } else {
+          updateData.push({ attachment });
+        }
+      }
+      await this.updateBatchSubdomainsAndZonefiles(client, updateData);
+    });
+    // Send socket updates now that the transaction is done.
+    for (const item of updateData.values()) {
+      await this.notifier?.sendName({ nameInfo: item.attachment.txId });
+    }
   }
 
   async resolveBnsSubdomains(
@@ -2171,7 +2240,7 @@ export class PgDataStore
   ): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
-      await this.updateBatchSubdomains(client, blockData, data);
+      await this.updateBatchSubdomainsAndZonefiles(client, [{ blockData, subdomains: data }]);
     });
   }
 
@@ -4013,25 +4082,26 @@ export class PgDataStore
     });
   }
 
-  async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
-    return this.query(async client => {
-      const result = await client.query<ContractTxQueryResult>(
-        `
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
-        FROM txs
-        WHERE tx_id = $1 AND index_block_hash = $2
-        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      const tx = this.parseTxQueryResult(row);
-      return { found: true, result: tx };
-    });
+  private async getTxStrict(
+    client: ClientBase,
+    args: { txId: string; indexBlockHash: string }
+  ): Promise<FoundOrNot<DbTx>> {
+    const result = await client.query<TxQueryResult>(
+      `
+      SELECT ${txColumns()}
+      FROM txs
+      WHERE tx_id = $1 AND index_block_hash = $2
+      ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+      LIMIT 1
+      `,
+      [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
+    );
+    if (result.rowCount === 0) {
+      return { found: false } as const;
+    }
+    const row = result.rows[0];
+    const tx = this.parseTxQueryResult(row);
+    return { found: true, result: tx };
   }
 
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
@@ -4851,110 +4921,111 @@ export class PgDataStore
     }
   }
 
-  async updateBatchSubdomains(
+  async updateBatchSubdomainsAndZonefiles(
     client: ClientBase,
-    blockData: {
-      index_block_hash: string;
-      parent_index_block_hash: string;
-      microblock_hash: string;
-      microblock_sequence: number;
-      microblock_canonical: boolean;
-    },
-    subdomains: DbBnsSubdomain[]
+    data: {
+      attachment?: DataStoreAttachmentData;
+      blockData?: DataStoreSubdomainBlockData;
+      subdomains?: DbBnsSubdomain[];
+    }[]
   ) {
-    // bns insertion variables
-    const columnCount = 18;
-    const insertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount,
-    });
-    const values: any[] = [];
-    // zonefile insertion variables
-    const zonefilesColumnCount = 2;
-    const zonefileInsertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount: zonefilesColumnCount,
-    });
-    const zonefileValues: string[] = [];
-    for (const subdomain of subdomains) {
-      let txIndex = subdomain.tx_index;
-      if (txIndex === -1) {
-        const txQuery = await client.query<{ tx_index: number }>(
-          `
-          SELECT tx_index from txs
-          WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
-          LIMIT 1
-          `,
-          [
-            hexToBuffer(subdomain.tx_id),
-            hexToBuffer(blockData.index_block_hash),
+    let subdomainCount = 0;
+    const subdomainValues: any[] = [];
+    let zonefileCount = 0;
+    const zonefileValues: any[] = [];
+    for (const dataItem of data) {
+      if (dataItem.subdomains && dataItem.blockData) {
+        for (const subdomain of dataItem.subdomains) {
+          subdomainValues.push(
+            subdomain.name,
+            subdomain.namespace_id,
+            subdomain.fully_qualified_subdomain,
+            subdomain.owner,
+            this.validateZonefileHash(subdomain.zonefile_hash),
+            subdomain.parent_zonefile_hash,
+            subdomain.parent_zonefile_index,
             subdomain.block_height,
-          ]
-        );
-        if (txQuery.rowCount === 0) {
-          logger.warn(`Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`);
-          txIndex = 0;
-        } else {
-          txIndex = txQuery.rows[0].tx_index;
+            subdomain.tx_index,
+            subdomain.zonefile_offset,
+            subdomain.resolver,
+            subdomain.canonical,
+            hexToBuffer(subdomain.tx_id),
+            hexToBuffer(dataItem.blockData.index_block_hash),
+            hexToBuffer(dataItem.blockData.parent_index_block_hash),
+            hexToBuffer(dataItem.blockData.microblock_hash),
+            dataItem.blockData.microblock_sequence,
+            dataItem.blockData.microblock_canonical
+          );
+          zonefileValues.push(
+            subdomain.fully_qualified_subdomain,
+            subdomain.zonefile,
+            this.validateZonefileHash(subdomain.zonefile_hash),
+            hexToBuffer(subdomain.tx_id),
+            hexToBuffer(dataItem.blockData.index_block_hash)
+          );
+          subdomainCount++;
+          zonefileCount++;
         }
       }
-      // preparing bns values for insertion
-      values.push(
-        subdomain.name,
-        subdomain.namespace_id,
-        subdomain.fully_qualified_subdomain,
-        subdomain.owner,
-        this.validateZonefileHash(subdomain.zonefile_hash),
-        subdomain.parent_zonefile_hash,
-        subdomain.parent_zonefile_index,
-        subdomain.block_height,
-        txIndex,
-        subdomain.zonefile_offset,
-        subdomain.resolver,
-        subdomain.canonical,
-        hexToBuffer(subdomain.tx_id),
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical
-      );
-      // preparing zonefile values for insertion
-      zonefileValues.push(subdomain.zonefile, this.validateZonefileHash(subdomain.zonefile_hash));
-    }
-    // bns insertion query
-    const insertQuery = `INSERT INTO subdomains (
-        name, namespace_id, fully_qualified_subdomain, owner,
-        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-        zonefile_offset, resolver, canonical, tx_id,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
-    const insertBnsSubdomainsEventQuery: QueryConfig = {
-      name: insertQueryName,
-      text: insertQuery,
-      values,
-    };
-    // zonefile insertion query
-    const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
-    const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
-    const insertZonefilesEventQuery: QueryConfig = {
-      name: insertZonefileQueryName,
-      text: zonefileInsertQuery,
-      values: zonefileValues,
-    };
-    try {
-      // checking for bns insertion errors
-      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
-      if (bnsRes.rowCount !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
-      }
-      // checking for zonefile insertion errors
-      const zonefilesRes = await client.query(insertZonefilesEventQuery);
-      if (zonefilesRes.rowCount !== subdomains.length) {
-        throw new Error(
-          `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+      if (dataItem.attachment) {
+        zonefileValues.push(
+          dataItem.attachment.name,
+          dataItem.attachment.zonefile,
+          hexToBuffer(this.validateZonefileHash(dataItem.attachment.zonefileHash)),
+          hexToBuffer(dataItem.attachment.txId),
+          hexToBuffer(dataItem.attachment.indexBlockHash)
         );
+        zonefileCount++;
+      }
+    }
+
+    try {
+      if (subdomainCount) {
+        const subdomainColumnCount = 18;
+        const subdomainInsertParams = this.generateParameterizedInsertString({
+          rowCount: subdomainCount,
+          columnCount: subdomainColumnCount,
+        });
+        const insertQuery = `INSERT INTO subdomains (
+          name, namespace_id, fully_qualified_subdomain, owner,
+          zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
+          zonefile_offset, resolver, canonical, tx_id,
+          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+        ) VALUES ${subdomainInsertParams}`;
+        const insertQueryName = `insert-batch-subdomains_${subdomainColumnCount}x${subdomainCount}`;
+        const insertBnsSubdomainsEventQuery: QueryConfig = {
+          name: insertQueryName,
+          text: insertQuery,
+          values: subdomainValues,
+        };
+        const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
+        if (bnsRes.rowCount !== subdomainCount) {
+          throw new Error(`Expected ${subdomainCount} inserts, got ${bnsRes.rowCount} for BNS`);
+        }
+      }
+      if (zonefileCount) {
+        const zonefilesColumnCount = 5;
+        const zonefileInsertParams = this.generateParameterizedInsertString({
+          rowCount: zonefileCount,
+          columnCount: zonefilesColumnCount,
+        });
+        const zonefileInsertQuery = `
+          INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
+          VALUES ${zonefileInsertParams}
+          ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO NOTHING
+        `;
+        const insertZonefileQueryName = `insert-batch-zonefiles_${zonefilesColumnCount}x${zonefileCount}`;
+        const insertZonefilesEventQuery: QueryConfig = {
+          name: insertZonefileQueryName,
+          text: zonefileInsertQuery,
+          values: zonefileValues,
+        };
+        const zonefilesRes = await client.query(insertZonefilesEventQuery);
+        if (zonefilesRes.rowCount !== zonefileCount) {
+          throw new Error(
+            `Expected ${zonefileCount} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+          );
+        }
       }
     } catch (e: any) {
       logError(`subdomain errors ${e.message}`, e);
@@ -6804,10 +6875,17 @@ export class PgDataStore
     const validZonefileHash = this.validateZonefileHash(zonefile_hash);
     await client.query(
       `
-        INSERT INTO zonefiles (zonefile, zonefile_hash)
-        VALUES ($1, $2)
-        `,
-      [zonefile, validZonefileHash]
+        INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO NOTHING
+      `,
+      [
+        name,
+        zonefile,
+        validZonefileHash,
+        hexToBuffer(tx_id),
+        hexToBuffer(blockData.index_block_hash),
+      ]
     );
     await client.query(
       `
@@ -6816,7 +6894,7 @@ export class PgDataStore
           tx_index, tx_id, status, canonical,
           index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
         ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
-        `,
+      `,
       [
         name,
         address,
