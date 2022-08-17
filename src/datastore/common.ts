@@ -1220,6 +1220,7 @@ export interface SmartContractInsertValues {
   contract_id: string;
   block_height: number;
   index_block_hash: PgBytea;
+  clarity_version: number | null;
   source_code: string;
   abi: PgJsonb;
   parent_index_block_hash: PgBytea;

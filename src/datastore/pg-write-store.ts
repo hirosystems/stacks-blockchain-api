@@ -1283,6 +1283,7 @@ export class PgWriteStore extends PgStore {
     const values: SmartContractInsertValues = {
       tx_id: smartContract.tx_id,
       canonical: smartContract.canonical,
+      clarity_version: smartContract.clarity_version,
       contract_id: smartContract.contract_id,
       block_height: smartContract.block_height,
       index_block_hash: tx.index_block_hash,
