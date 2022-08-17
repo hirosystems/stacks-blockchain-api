@@ -947,6 +947,7 @@ describe('mempool tests', () => {
           tx_status: 'pending',
           tx_type: 'smart_contract',
           smart_contract: {
+            clarity_version: null,
             contract_id: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
             source_code: '(define-public (say-hi) (ok "hello world"))',
           },

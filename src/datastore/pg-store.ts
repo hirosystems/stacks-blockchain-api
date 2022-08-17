@@ -1078,21 +1078,27 @@ export class PgStore {
       blockHeightCondition = sql` AND receipt_block_height >= ${maxBlockHeight} `;
     }
 
+    // Treat `versioned-smart-contract` txs (type 6) as regular `smart-contract` txs (type 1)
+    const combineSmartContractVersions = sql`CASE type_id WHEN 6 THEN 1 ELSE type_id END AS type_id`;
+
     const txTypes = [
       DbTxTypeId.TokenTransfer,
       DbTxTypeId.SmartContract,
-      DbTxTypeId.VersionedSmartContract,
       DbTxTypeId.ContractCall,
       DbTxTypeId.PoisonMicroblock,
     ];
 
     const txTypeCountsQuery = await sql<{ type_id: DbTxTypeId; count: number }[]>`
+      WITH txs_grouped AS (
+        SELECT ${combineSmartContractVersions}
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      )
       SELECT
         type_id,
         count(*)::integer count
-      FROM mempool_txs
-      WHERE pruned = false
-      ${blockHeightCondition}
+      FROM txs_grouped
       GROUP BY type_id
     `;
     const txTypeCounts: Record<string, number> = {};
@@ -1104,15 +1110,21 @@ export class PgStore {
     const txFeesQuery = await sql<
       { type_id: DbTxTypeId; p25: number; p50: number; p75: number; p95: number }[]
     >`
+      WITH txs_grouped AS (
+        SELECT
+          ${combineSmartContractVersions},
+          fee_rate
+        FROM mempool_txs
+        WHERE pruned = false
+        ${blockHeightCondition}
+      )
       SELECT
         type_id,
         percentile_cont(0.25) within group (order by fee_rate asc) as p25,
         percentile_cont(0.50) within group (order by fee_rate asc) as p50,
         percentile_cont(0.75) within group (order by fee_rate asc) as p75,
         percentile_cont(0.95) within group (order by fee_rate asc) as p95
-      FROM mempool_txs
-      WHERE pruned = false
-      ${blockHeightCondition}
+      FROM txs_grouped
       GROUP BY type_id
     `;
     const txFees: Record<
@@ -1140,7 +1152,7 @@ export class PgStore {
     >`
       WITH mempool_unpruned AS (
         SELECT
-          type_id,
+          ${combineSmartContractVersions},
           receipt_block_height
         FROM mempool_txs
         WHERE pruned = false
@@ -1186,7 +1198,8 @@ export class PgStore {
     >`
       WITH mempool_unpruned AS (
         SELECT
-          type_id, tx_size
+          ${combineSmartContractVersions},
+          tx_size
         FROM mempool_txs
         WHERE pruned = false
         ${blockHeightCondition}

@@ -973,6 +973,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
+        clarity_version: null,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
@@ -1114,6 +1115,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
+        clarity_version: null,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
@@ -2306,6 +2308,7 @@ describe('tx tests', () => {
       abi: null,
       block_height: 1,
       canonical: true,
+      clarity_version: null,
       contract_id: contractCall2.contract_id,
       source_code: contractCall2.source_code,
       tx_id: contractCall2.tx_id,
@@ -2320,6 +2323,7 @@ describe('tx tests', () => {
       abi: contractCall.abi,
       block_height: 1,
       canonical: true,
+      clarity_version: null,
       contract_id: contractCall.contract_id,
       source_code: contractCall.source_code,
       tx_id: contractCall.tx_id,

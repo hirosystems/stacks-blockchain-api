@@ -1,6 +1,6 @@
-FROM --platform=linux/amd64 blockstack/stacks-blockchain:next-43b3398-stretch as build
+FROM blockstack/stacks-blockchain:2.05.0.0.0-stretch as build
 
-FROM --platform=linux/amd64 debian:stretch
+FROM debian:stretch
 
 COPY wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh

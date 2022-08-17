@@ -254,6 +254,7 @@ describe('smart contract tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual({
       tx_id: '0x421234',
       canonical: true,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       block_height: 1,
       source_code: '(some-contract-src)',
