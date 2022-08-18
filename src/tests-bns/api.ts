@@ -289,15 +289,15 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
+      block_height: 2,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x22',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
       {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x1234',
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -343,8 +343,8 @@ describe('BNS API tests', () => {
     );
 
     const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
-    expect(query1.status).toBe(400);
-    expect(query1.body.error).toBe('Invalid name or subdomain');
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('No such name or zonefile');
     expect(query1.type).toBe('application/json');
   });
 
@@ -380,7 +380,7 @@ describe('BNS API tests', () => {
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/invalidHash`);
     expect(query1.status).toBe(404);
-    expect(query1.body.error).toBe('No such zonefile');
+    expect(query1.body.error).toBe('No such name or zonefile');
     expect(query1.type).toBe('application/json');
   });
 
@@ -670,13 +670,13 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x22',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
       {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x1234',
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -694,8 +694,8 @@ describe('BNS API tests', () => {
 
   test('Fail get zonefile by name - invalid name', async () => {
     const query1 = await supertest(api.server).get(`/v1/names/invalidName/zonefile`);
-    expect(query1.status).toBe(400);
-    expect(query1.body.error).toBe('Invalid name or subdomain');
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('No such name or zonefile does not exist');
     expect(query1.type).toBe('application/json');
   });
 

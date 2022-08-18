@@ -23,7 +23,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
       if (zonefile.found) {
         res.json(zonefile.result);
       } else {
-        res.status(404).json({ error: 'No such zonefile' });
+        res.status(404).json({ error: 'No such name or zonefile' });
       }
     })
   );
@@ -47,7 +47,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
       if (zonefile.found) {
         res.json(zonefile.result);
       } else {
-        res.status(404).json({ error: 'No zone file for name' });
+        res.status(404).json({ error: 'No such name or zonefile does not exist' });
       }
     })
   );
