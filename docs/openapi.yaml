@@ -542,6 +542,7 @@ paths:
         schema:
           type: string
           example: "0x3bfcdf84b3012adb544cf0f6df4835f93418c2269a3881885e27b3d58eb82d47"
+
     get:
       summary: Get microblock
       description: Retrieves a specific microblock by `hash`
