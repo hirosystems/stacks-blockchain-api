@@ -1,3 +1,10 @@
+## [4.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.1...v4.1.2) (2022-08-18)
+
+
+### Bug Fixes
+
+* refresh materialized views concurrently ([#1270](https://github.com/hirosystems/stacks-blockchain-api/issues/1270)) ([057c541](https://github.com/hirosystems/stacks-blockchain-api/commit/057c541b8c31402b6ff823cce0e3ed435ebe74a8))
+
 ## [4.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.0...v4.1.1) (2022-08-03)
 
 
