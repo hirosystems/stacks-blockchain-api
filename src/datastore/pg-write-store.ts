@@ -1172,9 +1172,6 @@ export class PgWriteStore extends PgStore {
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
     };
-    if (tx.type_id === DbTxTypeId.VersionedSmartContract) {
-      console.log('here');
-    }
     const result = await sql`
       INSERT INTO txs ${sql(values)}
       ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
