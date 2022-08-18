@@ -204,7 +204,7 @@ jobs:
           npm run devenv:deploy -- -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
-      - name: Run bns tests
+      - name: Run RPC tests
         run: npm run test:rpc
 
       - name: Print integration environment logs
