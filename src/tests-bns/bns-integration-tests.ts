@@ -1,6 +1,3 @@
-
-
-
 import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
@@ -11,7 +8,6 @@ import { createHash } from 'crypto';
 import { DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
-
 import {
   broadcastTransaction,
   bufferCV,

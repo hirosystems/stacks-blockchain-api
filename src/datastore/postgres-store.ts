@@ -2149,15 +2149,20 @@ export class PgDataStore
   }
 
   async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
-    const updateData: {
-      attachment: DataStoreAttachmentData;
-      blockData?: DataStoreSubdomainBlockData;
-      subdomains?: DbBnsSubdomain[];
-    }[] = [];
     await this.queryTx(async client => {
+      // Each attachment will batch insert zonefiles for name and all subdomains that apply.
       for (const attachment of attachments) {
+        const updateData: {
+          attachment: DataStoreAttachmentData;
+          blockData?: DataStoreSubdomainBlockData;
+          subdomains?: DbBnsSubdomain[];
+        }[] = [];
         if (attachment.op === 'name-update') {
-          const zoneFileContents = zoneFileParser.parseZoneFile(attachment.zonefile);
+          // If this is a zonefile update, break it down into subdomains and update all of them. We
+          // must find the correct transaction that registered the zonefile in the first place and
+          // associate it with each entry.
+          const zonefile = Buffer.from(attachment.zonefile, 'hex').toString();
+          const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
           const zoneFileTxt = zoneFileContents.txt;
           if (zoneFileTxt && zoneFileTxt.length > 0) {
             let isCanonical = true;
@@ -2207,7 +2212,7 @@ export class PgDataStore
                 tx_index: txIndex,
                 canonical: isCanonical,
                 parent_zonefile_hash: attachment.zonefileHash.slice(2),
-                parent_zonefile_index: 0, //TODO need to figure out this field
+                parent_zonefile_index: 0,
                 block_height: attachment.blockHeight,
                 zonefile_offset: 1,
                 resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
@@ -2215,16 +2220,16 @@ export class PgDataStore
               subdomains.push(subdomain);
             }
             updateData.push({ blockData, subdomains, attachment });
+          } else {
+            // This was a name-import or something else. Just write the zonefile as it is.
+            updateData.push({ attachment });
           }
-        } else {
-          updateData.push({ attachment });
         }
+        await this.updateBatchSubdomainsAndZonefiles(client, updateData);
       }
-      await this.updateBatchSubdomainsAndZonefiles(client, updateData);
     });
-    // Send socket updates now that the transaction is done.
-    for (const item of updateData.values()) {
-      await this.notifier?.sendName({ nameInfo: item.attachment.txId });
+    for (const txId of attachments.map(a => a.txId)) {
+      await this.notifier?.sendName({ nameInfo: txId });
     }
   }
 
@@ -4969,9 +4974,9 @@ export class PgDataStore
       }
       if (dataItem.attachment) {
         zonefileValues.push(
-          dataItem.attachment.name,
-          dataItem.attachment.zonefile,
-          hexToBuffer(this.validateZonefileHash(dataItem.attachment.zonefileHash)),
+          `${dataItem.attachment.name}.${dataItem.attachment.namespace}`,
+          Buffer.from(dataItem.attachment.zonefile, 'hex').toString(),
+          this.validateZonefileHash(dataItem.attachment.zonefileHash),
           hexToBuffer(dataItem.attachment.txId),
           hexToBuffer(dataItem.attachment.indexBlockHash)
         );
@@ -5012,7 +5017,8 @@ export class PgDataStore
         const zonefileInsertQuery = `
           INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
           VALUES ${zonefileInsertParams}
-          ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO NOTHING
+          ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
+            UPDATE SET zonefile = EXCLUDED.zonefile
         `;
         const insertZonefileQueryName = `insert-batch-zonefiles_${zonefilesColumnCount}x${zonefileCount}`;
         const insertZonefilesEventQuery: QueryConfig = {
@@ -6877,7 +6883,8 @@ export class PgDataStore
       `
         INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
         VALUES ($1, $2, $3, $4, $5)
-        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO NOTHING
+        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
+          UPDATE SET zonefile = EXCLUDED.zonefile
       `,
       [
         name,
