@@ -746,6 +746,19 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       };
       return metadata;
     }
+    case DbTxTypeId.CoinbaseToAltRecipient: {
+      const metadata: CoinbaseTransactionMetadata = {
+        tx_type: 'coinbase',
+        coinbase_payload: {
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: unwrapOptional(
+            dbTx.coinbase_alt_recipient,
+            () => 'Unexpected nullish coinbase_alt_recipient'
+          ),
+        },
+      };
+      return metadata;
+    }
     default: {
       throw new Error(`Unexpected DbTxTypeId: ${dbTx.type_id}`);
     }

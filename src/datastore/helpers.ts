@@ -83,6 +83,7 @@ export const TX_COLUMNS = [
   'poison_microblock_header_1',
   'poison_microblock_header_2',
   'coinbase_payload',
+  'coinbase_alt_recipient',
   'raw_result',
   'event_count',
   'execution_cost_read_count',
@@ -121,6 +122,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'poison_microblock_header_1',
   'poison_microblock_header_2',
   'coinbase_payload',
+  'coinbase_alt_recipient',
 ];
 
 export const BLOCK_COLUMNS = [
@@ -313,6 +315,9 @@ function parseTxTypeSpecificQueryResult(
     target.poison_microblock_header_2 = result.poison_microblock_header_2;
   } else if (target.type_id === DbTxTypeId.Coinbase) {
     target.coinbase_payload = result.coinbase_payload;
+  } else if (target.type_id === DbTxTypeId.CoinbaseToAltRecipient) {
+    target.coinbase_payload = result.coinbase_payload;
+    target.coinbase_alt_recipient = result.coinbase_alt_recipient;
   } else {
     throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
   }
@@ -729,6 +734,15 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
     }
     case TxPayloadTypeID.Coinbase: {
       dbTx.coinbase_payload = txData.payload.payload_buffer;
+      break;
+    }
+    case TxPayloadTypeID.CoinbaseToAltRecipient: {
+      dbTx.coinbase_payload = txData.payload.payload_buffer;
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Standard) {
+        dbTx.coinbase_alt_recipient = txData.payload.recipient.address;
+      } else {
+        dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
+      }
       break;
     }
     default:

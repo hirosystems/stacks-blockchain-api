@@ -1091,6 +1091,10 @@ export interface CoinbaseTransactionMetadata {
      * Hex encoded 32-byte scratch space for block leader's use
      */
     data: string;
+    /**
+     * Either a standard principal or contract principal, only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
+     */
+    alt_recipient?: string;
   };
 }
 /**

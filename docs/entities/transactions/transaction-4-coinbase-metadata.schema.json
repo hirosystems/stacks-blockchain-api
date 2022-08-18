@@ -17,6 +17,11 @@
         "data": {
           "type": "string",
           "description": "Hex encoded 32-byte scratch space for block leader's use"
+        },
+        "alt_recipient": {
+          "type": "string",
+          "nullable": true,
+          "description": "Either a standard principal or contract principal, only specified for `coinbase-to-alt-recipient` transaction types, otherwise null."
         }
       }
     }
