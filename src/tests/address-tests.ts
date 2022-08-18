@@ -1581,6 +1581,7 @@ describe('address tests', () => {
           tx_index: 4,
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
           event_count: 5,
           events: [],

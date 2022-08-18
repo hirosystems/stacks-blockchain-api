@@ -987,6 +987,9 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     case TxPayloadTypeID.Coinbase:
       transactionType = DbTxTypeId.Coinbase;
       break;
+    case TxPayloadTypeID.CoinbaseToAltRecipient:
+      transactionType = DbTxTypeId.CoinbaseToAltRecipient;
+      break;
     case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
       break;

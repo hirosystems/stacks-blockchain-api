@@ -175,7 +175,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
 
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -271,7 +271,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
 
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
@@ -343,7 +343,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307695,
       receipt_time_iso: '2020-07-09T15:14:55.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
@@ -364,7 +364,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307702,
       receipt_time_iso: '2020-07-09T15:15:02.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
 
     expect(JSON.parse(searchResult2.text)).toEqual(expectedResp2);
@@ -390,7 +390,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307703,
       receipt_time_iso: '2020-07-09T15:15:03.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
     expect(JSON.parse(searchResult3.text)).toEqual(expectedResp3);
 
@@ -415,7 +415,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307704,
       receipt_time_iso: '2020-07-09T15:15:04.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
     expect(JSON.parse(searchResult4.text)).toEqual(expectedResp4);
 
@@ -440,7 +440,7 @@ describe('mempool tests', () => {
       post_conditions: [],
       receipt_time: 1594307705,
       receipt_time_iso: '2020-07-09T15:15:05.000Z',
-      coinbase_payload: { data: '0x636f696e62617365206869' },
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
 
@@ -610,7 +610,7 @@ describe('mempool tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          coinbase_payload: { data: '0x636f696e62617365206869' },
+          coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
         },
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
@@ -625,7 +625,7 @@ describe('mempool tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          coinbase_payload: { data: '0x636f696e62617365206869' },
+          coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
         },
         {
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
@@ -640,7 +640,7 @@ describe('mempool tests', () => {
           sponsored: false,
           post_condition_mode: 'allow',
           post_conditions: [],
-          coinbase_payload: { data: '0x636f696e62617365206869' },
+          coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
         },
       ],
     };
@@ -1245,6 +1245,7 @@ describe('mempool tests', () => {
           post_conditions: [],
           coinbase_payload: {
             data: '0x6869',
+            alt_recipient: null,
           },
         },
       ],

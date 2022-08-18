@@ -180,6 +180,9 @@ export interface DbTx extends BaseTx {
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: string;
 
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
+
   event_count: number;
 
   execution_cost_read_count: number;
@@ -249,6 +252,9 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: string;
+
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
 }
 
 export interface DbSmartContract {
@@ -694,6 +700,9 @@ export interface MempoolTxQueryResult {
   // `coinbase` tx types
   coinbase_payload?: string;
 
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
+
   // sending abi in case tx is contract call
   abi: unknown | null;
 }
@@ -751,6 +760,9 @@ export interface TxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: string;
+
+  // `coinbase-to-alt-recipient` tx types
+  coinbase_alt_recipient?: string;
 
   // events count
   event_count: number;
@@ -903,6 +915,7 @@ export interface TxInsertValues {
   poison_microblock_header_1: PgBytea | null;
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
+  coinbase_alt_recipient: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -941,6 +954,7 @@ export interface MempoolTxInsertValues {
   poison_microblock_header_1: PgBytea | null;
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
+  coinbase_alt_recipient: string | null;
 }
 
 export interface BlockInsertValues {

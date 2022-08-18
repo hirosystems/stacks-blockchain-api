@@ -298,6 +298,18 @@ export function parseMessageTransaction(
       case TxPayloadTypeID.Coinbase: {
         break;
       }
+      case TxPayloadTypeID.CoinbaseToAltRecipient: {
+        if (payload.recipient.type_id === PrincipalTypeID.Standard) {
+          logger.verbose(
+            `Coinbase to alt recipient, standard principal: ${payload.recipient.address}`
+          );
+        } else {
+          logger.verbose(
+            `Coinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}`
+          );
+        }
+        break;
+      }
       case TxPayloadTypeID.SmartContract: {
         logger.verbose(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`

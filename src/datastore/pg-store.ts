@@ -3686,7 +3686,7 @@ export class PgStore {
       SELECT tx_id
       FROM txs
       WHERE microblock_canonical = true AND canonical = true
-      AND block_height = ${block.block_height} AND type_id = ${DbTxTypeId.Coinbase}
+      AND block_height = ${block.block_height} AND (type_id = ${DbTxTypeId.Coinbase} OR type_id = ${DbTxTypeId.CoinbaseToAltRecipient})
       LIMIT 1
     `;
 

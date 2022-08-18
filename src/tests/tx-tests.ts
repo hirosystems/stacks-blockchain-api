@@ -452,6 +452,276 @@ describe('tx tests', () => {
     expect(txQuery.result).toEqual(expectedResp);
   });
 
+  test('tx - coinbase pay to alt recipient - standard principal', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
+    const versionedSmartContractTx = Buffer.from(
+      '80800000000400fd3cd910d78fe7c4cd697d5228e51a912ff2ba740000000000000004000000000000000001008d36064b250dba5d3221ac235a9320adb072cfc23cd63511e6d814f97f0302e66c2ece80d7512df1b3e90ca6dce18179cb67b447973c739825ce6c6756bc247d010200000000050000000000000000000000000000000000000000000000000000000000000000051aba27f99e007c7f605a8305e318c1abde3cd220ac',
+      'hex'
+    );
+
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: tx.tx_id,
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      parsed_tx: tx,
+      sender_address: tx.auth.origin_condition.signer.address,
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
+
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_id: '0x449f5ea5c541bbbbbf7a1bff2434c449dca2ae3cdc52ba8d24b0bd0d3632d9bc',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'coinbase',
+      fee_rate: '0',
+      is_unanchored: false,
+      nonce: 4,
+      anchor_mode: 'on_chain_only',
+      sender_address: 'ST3YKSP8GTY7YFH6DD5YN4A753A8JZWNTEJFG78GN',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      coinbase_payload: {
+        data: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        alt_recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx - coinbase pay to alt recipient - contract principal', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
+    const versionedSmartContractTx = Buffer.from(
+      '8080000000040055a0a92720d20398211cd4c7663d65d018efcc1f00000000000000030000000000000000010118da31f542913e8c56961b87ee4794924e655a28a2034e37ef4823eeddf074747285bd6efdfbd84eecdf62cffa7c1864e683c688f4c105f4db7429066735b4e2010200000000050000000000000000000000000000000000000000000000000000000000000000061aba27f99e007c7f605a8305e318c1abde3cd220ac0b68656c6c6f5f776f726c64',
+      'hex'
+    );
+
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: tx.tx_id,
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      parsed_tx: tx,
+      sender_address: tx.auth.origin_condition.signer.address,
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+        },
+      ],
+    });
+
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_id: '0xbd1a9e1d60ca29fc630633170f396f5b6b85c9620bd16d63384ebc5a01a1829b',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'coinbase',
+      fee_rate: '0',
+      is_unanchored: false,
+      nonce: 3,
+      anchor_mode: 'on_chain_only',
+      sender_address: 'ST1AT1A97439076113KACESHXCQ81HVYC3XWGT2F5',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      coinbase_payload: {
+        data: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        alt_recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5.hello_world',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
   test('tx - sponsored', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
@@ -2225,6 +2495,7 @@ describe('tx tests', () => {
       },
       coinbase_payload: {
         data: '0x636f696e62617365206869',
+        alt_recipient: null,
       },
       event_count: 1,
       events: [

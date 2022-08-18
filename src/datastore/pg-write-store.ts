@@ -1164,6 +1164,7 @@ export class PgWriteStore extends PgStore {
       poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
       poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
       coinbase_payload: tx.coinbase_payload ?? null,
+      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
       raw_result: tx.raw_result,
       event_count: tx.event_count,
       execution_cost_read_count: tx.execution_cost_read_count,
@@ -1213,6 +1214,7 @@ export class PgWriteStore extends PgStore {
           poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
           poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
           coinbase_payload: tx.coinbase_payload ?? null,
+          coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
         };
         const result = await sql`
           INSERT INTO mempool_txs ${sql(values)}

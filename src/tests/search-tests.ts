@@ -446,6 +446,7 @@ describe('search tests', () => {
           anchor_mode: 'any',
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
           fee_rate: '1234',
           nonce: 0,
@@ -548,6 +549,7 @@ describe('search tests', () => {
           tx_type: 'coinbase',
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
         },
       },
