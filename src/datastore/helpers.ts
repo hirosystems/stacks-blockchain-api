@@ -469,8 +469,10 @@ export function parseDbEvents(
       recipient: result.recipient,
       event_type: DbEventTypeId.StxAsset,
       amount: BigInt(result.amount),
-      memo: result.memo,
     };
+    if (result.memo) {
+      event.memo = result.memo;
+    }
     events[rowIndex++] = event;
   }
   for (const result of ftResults) {

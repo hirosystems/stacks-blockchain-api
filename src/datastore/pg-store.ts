@@ -1779,7 +1779,6 @@ export class PgStore {
             sender: r.sender,
             recipient: r.recipient,
             amount: BigInt(r.amount),
-            memo: r.memo,
             locked_amount: BigInt(r.amount),
             unlock_height: Number(r.unlock_height),
             locked_address: r.sender,
@@ -1790,6 +1789,9 @@ export class PgStore {
             canonical: true,
             asset_event_type_id: r.asset_event_type_id,
           };
+          if (event.event_type === DbEventTypeId.StxAsset && r.memo) {
+            event.memo = r.memo;
+          }
           return event;
         });
       }
@@ -2260,8 +2262,10 @@ export class PgStore {
           recipient: row.recipient,
           event_type: DbEventTypeId.StxAsset,
           amount: BigInt(row.amount ?? 0),
-          memo: row.memo,
         };
+        if (row.memo) {
+          event.memo = row.memo;
+        }
         return event;
       } else if (row.asset_type === 'ft') {
         const event: DbFtEvent = {
