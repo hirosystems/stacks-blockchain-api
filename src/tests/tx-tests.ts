@@ -2225,6 +2225,7 @@ describe('tx tests', () => {
       },
       coinbase_payload: {
         data: '0x636f696e62617365206869',
+        alt_recipient: null,
       },
       event_count: 1,
       events: [

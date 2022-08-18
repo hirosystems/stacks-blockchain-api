@@ -746,6 +746,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         tx_type: 'coinbase',
         coinbase_payload: {
           data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: null as any,
         },
       };
       return metadata;
