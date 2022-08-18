@@ -93,6 +93,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
     // `coinbase` tx types
     coinbase_payload: 'bytea',
+
+    // `coinbase-pay-to-alt` tx types
+    coinbase_alt_recipient: 'string',
   });
 
   pgm.createIndex('mempool_txs', 'tx_id', { method: 'hash' });
@@ -128,5 +131,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.addConstraint('mempool_txs', 'valid_coinbase', `CHECK (type_id != 4 OR (
     NOT (coinbase_payload) IS NULL
+  ))`);
+
+  pgm.addConstraint('mempool_txs', 'valid_coinbase-pay-to-alt', `CHECK (type_id != 5 OR (
+    NOT (coinbase_payload, coinbase_alt_recipient) IS NULL
   ))`);
 }
