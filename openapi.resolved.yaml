@@ -1431,7 +1431,7 @@ paths:
         required: true
         schema:
           type: string
-          example: 1.9425303101036054e+75
+          example: 2.7133246193736543e+76
     get:
       summary: Get microblock
       description: Retrieves a specific microblock by `hash`
@@ -1783,7 +1783,7 @@ paths:
       - name: hash
         in: path
         description: Hash of the block
-        example: 8.640313066587451e+76
+        example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
         required: true
         schema:
           type: string
@@ -4213,16 +4213,17 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a contract identifier
-          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
+            example: SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE
         - name: tx_id
           in: path
           description: Transaction id
           required: true
           schema:
             type: string
+            example: 2.3901220287279093e+76
       responses:
         "200":
           description: Success
@@ -4389,29 +4390,31 @@ paths:
         - name: principal
           in: path
           description: Stacks address or a Contract identifier
-          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           required: true
           schema:
             type: string
+            example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
         - name: limit
           in: query
           description: max number of account transactions to fetch
           required: false
           schema:
             type: integer
+            example: 20
         - name: offset
           in: query
           description: index of first account transaction to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 10
         - name: height
           in: query
           description: Filter for transactions only at this given block height
           required: false
           schema:
             type: number
+            example: 66119
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed)
@@ -4426,9 +4429,9 @@ paths:
           description: returned data representing the state up until that point in time,
             rather than the current block.
           required: false
-          example: 60000
           schema:
             type: string
+            example: 60000
       responses:
         "200":
           description: Success
@@ -4673,15 +4676,16 @@ paths:
           in: path
           description: Stacks address
           required: true
-          example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
           schema:
             type: string
+            example: SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0
         - name: block_height
           in: query
           description: Optionally get the nonce at a given block height.
           required: false
           schema:
             type: number
+            example: 66119
         - name: block_hash
           in: query
           description: Optionally get the nonce at a given block hash. Note - Use either
@@ -4689,6 +4693,7 @@ paths:
           required: false
           schema:
             type: string
+            example: 5.1940439610518707e+76
       responses:
         "200":
           description: Success
@@ -4761,13 +4766,14 @@ paths:
           required: false
           schema:
             type: integer
+            example: 20
         - name: offset
           in: query
           description: index of first account assets to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 42000
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed)
@@ -4783,9 +4789,9 @@ paths:
             than the current block. Note - Use either of the query parameters
             but not both at a time.
           required: false
-          example: 60000
           schema:
             type: string
+            example: 60000
       responses:
         "200":
           description: Success
@@ -8442,7 +8448,7 @@ paths:
           in: path
           description: Height of block
           required: true
-          example: 69057
+          example: 66119
           schema:
             type: integer
         - name: limit
@@ -9746,6 +9752,7 @@ paths:
           required: false
           schema:
             type: integer
+            example: 1
         - name: offset
           in: query
           description: index of first tokens to fetch
@@ -9840,7 +9847,7 @@ paths:
   "/extended/v1/tokens/{contractId}/nft/metadata":
     get:
       operationId: get_contract_nft_metadata
-      summary: Non fungible tokens metadata for contract id
+      summary: Non fungible tokens metadata for contract ID
       description: Retrieves metadata for non fungible tokens for a given contract id.
         More information on Non-Fungible Tokens on the Stacks blockchain can be
         found
