@@ -149,7 +149,7 @@
     "zone-file": "2.0.0-beta.3"
   },
   "devDependencies": {
-    "@actions/core": "1.6.0",
+    "@actions/core": "1.9.1",
     "@actions/exec": "1.1.0",
     "@actions/github": "2.2.0",
     "@actions/io": "1.1.1",
