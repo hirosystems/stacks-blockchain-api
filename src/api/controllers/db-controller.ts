@@ -243,6 +243,9 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           amount: dbEvent.amount.toString(10),
         },
       };
+      if (dbEvent.asset_event_type_id === DbAssetEventTypeId.Transfer && dbEvent.memo) {
+        event.asset.memo = dbEvent.memo;
+      }
       return event;
     }
     case DbEventTypeId.FungibleTokenAsset: {

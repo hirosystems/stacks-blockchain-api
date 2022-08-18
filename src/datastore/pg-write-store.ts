@@ -709,6 +709,7 @@ export class PgWriteStore extends PgStore {
         sender: event.sender ?? null,
         recipient: event.recipient ?? null,
         amount: event.amount,
+        memo: event.memo ?? null,
       }));
       const res = await sql`
         INSERT INTO stx_events ${sql(values)}
@@ -874,6 +875,7 @@ export class PgWriteStore extends PgStore {
       sender: event.sender ?? null,
       recipient: event.recipient ?? null,
       amount: event.amount,
+      memo: event.memo ?? null,
     };
     await sql`
       INSERT INTO stx_events ${sql(values)}

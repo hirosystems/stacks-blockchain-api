@@ -959,6 +959,9 @@ export class PgStore {
     includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
+    if (args.txIds.length === 0) {
+      return [];
+    }
     return this.sql.begin(async client => {
       const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
@@ -1441,10 +1444,11 @@ export class PgStore {
           sender?: string;
           recipient?: string;
           amount: string;
+          memo?: string;
         }[]
       >`
         SELECT
-          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount, memo
         FROM stx_events
         WHERE (tx_id, index_block_hash) IN (VALUES ${sql.unsafe(transactionValues)})
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
@@ -1554,10 +1558,11 @@ export class PgStore {
           sender?: string;
           recipient?: string;
           amount: string;
+          memo?: string;
         }[]
       >`
         SELECT
-          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount
+          event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount, memo
         FROM stx_events
         WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
@@ -1643,7 +1648,7 @@ export class PgStore {
     return this.sql.begin(async sql => {
       const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
-      const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
+      const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
       const eventsResult = await sql<
         {
           tx_id: string;
@@ -1653,6 +1658,7 @@ export class PgStore {
           sender: string;
           recipient: string;
           amount: number;
+          memo: string;
           unlock_height: number;
           asset_identifier: string;
           contract_identifier: string;
@@ -1669,7 +1675,7 @@ export class PgStore {
                 SELECT
                   tx_id, event_index, tx_index, block_height, locked_address as sender, NULL as recipient,
                   locked_amount as amount, unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
+                  '0'::bytea as value, NULL as topic, null::bytea as memo,
                   ${DbEventTypeId.StxLock}::integer as event_type_id, 0 as asset_event_type_id
                 FROM stx_lock_events
                 WHERE ${isAddress ? sql`locked_address = ${refValue}` : sql`tx_id = ${refValue}`}
@@ -1684,7 +1690,7 @@ export class PgStore {
                 SELECT
                   tx_id, event_index, tx_index, block_height, sender, recipient,
                   amount, 0 as unlock_height, NULL as asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
+                  '0'::bytea as value, NULL as topic, memo,
                   ${DbEventTypeId.StxAsset}::integer as event_type_id, asset_event_type_id
                 FROM stx_events
                 WHERE ${
@@ -1703,7 +1709,7 @@ export class PgStore {
                 SELECT
                   tx_id, event_index, tx_index, block_height, sender, recipient,
                   amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  '0'::bytea as value, NULL as topic,
+                  '0'::bytea as value, NULL as topic, null::bytea as memo,
                   ${DbEventTypeId.FungibleTokenAsset}::integer as event_type_id, asset_event_type_id
                 FROM ft_events
                 WHERE ${
@@ -1722,7 +1728,7 @@ export class PgStore {
                 SELECT
                   tx_id, event_index, tx_index, block_height, sender, recipient,
                   0 as amount, 0 as unlock_height, asset_identifier, NULL as contract_identifier,
-                  value, NULL as topic,
+                  value, NULL as topic, null::bytea as memo,
                   ${DbEventTypeId.NonFungibleTokenAsset}::integer as event_type_id,
                   asset_event_type_id
                 FROM nft_events
@@ -1742,7 +1748,7 @@ export class PgStore {
                 SELECT
                   tx_id, event_index, tx_index, block_height, NULL as sender, NULL as recipient,
                   0 as amount, 0 as unlock_height, NULL as asset_identifier, contract_identifier,
-                  value, topic,
+                  value, topic, null::bytea as memo,
                   ${DbEventTypeId.SmartContractLog}::integer as event_type_id,
                   0 as asset_event_type_id
                 FROM contract_logs
@@ -1773,6 +1779,7 @@ export class PgStore {
             sender: r.sender,
             recipient: r.recipient,
             amount: BigInt(r.amount),
+            memo: r.memo,
             locked_amount: BigInt(r.amount),
             unlock_height: Number(r.unlock_height),
             locked_address: r.sender,
@@ -2191,6 +2198,7 @@ export class PgStore {
         recipient?: string;
         asset_identifier: string;
         amount?: string;
+        memo?: string;
         unlock_height?: string;
         value?: string;
       } & { count: number })[]
@@ -2199,25 +2207,25 @@ export class PgStore {
       FROM(
         SELECT
           'stx_lock' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, 0 as asset_event_type_id,
-          locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value
+          locked_address as sender, '' as recipient, '<stx>' as asset_identifier, locked_amount as amount, unlock_height, null::bytea as value, null::bytea as memo
         FROM stx_lock_events
         WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress} AND block_height <= ${blockHeight}
         UNION ALL
         SELECT
           'stx' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-          sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value
+          sender, recipient, '<stx>' as asset_identifier, amount::numeric, null::numeric as unlock_height, null::bytea as value, memo
         FROM stx_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
         UNION ALL
         SELECT
           'ft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-          sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value
+          sender, recipient, asset_identifier, amount, null::numeric as unlock_height, null::bytea as value, null::bytea as memo
         FROM ft_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
         UNION ALL
         SELECT
           'nft' as asset_type, event_index, tx_id, microblock_sequence, tx_index, block_height, canonical, asset_event_type_id,
-          sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value
+          sender, recipient, asset_identifier, null::numeric as amount, null::numeric as unlock_height, value, null::bytea as memo
         FROM nft_events
         WHERE canonical = true AND microblock_canonical = true AND (sender = ${stxAddress} OR recipient = ${stxAddress}) AND block_height <= ${blockHeight}
       ) asset_events
@@ -2252,6 +2260,7 @@ export class PgStore {
           recipient: row.recipient,
           event_type: DbEventTypeId.StxAsset,
           amount: BigInt(row.amount ?? 0),
+          memo: row.memo,
         };
         return event;
       } else if (row.asset_type === 'ft') {
@@ -2468,6 +2477,7 @@ export class PgStore {
         event_amount?: string;
         event_sender?: string;
         event_recipient?: string;
+        event_memo?: string;
       })[]
     >`
       WITH transactions AS (
@@ -2508,6 +2518,7 @@ export class PgStore {
         events.amount as event_amount,
         events.sender as event_sender,
         events.recipient as event_recipient,
+        events.memo as event_memo,
         ${this.sql.unsafe(abiColumn('transactions'))}
       FROM transactions
       LEFT JOIN events ON transactions.tx_id = events.tx_id

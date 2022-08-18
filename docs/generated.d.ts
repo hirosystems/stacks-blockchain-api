@@ -747,6 +747,7 @@ export interface TransactionEventAsset {
   recipient?: string;
   amount?: string;
   value?: string;
+  memo?: string;
 }
 /**
  * GET request that returns address balances
