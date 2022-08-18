@@ -84,6 +84,8 @@ export enum DbTxTypeId {
   ContractCall = 0x02,
   PoisonMicroblock = 0x03,
   Coinbase = 0x04,
+  CoinbaseToAltRecipient = 0x05,
+  VersionedSmartContract = 0x06,
 }
 
 export enum DbTxStatus {
@@ -164,6 +166,9 @@ export interface DbTx extends BaseTx {
   /** u8 */
   origin_hash_mode: number;
 
+  /** Only valid for `versioned_smart_contract` tx types */
+  smart_contract_clarity_version?: number;
+
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -231,6 +236,9 @@ export interface DbMempoolTx extends BaseTx {
   /** u8 */
   origin_hash_mode: number;
 
+  /** Only valid for `versioned_smart_contract` tx types */
+  smart_contract_clarity_version?: number;
+
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -248,6 +256,7 @@ export interface DbSmartContract {
   canonical: boolean;
   contract_id: string;
   block_height: number;
+  clarity_version: number | null;
   source_code: string;
   abi: string | null;
 }
@@ -666,6 +675,9 @@ export interface MempoolTxQueryResult {
   token_transfer_amount?: string;
   token_transfer_memo?: string;
 
+  // `versioned_smart_contract` tx types
+  smart_contract_clarity_version?: number;
+
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -720,6 +732,9 @@ export interface TxQueryResult {
   token_transfer_recipient_address?: string;
   token_transfer_amount?: string;
   token_transfer_memo?: string;
+
+  // `versioned_smart_contract` tx types
+  smart_contract_clarity_version?: number;
 
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
@@ -879,6 +894,7 @@ export interface TxInsertValues {
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
   token_transfer_memo: PgBytea | null;
+  smart_contract_clarity_version: number | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
@@ -916,6 +932,7 @@ export interface MempoolTxInsertValues {
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
   token_transfer_memo: PgBytea | null;
+  smart_contract_clarity_version: number | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
@@ -1203,6 +1220,7 @@ export interface SmartContractInsertValues {
   contract_id: string;
   block_height: number;
   index_block_hash: PgBytea;
+  clarity_version: number | null;
   source_code: string;
   abi: PgJsonb;
   parent_index_block_hash: PgBytea;

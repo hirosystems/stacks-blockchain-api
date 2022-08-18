@@ -42,6 +42,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'boolean',
       notNull: true,
     },
+    clarity_version: {
+      type: 'smallint',
+    },
     source_code: {
       type: 'string',
       notNull: true,

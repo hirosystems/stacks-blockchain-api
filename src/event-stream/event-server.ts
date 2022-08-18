@@ -336,12 +336,20 @@ function parseDataStoreTxEventData(
       names: [],
       namespaces: [],
     };
-    if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract) {
+    if (
+      tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract ||
+      tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
+    ) {
       const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
+      const clarityVersion =
+        tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
+          ? tx.parsed_tx.payload.clarity_version
+          : null;
       dbTx.smartContracts.push({
         tx_id: tx.core_tx.txid,
         contract_id: contractId,
         block_height: blockData.block_height,
+        clarity_version: clarityVersion,
         source_code: tx.parsed_tx.payload.code_body,
         abi: JSON.stringify(tx.core_tx.contract_abi),
         canonical: true,

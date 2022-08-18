@@ -978,6 +978,9 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     case TxPayloadTypeID.SmartContract:
       transactionType = DbTxTypeId.SmartContract;
       break;
+    case TxPayloadTypeID.VersionedSmartContract:
+      transactionType = DbTxTypeId.VersionedSmartContract;
+      break;
     case TxPayloadTypeID.ContractCall:
       transactionType = DbTxTypeId.ContractCall;
       break;

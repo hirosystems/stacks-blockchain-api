@@ -1098,6 +1098,7 @@ describe('address tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block.block_height,
+      clarity_version: null,
       contract_id: testContractAddr,
       source_code: '(some-contract-src)',
       abi: JSON.stringify(contractJsonAbi),
@@ -2086,6 +2087,7 @@ describe('address tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',

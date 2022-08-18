@@ -74,6 +74,7 @@ export const TX_COLUMNS = [
   'token_transfer_recipient_address',
   'token_transfer_amount',
   'token_transfer_memo',
+  'smart_contract_clarity_version',
   'smart_contract_contract_id',
   'smart_contract_source_code',
   'contract_call_contract_id',
@@ -111,6 +112,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'token_transfer_recipient_address',
   'token_transfer_amount',
   'token_transfer_memo',
+  'smart_contract_clarity_version',
   'smart_contract_contract_id',
   'smart_contract_source_code',
   'contract_call_contract_id',
@@ -296,6 +298,10 @@ function parseTxTypeSpecificQueryResult(
     target.token_transfer_amount = BigInt(result.token_transfer_amount ?? 0);
     target.token_transfer_memo = result.token_transfer_memo;
   } else if (target.type_id === DbTxTypeId.SmartContract) {
+    target.smart_contract_contract_id = result.smart_contract_contract_id;
+    target.smart_contract_source_code = result.smart_contract_source_code;
+  } else if (target.type_id === DbTxTypeId.VersionedSmartContract) {
+    target.smart_contract_clarity_version = result.smart_contract_clarity_version;
     target.smart_contract_contract_id = result.smart_contract_contract_id;
     target.smart_contract_source_code = result.smart_contract_source_code;
   } else if (target.type_id === DbTxTypeId.ContractCall) {
@@ -515,6 +521,7 @@ export function parseQueryResultToSmartContract(row: {
   canonical: boolean;
   contract_id: string;
   block_height: number;
+  clarity_version: number | null;
   source_code: string;
   abi: unknown | null;
 }) {
@@ -523,6 +530,7 @@ export function parseQueryResultToSmartContract(row: {
     canonical: row.canonical,
     contract_id: row.contract_id,
     block_height: row.block_height,
+    clarity_version: row.clarity_version,
     source_code: row.source_code,
     // The consumers of this object expect the value to be stringify
     // JSON if exists, otherwise null rather than undefined.
@@ -698,6 +706,13 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       const sender_address = getTxSenderAddress(txData);
       dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
       dbTx.smart_contract_source_code = txData.payload.code_body;
+      break;
+    }
+    case TxPayloadTypeID.VersionedSmartContract: {
+      const sender_address = getTxSenderAddress(txData);
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
+      dbTx.smart_contract_source_code = txData.payload.code_body;
+      dbTx.smart_contract_clarity_version = txData.payload.clarity_version;
       break;
     }
     case TxPayloadTypeID.ContractCall: {

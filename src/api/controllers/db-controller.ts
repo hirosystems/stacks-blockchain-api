@@ -84,6 +84,7 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
     case DbTxTypeId.TokenTransfer:
       return 'token_transfer';
     case DbTxTypeId.SmartContract:
+    case DbTxTypeId.VersionedSmartContract:
       return 'smart_contract';
     case DbTxTypeId.ContractCall:
       return 'contract_call';
@@ -109,18 +110,18 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   }
 }
 
-export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
+export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
   switch (typeString) {
     case 'token_transfer':
-      return DbTxTypeId.TokenTransfer;
+      return [DbTxTypeId.TokenTransfer];
     case 'smart_contract':
-      return DbTxTypeId.SmartContract;
+      return [DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract];
     case 'contract_call':
-      return DbTxTypeId.ContractCall;
+      return [DbTxTypeId.ContractCall];
     case 'poison_microblock':
-      return DbTxTypeId.PoisonMicroblock;
+      return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
-      return DbTxTypeId.Coinbase;
+      return [DbTxTypeId.Coinbase];
     default:
       throw new Error(`Unexpected tx type string: ${typeString}`);
   }
@@ -690,6 +691,27 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: SmartContractTransactionMetadata = {
         tx_type: 'smart_contract',
         smart_contract: {
+          clarity_version: null as any,
+          contract_id: unwrapOptional(
+            dbTx.smart_contract_contract_id,
+            () => 'Unexpected nullish smart_contract_contract_id'
+          ),
+          source_code: unwrapOptional(
+            dbTx.smart_contract_source_code,
+            () => 'Unexpected nullish smart_contract_source_code'
+          ),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.VersionedSmartContract: {
+      const metadata: SmartContractTransactionMetadata = {
+        tx_type: 'smart_contract',
+        smart_contract: {
+          clarity_version: unwrapOptional(
+            dbTx.smart_contract_clarity_version,
+            () => 'Unexpected nullish smart_contract_clarity_version'
+          ),
           contract_id: unwrapOptional(
             dbTx.smart_contract_contract_id,
             () => 'Unexpected nullish smart_contract_contract_id'

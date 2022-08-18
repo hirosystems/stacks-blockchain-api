@@ -142,6 +142,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     token_transfer_amount: 'bigint',
     token_transfer_memo: 'bytea',
 
+    // `versioned-smart-contract` tx types
+    smart_contract_clarity_version: 'smallint',
+
     // `smart-contract` tx types
     smart_contract_contract_id: 'string',
     smart_contract_source_code: 'string',
@@ -183,6 +186,10 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.addConstraint('txs', 'valid_smart_contract', `CHECK (type_id != 1 OR (
     NOT (smart_contract_contract_id, smart_contract_source_code) IS NULL
+  ))`);
+
+  pgm.addConstraint('txs', 'valid_versioned_smart_contract', `CHECK (type_id != 6 OR (
+    NOT (smart_contract_clarity_version, smart_contract_contract_id, smart_contract_source_code) IS NULL
   ))`);
 
   pgm.addConstraint('txs', 'valid_contract_call', `CHECK (type_id != 2 OR (

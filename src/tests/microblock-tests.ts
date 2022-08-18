@@ -359,6 +359,7 @@ describe('microblock tests', () => {
           tx_id: tx1.tx_id,
           canonical: true,
           block_height: block1.block_height,
+          clarity_version: null,
           contract_id: contractAddr,
           source_code: '(some-contract-src)',
           abi: JSON.stringify(contractJsonAbi),

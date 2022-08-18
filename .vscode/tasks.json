@@ -14,18 +14,13 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "npm run devenv:deploy -- -d",
+      "command": "npm run devenv:deploy",
       "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
+      "problemMatcher": {
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
     },
     {
       "label": "stacks-node:deploy-follower",

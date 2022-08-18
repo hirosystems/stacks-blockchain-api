@@ -87,7 +87,7 @@ export async function connectPostgres({
       connectionOkay = true;
       break;
     } catch (error: any) {
-      if (error instanceof postgres.PostgresError) {
+      if (error instanceof postgres.PostgresError || isPgConnectionError(error)) {
         const timeElapsed = initTimer.getElapsed();
         if (timeElapsed - lastElapsedLog > 2000) {
           lastElapsedLog = timeElapsed;
@@ -188,4 +188,15 @@ export function getPostgres({
     });
   }
   return sql;
+}
+
+/**
+ * Checks if a given error from the pg lib is a NodeJS network/connection error (i.e. the query is retryable).
+ */
+function isPgConnectionError(error: any): boolean {
+  if (error?.code) {
+    const networkErrorCodes = ['ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND'];
+    return networkErrorCodes.includes(error.code);
+  }
+  return false;
 }

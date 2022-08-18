@@ -320,6 +320,12 @@ export function parseMessageTransaction(
         );
         break;
       }
+      case TxPayloadTypeID.VersionedSmartContract: {
+        logger.verbose(
+          `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`
+        );
+        break;
+      }
       default: {
         throw new NotImplementedError(
           `extracting data for tx type: ${getEnumDescription(

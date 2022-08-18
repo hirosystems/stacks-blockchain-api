@@ -148,7 +148,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js"
+        "${workspaceRoot}/tests/jest.config.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -165,7 +165,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.rosetta.js"
+        "${workspaceRoot}/tests/jest.config.rosetta.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -182,7 +182,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.bns.js"
+        "${workspaceRoot}/tests/jest.config.bns.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -199,7 +199,41 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.tokens.js"
+        "${workspaceRoot}/tests/jest.config.tokens.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: RPC",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.rpc.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: btc-faucet",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.btc-faucet.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -216,7 +250,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.rosetta-cli-data.js"
+        "${workspaceRoot}/tests/jest.config.rosetta-cli-data.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -237,7 +271,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.rosetta-cli-construction.js"
+        "${workspaceRoot}/tests/jest.config.rosetta-cli-construction.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

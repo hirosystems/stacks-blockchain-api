@@ -181,6 +181,57 @@ describe('mempool tests', () => {
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
   });
 
+  test('fetch mempool-tx - versioned smart contract', async () => {
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
+    const mempoolTx: DbMempoolTx = {
+      pruned: false,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: DbTxStatus.Pending,
+      receipt_time: 1594307695,
+      smart_contract_clarity_version: 2,
+      smart_contract_contract_id: 'some-versioned-smart-contract',
+      smart_contract_source_code: '(some-versioned-contract-src)',
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+    };
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx.tx_id}`);
+    expect(searchResult1.status).toBe(200);
+    expect(searchResult1.type).toBe('application/json');
+    const expectedResp1 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+      tx_status: 'pending',
+      tx_type: 'smart_contract',
+      fee_rate: '1234',
+      nonce: 0,
+      anchor_mode: 'any',
+      sender_address: 'sender-addr',
+      sponsored: false,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      receipt_time: 1594307695,
+      receipt_time_iso: '2020-07-09T15:14:55.000Z',
+      smart_contract: {
+        clarity_version: 2,
+        contract_id: 'some-versioned-smart-contract',
+        source_code: '(some-versioned-contract-src)',
+      },
+    };
+
+    expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
+  });
+
   test('fetch mempool-tx - sponsored', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
@@ -947,6 +998,7 @@ describe('mempool tests', () => {
           tx_status: 'pending',
           tx_type: 'smart_contract',
           smart_contract: {
+            clarity_version: null,
             contract_id: 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27',
             source_code: '(define-public (say-hi) (ok "hello world"))',
           },
