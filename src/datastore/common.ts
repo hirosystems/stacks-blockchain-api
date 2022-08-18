@@ -967,6 +967,7 @@ export interface DataStore extends DataStoreEventEmitter {
   getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>>;
   getLatestZoneFile(args: {
     name: string;

@@ -13,26 +13,17 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
   router.get(
     '/:name/zonefile/:zoneFileHash',
     asyncHandler(async (req, res, next) => {
-      // Fetches the historical zonefile specified by the username and zone hash.
       const { name, zoneFileHash } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
-      nameFound = nameQuery.found;
-      if (!nameFound) {
-        const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
-        nameFound = subdomainQuery.found;
-      }
-
-      if (nameFound) {
-        const zonefile = await db.getHistoricalZoneFile({ name: name, zoneFileHash: zoneFileHash });
-        if (zonefile.found) {
-          res.json(zonefile.result);
-        } else {
-          res.status(404).json({ error: 'No such zonefile' });
-        }
+      const zonefile = await db.getHistoricalZoneFile({
+        name: name,
+        zoneFileHash: zoneFileHash,
+        includeUnanchored,
+      });
+      if (zonefile.found) {
+        res.json(zonefile.result);
       } else {
-        res.status(400).json({ error: 'Invalid name or subdomain' });
+        res.status(404).json({ error: 'No such zonefile' });
       }
     })
   );
@@ -50,26 +41,13 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
   router.get(
     '/:name/zonefile',
     asyncHandler(async (req, res, next) => {
-      // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
-      nameFound = nameQuery.found;
-      if (!nameFound) {
-        const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
-        nameFound = subdomainQuery.found;
-      }
-
-      if (nameFound) {
-        const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
-        if (zonefile.found) {
-          res.json(zonefile.result);
-        } else {
-          res.status(404).json({ error: 'No zone file for name' });
-        }
+      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
+      if (zonefile.found) {
+        res.json(zonefile.result);
       } else {
-        res.status(400).json({ error: 'Invalid name or subdomain' });
+        res.status(404).json({ error: 'No zone file for name' });
       }
     })
   );
@@ -77,6 +55,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
   router.get(
     '/',
     asyncHandler(async (req, res, next) => {
+      // FIXME: Paging is not correctly sent here
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results } = await db.getNamesList({ page, includeUnanchored });
@@ -90,6 +69,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
   router.get(
     '/:name',
     asyncHandler(async (req, res, next) => {
+      // FIXME: Here
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       let nameInfoResponse: BnsGetNameInfoResponse;
