@@ -7043,7 +7043,7 @@ export class PgDataStore
         FROM namespaces
         WHERE canonical = true AND microblock_canonical = true
         AND ready_block <= $1
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         `,
         [maxBlockHeight]
       );
@@ -7074,7 +7074,7 @@ export class PgDataStore
         WHERE namespace_id = $1
         AND registered_at <= $3
         AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $2
         `,
@@ -7102,7 +7102,7 @@ export class PgDataStore
         WHERE namespace_id = $1
         AND ready_block <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
         `,
         [namespace, maxBlockHeight]
@@ -7136,19 +7136,26 @@ export class PgDataStore
         DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }
       >(
         `
-        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
-        FROM names
-        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
-        WHERE names.name = $1
-        AND registered_at <= $2
-        AND names.canonical = true AND names.microblock_canonical = true
-        ORDER BY names.name, names.registered_at DESC, names.tx_index DESC
+        SELECT n.*, z.zonefile
+        FROM names AS n
+        INNER JOIN txs AS t USING (tx_id, index_block_hash)
+        LEFT JOIN zonefiles AS z ON
+          z.name = n.name
+          AND z.tx_id = t.tx_id
+          AND z.index_block_hash = t.index_block_hash
+        WHERE n.name = $1
+          AND t.block_height <= $2
+          AND t.canonical = true
+          AND t.microblock_canonical = true
+        ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+        LIMIT 1
         `,
         [name, maxBlockHeight]
       );
       if (nameZonefile.rowCount === 0) {
         return;
       }
+      // FIXME: Do we need this anymore?
       // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
       // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
       // since they did not generate an NFT event for us to track.
@@ -7429,36 +7436,30 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const subdomainResult = await client.query<
+      const result = await client.query<
         DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
       >(
         `
-        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
-        FROM subdomains
-        WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= $2
-        AND fully_qualified_subdomain = $1
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        SELECT s.*, z.zonefile
+        FROM subdomains AS s
+        INNER JOIN txs AS t USING (tx_id, index_block_hash)
+        LEFT JOIN zonefiles AS z
+          ON z.name = s.fully_qualified_subdomain
+          AND z.tx_id = t.tx_id
+          AND z.index_block_hash = t.index_block_hash
+        WHERE t.canonical = true
+          AND t.microblock_canonical = true
+          AND t.block_height <= $2
+          AND s.fully_qualified_subdomain = $1
+        ORDER BY t.block_height DESC, t.tx_index DESC
+        LIMIT 1
         `,
         [subdomain, maxBlockHeight]
       );
-      if (subdomainResult.rowCount === 0 || !subdomainResult.rows[0].zonefile_hash) {
-        return subdomainResult;
+      if (result.rowCount === 0 || !result.rows[0].zonefile_hash) {
+        return result;
       }
-      const zonefileHash = subdomainResult.rows[0].zonefile_hash;
-      const zonefileResult = await client.query(
-        `
-        SELECT zonefile
-        FROM zonefiles
-        WHERE zonefile_hash = $1
-      `,
-        [zonefileHash]
-      );
-      if (zonefileResult.rowCount === 0) {
-        return subdomainResult;
-      }
-      subdomainResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
-      return subdomainResult;
+      return result;
     });
     if (queryResult.rowCount > 0) {
       return {

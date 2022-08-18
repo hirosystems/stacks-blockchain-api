@@ -69,7 +69,7 @@ describe('BNS API tests', () => {
       miner_txid: '0x4321',
       canonical: true,
     })
-      .addTx()
+      .addTx({ tx_id: '0x1234' })
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV('xyz.abc'),
@@ -764,7 +764,7 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x1234',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
@@ -782,6 +782,15 @@ describe('BNS API tests', () => {
       `/v1/names/${subdomain.fully_qualified_subdomain}`
     );
     expect(query.status).toBe(200);
+    expect(query.body).toStrictEqual({
+      address: "test-address",
+      blockchain: "stacks",
+      last_txid: "0x1234",
+      resolver: "https://registrar.blockstack.org",
+      status: "registered_subdomain",
+      zonefile: "test",
+      zonefile_hash: "test-hash",
+    });
   });
 
   test('Success: fqn redirect test', async () => {
@@ -798,7 +807,7 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x1234',
       canonical: true,
     };
     await db.resolveBnsSubdomains(

@@ -6,12 +6,18 @@ import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
+import {
+  getETagCacheHandler,
+  setETagCacheHeaders,
+} from '../../../api/controllers/cache-controller';
 
 export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.Router {
   const router = express.Router();
+  const cacheHandler = getETagCacheHandler(db);
 
   router.get(
     '/:name/zonefile/:zoneFileHash',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const { name, zoneFileHash } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -21,6 +27,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
         includeUnanchored,
       });
       if (zonefile.found) {
+        setETagCacheHeaders(res);
         res.json(zonefile.result);
       } else {
         res.status(404).json({ error: 'No such name or zonefile' });
@@ -30,21 +37,25 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
 
   router.get(
     '/:name/subdomains',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      setETagCacheHeaders(res);
       res.json(subdomainsList.results);
     })
   );
 
   router.get(
     '/:name/zonefile',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
       if (zonefile.found) {
+        setETagCacheHeaders(res);
         res.json(zonefile.result);
       } else {
         res.status(404).json({ error: 'No such name or zonefile does not exist' });
@@ -54,22 +65,24 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
 
   router.get(
     '/',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
-      // FIXME: Paging is not correctly sent here
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results } = await db.getNamesList({ page, includeUnanchored });
       if (results.length === 0 && req.query.page) {
         res.status(400).json(BnsErrors.InvalidPageNumber);
+      } else {
+        setETagCacheHeaders(res);
+        res.json(results);
       }
-      res.json(results);
     })
   );
 
   router.get(
     '/:name',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
-      // FIXME: Here
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       let nameInfoResponse: BnsGetNameInfoResponse;
@@ -129,6 +142,7 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
       const response = Object.fromEntries(
         Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
       );
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );
