@@ -1,4 +1,3 @@
-import { Server } from 'http';
 import * as supertest from 'supertest';
 import * as bitcoin from 'bitcoinjs-lib';
 import {
@@ -23,7 +22,7 @@ async function getBalanceWithWalletImport(address: string): Promise<number> {
   return getBalanceResult;
 }
 
-describe.skip('btc faucet', () => {
+describe('btc faucet', () => {
   const regtest = bitcoin.networks.regtest;
 
   beforeAll(async () => {
