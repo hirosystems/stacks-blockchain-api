@@ -1092,7 +1092,7 @@ export interface CoinbaseTransactionMetadata {
      */
     data: string;
     /**
-     * Either a standard principal or contract principal, only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
+     * A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
      */
     alt_recipient?: string;
   };
