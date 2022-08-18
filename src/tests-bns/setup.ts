@@ -1,5 +1,4 @@
 import { loadDotEnv } from '../helpers';
-import { StacksCoreRpcClient } from '../core-rpc/client';
 
 // ts-unused-exports:disable-next-line
 export default async (): Promise<void> => {
@@ -8,7 +7,5 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
-  console.log('Waiting for RPC connection to core node..');
-  await new StacksCoreRpcClient().waitForConnection(60000);
   console.log('Jest - setup done');
 };

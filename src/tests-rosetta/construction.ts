@@ -3,7 +3,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbTx, DbTxStatus } from '../datastore/common';
+import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -29,7 +29,7 @@ import {
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, timeout } from '../helpers';
+import { bufferToHexPrefixString, FoundOrNot, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -51,6 +51,8 @@ import {
   RosettaConstants,
   RosettaErrors,
   RosettaErrorsTypes,
+  RosettaOperationStatuses,
+  RosettaOperationTypes,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import {
@@ -62,7 +64,7 @@ import { decodeBtcAddress } from '@stacks/stacking';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
-describe('Rosetta API', () => {
+describe('Rosetta Construction', () => {
   let db: PgWriteStore;
   let eventServer: Server;
   let api: ApiServer;
@@ -2478,6 +2480,128 @@ describe('Rosetta API', () => {
   })
 
   /* rosetta construction end */
+
+
+  // Test network endpoints here because it requires a connection to the stacks-node RPC endpoints
+  describe('Rosetta network', () => {
+    test('network/list', async () => {
+      const query1 = await supertest(api.server).post(`/rosetta/v1/network/list`);
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      expect(JSON.parse(query1.text)).toEqual({
+        network_identifiers: [{ blockchain: 'stacks', network: 'testnet' }],
+      });
+    });
+
+    test('network/options', async () => {
+      const nodeVersion = process.version;
+      const middlewareVersion = require('../../package.json').version;
+      const query1 = await supertest(api.server)
+        .post(`/rosetta/v1/network/options`)
+        .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+      expect(JSON.parse(query1.text)).toEqual({
+        version: {
+          rosetta_version: '1.4.6',
+          node_version: nodeVersion,
+          middleware_version: middlewareVersion,
+        },
+        allow: {
+          operation_statuses: RosettaOperationStatuses,
+          operation_types: RosettaOperationTypes,
+          errors: Object.values(RosettaErrors),
+          historical_balance_lookup: true,
+        },
+      });
+    });
+  
+    test('network/options - bad request', async () => {
+      const query1 = await supertest(api.server).post(`/rosetta/v1/network/options`).send({});
+      expect(query1.status).toBe(400);
+      expect(query1.type).toBe('application/json');
+      expect(JSON.parse(query1.text)).toEqual({
+        code: 613,
+        message: 'Network identifier object is null.',
+        retriable: false,
+        details: { message: "should have required property 'network_identifier'" },
+      });
+    });
+
+    test('network/status - invalid blockchain', async () => {
+      const query1 = await supertest(api.server)
+        .post(`/rosetta/v1/network/status`)
+        .send({ network_identifier: { blockchain: 'bitcoin', network: 'testnet' } });
+      expect(query1.status).toBe(400);
+      expect(query1.type).toBe('application/json');
+      expect(JSON.parse(query1.text)).toEqual({
+        code: 611,
+        message: 'Invalid blockchain.',
+        retriable: false,
+      });
+    });
+
+    test('network/status - invalid network', async () => {
+      const query1 = await supertest(api.server)
+        .post(`/rosetta/v1/network/status`)
+        .send({ network_identifier: { blockchain: 'stacks', network: 'mainnet' } });
+      expect(query1.status).toBe(400);
+      expect(query1.type).toBe('application/json');
+      expect(JSON.parse(query1.text)).toEqual({
+        code: 610,
+        message: 'Invalid network.',
+        retriable: false,
+      });
+    });
+
+    test('network/status', async () => {
+      let genesisData: FoundOrNot<DbBlock>;
+      do {
+        genesisData = await db.getBlock({ height: 1 });
+        if (!genesisData.found) {
+          await timeout(150);
+        }
+      } while (!genesisData.found)
+
+      const genesisBlock = genesisData.result;
+
+      const query1 = await supertest(api.address)
+        .post(`/rosetta/v1/network/status`)
+        .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
+      expect(query1.status).toBe(200);
+      expect(query1.type).toBe('application/json');
+
+      const blockQuery = await db.getCurrentBlock();
+      if (!blockQuery.found) {
+        throw new Error(`Could not get current block`);
+      }
+      const block = blockQuery.result;
+
+      const expectResponse = {
+        current_block_identifier: {
+          index: block.block_height,
+          hash: block.block_hash,
+        },
+        current_block_timestamp: block.burn_block_time * 1000,
+        genesis_block_identifier: {
+          index: genesisBlock.block_height,
+          hash: genesisBlock.block_hash,
+        },
+        peers: [],
+      };
+
+      const queryResult = JSON.parse(query1.text);
+
+      expect(queryResult).toHaveProperty('sync_status');
+
+      expect(queryResult.current_block_identifier).toBeTruthy();
+      expect(queryResult.current_block_timestamp).toBeTruthy();
+
+      expect(queryResult.genesis_block_identifier).toEqual(
+        expectResponse.genesis_block_identifier
+      );
+    });
+  });
 
   afterAll(async () => {
     await new Promise<void>(resolve => eventServer.close(() => resolve()));

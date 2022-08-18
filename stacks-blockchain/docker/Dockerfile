@@ -1,6 +1,7 @@
-FROM blockstack/stacks-blockchain:2.05.0.0.0-stretch as build
+# Pointed to stacks-blockchain `next` branch as of commit https://github.com/stacks-network/stacks-blockchain/commit/43b3398c428890d67392d6125b326c31913c1712
+FROM --platform=linux/amd64 blockstack/stacks-blockchain:next-43b3398-stretch as build
 
-FROM debian:stretch
+FROM --platform=linux/amd64 debian:stretch
 
 COPY wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh

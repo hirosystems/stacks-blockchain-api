@@ -1,4 +1,3 @@
-import { Server } from 'http';
 import * as supertest from 'supertest';
 import * as bitcoin from 'bitcoinjs-lib';
 import {
