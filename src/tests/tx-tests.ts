@@ -35,6 +35,7 @@ import {
   DbTxStatus,
   DataStoreBlockUpdateData,
   DbTxAnchorMode,
+  DbStxEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
@@ -1091,6 +1092,179 @@ describe('tx tests', () => {
     expect(sponsoredStxResAfter.status).toBe(200);
     expect(sponsoredStxResAfter.type).toBe('application/json');
     expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
+  });
+
+  test('tx with stx-transfer-memo', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const dbTx: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const dbStxEvent: DbStxEvent = {
+      event_index: 0,
+      tx_id: dbTx.tx_id,
+      tx_index: dbTx.tx_index,
+      block_height: dbTx.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 60n,
+      memo: '0x74657374206d656d6f206669656c64',
+    };
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxLockEvents: [],
+          stxEvents: [dbStxEvent],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+        },
+      ],
+    });
+
+    const req1 = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(req1.status).toBe(200);
+    expect(req1.type).toBe('application/json');
+    expect(req1.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req2 = await supertest(api.server).get(`/extended/v1/tx/multiple?tx_id=${dbTx.tx_id}`);
+    expect(req2.status).toBe(200);
+    expect(req2.type).toBe('application/json');
+    expect(req2.body[dbTx.tx_id].result.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req3 = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${dbStxEvent.sender}`
+    );
+    expect(req3.status).toBe(200);
+    expect(req3.type).toBe('application/json');
+    expect(req3.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req4 = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${dbTx.tx_id}`);
+    expect(req4.status).toBe(200);
+    expect(req4.type).toBe('application/json');
+    expect(req4.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req5 = await supertest(api.server).get(
+      `/extended/v1/address/${dbStxEvent.sender}/assets`
+    );
+    expect(req5.status).toBe(200);
+    expect(req5.type).toBe('application/json');
+    expect(req5.body.results[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
   });
 
   test('tx store and processing', async () => {
