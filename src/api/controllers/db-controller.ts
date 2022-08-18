@@ -91,6 +91,7 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
     case DbTxTypeId.PoisonMicroblock:
       return 'poison_microblock';
     case DbTxTypeId.Coinbase:
+    case DbTxTypeId.CoinbaseToAltRecipient:
       return 'coinbase';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
@@ -121,7 +122,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
     case 'poison_microblock':
       return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
-      return [DbTxTypeId.Coinbase];
+      return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient];
     default:
       throw new Error(`Unexpected tx type string: ${typeString}`);
   }
@@ -534,7 +535,10 @@ async function getRosettaBlockTxFromDataStore(opts: {
   let minerRewards: DbMinerReward[] = [],
     unlockingEvents: StxUnlockEvent[] = [];
 
-  if (opts.tx.type_id === DbTxTypeId.Coinbase) {
+  if (
+    opts.tx.type_id === DbTxTypeId.Coinbase ||
+    opts.tx.type_id === DbTxTypeId.CoinbaseToAltRecipient
+  ) {
     minerRewards = await opts.db.getMinersRewardsAtHeight({
       blockHeight: opts.block.block_height,
     });
