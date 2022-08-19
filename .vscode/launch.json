@@ -148,7 +148,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.js",
+        "${workspaceRoot}/jest.config.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -182,7 +182,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.bns.js",
+        "${workspaceRoot}/jest.config.bns.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

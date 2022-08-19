@@ -4925,6 +4925,11 @@ export class PgDataStore
     }
   }
 
+  /**
+   * Inserts a zonefile and all its associated subdomains into the DB in a single batch operation.
+   * @param client - DB client
+   * @param data - Zonefile and subdomains to insert
+   */
   async updateBatchSubdomainsAndZonefiles(
     client: ClientBase,
     data: {
@@ -4990,12 +4995,30 @@ export class PgDataStore
           rowCount: subdomainCount,
           columnCount: subdomainColumnCount,
         });
-        const insertQuery = `INSERT INTO subdomains (
-          name, namespace_id, fully_qualified_subdomain, owner,
-          zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-          zonefile_offset, resolver, canonical, tx_id,
-          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-        ) VALUES ${subdomainInsertParams}`;
+        const insertQuery = `
+          INSERT INTO subdomains (
+            name, namespace_id, fully_qualified_subdomain, owner,
+            zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
+            zonefile_offset, resolver, canonical, tx_id,
+            index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+          ) VALUES ${subdomainInsertParams}
+          ON CONFLICT ON CONSTRAINT unique_fully_qualified_subdomain_tx_id_index_block_hash_microblock_hash DO
+            UPDATE SET
+              name = EXCLUDED.name,
+              namespace_id = EXCLUDED.namespace_id,
+              owner = EXCLUDED.owner,
+              zonefile_hash = EXCLUDED.zonefile_hash,
+              parent_zonefile_hash = EXCLUDED.parent_zonefile_hash,
+              parent_zonefile_index = EXCLUDED.parent_zonefile_index,
+              block_height = EXCLUDED.block_height,
+              tx_index = EXCLUDED.tx_index,
+              zonefile_offset = EXCLUDED.zonefile_offset,
+              resolver = EXCLUDED.resolver,
+              canonical = EXCLUDED.canonical,
+              parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+              microblock_sequence = EXCLUDED.microblock_sequence,
+              microblock_canonical = EXCLUDED.microblock_canonical
+        `;
         const insertQueryName = `insert-batch-subdomains_${subdomainColumnCount}x${subdomainCount}`;
         const insertBnsSubdomainsEventQuery: QueryConfig = {
           name: insertQueryName,

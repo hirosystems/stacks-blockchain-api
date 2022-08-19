@@ -85,11 +85,14 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('subdomains', 'name');
-  pgm.createIndex('subdomains', 'fully_qualified_subdomain');
-  pgm.createIndex('subdomains', ['tx_id', 'index_block_hash']);
   pgm.createIndex('subdomains', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
   ]);
+  pgm.addConstraint(
+    'subdomains',
+    'unique_fully_qualified_subdomain_tx_id_index_block_hash_microblock_hash',
+    'UNIQUE(fully_qualified_subdomain, tx_id, index_block_hash, microblock_hash)'
+  );
 }
