@@ -185,8 +185,6 @@
         "--no-cache",
         "--config",
         "${workspaceRoot}/jest.config.bns.js",
-        "-t",
-        "BNS integration tests"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

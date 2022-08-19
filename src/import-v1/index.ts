@@ -429,15 +429,15 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
-    logger.info(`Disabling BNS table indices temporarily for a faster import`);
-    await client.query(`
-      UPDATE pg_index
-      SET indisready = false, indisvalid = false
-      WHERE indrelid = ANY (
-        SELECT oid FROM pg_class
-        WHERE relname IN ('subdomains', 'zonefiles', 'namespaces', 'names')
-      )
-    `);
+    // logger.info(`Disabling BNS table indices temporarily for a faster import`);
+    // await client.query(`
+    //   UPDATE pg_index
+    //   SET indisready = false, indisvalid = false
+    //   WHERE indrelid = ANY (
+    //     SELECT oid FROM pg_class
+    //     WHERE relname IN ('subdomains', 'zonefiles', 'namespaces', 'names')
+    //   )
+    // `);
     const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
     await pipeline(
       fs.createReadStream(path.join(importDir, 'chainstate.txt')),
@@ -460,7 +460,9 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomainsAndZonefiles(client, [{ blockData, subdomains: subdomainBatch }]);
+      await db.updateBatchSubdomainsAndZonefiles(client, [
+        { blockData, subdomains: subdomainBatch },
+      ]);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);
@@ -475,11 +477,11 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
     };
     await db.updateConfigState(updatedConfigState, client);
 
-    logger.info(`Re-indexing BNS tables. This might take a while...`);
-    await client.query(`REINDEX TABLE subdomains`);
-    await client.query(`REINDEX TABLE zonefiles`);
-    await client.query(`REINDEX TABLE namespaces`);
-    await client.query(`REINDEX TABLE names`);
+    // logger.info(`Re-indexing BNS tables. This might take a while...`);
+    // await client.query(`REINDEX TABLE subdomains`);
+    // await client.query(`REINDEX TABLE zonefiles`);
+    // await client.query(`REINDEX TABLE namespaces`);
+    // await client.query(`REINDEX TABLE names`);
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

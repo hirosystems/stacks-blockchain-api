@@ -32,6 +32,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     }
   });
 
-  // pgm.addIndex('zonefiles', 'tx_id');
-  pgm.addConstraint('zonefiles', 'unique_name_zonefile_hash_tx_id_index_block_hash', `UNIQUE(name, zonefile_hash, tx_id, index_block_hash)`);
+  pgm.addIndex('zonefiles', 'zonefile_hash');
+  pgm.addIndex('zonefiles', ['tx_id', 'index_block_hash']);
+  pgm.addConstraint(
+    'zonefiles',
+    'unique_name_zonefile_hash_tx_id_index_block_hash',
+    'UNIQUE(name, zonefile_hash, tx_id, index_block_hash)'
+  );
 }

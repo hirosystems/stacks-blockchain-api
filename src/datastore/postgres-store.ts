@@ -2152,7 +2152,7 @@ export class PgDataStore
     await this.queryTx(async client => {
       // Each attachment will batch insert zonefiles for name and all subdomains that apply.
       for (const attachment of attachments) {
-        const updateData: {
+        const subdomainData: {
           attachment: DataStoreAttachmentData;
           blockData?: DataStoreSubdomainBlockData;
           subdomains?: DbBnsSubdomain[];
@@ -2219,13 +2219,12 @@ export class PgDataStore
               };
               subdomains.push(subdomain);
             }
-            updateData.push({ blockData, subdomains, attachment });
-          } else {
-            // This was a name-import or something else. Just write the zonefile as it is.
-            updateData.push({ attachment });
+            subdomainData.push({ blockData, subdomains, attachment });
           }
         }
-        await this.updateBatchSubdomainsAndZonefiles(client, updateData);
+        await this.updateBatchSubdomainsAndZonefiles(client, subdomainData);
+        // Update main zonefile as well.
+        await this.updateBatchSubdomainsAndZonefiles(client, [{ attachment }]);
       }
     });
     for (const txId of attachments.map(a => a.txId)) {
@@ -7145,16 +7144,12 @@ export class PgDataStore
         `
         SELECT n.*, z.zonefile
         FROM names AS n
-        INNER JOIN txs AS t USING (tx_id, index_block_hash)
-        LEFT JOIN zonefiles AS z ON
-          z.name = n.name
-          AND z.tx_id = t.tx_id
-          AND z.index_block_hash = t.index_block_hash
+        LEFT JOIN zonefiles AS z USING (name, tx_id, index_block_hash)
         WHERE n.name = $1
-          AND t.block_height <= $2
-          AND t.canonical = true
-          AND t.microblock_canonical = true
-        ORDER BY t.block_height DESC, t.microblock_sequence DESC, t.tx_index DESC
+          AND n.registered_at <= $2
+          AND n.canonical = true
+          AND n.microblock_canonical = true
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
         LIMIT 1
         `,
         [name, maxBlockHeight]
@@ -7215,11 +7210,13 @@ export class PgDataStore
       });
       const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
       return client.query<{ zonefile: string }>(
+        // FIXME: test this on imported names
         `
         SELECT zonefile
         FROM zonefiles AS z
         INNER JOIN txs AS t USING (tx_id, index_block_hash)
-        WHERE z.name = $1 AND z.zonefile_hash = $2
+        WHERE z.name = $1
+          AND z.zonefile_hash = $2
           AND t.canonical = TRUE
           AND t.microblock_canonical = TRUE
           AND t.block_height <= $3
@@ -7248,6 +7245,7 @@ export class PgDataStore
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
       return client.query<{ zonefile: string }>(
+        // FIXME: test this on imported names
         `
         SELECT zonefile
         FROM zonefiles AS z
@@ -7374,8 +7372,10 @@ export class PgDataStore
         `
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE name = $1 AND block_height <= $2
-        AND canonical = true AND microblock_canonical = true
+        WHERE name = $1
+          AND block_height <= $2
+          AND canonical = true
+          AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         `,
         [name, maxBlockHeight]
@@ -7401,7 +7401,7 @@ export class PgDataStore
         FROM subdomains
         WHERE block_height <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
@@ -7422,7 +7422,7 @@ export class PgDataStore
         FROM names
         WHERE canonical = true AND microblock_canonical = true
         AND registered_at <= $2
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
@@ -7449,16 +7449,15 @@ export class PgDataStore
         `
         SELECT s.*, z.zonefile
         FROM subdomains AS s
-        INNER JOIN txs AS t USING (tx_id, index_block_hash)
         LEFT JOIN zonefiles AS z
           ON z.name = s.fully_qualified_subdomain
-          AND z.tx_id = t.tx_id
-          AND z.index_block_hash = t.index_block_hash
-        WHERE t.canonical = true
-          AND t.microblock_canonical = true
-          AND t.block_height <= $2
+          AND z.tx_id = s.tx_id
+          AND z.index_block_hash = s.index_block_hash
+        WHERE s.canonical = true
+          AND s.microblock_canonical = true
+          AND s.block_height <= $2
           AND s.fully_qualified_subdomain = $1
-        ORDER BY t.block_height DESC, t.tx_index DESC
+        ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
         LIMIT 1
         `,
         [subdomain, maxBlockHeight]
@@ -7489,7 +7488,7 @@ export class PgDataStore
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
         AND name = $1
-        ORDER BY name, block_height DESC, tx_index DESC
+        ORDER BY name, block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
         `,
         [args.name]
