@@ -2165,12 +2165,15 @@ export class PgDataStore
           const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
           const zoneFileTxt = zoneFileContents.txt;
           if (zoneFileTxt && zoneFileTxt.length > 0) {
+            const dbTx = await client.query<TxQueryResult>(
+              `SELECT ${txColumns()} FROM txs
+              WHERE tx_id = $1 AND index_block_hash = $2
+              ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1`,
+              [hexToBuffer(attachment.txId), hexToBuffer(attachment.indexBlockHash)]
+            );
             let isCanonical = true;
             let txIndex = -1;
-            const dbTx = await this.getTxStrict(client, {
-              txId: attachment.txId,
-              indexBlockHash: attachment.indexBlockHash,
-            });
             const blockData: DataStoreSubdomainBlockData = {
               index_block_hash: '',
               parent_index_block_hash: '',
@@ -2178,14 +2181,15 @@ export class PgDataStore
               microblock_sequence: I32_MAX,
               microblock_canonical: true,
             };
-            if (dbTx.found) {
-              isCanonical = dbTx.result.canonical;
-              txIndex = dbTx.result.tx_index;
-              blockData.index_block_hash = dbTx.result.index_block_hash;
-              blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
-              blockData.microblock_hash = dbTx.result.microblock_hash;
-              blockData.microblock_sequence = dbTx.result.microblock_sequence;
-              blockData.microblock_canonical = dbTx.result.microblock_canonical;
+            if (dbTx.rowCount > 0) {
+              const parsedDbTx = this.parseTxQueryResult(dbTx.rows[0]);
+              isCanonical = parsedDbTx.canonical;
+              txIndex = parsedDbTx.tx_index;
+              blockData.index_block_hash = parsedDbTx.index_block_hash;
+              blockData.parent_index_block_hash = parsedDbTx.parent_index_block_hash;
+              blockData.microblock_hash = parsedDbTx.microblock_hash;
+              blockData.microblock_sequence = parsedDbTx.microblock_sequence;
+              blockData.microblock_canonical = parsedDbTx.microblock_canonical;
             } else {
               logger.warn(
                 `Could not find transaction ${attachment.txId} associated with attachment`
@@ -4084,28 +4088,6 @@ export class PgDataStore
       }
       return { found: true, result: { digest: result.rows[0].digest } };
     });
-  }
-
-  private async getTxStrict(
-    client: ClientBase,
-    args: { txId: string; indexBlockHash: string }
-  ): Promise<FoundOrNot<DbTx>> {
-    const result = await client.query<TxQueryResult>(
-      `
-      SELECT ${txColumns()}
-      FROM txs
-      WHERE tx_id = $1 AND index_block_hash = $2
-      ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-      LIMIT 1
-      `,
-      [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
-    );
-    if (result.rowCount === 0) {
-      return { found: false } as const;
-    }
-    const row = result.rows[0];
-    const tx = this.parseTxQueryResult(row);
-    return { found: true, result: tx };
   }
 
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
