@@ -7209,22 +7209,46 @@ export class PgDataStore
         includeUnanchored: args.includeUnanchored,
       });
       const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
-      return client.query<{ zonefile: string }>(
-        // FIXME: test this on imported names
-        `
-        SELECT zonefile
-        FROM zonefiles AS z
-        INNER JOIN txs AS t USING (tx_id, index_block_hash)
-        WHERE z.name = $1
-          AND z.zonefile_hash = $2
-          AND t.canonical = TRUE
-          AND t.microblock_canonical = TRUE
-          AND t.block_height <= $3
-        ORDER BY t.block_height DESC
-        LIMIT 1
-        `,
-        [args.name, validZonefileHash, maxBlockHeight]
-      );
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = args.name.split('.').length > 2;
+      if (isSubdomain) {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = $1
+            AND z.zonefile_hash = $2
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= $3
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+          `,
+          [args.name, validZonefileHash, maxBlockHeight]
+        );
+      } else {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = $1
+            AND z.zonefile_hash = $2
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= $3
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+          `,
+          [args.name, validZonefileHash, maxBlockHeight]
+        );
+      }
     });
     if (queryResult.rowCount > 0) {
       return {
@@ -7244,21 +7268,44 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      return client.query<{ zonefile: string }>(
-        // FIXME: test this on imported names
-        `
-        SELECT zonefile
-        FROM zonefiles AS z
-        INNER JOIN txs AS t USING (tx_id, index_block_hash)
-        WHERE z.name = $1
-          AND t.canonical = TRUE
-          AND t.microblock_canonical = TRUE
-          AND t.block_height <= $2
-        ORDER BY t.block_height DESC
-        LIMIT 1
-        `,
-        [name, maxBlockHeight]
-      );
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = name.split('.').length > 2;
+      if (isSubdomain) {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = $1
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= $2
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+          `,
+          [name, maxBlockHeight]
+        );
+      } else {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = $1
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= $2
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+          `,
+          [name, maxBlockHeight]
+        );
+      }
     });
     if (queryResult.rowCount > 0) {
       return {
