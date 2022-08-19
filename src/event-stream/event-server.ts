@@ -453,6 +453,7 @@ function parseDataStoreTxEventData(
           sender: event.stx_transfer_event.sender,
           recipient: event.stx_transfer_event.recipient,
           amount: BigInt(event.stx_transfer_event.amount),
+          memo: event.stx_transfer_event.memo ? '0x' + event.stx_transfer_event.memo : undefined,
         };
         dbTx.stxEvents.push(entry);
         break;

@@ -325,6 +325,7 @@ interface DbAssetEvent extends DbEventBase {
 export interface DbStxEvent extends DbAssetEvent {
   event_type: DbEventTypeId.StxAsset;
   amount: bigint;
+  memo?: string;
 }
 
 interface DbContractAssetEvent extends DbAssetEvent {
@@ -1009,6 +1010,7 @@ export interface StxEventInsertValues {
   sender: string | null;
   recipient: string | null;
   amount: bigint;
+  memo: PgBytea | null;
 }
 
 export interface MinerRewardInsertValues {

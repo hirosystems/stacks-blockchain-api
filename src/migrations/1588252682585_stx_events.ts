@@ -56,6 +56,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     sender: 'string',
     recipient: 'string',
+    memo: 'bytea',
   });
 
   pgm.createIndex('stx_events', 'tx_id', { method: 'hash' });

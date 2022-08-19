@@ -398,6 +398,7 @@ export function parseDbEvents(
     sender?: string | undefined;
     recipient?: string | undefined;
     amount: string;
+    memo?: string;
   }[],
   ftResults: {
     event_index: number;
@@ -469,6 +470,9 @@ export function parseDbEvents(
       event_type: DbEventTypeId.StxAsset,
       amount: BigInt(result.amount),
     };
+    if (result.memo) {
+      event.memo = result.memo;
+    }
     events[rowIndex++] = event;
   }
   for (const result of ftResults) {
@@ -554,6 +558,7 @@ export function parseTxsWithAssetTransfers(
     event_recipient?: string | undefined;
     event_asset_identifier?: string | undefined;
     event_value?: string | undefined;
+    event_memo?: string | undefined;
   })[],
   stxAddress: string
 ) {
@@ -567,6 +572,7 @@ export function parseTxsWithAssetTransfers(
         amount: bigint;
         sender?: string;
         recipient?: string;
+        memo?: string;
       }[];
       ft_transfers: {
         asset_identifier: string;
@@ -606,6 +612,7 @@ export function parseTxsWithAssetTransfers(
             amount: eventAmount,
             sender: r.event_sender,
             recipient: r.event_recipient,
+            memo: r.event_memo,
           });
           if (r.event_sender === stxAddress) {
             txResult.stx_sent += eventAmount;

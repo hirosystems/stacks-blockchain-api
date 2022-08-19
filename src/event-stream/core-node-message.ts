@@ -43,6 +43,8 @@ export interface StxTransferEvent extends CoreNodeEventBase {
     recipient: string;
     sender: string;
     amount: string;
+    /** Hex-encoded string. Only provided when a memo was specified in the Clarity `stx-transfer?` function (requires a Stacks 2.1 contract). */
+    memo?: string;
   };
 }
 
