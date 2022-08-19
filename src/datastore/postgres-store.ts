@@ -6923,6 +6923,19 @@ export class PgDataStore
           tx_index, tx_id, status, canonical,
           index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
         ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
+        ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash DO
+          UPDATE SET
+            address = EXCLUDED.address,
+            registered_at = EXCLUDED.registered_at,
+            expire_block = EXCLUDED.expire_block,
+            zonefile_hash = EXCLUDED.zonefile_hash,
+            namespace_id = EXCLUDED.namespace_id,
+            tx_index = EXCLUDED.tx_index,
+            status = EXCLUDED.status,
+            canonical = EXCLUDED.canonical,
+            parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+            microblock_sequence = EXCLUDED.microblock_sequence,
+            microblock_canonical = EXCLUDED.microblock_canonical
       `,
       [
         name,
@@ -6981,6 +6994,24 @@ export class PgDataStore
         tx_id, canonical,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      ON CONFLICT ON CONSTRAINT unique_namespace_id_tx_id_index_block_hash_microblock_hash DO
+        UPDATE SET
+          launched_at = EXCLUDED.launched_at,
+          address = EXCLUDED.address,
+          reveal_block = EXCLUDED.reveal_block,
+          ready_block = EXCLUDED.ready_block,
+          buckets = EXCLUDED.buckets,
+          base = EXCLUDED.base,
+          coeff = EXCLUDED.coeff,
+          nonalpha_discount = EXCLUDED.nonalpha_discount,
+          no_vowel_discount = EXCLUDED.no_vowel_discount,
+          lifetime = EXCLUDED.lifetime,
+          status = EXCLUDED.status,
+          tx_index = EXCLUDED.tx_index,
+          canonical = EXCLUDED.canonical,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          microblock_canonical = EXCLUDED.microblock_canonical
       `,
       [
         namespace_id,
