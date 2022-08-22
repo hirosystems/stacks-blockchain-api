@@ -2207,6 +2207,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-identifier-publickey-request-body.example.json
 
   /rosetta/v1/construction/hash:
     post:
@@ -2234,6 +2236,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-hash-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-hash-signed-transaction-request-schema-body.example.json
 
   /rosetta/v1/construction/metadata:
     post:
@@ -2261,6 +2265,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-metadata-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-construction-metadata-request-schema-body.example.json
 
   /rosetta/v1/construction/parse:
     post:

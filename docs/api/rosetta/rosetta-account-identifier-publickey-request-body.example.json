@@ -4,7 +4,7 @@
     "network": "mainnet"
   },
   "public_key": {
-    "hex_bytes": "022d82baea2d041ac281bebafab11571f45db4f163a9e3f8640b1c804a4ac6f662",
+    "hex_bytes": "025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51",
     "curve_type": "secp256k1"
   },
   "metadata": {}
