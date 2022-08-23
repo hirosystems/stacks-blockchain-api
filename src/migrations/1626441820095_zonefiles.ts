@@ -12,7 +12,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     name: {
       type: 'string',
       notNull: true,
-      comment: 'name or subdomain'
     },
     zonefile: {
       type: 'string',
@@ -33,7 +32,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.addIndex('zonefiles', 'zonefile_hash');
-  pgm.addIndex('zonefiles', ['tx_id', 'index_block_hash']);
   pgm.addConstraint(
     'zonefiles',
     'unique_name_zonefile_hash_tx_id_index_block_hash',
