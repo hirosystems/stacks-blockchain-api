@@ -2677,6 +2677,24 @@ export class PgStore {
             AND stx_events.canonical = true AND stx_events.microblock_canonical = true
             AND contract_logs.canonical = true AND contract_logs.microblock_canonical = true
           UNION ALL
+
+          SELECT
+            stx_events.amount AS amount,
+            stx_events.memo AS memo,
+            stx_events.sender AS sender,
+            stx_events.block_height AS block_height,
+            stx_events.tx_id,
+            stx_events.microblock_sequence,
+            stx_events.tx_index,
+            'stx-transfer-memo' as transfer_type
+          FROM stx_events
+          WHERE
+            stx_events.memo IS NOT NULL
+            AND canonical = true
+            AND microblock_canonical = true
+            AND recipient = ${args.stxAddress}
+          UNION ALL
+
           SELECT
             token_transfer_amount AS amount,
             token_transfer_memo AS memo,

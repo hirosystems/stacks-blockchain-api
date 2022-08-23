@@ -888,7 +888,7 @@ export interface InboundStxTransfer {
   /**
    * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
    */
-  transfer_type: "bulk-send" | "stx-transfer";
+  transfer_type: "bulk-send" | "stx-transfer" | "stx-transfer-memo";
   /**
    * Index of the transaction within a block
    */
