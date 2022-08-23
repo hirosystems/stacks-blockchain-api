@@ -236,12 +236,6 @@ export function microStxToStx(microStx: bigint | BigNumber): string {
   return bigNumResult.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
 }
 
-export function digestSha512_256(input: Buffer): Buffer {
-  const hash = crypto.createHash('sha512-256');
-  const digest = hash.update(input).digest();
-  return digest;
-}
-
 /**
  * Checks if a string is a valid Bitcoin address.
  * Supports mainnet and testnet address.
