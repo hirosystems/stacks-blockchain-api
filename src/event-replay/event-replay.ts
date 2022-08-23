@@ -156,6 +156,9 @@ export async function importEventsFromTsv(
       });
       if (rawEvent.event_path === '/new_block') {
         blockHeight = await getDbBlockHeight(db);
+        if (blockHeight % 1000 === 0) {
+          console.log(`Event file block height reached: ${blockHeight}`);
+        }
       }
     }
   }
