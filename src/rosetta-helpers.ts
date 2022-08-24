@@ -114,8 +114,8 @@ export function parseTransactionMemo(memoHex: string | undefined): string | null
     if (memoBuffer.length === 0) {
       return null;
     }
-    const memoTrimmed = '0x' + memoBuffer.toString('hex');
-    return memoTrimmed;
+    const memoDecoded = memoBuffer.toString('utf8');
+    return memoDecoded;
   }
   return null;
 }
