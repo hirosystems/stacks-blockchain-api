@@ -1,0 +1,27 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "operations": [
+    {
+      "operation_identifier": {
+        "index": 0,
+        "network_index": 0
+      },
+      "related_operations": [
+        {
+          "index": 0,
+          "network_index": 0
+        }
+      ],
+      "type": "stack_stx",
+      "status": "success",
+      "account": {
+        "address": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
+        "metadata": {}
+      }
+      
+    }
+  ]
+}

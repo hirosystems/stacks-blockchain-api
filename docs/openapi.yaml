@@ -601,9 +601,9 @@ paths:
           in: query
           description: index of first block to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 42000
       responses:
         200:
           description: List of blocks
@@ -1085,20 +1085,21 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C"
+            example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11"
         - name: contract_name
           in: path
           required: true
           description: Contract name
           schema:
             type: string
-            example: satoshibles
+            example: newyorkcitycoin-core-v2
         - name: map_name
           in: path
           required: true
           description: Map name
           schema:
             type: string
+            example: approved-contracts
         - name: proof
           in: query
           description: Returns object without the proof field when set to 0
@@ -1117,6 +1118,8 @@ paths:
           application/json:
             schema:
               type: string
+            example: 
+              $ref: ./entities/contracts/get-specific-data-map-inside-contract.example.json
 
   /v2/contracts/source/{contract_address}/{contract_name}:
     get:
@@ -1192,20 +1195,21 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C"
+            example: "SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7"
         - name: contract_name
           in: path
           required: true
           description: Contract name
           schema:
             type: string
-            example: satoshibles
+            example: imaginary-friends-zebras
         - name: function_name
           in: path
           required: true
           description: Function name
           schema:
             type: string
+            example: get-token-uri
         - name: tip
           in: query
           schema:
@@ -1219,11 +1223,8 @@ paths:
           application/json:
             schema:
               $ref: './entities/contracts/read-only-function-args.schema.json'
-              example:
-                sender: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0.get-info'
-                arguments:
-                  - '0x0011...'
-                  - '0x00231...'
+            example:
+              $ref: './entities/contracts/read-only-function-args-request-body.example.json'
 
   /extended/v1/address/{principal}/balances:
     get:
@@ -2205,6 +2206,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json
+            example: 
+              $ref: ./api/rosetta/rosetta-account-identifier-publickey-request-body.example.json
 
   /rosetta/v1/construction/hash:
     post:
@@ -2232,6 +2235,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-hash-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-hash-signed-transaction-request-schema-body.example.json
 
   /rosetta/v1/construction/metadata:
     post:
@@ -2259,6 +2264,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-metadata-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-construction-metadata-request-schema-body.example.json
 
   /rosetta/v1/construction/parse:
     post:
@@ -2321,7 +2328,7 @@ paths:
         - Rosetta
       summary: Submit a Signed Transaction
       operationId: rosetta_construction_submit
-      description: Submit a pre-signed transaction to the node.
+      description: Submit a pre-signed transaction to the node. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
@@ -2341,6 +2348,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-submit-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-submit-signed-transaction-request.example.json
 
   /rosetta/v1/construction/payloads:
     post:
@@ -2348,7 +2357,7 @@ paths:
         - Rosetta
       summary: Generate an Unsigned Transaction and Signing Payloads
       operationId: rosetta_construction_payloads
-      description: Generate and unsigned transaction from operations and metadata
+      description: Generate an unsigned transaction from operations and metadata. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
@@ -2368,6 +2377,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-payloads-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-submit-unsigned-transaction-unsigned-payloads-request.example.json
 
   /rosetta/v1/construction/combine:
     post:
@@ -2375,7 +2386,7 @@ paths:
         - Rosetta
       summary: Create Network Transaction from Signatures
       operationId: rosetta_construction_combine
-      description: Take unsigned transaction and signature, combine both and return signed transaction
+      description: Take unsigned transaction and signature, combine both and return signed transaction. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
@@ -2395,6 +2406,8 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-combine-request.schema.json
+            example:
+              $ref: ./api/rosetta/rosetta-network-transaction-from-signarures-request.example.json
 
   /v2/prices/namespaces/{tld}:
     get:
@@ -3210,6 +3223,7 @@ paths:
     get:
       operationId: get_contract_nft_metadata
       summary: Non fungible tokens metadata for contract ID
+      deprecated: true
       description: Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
         - Non-Fungible Tokens
