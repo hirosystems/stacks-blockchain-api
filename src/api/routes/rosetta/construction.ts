@@ -53,7 +53,12 @@ import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
-import { RosettaConstants, RosettaErrors, RosettaErrorsTypes, RosettaOperationType } from '../../rosetta-constants';
+import {
+  RosettaConstants,
+  RosettaErrors,
+  RosettaErrorsTypes,
+  RosettaOperationType,
+} from '../../rosetta-constants';
 import {
   getOperations,
   getOptionsFromOperations,
