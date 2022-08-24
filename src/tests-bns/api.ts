@@ -92,8 +92,8 @@ describe('BNS API tests', () => {
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: 14,
       lifetime: 1,
       no_vowel_discount: 1,

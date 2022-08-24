@@ -505,8 +505,8 @@ export interface DbBnsNamespace {
   reveal_block: number;
   ready_block: number;
   buckets: string;
-  base: number;
-  coeff: number;
+  base: bigint;
+  coeff: bigint;
   nonalpha_discount: number;
   no_vowel_discount: number;
   lifetime: number;

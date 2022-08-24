@@ -33,11 +33,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     base: {
-      type: 'integer',
+      type: 'numeric',
       notNull: true,
     },
     coeff: {
-      type: 'integer',
+      type: 'numeric',
       notNull: true,
     },
     nonalpha_discount: {

@@ -1,4 +1,4 @@
-import { ChainID } from '@stacks/transactions';
+import { BufferCV, ChainID, ClarityType, hexToCV, TupleCV } from '@stacks/transactions';
 import { hexToBuffer, hexToUtf8String } from '../../helpers';
 import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
@@ -161,8 +161,8 @@ export function parseNamespaceRawValue(
   const namespaceBns: DbBnsNamespace = {
     namespace_id: namespace,
     address: address,
-    base: Number(base),
-    coeff: Number(coeff),
+    base: base,
+    coeff: coeff,
     launched_at: launched_at,
     lifetime: Number(lifetime),
     no_vowel_discount: Number(no_vowel_discount),
@@ -241,7 +241,7 @@ export function getBnsContractID(chainId: ChainID) {
   return contractId;
 }
 
-function isContractEventBnsRelated(event: SmartContractEvent): boolean {
+function isEventFromBnsContract(event: SmartContractEvent): boolean {
   return (
     event.contract_event.topic === printTopic &&
     (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
@@ -255,7 +255,7 @@ export function parseNameFromContractEvent(
   blockHeight: number
 ): DbBnsName | undefined {
   if (
-    !isContractEventBnsRelated(event) ||
+    !isEventFromBnsContract(event) ||
     tx.parsed_tx.payload.type_id !== TxPayloadTypeID.ContractCall
   ) {
     return;
@@ -298,21 +298,23 @@ export function parseNamespaceFromContractEvent(
   tx: CoreNodeParsedTxMessage,
   blockHeight: number
 ): DbBnsNamespace | undefined {
+  if (!isEventFromBnsContract(event)) {
+    return;
+  }
+  // Look for a `namespace-ready` BNS print event.
+  const decodedEvent = hexToCV(event.contract_event.raw_value);
   if (
-    !isContractEventBnsRelated(event) ||
-    tx.parsed_tx.payload.type_id !== TxPayloadTypeID.ContractCall
+    decodedEvent.type === ClarityType.Tuple &&
+    decodedEvent.data.status &&
+    decodedEvent.data.status.type === ClarityType.StringASCII &&
+    decodedEvent.data.status.data === 'ready'
   ) {
-    return;
+    const namespace = parseNamespaceRawValue(
+      event.contract_event.raw_value,
+      blockHeight,
+      event.txid,
+      tx.core_tx.tx_index
+    );
+    return namespace;
   }
-  const functionName = tx.parsed_tx.payload.function_name;
-  if (functionName !== namespaceReadyFunction) {
-    return;
-  }
-  const namespace = parseNamespaceRawValue(
-    event.contract_event.raw_value,
-    blockHeight,
-    event.txid,
-    tx.core_tx.tx_index
-  );
-  return namespace;
 }
