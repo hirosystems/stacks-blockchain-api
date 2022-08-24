@@ -81,7 +81,7 @@ const ZONEFILE =
   '$ORIGIN test.btc\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/test.btc"\n';
 const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 
-interface TestBlockArgs {
+export interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   index_block_hash?: string;
@@ -150,12 +150,13 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   };
 }
 
-interface TestTxArgs {
+export interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
   canonical?: boolean;
   microblock_canonical?: boolean;
+  coinbase_alt_recipient?: string;
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
   contract_call_function_args?: string;
@@ -186,7 +187,7 @@ interface TestTxArgs {
  * @returns `DataStoreTxEventData`
  */
 function testTx(args?: TestTxArgs): DataStoreTxEventData {
-  return {
+  const data: DataStoreTxEventData = {
     tx: {
       tx_id: args?.tx_id ?? TX_ID,
       tx_index: args?.tx_index ?? 0,
@@ -209,6 +210,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
       coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_alt_recipient: args?.coinbase_alt_recipient,
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
@@ -240,6 +242,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     names: [],
     namespaces: [],
   };
+  return data;
 }
 
 interface TestMempoolTxArgs {
@@ -293,7 +296,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
   };
 }
 
-interface TestStxEventArgs {
+export interface TestStxEventArgs {
   amount?: bigint;
   block_height?: number;
   event_index?: number;
@@ -301,6 +304,7 @@ interface TestStxEventArgs {
   sender?: string;
   tx_id?: string;
   tx_index?: number;
+  memo?: string;
 }
 
 /**
@@ -320,6 +324,7 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
     amount: args?.amount ?? TOKEN_TRANSFER_AMOUNT,
     recipient: args?.recipient ?? RECIPIENT_ADDRESS,
     sender: args?.sender ?? SENDER_ADDRESS,
+    memo: args?.memo,
   };
 }
 
@@ -447,7 +452,7 @@ function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
   };
 }
 
-interface TestSmartContractEventArgs {
+export interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
   clarity_version?: number;

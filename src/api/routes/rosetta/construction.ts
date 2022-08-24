@@ -185,7 +185,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
 
       let transaction: StacksTransaction;
-      switch (options.type) {
+      switch (options.type as RosettaOperationType) {
         case RosettaOperationType.TokenTransfer:
           // dummy transaction to calculate size
           const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
@@ -328,7 +328,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
 
       const request: RosettaConstructionMetadataRequest = req.body;
-      const options: RosettaOptions = req.body.options;
+      const options: RosettaOptions = request.options;
 
       if (options?.sender_address && !isValidC32Address(options.sender_address)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
@@ -345,7 +345,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
 
       let response = {} as RosettaConstructionMetadataResponse;
-      switch (options.type) {
+      switch (options.type as RosettaOperationType) {
         case RosettaOperationType.TokenTransfer:
           const recipientAddress = options.token_transfer_recipient_address;
           if (options?.decimals !== RosettaConstants.decimals) {
@@ -515,7 +515,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       try {
         const baseTx = rawTxToBaseTx(inputTx);
         const operations = await getOperations(baseTx, db);
-        const txMemo = parseTransactionMemo(baseTx);
+        const txMemo = parseTransactionMemo(baseTx.token_transfer_memo);
         let response: RosettaConstructionParseResponse;
         if (signed) {
           response = {
@@ -642,7 +642,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
 
       let transaction: StacksTransaction;
-      switch (options.type) {
+      switch (options.type as RosettaOperationType) {
         case RosettaOperationType.TokenTransfer: {
           const recipientAddress = options.token_transfer_recipient_address;
           if (!recipientAddress) {

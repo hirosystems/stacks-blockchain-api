@@ -103,11 +103,19 @@ type RosettaRevokeDelegateContractArgs = {
   result: string;
 };
 
-export function parseTransactionMemo(tx: BaseTx): string | null {
-  if (tx.token_transfer_memo && tx.token_transfer_memo != '') {
+export function parseTransactionMemo(memoHex: string | undefined): string | null {
+  if (memoHex) {
     // Memos are a fixed-length 34 byte array. Any memo representing a string that is
     // less than 34 bytes long will have right-side padded null-bytes.
-    return tx.token_transfer_memo.replace(/\0.*$/g, '');
+    let memoBuffer = hexToBuffer(memoHex);
+    while (memoBuffer.length > 0 && memoBuffer[memoBuffer.length - 1] === 0) {
+      memoBuffer = memoBuffer.slice(0, memoBuffer.length - 1);
+    }
+    if (memoBuffer.length === 0) {
+      return null;
+    }
+    const memoDecoded = memoBuffer.toString('utf8');
+    return memoDecoded;
   }
   return null;
 }
@@ -120,22 +128,22 @@ export async function getOperations(
   stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
-  const txType = getTxTypeString(tx.type_id);
+  const txType = getTxTypeString(tx.type_id) as RosettaOperationType;
   switch (txType) {
-    case 'token_transfer':
+    case RosettaOperationType.TokenTransfer:
       operations.push(makeFeeOperation(tx));
-      operations.push(makeSenderOperation(tx, operations.length));
-      operations.push(makeReceiverOperation(tx, operations.length));
+      operations.push(makeSenderOperation(tx, operations.length, tx.token_transfer_memo));
+      operations.push(makeReceiverOperation(tx, operations.length, tx.token_transfer_memo));
       break;
-    case 'contract_call':
+    case RosettaOperationType.ContractCall:
       operations.push(makeFeeOperation(tx));
       operations.push(await makeCallContractOperation(tx, db, operations.length));
       break;
-    case 'smart_contract':
+    case RosettaOperationType.SmartContract:
       operations.push(makeFeeOperation(tx));
       operations.push(makeDeployContractOperation(tx, operations.length));
       break;
-    case 'coinbase':
+    case RosettaOperationType.Coinbase:
       operations.push(makeCoinbaseOperation(tx, 0));
       if (minerRewards !== undefined) {
         getMinerOperations(minerRewards, operations);
@@ -144,7 +152,7 @@ export async function getOperations(
         processUnlockingEvents(stxUnlockEvents, operations);
       }
       break;
-    case 'poison_microblock':
+    case RosettaOperationType.PoisonMicroblock:
       operations.push(makePoisonMicroblockOperation(tx, 0));
       break;
     default:
@@ -196,8 +204,8 @@ async function processEvents(
               stxAssetEvent.amount,
               () => 'Unexpected nullish amount'
             );
-            operations.push(makeSenderOperation(tx, operations.length));
-            operations.push(makeReceiverOperation(tx, operations.length));
+            operations.push(makeSenderOperation(tx, operations.length, stxAssetEvent.memo));
+            operations.push(makeReceiverOperation(tx, operations.length, stxAssetEvent.memo));
             break;
           case DbAssetEventTypeId.Burn:
             operations.push(makeBurnOperation(stxAssetEvent, baseTx, operations.length));
@@ -254,7 +262,7 @@ function makeStakeLockOperation(
   stake_metadata.unlock_height = tx.unlock_height.toString();
   const lock: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getEventTypeString(tx.event_type),
+    type: RosettaOperationType.StxLock,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
@@ -337,7 +345,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
 function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const burn: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(tx.asset_event_type_id),
+    type: RosettaOperationType.Burn,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(baseTx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -359,7 +367,7 @@ function makeFtBurnOperation(
 ): RosettaOperation {
   const burn: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    type: RosettaOperationType.Burn,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
@@ -379,7 +387,7 @@ function makeFtBurnOperation(
 function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(tx.asset_event_type_id),
+    type: RosettaOperationType.Mint,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(tx.recipient, () => 'Unexpected nullish sender_address'),
@@ -403,7 +411,7 @@ function makeFtMintOperation(
 ): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    type: RosettaOperationType.Mint,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(ftEvent.recipient, () => 'Unexpected nullish sender_address'),
@@ -423,10 +431,14 @@ function makeFtMintOperation(
   return mint;
 }
 
-function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeSenderOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: 'token_transfer', //Sender operation should always be token_transfer,
+    type: RosettaOperationType.TokenTransfer, //Sender operation should always be token_transfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -444,6 +456,13 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
     },
   };
 
+  if (memo) {
+    sender.metadata = {
+      ...sender.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
+
   return sender;
 }
 
@@ -455,7 +474,7 @@ function makeFtSenderOperation(
 ): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: 'token_transfer',
+    type: RosettaOperationType.TokenTransfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
@@ -478,11 +497,15 @@ function makeFtSenderOperation(
   return sender;
 }
 
-function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeReceiverOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
-    type: 'token_transfer', //Receiver operation should always be token_transfer
+    type: RosettaOperationType.TokenTransfer, //Receiver operation should always be token_transfer
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
@@ -503,6 +526,13 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
     },
   };
 
+  if (memo) {
+    receiver.metadata = {
+      ...receiver.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
+
   return receiver;
 }
 
@@ -515,7 +545,7 @@ function makeFtReceiverOperation(
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
-    type: 'token_transfer',
+    type: RosettaOperationType.TokenTransfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
@@ -545,7 +575,7 @@ function makeFtReceiverOperation(
 function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperation {
   const deployer: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.SmartContract,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -562,7 +592,7 @@ async function makeCallContractOperation(
 ): Promise<RosettaOperation> {
   const contractCallOp: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.ContractCall,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -598,7 +628,7 @@ function makeCoinbaseOperation(tx: BaseTx, index: number): RosettaOperation {
   // TODO : Add more mappings in operations for coinbase
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.Coinbase,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -612,7 +642,7 @@ function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperat
   // TODO : add more mappings in operations for poison-microblock
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.PoisonMicroblock,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -645,7 +675,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   const options: RosettaOptions = {};
 
   for (const operation of operations) {
-    switch (operation.type) {
+    switch (operation.type as RosettaOperationType) {
       case RosettaOperationType.Fee:
         options.fee = operation.amount?.value;
         break;
