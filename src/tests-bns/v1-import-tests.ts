@@ -62,7 +62,7 @@ describe('BNS V1 import', () => {
     const query4 = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains`);
     expect(query4.status).toBe(200);
     expect(query4.type).toBe('application/json');
-    expect(query4.body).toStrictEqual([
+    expect(query4.body.sort()).toStrictEqual([
       "12312313231.id.blockstack", "aichamez.id.blockstack", "ale082308as.id.blockstack",
       "alejandro772.id.blockstack", "alkorsandor8_2.id.blockstack", "amir4good.id.blockstack",
       "anasa680.id.blockstack", "ancafajardo.id.blockstack", "angelessebastian.id.blockstack",
@@ -80,15 +80,15 @@ describe('BNS V1 import', () => {
       "subtly_fresh.id.blockstack", "svirchok.id.blockstack", "theironcook.id.blockstack",
       "thingnotok.id.blockstack", "ujku1977.id.blockstack", "yanadda9.id.blockstack",
       "yoemmx00.id.blockstack", "zachgaming.id.blockstack"
-    ]);
+    ].sort());
 
     const query5 = await supertest(api.server).get(`/v1/names/`);
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
-    expect(query5.body).toStrictEqual([
+    expect(query5.body.sort()).toStrictEqual([
       "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id",
-    ]);
+    ].sort());
 
     // Namespaces
     const query6 = await supertest(api.server).get(`/v1/namespaces/`);
@@ -101,10 +101,10 @@ describe('BNS V1 import', () => {
     const query7 = await supertest(api.server).get(`/v1/namespaces/id/names`);
     expect(query7.status).toBe(200);
     expect(query7.type).toBe('application/json');
-    expect(query7.body).toStrictEqual([
+    expect(query7.body.sort()).toStrictEqual([
       "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id"
-    ]);
+    ].sort());
 
     // Addresses
     const query8 = await supertest(api.server).get(`/v1/addresses/stacks/SP1HPCXTGV31W5659M3WTBEFP5AN55HV4B1Q9T31F`);
