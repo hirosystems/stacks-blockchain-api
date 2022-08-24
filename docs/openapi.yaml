@@ -2328,7 +2328,7 @@ paths:
         - Rosetta
       summary: Submit a Signed Transaction
       operationId: rosetta_construction_submit
-      description: Submit a pre-signed transaction to the node. The examples below are illustrative.You'll need to use your wallet to generate values and use them in the request payload.
+      description: Submit a pre-signed transaction to the node. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
@@ -2357,7 +2357,7 @@ paths:
         - Rosetta
       summary: Generate an Unsigned Transaction and Signing Payloads
       operationId: rosetta_construction_payloads
-      description: Generate and unsigned transaction from operations and metadata
+      description: Generate an unsigned transaction from operations and metadata. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
@@ -2386,7 +2386,7 @@ paths:
         - Rosetta
       summary: Create Network Transaction from Signatures
       operationId: rosetta_construction_combine
-      description: Take unsigned transaction and signature, combine both and return signed transaction
+      description: Take unsigned transaction and signature, combine both and return signed transaction. The examples below are illustrative only. You'll need to use your wallet to generate actual values to use them in the request payload.
       responses:
         200:
           description: Success
