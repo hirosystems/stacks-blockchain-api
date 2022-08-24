@@ -265,6 +265,9 @@ describe('Rosetta API', () => {
               identifier: `${tx.tx_id}:1`,
             },
           },
+          metadata: {
+            memo: '0x25463526',
+          },
         },
         {
           operation_identifier: { index: 2 },
@@ -278,6 +281,9 @@ describe('Rosetta API', () => {
             coin_identifier: {
               identifier: `${tx.tx_id}:2`,
             },
+          },
+          metadata: {
+            memo: '0x25463526',
           },
         },
       ],

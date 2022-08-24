@@ -103,11 +103,19 @@ type RosettaRevokeDelegateContractArgs = {
   result: string;
 };
 
-export function parseTransactionMemo(tx: BaseTx): string | null {
-  if (tx.token_transfer_memo && tx.token_transfer_memo != '') {
+export function parseTransactionMemo(memoHex: string | undefined): string | null {
+  if (memoHex) {
     // Memos are a fixed-length 34 byte array. Any memo representing a string that is
     // less than 34 bytes long will have right-side padded null-bytes.
-    return tx.token_transfer_memo.replace(/\0.*$/g, '');
+    let memoBuffer = hexToBuffer(memoHex);
+    while (memoBuffer.length > 0 && memoBuffer[memoBuffer.length - 1] === 0) {
+      memoBuffer = memoBuffer.slice(0, memoBuffer.length - 1);
+    }
+    if (memoBuffer.length === 0) {
+      return null;
+    }
+    const memoTrimmed = '0x' + memoBuffer.toString('hex');
+    return memoTrimmed;
   }
   return null;
 }
@@ -124,8 +132,8 @@ export async function getOperations(
   switch (txType) {
     case RosettaOperationType.TokenTransfer:
       operations.push(makeFeeOperation(tx));
-      operations.push(makeSenderOperation(tx, operations.length));
-      operations.push(makeReceiverOperation(tx, operations.length));
+      operations.push(makeSenderOperation(tx, operations.length, tx.token_transfer_memo));
+      operations.push(makeReceiverOperation(tx, operations.length, tx.token_transfer_memo));
       break;
     case RosettaOperationType.ContractCall:
       operations.push(makeFeeOperation(tx));
@@ -196,8 +204,8 @@ async function processEvents(
               stxAssetEvent.amount,
               () => 'Unexpected nullish amount'
             );
-            operations.push(makeSenderOperation(tx, operations.length));
-            operations.push(makeReceiverOperation(tx, operations.length));
+            operations.push(makeSenderOperation(tx, operations.length, stxAssetEvent.memo));
+            operations.push(makeReceiverOperation(tx, operations.length, stxAssetEvent.memo));
             break;
           case DbAssetEventTypeId.Burn:
             operations.push(makeBurnOperation(stxAssetEvent, baseTx, operations.length));
@@ -423,7 +431,11 @@ function makeFtMintOperation(
   return mint;
 }
 
-function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeSenderOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
     type: RosettaOperationType.TokenTransfer, //Sender operation should always be token_transfer,
@@ -443,6 +455,13 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
       coin_identifier: { identifier: tx.tx_id + ':' + index },
     },
   };
+
+  if (memo) {
+    sender.metadata = {
+      ...sender.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
 
   return sender;
 }
@@ -478,7 +497,11 @@ function makeFtSenderOperation(
   return sender;
 }
 
-function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeReceiverOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
@@ -502,6 +525,13 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
       coin_identifier: { identifier: tx.tx_id + ':' + index },
     },
   };
+
+  if (memo) {
+    receiver.metadata = {
+      ...receiver.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
 
   return receiver;
 }
