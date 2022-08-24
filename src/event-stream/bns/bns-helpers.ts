@@ -279,10 +279,12 @@ export function parseNameFromContractEvent(
     name: attachment.attachment.metadata.name.concat('.', attachment.attachment.metadata.namespace),
     namespace_id: attachment.attachment.metadata.namespace,
     address: name_address,
+    // expire_block will be calculated upon DB insert based on the namespace's lifetime.
     expire_block: 0,
     registered_at: blockHeight,
     zonefile_hash: attachment.attachment.hash,
-    zonefile: '', // zone file will be updated in  /attachments/new
+    // zonefile will be updated when an `/attachments/new` message arrives.
+    zonefile: '',
     tx_id: event.txid,
     tx_index: tx.core_tx.tx_index,
     status: attachment.attachment.metadata.op,

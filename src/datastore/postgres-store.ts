@@ -6906,6 +6906,20 @@ export class PgDataStore
         hexToBuffer(blockData.index_block_hash),
       ]
     );
+    // Try to figure out the name's expiration block based on its namespace's lifetime.
+    const namespaceLifetime = await client.query<{ lifetime: number }>(
+      `SELECT lifetime
+      FROM namespaces
+      WHERE namespace_id = $1
+      AND canonical = true AND microblock_canonical = true
+      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1`,
+      [namespace_id]
+    );
+    const expireBlock =
+      namespaceLifetime.rowCount > 0
+        ? registered_at + namespaceLifetime.rows[0].lifetime
+        : expire_block;
     await client.query(
       `
         INSERT INTO names(
@@ -6931,7 +6945,7 @@ export class PgDataStore
         name,
         address,
         registered_at,
-        expire_block,
+        expireBlock,
         validZonefileHash,
         namespace_id,
         tx_index,
@@ -6975,7 +6989,6 @@ export class PgDataStore
       tx_index,
       canonical,
     } = bnsNamespace;
-
     await client.query(
       `
       INSERT INTO namespaces(
@@ -7201,7 +7214,6 @@ export class PgDataStore
       if (nameZonefile.rowCount === 0) {
         return;
       }
-      // FIXME: Do we need this anymore?
       // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
       // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
       // since they did not generate an NFT event for us to track.
