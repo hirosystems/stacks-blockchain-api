@@ -104,10 +104,19 @@ type RosettaRevokeDelegateContractArgs = {
 };
 
 export function parseTransactionMemo(tx: BaseTx): string | null {
-  if (tx.token_transfer_memo && tx.token_transfer_memo != '') {
+  const memoHex = tx.token_transfer_memo;
+  if (memoHex) {
     // Memos are a fixed-length 34 byte array. Any memo representing a string that is
     // less than 34 bytes long will have right-side padded null-bytes.
-    return tx.token_transfer_memo.replace(/\0.*$/g, '');
+    let memoBuffer = hexToBuffer(memoHex);
+    while (memoBuffer.length > 0 && memoBuffer[memoBuffer.length - 1] === 0) {
+      memoBuffer = memoBuffer.slice(0, memoBuffer.length - 1);
+    }
+    if (memoBuffer.length === 0) {
+      return null;
+    }
+    const memoDecoded = memoBuffer.toString('utf8');
+    return memoDecoded;
   }
   return null;
 }

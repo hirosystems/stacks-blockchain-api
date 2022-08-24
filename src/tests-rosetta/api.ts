@@ -28,6 +28,7 @@ import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
+import { bufferToHexPrefixString } from '../helpers';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
@@ -346,7 +347,7 @@ describe('Rosetta API', () => {
       abi: undefined,
       token_transfer_recipient_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       token_transfer_amount: 3852n,
-      token_transfer_memo: '0x25463526',
+      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test1234')).padEnd(70, '0'),
     }
     const data = new TestBlockBuilder(block).addTx(tx).build();
     await db.update(data);
@@ -364,7 +365,7 @@ describe('Rosetta API', () => {
         hash: tx.tx_id,
       },
       metadata: {
-        memo: '0x25463526',
+        memo: 'test1234',
       },
       operations: [
         {
