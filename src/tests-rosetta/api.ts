@@ -447,6 +447,118 @@ describe('Rosetta API', () => {
     );
   });
 
+  test('coinbase-pay-to-alt block/transaction', async () => {
+    const parentData = new TestBlockBuilder().addTx().build();
+    const block1: TestBlockArgs = {
+      block_height: 2,
+      block_hash: '0xd0dd05e3d0a1bd60640c9d9d30d57012ffe47b52fe643140c39199c757d37e3f',
+      index_block_hash: '0x6a36c14514047074c2877065809bbb70d81d52507747f4616da997deb7228fad',
+      parent_index_block_hash: parentData.block.index_block_hash,
+      parent_block_hash: parentData.block.block_hash,
+      parent_microblock_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
+      miner_txid: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    }
+    const txCoinbase1: TestTxArgs = {
+      tx_id: '0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
+      tx_index: 1,
+      type_id: DbTxTypeId.Coinbase,
+      status: DbTxStatus.Success,
+      raw_result: '0x0703',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '0x00',
+      fee_rate: 180n,
+      sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+    };
+    const blockData1 = new TestBlockBuilder(block1).addTx(txCoinbase1).build();
+
+    const block2: TestBlockArgs = {
+      block_height: 3,
+      block_hash: '0x30dd05e3d0a1bd60640c9d9d30d57012ffe47b52fe643140c39199c757d37e3f',
+      index_block_hash: '0x3a36c14514047074c2877065809bbb70d81d52507747f4616da997deb7228fad',
+      parent_index_block_hash: blockData1.block.index_block_hash,
+      parent_block_hash: blockData1.block.block_hash,
+      parent_microblock_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
+      miner_txid: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    }
+    const txCoinbase2: TestTxArgs = {
+      tx_id: '0x3152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48',
+      tx_index: 1,
+      type_id: DbTxTypeId.CoinbaseToAltRecipient,
+      coinbase_alt_recipient: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      status: DbTxStatus.Success,
+      raw_result: '0x0703',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: 2147483647,
+      microblock_hash: '0x00',
+      fee_rate: 180n,
+      sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+    };
+    const blockData2 = new TestBlockBuilder(block2).addTx(txCoinbase2).build();
+
+    await db.update(parentData);
+    await db.update(blockData1);
+    await db.update(blockData2);
+
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: blockData1.block.block_height, hash: blockData1.block.block_hash },
+        transaction_identifier: { hash: txCoinbase1.tx_id },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      "operations": [
+        {
+          "account": {
+            "address": "ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR",
+          },
+          "operation_identifier": {
+            "index": 0,
+          },
+          "status": "success",
+          "type": "coinbase",
+        },
+      ],
+      "transaction_identifier": {
+        "hash": "0xc152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48",
+      },
+    });
+
+    const query2 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: blockData2.block.block_height, hash: blockData2.block.block_hash },
+        transaction_identifier: { hash: txCoinbase2.tx_id },
+      });
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(JSON.parse(query2.text)).toEqual({
+      "operations": [
+        {
+          "account": {
+            "address": "ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR",
+          },
+          "operation_identifier": {
+            "index": 0,
+          },
+          "status": "success",
+          "type": "coinbase",
+        },
+      ],
+      "transaction_identifier": {
+        "hash": "0x3152de9376bab4fc27291c9cd088643698290a12bb511d768f873cb3d280eb48",
+      },
+    });
+  });
+
   test('block/transaction - invalid transaction hash', async () => {
     const query1 = await supertest(api.server)
       .post(`/rosetta/v1/block/transaction`)
