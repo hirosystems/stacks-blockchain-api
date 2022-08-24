@@ -1576,9 +1576,9 @@ paths:
           in: query
           description: index of first block to fetch
           required: false
-          example: 42000
           schema:
             type: integer
+            example: 42000
       responses:
         "200":
           description: List of blocks
@@ -3615,20 +3615,21 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
+            example: SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11
         - name: contract_name
           in: path
           required: true
           description: Contract name
           schema:
             type: string
-            example: satoshibles
+            example: newyorkcitycoin-core-v2
         - name: map_name
           in: path
           required: true
           description: Map name
           schema:
             type: string
+            example: approved-contracts
         - name: proof
           in: query
           description: Returns object without the proof field when set to 0
@@ -3648,6 +3649,7 @@ paths:
           application/json:
             schema:
               type: string
+            example: "0x0100000000000000000000000000000095"
   "/v2/contracts/source/{contract_address}/{contract_name}":
     get:
       summary: Get contract source
@@ -3801,20 +3803,21 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C
+            example: SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7
         - name: contract_name
           in: path
           required: true
           description: Contract name
           schema:
             type: string
-            example: satoshibles
+            example: imaginary-friends-zebras
         - name: function_name
           in: path
           required: true
           description: Function name
           schema:
             type: string
+            example: get-token-uri
         - name: tip
           in: query
           schema:
@@ -3846,6 +3849,10 @@ paths:
                   description: An array of hex serialized Clarity values
                   items:
                     type: string
+            example:
+              sender: STM9EQRAB3QAKF8NKTP15WJT7VHH4EWG3DJB4W29
+              arguments:
+                - "0x0100000000000000000000000000000095"
   "/extended/v1/address/{principal}/balances":
     get:
       summary: Get account balances
@@ -7109,6 +7116,14 @@ paths:
                         - edwards25519
                 metadata:
                   type: object
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              public_key:
+                hex_bytes: 025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51
+                curve_type: secp256k1
+              metadata: {}
   /rosetta/v1/construction/hash:
     post:
       tags:
@@ -7163,6 +7178,16 @@ paths:
                 signed_transaction:
                   type: string
                   description: Signed transaction
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              signed_transaction: "0x80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be00\
+                0000000000000000000000000000b400017a33a91515ef48608a99c6adecd2e\
+                b258e11534a1acf66348f5678c8e2c8f83d243555ed67a0019d3500df98563c\
+                a31321c1a675b43ef79f146e322fe08df75103020000000000051a1ae3f911d\
+                8f1d46d7416bfbe4b593fd41eac19cb000000000007a1200000000000000000\
+                0000000000000000000000000000000000000000000000000000"
   /rosetta/v1/construction/metadata:
     post:
       tags:
@@ -7306,6 +7331,34 @@ paths:
                   items:
                     $ref: "#/paths/~1rosetta~1v1~1construction~1derive/post/requestBody/content/app\
                       lication~1json/schema/properties/public_key"
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              options:
+                sender_address: SP3Y0BBCCCBFAMYCYN3F35CX9MH1J2GATP53JX3FA
+                type: stack_stx
+                status: success
+                token_transfer_recipient_address: string
+                amount: "500000"
+                symbol: STX
+                decimals: 6
+                gas_limit: 0
+                gas_price: 0
+                suggested_fee_multiplier: 0
+                max_fee: "12380898"
+                fee: fee
+                size: 260
+                memo: test.memo
+                number_of_cycles: 0
+                contract_address: SP112T7BYCNEDCZ9TCYXCXFNJG9WXX5Q5SG6DSBAM
+                contract_name: STX transfer
+                burn_block_height: 0
+                delegate_to: cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01.STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
+                pox_addr: 1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3
+              public_keys:
+                - hex_bytes: publicKey
+                  curve_type: secp256k1
   /rosetta/v1/construction/parse:
     post:
       tags:
@@ -7620,7 +7673,9 @@ paths:
         - Rosetta
       summary: Submit a Signed Transaction
       operationId: rosetta_construction_submit
-      description: Submit a pre-signed transaction to the node.
+      description: Submit a pre-signed transaction to the node. The examples below are
+        illustrative only. You'll need to use your wallet to generate actual
+        values to use them in the request payload.
       responses:
         "200":
           description: Success
@@ -7666,13 +7721,25 @@ paths:
                 signed_transaction:
                   type: string
                   description: Signed transaction
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              signed_transaction: "0x80800000000400539886f96611ba3ba6cef9618f8c78118b37c5be00\
+                0000000000000000000000000000b400017a33a91515ef48608a99c6adecd2e\
+                b258e11534a1acf66348f5678c8e2c8f83d243555ed67a0019d3500df98563c\
+                a31321c1a675b43ef79f146e322fe08df75103020000000000051a1ae3f911d\
+                8f1d46d7416bfbe4b593fd41eac19cb000000000007a1200000000000000000\
+                0000000000000000000000000000000000000000000000000000"
   /rosetta/v1/construction/payloads:
     post:
       tags:
         - Rosetta
       summary: Generate an Unsigned Transaction and Signing Payloads
       operationId: rosetta_construction_payloads
-      description: Generate and unsigned transaction from operations and metadata
+      description: Generate an unsigned transaction from operations and metadata. The
+        examples below are illustrative only. You'll need to use your wallet to
+        generate actual values to use them in the request payload.
       responses:
         "200":
           description: Success
@@ -7775,6 +7842,22 @@ paths:
                       type: integer
                     recent_block_hash:
                       type: string
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              operations:
+                - operation_identifier:
+                    index: 0
+                    network_index: 0
+                  related_operations:
+                    - index: 0
+                      network_index: 0
+                  type: stack_stx
+                  status: success
+                  account:
+                    address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
+                    metadata: {}
   /rosetta/v1/construction/combine:
     post:
       tags:
@@ -7782,7 +7865,9 @@ paths:
       summary: Create Network Transaction from Signatures
       operationId: rosetta_construction_combine
       description: Take unsigned transaction and signature, combine both and return
-        signed transaction
+        signed transaction. The examples below are illustrative only. You'll
+        need to use your wallet to generate actual values to use them in the
+        request payload.
       responses:
         "200":
           description: Success
@@ -7865,6 +7950,24 @@ paths:
                           - schnorr_poseidon
                       hex_bytes:
                         type: string
+            example:
+              network_identifier:
+                blockchain: stacks
+                network: mainnet
+              unsigned_transaction: 00000000010400539886f96611ba3ba6cef9618f8c78118b37c5be0000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051ab71a091b4b8b7661a661c620966ab6573bc2dcd3000000000007a12074657374207472616e73616374696f6e000000000000000000000000000000000000
+              signatures:
+                - signing_payload:
+                    address: string
+                    account_identifier:
+                      address: STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6
+                      metadata: {}
+                    hex_bytes: string
+                    signature_type: ecdsa
+                  public_key:
+                    hex_bytes: 025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51
+                    curve_type: secp256k1
+                  signature_type: ecdsa
+                  hex_bytes: string
   "/v2/prices/namespaces/{tld}":
     get:
       summary: Get Namespace Price
@@ -9842,6 +9945,7 @@ paths:
     get:
       operationId: get_contract_nft_metadata
       summary: Non fungible tokens metadata for contract ID
+      deprecated: true
       description: Retrieves metadata for non fungible tokens for a given contract id.
         More information on Non-Fungible Tokens on the Stacks blockchain can be
         found
