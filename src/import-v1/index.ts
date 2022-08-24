@@ -460,9 +460,8 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomainsAndZonefiles(client, [
-        { blockData, subdomains: subdomainBatch },
-      ]);
+      await db.updateBatchSubdomains(client, [{ blockData, subdomains: subdomainBatch }]);
+      await db.updateBatchZonefiles(client, [{ blockData, subdomains: subdomainBatch }]);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);

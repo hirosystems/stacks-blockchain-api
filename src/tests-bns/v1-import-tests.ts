@@ -86,7 +86,7 @@ describe('BNS V1 import', () => {
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
     expect(query5.body).toEqual([
-      "0.id", "10.id", "10x.id", "111111111.id", "123.id", "1.id", "zinai.id", "zlh.id",
+      "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id",
     ]);
 
@@ -102,7 +102,7 @@ describe('BNS V1 import', () => {
     expect(query7.status).toBe(200);
     expect(query7.type).toBe('application/json');
     expect(query7.body).toEqual([
-      "0.id", "10.id", "10x.id", "111111111.id", "123.id", "1.id", "zinai.id", "zlh.id",
+      "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id"
     ]);
 

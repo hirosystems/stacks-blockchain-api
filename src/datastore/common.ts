@@ -447,6 +447,12 @@ export interface DataStoreSubdomainBlockData {
   microblock_canonical: boolean;
 }
 
+export interface DataStoreAttachmentSubdomainData {
+  attachment?: DataStoreAttachmentData;
+  blockData?: DataStoreSubdomainBlockData;
+  subdomains?: DbBnsSubdomain[];
+}
+
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
