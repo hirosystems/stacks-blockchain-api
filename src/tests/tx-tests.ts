@@ -1265,6 +1265,28 @@ describe('tx tests', () => {
         memo: '0x74657374206d656d6f206669656c64',
       },
     });
+
+    const req6 = await supertest(api.server).get(
+      `/extended/v1/address/${dbStxEvent.recipient}/stx_inbound`
+    );
+    expect(req6.status).toBe(200);
+    expect(req6.type).toBe('application/json');
+    expect(req6.body).toEqual({
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          amount: '60',
+          block_height: 1,
+          memo: '0x74657374206d656d6f206669656c64',
+          sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          transfer_type: 'stx-transfer-memo',
+          tx_id: '0x421234',
+          tx_index: 0,
+        },
+      ],
+      total: 1,
+    });
   });
 
   test('tx store and processing', async () => {
