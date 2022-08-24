@@ -18,7 +18,7 @@ import {
   RosettaOperation,
   RosettaTransaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { RosettaConstants } from '../api/rosetta-constants';
+import { RosettaConstants, RosettaOperationType } from '../api/rosetta-constants';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
@@ -402,7 +402,7 @@ describe('Rosetta API', () => {
         index: 0,
       },
       status: 'success',
-      type: 'coinbase',
+      type: RosettaOperationType.Coinbase,
       account: rosettaAccount,
     };
     const rosettaOperations: RosettaOperation[] = [];
