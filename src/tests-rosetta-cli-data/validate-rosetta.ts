@@ -252,12 +252,12 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
 
   const contractId = senderAddress + '.' + contractName;
 
-  const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-  const feeRateResult = await feeRateReq.text();
-  const txBytes = BigInt(contractDeployTx.serialize().byteLength);
-  const feeRate = BigInt(feeRateResult);
-  const fee = feeRate * txBytes;
-  contractDeployTx.setFee(fee);
+  // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+  // const feeRateResult = await feeRateReq.text();
+  // const txBytes = BigInt(contractDeployTx.serialize().byteLength);
+  // const feeRate = BigInt(feeRateResult);
+  // const fee = feeRate * txBytes;
+  // contractDeployTx.setFee(fee);
   const { txId } = await sendCoreTx(contractDeployTx.serialize(), api, 'deploy-contract');
 
   return { txId, contractId };
