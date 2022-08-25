@@ -116,10 +116,10 @@ async function init(): Promise<void> {
   if (apiMode === StacksApiMode.offline) {
     db = OfflineDummyStore;
   } else {
-    const skipMigrations = apiMode === StacksApiMode.readOnly;
+    // const skipMigrations = apiMode === StacksApiMode.readOnly;
     db = await PgDataStore.connect({
       usageName: `datastore-${apiMode}`,
-      skipMigrations: skipMigrations,
+      skipMigrations: true,
     });
 
     if (apiMode !== StacksApiMode.readOnly) {
