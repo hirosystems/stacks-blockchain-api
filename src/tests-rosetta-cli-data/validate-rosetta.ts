@@ -276,6 +276,7 @@ async function transferStx(
     memo: 'test-transaction',
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
   const serialized: Buffer = transferTx.serialize();
 
