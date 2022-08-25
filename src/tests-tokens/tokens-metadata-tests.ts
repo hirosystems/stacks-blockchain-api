@@ -97,6 +97,7 @@ describe('api tests', () => {
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
       anchorMode: AnchorMode.Any,
+      fee: 100000,
     });
 
     const contractId = senderAddress + '.' + contractName;
