@@ -1117,15 +1117,15 @@ export function getSigners(transaction: StacksTransaction): RosettaAccountIdenti
 }
 
 export function getStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
+  return new StacksTestnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 function getStacksMainnetNetwork() {
-  const stacksNetwork = new StacksMainnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
+  return new StacksMainnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 export function getStacksNetwork() {

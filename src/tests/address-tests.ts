@@ -11,7 +11,6 @@ import {
   stringAsciiCV,
   serializeCV,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction } from 'stacks-encoding-native-js';
 import {
@@ -2022,17 +2021,17 @@ describe('address tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(2),
+      fee: 300,
+      sponsorNonce: 2,
     });
     const serialized = sponsoredTx.serialize();
     const tx = decodeTransaction(serialized);

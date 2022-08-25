@@ -19,7 +19,6 @@ import {
   AddressVersion,
   bufferCV,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction, TxPayloadVersionedSmartContract } from 'stacks-encoding-native-js';
 import { getTxFromDataStore } from '../api/controllers/db-controller';
@@ -748,17 +747,17 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(2),
+      fee: 300,
+      sponsorNonce: 2,
     });
     const serialized = sponsoredTx.serialize();
     const tx = decodeTransaction(serialized);
@@ -955,17 +954,17 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(3),
+      fee: 300,
+      sponsorNonce: 3,
     });
     const serialized = sponsoredTx.serialize();
     const tx = decodeTransaction(serialized);
@@ -1320,14 +1319,14 @@ describe('tx tests', () => {
     const pc2 = createFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       FungibleConditionCode.GreaterEqual,
-      new BN(123456),
+      123456,
       'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello-ft::asset-name-ft'
     );
 
     const pc3 = createSTXPostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       FungibleConditionCode.LessEqual,
-      new BN(36723458)
+      36723458
     );
 
     const txBuilder = await makeContractCall({
@@ -1335,10 +1334,10 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
-      nonce: new BN(0),
+      nonce: 0,
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();
@@ -1554,8 +1553,8 @@ describe('tx tests', () => {
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
-      fee: new BN(200),
-      nonce: new BN(0),
+      fee: 200,
+      nonce: 0,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
       anchorMode: AnchorMode.Any,
@@ -1696,10 +1695,10 @@ describe('tx tests', () => {
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
-      nonce: new BN(0),
+      nonce: 0,
       anchorMode: AnchorMode.Any,
     });
     const serialized = txBuilder.serialize();

@@ -8,7 +8,6 @@ import * as http from 'http';
 import * as winston from 'winston';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
-import * as BN from 'bn.js';
 import {
   BufferCV,
   bufferCV,
@@ -632,16 +631,13 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
 
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
-function intMax(args: BN[]): BN;
-function intMax(args: bigint[] | number[] | BN[]): any {
+function intMax(args: bigint[] | number[]): any {
   if (args.length === 0) {
     throw new Error(`empty array not supported in intMax`);
   } else if (typeof args[0] === 'bigint') {
     return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
   } else if (typeof args[0] === 'number') {
     return Math.max(...(args as number[]));
-  } else if (BN.isBN(args[0])) {
-    return (args as BN[]).reduce((m, e) => (e.gt(m) ? e : m));
   } else {
     // eslint-disable-next-line @typescript-eslint/ban-types
     throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);

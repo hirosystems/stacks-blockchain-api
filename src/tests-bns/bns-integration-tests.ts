@@ -19,7 +19,6 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { importV1BnsData } from '../import-v1';
@@ -112,7 +111,7 @@ describe('BNS integration tests', () => {
       functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
-      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1))],
+      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1)],
       network,
       anchorMode: AnchorMode.Any
     };
@@ -237,7 +236,7 @@ describe('BNS integration tests', () => {
   }
   async function namePreorder(namespace: string, saltName: string, testnetKey: TestnetKey, name: string) {
     const postConditions = [
-      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
     ];
     const fqn = `${name}.${namespace}${saltName}`;
     const nameSaltedHash = hash160(Buffer.from(fqn));

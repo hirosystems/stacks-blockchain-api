@@ -211,8 +211,9 @@ export function getNewOwner(
 }
 
 export function GetStacksNetwork(chainId: ChainID) {
-  const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
-  network.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  const url = `http://${getCoreNodeEndpoint()}`;
+  const network =
+    chainId === ChainID.Mainnet ? new StacksMainnet({ url }) : new StacksTestnet({ url });
   return network;
 }
 

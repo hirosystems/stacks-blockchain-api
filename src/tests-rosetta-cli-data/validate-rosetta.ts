@@ -18,7 +18,6 @@ import {
   AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
-import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout, unwrapOptional } from '../helpers';
@@ -254,9 +253,9 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
 
   const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
   const feeRateResult = await feeRateReq.text();
-  const txBytes = new BN(contractDeployTx.serialize().byteLength);
-  const feeRate = new BN(feeRateResult);
-  const fee = feeRate.mul(txBytes);
+  const txBytes = BigInt(contractDeployTx.serialize().byteLength);
+  const feeRate = BigInt(feeRateResult);
+  const fee = feeRate * txBytes;
   contractDeployTx.setFee(fee);
   const { txId } = await sendCoreTx(contractDeployTx.serialize(), api, 'deploy-contract');
 
@@ -271,7 +270,7 @@ async function transferStx(
   await waitForBlock(api);
   const transferTx = await makeSTXTokenTransfer({
     recipient: recipientAddr,
-    amount: new BN(amount),
+    amount: amount,
     senderKey: senderPk,
     network: stacksNetwork,
     memo: 'test-transaction',
@@ -304,11 +303,11 @@ async function sendCoreTx(
 }
 
 function getStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = getCoreNodeEndpoint({
+  const url = getCoreNodeEndpoint({
     host: `http://${HOST}`,
     port: PORT,
   });
+  const stacksNetwork = new StacksTestnet({ url });
   return stacksNetwork;
 }
 
