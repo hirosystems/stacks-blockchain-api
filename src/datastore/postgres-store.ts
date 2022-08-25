@@ -43,6 +43,7 @@ import {
   getBnsSmartContractId,
   bnsHexValueToName,
   I32_MAX,
+  defaultLogLevel,
 } from '../helpers';
 import {
   DataStore,
@@ -239,11 +240,11 @@ export async function runMigrations(
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
       logger: {
-        info: msg => logger.info(msg),
+        info: msg => {},
         warn: msg => logger.warn(msg),
         error: msg => logger.error(msg),
       },
-      verbose: true,
+      verbose: defaultLogLevel === 'verbose',
     };
     if (clientConfig.schema) {
       runnerOpts.schema = clientConfig.schema;
