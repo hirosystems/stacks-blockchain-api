@@ -223,9 +223,10 @@ async function callContractFunction(
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
-  const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
-  contractCallTx.setFee(fee);
+  // const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
+  // contractCallTx.setFee(fee);
 
   const serialized: Buffer = contractCallTx.serialize();
 
