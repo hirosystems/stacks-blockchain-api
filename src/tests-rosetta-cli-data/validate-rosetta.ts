@@ -247,6 +247,7 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
 
   const contractId = senderAddress + '.' + contractName;
