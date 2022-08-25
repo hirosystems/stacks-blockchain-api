@@ -239,10 +239,11 @@ export async function runMigrations(
       migrationsTable: MIGRATIONS_TABLE,
       count: Infinity,
       logger: {
-        info: msg => {},
+        info: msg => logger.info(msg),
         warn: msg => logger.warn(msg),
         error: msg => logger.error(msg),
       },
+      verbose: true,
     };
     if (clientConfig.schema) {
       runnerOpts.schema = clientConfig.schema;
