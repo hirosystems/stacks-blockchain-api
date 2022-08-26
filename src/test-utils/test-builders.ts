@@ -13,6 +13,7 @@ import {
   DbAssetEventTypeId,
   DbBlock,
   DbBnsName,
+  DbBnsNamespace,
   DbEventTypeId,
   DbFtEvent,
   DbMempoolTx,
@@ -496,6 +497,49 @@ function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
   };
 }
 
+interface TestBnsNamespaceArgs {
+  namespace_id?: string;
+  address?: string;
+  launched_at?: number;
+  reveal_block?: number;
+  ready_block?: number;
+  buckets?: string;
+  base?: bigint;
+  coeff?: bigint;
+  nonalpha_discount?: number;
+  no_vowel_discount?: number;
+  lifetime?: number;
+  status?: string;
+  tx_id?: string;
+  tx_index?: number;
+  canonical?: boolean;
+}
+
+/**
+ * Generate a test BNS namespace
+ * @param args - Optional namespace data
+ * @returns `DbBnsNamespace`
+ */
+function testBnsNamespace(args?: TestBnsNamespaceArgs): DbBnsNamespace {
+  return {
+    namespace_id: args?.namespace_id ?? BNS_NAMESPACE_ID,
+    address: args?.address ?? SENDER_ADDRESS,
+    launched_at: args?.launched_at ?? BLOCK_HEIGHT,
+    reveal_block: args?.reveal_block ?? BLOCK_HEIGHT,
+    ready_block: args?.ready_block ?? BLOCK_HEIGHT,
+    buckets: args?.buckets ?? '1,1,1',
+    base: args?.base ?? 1n,
+    coeff: args?.coeff ?? 1n,
+    nonalpha_discount: args?.nonalpha_discount ?? 0,
+    no_vowel_discount: args?.no_vowel_discount ?? 0,
+    lifetime: args?.lifetime ?? 0,
+    status: args?.status ?? 'ready',
+    tx_id: args?.tx_id ?? TX_ID,
+    tx_index: args?.tx_index ?? 0,
+    canonical: args?.canonical ?? true,
+  };
+}
+
 interface TestBnsNameArgs {
   name?: string;
   address?: string;
@@ -655,9 +699,21 @@ export class TestBlockBuilder {
   addTxBnsName(args?: TestBnsNameArgs): TestBlockBuilder {
     const defaultArgs: TestBnsNameArgs = {
       tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
       registered_at: this.block.block_height,
     };
     this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxBnsNamespace(args?: TestBnsNamespaceArgs): TestBlockBuilder {
+    const defaultArgs: TestBnsNamespaceArgs = {
+      tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
+      ready_block: this.block.block_height,
+      reveal_block: this.block.block_height,
+    };
+    this.txData.namespaces.push(testBnsNamespace({ ...defaultArgs, ...args }));
     return this;
   }
 
@@ -743,6 +799,15 @@ export class TestMicroblockStreamBuilder {
       tx_index: this.txIndex,
     };
     this.txData.names.push(testBnsName({ ...defaultArgs, ...args }));
+    return this;
+  }
+
+  addTxBnsNamespace(args?: TestBnsNamespaceArgs): TestMicroblockStreamBuilder {
+    const defaultArgs: TestBnsNamespaceArgs = {
+      tx_id: this.txData.tx.tx_id,
+      tx_index: this.txIndex,
+    };
+    this.txData.namespaces.push(testBnsNamespace({ ...defaultArgs, ...args }));
     return this;
   }
 
