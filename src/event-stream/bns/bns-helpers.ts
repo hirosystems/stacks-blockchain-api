@@ -1,15 +1,10 @@
-import { BufferCV, ChainID, ClarityType, hexToCV, TupleCV } from '@stacks/transactions';
+import { ChainID, ClarityType, hexToCV } from '@stacks/transactions';
 import { hexToBuffer, hexToUtf8String } from '../../helpers';
 import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
-import {
-  BnsContractIdentifier,
-  nameFunctions,
-  namespaceReadyFunction,
-  printTopic,
-} from './bns-constants';
+import { BnsContractIdentifier, printTopic } from './bns-constants';
 import * as crypto from 'crypto';
 import {
   ClarityTypeID,
@@ -254,20 +249,20 @@ export function parseNameFromContractEvent(
   tx: CoreNodeParsedTxMessage,
   blockHeight: number
 ): DbBnsName | undefined {
-  if (
-    !isEventFromBnsContract(event) ||
-    tx.parsed_tx.payload.type_id !== TxPayloadTypeID.ContractCall
-  ) {
+  if (!isEventFromBnsContract(event)) {
     return;
   }
-  const functionName = tx.parsed_tx.payload.function_name;
-  if (!nameFunctions.includes(functionName)) {
+  let attachment: Attachment;
+  try {
+    attachment = parseNameRawValue(event.contract_event.raw_value);
+  } catch (error) {
     return;
   }
-  const attachment = parseNameRawValue(event.contract_event.raw_value);
   let name_address = attachment.attachment.metadata.tx_sender.address;
+  // Is this a `name-transfer` contract call? If so, record the new owner.
   if (
-    functionName === 'name-transfer' &&
+    attachment.attachment.metadata.op === 'name-transfer' &&
+    tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall &&
     tx.parsed_tx.payload.function_args.length >= 3 &&
     tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
   ) {
