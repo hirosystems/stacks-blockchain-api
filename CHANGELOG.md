@@ -1,3 +1,10 @@
+## [5.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.1...v5.0.0-beta.2) (2022-08-26)
+
+
+### Bug Fixes
+
+* bump version ([3863cce](https://github.com/hirosystems/stacks-blockchain-api/commit/3863cce1a64cf7a4c6cffd4f888c049cfd3ada65))
+
 ## [5.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0-beta.1) (2022-08-26)
 
 
