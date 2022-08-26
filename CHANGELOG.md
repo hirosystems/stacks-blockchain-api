@@ -1,3 +1,14 @@
+## [5.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0-beta.1) (2022-08-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* optimize tables and improve canonical treatment of BNS data (#1287)
+
+### Features
+
+* optimize tables and improve canonical treatment of BNS data ([#1287](https://github.com/hirosystems/stacks-blockchain-api/issues/1287)) ([1f64818](https://github.com/hirosystems/stacks-blockchain-api/commit/1f648187b8c701e802a06bac52b077fd10571ff7))
+
 ## [4.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.1...v4.1.2) (2022-08-18)
 
 
