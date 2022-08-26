@@ -1037,11 +1037,23 @@ export class PgDataStore
             payload jsonb NOT NULL
           ) ON COMMIT DROP
         `);
+        // Use a `temp_raw_tsv` table first to store the raw TSV data as it might come with duplicate
+        // rows which would trigger the `PRIMARY KEY` constraint in `temp_event_observer_requests`.
+        // We will "upsert" from the former to the latter before event ingestion.
+        await client.query(`
+          CREATE TEMPORARY TABLE temp_raw_tsv
+          (LIKE temp_event_observer_requests)
+          ON COMMIT DROP
+        `);
         onStatusUpdate?.('Importing raw event requests into temporary table...');
-        const importStream = client.query(
-          pgCopyStreams.from(`COPY temp_event_observer_requests FROM STDIN`)
-        );
+        const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
         await pipelineAsync(readStream, importStream);
+        await client.query(`
+          INSERT INTO temp_event_observer_requests
+          SELECT *
+          FROM temp_raw_tsv
+          ON CONFLICT DO NOTHING;
+        `);
         const totalRowCountQuery = await client.query<{ count: string }>(
           `SELECT COUNT(id) count FROM temp_event_observer_requests`
         );
