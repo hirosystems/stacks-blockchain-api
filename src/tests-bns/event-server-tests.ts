@@ -4,7 +4,7 @@ import { PoolClient } from 'pg';
 import { bnsNameCV, httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
-import { DbAssetEventTypeId } from '../datastore/common';
+import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 
 describe('BNS event server tests', () => {
   let db: PgDataStore;
@@ -225,6 +225,75 @@ describe('BNS event server tests', () => {
     expect(name.result?.index_block_hash).toBe('0x0200');
     expect(name.result?.tx_id).toBe('0x1212');
     expect(name.result?.status).toBe('name-update');
+  });
+
+  test('/attachments/new with duplicate zonefiles for the same tx', async () => {
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x0101',
+    })
+      .addTx({ tx_id: '0x1234' })
+      .addTxBnsNamespace({ namespace_id: 'btc' })
+      .addTxBnsName({
+        name: 'jnj.btc',
+        namespace_id: 'btc',
+        zonefile_hash: '0x9198e0b61a029671e53bd59aa229e7ae05af35a3'
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV('jnj.btc'),
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      })
+      .build();
+    await db.update(block1);
+
+    const payload = [
+      {
+        "tx_id": "0x1234",
+        "content": "0x",
+        "metadata": "0x0c00000004046e616d6502000000036a6e6a096e616d6573706163650200000003627463026f700d0000000d6e616d652d72656769737465720974782d73656e64657205163763c6b37100efa8261e5fc1b1e8c18cd3fed9b6",
+        "contract_id": "SP000000000000000000002Q6VF78.bns",
+        "block_height": 1,
+        "content_hash": "0x9198e0b61a029671e53bd59aa229e7ae05af35a3",
+        "attachment_index": 823,
+        "index_block_hash": "0x0101"
+      },
+      {
+        "tx_id": "0x1234",
+        "content": "0x244f524947494e206a6e6a2e6274632e0a2454544c20333630300a5f687474702e5f74637009494e095552490931300931092268747470733a2f2f676169612e626c6f636b737461636b2e6f72672f6875622f317a38417a79684334326e3854766f4661554c326e7363614347487151515755722f70726f66696c652e6a736f6e220a0a",
+        "metadata": "0x0c00000004046e616d6502000000036a6e6a096e616d6573706163650200000003627463026f700d0000000d6e616d652d72656769737465720974782d73656e64657205163763c6b37100efa8261e5fc1b1e8c18cd3fed9b6",
+        "contract_id": "SP000000000000000000002Q6VF78.bns",
+        "block_height": 1,
+        "content_hash": "0x9198e0b61a029671e53bd59aa229e7ae05af35a3", // Same zonefile_hash but different content, this should overwrite the entry above
+        "attachment_index": 823,
+        "index_block_hash": "0x0101"
+      },
+      {
+        "tx_id": "0x1234",
+        "content": "0x244f524947494e206a6e6a2e6274632e0a2454544c20333630300a5f687474702e5f74637009494e095552490931300931092268747470733a2f2f676169612e626c6f636b737461636b2e6f72672f6875622f317a38417a79684334326e3854766f4661554c326e7363614347487151515755722f70726f66696c652e6a736f6e220a0a",
+        "metadata": "0x0c00000004046e616d6502000000036a6e6a096e616d6573706163650200000003627463026f700d0000000d6e616d652d72656769737465720974782d73656e64657205163763c6b37100efa8261e5fc1b1e8c18cd3fed9b6",
+        "contract_id": "SP000000000000000000002Q6VF78.bns",
+        "block_height": 1,
+        "content_hash": "0x9198e0b61a029671e53bd59aa229e7ae05af35a3", // Also overwrite
+        "attachment_index": 823,
+        "index_block_hash": "0x0101"
+      },
+    ];
+
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/attachments/new',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(payload), 'utf8'),
+      throwOnNotOK: true,
+    });
+
+    // To validate table data we'll query it directly. There should only be one zonefile.
+    const result = await client.query<DbBnsZoneFile>(`SELECT * FROM zonefiles`);
+    expect(result.rowCount).toBe(1);
+    expect(result.rows[0].zonefile).toBe('$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n');
   });
 
   afterEach(async () => {

@@ -497,6 +497,7 @@ export interface DbInboundStxTransfer {
 export interface DbBnsZoneFile {
   zonefile: string;
 }
+
 export interface DbBnsNamespace {
   id?: number;
   namespace_id: string;
