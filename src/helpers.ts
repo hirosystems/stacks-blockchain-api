@@ -157,7 +157,7 @@ type DisabledLogLevels = Exclude<
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
 const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-const defaultLogLevel: LogLevel = (() => {
+export const defaultLogLevel: LogLevel = (() => {
   const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
   const logLevelEnvVar = process.env[
     STACKS_API_LOG_LEVEL_ENV_VAR
@@ -234,12 +234,6 @@ export function microStxToStx(microStx: bigint | BigNumber): string {
   const input = typeof microStx === 'bigint' ? new BigNumber(microStx.toString()) : microStx;
   const bigNumResult = new BigNumber(input).shiftedBy(-STACKS_DECIMAL_PLACES);
   return bigNumResult.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
-}
-
-export function digestSha512_256(input: Buffer): Buffer {
-  const hash = crypto.createHash('sha512-256');
-  const digest = hash.update(input).digest();
-  return digest;
 }
 
 /**

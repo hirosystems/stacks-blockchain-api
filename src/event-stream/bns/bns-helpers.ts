@@ -1,29 +1,25 @@
-import { Address, ChainID, StacksMessageType } from '@stacks/transactions';
-import { DbBnsNamespace } from './datastore/common';
-import { hexToBuffer, hexToUtf8String } from './helpers';
-import { CoreNodeParsedTxMessage } from './event-stream/core-node-message';
-import { StacksCoreRpcClient, getCoreNodeEndpoint } from './core-rpc/client';
+import { ChainID, ClarityType, hexToCV } from '@stacks/transactions';
+import { hexToBuffer, hexToUtf8String } from '../../helpers';
+import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
+import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
-import { BnsContractIdentifier } from './bns-constants';
+import { BnsContractIdentifier, printTopic } from './bns-constants';
 import * as crypto from 'crypto';
 import {
   ClarityTypeID,
   decodeClarityValue,
-  ClarityValue,
   ClarityValueBuffer,
-  ClarityValueInt,
   ClarityValueList,
-  ClarityValueOptional,
-  ClarityValueOptionalSome,
   ClarityValueOptionalUInt,
   ClarityValuePrincipalStandard,
   ClarityValueStringAscii,
   ClarityValueTuple,
   ClarityValueUInt,
   TxPayloadTypeID,
-  ClarityValuePrincipalContract,
 } from 'stacks-encoding-native-js';
+import { SmartContractEvent } from '../core-node-message';
+import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
 
 interface Attachment {
   attachment: {
@@ -160,8 +156,8 @@ export function parseNamespaceRawValue(
   const namespaceBns: DbBnsNamespace = {
     namespace_id: namespace,
     address: address,
-    base: Number(base),
-    coeff: Number(coeff),
+    base: base,
+    coeff: coeff,
     launched_at: launched_at,
     lifetime: Number(lifetime),
     no_vowel_discount: Number(no_vowel_discount),
@@ -175,39 +171,6 @@ export function parseNamespaceRawValue(
     canonical: true,
   };
   return namespaceBns;
-}
-
-export function getFunctionName(tx_id: string, transactions: CoreNodeParsedTxMessage[]): string {
-  const contract_function_name: string = '';
-  for (const tx of transactions) {
-    if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
-        return tx.parsed_tx.payload.function_name;
-      }
-    }
-  }
-  return contract_function_name;
-}
-
-export function getNewOwner(
-  tx_id: string,
-  transactions: CoreNodeParsedTxMessage[]
-): string | undefined {
-  for (const tx of transactions) {
-    if (tx.core_tx.txid === tx_id) {
-      if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall) {
-        if (
-          tx.parsed_tx.payload.function_args.length >= 3 &&
-          tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
-        ) {
-          const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
-          const principal = decoded as ClarityValuePrincipalStandard;
-          principal.address;
-        }
-      }
-    }
-  }
-  return undefined;
 }
 
 export function GetStacksNetwork(chainId: ChainID) {
@@ -271,4 +234,82 @@ export function getBnsContractID(chainId: ChainID) {
   const contractId =
     chainId === ChainID.Mainnet ? BnsContractIdentifier.mainnet : BnsContractIdentifier.testnet;
   return contractId;
+}
+
+function isEventFromBnsContract(event: SmartContractEvent): boolean {
+  return (
+    event.contract_event.topic === printTopic &&
+    (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
+      event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
+  );
+}
+
+export function parseNameFromContractEvent(
+  event: SmartContractEvent,
+  tx: CoreNodeParsedTxMessage,
+  blockHeight: number
+): DbBnsName | undefined {
+  if (!isEventFromBnsContract(event)) {
+    return;
+  }
+  let attachment: Attachment;
+  try {
+    attachment = parseNameRawValue(event.contract_event.raw_value);
+  } catch (error) {
+    return;
+  }
+  let name_address = attachment.attachment.metadata.tx_sender.address;
+  // Is this a `name-transfer` contract call? If so, record the new owner.
+  if (
+    attachment.attachment.metadata.op === 'name-transfer' &&
+    tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall &&
+    tx.parsed_tx.payload.function_args.length >= 3 &&
+    tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
+  ) {
+    const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
+    const principal = decoded as ClarityValuePrincipalStandard;
+    name_address = principal.address;
+  }
+  const name: DbBnsName = {
+    name: attachment.attachment.metadata.name.concat('.', attachment.attachment.metadata.namespace),
+    namespace_id: attachment.attachment.metadata.namespace,
+    address: name_address,
+    // expire_block will be calculated upon DB insert based on the namespace's lifetime.
+    expire_block: 0,
+    registered_at: blockHeight,
+    zonefile_hash: attachment.attachment.hash,
+    // zonefile will be updated when an `/attachments/new` message arrives.
+    zonefile: '',
+    tx_id: event.txid,
+    tx_index: tx.core_tx.tx_index,
+    status: attachment.attachment.metadata.op,
+    canonical: true,
+  };
+  return name;
+}
+
+export function parseNamespaceFromContractEvent(
+  event: SmartContractEvent,
+  tx: CoreNodeParsedTxMessage,
+  blockHeight: number
+): DbBnsNamespace | undefined {
+  if (!isEventFromBnsContract(event)) {
+    return;
+  }
+  // Look for a `namespace-ready` BNS print event.
+  const decodedEvent = hexToCV(event.contract_event.raw_value);
+  if (
+    decodedEvent.type === ClarityType.Tuple &&
+    decodedEvent.data.status &&
+    decodedEvent.data.status.type === ClarityType.StringASCII &&
+    decodedEvent.data.status.data === 'ready'
+  ) {
+    const namespace = parseNamespaceRawValue(
+      event.contract_event.raw_value,
+      blockHeight,
+      event.txid,
+      tx.core_tx.tx_index
+    );
+    return namespace;
+  }
 }
