@@ -1,6 +1,11 @@
 import { ChainID, ClarityType, hexToCV } from '@stacks/transactions';
 import { hexToBuffer, hexToUtf8String } from '../../helpers';
-import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
+import {
+  CoreNodeEvent,
+  CoreNodeEventType,
+  CoreNodeParsedTxMessage,
+  NftTransferEvent,
+} from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
@@ -247,7 +252,9 @@ function isEventFromBnsContract(event: SmartContractEvent): boolean {
 export function parseNameFromContractEvent(
   event: SmartContractEvent,
   tx: CoreNodeParsedTxMessage,
-  blockHeight: number
+  txEvents: CoreNodeEvent[],
+  blockHeight: number,
+  chainId: ChainID
 ): DbBnsName | undefined {
   if (!isEventFromBnsContract(event)) {
     return;
@@ -259,19 +266,21 @@ export function parseNameFromContractEvent(
     return;
   }
   let name_address = attachment.attachment.metadata.tx_sender.address;
-  // Is this a `name-transfer` contract call? If so, record the new owner.
-  if (
-    attachment.attachment.metadata.op === 'name-transfer' &&
-    tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall &&
-    tx.parsed_tx.payload.function_args.length >= 3 &&
-    tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
-  ) {
-    const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
-    const principal = decoded as ClarityValuePrincipalStandard;
-    name_address = principal.address;
+  // Is this a `name-transfer`? If so, look for the new owner in an `nft_transfer` event bundled in
+  // the same transaction.
+  if (attachment.attachment.metadata.op === 'name-transfer') {
+    for (const txEvent of txEvents) {
+      if (
+        txEvent.type === CoreNodeEventType.NftTransferEvent &&
+        txEvent.nft_transfer_event.asset_identifier === `${getBnsContractID(chainId)}::names`
+      ) {
+        name_address = txEvent.nft_transfer_event.recipient;
+        break;
+      }
+    }
   }
   const name: DbBnsName = {
-    name: attachment.attachment.metadata.name.concat('.', attachment.attachment.metadata.namespace),
+    name: `${attachment.attachment.metadata.name}.${attachment.attachment.metadata.namespace}`,
     namespace_id: attachment.attachment.metadata.namespace,
     address: name_address,
     // expire_block will be calculated upon DB insert based on the namespace's lifetime.

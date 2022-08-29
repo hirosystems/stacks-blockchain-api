@@ -129,6 +129,164 @@ describe('BNS event server tests', () => {
     expect(namespace.result?.ready_block).toBe(2);
   });
 
+  test('name-transfer called by a contract other than BNS', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x09458029b7c0e43e015bd3202c0f9512c2b394e0481bfd2bdd096ae7b5b862f2',
+      index_block_hash: '0xad9403fc8d8eaef47816555cac51dca9d934384aa9b2581f9b9085509b2af915',
+      burn_block_height: 743853,
+      burn_block_hash: '0x00000000000000000008b9d65609c6b39bb89d7da35433e4b287835d7112d6d4',
+      burn_block_time: 1657123396,
+    })
+      .addTx({ tx_id: '0x1234' })
+      .addTxBnsNamespace({
+        namespace_id: 'btc',
+        lifetime: 1000
+      })
+      .addTxBnsName({
+        name: 'dayslikewater.btc',
+        namespace_id: 'btc',
+        zonefile_hash: 'b472a266d0bd89c13706a4132ccfb16f7c3b9fcb'
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV('dayslikewater.btc'),
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        recipient: 'SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J',
+      })
+      .build();
+    await db.update(block);
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0xccdd11fef1792979bc54a9b686e9cc4fc3d64f2a9b2d8ee9d34fe27bfab783a4',
+        microblock_sequence: 0,
+        parent_index_block_hash: '0xad9403fc8d8eaef47816555cac51dca9d934384aa9b2581f9b9085509b2af915'
+      })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    const name1 = await db.getName({
+      name: 'dayslikewater.btc',
+      includeUnanchored: true,
+      chainId: ChainID.Mainnet
+    });
+    expect(name1.found).toBe(true);
+    expect(name1.result?.namespace_id).toBe('btc');
+    expect(name1.result?.tx_id).toBe('0x1234');
+    expect(name1.result?.status).toBe('name-register');
+    expect(name1.result?.expire_block).toBe(1001);
+    expect(name1.result?.address).toBe('SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J');
+
+    const payload = {
+      "events": [
+        {
+          "txid": "0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19",
+          "type": "contract_event",
+          "committed": true,
+          "event_index": 74,
+          "contract_event": {
+            "topic": "print",
+            "raw_value": "0x0c000000010a6174746163686d656e740c00000003106174746163686d656e742d696e646578010000000000000000000000000000e52b04686173680200000014b472a266d0bd89c13706a4132ccfb16f7c3b9fcb086d657461646174610c00000004046e616d65020000000d646179736c696b657761746572096e616d6573706163650200000003627463026f700d0000000d6e616d652d7472616e736665720974782d73656e6465720516016084eead6adbeee180dc0a855609d10eaf4c17",
+            "contract_identifier": "SP000000000000000000002Q6VF78.bns"
+          }
+        },
+        {
+          "txid": "0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19",
+          "type": "nft_transfer_event",
+          "committed": true,
+          "event_index": 73,
+          "nft_transfer_event": {
+            "sender": "SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J",
+            "raw_value": "0x0c00000002046e616d65020000000d646179736c696b657761746572096e616d6573706163650200000003627463",
+            "recipient": "SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP",
+            "asset_identifier": "SP000000000000000000002Q6VF78.bns::names"
+          }
+        },
+        {
+          "txid": "0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19",
+          "type": "stx_transfer_event",
+          "committed": true,
+          "event_index": 71,
+          "stx_transfer_event": {
+            "amount": "2500",
+            "sender": "SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.bns-marketplace-v3",
+            "recipient": "SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C"
+          }
+        }
+      ],
+      "block_hash": "0x7d18920cc47f731f186fb9f731d2e8d5029bbab6d73fd012ac3e10637a8e4a37",
+      "miner_txid": "0xbed35e9e7eb7f98583c87743d3860ab63f2506f7f1efe24740cd37f7708de0b4",
+      "block_height": 2,
+      "transactions": [
+        {
+          "txid": "0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19",
+          "raw_tx": "0x00000000010400016084eead6adbeee180dc0a855609d10eaf4c1700000000000000020000000000000bb80000e452e9d87e94a2a4364e89af3ab44b3ce1117afb6505721ff5b801294e1280f0616ee4d21a6ef9bcca1ea15ac65477e79df3427f7fd6c41c80938f8cca6d2cd0030200000002000316a6a7a70f41adbe8eae708ed7ec2cbf41a272182012626e732d6d61726b6574706c6163652d76330500000000000186a0020216016084eead6adbeee180dc0a855609d10eaf4c1716000000000000000000000000000000000000000003626e73056e616d65730c00000002046e616d65020000000d646179736c696b657761746572096e616d6573706163650200000003627463100216a6a7a70f41adbe8eae708ed7ec2cbf41a272182012626e732d6d61726b6574706c6163652d76330a6163636570742d626964000000030200000003627463020000000d646179736c696b6577617465720a0200000014b472a266d0bd89c13706a4132ccfb16f7c3b9fcb",
+          "status": "success",
+          "tx_index": 25,
+          "raw_result": "0x0703",
+          "contract_abi": null,
+          "execution_cost": {
+            "runtime": 381500,
+            "read_count": 42,
+            "read_length": 96314,
+            "write_count": 9,
+            "write_length": 359
+          },
+          "microblock_hash": null,
+          "microblock_sequence": null,
+          "microblock_parent_hash": null
+        }
+      ],
+      "anchored_cost": {
+        "runtime": 44194708,
+        "read_count": 4105,
+        "read_length": 11476905,
+        "write_count": 546,
+        "write_length": 47312
+      },
+      "burn_block_hash": "0x00000000000000000005e28a41cdb7461953b9424b4fd44a9211a145a1c0346d",
+      "burn_block_time": 1657125225,
+      "index_block_hash": "0xb70205d38a8666cbd071239b4ec28ae7d12a2c32341118d7c6d4d1e22f56014e",
+      "burn_block_height": 743854,
+      "parent_block_hash": "0x09458029b7c0e43e015bd3202c0f9512c2b394e0481bfd2bdd096ae7b5b862f2",
+      "parent_microblock": "0xccdd11fef1792979bc54a9b686e9cc4fc3d64f2a9b2d8ee9d34fe27bfab783a4",
+      "matured_miner_rewards": [],
+      "parent_burn_block_hash": "0x00000000000000000008b9d65609c6b39bb89d7da35433e4b287835d7112d6d4",
+      "parent_index_block_hash": "0xad9403fc8d8eaef47816555cac51dca9d934384aa9b2581f9b9085509b2af915",
+      "parent_burn_block_height": 743853,
+      "confirmed_microblocks_cost": {
+        "runtime": 48798,
+        "read_count": 10,
+        "read_length": 40042,
+        "write_count": 3,
+        "write_length": 19
+      },
+      "parent_microblock_sequence": 0,
+      "parent_burn_block_timestamp": 1657123396
+    };
+
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/new_block',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(payload), 'utf8'),
+      throwOnNotOK: true,
+    });
+
+    const name2 = await db.getName({
+      name: 'dayslikewater.btc',
+      includeUnanchored: true,
+      chainId: ChainID.Mainnet
+    });
+    expect(name2.found).toBe(true);
+    expect(name2.result?.namespace_id).toBe('btc');
+    expect(name2.result?.tx_id).toBe('0xa75ebee2c824c4943bf8494b101ea7ee7d44191b4a8f761582ce99ef28befb19');
+    expect(name2.result?.status).toBe('name-transfer');
+    expect(name2.result?.expire_block).toBe(1001); // Unchanged as it was not renewed
+    expect(name2.result?.address).toBe('SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP');
+  });
+
   test('/attachments/new with re-orged zonefiles', async () => {
     const block1 = new TestBlockBuilder({
       block_height: 1,

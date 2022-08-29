@@ -199,10 +199,15 @@ async function handleMicroblockMessage(
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
-      block_height: -1, // TODO: fill during initial db insert
-      index_block_hash: '',
-    }),
+    txs: parseDataStoreTxEventData(
+      parsedTxs,
+      msg.events,
+      {
+        block_height: -1, // TODO: fill during initial db insert
+        index_block_hash: '',
+      },
+      chainId
+    ),
   };
   await db.updateMicroblocks(updateData);
 }
@@ -299,7 +304,7 @@ async function handleBlockMessage(
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
   };
 
   await db.update(dbData);
@@ -311,7 +316,8 @@ function parseDataStoreTxEventData(
   blockData: {
     block_height: number;
     index_block_hash: string;
-  }
+  },
+  chainId: ChainID
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
     const dbTx: DataStoreBlockUpdateData['txs'][number] = {
@@ -372,7 +378,13 @@ function parseDataStoreTxEventData(
         if (!parsedTx) {
           throw new Error(`Unexpected missing tx during BNS parsing by tx_id ${event.txid}`);
         }
-        const name = parseNameFromContractEvent(event, parsedTx, blockData.block_height);
+        const name = parseNameFromContractEvent(
+          event,
+          parsedTx,
+          events,
+          blockData.block_height,
+          chainId
+        );
         if (name) {
           dbTx.names.push(name);
         }
