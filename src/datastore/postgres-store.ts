@@ -6924,8 +6924,29 @@ export class PgDataStore
         expireBlock = registered_at + namespaceLifetime.rows[0].lifetime;
       }
     }
-    // Insert zonefile and name.
-    const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+    // If we didn't receive a zonefile, keep the last valid one.
+    let finalZonefile = zonefile;
+    let finalZonefileHash = zonefile_hash;
+    if (finalZonefileHash === '') {
+      const lastZonefile = await client.query<{ zonefile: string; zonefile_hash: string }>(
+        `
+        SELECT z.zonefile, z.zonefile_hash
+        FROM zonefiles AS z
+        INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+        WHERE z.name = $1
+          AND n.canonical = TRUE
+          AND n.microblock_canonical = TRUE
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        LIMIT 1
+        `,
+        [name]
+      );
+      if (lastZonefile.rowCount > 0) {
+        finalZonefile = lastZonefile.rows[0].zonefile;
+        finalZonefileHash = lastZonefile.rows[0].zonefile_hash;
+      }
+    }
+    const validZonefileHash = this.validateZonefileHash(finalZonefileHash);
     await client.query(
       `
         INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
@@ -6935,7 +6956,7 @@ export class PgDataStore
       `,
       [
         name,
-        zonefile,
+        finalZonefile,
         validZonefileHash,
         hexToBuffer(tx_id),
         hexToBuffer(blockData.index_block_hash),

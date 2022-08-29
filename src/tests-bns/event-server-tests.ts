@@ -291,6 +291,133 @@ describe('BNS event server tests', () => {
     expect(name2.result?.address).toBe('SP1TY00PDWJVNVEX7H7KJGS2K2YXHTQMY8C0G1NVP');
   });
 
+  test('name-renewal called with no zonefile_hash', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0xf81ef7f114213b9034a4378345a931a97c781fab398c3d7a2053f0d0bf48d311',
+      index_block_hash: '0xaec282925b5096c0bd98588d25a97e134bcc4f19b6600859fa267cf0ee4eaf2d',
+      burn_block_height: 726955,
+      burn_block_hash: '0x00000000000000000001523f01cb4304d39527454d2eec79817b50c033a5c5d9',
+      burn_block_time: 1647068146,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        sender_address: 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ'
+      })
+      .addTxBnsNamespace({
+        namespace_id: 'id',
+        lifetime: 1000
+      })
+      .addTxBnsName({
+        name: 'friedger.id',
+        namespace_id: 'id',
+        zonefile_hash: 'b472a266d0bd89c13706a4132ccfb16f7c3b9fcb',
+        address: 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ'
+      })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV('friedger.id'),
+        asset_identifier: 'SP000000000000000000002Q6VF78.bns::names',
+        recipient: 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ',
+      })
+      .build();
+    await db.update(block);
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0x640362ec47c40de3337491993e42efe60d05187431633ab03c3f5d33e70d1f8e',
+        microblock_sequence: 0,
+        parent_index_block_hash: '0xaec282925b5096c0bd98588d25a97e134bcc4f19b6600859fa267cf0ee4eaf2d'
+      })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    const name1 = await db.getName({
+      name: 'friedger.id',
+      includeUnanchored: true,
+      chainId: ChainID.Mainnet
+    });
+    expect(name1.found).toBe(true);
+    expect(name1.result?.namespace_id).toBe('id');
+    expect(name1.result?.tx_id).toBe('0x1234');
+    expect(name1.result?.status).toBe('name-register');
+    expect(name1.result?.expire_block).toBe(1001);
+    expect(name1.result?.address).toBe('SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
+
+    const payload = {
+      "events": [],
+      "block_hash": "0xaaee893667244adcb8581abac372f1f8c385d402b71e8e8b4ac91e8066024fd5",
+      "miner_txid": "0x6ff493c6b98b9cff0638c7c5276af8e627b8ed779965a5f1c11bbc0810834b3e",
+      "block_height": 2,
+      "transactions": [
+        {
+          "txid": "0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d",
+          "raw_tx": "0x00000000010500e1cd6c39a3d316e49bf16b4a20636462231b84f200000000000000000000000000000000000094f2c8529dcb8a55a5cfd4434c68cae9cd54f26f01c656369585db3ba364150a4fead679adf35cf5ba1026656b3873daf3380f48ec6dcc175ada868e531decf5001d04c185cad28a3f5299d3fcbcbcbe66b2e1e227000000000000000000000000000186a0000064cc0eb565e85c0d4110c9a760c8fdad21999409f89320e355f326c144b8ada4268244f80734170cea96f683d2431b59f07f276a10efc80793d4dceef8feb2310302000000000216000000000000000000000000000000000000000003626e730c6e616d652d72656e6577616c000000050200000002696402000000086672696564676572010000000000000000000000000001a72a0909",
+          "status": "success",
+          "tx_index": 2,
+          "raw_result": "0x0703",
+          "contract_abi": null,
+          "execution_cost": {
+            "runtime": 184253,
+            "read_count": 11,
+            "read_length": 43250,
+            "write_count": 1,
+            "write_length": 143
+          },
+          "microblock_hash": null,
+          "microblock_sequence": null,
+          "microblock_parent_hash": null
+        }
+      ],
+      "anchored_cost": {
+        "runtime": 28375070,
+        "read_count": 8888,
+        "read_length": 1085153,
+        "write_count": 593,
+        "write_length": 156284
+      },
+      "burn_block_hash": "0x0000000000000000000552fb5fd8c08ad8f1ef30c239369a8a3380ec1566047a",
+      "burn_block_time": 1647068392,
+      "index_block_hash": "0x9ff46918054b1aa94571a60e14921a56977f26af2adcbf4a7f64138566feba48",
+      "burn_block_height": 726956,
+      "parent_block_hash": "0xf81ef7f114213b9034a4378345a931a97c781fab398c3d7a2053f0d0bf48d311",
+      "parent_microblock": "0x640362ec47c40de3337491993e42efe60d05187431633ab03c3f5d33e70d1f8e",
+      "matured_miner_rewards": [],
+      "parent_burn_block_hash": "0x00000000000000000001523f01cb4304d39527454d2eec79817b50c033a5c5d9",
+      "parent_index_block_hash": "0xaec282925b5096c0bd98588d25a97e134bcc4f19b6600859fa267cf0ee4eaf2d",
+      "parent_burn_block_height": 726955,
+      "confirmed_microblocks_cost": {
+        "runtime": 360206,
+        "read_count": 38,
+        "read_length": 95553,
+        "write_count": 8,
+        "write_length": 378
+      },
+      "parent_microblock_sequence": 0,
+      "parent_burn_block_timestamp": 1647068146
+    };
+
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/new_block',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(payload), 'utf8'),
+      throwOnNotOK: true,
+    });
+
+    const name2 = await db.getName({
+      name: 'friedger.id',
+      includeUnanchored: true,
+      chainId: ChainID.Mainnet
+    });
+    expect(name2.found).toBe(true);
+    expect(name2.result?.namespace_id).toBe('id');
+    expect(name2.result?.tx_id).toBe('0xf037c8da8210e2a348bbecd3bc44901de875d3774c5fce49cb75d95f2dc2ca4d');
+    expect(name2.result?.status).toBe('name-renewal');
+    expect(name2.result?.expire_block).toBe(1002); // Updated correctly
+    expect(name2.result?.address).toBe('SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ');
+  });
+
   test('/attachments/new with re-orged zonefiles', async () => {
     const block1 = new TestBlockBuilder({
       block_height: 1,

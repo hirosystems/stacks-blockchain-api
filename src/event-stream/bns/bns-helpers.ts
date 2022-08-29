@@ -1,4 +1,4 @@
-import { ChainID, ClarityType, hexToCV } from '@stacks/transactions';
+import { BufferCV, ChainID, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
 import { hexToBuffer, hexToUtf8String } from '../../helpers';
 import {
   CoreNodeEvent,
@@ -247,6 +247,42 @@ function isEventFromBnsContract(event: SmartContractEvent): boolean {
     (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
       event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
   );
+}
+
+export function parseNameRenewalWithNoZonefileHashFromContractCall(
+  tx: CoreNodeParsedTxMessage,
+  chainId: ChainID
+): DbBnsName | undefined {
+  const payload = tx.parsed_tx.payload;
+  if (
+    payload.type_id === TxPayloadTypeID.ContractCall &&
+    payload.function_name === 'name-renewal' &&
+    getBnsContractID(chainId) === `${payload.address}.${payload.contract_name}` &&
+    payload.function_args.length === 5 &&
+    hexToCV(payload.function_args[4].hex).type === ClarityType.OptionalNone
+  ) {
+    const namespace = (hexToCV(payload.function_args[0].hex) as BufferCV).buffer.toString('utf8');
+    const name = (hexToCV(payload.function_args[1].hex) as BufferCV).buffer.toString('utf8');
+    return {
+      name: `${name}.${namespace}`,
+      namespace_id: namespace,
+      // NOTE: We're not using the `new_owner` argument here because there's a bug in the BNS
+      // contract that doesn't actually transfer the name to the given principal:
+      // https://github.com/stacks-network/stacks-blockchain/issues/2680, maybe this will be fixed
+      // in Stacks 2.1
+      address: tx.sender_address,
+      // expire_block will be calculated upon DB insert based on the namespace's lifetime.
+      expire_block: 0,
+      registered_at: tx.block_height,
+      // Since we received no zonefile_hash, the previous one will be reused when writing to DB.
+      zonefile_hash: '',
+      zonefile: '',
+      tx_id: tx.parsed_tx.tx_id,
+      tx_index: tx.core_tx.tx_index,
+      status: 'name-renewal',
+      canonical: true,
+    };
+  }
 }
 
 export function parseNameFromContractEvent(
