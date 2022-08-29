@@ -7235,32 +7235,6 @@ export class PgDataStore
       if (nameZonefile.rowCount === 0) {
         return;
       }
-      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
-      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
-      // since they did not generate an NFT event for us to track.
-      if (nameZonefile.rows[0].registered_at !== 0) {
-        let value: Buffer;
-        try {
-          value = bnsNameCV(name);
-        } catch (error) {
-          return;
-        }
-        const nameCustody = await client.query<{ recipient: string }>(
-          `
-          SELECT recipient
-          FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
-          WHERE asset_identifier = $1 AND value = $2
-          `,
-          [getBnsSmartContractId(chainId), value]
-        );
-        if (nameCustody.rowCount === 0) {
-          return;
-        }
-        return {
-          ...nameZonefile.rows[0],
-          address: nameCustody.rows[0].recipient,
-        };
-      }
       return nameZonefile.rows[0];
     });
     if (queryResult) {

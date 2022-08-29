@@ -138,7 +138,10 @@ describe('BNS event server tests', () => {
       burn_block_hash: '0x00000000000000000008b9d65609c6b39bb89d7da35433e4b287835d7112d6d4',
       burn_block_time: 1657123396,
     })
-      .addTx({ tx_id: '0x1234' })
+      .addTx({
+        tx_id: '0x1234',
+        sender_address: 'SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J'
+      })
       .addTxBnsNamespace({
         namespace_id: 'btc',
         lifetime: 1000
@@ -146,7 +149,8 @@ describe('BNS event server tests', () => {
       .addTxBnsName({
         name: 'dayslikewater.btc',
         namespace_id: 'btc',
-        zonefile_hash: 'b472a266d0bd89c13706a4132ccfb16f7c3b9fcb'
+        zonefile_hash: 'b472a266d0bd89c13706a4132ccfb16f7c3b9fcb',
+        address: 'SPP117ENNNDQVQ1G3E0N1AP178GXBTC2YNQ3H7J'
       })
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
