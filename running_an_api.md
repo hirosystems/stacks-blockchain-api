@@ -295,7 +295,8 @@ To verfiy the database is ready:
     - *this will require a locally installed postgresql client*
     - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
 2. List current databases: `\l`
-3. Disconnect from the DB : `\q`
+3. Verify data is being written to the database: `select * from blocks limit 1;`
+4. Disconnect from the DB : `\q`
 
 ### stacks-blockchain testing
 
