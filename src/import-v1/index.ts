@@ -7,7 +7,6 @@ import * as path from 'path';
 import * as zlib from 'zlib';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import * as split2 from 'split2';
-
 import {
   DbBnsName,
   DbBnsNamespace,
@@ -24,9 +23,8 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-
 import { PoolClient } from 'pg';
-import { BnsGenesisBlock } from 'src/event-replay/helpers';
+import { BnsGenesisBlock } from '../event-replay/helpers';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
