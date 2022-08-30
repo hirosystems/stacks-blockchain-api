@@ -98,7 +98,6 @@ export function createBnsNamesRouter(db: DataStore, chainId: ChainID): express.R
               return;
             }
             res.redirect(`${resolverResult.result}/v1/names${req.url}`);
-            next();
             return;
           }
           res.status(404).json({ error: `cannot find subdomain ${name}` });
