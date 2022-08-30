@@ -4,6 +4,7 @@ import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datasto
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { importV1BnsData, importV1TokenOfferingData } from '../import-v1';
 
 enum EventImportMode {
   /**
@@ -122,6 +123,15 @@ export async function importEventsFromTsv(
     httpLogLevel: 'debug',
   });
 
+  // Import V1 data
+  await importV1TokenOfferingData(db);
+  if (!process.env.BNS_IMPORT_DIR) {
+    logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+  } else {
+    await importV1BnsData(db, process.env.BNS_IMPORT_DIR);
+  }
+
+  // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
   const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
     console.log(status);
