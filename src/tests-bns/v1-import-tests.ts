@@ -5,7 +5,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { ChainID } from '@stacks/transactions';
-import { importV1BnsData } from '../import-v1';
+import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 
@@ -28,7 +28,8 @@ describe('BNS V1 import', () => {
   });
 
   test('v1-import', async () => {
-    await importV1BnsData(db, 'src/tests-bns/import-test-files');
+    await importV1BnsNames(db, 'src/tests-bns/import-test-files');
+    await importV1BnsSubdomains(db, 'src/tests-bns/import-test-files');
 
     // Names
     const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
