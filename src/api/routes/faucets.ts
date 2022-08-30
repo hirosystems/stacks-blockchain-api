@@ -3,10 +3,9 @@ import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
-import * as BN from 'bn.js';
 import { BigNumber } from 'bignumber.js';
 import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
-import { StacksNetwork } from '@stacks/network';
+import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { intMax, logger, stxToMicroStx } from '../../helpers';
@@ -25,8 +24,9 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
       logger.error(error);
       throw new Error(error);
     }
-    const network = getStacksTestnetNetwork();
-    network.coreApiUrl = `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`;
+    const network = new StacksTestnet({
+      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    });
     networks.push(network);
   }
   return networks;
@@ -186,7 +186,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         const generateTx = async (network: StacksNetwork, nonce?: bigint, fee?: bigint) => {
           const txOpts: SignedTokenTransferOptions = {
             recipient: address,
-            amount: new BN(stxAmount.toString()),
+            amount: stxAmount,
             senderKey: privateKey,
             network: network,
             memo: 'Faucet',
@@ -208,7 +208,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           try {
             const tx = await generateTx(network);
             nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
-            fees.push(tx.auth.getFee());
+            fees.push(tx.auth.spendingCondition.fee);
           } catch (error: any) {
             txGenFetchError = error;
           }

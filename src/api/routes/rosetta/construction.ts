@@ -1,5 +1,4 @@
 import { asyncHandler } from '../../async-handler';
-import * as BN from 'bn.js';
 import {
   NetworkIdentifier,
   RosettaAccountIdentifier,
@@ -190,14 +189,14 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // dummy transaction to calculate size
           const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
             recipient: options.token_transfer_recipient_address as string,
-            amount: new BN(options.amount as string),
+            amount: BigInt(options.amount as string),
             // We don't know the fee yet but need a placeholder
-            fee: new BN(0),
+            fee: 0,
             // placeholder public key
             publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             network: getStacksNetwork(),
             // We don't know the non yet but need a placeholder
-            nonce: new BN(0),
+            nonce: 0,
             memo: req.body.metadata?.memo,
             anchorMode: AnchorMode.Any,
           };
@@ -217,7 +216,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // dummy transaction to calculate size
           const poxAddress = options.pox_addr;
           const { hashMode, data } = decodeBtcAddress(poxAddress);
-          const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+          const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
             hashbytes,
@@ -240,8 +239,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
-            fee: new BN(0),
-            nonce: new BN(0),
+            fee: 0,
+            nonce: 0,
             anchorMode: AnchorMode.Any,
           };
           transaction = await makeUnsignedContractCall(dummyStackingTx);
@@ -262,7 +261,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           if (options.pox_addr) {
             const dummyPoxAddress = options.pox_addr;
             const { hashMode, data } = decodeBtcAddress(dummyPoxAddress);
-            const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+            const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             optionalPoxAddressCV = someCV(
               tupleCV({
@@ -285,8 +284,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
-            fee: new BN(0),
-            nonce: new BN(0),
+            fee: 0,
+            nonce: 0,
             anchorMode: AnchorMode.Any,
           };
           transaction = await makeUnsignedContractCall(dummyStackingTx);
@@ -624,7 +623,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         return;
       }
 
-      const nonce = new BN(req.body.metadata.account_sequence);
+      const nonce = BigInt(req.body.metadata.account_sequence);
 
       if (publicKeys.length !== 1) {
         //TODO support multi-sig in the future.
@@ -652,8 +651,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // signel signature
           const tokenTransferOptions: UnsignedTokenTransferOptions = {
             recipient: recipientAddress,
-            amount: new BN(amount),
-            fee: new BN(fee),
+            amount: BigInt(amount),
+            fee: BigInt(fee),
             publicKey: publicKeys[0].hex_bytes,
             network: getStacksNetwork(),
             nonce: nonce,
@@ -672,7 +671,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           }
           const poxBTCAddress = options.pox_addr;
           const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-          const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+          const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
             hashbytes,
@@ -709,7 +708,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               uintCV(req.body.metadata.burn_block_height),
               uintCV(options.number_of_cycles),
             ],
-            fee: new BN(options.fee),
+            fee: BigInt(options.fee),
             nonce: nonce,
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -724,7 +723,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           if (options.pox_addr) {
             const poxBTCAddress = options.pox_addr;
             const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-            const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+            const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             poxAddressCV = someCV(
               tupleCV({
@@ -767,7 +766,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               expire_burn_block_heightCV,
               poxAddressCV,
             ],
-            fee: new BN(options.fee),
+            fee: BigInt(options.fee),
             nonce: nonce,
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -785,7 +784,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       const signer = new TransactionSigner(transaction);
 
-      const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), nonce);
+      const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, BigInt(fee), nonce);
       const accountIdentifier: RosettaAccountIdentifier = {
         address: senderAddress,
       };

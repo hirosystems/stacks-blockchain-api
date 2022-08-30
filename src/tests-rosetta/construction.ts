@@ -1,4 +1,3 @@
-import * as BigNum from 'bn.js';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
@@ -27,7 +26,6 @@ import {
   UnsignedContractCallOptions,
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { bufferToHexPrefixString, FoundOrNot, timeout } from '../helpers';
 import {
@@ -611,8 +609,8 @@ describe('Rosetta Construction', () => {
     );
     const senderAddr = testnetKeys[0].stacksAddress;
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
-    const amount = new BN(1000);
-    const fee = new BN(180);
+    const amount = 1000;
+    const fee = 180;
     const options: SignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
@@ -655,8 +653,8 @@ describe('Rosetta Construction', () => {
     );
     const senderAddr = testnetKeys[0].stacksAddress;
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
-    const amount = new BN(1000);
-    const fee = new BN(180);
+    const amount = 1000;
+    const fee = 180;
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
@@ -695,11 +693,11 @@ describe('Rosetta Construction', () => {
     const txOptions = {
       senderKey: testnetKeys[0].secretKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
+      amount: 12345,
       network: getStacksTestnetNetwork(),
       memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
+      nonce: 0,
+      fee: 200,
       anchorMode: AnchorMode.Any,
     };
 
@@ -724,12 +722,12 @@ describe('Rosetta Construction', () => {
   test('construction/submit - unsigned', async () => {
     const txOptions = {
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
+      amount: 12345,
       publicKey: publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey)),
       network: getStacksTestnetNetwork(),
       memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
+      nonce: 0,
+      fee: 200,
       anchorMode: AnchorMode.Any,
     };
 
@@ -840,11 +838,11 @@ describe('Rosetta Construction', () => {
 
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipient,
-      amount: new BN('500000'),
-      fee: new BN(fee),
+      amount: '500000',
+      fee: fee,
       publicKey: publicKey,
       network: getStacksNetwork(),
-      nonce: new BN(0),
+      nonce: 0,
       memo: 'SAMPLE MEMO',
       anchorMode: AnchorMode.Any,
     };
@@ -855,7 +853,7 @@ describe('Rosetta Construction', () => {
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, 0);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1068,7 +1066,7 @@ describe('Rosetta Construction', () => {
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
     const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
       hashbytes,
@@ -1088,8 +1086,8 @@ describe('Rosetta Construction', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: new BN(0), 
-      fee: new BN(fee),
+      nonce: 0, 
+      fee: fee,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
@@ -1099,7 +1097,7 @@ describe('Rosetta Construction', () => {
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, 0);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1310,11 +1308,11 @@ describe('Rosetta Construction', () => {
     const txOptions: UnsignedTokenTransferOptions = {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
+      amount: 12345,
       network: getStacksTestnetNetwork(),
       memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
+      nonce: 0,
+      fee: 200,
       anchorMode: AnchorMode.Any,
     };
 
@@ -1323,7 +1321,7 @@ describe('Rosetta Construction', () => {
 
     const signer = new TransactionSigner(unsignedTransaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BigNum(200), new BigNum(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, 200, 0);
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
     const signedSerializedTx = signer.transaction.serialize().toString('hex');
@@ -1497,11 +1495,11 @@ describe('Rosetta Construction', () => {
     const txOptions: UnsignedTokenTransferOptions = {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
+      amount: 12345,
       network: getStacksTestnetNetwork(),
       memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
+      nonce: 0,
+      fee: 200,
       anchorMode: AnchorMode.Any,
     };
 
@@ -1870,7 +1868,7 @@ describe('Rosetta Construction', () => {
       ],
     };
     const { hashMode, data } = decodeBtcAddress(pox_addr);
-    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
       hashbytes,
@@ -1888,15 +1886,15 @@ describe('Rosetta Construction', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: new BN(nonce), 
-      fee: new BN(fee),
+      nonce: nonce, 
+      fee: fee,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
     const signer = new TransactionSigner(transaction);
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(nonce));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, nonce);
     const payloadsResult = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
       .send(payloadsRequest);
@@ -2324,7 +2322,7 @@ describe('Rosetta Construction', () => {
       ],
     };
     const { hashMode, data } = decodeBtcAddress(pox_addr);
-    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
       hashbytes,
@@ -2342,7 +2340,7 @@ describe('Rosetta Construction', () => {
         noneCV(),
         someCV(poxAddressCV),
       ],
-      fee: new BN(fee),
+      fee: fee,
       nonce: nonce,
       validateWithAbi: false,
       network: getStacksNetwork(),
@@ -2352,7 +2350,7 @@ describe('Rosetta Construction', () => {
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = transaction.serialize();
     const signer = new TransactionSigner(transaction);
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(nonce));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, nonce);
     const payloadsResult = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
       .send(payloadsRequest);

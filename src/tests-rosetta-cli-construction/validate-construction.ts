@@ -4,7 +4,6 @@ import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { AnchorMode, ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
-import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout } from '../helpers';
@@ -100,12 +99,13 @@ async function transferStx(
   await waitForBlock(api);
   const transferTx = await makeSTXTokenTransfer({
     recipient: recipientAddr,
-    amount: new BN(amount),
+    amount: amount,
     senderKey: senderPk,
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
   const serialized: Buffer = transferTx.serialize();
 
@@ -146,11 +146,11 @@ async function sendCoreTx(
 }
 
 function GetStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = getCoreNodeEndpoint({
+  const url = getCoreNodeEndpoint({
     host: `http://${HOST}`,
     port: PORT,
   });
+  const stacksNetwork = new StacksTestnet({ url });
   return stacksNetwork;
 }
 

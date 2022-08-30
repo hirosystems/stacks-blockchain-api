@@ -6,7 +6,6 @@ import {
   PostConditionMode,
   AnchorMode,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import {
   DbTx,
   DbTxStatus,
@@ -98,16 +97,17 @@ describe('api tests', () => {
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
       anchorMode: AnchorMode.Any,
+      fee: 100000,
     });
 
     const contractId = senderAddress + '.' + contractName;
 
-    const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-    const feeRateResult = await feeRateReq.text();
-    const txBytes = new BN(contractDeployTx.serialize().byteLength);
-    const feeRate = new BN(feeRateResult);
-    const fee = feeRate.mul(txBytes);
-    contractDeployTx.setFee(fee);
+    // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+    // const feeRateResult = await feeRateReq.text();
+    // const txBytes = BigInt(contractDeployTx.serialize().byteLength);
+    // const feeRate = BigInt(feeRateResult);
+    // const fee = feeRate * txBytes;
+    // contractDeployTx.setFee(fee);
     const { txId } = await sendCoreTx(contractDeployTx.serialize());
     return { txId, contractId };
   }

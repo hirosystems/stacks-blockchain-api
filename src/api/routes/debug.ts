@@ -1,5 +1,4 @@
 import * as express from 'express';
-import * as BN from 'bn.js';
 import * as btc from 'bitcoinjs-lib';
 import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as bodyParser from 'body-parser';
@@ -80,13 +79,19 @@ const testnetKeyMap: Record<
 );
 
 export function getStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
+  return new StacksTestnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
+}
+
+function getRandomInt(min: number, max: number) {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min) + min);
 }
 
 export function createDebugRouter(db: PgStore): express.Router {
-  const defaultTxFee = 12345;
+  const defaultTxFee = 123450;
   const stacksNetwork = getStacksTestnetNetwork();
 
   const router = express.Router();
@@ -201,13 +206,13 @@ export function createDebugRouter(db: PgStore): express.Router {
 
       const transferTx = await makeUnsignedSTXTokenTransfer({
         recipient: recipient_address,
-        amount: new BN(stx_amount),
+        amount: BigInt(stx_amount),
         memo: memo,
         network: stacksNetwork,
         numSignatures: sigsRequired,
         publicKeys: signerPubKeys,
         sponsored: sponsored,
-        fee: new BN(500),
+        fee: defaultTxFee,
         anchorMode: AnchorMode.Any,
       });
 
@@ -228,6 +233,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           network: stacksNetwork,
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
+          fee: defaultTxFee,
         });
         serialized = sponsoredTx.serialize();
         expectedTxId = sponsoredTx.txid();
@@ -332,12 +338,13 @@ export function createDebugRouter(db: PgStore): express.Router {
 
       const transferTx = await makeSTXTokenTransfer({
         recipient: recipientAddress,
-        amount: new BN(stx_amount),
+        amount: BigInt(stx_amount),
         memo: memo,
         network: stacksNetwork,
         senderKey: origin_key,
         sponsored: sponsored,
         anchorMode: AnchorMode.Any,
+        fee: defaultTxFee,
       });
 
       let serialized: Buffer;
@@ -348,6 +355,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           network: stacksNetwork,
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
+          fee: defaultTxFee,
         });
         serialized = sponsoredTx.serialize();
         expectedTxId = sponsoredTx.txid();
@@ -444,13 +452,14 @@ export function createDebugRouter(db: PgStore): express.Router {
       const anchorMode: AnchorMode = Number(anchor_mode);
       const transferTx = await makeSTXTokenTransfer({
         recipient: recipient_address,
-        amount: new BN(stx_amount),
+        amount: BigInt(stx_amount),
         senderKey: origin_key,
         network: stacksNetwork,
         memo: memo,
         sponsored: sponsored,
-        nonce: new BN(txNonce),
+        nonce: txNonce,
         anchorMode: anchorMode,
+        fee: defaultTxFee,
       });
 
       let serialized: Buffer;
@@ -461,6 +470,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           network: stacksNetwork,
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
+          fee: defaultTxFee,
         });
         serialized = sponsoredTx.serialize();
         expectedTxId = sponsoredTx.txid();
@@ -593,7 +603,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           uintCV(minStxAmount.toString()),
           tupleCV({
             hashbytes: bufferCV(data),
-            version: bufferCV(new BN(hashMode).toBuffer()),
+            version: bufferCV(Buffer.from([hashMode])),
           }),
           uintCV(coreInfo.burn_block_height),
           uintCV(cycles),
@@ -636,7 +646,7 @@ export function createDebugRouter(db: PgStore): express.Router {
 
       <label for="contract_name">Contract name</label>
       <input type="text" id="contract_name" name="contract_name" value="${htmlEscape(
-        SampleContracts[0].contractName
+        `${SampleContracts[0].contractName}-${getRandomInt(1000, 9999)}`
       )}" pattern="^[a-zA-Z]([a-zA-Z0-9]|[-_!?+&lt;&gt;=/*])*$|^[-+=/*]$|^[&lt;&gt;]=?$" maxlength="128">
 
       <label for="source_code">Contract Clarity source code</label>
@@ -668,10 +678,11 @@ export function createDebugRouter(db: PgStore): express.Router {
         .replace(/\t/g, ' ');
       const contractDeployTx = await makeContractDeploy({
         contractName: contract_name,
+        clarityVersion: 2,
         codeBody: normalized_contract_source,
         senderKey: origin_key,
-        network: stacksNetwork,
-        fee: new BN(defaultTxFee),
+        network: getStacksTestnetNetwork(),
+        fee: defaultTxFee,
         postConditionMode: PostConditionMode.Allow,
         sponsored: sponsored,
         anchorMode: AnchorMode.Any,
@@ -685,6 +696,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           network: stacksNetwork,
           transaction: contractDeployTx,
           sponsorPrivateKey: sponsorKey,
+          fee: defaultTxFee,
         });
         serializedTx = sponsoredTx.serialize();
         expectedTxId = sponsoredTx.txid();
@@ -841,7 +853,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         functionArgs: clarityValueArgs,
         senderKey: originKey,
         network: stacksNetwork,
-        fee: new BN(defaultTxFee),
+        fee: defaultTxFee,
         postConditionMode: PostConditionMode.Allow,
         sponsored: sponsored,
         anchorMode: AnchorMode.Any,
@@ -855,6 +867,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           network: stacksNetwork,
           transaction: contractCallTx,
           sponsorPrivateKey: sponsorKey,
+          fee: defaultTxFee,
         });
         serialized = sponsoredTx.serialize();
         expectedTxId = sponsoredTx.txid();
