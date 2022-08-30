@@ -439,7 +439,7 @@ export interface DataStoreAttachmentData {
   blockHeight: number;
 }
 
-export interface DataStoreSubdomainBlockData {
+export interface DataStoreBnsBlockData {
   index_block_hash: string;
   parent_index_block_hash: string;
   microblock_hash: string;
@@ -449,7 +449,7 @@ export interface DataStoreSubdomainBlockData {
 
 export interface DataStoreAttachmentSubdomainData {
   attachment?: DataStoreAttachmentData;
-  blockData?: DataStoreSubdomainBlockData;
+  blockData?: DataStoreBnsBlockData;
   subdomains?: DbBnsSubdomain[];
 }
 
