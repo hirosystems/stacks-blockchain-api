@@ -4,7 +4,7 @@ import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datasto
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { importV1BnsData, importV1TokenOfferingData } from '../import-v1';
+import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
 
 enum EventImportMode {
   /**
@@ -123,12 +123,15 @@ export async function importEventsFromTsv(
     httpLogLevel: 'debug',
   });
 
-  // Import V1 data
   await importV1TokenOfferingData(db);
-  if (!process.env.BNS_IMPORT_DIR) {
-    logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+
+  // Import V1 BNS names first. Subdomains will be imported after TSV replay is finished in order to
+  // keep the size of the `subdomains` table small.
+  if (process.env.BNS_IMPORT_DIR) {
+    logger.info(`Using BNS export data from: ${process.env.BNS_IMPORT_DIR}`);
+    await importV1BnsNames(db, process.env.BNS_IMPORT_DIR);
   } else {
-    await importV1BnsData(db, process.env.BNS_IMPORT_DIR);
+    logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
   }
 
   // Import TSV chain data
@@ -173,6 +176,9 @@ export async function importEventsFromTsv(
     }
   }
   await db.finishEventReplay();
+  if (process.env.BNS_IMPORT_DIR) {
+    await importV1BnsSubdomains(db, process.env.BNS_IMPORT_DIR);
+  }
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();

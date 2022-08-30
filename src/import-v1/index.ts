@@ -27,13 +27,6 @@ import {
 
 import { PoolClient } from 'pg';
 
-const IMPORT_FILES = [
-  'chainstate.txt',
-  'name_zonefiles.txt',
-  'subdomains.csv',
-  'subdomain_zonefiles.txt',
-];
-
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
 const access = util.promisify(fs.access);
@@ -396,13 +389,7 @@ class StxVestingTransform extends stream.Transform {
   }
 }
 
-export async function importV1BnsData(db: PgDataStore, importDir: string) {
-  const configState = await db.getConfigState();
-  if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
-    logger.verbose('Stacks 1.0 BNS data is already imported');
-    return;
-  }
-
+async function validateBnsImportDir(importDir: string, importFiles: string[]) {
   try {
     const statResult = fs.statSync(importDir);
     if (!statResult.isDirectory()) {
@@ -413,18 +400,25 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
     throw error;
   }
 
-  logger.info('Stacks 1.0 BNS data import started');
-  logger.info(`Using BNS export data from: ${importDir}`);
-
   // validate contents with their .sha256 files
   // check if the files we need can be read
-  for (const fname of IMPORT_FILES) {
+  for (const fname of importFiles) {
     if (!(await valid(path.join(importDir, fname)))) {
       const errMsg = `Cannot read import file due to sha256 mismatch: ${fname}`;
       logError(errMsg);
       throw new Error(errMsg);
     }
   }
+}
+
+export async function importV1BnsNames(db: PgDataStore, importDir: string) {
+  const configState = await db.getConfigState();
+  if (configState.bns_names_onchain_imported) {
+    logger.verbose('Stacks 1.0 BNS names are already imported');
+    return;
+  }
+  await validateBnsImportDir(importDir, ['chainstate.txt', 'name_zonefiles.txt']);
+  logger.info('Stacks 1.0 BNS name import started');
 
   const client = await db.pool.connect();
   try {
@@ -435,7 +429,34 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
       new LineReaderStream({ highWaterMark: 100 }),
       new ChainProcessor(client, db, zhashes)
     );
+    const updatedConfigState: DbConfigState = {
+      ...configState,
+      bns_names_onchain_imported: true,
+    };
+    await db.updateConfigState(updatedConfigState, client);
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 
+  logger.info('Stacks 1.0 BNS name import completed');
+}
+
+export async function importV1BnsSubdomains(db: PgDataStore, importDir: string) {
+  const configState = await db.getConfigState();
+  if (configState.bns_subdomains_imported) {
+    logger.verbose('Stacks 1.0 BNS subdomains are already imported');
+    return;
+  }
+  await validateBnsImportDir(importDir, ['subdomains.csv', 'subdomain_zonefiles.txt']);
+  logger.info('Stacks 1.0 BNS subdomain import started');
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
     const blockData = {
       index_block_hash: '',
       parent_index_block_hash: '',
@@ -462,7 +483,6 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
 
     const updatedConfigState: DbConfigState = {
       ...configState,
-      bns_names_onchain_imported: true,
       bns_subdomains_imported: true,
     };
     await db.updateConfigState(updatedConfigState, client);
@@ -474,7 +494,7 @@ export async function importV1BnsData(db: PgDataStore, importDir: string) {
     client.release();
   }
 
-  logger.info('Stacks 1.0 BNS data import completed');
+  logger.info('Stacks 1.0 BNS subdomain import completed');
 }
 
 /** A passthrough stream which hashes the data as it passes through. */
