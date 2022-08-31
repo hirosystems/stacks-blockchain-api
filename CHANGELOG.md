@@ -1,3 +1,10 @@
+## [5.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.3...v5.0.0-beta.4) (2022-08-31)
+
+
+### Bug Fixes
+
+* add postgres connection error checking for ECONNRESET code ([03a1896](https://github.com/hirosystems/stacks-blockchain-api/commit/03a1896cff8937a5f39a8b75e5adf51a6344592c))
+
 ## [5.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.2...v5.0.0-beta.3) (2022-08-31)
 
 
