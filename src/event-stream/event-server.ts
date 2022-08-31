@@ -63,7 +63,11 @@ import {
 } from 'stacks-encoding-native-js';
 import { ChainID } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
-import { parseNameFromContractEvent, parseNamespaceFromContractEvent } from './bns/bns-helpers';
+import {
+  parseNameFromContractEvent,
+  parseNameRenewalWithNoZonefileHashFromContractCall,
+  parseNamespaceFromContractEvent,
+} from './bns/bns-helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -199,10 +203,15 @@ async function handleMicroblockMessage(
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
-      block_height: -1, // TODO: fill during initial db insert
-      index_block_hash: '',
-    }),
+    txs: parseDataStoreTxEventData(
+      parsedTxs,
+      msg.events,
+      {
+        block_height: -1, // TODO: fill during initial db insert
+        index_block_hash: '',
+      },
+      chainId
+    ),
   };
   await db.updateMicroblocks(updateData);
 }
@@ -299,7 +308,7 @@ async function handleBlockMessage(
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
   };
 
   await db.update(dbData);
@@ -311,7 +320,8 @@ function parseDataStoreTxEventData(
   blockData: {
     block_height: number;
     index_block_hash: string;
-  }
+  },
+  chainId: ChainID
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
     const dbTx: DataStoreBlockUpdateData['txs'][number] = {
@@ -325,16 +335,29 @@ function parseDataStoreTxEventData(
       names: [],
       namespaces: [],
     };
-    if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract) {
-      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
-      dbTx.smartContracts.push({
-        tx_id: tx.core_tx.txid,
-        contract_id: contractId,
-        block_height: blockData.block_height,
-        source_code: tx.parsed_tx.payload.code_body,
-        abi: JSON.stringify(tx.core_tx.contract_abi),
-        canonical: true,
-      });
+    switch (tx.parsed_tx.payload.type_id) {
+      case TxPayloadTypeID.SmartContract:
+        const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
+        dbTx.smartContracts.push({
+          tx_id: tx.core_tx.txid,
+          contract_id: contractId,
+          block_height: blockData.block_height,
+          source_code: tx.parsed_tx.payload.code_body,
+          abi: JSON.stringify(tx.core_tx.contract_abi),
+          canonical: true,
+        });
+        break;
+      case TxPayloadTypeID.ContractCall:
+        // Name renewals can happen without a zonefile_hash. In that case, the BNS contract does NOT
+        // emit a `name-renewal` contract log, causing us to miss this event. This function catches
+        // those cases.
+        const name = parseNameRenewalWithNoZonefileHashFromContractCall(tx, chainId);
+        if (name) {
+          dbTx.names.push(name);
+        }
+        break;
+      default:
+        break;
     }
     return dbTx;
   });
@@ -372,7 +395,13 @@ function parseDataStoreTxEventData(
         if (!parsedTx) {
           throw new Error(`Unexpected missing tx during BNS parsing by tx_id ${event.txid}`);
         }
-        const name = parseNameFromContractEvent(event, parsedTx, blockData.block_height);
+        const name = parseNameFromContractEvent(
+          event,
+          parsedTx,
+          events,
+          blockData.block_height,
+          chainId
+        );
         if (name) {
           dbTx.names.push(name);
         }

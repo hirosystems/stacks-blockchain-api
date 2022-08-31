@@ -1,6 +1,11 @@
-import { ChainID, ClarityType, hexToCV } from '@stacks/transactions';
+import { BufferCV, ChainID, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
 import { hexToBuffer, hexToUtf8String } from '../../helpers';
-import { CoreNodeParsedTxMessage } from '../../event-stream/core-node-message';
+import {
+  CoreNodeEvent,
+  CoreNodeEventType,
+  CoreNodeParsedTxMessage,
+  NftTransferEvent,
+} from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';
@@ -244,10 +249,48 @@ function isEventFromBnsContract(event: SmartContractEvent): boolean {
   );
 }
 
+export function parseNameRenewalWithNoZonefileHashFromContractCall(
+  tx: CoreNodeParsedTxMessage,
+  chainId: ChainID
+): DbBnsName | undefined {
+  const payload = tx.parsed_tx.payload;
+  if (
+    payload.type_id === TxPayloadTypeID.ContractCall &&
+    payload.function_name === 'name-renewal' &&
+    getBnsContractID(chainId) === `${payload.address}.${payload.contract_name}` &&
+    payload.function_args.length === 5 &&
+    hexToCV(payload.function_args[4].hex).type === ClarityType.OptionalNone
+  ) {
+    const namespace = (hexToCV(payload.function_args[0].hex) as BufferCV).buffer.toString('utf8');
+    const name = (hexToCV(payload.function_args[1].hex) as BufferCV).buffer.toString('utf8');
+    return {
+      name: `${name}.${namespace}`,
+      namespace_id: namespace,
+      // NOTE: We're not using the `new_owner` argument here because there's a bug in the BNS
+      // contract that doesn't actually transfer the name to the given principal:
+      // https://github.com/stacks-network/stacks-blockchain/issues/2680, maybe this will be fixed
+      // in Stacks 2.1
+      address: tx.sender_address,
+      // expire_block will be calculated upon DB insert based on the namespace's lifetime.
+      expire_block: 0,
+      registered_at: tx.block_height,
+      // Since we received no zonefile_hash, the previous one will be reused when writing to DB.
+      zonefile_hash: '',
+      zonefile: '',
+      tx_id: tx.parsed_tx.tx_id,
+      tx_index: tx.core_tx.tx_index,
+      status: 'name-renewal',
+      canonical: true,
+    };
+  }
+}
+
 export function parseNameFromContractEvent(
   event: SmartContractEvent,
   tx: CoreNodeParsedTxMessage,
-  blockHeight: number
+  txEvents: CoreNodeEvent[],
+  blockHeight: number,
+  chainId: ChainID
 ): DbBnsName | undefined {
   if (!isEventFromBnsContract(event)) {
     return;
@@ -259,19 +302,21 @@ export function parseNameFromContractEvent(
     return;
   }
   let name_address = attachment.attachment.metadata.tx_sender.address;
-  // Is this a `name-transfer` contract call? If so, record the new owner.
-  if (
-    attachment.attachment.metadata.op === 'name-transfer' &&
-    tx.parsed_tx.payload.type_id === TxPayloadTypeID.ContractCall &&
-    tx.parsed_tx.payload.function_args.length >= 3 &&
-    tx.parsed_tx.payload.function_args[2].type_id === ClarityTypeID.PrincipalStandard
-  ) {
-    const decoded = decodeClarityValue(tx.parsed_tx.payload.function_args[2].hex);
-    const principal = decoded as ClarityValuePrincipalStandard;
-    name_address = principal.address;
+  // Is this a `name-transfer`? If so, look for the new owner in an `nft_transfer` event bundled in
+  // the same transaction.
+  if (attachment.attachment.metadata.op === 'name-transfer') {
+    for (const txEvent of txEvents) {
+      if (
+        txEvent.type === CoreNodeEventType.NftTransferEvent &&
+        txEvent.nft_transfer_event.asset_identifier === `${getBnsContractID(chainId)}::names`
+      ) {
+        name_address = txEvent.nft_transfer_event.recipient;
+        break;
+      }
+    }
   }
   const name: DbBnsName = {
-    name: attachment.attachment.metadata.name.concat('.', attachment.attachment.metadata.namespace),
+    name: `${attachment.attachment.metadata.name}.${attachment.attachment.metadata.namespace}`,
     namespace_id: attachment.attachment.metadata.namespace,
     address: name_address,
     // expire_block will be calculated upon DB insert based on the namespace's lifetime.

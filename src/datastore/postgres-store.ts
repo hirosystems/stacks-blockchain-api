@@ -1491,11 +1491,11 @@ export class PgDataStore
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
-          for (const bnsName of entry.names) {
-            await this.updateNames(client, entry.tx, bnsName);
-          }
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
+          }
+          for (const bnsName of entry.names) {
+            await this.updateNames(client, entry.tx, bnsName);
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
@@ -1701,11 +1701,11 @@ export class PgDataStore
       for (const smartContract of entry.smartContracts) {
         await this.updateSmartContract(client, entry.tx, smartContract);
       }
-      for (const bnsName of entry.names) {
-        await this.updateNames(client, entry.tx, bnsName);
-      }
       for (const namespace of entry.namespaces) {
         await this.updateNamespaces(client, entry.tx, namespace);
+      }
+      for (const bnsName of entry.names) {
+        await this.updateNames(client, entry.tx, bnsName);
       }
     }
   }
@@ -6896,8 +6896,59 @@ export class PgDataStore
       status,
       canonical,
     } = bnsName;
-    // inserting remaining names information in names table
-    const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+    // Try to figure out the name's expiration block based on its namespace's lifetime. However, if
+    // the name was only transferred, keep the expiration from the last register/renewal we had.
+    let expireBlock = expire_block;
+    if (status === 'name-transfer') {
+      const prevExpiration = await client.query<{ expire_block: number }>(
+        `SELECT expire_block
+        FROM names
+        WHERE name = $1
+          AND canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT 1`,
+        [name]
+      );
+      if (prevExpiration.rowCount > 0) {
+        expireBlock = prevExpiration.rows[0].expire_block;
+      }
+    } else {
+      const namespaceLifetime = await client.query<{ lifetime: number }>(
+        `SELECT lifetime
+        FROM namespaces
+        WHERE namespace_id = $1
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT 1`,
+        [namespace_id]
+      );
+      if (namespaceLifetime.rowCount > 0) {
+        expireBlock = registered_at + namespaceLifetime.rows[0].lifetime;
+      }
+    }
+    // If we didn't receive a zonefile, keep the last valid one.
+    let finalZonefile = zonefile;
+    let finalZonefileHash = zonefile_hash;
+    if (finalZonefileHash === '') {
+      const lastZonefile = await client.query<{ zonefile: string; zonefile_hash: string }>(
+        `
+        SELECT z.zonefile, z.zonefile_hash
+        FROM zonefiles AS z
+        INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+        WHERE z.name = $1
+          AND n.canonical = TRUE
+          AND n.microblock_canonical = TRUE
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        LIMIT 1
+        `,
+        [name]
+      );
+      if (lastZonefile.rowCount > 0) {
+        finalZonefile = lastZonefile.rows[0].zonefile;
+        finalZonefileHash = lastZonefile.rows[0].zonefile_hash;
+      }
+    }
+    const validZonefileHash = this.validateZonefileHash(finalZonefileHash);
     await client.query(
       `
         INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
@@ -6907,26 +6958,12 @@ export class PgDataStore
       `,
       [
         name,
-        zonefile,
+        finalZonefile,
         validZonefileHash,
         hexToBuffer(tx_id),
         hexToBuffer(blockData.index_block_hash),
       ]
     );
-    // Try to figure out the name's expiration block based on its namespace's lifetime.
-    const namespaceLifetime = await client.query<{ lifetime: number }>(
-      `SELECT lifetime
-      FROM namespaces
-      WHERE namespace_id = $1
-      AND canonical = true AND microblock_canonical = true
-      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
-      LIMIT 1`,
-      [namespace_id]
-    );
-    const expireBlock =
-      namespaceLifetime.rowCount > 0
-        ? registered_at + namespaceLifetime.rows[0].lifetime
-        : expire_block;
     await client.query(
       `
         INSERT INTO names(
@@ -7220,32 +7257,6 @@ export class PgDataStore
       );
       if (nameZonefile.rowCount === 0) {
         return;
-      }
-      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
-      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
-      // since they did not generate an NFT event for us to track.
-      if (nameZonefile.rows[0].registered_at !== 1) {
-        let value: Buffer;
-        try {
-          value = bnsNameCV(name);
-        } catch (error) {
-          return;
-        }
-        const nameCustody = await client.query<{ recipient: string }>(
-          `
-          SELECT recipient
-          FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
-          WHERE asset_identifier = $1 AND value = $2
-          `,
-          [getBnsSmartContractId(chainId), value]
-        );
-        if (nameCustody.rowCount === 0) {
-          return;
-        }
-        return {
-          ...nameZonefile.rows[0],
-          address: nameCustody.rows[0].recipient,
-        };
       }
       return nameZonefile.rows[0];
     });
