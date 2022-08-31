@@ -414,7 +414,7 @@ describe('BNS API tests', () => {
       .build();
     await db.update(block);
 
-    // Register another name in block 0 (imported from v1, so no nft_event produced)
+    // Register another name in block 1 (imported from v1, so no nft_event produced)
     const dbName2: DbBnsName = {
       name: 'imported.btc',
       address: address,
@@ -422,7 +422,7 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      registered_at: 0,
+      registered_at: 1,
       canonical: true,
       tx_id: '',
       tx_index: 0,

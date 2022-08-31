@@ -101,7 +101,7 @@ import {
   DbAssetEventTypeId,
   DbTxGlobalStatus,
   DataStoreAttachmentData,
-  DataStoreSubdomainBlockData,
+  DataStoreBnsBlockData,
   DataStoreAttachmentSubdomainData,
 } from './common';
 import {
@@ -2175,7 +2175,7 @@ export class PgDataStore
             );
             let isCanonical = true;
             let txIndex = -1;
-            const blockData: DataStoreSubdomainBlockData = {
+            const blockData: DataStoreBnsBlockData = {
               index_block_hash: '',
               parent_index_block_hash: '',
               microblock_hash: '',
@@ -7222,7 +7222,7 @@ export class PgDataStore
       // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
       // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
       // since they did not generate an NFT event for us to track.
-      if (nameZonefile.rows[0].registered_at !== 0) {
+      if (nameZonefile.rows[0].registered_at !== 1) {
         let value: Buffer;
         try {
           value = bnsNameCV(name);
@@ -7427,7 +7427,7 @@ export class PgDataStore
           names
         WHERE
           address = $1
-          AND registered_at = 0
+          AND registered_at = 1
           AND canonical = TRUE
           AND microblock_canonical = TRUE
         `,
