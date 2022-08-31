@@ -1,3 +1,10 @@
+## [5.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.4...v5.0.0-beta.5) (2022-08-31)
+
+
+### Bug Fixes
+
+* detect name transfers and renewals in special circumstances ([#1303](https://github.com/hirosystems/stacks-blockchain-api/issues/1303)) ([cd381a9](https://github.com/hirosystems/stacks-blockchain-api/commit/cd381a95b4d0d3f4bb08e447500153c3f652eff6))
+
 ## [5.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.3...v5.0.0-beta.4) (2022-08-31)
 
 
