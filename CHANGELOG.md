@@ -1,3 +1,10 @@
+## [5.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.2...v5.0.0-beta.3) (2022-08-31)
+
+
+### Bug Fixes
+
+* import BNS v1 data during event replay ([#1301](https://github.com/hirosystems/stacks-blockchain-api/issues/1301)) ([bc59817](https://github.com/hirosystems/stacks-blockchain-api/commit/bc59817aa98dd3a978a27b73d14738b64eb823f9))
+
 ## [5.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.1...v5.0.0-beta.2) (2022-08-26)
 
 
