@@ -2,7 +2,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { defaultLogLevel, getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
 import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
 
@@ -179,6 +179,7 @@ export async function importEventsFromTsv(
   }
   await db.finishEventReplay();
   if (process.env.BNS_IMPORT_DIR) {
+    logger.level = defaultLogLevel;
     await importV1BnsSubdomains(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
   }
   console.log(`Event import and playback successful.`);
