@@ -8,12 +8,15 @@ import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { DataStoreBlockUpdateData } from '../datastore/common';
+import { BnsGenesisBlock } from '../event-replay/helpers';
 
 describe('BNS V1 import', () => {
   let db: PgDataStore;
   let client: PoolClient;
   let eventServer: Server;
   let api: ApiServer;
+  let block: DataStoreBlockUpdateData;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -23,13 +26,22 @@ describe('BNS V1 import', () => {
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
-    const block = new TestBlockBuilder().build();
+    block = new TestBlockBuilder().addTx().build();
     await db.update(block);
   });
 
   test('v1-import', async () => {
-    await importV1BnsNames(db, 'src/tests-bns/import-test-files');
-    await importV1BnsSubdomains(db, 'src/tests-bns/import-test-files');
+    const genesis: BnsGenesisBlock = {
+      index_block_hash: block.block.index_block_hash,
+      parent_index_block_hash: block.block.parent_index_block_hash,
+      microblock_canonical: true,
+      microblock_hash: block.block.parent_microblock_hash,
+      microblock_sequence: block.block.parent_microblock_sequence,
+      tx_id: block.txs[0].tx.tx_id,
+      tx_index: block.txs[0].tx.tx_index,
+    };
+    await importV1BnsNames(db, 'src/tests-bns/import-test-files', genesis);
+    await importV1BnsSubdomains(db, 'src/tests-bns/import-test-files', genesis);
 
     // Names
     const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
@@ -38,8 +50,8 @@ describe('BNS V1 import', () => {
     expect(query1.body).toEqual({
       address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
       blockchain: 'stacks',
-      expire_block: 52595,
-      last_txid: '',
+      expire_block: 52596,
+      last_txid: '0x1234',
       status: 'name-register',
       zonefile:
         '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
@@ -122,7 +134,7 @@ describe('BNS V1 import', () => {
     expect(query9.body).toEqual({
       address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
       blockchain: 'stacks',
-      last_txid: '',
+      last_txid: '0x1234',
       resolver: 'https://registrar.blockstack.org',
       status: 'registered_subdomain',
       zonefile:

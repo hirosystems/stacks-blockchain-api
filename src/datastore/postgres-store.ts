@@ -101,7 +101,7 @@ import {
   DbAssetEventTypeId,
   DbTxGlobalStatus,
   DataStoreAttachmentData,
-  DataStoreSubdomainBlockData,
+  DataStoreBnsBlockData,
   DataStoreAttachmentSubdomainData,
 } from './common';
 import {
@@ -2175,7 +2175,7 @@ export class PgDataStore
             );
             let isCanonical = true;
             let txIndex = -1;
-            const blockData: DataStoreSubdomainBlockData = {
+            const blockData: DataStoreBnsBlockData = {
               index_block_hash: '',
               parent_index_block_hash: '',
               microblock_hash: '',
@@ -7438,7 +7438,7 @@ export class PgDataStore
           names
         WHERE
           address = $1
-          AND registered_at = 0
+          AND registered_at = 1
           AND canonical = TRUE
           AND microblock_canonical = TRUE
         `,
