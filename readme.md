@@ -98,19 +98,51 @@ For running offline mode set an environment variable `STACKS_API_MODE=offline`
 
 ## Event Replay
 
-The stacks-node is only able to emit events live as they happen. This poses a problem in the scenario where the stacks-blockchain-api needs to
-be upgraded and its database cannot be migrated to a new schema. One way to handle this upgrade is to wipe the stacks-blockchain-api's database
-and stacks-node working directory, and re-sync from scratch.
+The stacks-node is only able to emit events live as they happen. This poses a problem in the
+scenario where the stacks-blockchain-api needs to be upgraded and its database cannot be migrated to
+a new schema. One way to handle this upgrade is to wipe the stacks-blockchain-api's database and
+stacks-node working directory, and re-sync from scratch.
 
-Alternatively, an event-replay feature is available where the API records the HTTP POST requests from the stacks-node event emitter, then streams
-these events back to itself. Essentially simulating a wipe & full re-sync, but much quicker.
+Alternatively, an event-replay feature is available where the API records the HTTP POST requests
+from the stacks-node event emitter, then streams these events back to itself. Essentially simulating
+a wipe & full re-sync, but much quicker.
 
-The feature can be used via program args. For example, if there are breaking changes in the API's sql schema, like adding a new column which requires
-event's to be re-played, the following steps could be ran:
+The feature can be used via program args. For example, if there are breaking changes in the API's
+sql schema, like adding a new column which requires event's to be re-played, the following steps
+could be ran:
 
 ### Event Replay Instructions
 
-1. Ensure the API process is not running. When stopping the API, let the process exit gracefully so that any in-progress SQL writes can finish.
+#### V1 BNS Data
+
+**Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
+
+1. Download BNS data:
+   ```shell
+   curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz
+   ```
+1. Extract it:
+   ```shell
+   tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/
+   ```
+1. Each file in `./bns` will have a corresponding `sha256` value. To Verify, run a script like the
+   following to check the sha256sum:
+
+    ```bash
+    for file in `ls /stacks-node/bns/* | grep -v sha256 | grep -v .tar.gz`; do
+        if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
+            echo "sha256 Matched $file"
+        else
+            echo "sha256 Mismatch $file"
+        fi
+    done
+    ```
+1. Set the data's location as the value of `BNS_IMPORT_DIR` in your `.env` file.
+
+#### Export and Import
+
+1. Ensure the API process is not running. When stopping the API, let the process exit gracefully so
+   that any in-progress SQL writes can finish.
 1. Export event data to disk with the `export-events` command:
 
    ```shell
@@ -119,19 +151,25 @@ event's to be re-played, the following steps could be ran:
 1. Update to the new stacks-blockchain-api version.
 1. Perform the event playback using the `import-events` command:
 
-   **WARNING**: This will **drop _all_ tables** from the configured Postgres database, including any tables not automatically added by the API.
+   **WARNING**: This will **drop _all_ tables** from the configured Postgres database, including any
+   tables not automatically added by the API.
 
    ```shell
    node ./lib/index.js import-events --file /tmp/stacks-node-events.tsv --wipe-db --force
    ```
 
    This command has two modes of operation, specified by the `--mode` option:
-   * `archival` (default): The process will import and ingest *all* blockchain events that have happened since the first block.
-   * `pruned`: The import process will ignore some prunable events (mempool, microblocks) until the import block height has reached `chain tip - 256` blocks. This saves a considerable amount of time during import, but sacrifices some historical data. You can use this mode if you're mostly interested in running an API that prioritizes real time information.
+   * `archival` (default): The process will import and ingest *all* blockchain events that have
+     happened since the first block.
+   * `pruned`: The import process will ignore some prunable events (mempool, microblocks) until the
+     import block height has reached `chain tip - 256` blocks. This saves a considerable amount of
+     time during import, but sacrifices some historical data. You can use this mode if you're mostly
+     interested in running an API that prioritizes real time information.
 
-Alternatively, instead of performing the `export-events` command in step 1, an environmental variable can be set which enables events to be streamed to a file
-as they are received, while the application is running normally. To enable this feature, set the `STACKS_EXPORT_EVENTS_FILE` env var to the file path where
-events should be appended. Example:
+Alternatively, instead of performing the `export-events` command in step 1, an environmental
+variable can be set which enables events to be streamed to a file as they are received, while the
+application is running normally. To enable this feature, set the `STACKS_EXPORT_EVENTS_FILE` env var
+to the file path where events should be appended. Example:
 ```
 STACKS_EXPORT_EVENTS_FILE=/tmp/stacks-node-events.tsv
 ```
