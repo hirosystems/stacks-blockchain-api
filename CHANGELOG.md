@@ -1,3 +1,10 @@
+## [5.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.5...v5.0.0-beta.6) (2022-09-01)
+
+
+### Features
+
+* add indexes for index_block_hash on BNS tables ([#1304](https://github.com/hirosystems/stacks-blockchain-api/issues/1304)) ([bbf4b2d](https://github.com/hirosystems/stacks-blockchain-api/commit/bbf4b2d2b8c7f6ed30bfda6eaa430d5c2e84cdf5))
+
 ## [5.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.4...v5.0.0-beta.5) (2022-08-31)
 
 
