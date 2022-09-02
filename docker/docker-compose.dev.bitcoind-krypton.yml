@@ -1,0 +1,55 @@
+version: "3.9"
+services:
+  bitcoind:
+    image: "ruimarinho/bitcoin-core:0.20"
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    command: 
+      -printtoconsole
+      -regtest=1
+      -disablewallet=0
+      -txindex=1
+      -server=1
+      -discover=0
+      -dns=0
+      -dnsseed=0
+      -listenonion=0
+      -rpcserialversion=0
+      -rest
+      -bind=0.0.0.0:18444
+      -rpcbind=0.0.0.0:18443
+      -rpcallowip=0.0.0.0/0
+      -rpcallowip=::/0
+      -rpcuser=krypton
+      -rpcpassword=krypton
+  bitcoind-mine-initial:
+    image: "curlimages/curl:latest"
+    depends_on:
+      - bitcoind
+    restart: on-failure
+    environment:
+      - BTC_ADDR=miEJtNKa3ASpA19v5ZhvbKTEieYjLpzCYT
+      - BTC_RPC_PORT=18443
+      - BTC_RPC_AUTH=krypton:krypton
+      - INIT_BLOCKS=101
+      - INIT_WAIT=30s
+      - MINE_INTERVAL=2.5s
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        mine_block(){
+          curl -fsS -u $$BTC_RPC_AUTH -H 'content-type: text/plain;' --data-binary \
+            '{"jsonrpc":"1.0","id":"c","method":"generatetoaddress","params":['"$$1"',"'$$BTC_ADDR'"]}' \
+            http://bitcoind:$$BTC_RPC_PORT
+        }
+        echo "Mining initial $$INIT_BLOCKS blocks to $$BTC_ADDR"
+        mine_block $$INIT_BLOCKS
+        sleep $$INIT_WAIT
+        while true
+        do
+          mine_block 1
+          sleep $$MINE_INTERVAL
+        done

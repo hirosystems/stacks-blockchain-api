@@ -1,0 +1,26 @@
+version: "3.9"
+services:
+  bitcoind:
+    image: "ruimarinho/bitcoin-core:0.20"
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+    command: 
+      -printtoconsole
+      -regtest=1
+      -disablewallet=0
+      -txindex=1
+      -server=1
+      -rest
+      -bind=0.0.0.0:18444
+      -rpcbind=0.0.0.0:18443
+      -rpcallowip=0.0.0.0/0
+      -rpcuser=helium
+      -rpcpassword=helium
+  bitcoind-mine-initial:
+    image: "byrnedo/alpine-curl"
+    depends_on:
+      - bitcoind
+    restart: on-failure
+    command: |
+      -f -u helium:helium --data-binary '{"jsonrpc": "1.0", "id":"c", "method": "generatetoaddress", "params": [110, "mtFzK54XtpktHj7fKonFExEPEGkUMsiXdy"] }' -H 'content-type: text/plain;' http://bitcoind:18443/

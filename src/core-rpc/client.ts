@@ -104,8 +104,8 @@ export class StacksCoreRpcClient {
    * Throws an error if connection cannot be established.
    * @param retryTimeout - milliseconds
    */
-  async waitForConnection(retryTimeout = 30000): Promise<void> {
-    const retryInterval = 1000; // 1 second
+  async waitForConnection(retryTimeout = 60000): Promise<void> {
+    const retryInterval = 2500; // 1 second
     const timer = stopwatch();
     let lastError: Error;
     do {

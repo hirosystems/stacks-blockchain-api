@@ -51,6 +51,66 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: mocknet local",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "deploy-pg-and-local-node",
+      "postDebugTask": "stop-pg-and-local-node",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: helium local",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "deploy-pg-and-local-node-helium",
+      "postDebugTask": "stop-pg-and-local-node-helium",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: krypton local",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "deploy-pg-and-local-node-krypton",
+      "postDebugTask": "stop-pg-and-local-node-krypton",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch: mocknet write-only",
       "skipFiles": [
         "<node_internals>/**"
