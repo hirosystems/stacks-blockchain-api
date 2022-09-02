@@ -27,29 +27,42 @@ services:
     image: "curlimages/curl:latest"
     depends_on:
       - bitcoind
-    restart: on-failure
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 1s
+        max_attempts: 1000
+        window: 360s
     environment:
       - BTC_ADDR=miEJtNKa3ASpA19v5ZhvbKTEieYjLpzCYT
-      - BTC_RPC_PORT=18443
-      - BTC_RPC_AUTH=krypton:krypton
       - INIT_BLOCKS=101
-      - INIT_WAIT=30s
       - MINE_INTERVAL=2.5s
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -e
-        mine_block(){
-          curl -fsS -u $$BTC_RPC_AUTH -H 'content-type: text/plain;' --data-binary \
-            '{"jsonrpc":"1.0","id":"c","method":"generatetoaddress","params":['"$$1"',"'$$BTC_ADDR'"]}' \
-            http://bitcoind:$$BTC_RPC_PORT
+        rpc(){
+          params=$$(local IFS=","; shift; echo "$$*";)
+          body='{"jsonrpc":"1.0","id":"c","method":"'$$1'","params":['$$params']}'
+          echo "Sending RPC payload: $$body" >&2
+          curl -sS --fail-with-body -u krypton:krypton -H 'content-type: text/plain;' --data-binary "$$body" http://bitcoind:18443
         }
+        rpc importaddress \"$$BTC_ADDR\" '""' false
         echo "Mining initial $$INIT_BLOCKS blocks to $$BTC_ADDR"
-        mine_block $$INIT_BLOCKS
-        sleep $$INIT_WAIT
-        while true
-        do
-          mine_block 1
+        rpc generatetoaddress $$INIT_BLOCKS \"$$BTC_ADDR\"
+        while true; do
+          echo "checking txs"
+          tx=$$(rpc listtransactions \"*\" 1 0 true)
+          case "$$tx" in
+          *send*)
+            echo "Detected Stacks mining tx, starting btc auto-mining..."
+            break
+            ;;
+          esac
+          sleep 1s
+        done
+        while true; do
+          rpc generatetoaddress 1 \"$$BTC_ADDR\"
           sleep $$MINE_INTERVAL
         done
