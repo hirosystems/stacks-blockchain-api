@@ -42,6 +42,8 @@ import {
   bnsNameCV,
   getBnsSmartContractId,
   bnsHexValueToName,
+  I32_MAX,
+  defaultLogLevel,
 } from '../helpers';
 import {
   DataStore,
@@ -98,6 +100,9 @@ import {
   NftEventWithTxMetadata,
   DbAssetEventTypeId,
   DbTxGlobalStatus,
+  DataStoreAttachmentData,
+  DataStoreBnsBlockData,
+  DataStoreAttachmentSubdomainData,
 } from './common';
 import {
   AddressTokenOfferingLocked,
@@ -120,6 +125,8 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './postgres-notifier';
+import * as zoneFileParser from 'zone-file';
+import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -237,6 +244,7 @@ export async function runMigrations(
         warn: msg => logger.warn(msg),
         error: msg => logger.error(msg),
       },
+      verbose: defaultLogLevel === 'verbose',
     };
     if (clientConfig.schema) {
       runnerOpts.schema = clientConfig.schema;
@@ -305,6 +313,8 @@ function isPgConnectionError(error: any): string | false {
     return 'Postgres connection ETIMEDOUT';
   } else if (error.code === 'ENOTFOUND') {
     return 'Postgres connection ENOTFOUND';
+  } else if (error.code === 'ECONNRESET') {
+    return 'Postgres connection ECONNRESET';
   } else if (error.message) {
     const msg = (error as Error).message.toLowerCase();
     if (msg.includes('database system is starting up')) {
@@ -1040,6 +1050,7 @@ export class PgDataStore
         onStatusUpdate?.('Importing raw event requests into temporary table...');
         const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
         await pipelineAsync(readStream, importStream);
+        onStatusUpdate?.('Removing any duplicate raw event requests...');
         await client.query(`
           INSERT INTO temp_event_observer_requests
           SELECT *
@@ -1480,11 +1491,11 @@ export class PgDataStore
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(client, entry.tx, smartContract);
           }
-          for (const bnsName of entry.names) {
-            await this.updateNames(client, entry.tx, bnsName);
-          }
           for (const namespace of entry.namespaces) {
             await this.updateNamespaces(client, entry.tx, namespace);
+          }
+          for (const bnsName of entry.names) {
+            await this.updateNames(client, entry.tx, bnsName);
           }
         }
         await this.refreshNftCustody(client, batchedTxData);
@@ -1690,11 +1701,11 @@ export class PgDataStore
       for (const smartContract of entry.smartContracts) {
         await this.updateSmartContract(client, entry.tx, smartContract);
       }
-      for (const bnsName of entry.names) {
-        await this.updateNames(client, entry.tx, bnsName);
-      }
       for (const namespace of entry.namespaces) {
         await this.updateNamespaces(client, entry.tx, namespace);
+      }
+      for (const bnsName of entry.names) {
+        await this.updateNames(client, entry.tx, bnsName);
       }
     }
   }
@@ -2135,22 +2146,6 @@ export class PgDataStore
     });
   }
 
-  async updateZoneContent(zonefile: string, zonefile_hash: string, tx_id: string): Promise<void> {
-    await this.queryTx(async client => {
-      // inserting zonefile into zonefiles table
-      const validZonefileHash = this.validateZonefileHash(zonefile_hash);
-      await client.query(
-        `
-        UPDATE zonefiles
-        SET zonefile = $1
-        WHERE zonefile_hash = $2
-        `,
-        [zonefile, validZonefileHash]
-      );
-    });
-    await this.notifier?.sendName({ nameInfo: tx_id });
-  }
-
   private validateZonefileHash(zonefileHash: string) {
     // this function removes the `0x` from the incoming zonefile hash, either for insertion or search.
     const index = zonefileHash.indexOf('0x');
@@ -2158,6 +2153,91 @@ export class PgDataStore
       return zonefileHash.slice(2);
     }
     return zonefileHash;
+  }
+
+  async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
+    await this.queryTx(async client => {
+      // Each attachment will batch insert zonefiles for name and all subdomains that apply.
+      for (const attachment of attachments) {
+        const subdomainData: DataStoreAttachmentSubdomainData[] = [];
+        if (attachment.op === 'name-update') {
+          // If this is a zonefile update, break it down into subdomains and update all of them. We
+          // must find the correct transaction that registered the zonefile in the first place and
+          // associate it with each entry.
+          const zonefile = Buffer.from(attachment.zonefile, 'hex').toString();
+          const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+          const zoneFileTxt = zoneFileContents.txt;
+          if (zoneFileTxt && zoneFileTxt.length > 0) {
+            const dbTx = await client.query<TxQueryResult>(
+              `SELECT ${txColumns()} FROM txs
+              WHERE tx_id = $1 AND index_block_hash = $2
+              ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
+              LIMIT 1`,
+              [hexToBuffer(attachment.txId), hexToBuffer(attachment.indexBlockHash)]
+            );
+            let isCanonical = true;
+            let txIndex = -1;
+            const blockData: DataStoreBnsBlockData = {
+              index_block_hash: '',
+              parent_index_block_hash: '',
+              microblock_hash: '',
+              microblock_sequence: I32_MAX,
+              microblock_canonical: true,
+            };
+            if (dbTx.rowCount > 0) {
+              const parsedDbTx = this.parseTxQueryResult(dbTx.rows[0]);
+              isCanonical = parsedDbTx.canonical;
+              txIndex = parsedDbTx.tx_index;
+              blockData.index_block_hash = parsedDbTx.index_block_hash;
+              blockData.parent_index_block_hash = parsedDbTx.parent_index_block_hash;
+              blockData.microblock_hash = parsedDbTx.microblock_hash;
+              blockData.microblock_sequence = parsedDbTx.microblock_sequence;
+              blockData.microblock_canonical = parsedDbTx.microblock_canonical;
+            } else {
+              logger.warn(
+                `Could not find transaction ${attachment.txId} associated with attachment`
+              );
+            }
+            const subdomains: DbBnsSubdomain[] = [];
+            for (let i = 0; i < zoneFileTxt.length; i++) {
+              const zoneFile = zoneFileTxt[i];
+              const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+              if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
+              const subdomain: DbBnsSubdomain = {
+                name: attachment.name.concat('.', attachment.namespace),
+                namespace_id: attachment.namespace,
+                fully_qualified_subdomain: zoneFile.name.concat(
+                  '.',
+                  attachment.name,
+                  '.',
+                  attachment.namespace
+                ),
+                owner: parsedTxt.owner,
+                zonefile_hash: parsedTxt.zoneFileHash,
+                zonefile: parsedTxt.zoneFile,
+                tx_id: attachment.txId,
+                tx_index: txIndex,
+                canonical: isCanonical,
+                parent_zonefile_hash: attachment.zonefileHash.slice(2),
+                parent_zonefile_index: 0,
+                block_height: attachment.blockHeight,
+                zonefile_offset: 1,
+                resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
+              };
+              subdomains.push(subdomain);
+            }
+            subdomainData.push({ blockData, subdomains, attachment: attachment });
+          }
+        }
+        await this.updateBatchSubdomains(client, subdomainData);
+        await this.updateBatchZonefiles(client, subdomainData);
+        // Update the name's zonefile as well.
+        await this.updateBatchZonefiles(client, [{ attachment }]);
+      }
+    });
+    for (const txId of attachments.map(a => a.txId)) {
+      await this.notifier?.sendName({ nameInfo: txId });
+    }
   }
 
   async resolveBnsSubdomains(
@@ -2172,7 +2252,8 @@ export class PgDataStore
   ): Promise<void> {
     if (data.length == 0) return;
     await this.queryTx(async client => {
-      await this.updateBatchSubdomains(client, blockData, data);
+      await this.updateBatchSubdomains(client, [{ blockData, subdomains: data }]);
+      await this.updateBatchZonefiles(client, [{ blockData, subdomains: data }]);
     });
   }
 
@@ -4014,27 +4095,6 @@ export class PgDataStore
     });
   }
 
-  async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
-    return this.query(async client => {
-      const result = await client.query<ContractTxQueryResult>(
-        `
-        SELECT ${TX_COLUMNS}, ${abiColumn()}
-        FROM txs
-        WHERE tx_id = $1 AND index_block_hash = $2
-        ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-        LIMIT 1
-        `,
-        [hexToBuffer(args.txId), hexToBuffer(args.indexBlockHash)]
-      );
-      if (result.rowCount === 0) {
-        return { found: false } as const;
-      }
-      const row = result.rows[0];
-      const tx = this.parseTxQueryResult(row);
-      return { found: true, result: tx };
-    });
-  }
-
   async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
     return this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
@@ -4852,113 +4912,147 @@ export class PgDataStore
     }
   }
 
-  async updateBatchSubdomains(
+  async updateBatchZonefiles(
     client: ClientBase,
-    blockData: {
-      index_block_hash: string;
-      parent_index_block_hash: string;
-      microblock_hash: string;
-      microblock_sequence: number;
-      microblock_canonical: boolean;
-    },
-    subdomains: DbBnsSubdomain[]
-  ) {
-    // bns insertion variables
-    const columnCount = 18;
-    const insertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount,
-    });
-    const values: any[] = [];
-    // zonefile insertion variables
-    const zonefilesColumnCount = 2;
-    const zonefileInsertParams = this.generateParameterizedInsertString({
-      rowCount: subdomains.length,
-      columnCount: zonefilesColumnCount,
-    });
-    const zonefileValues: string[] = [];
-    for (const subdomain of subdomains) {
-      let txIndex = subdomain.tx_index;
-      if (txIndex === -1) {
-        const txQuery = await client.query<{ tx_index: number }>(
-          `
-          SELECT tx_index from txs
-          WHERE tx_id = $1 AND index_block_hash = $2 AND block_height = $3
-          LIMIT 1
-          `,
-          [
+    data: DataStoreAttachmentSubdomainData[]
+  ): Promise<void> {
+    let zonefileCount = 0;
+    const zonefileValues: any[] = [];
+    for (const dataItem of data) {
+      if (dataItem.subdomains && dataItem.blockData) {
+        for (const subdomain of dataItem.subdomains) {
+          zonefileValues.push(
+            subdomain.fully_qualified_subdomain,
+            subdomain.zonefile,
+            this.validateZonefileHash(subdomain.zonefile_hash),
             hexToBuffer(subdomain.tx_id),
-            hexToBuffer(blockData.index_block_hash),
-            subdomain.block_height,
-          ]
-        );
-        if (txQuery.rowCount === 0) {
-          logger.warn(`Could not find tx index for subdomain entry: ${JSON.stringify(subdomain)}`);
-          txIndex = 0;
-        } else {
-          txIndex = txQuery.rows[0].tx_index;
+            hexToBuffer(dataItem.blockData.index_block_hash)
+          );
+          zonefileCount++;
         }
       }
-      // preparing bns values for insertion
-      values.push(
-        subdomain.name,
-        subdomain.namespace_id,
-        subdomain.fully_qualified_subdomain,
-        subdomain.owner,
-        this.validateZonefileHash(subdomain.zonefile_hash),
-        subdomain.parent_zonefile_hash,
-        subdomain.parent_zonefile_index,
-        subdomain.block_height,
-        txIndex,
-        subdomain.zonefile_offset,
-        subdomain.resolver,
-        subdomain.canonical,
-        hexToBuffer(subdomain.tx_id),
-        hexToBuffer(blockData.index_block_hash),
-        hexToBuffer(blockData.parent_index_block_hash),
-        hexToBuffer(blockData.microblock_hash),
-        blockData.microblock_sequence,
-        blockData.microblock_canonical
-      );
-      // preparing zonefile values for insertion
-      zonefileValues.push(subdomain.zonefile, this.validateZonefileHash(subdomain.zonefile_hash));
-    }
-    // bns insertion query
-    const insertQuery = `INSERT INTO subdomains (
-        name, namespace_id, fully_qualified_subdomain, owner,
-        zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
-        zonefile_offset, resolver, canonical, tx_id,
-        index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
-      ) VALUES ${insertParams}`;
-    const insertQueryName = `insert-batch-subdomains_${columnCount}x${subdomains.length}`;
-    const insertBnsSubdomainsEventQuery: QueryConfig = {
-      name: insertQueryName,
-      text: insertQuery,
-      values,
-    };
-    // zonefile insertion query
-    const zonefileInsertQuery = `INSERT INTO zonefiles (zonefile, zonefile_hash) VALUES ${zonefileInsertParams}`;
-    const insertZonefileQueryName = `insert-batch-zonefiles_${columnCount}x${subdomains.length}`;
-    const insertZonefilesEventQuery: QueryConfig = {
-      name: insertZonefileQueryName,
-      text: zonefileInsertQuery,
-      values: zonefileValues,
-    };
-    try {
-      // checking for bns insertion errors
-      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
-      if (bnsRes.rowCount !== subdomains.length) {
-        throw new Error(`Expected ${subdomains.length} inserts, got ${bnsRes.rowCount} for BNS`);
+      if (dataItem.attachment) {
+        zonefileValues.push(
+          `${dataItem.attachment.name}.${dataItem.attachment.namespace}`,
+          Buffer.from(dataItem.attachment.zonefile, 'hex').toString(),
+          this.validateZonefileHash(dataItem.attachment.zonefileHash),
+          hexToBuffer(dataItem.attachment.txId),
+          hexToBuffer(dataItem.attachment.indexBlockHash)
+        );
+        zonefileCount++;
       }
-      // checking for zonefile insertion errors
+    }
+    if (!zonefileCount) {
+      return;
+    }
+    try {
+      const zonefilesColumnCount = 5;
+      const zonefileInsertParams = this.generateParameterizedInsertString({
+        rowCount: zonefileCount,
+        columnCount: zonefilesColumnCount,
+      });
+      const zonefileInsertQuery = `
+        INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
+        VALUES ${zonefileInsertParams}
+        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
+          UPDATE SET zonefile = EXCLUDED.zonefile
+      `;
+      const insertZonefileQueryName = `insert-batch-zonefiles_${zonefilesColumnCount}x${zonefileCount}`;
+      const insertZonefilesEventQuery: QueryConfig = {
+        name: insertZonefileQueryName,
+        text: zonefileInsertQuery,
+        values: zonefileValues,
+      };
       const zonefilesRes = await client.query(insertZonefilesEventQuery);
-      if (zonefilesRes.rowCount !== subdomains.length) {
+      if (zonefilesRes.rowCount !== zonefileCount) {
         throw new Error(
-          `Expected ${subdomains.length} inserts, got ${zonefilesRes.rowCount} for zonefiles`
+          `Expected ${zonefileCount} inserts, got ${zonefilesRes.rowCount} for zonefiles`
         );
       }
     } catch (e: any) {
-      logError(`subdomain errors ${e.message}`, e);
+      logError(`zonefile batch error ${e.message}`, e);
+      throw e;
+    }
+  }
+
+  async updateBatchSubdomains(
+    client: ClientBase,
+    data: DataStoreAttachmentSubdomainData[]
+  ): Promise<void> {
+    let subdomainCount = 0;
+    const subdomainValues: any[] = [];
+    for (const dataItem of data) {
+      if (dataItem.subdomains && dataItem.blockData) {
+        for (const subdomain of dataItem.subdomains) {
+          subdomainValues.push(
+            subdomain.name,
+            subdomain.namespace_id,
+            subdomain.fully_qualified_subdomain,
+            subdomain.owner,
+            this.validateZonefileHash(subdomain.zonefile_hash),
+            subdomain.parent_zonefile_hash,
+            subdomain.parent_zonefile_index,
+            subdomain.block_height,
+            subdomain.tx_index,
+            subdomain.zonefile_offset,
+            subdomain.resolver,
+            subdomain.canonical,
+            hexToBuffer(subdomain.tx_id),
+            hexToBuffer(dataItem.blockData.index_block_hash),
+            hexToBuffer(dataItem.blockData.parent_index_block_hash),
+            hexToBuffer(dataItem.blockData.microblock_hash),
+            dataItem.blockData.microblock_sequence,
+            dataItem.blockData.microblock_canonical
+          );
+          subdomainCount++;
+        }
+      }
+    }
+    if (!subdomainCount) {
+      return;
+    }
+    try {
+      const subdomainColumnCount = 18;
+      const subdomainInsertParams = this.generateParameterizedInsertString({
+        rowCount: subdomainCount,
+        columnCount: subdomainColumnCount,
+      });
+      const insertQuery = `
+        INSERT INTO subdomains (
+          name, namespace_id, fully_qualified_subdomain, owner,
+          zonefile_hash, parent_zonefile_hash, parent_zonefile_index, block_height, tx_index,
+          zonefile_offset, resolver, canonical, tx_id,
+          index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
+        ) VALUES ${subdomainInsertParams}
+        ON CONFLICT ON CONSTRAINT unique_fully_qualified_subdomain_tx_id_index_block_hash_microblock_hash DO
+          UPDATE SET
+            name = EXCLUDED.name,
+            namespace_id = EXCLUDED.namespace_id,
+            owner = EXCLUDED.owner,
+            zonefile_hash = EXCLUDED.zonefile_hash,
+            parent_zonefile_hash = EXCLUDED.parent_zonefile_hash,
+            parent_zonefile_index = EXCLUDED.parent_zonefile_index,
+            block_height = EXCLUDED.block_height,
+            tx_index = EXCLUDED.tx_index,
+            zonefile_offset = EXCLUDED.zonefile_offset,
+            resolver = EXCLUDED.resolver,
+            canonical = EXCLUDED.canonical,
+            parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+            microblock_sequence = EXCLUDED.microblock_sequence,
+            microblock_canonical = EXCLUDED.microblock_canonical
+      `;
+      const insertQueryName = `insert-batch-subdomains_${subdomainColumnCount}x${subdomainCount}`;
+      const insertBnsSubdomainsEventQuery: QueryConfig = {
+        name: insertQueryName,
+        text: insertQuery,
+        values: subdomainValues,
+      };
+      const bnsRes = await client.query(insertBnsSubdomainsEventQuery);
+      if (bnsRes.rowCount !== subdomainCount) {
+        throw new Error(`Expected ${subdomainCount} inserts, got ${bnsRes.rowCount} for BNS`);
+      }
+    } catch (e: any) {
+      logError(`subdomain batch error ${e.message}`, e);
       throw e;
     }
   }
@@ -6802,14 +6896,73 @@ export class PgDataStore
       status,
       canonical,
     } = bnsName;
-    // inserting remaining names information in names table
-    const validZonefileHash = this.validateZonefileHash(zonefile_hash);
+    // Try to figure out the name's expiration block based on its namespace's lifetime. However, if
+    // the name was only transferred, keep the expiration from the last register/renewal we had.
+    let expireBlock = expire_block;
+    if (status === 'name-transfer') {
+      const prevExpiration = await client.query<{ expire_block: number }>(
+        `SELECT expire_block
+        FROM names
+        WHERE name = $1
+          AND canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT 1`,
+        [name]
+      );
+      if (prevExpiration.rowCount > 0) {
+        expireBlock = prevExpiration.rows[0].expire_block;
+      }
+    } else {
+      const namespaceLifetime = await client.query<{ lifetime: number }>(
+        `SELECT lifetime
+        FROM namespaces
+        WHERE namespace_id = $1
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT 1`,
+        [namespace_id]
+      );
+      if (namespaceLifetime.rowCount > 0) {
+        expireBlock = registered_at + namespaceLifetime.rows[0].lifetime;
+      }
+    }
+    // If we didn't receive a zonefile, keep the last valid one.
+    let finalZonefile = zonefile;
+    let finalZonefileHash = zonefile_hash;
+    if (finalZonefileHash === '') {
+      const lastZonefile = await client.query<{ zonefile: string; zonefile_hash: string }>(
+        `
+        SELECT z.zonefile, z.zonefile_hash
+        FROM zonefiles AS z
+        INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+        WHERE z.name = $1
+          AND n.canonical = TRUE
+          AND n.microblock_canonical = TRUE
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        LIMIT 1
+        `,
+        [name]
+      );
+      if (lastZonefile.rowCount > 0) {
+        finalZonefile = lastZonefile.rows[0].zonefile;
+        finalZonefileHash = lastZonefile.rows[0].zonefile_hash;
+      }
+    }
+    const validZonefileHash = this.validateZonefileHash(finalZonefileHash);
     await client.query(
       `
-        INSERT INTO zonefiles (zonefile, zonefile_hash)
-        VALUES ($1, $2)
-        `,
-      [zonefile, validZonefileHash]
+        INSERT INTO zonefiles (name, zonefile, zonefile_hash, tx_id, index_block_hash)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
+          UPDATE SET zonefile = EXCLUDED.zonefile
+      `,
+      [
+        name,
+        finalZonefile,
+        validZonefileHash,
+        hexToBuffer(tx_id),
+        hexToBuffer(blockData.index_block_hash),
+      ]
     );
     await client.query(
       `
@@ -6818,12 +6971,25 @@ export class PgDataStore
           tx_index, tx_id, status, canonical,
           index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
         ) values($1, $2, $3, $4, $5, $6, $7, $8,$9, $10, $11, $12, $13, $14, $15)
-        `,
+        ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash DO
+          UPDATE SET
+            address = EXCLUDED.address,
+            registered_at = EXCLUDED.registered_at,
+            expire_block = EXCLUDED.expire_block,
+            zonefile_hash = EXCLUDED.zonefile_hash,
+            namespace_id = EXCLUDED.namespace_id,
+            tx_index = EXCLUDED.tx_index,
+            status = EXCLUDED.status,
+            canonical = EXCLUDED.canonical,
+            parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+            microblock_sequence = EXCLUDED.microblock_sequence,
+            microblock_canonical = EXCLUDED.microblock_canonical
+      `,
       [
         name,
         address,
         registered_at,
-        expire_block,
+        expireBlock,
         validZonefileHash,
         namespace_id,
         tx_index,
@@ -6867,15 +7033,32 @@ export class PgDataStore
       tx_index,
       canonical,
     } = bnsNamespace;
-
     await client.query(
       `
       INSERT INTO namespaces(
         namespace_id, launched_at, address, reveal_block, ready_block, buckets,
-        base,coeff, nonalpha_discount,no_vowel_discount, lifetime, status, tx_index,
+        base, coeff, nonalpha_discount, no_vowel_discount, lifetime, status, tx_index,
         tx_id, canonical,
         index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, microblock_canonical
       ) values($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+      ON CONFLICT ON CONSTRAINT unique_namespace_id_tx_id_index_block_hash_microblock_hash DO
+        UPDATE SET
+          launched_at = EXCLUDED.launched_at,
+          address = EXCLUDED.address,
+          reveal_block = EXCLUDED.reveal_block,
+          ready_block = EXCLUDED.ready_block,
+          buckets = EXCLUDED.buckets,
+          base = EXCLUDED.base,
+          coeff = EXCLUDED.coeff,
+          nonalpha_discount = EXCLUDED.nonalpha_discount,
+          no_vowel_discount = EXCLUDED.no_vowel_discount,
+          lifetime = EXCLUDED.lifetime,
+          status = EXCLUDED.status,
+          tx_index = EXCLUDED.tx_index,
+          canonical = EXCLUDED.canonical,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          microblock_canonical = EXCLUDED.microblock_canonical
       `,
       [
         namespace_id,
@@ -6967,7 +7150,7 @@ export class PgDataStore
         FROM namespaces
         WHERE canonical = true AND microblock_canonical = true
         AND ready_block <= $1
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         `,
         [maxBlockHeight]
       );
@@ -6998,7 +7181,7 @@ export class PgDataStore
         WHERE namespace_id = $1
         AND registered_at <= $3
         AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $2
         `,
@@ -7026,7 +7209,7 @@ export class PgDataStore
         WHERE namespace_id = $1
         AND ready_block <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
         `,
         [namespace, maxBlockHeight]
@@ -7060,44 +7243,20 @@ export class PgDataStore
         DbBnsName & { tx_id: Buffer; index_block_hash: Buffer }
       >(
         `
-        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
-        FROM names
-        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
-        WHERE name = $1
-        AND registered_at <= $2
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
+        SELECT n.*, z.zonefile
+        FROM names AS n
+        LEFT JOIN zonefiles AS z USING (name, tx_id, index_block_hash)
+        WHERE n.name = $1
+          AND n.registered_at <= $2
+          AND n.canonical = true
+          AND n.microblock_canonical = true
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        LIMIT 1
         `,
         [name, maxBlockHeight]
       );
       if (nameZonefile.rowCount === 0) {
         return;
-      }
-      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
-      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
-      // since they did not generate an NFT event for us to track.
-      if (nameZonefile.rows[0].registered_at !== 0) {
-        let value: Buffer;
-        try {
-          value = bnsNameCV(name);
-        } catch (error) {
-          return;
-        }
-        const nameCustody = await client.query<{ recipient: string }>(
-          `
-          SELECT recipient
-          FROM ${includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody'}
-          WHERE asset_identifier = $1 AND value = $2
-          `,
-          [getBnsSmartContractId(chainId), value]
-        );
-        if (nameCustody.rowCount === 0) {
-          return;
-        }
-        return {
-          ...nameZonefile.rows[0],
-          address: nameCustody.rows[0].recipient,
-        };
       }
       return nameZonefile.rows[0];
     });
@@ -7117,27 +7276,54 @@ export class PgDataStore
   async getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.query(client => {
+    const queryResult = await this.queryTx(async client => {
+      const maxBlockHeight = await this.getMaxBlockHeight(client, {
+        includeUnanchored: args.includeUnanchored,
+      });
       const validZonefileHash = this.validateZonefileHash(args.zoneFileHash);
-      return client.query<{ zonefile: string }>(
-        `
-        SELECT zonefile
-        FROM names
-        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
-        WHERE name = $1
-        AND names.zonefile_hash = $2
-        UNION ALL
-        SELECT zonefile
-        FROM subdomains
-        LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
-        WHERE fully_qualified_subdomain = $1
-        AND subdomains.zonefile_hash = $2
-        `,
-        [args.name, validZonefileHash]
-      );
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = args.name.split('.').length > 2;
+      if (isSubdomain) {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = $1
+            AND z.zonefile_hash = $2
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= $3
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+          `,
+          [args.name, validZonefileHash, maxBlockHeight]
+        );
+      } else {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = $1
+            AND z.zonefile_hash = $2
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= $3
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+          `,
+          [args.name, validZonefileHash, maxBlockHeight]
+        );
+      }
     });
-
     if (queryResult.rowCount > 0) {
       return {
         found: true,
@@ -7156,51 +7342,45 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const zonefileHashResult = await client.query<{ name: string; zonefile: string }>(
-        `
-        SELECT name, zonefile_hash as zonefile FROM (
-          (
-            SELECT DISTINCT ON (name) name, zonefile_hash
-            FROM names
-            WHERE name = $1
-            AND registered_at <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY name, registered_at DESC, tx_index DESC
-            LIMIT 1
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile_hash
-            FROM subdomains
-            WHERE fully_qualified_subdomain = $1
-            AND block_height <= $2
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-            LIMIT 1
-          )
-        ) results
-        LIMIT 1
-        `,
-        [name, maxBlockHeight]
-      );
-      if (zonefileHashResult.rowCount === 0) {
-        return zonefileHashResult;
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = name.split('.').length > 2;
+      if (isSubdomain) {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = $1
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= $2
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+          `,
+          [name, maxBlockHeight]
+        );
+      } else {
+        return client.query<{ zonefile: string }>(
+          `
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = $1
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= $2
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+          `,
+          [name, maxBlockHeight]
+        );
       }
-      const zonefileHash = zonefileHashResult.rows[0].zonefile;
-      const zonefileResult = await client.query<{ zonefile: string }>(
-        `
-        SELECT zonefile
-        FROM zonefiles
-        WHERE zonefile_hash = $1
-      `,
-        [zonefileHash]
-      );
-      if (zonefileResult.rowCount === 0) {
-        return zonefileHashResult;
-      }
-      zonefileHashResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
-      return zonefileHashResult;
     });
-
     if (queryResult.rowCount > 0) {
       return {
         found: true,
@@ -7260,7 +7440,7 @@ export class PgDataStore
           names
         WHERE
           address = $1
-          AND registered_at = 0
+          AND registered_at = 1
           AND canonical = TRUE
           AND microblock_canonical = TRUE
         `,
@@ -7313,8 +7493,10 @@ export class PgDataStore
         `
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE name = $1 AND block_height <= $2
-        AND canonical = true AND microblock_canonical = true
+        WHERE name = $1
+          AND block_height <= $2
+          AND canonical = true
+          AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         `,
         [name, maxBlockHeight]
@@ -7340,7 +7522,7 @@ export class PgDataStore
         FROM subdomains
         WHERE block_height <= $2
         AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
@@ -7361,7 +7543,7 @@ export class PgDataStore
         FROM names
         WHERE canonical = true AND microblock_canonical = true
         AND registered_at <= $2
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET $1
         `,
@@ -7382,36 +7564,29 @@ export class PgDataStore
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.queryTx(async client => {
       const maxBlockHeight = await this.getMaxBlockHeight(client, { includeUnanchored });
-      const subdomainResult = await client.query<
+      const result = await client.query<
         DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer }
       >(
         `
-        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
-        FROM subdomains
-        WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= $2
-        AND fully_qualified_subdomain = $1
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        SELECT s.*, z.zonefile
+        FROM subdomains AS s
+        LEFT JOIN zonefiles AS z
+          ON z.name = s.fully_qualified_subdomain
+          AND z.tx_id = s.tx_id
+          AND z.index_block_hash = s.index_block_hash
+        WHERE s.canonical = true
+          AND s.microblock_canonical = true
+          AND s.block_height <= $2
+          AND s.fully_qualified_subdomain = $1
+        ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+        LIMIT 1
         `,
         [subdomain, maxBlockHeight]
       );
-      if (subdomainResult.rowCount === 0 || !subdomainResult.rows[0].zonefile_hash) {
-        return subdomainResult;
+      if (result.rowCount === 0 || !result.rows[0].zonefile_hash) {
+        return result;
       }
-      const zonefileHash = subdomainResult.rows[0].zonefile_hash;
-      const zonefileResult = await client.query(
-        `
-        SELECT zonefile
-        FROM zonefiles
-        WHERE zonefile_hash = $1
-      `,
-        [zonefileHash]
-      );
-      if (zonefileResult.rowCount === 0) {
-        return subdomainResult;
-      }
-      subdomainResult.rows[0].zonefile = zonefileResult.rows[0].zonefile;
-      return subdomainResult;
+      return result;
     });
     if (queryResult.rowCount > 0) {
       return {
@@ -7434,7 +7609,7 @@ export class PgDataStore
         FROM subdomains
         WHERE canonical = true AND microblock_canonical = true
         AND name = $1
-        ORDER BY name, block_height DESC, tx_index DESC
+        ORDER BY name, block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
         `,
         [args.name]

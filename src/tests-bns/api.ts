@@ -69,7 +69,7 @@ describe('BNS API tests', () => {
       miner_txid: '0x4321',
       canonical: true,
     })
-      .addTx()
+      .addTx({ tx_id: '0x1234' })
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
         value: bnsNameCV('xyz.abc'),
@@ -92,8 +92,8 @@ describe('BNS API tests', () => {
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: 14,
       lifetime: 1,
       no_vowel_discount: 1,
@@ -289,15 +289,15 @@ describe('BNS API tests', () => {
       zonefile_offset: 0,
       parent_zonefile_hash: 'p-test-hash',
       parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
+      block_height: 2,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x22',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
       {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x1234',
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -343,8 +343,8 @@ describe('BNS API tests', () => {
     );
 
     const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
-    expect(query1.status).toBe(400);
-    expect(query1.body.error).toBe('Invalid name or subdomain');
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('No such name or zonefile');
     expect(query1.type).toBe('application/json');
   });
 
@@ -380,7 +380,7 @@ describe('BNS API tests', () => {
 
     const query1 = await supertest(api.server).get(`/v1/names/${name}/zonefile/invalidHash`);
     expect(query1.status).toBe(404);
-    expect(query1.body.error).toBe('No such zonefile');
+    expect(query1.body.error).toBe('No such name or zonefile');
     expect(query1.type).toBe('application/json');
   });
 
@@ -414,7 +414,7 @@ describe('BNS API tests', () => {
       .build();
     await db.update(block);
 
-    // Register another name in block 0 (imported from v1, so no nft_event produced)
+    // Register another name in block 1 (imported from v1, so no nft_event produced)
     const dbName2: DbBnsName = {
       name: 'imported.btc',
       address: address,
@@ -422,7 +422,7 @@ describe('BNS API tests', () => {
       expire_block: 10000,
       zonefile: 'test-zone-file',
       zonefile_hash: 'zonefileHash',
-      registered_at: 0,
+      registered_at: 1,
       canonical: true,
       tx_id: '',
       tx_index: 0,
@@ -670,13 +670,13 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x22',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
       {
-        index_block_hash: dbBlock.index_block_hash,
-        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        index_block_hash: '0x02',
+        parent_index_block_hash: '0x1234',
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
@@ -694,8 +694,8 @@ describe('BNS API tests', () => {
 
   test('Fail get zonefile by name - invalid name', async () => {
     const query1 = await supertest(api.server).get(`/v1/names/invalidName/zonefile`);
-    expect(query1.status).toBe(400);
-    expect(query1.body.error).toBe('Invalid name or subdomain');
+    expect(query1.status).toBe(404);
+    expect(query1.body.error).toBe('No such name or zonefile does not exist');
     expect(query1.type).toBe('application/json');
   });
 
@@ -764,7 +764,7 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x1234',
       canonical: true,
     };
     await db.resolveBnsSubdomains(
@@ -782,6 +782,15 @@ describe('BNS API tests', () => {
       `/v1/names/${subdomain.fully_qualified_subdomain}`
     );
     expect(query.status).toBe(200);
+    expect(query.body).toStrictEqual({
+      address: "test-address",
+      blockchain: "stacks",
+      last_txid: "0x1234",
+      resolver: "https://registrar.blockstack.org",
+      status: "registered_subdomain",
+      zonefile: "test",
+      zonefile_hash: "test-hash",
+    });
   });
 
   test('Success: fqn redirect test', async () => {
@@ -798,7 +807,7 @@ describe('BNS API tests', () => {
       parent_zonefile_index: 0,
       block_height: dbBlock.block_height,
       tx_index: 0,
-      tx_id: '',
+      tx_id: '0x1234',
       canonical: true,
     };
     await db.resolveBnsSubdomains(

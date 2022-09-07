@@ -2,8 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
-import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { defaultLogLevel, getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
 
 enum EventImportMode {
   /**
@@ -107,6 +108,8 @@ export async function importEventsFromTsv(
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
   }
+  // Look for the TSV's genesis block information for BNS import.
+  const tsvGenesisBlockData = await findBnsGenesisBlockData(resolvedFilePath);
 
   const db = await PgDataStore.connect({
     usageName: 'import-events',
@@ -122,6 +125,18 @@ export async function importEventsFromTsv(
     httpLogLevel: 'debug',
   });
 
+  await importV1TokenOfferingData(db);
+
+  // Import V1 BNS names first. Subdomains will be imported after TSV replay is finished in order to
+  // keep the size of the `subdomains` table small.
+  if (process.env.BNS_IMPORT_DIR) {
+    logger.info(`Using BNS export data from: ${process.env.BNS_IMPORT_DIR}`);
+    await importV1BnsNames(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
+  } else {
+    logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
+  }
+
+  // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
   const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
     console.log(status);
@@ -156,10 +171,17 @@ export async function importEventsFromTsv(
       });
       if (rawEvent.event_path === '/new_block') {
         blockHeight = await getDbBlockHeight(db);
+        if (blockHeight % 1000 === 0) {
+          console.log(`Event file block height reached: ${blockHeight}`);
+        }
       }
     }
   }
   await db.finishEventReplay();
+  if (process.env.BNS_IMPORT_DIR) {
+    logger.level = defaultLogLevel;
+    await importV1BnsSubdomains(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
+  }
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();

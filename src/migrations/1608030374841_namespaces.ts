@@ -33,11 +33,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       notNull: true,
     },
     base: {
-      type: 'integer',
+      type: 'numeric',
       notNull: true,
     },
     coeff: {
-      type: 'integer',
+      type: 'numeric',
       notNull: true,
     },
     nonalpha_discount: {
@@ -91,7 +91,15 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
   });
 
-  pgm.createIndex('namespaces', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('namespaces', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('namespaces', [{ name: 'ready_block', sort: 'DESC' }]);
+  pgm.createIndex('namespaces', 'index_block_hash');
+  pgm.createIndex('namespaces', [
+    { name: 'ready_block', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
+  pgm.addConstraint(
+    'namespaces',
+    'unique_namespace_id_tx_id_index_block_hash_microblock_hash',
+    'UNIQUE(namespace_id, tx_id, index_block_hash, microblock_hash)'
+  );
 }

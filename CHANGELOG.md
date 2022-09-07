@@ -1,3 +1,56 @@
+## [5.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.6...v5.0.0-beta.7) (2022-09-07)
+
+
+### Bug Fixes
+
+* filter BNS processing for successful txs only ([#1309](https://github.com/hirosystems/stacks-blockchain-api/issues/1309)) ([6a12936](https://github.com/hirosystems/stacks-blockchain-api/commit/6a129369c6d9fcdc79b5a7ad288d37784cbe77cc))
+
+## [5.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.5...v5.0.0-beta.6) (2022-09-01)
+
+
+### Features
+
+* add indexes for index_block_hash on BNS tables ([#1304](https://github.com/hirosystems/stacks-blockchain-api/issues/1304)) ([bbf4b2d](https://github.com/hirosystems/stacks-blockchain-api/commit/bbf4b2d2b8c7f6ed30bfda6eaa430d5c2e84cdf5))
+
+## [5.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.4...v5.0.0-beta.5) (2022-08-31)
+
+
+### Bug Fixes
+
+* detect name transfers and renewals in special circumstances ([#1303](https://github.com/hirosystems/stacks-blockchain-api/issues/1303)) ([cd381a9](https://github.com/hirosystems/stacks-blockchain-api/commit/cd381a95b4d0d3f4bb08e447500153c3f652eff6))
+
+## [5.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.3...v5.0.0-beta.4) (2022-08-31)
+
+
+### Bug Fixes
+
+* add postgres connection error checking for ECONNRESET code ([03a1896](https://github.com/hirosystems/stacks-blockchain-api/commit/03a1896cff8937a5f39a8b75e5adf51a6344592c))
+
+## [5.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.2...v5.0.0-beta.3) (2022-08-31)
+
+
+### Bug Fixes
+
+* import BNS v1 data during event replay ([#1301](https://github.com/hirosystems/stacks-blockchain-api/issues/1301)) ([bc59817](https://github.com/hirosystems/stacks-blockchain-api/commit/bc59817aa98dd3a978a27b73d14738b64eb823f9))
+
+## [5.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.1...v5.0.0-beta.2) (2022-08-26)
+
+
+### Bug Fixes
+
+* bump version ([3863cce](https://github.com/hirosystems/stacks-blockchain-api/commit/3863cce1a64cf7a4c6cffd4f888c049cfd3ada65))
+
+## [5.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0-beta.1) (2022-08-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* optimize tables and improve canonical treatment of BNS data (#1287)
+
+### Features
+
+* optimize tables and improve canonical treatment of BNS data ([#1287](https://github.com/hirosystems/stacks-blockchain-api/issues/1287)) ([1f64818](https://github.com/hirosystems/stacks-blockchain-api/commit/1f648187b8c701e802a06bac52b077fd10571ff7))
+
 ## [4.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.1...v4.1.2) (2022-08-18)
 
 
