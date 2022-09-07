@@ -8,7 +8,6 @@ import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
   FoundOrNot,
-  hexToBuffer,
   unwrapOptional,
   bnsHexValueToName,
   bnsNameCV,
@@ -3524,7 +3523,7 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      return await sql<(DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer })[]>`
+      return await sql<(DbBnsSubdomain & { tx_id: string; index_block_hash: string })[]>`
         SELECT s.*, z.zonefile
         FROM subdomains AS s
         LEFT JOIN zonefiles AS z
@@ -3539,7 +3538,7 @@ export class PgStore {
         LIMIT 1
       `;
     });
-    if (queryResult.length > 0 && !queryResult[0].zonefile_hash) {
+    if (queryResult.length > 0 && queryResult[0].zonefile_hash) {
       return {
         found: true,
         result: {

@@ -843,7 +843,7 @@ export class PgWriteStore extends PgStore {
     }
     const result = await sql`
       INSERT INTO subdomains ${sql(subdomainValues)}
-      ON CONFLICT ON CONSTRAINT unique_fully_qualified_subdomain_tx_id_index_block_hash_microblock_hash DO
+      ON CONFLICT ON CONSTRAINT unique_fqs_tx_id_index_block_hash_microblock_hash DO
         UPDATE SET
           name = EXCLUDED.name,
           namespace_id = EXCLUDED.namespace_id,
@@ -1026,8 +1026,8 @@ export class PgWriteStore extends PgStore {
               microblock_sequence: I32_MAX,
               microblock_canonical: true,
             };
-            if (dbTx.rowCount > 0) {
-              const parsedDbTx = parseTxQueryResult(dbTx.rows[0]);
+            if (dbTx.count > 0) {
+              const parsedDbTx = parseTxQueryResult(dbTx[0]);
               isCanonical = parsedDbTx.canonical;
               txIndex = parsedDbTx.tx_index;
               blockData.index_block_hash = parsedDbTx.index_block_hash;
@@ -1525,8 +1525,8 @@ export class PgWriteStore extends PgStore {
       reveal_block: bnsNamespace.reveal_block,
       ready_block: bnsNamespace.ready_block,
       buckets: bnsNamespace.buckets,
-      base: bnsNamespace.base,
-      coeff: bnsNamespace.coeff,
+      base: bnsNamespace.base.toString(),
+      coeff: bnsNamespace.coeff.toString(),
       nonalpha_discount: bnsNamespace.nonalpha_discount,
       no_vowel_discount: bnsNamespace.no_vowel_discount,
       lifetime: bnsNamespace.lifetime,

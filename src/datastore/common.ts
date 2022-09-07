@@ -1143,8 +1143,8 @@ export interface BnsNamespaceInsertValues {
   reveal_block: number;
   ready_block: number;
   buckets: string;
-  base: bigint;
-  coeff: bigint;
+  base: PgNumeric;
+  coeff: PgNumeric;
   nonalpha_discount: number;
   no_vowel_discount: number;
   lifetime: number;

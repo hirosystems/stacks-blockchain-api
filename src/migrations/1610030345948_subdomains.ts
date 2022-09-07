@@ -93,7 +93,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   ]);
   pgm.addConstraint(
     'subdomains',
-    'unique_fully_qualified_subdomain_tx_id_index_block_hash_microblock_hash',
+    'unique_fqs_tx_id_index_block_hash_microblock_hash',
     'UNIQUE(fully_qualified_subdomain, tx_id, index_block_hash, microblock_hash)'
   );
 }

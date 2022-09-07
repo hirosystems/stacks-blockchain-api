@@ -1,21 +1,22 @@
 import { ChainID } from '@stacks/transactions';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import { bnsNameCV, httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
 
 describe('BNS event server tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
   let eventServer: EventStreamServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+    client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
       chainId: ChainID.Mainnet,
@@ -580,14 +581,13 @@ describe('BNS event server tests', () => {
     });
 
     // To validate table data we'll query it directly. There should only be one zonefile.
-    const result = await client.query<DbBnsZoneFile>(`SELECT * FROM zonefiles`);
-    expect(result.rowCount).toBe(1);
-    expect(result.rows[0].zonefile).toBe('$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n');
+    const result = await client<DbBnsZoneFile[]>`SELECT * FROM zonefiles`;
+    expect(result.count).toBe(1);
+    expect(result[0].zonefile).toBe('$ORIGIN jnj.btc.\n$TTL 3600\n_http._tcp\tIN\tURI\t10\t1\t"https://gaia.blockstack.org/hub/1z8AzyhC42n8TvoFaUL2nscaCGHqQQWUr/profile.json"\n\n');
   });
 
   afterEach(async () => {
     await eventServer.closeAsync();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
