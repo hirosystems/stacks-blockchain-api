@@ -243,6 +243,7 @@ export function getBnsContractID(chainId: ChainID) {
 
 function isEventFromBnsContract(event: SmartContractEvent): boolean {
   return (
+    event.committed === true &&
     event.contract_event.topic === printTopic &&
     (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
       event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
@@ -255,6 +256,7 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
 ): DbBnsName | undefined {
   const payload = tx.parsed_tx.payload;
   if (
+    tx.core_tx.status === 'success' &&
     payload.type_id === TxPayloadTypeID.ContractCall &&
     payload.function_name === 'name-renewal' &&
     getBnsContractID(chainId) === `${payload.address}.${payload.contract_name}` &&
@@ -292,7 +294,7 @@ export function parseNameFromContractEvent(
   blockHeight: number,
   chainId: ChainID
 ): DbBnsName | undefined {
-  if (!isEventFromBnsContract(event)) {
+  if (tx.core_tx.status !== 'success' || !isEventFromBnsContract(event)) {
     return;
   }
   let attachment: Attachment;
@@ -338,7 +340,7 @@ export function parseNamespaceFromContractEvent(
   tx: CoreNodeParsedTxMessage,
   blockHeight: number
 ): DbBnsNamespace | undefined {
-  if (!isEventFromBnsContract(event)) {
+  if (tx.core_tx.status !== 'success' || !isEventFromBnsContract(event)) {
     return;
   }
   // Look for a `namespace-ready` BNS print event.
