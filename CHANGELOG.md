@@ -1,3 +1,10 @@
+## [5.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.6...v5.0.0-beta.7) (2022-09-07)
+
+
+### Bug Fixes
+
+* filter BNS processing for successful txs only ([#1309](https://github.com/hirosystems/stacks-blockchain-api/issues/1309)) ([6a12936](https://github.com/hirosystems/stacks-blockchain-api/commit/6a129369c6d9fcdc79b5a7ad288d37784cbe77cc))
+
 ## [5.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.5...v5.0.0-beta.6) (2022-09-01)
 
 
