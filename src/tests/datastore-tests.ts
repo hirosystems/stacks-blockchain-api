@@ -2833,8 +2833,8 @@ describe('postgres datastore', () => {
       tx_index: 0,
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: 14,
       lifetime: 1,
       no_vowel_discount: 1,
@@ -3833,8 +3833,8 @@ describe('postgres datastore', () => {
             {
               namespace_id: 'abc',
               address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-              base: 1,
-              coeff: 1,
+              base: 1n,
+              coeff: 1n,
               launched_at: 14,
               lifetime: 1,
               no_vowel_discount: 1,
@@ -4027,8 +4027,8 @@ describe('postgres datastore', () => {
             {
               namespace_id: 'abc',
               address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-              base: 1,
-              coeff: 1,
+              base: 1n,
+              coeff: 1n,
               launched_at: 14,
               lifetime: 1,
               no_vowel_discount: 1,
@@ -4549,8 +4549,8 @@ describe('postgres datastore', () => {
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: dbBlock.block_height,
       lifetime: 1,
       no_vowel_discount: 1,
@@ -4683,8 +4683,7 @@ describe('postgres datastore', () => {
 
     const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
-    await db.updateBatchSubdomains(
-      client,
+    await db.resolveBnsSubdomains(
       {
         index_block_hash: dbBlock.index_block_hash,
         parent_index_block_hash: dbBlock.parent_index_block_hash,

@@ -1,0 +1,34 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "options": {
+    "sender_address": "SP3Y0BBCCCBFAMYCYN3F35CX9MH1J2GATP53JX3FA",
+    "type": "stack_stx",
+    "status": "success",
+    "token_transfer_recipient_address": "string",
+    "amount": "500000",
+    "symbol": "STX",
+    "decimals": 6,
+    "gas_limit": 0,
+    "gas_price": 0,
+    "suggested_fee_multiplier": 0,
+    "max_fee": "12380898",
+    "fee": "fee",
+    "size": 260,
+    "memo": "test.memo",
+    "number_of_cycles": 0,
+    "contract_address": "SP112T7BYCNEDCZ9TCYXCXFNJG9WXX5Q5SG6DSBAM",
+    "contract_name": "STX transfer",
+    "burn_block_height": 0,
+    "delegate_to": "cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01.STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
+    "pox_addr": "1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3"
+  },
+  "public_keys": [
+    {
+      "hex_bytes": "publicKey",
+      "curve_type": "secp256k1"
+    }
+  ]
+}

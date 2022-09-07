@@ -35,7 +35,7 @@ Since we'll need to create some files/dirs for persistent data,
 we'll first create a base directory structure and set some permissions:
 
 ```bash
-$ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,bns,config,binaries}
+$ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,config,binaries}
 $ sudo chown -R $(whoami) /stacks-node 
 $ cd /stacks-node
 ```
@@ -63,26 +63,6 @@ $ PG_VERSION=14 \
     postgresql-${PG_VERSION} \
     postgresql-client-${PG_VERSION} \
     nodejs
-```
-
-**Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
-
-1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz`
-2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.
-
-To Verify, run a script like the following to check the sha256sum:
-
-```bash
-for file in `ls /stacks-node/bns/* | grep -v sha256 | grep -v .tar.gz`; do
-    if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
-        echo "sha256 Matched $file"
-    else
-        echo "sha256 Mismatch $file"
-    fi
-done
 ```
 
 ## postgres
@@ -127,8 +107,6 @@ $ git clone https://github.com/hirosystems/stacks-blockchain-api /stacks-node/st
 The stacks blockchain api requires several Environment Variables to be set in order to run properly.  
 To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.  
 
-** Note: ** to enable BNS names, uncomment `BNS_IMPORT_DIR` in the below `.env` file. 
-
 Create a new file: `/stacks-node/stacks-blockchain-api/.env` with the following content:
 
 ```bash
@@ -148,7 +126,6 @@ STACKS_BLOCKCHAIN_API_PORT=3999
 STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 STACKS_CORE_RPC_HOST=localhost
 STACKS_CORE_RPC_PORT=20443
-#BNS_IMPORT_DIR=/stacks-node/bns
 EOF
 $ cd /stacks-node/stacks-blockchain-api && nohup node ./lib/index.js &
 ```

@@ -16,7 +16,6 @@ import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
 import { registerShutdownConfig } from './shutdown-handler';
-import { importV1TokenOfferingData, importV1BnsData } from './import-v1';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
@@ -126,17 +125,6 @@ async function init(): Promise<void> {
   registerMempoolPromStats(dbWriteStore.eventEmitter);
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
-    if (isProdEnv) {
-      await importV1TokenOfferingData(dbWriteStore);
-    } else {
-      logger.warn(`Notice: skipping token offering data import because of non-production NODE_ENV`);
-    }
-    if (isProdEnv && !process.env.BNS_IMPORT_DIR) {
-      logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
-    } else if (process.env.BNS_IMPORT_DIR) {
-      await importV1BnsData(dbWriteStore, process.env.BNS_IMPORT_DIR);
-    }
-
     const configuredChainID = getApiConfiguredChainID();
     const eventServer = await startEventServer({
       datastore: dbWriteStore,

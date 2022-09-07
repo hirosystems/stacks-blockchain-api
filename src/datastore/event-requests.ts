@@ -62,6 +62,7 @@ export async function* getRawEventRequests(
       onStatusUpdate?.('Importing raw event requests into temporary table...');
       const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
       await pipelineAsync(readStream, importStream);
+      onStatusUpdate?.('Removing any duplicate raw event requests...');
       await client.query(`
         INSERT INTO temp_event_observer_requests
         SELECT *

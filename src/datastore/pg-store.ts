@@ -208,22 +208,6 @@ export class PgStore {
     };
   }
 
-  async getTxStrict(args: { txId: string; indexBlockHash: string }): Promise<FoundOrNot<DbTx>> {
-    const result = await this.sql<ContractTxQueryResult[]>`
-      SELECT ${unsafeCols(this.sql, [...TX_COLUMNS, abiColumn()])}
-      FROM txs
-      WHERE tx_id = ${args.txId} AND index_block_hash = ${args.indexBlockHash}
-      ORDER BY canonical DESC, microblock_canonical DESC, block_height DESC
-      LIMIT 1
-    `;
-    if (result.length === 0) {
-      return { found: false } as const;
-    }
-    const row = result[0];
-    const tx = parseTxQueryResult(row);
-    return { found: true, result: tx };
-  }
-
   async getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
     blockIdentifer: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
@@ -3167,7 +3151,7 @@ export class PgStore {
         FROM namespaces
         WHERE canonical = true AND microblock_canonical = true
         AND ready_block <= ${maxBlockHeight}
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
       `;
     });
     const results = queryResult.map(r => r.namespace_id);
@@ -3194,7 +3178,7 @@ export class PgStore {
         WHERE namespace_id = ${namespace}
         AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;
@@ -3218,7 +3202,7 @@ export class PgStore {
         WHERE namespace_id = ${namespace}
         AND ready_block <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, tx_index DESC
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
       `;
     });
@@ -3247,39 +3231,18 @@ export class PgStore {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const nameZonefile = await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
-        SELECT DISTINCT ON (names.name) names.name, names.*, zonefiles.zonefile
-        FROM names
-        LEFT JOIN zonefiles ON names.zonefile_hash = zonefiles.zonefile_hash
-        WHERE name = ${name}
-        AND registered_at <= ${maxBlockHeight}
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, tx_index DESC
+        SELECT n.*, z.zonefile
+        FROM names AS n
+        LEFT JOIN zonefiles AS z USING (name, tx_id, index_block_hash)
+        WHERE n.name = ${name}
+          AND n.registered_at <= ${maxBlockHeight}
+          AND n.canonical = true
+          AND n.microblock_canonical = true
+        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        LIMIT 1
       `;
       if (nameZonefile.length === 0) {
         return;
-      }
-      // The `names` and `zonefiles` tables only track latest zonefile changes. We need to check
-      // `nft_custody` for the latest name owner, but only for names that were NOT imported from v1
-      // since they did not generate an NFT event for us to track.
-      if (nameZonefile[0].registered_at !== 0) {
-        let value: string;
-        try {
-          value = bnsNameCV(name);
-        } catch (error) {
-          return;
-        }
-        const nameCustody = await sql<{ recipient: string }[]>`
-          SELECT recipient
-          FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
-          WHERE asset_identifier = ${getBnsSmartContractId(chainId)} AND value = ${value}
-        `;
-        if (nameCustody.length === 0) {
-          return;
-        }
-        return {
-          ...nameZonefile[0],
-          address: nameCustody[0].recipient,
-        };
       }
       return nameZonefile[0];
     });
@@ -3299,21 +3262,48 @@ export class PgStore {
   async getHistoricalZoneFile(args: {
     name: string;
     zoneFileHash: string;
+    includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const validZonefileHash = validateZonefileHash(args.zoneFileHash);
-    const queryResult = await this.sql<{ zonefile: string }[]>`
-      SELECT zonefile
-      FROM names
-      LEFT JOIN zonefiles ON zonefiles.zonefile_hash = names.zonefile_hash
-      WHERE name = ${args.name}
-      AND names.zonefile_hash = ${validZonefileHash}
-      UNION ALL
-      SELECT zonefile
-      FROM subdomains
-      LEFT JOIN zonefiles ON zonefiles.zonefile_hash = subdomains.zonefile_hash
-      WHERE fully_qualified_subdomain = ${args.name}
-      AND subdomains.zonefile_hash = ${validZonefileHash}
-    `;
+    const queryResult = await this.sql.begin(async sql => {
+      const maxBlockHeight = await this.getMaxBlockHeight(sql, {
+        includeUnanchored: args.includeUnanchored,
+      });
+      const validZonefileHash = validateZonefileHash(args.zoneFileHash);
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = args.name.split('.').length > 2;
+      if (isSubdomain) {
+        return sql<{ zonefile: string }[]>`
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = ${args.name}
+            AND z.zonefile_hash = ${validZonefileHash}
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= ${maxBlockHeight}
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+        `;
+      } else {
+        return sql<{ zonefile: string }[]>`
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = ${args.name}
+            AND z.zonefile_hash = ${validZonefileHash}
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= ${maxBlockHeight}
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+        `;
+      }
+    });
     if (queryResult.length > 0) {
       return {
         found: true,
@@ -3332,45 +3322,39 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const zonefileHashResult = await sql<{ name: string; zonefile: string }[]>`
-        SELECT name, zonefile_hash as zonefile FROM (
-          (
-            SELECT DISTINCT ON (name) name, zonefile_hash
-            FROM names
-            WHERE name = ${name}
-            AND registered_at <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY name, registered_at DESC, tx_index DESC
-            LIMIT 1
-          )
-          UNION ALL (
-            SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain as name, zonefile_hash
-            FROM subdomains
-            WHERE fully_qualified_subdomain = ${name}
-            AND block_height <= ${maxBlockHeight}
-            AND canonical = true AND microblock_canonical = true
-            ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
-            LIMIT 1
-          )
-        ) results
-        LIMIT 1
-      `;
-      if (zonefileHashResult.length === 0) {
-        return zonefileHashResult;
+      // Depending on the kind of name we got, use the correct table to pivot on canonical chain
+      // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
+      // were imported from Stacks v1 and they don't have an associated tx.
+      const isSubdomain = name.split('.').length > 2;
+      if (isSubdomain) {
+        return sql<{ zonefile: string }[]>`
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN subdomains AS s ON
+            s.fully_qualified_subdomain = z.name
+            AND s.tx_id = z.tx_id
+            AND s.index_block_hash = z.index_block_hash
+          WHERE z.name = ${name}
+            AND s.canonical = TRUE
+            AND s.microblock_canonical = TRUE
+            AND s.block_height <= ${maxBlockHeight}
+          ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+          LIMIT 1
+        `;
+      } else {
+        return sql<{ zonefile: string }[]>`
+          SELECT zonefile
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = ${name}
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+            AND n.registered_at <= ${maxBlockHeight}
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+        `;
       }
-      const zonefileHash = zonefileHashResult[0].zonefile;
-      const zonefileResult = await sql<{ zonefile: string }[]>`
-        SELECT zonefile
-        FROM zonefiles
-        WHERE zonefile_hash = ${zonefileHash}
-      `;
-      if (zonefileResult.length === 0) {
-        return zonefileHashResult;
-      }
-      zonefileHashResult[0].zonefile = zonefileResult[0].zonefile;
-      return zonefileHashResult;
     });
-
     if (queryResult.length > 0) {
       return {
         found: true,
@@ -3426,7 +3410,7 @@ export class PgStore {
           names
         WHERE
           address = ${address}
-          AND registered_at = 0
+          AND registered_at = 1
           AND canonical = TRUE
           AND microblock_canonical = TRUE
       `;
@@ -3478,8 +3462,10 @@ export class PgStore {
       return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains
-        WHERE name = ${name} AND block_height <= ${maxBlockHeight}
-        AND canonical = true AND microblock_canonical = true
+        WHERE name = ${name}
+          AND block_height <= ${maxBlockHeight}
+          AND canonical = true
+          AND microblock_canonical = true
         ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
       `;
     });
@@ -3502,7 +3488,7 @@ export class PgStore {
         FROM subdomains
         WHERE block_height <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+        ORDER BY fully_qualified_subdomain, block_height DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;
@@ -3520,7 +3506,7 @@ export class PgStore {
         FROM names
         WHERE canonical = true AND microblock_canonical = true
         AND registered_at <= ${maxBlockHeight}
-        ORDER BY name, registered_at DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;
@@ -3538,32 +3524,22 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const subdomainResult = await sql<
-        (DbBnsSubdomain & { tx_id: string; index_block_hash: string })[]
-      >`
-        SELECT DISTINCT ON(subdomains.fully_qualified_subdomain) subdomains.fully_qualified_subdomain, *
-        FROM subdomains
-        WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= ${maxBlockHeight}
-        AND fully_qualified_subdomain = ${subdomain}
-        ORDER BY fully_qualified_subdomain, block_height DESC, tx_index DESC
+      return await sql<(DbBnsSubdomain & { tx_id: Buffer; index_block_hash: Buffer })[]>`
+        SELECT s.*, z.zonefile
+        FROM subdomains AS s
+        LEFT JOIN zonefiles AS z
+          ON z.name = s.fully_qualified_subdomain
+          AND z.tx_id = s.tx_id
+          AND z.index_block_hash = s.index_block_hash
+        WHERE s.canonical = true
+          AND s.microblock_canonical = true
+          AND s.block_height <= ${maxBlockHeight}
+          AND s.fully_qualified_subdomain = ${subdomain}
+        ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
+        LIMIT 1
       `;
-      if (subdomainResult.length === 0 || !subdomainResult[0].zonefile_hash) {
-        return subdomainResult;
-      }
-      const zonefileHash = subdomainResult[0].zonefile_hash;
-      const zonefileResult = await sql`
-        SELECT zonefile
-        FROM zonefiles
-        WHERE zonefile_hash = ${zonefileHash}
-      `;
-      if (zonefileResult.length === 0) {
-        return subdomainResult;
-      }
-      subdomainResult[0].zonefile = zonefileResult[0].zonefile;
-      return subdomainResult;
     });
-    if (queryResult.length > 0) {
+    if (queryResult.length > 0 && !queryResult[0].zonefile_hash) {
       return {
         found: true,
         result: {
@@ -3582,7 +3558,7 @@ export class PgStore {
       FROM subdomains
       WHERE canonical = true AND microblock_canonical = true
       AND name = ${args.name}
-      ORDER BY name, block_height DESC, tx_index DESC
+      ORDER BY name, block_height DESC, microblock_sequence DESC, tx_index DESC
       LIMIT 1
     `;
     if (queryResult.length > 0) {

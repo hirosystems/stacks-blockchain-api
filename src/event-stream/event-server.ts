@@ -7,7 +7,7 @@ import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
-import { hexToBuffer, logError, logger, I32_MAX, LogLevel } from '../helpers';
+import { hexToBuffer, logError, logger, LogLevel } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -32,12 +32,10 @@ import {
   DbMinerReward,
   DbBurnchainReward,
   DbRewardSlotHolder,
-  DbBnsName,
-  DbBnsNamespace,
-  DbBnsSubdomain,
   DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
   DbMicroblock,
+  DataStoreAttachmentData,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -55,21 +53,12 @@ import {
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { ChainID } from '@stacks/transactions';
+import { BnsContractIdentifier } from './bns/bns-constants';
 import {
-  getFunctionName,
-  getNewOwner,
-  parseNameRawValue,
-  parseNamespaceRawValue,
-  parseResolver,
-  parseZoneFileTxt,
-} from '../bns-helpers';
-import {
-  printTopic,
-  namespaceReadyFunction,
-  nameFunctions,
-  BnsContractIdentifier,
-} from '../bns-constants';
-import * as zoneFileParser from 'zone-file';
+  parseNameFromContractEvent,
+  parseNameRenewalWithNoZonefileHashFromContractCall,
+  parseNamespaceFromContractEvent,
+} from './bns/bns-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   createDbMempoolTxFromCoreMsg,
@@ -210,10 +199,15 @@ async function handleMicroblockMessage(
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
-      block_height: -1, // TODO: fill during initial db insert
-      index_block_hash: '',
-    }),
+    txs: parseDataStoreTxEventData(
+      parsedTxs,
+      msg.events,
+      {
+        block_height: -1, // TODO: fill during initial db insert
+        index_block_hash: '',
+      },
+      chainId
+    ),
   };
   await db.updateMicroblocks(updateData);
 }
@@ -310,7 +304,7 @@ async function handleBlockMessage(
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
   };
 
   await db.update(dbData);
@@ -322,7 +316,8 @@ function parseDataStoreTxEventData(
   blockData: {
     block_height: number;
     index_block_hash: string;
-  }
+  },
+  chainId: ChainID
 ): DataStoreTxEventData[] {
   const dbData: DataStoreTxEventData[] = parsedTxs.map(tx => {
     const dbTx: DataStoreBlockUpdateData['txs'][number] = {
@@ -336,16 +331,29 @@ function parseDataStoreTxEventData(
       names: [],
       namespaces: [],
     };
-    if (tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract) {
-      const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
-      dbTx.smartContracts.push({
-        tx_id: tx.core_tx.txid,
-        contract_id: contractId,
-        block_height: blockData.block_height,
-        source_code: tx.parsed_tx.payload.code_body,
-        abi: JSON.stringify(tx.core_tx.contract_abi),
-        canonical: true,
-      });
+    switch (tx.parsed_tx.payload.type_id) {
+      case TxPayloadTypeID.SmartContract:
+        const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
+        dbTx.smartContracts.push({
+          tx_id: tx.core_tx.txid,
+          contract_id: contractId,
+          block_height: blockData.block_height,
+          source_code: tx.parsed_tx.payload.code_body,
+          abi: JSON.stringify(tx.core_tx.contract_abi),
+          canonical: true,
+        });
+        break;
+      case TxPayloadTypeID.ContractCall:
+        // Name renewals can happen without a zonefile_hash. In that case, the BNS contract does NOT
+        // emit a `name-renewal` contract log, causing us to miss this event. This function catches
+        // those cases.
+        const name = parseNameRenewalWithNoZonefileHashFromContractCall(tx, chainId);
+        if (name) {
+          dbTx.names.push(name);
+        }
+        break;
+      default:
+        break;
     }
     return dbTx;
   });
@@ -378,51 +386,24 @@ function parseDataStoreTxEventData(
           value: event.contract_event.raw_value,
         };
         dbTx.contractLogEvents.push(entry);
-        if (
-          event.contract_event.topic === printTopic &&
-          (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
-            event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
-        ) {
-          const functionName = getFunctionName(event.txid, parsedTxs);
-          if (nameFunctions.includes(functionName)) {
-            const attachment = parseNameRawValue(event.contract_event.raw_value);
-            let name_address = attachment.attachment.metadata.tx_sender.address;
-            if (functionName === 'name-transfer') {
-              const new_owner = getNewOwner(event.txid, parsedTxs);
-              if (new_owner) {
-                name_address = new_owner;
-              }
-            }
-            const name: DbBnsName = {
-              name: attachment.attachment.metadata.name.concat(
-                '.',
-                attachment.attachment.metadata.namespace
-              ),
-              namespace_id: attachment.attachment.metadata.namespace,
-              address: name_address,
-              expire_block: 0,
-              registered_at: blockData.block_height,
-              zonefile_hash: attachment.attachment.hash,
-              zonefile: '', // zone file will be updated in  /attachments/new
-              tx_id: event.txid,
-              tx_index: entry.tx_index,
-              status: attachment.attachment.metadata.op,
-              canonical: true,
-            };
-            dbTx.names.push(name);
-          }
-          if (functionName === namespaceReadyFunction) {
-            // event received for namespaces
-            const namespace: DbBnsNamespace | undefined = parseNamespaceRawValue(
-              event.contract_event.raw_value,
-              blockData.block_height,
-              event.txid,
-              entry.tx_index
-            );
-            if (namespace != undefined) {
-              dbTx.namespaces.push(namespace);
-            }
-          }
+        // Check if we have new BNS names or namespaces.
+        const parsedTx = parsedTxs.find(entry => entry.core_tx.txid === event.txid);
+        if (!parsedTx) {
+          throw new Error(`Unexpected missing tx during BNS parsing by tx_id ${event.txid}`);
+        }
+        const name = parseNameFromContractEvent(
+          event,
+          parsedTx,
+          events,
+          blockData.block_height,
+          chainId
+        );
+        if (name) {
+          dbTx.names.push(name);
+        }
+        const namespace = parseNamespaceFromContractEvent(event, parsedTx, blockData.block_height);
+        if (namespace) {
+          dbTx.namespaces.push(namespace);
         }
         break;
       }
@@ -572,83 +553,33 @@ function parseDataStoreTxEventData(
 }
 
 async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: PgWriteStore) {
-  for (const attachment of msg) {
-    if (
-      attachment.contract_id === BnsContractIdentifier.mainnet ||
-      attachment.contract_id === BnsContractIdentifier.testnet
-    ) {
-      const metadataCV = decodeClarityValue<
-        ClarityValueTuple<{
-          op: ClarityValueStringAscii;
-          name: ClarityValueBuffer;
-          namespace: ClarityValueBuffer;
-        }>
-      >(attachment.metadata);
-      const op = metadataCV.data['op'].data;
-      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
-      const zoneFileHash = attachment.content_hash;
-      if (op === 'name-update') {
-        const name = hexToBuffer(metadataCV.data['name'].buffer).toString('utf8');
-        const namespace = hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8');
-        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
-        const zoneFileTxt = zoneFileContents.txt;
-        const blockData = {
-          index_block_hash: '',
-          parent_index_block_hash: '',
-          microblock_hash: '',
-          microblock_sequence: I32_MAX,
-          microblock_canonical: true,
-        };
-        // Case for subdomain
-        if (zoneFileTxt) {
-          // get unresolved subdomain
-          let isCanonical = true;
-          const dbTx = await db.getTxStrict({
-            txId: attachment.tx_id,
-            indexBlockHash: attachment.index_block_hash,
-          });
-          if (dbTx.found) {
-            isCanonical = dbTx.result.canonical;
-            blockData.index_block_hash = dbTx.result.index_block_hash;
-            blockData.parent_index_block_hash = dbTx.result.parent_index_block_hash;
-            blockData.microblock_hash = dbTx.result.microblock_hash;
-            blockData.microblock_sequence = dbTx.result.microblock_sequence;
-            blockData.microblock_canonical = dbTx.result.microblock_canonical;
-          } else {
-            logger.warn(
-              `Could not find transaction ${attachment.tx_id} associated with attachment`
-            );
-          }
-          // case for subdomain
-          const subdomains: DbBnsSubdomain[] = [];
-          for (let i = 0; i < zoneFileTxt.length; i++) {
-            const zoneFile = zoneFileTxt[i];
-            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
-            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
-            const subdomain: DbBnsSubdomain = {
-              name: name.concat('.', namespace),
-              namespace_id: namespace,
-              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
-              owner: parsedTxt.owner,
-              zonefile_hash: parsedTxt.zoneFileHash,
-              zonefile: parsedTxt.zoneFile,
-              tx_id: attachment.tx_id,
-              tx_index: -1,
-              canonical: isCanonical,
-              parent_zonefile_hash: attachment.content_hash.slice(2),
-              parent_zonefile_index: 0, //TODO need to figure out this field
-              block_height: Number.parseInt(attachment.block_height, 10),
-              zonefile_offset: 1,
-              resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
-            };
-            subdomains.push(subdomain);
-          }
-          await db.resolveBnsSubdomains(blockData, subdomains);
-        }
+  const attachments = msg
+    .map(message => {
+      if (
+        message.contract_id === BnsContractIdentifier.mainnet ||
+        message.contract_id === BnsContractIdentifier.testnet
+      ) {
+        const metadataCV = decodeClarityValue<
+          ClarityValueTuple<{
+            op: ClarityValueStringAscii;
+            name: ClarityValueBuffer;
+            namespace: ClarityValueBuffer;
+          }>
+        >(message.metadata);
+        return {
+          op: metadataCV.data['op'].data,
+          zonefile: message.content.slice(2),
+          name: hexToBuffer(metadataCV.data['name'].buffer).toString('utf8'),
+          namespace: hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8'),
+          zonefileHash: message.content_hash,
+          txId: message.tx_id,
+          indexBlockHash: message.index_block_hash,
+          blockHeight: Number.parseInt(message.block_height, 10),
+        } as DataStoreAttachmentData;
       }
-      await db.updateZoneContent(zonefile, zoneFileHash, attachment.tx_id);
-    }
-  }
+    })
+    .filter((msg): msg is DataStoreAttachmentData => !!msg);
+  await db.updateAttachments(attachments);
 }
 
 interface EventMessageHandler {

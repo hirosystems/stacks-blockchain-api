@@ -22,15 +22,9 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { BnsGenesisBlock } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
-
-const IMPORT_FILES = [
-  'chainstate.txt',
-  'name_zonefiles.txt',
-  'subdomains.csv',
-  'subdomain_zonefiles.txt',
-];
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -84,21 +78,21 @@ class ChainProcessor extends stream.Writable {
   zhashes: Map<string, string>;
   namespace: Map<string, DbBnsNamespace>;
   db: PgWriteStore;
-  client: PgSqlClient;
-  emptyBlockData = {
-    index_block_hash: '',
-    parent_index_block_hash: '',
-    microblock_hash: '',
-    microblock_sequence: I32_MAX,
-    microblock_canonical: true,
-  } as const;
+  sql: PgSqlClient;
+  genesisBlock: BnsGenesisBlock;
 
-  constructor(db: PgWriteStore, zhashes: Map<string, string>) {
+  constructor(
+    sql: PgSqlClient,
+    db: PgWriteStore,
+    zhashes: Map<string, string>,
+    genesisBlock: BnsGenesisBlock
+  ) {
     super();
     this.zhashes = zhashes;
     this.namespace = new Map();
-    this.client = db.sql;
+    this.sql = sql;
     this.db = db;
+    this.genesisBlock = genesisBlock;
     logger.info(`${this.tag}: importer starting`);
   }
 
@@ -157,16 +151,16 @@ class ChainProcessor extends stream.Writable {
             name: parts[0],
             address: parts[1],
             namespace_id: ns,
-            registered_at: 0,
+            registered_at: 1,
             expire_block: namespace.lifetime,
             zonefile: zonefile,
             zonefile_hash: zonefileHash,
-            tx_id: '',
-            tx_index: 0,
+            tx_id: this.genesisBlock.tx_id,
+            tx_index: this.genesisBlock.tx_index,
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.client, this.emptyBlockData, obj);
+          await this.db.updateNames(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.verbose(
@@ -180,20 +174,20 @@ class ChainProcessor extends stream.Writable {
           const obj: DbBnsNamespace = {
             namespace_id: parts[0],
             address: parts[1],
-            reveal_block: 0,
-            ready_block: 0,
+            reveal_block: 1,
+            ready_block: 1,
             buckets: parts[2],
-            base: parseInt(parts[3], 10),
-            coeff: parseInt(parts[4], 10),
+            base: BigInt(parts[3]),
+            coeff: BigInt(parts[4]),
             nonalpha_discount: parseInt(parts[5], 10),
             no_vowel_discount: parseInt(parts[6], 10),
             lifetime: parseInt(parts[7], 10),
-            tx_id: '',
-            tx_index: 0,
+            tx_id: this.genesisBlock.tx_id,
+            tx_index: this.genesisBlock.tx_index,
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.client, this.emptyBlockData, obj);
+          await this.db.updateNamespaces(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
         }
       }
@@ -237,9 +231,13 @@ function btcToStxAddress(btcAddress: string) {
 }
 
 class SubdomainTransform extends stream.Transform {
-  constructor() {
+  genesisBlock: BnsGenesisBlock;
+
+  constructor(genesisBlock: BnsGenesisBlock) {
     super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
+    this.genesisBlock = genesisBlock;
   }
+
   _transform(data: string, _encoding: string, callback: stream.TransformCallback) {
     const parts = data.split(',');
     if (parts[0] !== 'zonefile_hash') {
@@ -256,8 +254,8 @@ class SubdomainTransform extends stream.Transform {
         fully_qualified_subdomain: parts[2],
         owner: btcToStxAddress(parts[3]), //convert btc address to stx,
         block_height: 1, // burn_block_height: parseInt(parts[4], 10)
-        tx_index: 0,
-        tx_id: '',
+        tx_index: this.genesisBlock.tx_index,
+        tx_id: this.genesisBlock.tx_id,
         parent_zonefile_index: parseInt(parts[5], 10),
         zonefile_offset: parseInt(parts[6], 10),
         resolver: parts[7],
@@ -307,12 +305,12 @@ async function valid(fileName: string): Promise<boolean> {
   return true;
 }
 
-async function* readSubdomains(importDir: string) {
+async function* readSubdomains(importDir: string, genesisBlock: BnsGenesisBlock) {
   const metaIter = asyncIterableToGenerator<DbBnsSubdomain>(
     stream.pipeline(
       fs.createReadStream(path.join(importDir, 'subdomains.csv')),
       new LineReaderStream({ highWaterMark: SUBDOMAIN_BATCH_SIZE }),
-      new SubdomainTransform(),
+      new SubdomainTransform(genesisBlock),
       error => {
         if (error) {
           console.error('Error reading subdomains.csv');
@@ -394,13 +392,7 @@ class StxVestingTransform extends stream.Transform {
   }
 }
 
-export async function importV1BnsData(db: PgWriteStore, importDir: string) {
-  const configState = await db.getConfigState();
-  if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
-    logger.verbose('Stacks 1.0 BNS data is already imported');
-    return;
-  }
-
+async function validateBnsImportDir(importDir: string, importFiles: string[]) {
   try {
     const statResult = fs.statSync(importDir);
     if (!statResult.isDirectory()) {
@@ -411,74 +403,82 @@ export async function importV1BnsData(db: PgWriteStore, importDir: string) {
     throw error;
   }
 
-  logger.info('Stacks 1.0 BNS data import started');
-  logger.info(`Using BNS export data from: ${importDir}`);
-
   // validate contents with their .sha256 files
   // check if the files we need can be read
-  for (const fname of IMPORT_FILES) {
+  for (const fname of importFiles) {
     if (!(await valid(path.join(importDir, fname)))) {
       const errMsg = `Cannot read import file due to sha256 mismatch: ${fname}`;
       logError(errMsg);
       throw new Error(errMsg);
     }
   }
+}
 
+export async function importV1BnsNames(
+  db: PgWriteStore,
+  importDir: string,
+  genesisBlock: BnsGenesisBlock
+) {
+  const configState = await db.getConfigState();
+  if (configState.bns_names_onchain_imported) {
+    logger.verbose('Stacks 1.0 BNS names are already imported');
+    return;
+  }
+  await validateBnsImportDir(importDir, ['chainstate.txt', 'name_zonefiles.txt']);
+  logger.info('Stacks 1.0 BNS name import started');
   await db.sql.begin(async sql => {
-    logger.info(`Disabling BNS table indices temporarily for a faster import`);
-    await sql`
-      UPDATE pg_index
-      SET indisready = false, indisvalid = false
-      WHERE indrelid = ANY (
-        SELECT oid FROM pg_class
-        WHERE relname IN ('subdomains', 'zonefiles', 'namespaces', 'names')
-      )
-    `;
     const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
     await pipeline(
       fs.createReadStream(path.join(importDir, 'chainstate.txt')),
       new LineReaderStream({ highWaterMark: 100 }),
-      new ChainProcessor(db, zhashes)
+      new ChainProcessor(sql, db, zhashes, genesisBlock)
     );
-
-    const blockData = {
-      index_block_hash: '',
-      parent_index_block_hash: '',
-      microblock_hash: '',
-      microblock_sequence: I32_MAX,
-      microblock_canonical: true,
+    const updatedConfigState: DbConfigState = {
+      ...configState,
+      bns_names_onchain_imported: true,
     };
+    await db.updateConfigState(updatedConfigState, sql);
+  });
+  logger.info('Stacks 1.0 BNS name import completed');
+}
 
+export async function importV1BnsSubdomains(
+  db: PgWriteStore,
+  importDir: string,
+  genesisBlock: BnsGenesisBlock
+) {
+  const configState = await db.getConfigState();
+  if (configState.bns_subdomains_imported) {
+    logger.verbose('Stacks 1.0 BNS subdomains are already imported');
+    return;
+  }
+  await validateBnsImportDir(importDir, ['subdomains.csv', 'subdomain_zonefiles.txt']);
+  logger.info('Stacks 1.0 BNS subdomain import started');
+  await db.sql.begin(async sql => {
     let subdomainsImported = 0;
-    const subdomainIter = readSubdomains(importDir);
+    const subdomainIter = readSubdomains(importDir, genesisBlock);
     for await (const subdomainBatch of asyncBatchIterate(
       subdomainIter,
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomains(sql, blockData, subdomainBatch);
+      await db.updateBatchSubdomains(sql, [
+        { blockData: genesisBlock, subdomains: subdomainBatch },
+      ]);
+      await db.updateBatchZonefiles(sql, [{ blockData: genesisBlock, subdomains: subdomainBatch }]);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);
       }
     }
     logger.info(`Subdomains imported: ${subdomainsImported}`);
-
     const updatedConfigState: DbConfigState = {
       ...configState,
-      bns_names_onchain_imported: true,
       bns_subdomains_imported: true,
     };
     await db.updateConfigState(updatedConfigState, sql);
-
-    logger.info(`Re-indexing BNS tables. This might take a while...`);
-    await sql`REINDEX TABLE subdomains`;
-    await sql`REINDEX TABLE zonefiles`;
-    await sql`REINDEX TABLE namespaces`;
-    await sql`REINDEX TABLE names`;
   });
-
-  logger.info('Stacks 1.0 BNS data import completed');
+  logger.info('Stacks 1.0 BNS subdomain import completed');
 }
 
 /** A passthrough stream which hashes the data as it passes through. */
