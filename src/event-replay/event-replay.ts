@@ -144,8 +144,6 @@ export async function importEventsFromTsv(
   // Set logger to only output for warnings/errors, otherwise the event replay will result
   // in the equivalent of months/years of API log output.
   logger.level = 'warn';
-  // Disable this feature so a redundant export file isn't created while importing from an existing one.
-  delete process.env['STACKS_EXPORT_EVENTS_FILE'];
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
   let isPruneFinished = false;
