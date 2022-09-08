@@ -3,92 +3,85 @@ import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
-import { bnsBlockchain, BnsErrors } from '../../../bns-constants';
+import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 import { ChainID } from '@stacks/transactions';
+import {
+  getETagCacheHandler,
+  setETagCacheHeaders,
+} from '../../../api/controllers/cache-controller';
 
 export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
+  const cacheHandler = getETagCacheHandler(db);
 
   router.get(
     '/:name/zonefile/:zoneFileHash',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
-      // Fetches the historical zonefile specified by the username and zone hash.
       const { name, zoneFileHash } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
-      nameFound = nameQuery.found;
-      if (!nameFound) {
-        const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
-        nameFound = subdomainQuery.found;
-      }
-
-      if (nameFound) {
-        const zonefile = await db.getHistoricalZoneFile({ name: name, zoneFileHash: zoneFileHash });
-        if (zonefile.found) {
-          res.json(zonefile.result);
-        } else {
-          res.status(404).json({ error: 'No such zonefile' });
-        }
+      const zonefile = await db.getHistoricalZoneFile({
+        name: name,
+        zoneFileHash: zoneFileHash,
+        includeUnanchored,
+      });
+      if (zonefile.found) {
+        setETagCacheHeaders(res);
+        res.json(zonefile.result);
       } else {
-        res.status(400).json({ error: 'Invalid name or subdomain' });
+        res.status(404).json({ error: 'No such name or zonefile' });
       }
     })
   );
 
   router.get(
     '/:name/subdomains',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      setETagCacheHeaders(res);
       res.json(subdomainsList.results);
     })
   );
 
   router.get(
     '/:name/zonefile',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
-      // Fetch a user’s raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      let nameFound = false;
-      const nameQuery = await db.getName({ name: name, includeUnanchored, chainId: chainId });
-      nameFound = nameQuery.found;
-      if (!nameFound) {
-        const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
-        nameFound = subdomainQuery.found;
-      }
-
-      if (nameFound) {
-        const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
-        if (zonefile.found) {
-          res.json(zonefile.result);
-        } else {
-          res.status(404).json({ error: 'No zone file for name' });
-        }
+      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
+      if (zonefile.found) {
+        setETagCacheHeaders(res);
+        res.json(zonefile.result);
       } else {
-        res.status(400).json({ error: 'Invalid name or subdomain' });
+        res.status(404).json({ error: 'No such name or zonefile does not exist' });
       }
     })
   );
 
   router.get(
     '/',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results } = await db.getNamesList({ page, includeUnanchored });
       if (results.length === 0 && req.query.page) {
         res.status(400).json(BnsErrors.InvalidPageNumber);
+      } else {
+        setETagCacheHeaders(res);
+        res.json(results);
       }
-      res.json(results);
     })
   );
 
   router.get(
     '/:name',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -105,7 +98,6 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
               return;
             }
             res.redirect(`${resolverResult.result}/v1/names${req.url}`);
-            next();
             return;
           }
           res.status(404).json({ error: `cannot find subdomain ${name}` });
@@ -149,6 +141,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
       const response = Object.fromEntries(
         Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
       );
+      setETagCacheHeaders(res);
       res.json(response);
     })
   );

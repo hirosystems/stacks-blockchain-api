@@ -1,0 +1,26 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "unsigned_transaction": "00000000010400539886f96611ba3ba6cef9618f8c78118b37c5be0000000000000000000000000000006400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003020000000000051ab71a091b4b8b7661a661c620966ab6573bc2dcd3000000000007a12074657374207472616e73616374696f6e000000000000000000000000000000000000",
+  "signatures": [
+    {
+      "signing_payload": {
+        "address": "string",
+        "account_identifier": {
+          "address": "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6",
+          "metadata": {}
+        },
+        "hex_bytes": "string",
+        "signature_type": "ecdsa"
+      },
+      "public_key": {
+        "hex_bytes": "025c13b2fc2261956d8a4ad07d481b1a3b2cbf93a24f992249a61c3a1c4de79c51",
+        "curve_type": "secp256k1"
+      },
+      "signature_type": "ecdsa",
+      "hex_bytes": "string"
+    }
+  ]
+}
