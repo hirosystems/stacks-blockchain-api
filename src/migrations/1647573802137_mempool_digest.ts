@@ -31,8 +31,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     // extension which might not be possible for some users.
     pgm.createMaterializedView('mempool_digest', {}, `SELECT NULL AS digest`);
   }
+
+  pgm.createIndex('mempool_digest', 'digest', { unique: true });
 }
 
 export async function down(pgm: MigrationBuilder): Promise<void> {
+  pgm.dropIndex('mempool_digest', 'digest', { unique: true, ifExists: true });
   pgm.dropMaterializedView('mempool_digest');
 }

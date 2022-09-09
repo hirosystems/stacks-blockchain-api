@@ -90,6 +90,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
     // `coinbase` tx types
     coinbase_payload: 'bytea',
+    tx_size: {
+      type: 'integer',
+      notNull: true,
+      expressionGenerated: 'length(raw_tx)'
+    }
   });
 
   pgm.createIndex('mempool_txs', 'tx_id', { method: 'hash' });
@@ -100,6 +105,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.createIndex('mempool_txs', 'sponsor_address', { method: 'hash' });
   pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: 'hash' });
   pgm.createIndex('mempool_txs', [{ name: 'receipt_time', sort: 'DESC' }]);
+  pgm.createIndex('mempool_txs', ['type_id', 'receipt_block_height'], { where: 'pruned = false'});
+  pgm.createIndex('mempool_txs', ['type_id', 'fee_rate'], { where: 'pruned = false'});
+  pgm.createIndex('mempool_txs', ['type_id', 'tx_size'], { where: 'pruned = false'});
 
   pgm.addConstraint('mempool_txs', 'unique_tx_id', `UNIQUE(tx_id)`);
 
