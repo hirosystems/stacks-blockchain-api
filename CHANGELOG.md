@@ -1,3 +1,32 @@
+## [6.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v6.0.0-beta.1) (2022-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* mark breaking change
+
+### Features
+
+* add `transaction_count` for `microblocks_accepted` in block ([#1162](https://github.com/hirosystems/stacks-blockchain-api/issues/1162)) ([78d7d9c](https://github.com/hirosystems/stacks-blockchain-api/commit/78d7d9c9f72db8ce6c59e0ea59a2579aceec014e))
+* add API version in response header ([#1216](https://github.com/hirosystems/stacks-blockchain-api/issues/1216)) ([1e998db](https://github.com/hirosystems/stacks-blockchain-api/commit/1e998db7d1c87c064376cb950d05b073d9d3f076))
+* mark breaking change ([669fd0d](https://github.com/hirosystems/stacks-blockchain-api/commit/669fd0d8c00b8ca9224c9b5411a070b32c3b0529))
+* mempool stats endpoint and prometheus metrics ([#1241](https://github.com/hirosystems/stacks-blockchain-api/issues/1241)) ([9482238](https://github.com/hirosystems/stacks-blockchain-api/commit/9482238599549fd651c8c87b545c175d8a219521))
+* refactor pg classes, switch to postgres.js ([#1148](https://github.com/hirosystems/stacks-blockchain-api/issues/1148)) ([3ff4177](https://github.com/hirosystems/stacks-blockchain-api/commit/3ff41779f844c611fbd95429aeefbdb085a59026)), closes [#1168](https://github.com/hirosystems/stacks-blockchain-api/issues/1168)
+* send nft updates through websocket channels ([#1218](https://github.com/hirosystems/stacks-blockchain-api/issues/1218)) ([920a7b8](https://github.com/hirosystems/stacks-blockchain-api/commit/920a7b892a39f0f1e76363211573d935ae2c75da))
+
+
+### Bug Fixes
+
+* consolidate db migrations ([#1314](https://github.com/hirosystems/stacks-blockchain-api/issues/1314)) ([d6bdf9f](https://github.com/hirosystems/stacks-blockchain-api/commit/d6bdf9faff905d5e208e61b04c34321e954a2fb1))
+* included query params in redirecting to prefix 0x in tx endpoint ([#1205](https://github.com/hirosystems/stacks-blockchain-api/issues/1205)) ([664cce7](https://github.com/hirosystems/stacks-blockchain-api/commit/664cce744d1aecc0b3226ae07ac81e5d0cd13871))
+* incorrect websocket/socket.io transaction updates ([#1197](https://github.com/hirosystems/stacks-blockchain-api/issues/1197)) ([8ee1da8](https://github.com/hirosystems/stacks-blockchain-api/commit/8ee1da840bfa3fcecac79e09e375b720cd0ccc04))
+* mobx breakage by locking package dependencies ([#1206](https://github.com/hirosystems/stacks-blockchain-api/issues/1206)) ([5f8bc9f](https://github.com/hirosystems/stacks-blockchain-api/commit/5f8bc9fd4f45877eedbfbce29c7feb5905ba8836))
+* optimize `getMicroblocks` query ([#1179](https://github.com/hirosystems/stacks-blockchain-api/issues/1179)) ([7691109](https://github.com/hirosystems/stacks-blockchain-api/commit/769110926eb7b7c9a4d2754af8ce6f1213e2c56f))
+* optimize block endpoint ([#1190](https://github.com/hirosystems/stacks-blockchain-api/issues/1190)) ([943e2d1](https://github.com/hirosystems/stacks-blockchain-api/commit/943e2d1c555473f7f0fb61959ed89185e89ed062))
+* remove duplicate txs in microblock responses ([#1167](https://github.com/hirosystems/stacks-blockchain-api/issues/1167)) ([15c0c11](https://github.com/hirosystems/stacks-blockchain-api/commit/15c0c1124a2c91756389274c8a6ebfa8aa44228b))
+* tests ([1c1fd16](https://github.com/hirosystems/stacks-blockchain-api/commit/1c1fd1619c8ea97c2636082203fb678f06493786))
+* upsert nft and ft metadata ([#1193](https://github.com/hirosystems/stacks-blockchain-api/issues/1193)) ([c4eec5d](https://github.com/hirosystems/stacks-blockchain-api/commit/c4eec5d060666b660c48d326e74b4f989b9ee21d))
+
 ## [5.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0) (2022-09-07)
 
 
