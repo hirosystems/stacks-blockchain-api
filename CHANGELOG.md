@@ -1,3 +1,10 @@
+## [6.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.1...v6.0.0-beta.2) (2022-09-13)
+
+
+### Bug Fixes
+
+* remove live tsv append ([#1315](https://github.com/hirosystems/stacks-blockchain-api/issues/1315)) ([e2a1247](https://github.com/hirosystems/stacks-blockchain-api/commit/e2a124710f955d9d32ff5a928af7da08823689d4))
+
 ## [6.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v6.0.0-beta.1) (2022-09-13)
 
 
