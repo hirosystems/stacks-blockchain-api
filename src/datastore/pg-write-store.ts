@@ -182,12 +182,6 @@ export class PgWriteStore extends PgStore {
         `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
       );
     }
-    const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
-    if (exportEventsFile) {
-      const result = insertResult[0];
-      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
-      fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
-    }
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {

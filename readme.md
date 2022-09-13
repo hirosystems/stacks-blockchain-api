@@ -166,14 +166,6 @@ could be ran:
      time during import, but sacrifices some historical data. You can use this mode if you're mostly
      interested in running an API that prioritizes real time information.
 
-Alternatively, instead of performing the `export-events` command in step 1, an environmental
-variable can be set which enables events to be streamed to a file as they are received, while the
-application is running normally. To enable this feature, set the `STACKS_EXPORT_EVENTS_FILE` env var
-to the file path where events should be appended. Example:
-```
-STACKS_EXPORT_EVENTS_FILE=/tmp/stacks-node-events.tsv
-```
-
 # Client library
 
 You can use the Stacks Blockchain API Client library if you require a way to call the API via JavaScript or receive real-time updates via Websockets or Socket.io. Learn more [here](client/README.md).
