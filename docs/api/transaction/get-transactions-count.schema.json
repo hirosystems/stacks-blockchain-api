@@ -1,0 +1,15 @@
+{
+  "description": "GET request that returns transactions count within a time range grouped by day",
+  "title": "TransactionsCountResults",
+  "type": "object",
+  "required": ["results"],
+  "additionalProperties": false,
+  "properties": {
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/transactions/transactions-count.schema.json"
+      }
+    }
+  }
+}

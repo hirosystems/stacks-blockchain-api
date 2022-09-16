@@ -13,7 +13,11 @@ import {
   TxPayloadTypeID,
   PostConditionAuthFlag,
 } from 'stacks-encoding-native-js';
-import { AddressTokenOfferingLocked, TransactionType } from '@stacks/stacks-blockchain-api-types';
+import {
+  AddressTokenOfferingLocked,
+  TransactionsCountResults,
+  TransactionType,
+} from '@stacks/stacks-blockchain-api-types';
 import { getTxSenderAddress } from '../event-stream/reader';
 import { RawTxQueryResult } from './postgres-store';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
@@ -716,6 +720,8 @@ export interface DataStore extends DataStoreEventEmitter {
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
   }): Promise<{ results: DbTx[]; total: number }>;
+
+  getTxsCount(args: { from: number; to: number }): Promise<TransactionsCountResults>;
 
   getTxEvents(args: {
     txId: string;

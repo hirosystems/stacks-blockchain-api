@@ -3434,3 +3434,34 @@ paths:
                 $ref: ./api/transaction/get-transaction-events.schema.json
               example:
                 $ref: ./api/transaction/get-transaction-events.example.json
+  /extended/v1/tx/count:
+    get:
+      summary: Transactions Count
+      description: GET transactions count within a time range grouped by day.
+      tags:
+        - Transactions
+      operationId: fetch_txs_count
+      parameters:
+        - name: from
+          in: query
+          description: timestamp for start of the date range (inclusive)
+          required: true
+          example: 1663364032
+          schema:
+            type: number
+        - name: to
+          in: query
+          description: timestamp for end of the date range (inclusive)
+          required: true
+          example: 1663364033
+          schema:
+            type: number
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions-count.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions-count.example.json

@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "title": "TransactionsCount",
+  "description": "Transactions count within a time range grouped by day",
+  "additionalProperties": false,
+  "required": [
+    "day",
+    "txs_count"
+  ],
+  "properties": {
+    "day": {
+      "type": "string",
+      "description": "ISO date indicating a day in the selected time range"
+    },
+    "txs_count": {
+      "type": "integer",
+      "description": "The number of transactions on this day"
+    }
+  }
+}

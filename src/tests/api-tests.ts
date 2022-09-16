@@ -7196,6 +7196,18 @@ describe('api tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
+  test('getTxsCount() returns object', async () => {
+    const block = new TestBlockBuilder().build();
+    await db.update(block);
+    const expectedResp = {
+      results: [],
+    };
+    const fetchTxsCount = await supertest(api.server).get('/extended/v1/tx/count?from=0&to=0');
+    expect(fetchTxsCount.status).toBe(200);
+    expect(fetchTxsCount.type).toBe('application/json');
+    expect(JSON.parse(fetchTxsCount.text)).toEqual(expectedResp);
+  });
+
   test('block store and process', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',

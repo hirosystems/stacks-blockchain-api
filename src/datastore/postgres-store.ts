@@ -111,6 +111,7 @@ import {
   Block,
   MempoolTransactionStatus,
   TransactionStatus,
+  TransactionsCount,
 } from '@stacks/stacks-blockchain-api-types';
 import { getTxTypeId } from '../api/controllers/db-controller';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -4227,6 +4228,28 @@ export class PgDataStore
       }
       const parsed = resultQuery.rows.map(r => this.parseTxQueryResult(r));
       return { results: parsed, total: totalQuery.rows[0].count };
+    });
+  }
+
+  async getTxsCount({ from, to }: { from: number; to: number }) {
+    let resultQuery: QueryResult<TransactionsCount>;
+    return this.queryTx(async client => {
+      const maxHeight = await this.getMaxBlockHeight(client, { includeUnanchored: true });
+      resultQuery = await client.query<TransactionsCount>(
+        `
+          SELECT DATE_TRUNC('day', to_timestamp(parent_burn_block_time)) as "day", count(*)::int as count
+          FROM txs
+          WHERE canonical = true AND 
+          microblock_canonical = true AND 
+          block_height <= $1 AND 
+          parent_burn_block_time >= $2 AND 
+          parent_burn_block_time <= $3
+          group by 1
+          ORDER BY 1
+          `,
+        [maxHeight, from, to]
+      );
+      return { results: resultQuery.rows };
     });
   }
 

@@ -28,6 +28,7 @@ import {
   validateRequestHexInput,
   parseAddressOrTxId,
   parseEventTypeFilter,
+  parseTimestampQueryInput,
 } from '../query-helpers';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { validate } from '../validate';
@@ -36,7 +37,7 @@ import {
   TransactionResults,
   MempoolTransactionListResponse,
   GetRawTransactionResult,
-  Transaction,
+  TransactionsCountResults,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   ETagType,
@@ -281,6 +282,27 @@ export function createTxRouter(db: DataStore): express.Router {
         limit,
       });
       const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
+      setETagCacheHeaders(res);
+      res.status(200).json(response);
+    })
+  );
+
+  router.get(
+    '/count',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      const from = parseTimestampQueryInput(req.query.from);
+      const to = parseTimestampQueryInput(req.query.to);
+      const { results } = await db.getTxsCount({
+        from,
+        to,
+      });
+      const response: TransactionsCountResults = { results };
+      if (!isProdEnv) {
+        const schemaPath =
+          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
+        await validate(schemaPath, response);
+      }
       setETagCacheHeaders(res);
       res.status(200).json(response);
     })

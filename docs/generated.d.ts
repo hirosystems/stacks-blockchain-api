@@ -102,6 +102,7 @@ export type SchemaMergeRootStub =
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionEventsResponse
+  | TransactionsCountResults
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
@@ -213,6 +214,7 @@ export type SchemaMergeRootStub =
   | TransactionStatus
   | TransactionType
   | Transaction
+  | TransactionsCount
   | InboundStxTransfer
   | RpcAddressBalanceNotificationParams
   | RpcAddressBalanceNotificationResponse
@@ -3098,6 +3100,25 @@ export interface TransactionEventsResponse {
   limit: number;
   offset: number;
   results: TransactionEvent[];
+}
+/**
+ * GET request that returns transactions count within a time range grouped by day
+ */
+export interface TransactionsCountResults {
+  results: TransactionsCount[];
+}
+/**
+ * Transactions count within a time range grouped by day
+ */
+export interface TransactionsCount {
+  /**
+   * ISO date indicating a day in the selected time range
+   */
+  day: string;
+  /**
+   * The number of transactions on this day
+   */
+  txs_count: number;
 }
 /**
  * GET request that returns transactions

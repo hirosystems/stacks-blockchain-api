@@ -294,3 +294,20 @@ export function isValidTxId(tx_id: string) {
     return false;
   }
 }
+
+export function parseTimestampQueryInput(val: any) {
+  if (typeof val !== 'number' && typeof val !== 'string') {
+    throw new InvalidRequestError(
+      'Timestamp must be either typeof `string` or `number`',
+      InvalidRequestErrorType.invalid_query
+    );
+  }
+  const parsedInput = typeof val === 'string' ? parseInt(val, 10) : val;
+  if (isNaN(new Date(parsedInput * 1000).getTime())) {
+    throw new InvalidRequestError(
+      '`from` and `to` must be a valid timestamp',
+      InvalidRequestErrorType.invalid_query
+    );
+  }
+  return parsedInput;
+}
