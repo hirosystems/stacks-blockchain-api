@@ -134,9 +134,10 @@ export class PgWriteStore extends PgStore {
   }
 
   async getChainTip(
-    sql: PgSqlClient
+    sql: PgSqlClient,
+    useMaterializedView = true
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
-    if (!this.isEventReplay) {
+    if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
     // The `chain_tip` materialized view is not available during event replay.
@@ -188,7 +189,7 @@ export class PgWriteStore extends PgStore {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -532,7 +533,7 @@ export class PgWriteStore extends PgStore {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
@@ -1270,7 +1271,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
         const values: MempoolTxInsertValues = {
           pruned: tx.pruned,
@@ -2441,7 +2442,7 @@ export class PgWriteStore extends PgStore {
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
-    await sql`REFRESH MATERIALIZED VIEW ${sql(viewName)}`;
+    await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
   }
 
   /**
