@@ -1,3 +1,10 @@
+## [5.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v5.0.1) (2022-09-20)
+
+
+### Bug Fixes
+
+* add owner index on subdomains table ([#1323](https://github.com/hirosystems/stacks-blockchain-api/issues/1323)) ([c9c6d05](https://github.com/hirosystems/stacks-blockchain-api/commit/c9c6d053fd8896187a26a788aaaa56fb48285e61))
+
 ## [5.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0) (2022-09-07)
 
 
