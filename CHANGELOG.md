@@ -1,3 +1,11 @@
+## [6.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.2...v6.0.0-beta.3) (2022-09-21)
+
+
+### Bug Fixes
+
+* refresh materialized views concurrently in new pg format ([#1324](https://github.com/hirosystems/stacks-blockchain-api/issues/1324)) ([20b284f](https://github.com/hirosystems/stacks-blockchain-api/commit/20b284fa381041fb842bf61d8a184be6ea84810f))
+* retry pg connection on new library code ([#1326](https://github.com/hirosystems/stacks-blockchain-api/issues/1326)) ([35db939](https://github.com/hirosystems/stacks-blockchain-api/commit/35db939199a2d826e7ee4dbe31af48cc42364ea2))
+
 ## [6.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.1...v6.0.0-beta.2) (2022-09-13)
 
 
