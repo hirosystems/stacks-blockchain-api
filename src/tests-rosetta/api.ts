@@ -29,6 +29,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 import { bufferToHexPrefixString } from '../helpers';
+import * as nock from 'nock';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
@@ -129,6 +130,30 @@ describe('Rosetta API', () => {
 
     const block = blockData.block, genesisBlock = genesisData.block;
 
+    nock('http://127.0.0.1:20443')
+      .get('/v2/neighbors')
+      .reply(200, {
+        sample: [],
+        inbound: [],
+        outbound: []
+      });
+    nock('http://127.0.0.1:20443')
+      .get('/v2/info')
+      .reply(200, {
+        burn_block_height: block.burn_block_height,
+        burn_consensus: block.burn_block_hash,
+        exit_at_block_height: null,
+        network_id: 1,
+        parent_network_id: 1,
+        peer_version: 1,
+        server_version: 1,
+        stable_burn_block_height: block.burn_block_height,
+        stable_burn_consensus: block.burn_block_hash,
+        stacks_tip: block.block_hash,
+        stacks_tip_burn_block: block.burn_block_height,
+        stacks_tip_height: block.block_height,
+        unanchored_tip: ''
+      });
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
