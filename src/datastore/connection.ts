@@ -1,5 +1,6 @@
-import { has0xPrefix, logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
+import { isPgConnectionError } from './helpers';
 
 export type PgSqlClient = postgres.Sql<any>;
 
@@ -87,7 +88,7 @@ export async function connectPostgres({
       connectionOkay = true;
       break;
     } catch (error: any) {
-      if (error instanceof postgres.PostgresError) {
+      if (isPgConnectionError(error) || error instanceof postgres.PostgresError) {
         const timeElapsed = initTimer.getElapsed();
         if (timeElapsed - lastElapsedLog > 2000) {
           lastElapsedLog = timeElapsed;
