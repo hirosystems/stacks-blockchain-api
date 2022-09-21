@@ -182,6 +182,8 @@ export function isPgConnectionError(error: any): string | false {
     return 'Postgres connection ETIMEDOUT';
   } else if (error.code === 'ENOTFOUND') {
     return 'Postgres connection ENOTFOUND';
+  } else if (error.code === 'ECONNRESET') {
+    return 'Postgres connection ECONNRESET';
   } else if (error.message) {
     const msg = (error as Error).message.toLowerCase();
     if (msg.includes('database system is starting up')) {
