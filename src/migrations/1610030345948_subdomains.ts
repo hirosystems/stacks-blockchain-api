@@ -86,7 +86,6 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.createIndex('subdomains', 'name');
   pgm.createIndex('subdomains', 'index_block_hash');
-  pgm.createIndex('subdomains', 'owner');
   pgm.createIndex('subdomains', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
