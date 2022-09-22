@@ -1,3 +1,10 @@
+## [6.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.3...v6.0.0-beta.4) (2022-09-22)
+
+
+### Bug Fixes
+
+* upgrade stacks node versions to 2.05.0.3.0 ([#1328](https://github.com/hirosystems/stacks-blockchain-api/issues/1328)) ([e30636e](https://github.com/hirosystems/stacks-blockchain-api/commit/e30636e30f716a7335792914a142fa54f423dc9a))
+
 ## [6.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.2...v6.0.0-beta.3) (2022-09-21)
 
 
