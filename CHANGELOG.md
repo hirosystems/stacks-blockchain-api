@@ -1,3 +1,10 @@
+## [6.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.5...v6.0.0-beta.6) (2022-09-23)
+
+
+### Features
+
+* add token_type metadata for rosetta ft operations ([#1332](https://github.com/hirosystems/stacks-blockchain-api/issues/1332)) ([09af27b](https://github.com/hirosystems/stacks-blockchain-api/commit/09af27b24be8e30a840707707b79d65cd45f2351))
+
 ## [6.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.4...v6.0.0-beta.5) (2022-09-22)
 
 
