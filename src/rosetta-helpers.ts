@@ -379,6 +379,9 @@ function makeFtBurnOperation(
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
       },
+      metadata: {
+        token_type: 'ft',
+      },
     },
   };
 
@@ -425,6 +428,9 @@ function makeFtMintOperation(
       currency: {
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
+      },
+      metadata: {
+        token_type: 'ft',
       },
     },
   };
@@ -476,6 +482,9 @@ function makeFtSenderOperation(
       currency: {
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
+      },
+      metadata: {
+        token_type: 'ft',
       },
     },
     coin_change: {
@@ -540,6 +549,9 @@ function makeFtReceiverOperation(
       currency: {
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
+      },
+      metadata: {
+        token_type: 'ft',
       },
     },
     coin_change: {

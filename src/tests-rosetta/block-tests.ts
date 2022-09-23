@@ -170,6 +170,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '-7500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       coin_change: {
         coin_action: 'coin_spent',
@@ -193,6 +196,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '7500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       coin_change: {
         coin_action: 'coin_created',
@@ -249,6 +255,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '-100',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       operation_identifier: {
         index: 1,
@@ -294,6 +303,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       operation_identifier: {
         index: 1,
