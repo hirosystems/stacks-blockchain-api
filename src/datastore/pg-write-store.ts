@@ -74,7 +74,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { connectPostgres, PgJsonb, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -162,7 +162,7 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.

@@ -68,7 +68,7 @@ import {
 
 async function handleRawEventRequest(
   eventPath: string,
-  payload: string,
+  payload: any,
   db: PgWriteStore
 ): Promise<void> {
   await db.storeRawEventRequest(eventPath, payload);
@@ -583,7 +583,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
 }
 
 interface EventMessageHandler {
-  handleRawEventRequest(eventPath: string, payload: string, db: PgWriteStore): Promise<void> | void;
+  handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
@@ -607,7 +607,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: string, db: PgWriteStore) => {
+    handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
         .catch(e => {
@@ -733,7 +733,7 @@ export async function startEventServer(opts: {
     asyncHandler(async (req, res, next) => {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
-      await messageHandler.handleRawEventRequest(eventPath, payload, db);
+      await messageHandler.handleRawEventRequest(eventPath, req.body, db);
       if (logger.isDebugEnabled()) {
         // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
         if (payload.length > 10_000_000) {
