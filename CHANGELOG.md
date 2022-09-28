@@ -1,3 +1,19 @@
+## [6.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.6...v6.0.0-beta.7) (2022-09-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated `/nft_events` endpoint (#1329)
+
+### Bug Fixes
+
+* event_observer_requests json writes ([#1334](https://github.com/hirosystems/stacks-blockchain-api/issues/1334)) ([465aa0b](https://github.com/hirosystems/stacks-blockchain-api/commit/465aa0b42ca3dda57d06f6c0756b03d591e7f027))
+
+
+### Miscellaneous Chores
+
+* remove deprecated `/nft_events` endpoint ([#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329)) ([65bb4e5](https://github.com/hirosystems/stacks-blockchain-api/commit/65bb4e55fabf21a70183d2b16c8bc1f6f742d04e))
+
 ## [6.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.5...v6.0.0-beta.6) (2022-09-23)
 
 
