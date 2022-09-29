@@ -452,6 +452,18 @@ function parseDataStoreTxEventData(
         dbTx.stxEvents.push(entry);
         break;
       }
+      case CoreNodeEventType.StxWithdrawEvent: {
+        const entry: DbStxEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.StxAsset,
+          asset_event_type_id: DbAssetEventTypeId.Withdraw,
+          sender: event.stx_withdraw_event.sender,
+          amount: BigInt(event.stx_withdraw_event.amount),
+          withdrawal_id: event.stx_withdraw_event.withdrawal_id,
+        };
+        dbTx.stxEvents.push(entry);
+        break;
+      }
       case CoreNodeEventType.FtTransferEvent: {
         const entry: DbFtEvent = {
           ...dbEvent,
@@ -485,6 +497,19 @@ function parseDataStoreTxEventData(
           sender: event.ft_burn_event.sender,
           asset_identifier: event.ft_burn_event.asset_identifier,
           amount: BigInt(event.ft_burn_event.amount),
+        };
+        dbTx.ftEvents.push(entry);
+        break;
+      }
+      case CoreNodeEventType.FtWithdrawEvent: {
+        const entry: DbFtEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.FungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Withdraw,
+          sender: event.ft_withdraw_event.sender,
+          asset_identifier: event.ft_withdraw_event.asset_identifier,
+          amount: BigInt(event.ft_withdraw_event.amount),
+          withdrawal_id: event.ft_withdraw_event.withdrawal_id,
         };
         dbTx.ftEvents.push(entry);
         break;

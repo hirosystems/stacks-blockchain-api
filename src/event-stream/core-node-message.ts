@@ -7,6 +7,7 @@ export enum CoreNodeEventType {
   StxMintEvent = 'stx_mint_event',
   StxBurnEvent = 'stx_burn_event',
   StxLockEvent = 'stx_lock_event',
+  StxWithdrawEvent = 'stx_withdraw_event',
   NftTransferEvent = 'nft_transfer_event',
   NftMintEvent = 'nft_mint_event',
   NftBurnEvent = 'nft_burn_event',
@@ -14,6 +15,7 @@ export enum CoreNodeEventType {
   FtTransferEvent = 'ft_transfer_event',
   FtMintEvent = 'ft_mint_event',
   FtBurnEvent = 'ft_burn_event',
+  FtWithdrawEvent = 'ft_withdraw_event',
 }
 
 // TODO: core-node should use a better encoding for this structure;
@@ -74,6 +76,16 @@ export interface StxLockEvent extends CoreNodeEventBase {
     unlock_height: string;
     /** STX principal associated with the locked tokens. */
     locked_address: string;
+  };
+}
+
+interface StxWithdrawEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.StxWithdrawEvent;
+  committed: boolean;
+  stx_withdraw_event: {
+    sender: string;
+    amount: number;
+    withdrawal_id: number;
   };
 }
 
@@ -156,15 +168,28 @@ interface FtBurnEvent extends CoreNodeEventBase {
   };
 }
 
+interface FtWithdrawEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.FtWithdrawEvent;
+  ft_withdraw_event: {
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
+    sender: string;
+    amount: number;
+    withdrawal_id: number;
+  };
+}
+
 export type CoreNodeEvent =
   | SmartContractEvent
   | StxTransferEvent
   | StxMintEvent
   | StxBurnEvent
   | StxLockEvent
+  | StxWithdrawEvent
   | FtTransferEvent
   | FtMintEvent
   | FtBurnEvent
+  | FtWithdrawEvent
   | NftTransferEvent
   | NftMintEvent
   | NftBurnEvent
