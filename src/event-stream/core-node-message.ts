@@ -89,7 +89,7 @@ export interface NftTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface NftMintEvent extends CoreNodeEventBase {
+export interface NftMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */

@@ -6,6 +6,7 @@ import {
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   isTxWithMicroblockInfo,
+  NftMintEvent,
   StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
@@ -45,7 +46,10 @@ import {
   tupleCV,
   bufferCV,
   serializeCV,
+  stringAsciiCV,
+  hexToCV,
 } from '@stacks/transactions';
+import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -191,6 +195,67 @@ function createTransactionFromCoreBtcTxEvent(
   return tx;
 }
 
+function createSubnetTransactionFromL1NftDeposit(
+  chainId: ChainID,
+  event: NftMintEvent,
+  txId: string
+): DecodedTxResult {
+  const decRecipientAddress = decodeStacksAddress(event.nft_mint_event.recipient);
+  const tokenName = event.nft_mint_event.asset_identifier.split('::')[1];
+  const [contractAddress, contractName] = event.nft_mint_event.asset_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+  const legacyClarityVals = [
+    stringAsciiCV(tokenName),
+    hexToCV(event.nft_mint_event.raw_value),
+    principalCV(event.nft_mint_event.recipient),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decRecipientAddress[0],
+          address_hash_bytes: decRecipientAddress[1],
+          address: event.nft_mint_event.recipient,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: 'nft-mint?',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
 export interface CoreNodeMsgBlockData {
   block_hash: string;
   index_block_hash: string;
@@ -250,25 +315,35 @@ export function parseMessageTransaction(
         logger.warn(`Could not find event for process BTC tx: ${JSON.stringify(coreTx)}`);
         return null;
       }
-      if (event.type === CoreNodeEventType.StxTransferEvent) {
-        rawTx = createTransactionFromCoreBtcTxEvent(chainId, event, coreTx.txid);
-        txSender = event.stx_transfer_event.sender;
-      } else if (event.type === CoreNodeEventType.StxLockEvent) {
-        rawTx = createTransactionFromCoreBtcStxLockEvent(
-          chainId,
-          event,
-          blockData.burn_block_height,
-          coreTx.raw_result,
-          coreTx.txid
-        );
-        txSender = event.stx_lock_event.locked_address;
-      } else {
-        logError(
-          `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
-            coreTx
-          )}`
-        );
-        throw new Error('Unable to generate transaction from BTC tx');
+      switch (event.type) {
+        case CoreNodeEventType.StxTransferEvent:
+          rawTx = createTransactionFromCoreBtcTxEvent(chainId, event, coreTx.txid);
+          txSender = event.stx_transfer_event.sender;
+          break;
+
+        case CoreNodeEventType.StxLockEvent:
+          rawTx = createTransactionFromCoreBtcStxLockEvent(
+            chainId,
+            event,
+            blockData.burn_block_height,
+            coreTx.raw_result,
+            coreTx.txid
+          );
+          txSender = event.stx_lock_event.locked_address;
+          break;
+
+        case CoreNodeEventType.NftMintEvent:
+          rawTx = createSubnetTransactionFromL1NftDeposit(chainId, event, coreTx.txid);
+          txSender = event.nft_mint_event.recipient;
+          break;
+
+        default:
+          logError(
+            `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
+              coreTx
+            )}`
+          );
+          throw new Error('Unable to generate transaction from BTC tx');
       }
     } else {
       rawTx = decodeTransaction(coreTx.raw_tx.substring(2));
