@@ -299,12 +299,14 @@ export enum DbAssetEventTypeId {
   Transfer = 1,
   Mint = 2,
   Burn = 3,
+  Withdraw = 4,
 }
 
 interface DbAssetEvent extends DbEventBase {
   asset_event_type_id: DbAssetEventTypeId;
   sender?: string;
   recipient?: string;
+  withdrawal_id?: number;
 }
 
 export interface DbStxEvent extends DbAssetEvent {

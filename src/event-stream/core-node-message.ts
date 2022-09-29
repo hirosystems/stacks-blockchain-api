@@ -10,6 +10,7 @@ export enum CoreNodeEventType {
   NftTransferEvent = 'nft_transfer_event',
   NftMintEvent = 'nft_mint_event',
   NftBurnEvent = 'nft_burn_event',
+  NftWithdrawEvent = 'nft_withdraw_event',
   FtTransferEvent = 'ft_transfer_event',
   FtMintEvent = 'ft_mint_event',
   FtBurnEvent = 'ft_burn_event',
@@ -113,6 +114,17 @@ interface NftBurnEvent extends CoreNodeEventBase {
   };
 }
 
+interface NftWithdrawEvent extends CoreNodeEventBase {
+  type: CoreNodeEventType.NftWithdrawEvent;
+  nft_withdraw_event: {
+    /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
+    asset_identifier: string;
+    sender: string;
+    withdrawal_id: number;
+    id: number;
+  };
+}
+
 interface FtTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtTransferEvent;
   ft_transfer_event: {
@@ -155,7 +167,8 @@ export type CoreNodeEvent =
   | FtBurnEvent
   | NftTransferEvent
   | NftMintEvent
-  | NftBurnEvent;
+  | NftBurnEvent
+  | NftWithdrawEvent;
 
 export type CoreNodeTxStatus = 'success' | 'abort_by_response' | 'abort_by_post_condition';
 

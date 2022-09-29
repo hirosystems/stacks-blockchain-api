@@ -52,7 +52,7 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, cvToHex, uintCV } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -522,6 +522,19 @@ function parseDataStoreTxEventData(
           sender: event.nft_burn_event.sender,
           asset_identifier: event.nft_burn_event.asset_identifier,
           value: event.nft_burn_event.raw_value,
+        };
+        dbTx.nftEvents.push(entry);
+        break;
+      }
+      case CoreNodeEventType.NftWithdrawEvent: {
+        const entry: DbNftEvent = {
+          ...dbEvent,
+          event_type: DbEventTypeId.NonFungibleTokenAsset,
+          asset_event_type_id: DbAssetEventTypeId.Withdraw,
+          sender: event.nft_withdraw_event.sender,
+          asset_identifier: event.nft_withdraw_event.asset_identifier,
+          value: cvToHex(uintCV(event.nft_withdraw_event.id)),
+          withdrawal_id: event.nft_withdraw_event.withdrawal_id,
         };
         dbTx.nftEvents.push(entry);
         break;
