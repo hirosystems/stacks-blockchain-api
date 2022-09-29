@@ -1,3 +1,10 @@
+## [6.0.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.7...v6.0.0-beta.8) (2022-09-29)
+
+
+### Bug Fixes
+
+* add owner index on subdomains table ([#1323](https://github.com/hirosystems/stacks-blockchain-api/issues/1323)) ([c9c6d05](https://github.com/hirosystems/stacks-blockchain-api/commit/c9c6d053fd8896187a26a788aaaa56fb48285e61))
+
 ## [6.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.6...v6.0.0-beta.7) (2022-09-28)
 
 
