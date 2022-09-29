@@ -186,6 +186,7 @@ async function processEvents(
         const stxAssetEvent = event;
         const txAssetEventType = stxAssetEvent.asset_event_type_id;
         switch (txAssetEventType) {
+          // FIXME: Add withdraw events
           case DbAssetEventTypeId.Transfer:
             if (baseTx.type_id == DbTxTypeId.TokenTransfer) {
               // each 'token_transfer' transaction has a 'transfer' event associated with it.

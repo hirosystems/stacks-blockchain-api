@@ -184,7 +184,7 @@ export function getEventTypeString(eventTypeId: DbEventTypeId): EventTypeString 
 
 export function getAssetEventTypeString(
   assetEventTypeId: DbAssetEventTypeId
-): 'transfer' | 'mint' | 'burn' {
+): 'transfer' | 'mint' | 'burn' | 'withdraw' {
   switch (assetEventTypeId) {
     case DbAssetEventTypeId.Transfer:
       return 'transfer';
@@ -192,6 +192,8 @@ export function getAssetEventTypeString(
       return 'mint';
     case DbAssetEventTypeId.Burn:
       return 'burn';
+    case DbAssetEventTypeId.Withdraw:
+      return 'withdraw';
     default:
       throw new Error(`Unexpected DbAssetEventTypeId: ${assetEventTypeId}`);
   }
