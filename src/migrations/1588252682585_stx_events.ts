@@ -56,6 +56,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     },
     sender: 'string',
     recipient: 'string',
+    withdrawal_id: 'integer',
   });
 
   pgm.createIndex('stx_events', 'tx_id', { method: 'hash' });
@@ -76,5 +77,9 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
 
   pgm.addConstraint('stx_events', 'valid_asset_burn', `CHECK (asset_event_type_id != 3 OR (
     recipient IS NULL AND sender IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('stx_events', 'valid_asset_withdrawal', `CHECK (asset_event_type_id != 4 OR (
+    withdrawal_id IS NULL
   ))`);
 }
