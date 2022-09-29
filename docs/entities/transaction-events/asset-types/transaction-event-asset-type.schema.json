@@ -1,5 +1,5 @@
 {
   "title": "TransactionEventAssetType",
   "type": "string",
-  "enum": ["transfer", "mint", "burn"]
+  "enum": ["transfer", "mint", "burn", "withdraw"]
 }

@@ -282,7 +282,7 @@ export type TransactionEventStxAsset = AbstractTransactionEvent & {
   tx_id: string;
   asset: TransactionEventAsset;
 };
-export type TransactionEventAssetType = "transfer" | "mint" | "burn";
+export type TransactionEventAssetType = "transfer" | "mint" | "burn" | "withdraw";
 export type TransactionEventFungibleAsset = AbstractTransactionEvent & {
   event_type: "fungible_token_asset";
   tx_id: string;
