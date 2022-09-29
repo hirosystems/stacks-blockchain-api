@@ -66,7 +66,6 @@
 * refactor pg classes, switch to postgres.js ([#1148](https://github.com/hirosystems/stacks-blockchain-api/issues/1148)) ([3ff4177](https://github.com/hirosystems/stacks-blockchain-api/commit/3ff41779f844c611fbd95429aeefbdb085a59026)), closes [#1168](https://github.com/hirosystems/stacks-blockchain-api/issues/1168)
 * send nft updates through websocket channels ([#1218](https://github.com/hirosystems/stacks-blockchain-api/issues/1218)) ([920a7b8](https://github.com/hirosystems/stacks-blockchain-api/commit/920a7b892a39f0f1e76363211573d935ae2c75da))
 
-
 ### Bug Fixes
 
 * consolidate db migrations ([#1314](https://github.com/hirosystems/stacks-blockchain-api/issues/1314)) ([d6bdf9f](https://github.com/hirosystems/stacks-blockchain-api/commit/d6bdf9faff905d5e208e61b04c34321e954a2fb1))
@@ -78,6 +77,11 @@
 * remove duplicate txs in microblock responses ([#1167](https://github.com/hirosystems/stacks-blockchain-api/issues/1167)) ([15c0c11](https://github.com/hirosystems/stacks-blockchain-api/commit/15c0c1124a2c91756389274c8a6ebfa8aa44228b))
 * tests ([1c1fd16](https://github.com/hirosystems/stacks-blockchain-api/commit/1c1fd1619c8ea97c2636082203fb678f06493786))
 * upsert nft and ft metadata ([#1193](https://github.com/hirosystems/stacks-blockchain-api/issues/1193)) ([c4eec5d](https://github.com/hirosystems/stacks-blockchain-api/commit/c4eec5d060666b660c48d326e74b4f989b9ee21d))
+
+## [5.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v5.0.1) (2022-09-20)
+
+
+* add owner index on subdomains table ([#1323](https://github.com/hirosystems/stacks-blockchain-api/issues/1323)) ([c9c6d05](https://github.com/hirosystems/stacks-blockchain-api/commit/c9c6d053fd8896187a26a788aaaa56fb48285e61))
 
 ## [5.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0) (2022-09-07)
 
