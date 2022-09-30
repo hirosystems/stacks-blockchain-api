@@ -281,6 +281,7 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
       zonefile: '',
       tx_id: tx.parsed_tx.tx_id,
       tx_index: tx.core_tx.tx_index,
+      event_index: undefined,
       status: 'name-renewal',
       canonical: true,
     };
@@ -332,6 +333,7 @@ export function parseNameFromContractEvent(
     zonefile: '',
     tx_id: event.txid,
     tx_index: tx.core_tx.tx_index,
+    event_index: event.event_index,
     status: attachment.attachment.metadata.op,
     canonical: true,
   };

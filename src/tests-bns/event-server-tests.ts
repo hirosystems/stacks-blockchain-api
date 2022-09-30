@@ -834,6 +834,199 @@ describe('BNS event server tests', () => {
     expect(name.result?.address).toBe('SP1QFKSVQP3J2PF45KFFCVBR4Q24Y09G0PJDECHS7');
   });
 
+  test('name-register and name-transfer in same tx from non-BNS contract', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: '0x08cdd83644176e87cd5fdc584a5193de84c4c54cbe8b3839225e75f396f64468',
+      index_block_hash: '0x82239cdbd3903ca032d300101990120947132a8a005a92d7a1cdcd5a61b35ba1',
+      burn_block_height: 749980,
+      burn_block_hash: '0x000000000000000000089afaf672605818e368521d9ad2d8e4b5763956b75363',
+      burn_block_time: 1660833970,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        sender_address: 'SP3GWTV1SMF9HDS4VY5NMM833CHH266W4YBASVYMZ'
+      })
+      .addTxBnsNamespace({
+        namespace_id: 'mega',
+        lifetime: 1000
+      })
+      .build();
+    await db.update(block);
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock({
+        microblock_hash: '0x2ad76cc1eadb6e0dd155a7b5ac82ff81a2c664552dacb99a524a410856330529',
+        microblock_sequence: 0,
+        parent_index_block_hash: '0x82239cdbd3903ca032d300101990120947132a8a005a92d7a1cdcd5a61b35ba1'
+      })
+      .build();
+    await db.updateMicroblocks(microblock);
+
+    const payload = {
+      "events": [
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "contract_event",
+          "committed": true,
+          "event_index": 85,
+          "contract_event": {
+            "topic": "print",
+            "raw_value": "0x0c000000010a6174746163686d656e740c00000003106174746163686d656e742d696e646578010000000000000000000000000000f65804686173680200000000086d657461646174610c00000004046e616d650200000003617065096e616d65737061636502000000046d656761026f700d0000000d6e616d652d7472616e736665720974782d73656e64657206161809f2ab9182b6ff1678f82846131c0709e51cf91b72796465722d68616e646c65732d636f6e74726f6c6c65722d7631",
+            "contract_identifier": "SP000000000000000000002Q6VF78.bns"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "stx_burn_event",
+          "committed": true,
+          "event_index": 81,
+          "stx_burn_event": {
+            "amount": "1",
+            "sender": "SPC0KWNBJ61BDZRPF3W2GHGK3G3GKS8WZ7ND33PS.ryder-handles-controller-v1"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "nft_transfer_event",
+          "committed": true,
+          "event_index": 84,
+          "nft_transfer_event": {
+            "sender": "SPC0KWNBJ61BDZRPF3W2GHGK3G3GKS8WZ7ND33PS.ryder-handles-controller-v1",
+            "raw_value": "0x0c00000002046e616d650200000003617065096e616d65737061636502000000046d656761",
+            "recipient": "SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG",
+            "asset_identifier": "SP000000000000000000002Q6VF78.bns::names"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "nft_mint_event",
+          "committed": true,
+          "event_index": 82,
+          "nft_mint_event": {
+            "raw_value": "0x0c00000002046e616d650200000003617065096e616d65737061636502000000046d656761",
+            "recipient": "SPC0KWNBJ61BDZRPF3W2GHGK3G3GKS8WZ7ND33PS.ryder-handles-controller-v1",
+            "asset_identifier": "SP000000000000000000002Q6VF78.bns::names"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "stx_transfer_event",
+          "committed": true,
+          "event_index": 79,
+          "stx_transfer_event": {
+            "amount": "3000000",
+            "sender": "SPC0KWNBJ61BDZRPF3W2GHGK3G3GKS8WZ7ND33PS.ryder-handles-controller-v1",
+            "recipient": "SP2J9XB6CNJX9C36D5SY4J85SA0P1MQX7R5VFKZZX"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "stx_transfer_event",
+          "committed": true,
+          "event_index": 80,
+          "stx_transfer_event": {
+            "amount": "1",
+            "sender": "SP3C8QH2R3909YQZ7WVZ71N8RJ6Y0P317T8MG8XSZ",
+            "recipient": "SPC0KWNBJ61BDZRPF3W2GHGK3G3GKS8WZ7ND33PS.ryder-handles-controller-v1"
+          }
+        },
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "type": "contract_event",
+          "committed": true,
+          "event_index": 83,
+          "contract_event": {
+            "topic": "print",
+            "raw_value": "0x0c000000010a6174746163686d656e740c00000003106174746163686d656e742d696e646578010000000000000000000000000000f65704686173680200000000086d657461646174610c00000004046e616d650200000003617065096e616d65737061636502000000046d656761026f700d0000000d6e616d652d72656769737465720974782d73656e64657206161809f2ab9182b6ff1678f82846131c0709e51cf91b72796465722d68616e646c65732d636f6e74726f6c6c65722d7631",
+            "contract_identifier": "SP000000000000000000002Q6VF78.bns"
+          }
+        }
+      ],
+      "block_hash": "0xbcf632eaa887b66a6356bf9410eb61377cced2d3f444a2286fb59b12a63e48e4",
+      "miner_txid": "0x037d5016d21839a46f136ad846ea99967eda65bf5cdb31feabc60c8eaef5b96d",
+      "block_height": 2,
+      "transactions": [
+        {
+          "txid": "0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16",
+          "raw_tx": "0x00000000010400d88bc4581a409f5fe7e6fe70d51891bc0b0c27d2000000000000001100000000000003e80001fff157398074931aca859d34de1f3070359b8493033cd79fde329ecd66e4bd090235cf61f9916f76cdbaa37ff4d2ee3358322f6a58ec2fb05717115c913fd6e103010000000002161809f2ab9182b6ff1678f82846131c0709e51cf91b72796465722d68616e646c65732d636f6e74726f6c6c65722d76310d6e616d652d72656769737465720000000602000000046d656761020000000361706502000000057337306b35020000004107d00910104bba0ee68b131ceead109ccea598a267a2000140b3277809f1ab535dcef753028c00e7239be1477801ac7d5b8c10e0a7b242261285212da194bdad01051636445d0e2f2c4d32e61b93ad9a6f4e091b003f470200000000",
+          "status": "success",
+          "tx_index": 25,
+          "raw_result": "0x0703",
+          "contract_abi": null,
+          "execution_cost": {
+            "runtime": 643399,
+            "read_count": 69,
+            "read_length": 231108,
+            "write_count": 16,
+            "write_length": 1948
+          },
+          "microblock_hash": null,
+          "microblock_sequence": null,
+          "microblock_parent_hash": null
+        }
+      ],
+      "anchored_cost": {
+        "runtime": 39996577,
+        "read_count": 4234,
+        "read_length": 13859444,
+        "write_count": 676,
+        "write_length": 53049
+      },
+      "burn_block_hash": "0x0000000000000000000867b5dd6ec7ebb50404acabcdb35193b6b2fcd3ea7a37",
+      "burn_block_time": 1660834638,
+      "index_block_hash": "0xe43e505d4c7ca5f64a6d9617fbb658a84344610eb0e6495f8f9b7ab3b2648f61",
+      "burn_block_height": 749981,
+      "parent_block_hash": "0x08cdd83644176e87cd5fdc584a5193de84c4c54cbe8b3839225e75f396f64468",
+      "parent_microblock": "0x2ad76cc1eadb6e0dd155a7b5ac82ff81a2c664552dacb99a524a410856330529",
+      "matured_miner_rewards": [],
+      "parent_burn_block_hash": "0x000000000000000000089afaf672605818e368521d9ad2d8e4b5763956b75363",
+      "parent_index_block_hash": "0x82239cdbd3903ca032d300101990120947132a8a005a92d7a1cdcd5a61b35ba1",
+      "parent_burn_block_height": 749980,
+      "confirmed_microblocks_cost": {
+        "runtime": 0,
+        "read_count": 0,
+        "read_length": 0,
+        "write_count": 0,
+        "write_length": 0
+      },
+      "parent_microblock_sequence": 0,
+      "parent_burn_block_timestamp": 1660833970
+    };
+
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/new_block',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(payload), 'utf8'),
+      throwOnNotOK: true,
+    });
+
+    const name = await db.getName({
+      name: 'ape.mega',
+      includeUnanchored: true,
+      chainId: ChainID.Mainnet
+    });
+    expect(name.found).toBe(true);
+    expect(name.result?.namespace_id).toBe('mega');
+    expect(name.result?.tx_id).toBe('0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16');
+    expect(name.result?.status).toBe('name-transfer');
+    expect(name.result?.expire_block).toBe(1002);
+    expect(name.result?.address).toBe('SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
+
+    const list = await db.getNamesList({ page: 0, includeUnanchored: true });
+    expect(list.results.length).toBe(1);
+    expect(list.results).toStrictEqual(['ape.mega']);
+
+    const namespaceList = await db.getNamespaceNamesList({
+      namespace: 'mega',
+      page: 0,
+      includeUnanchored: true
+    });
+    expect(namespaceList.results.length).toBe(1);
+    expect(namespaceList.results).toStrictEqual(['ape.mega']);
+  });
+
   afterEach(async () => {
     await eventServer.closeAsync();
     await db?.close();
