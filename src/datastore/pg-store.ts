@@ -3127,7 +3127,7 @@ export class PgStore {
         WHERE namespace_id = ${namespace}
         AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;
@@ -3187,7 +3187,10 @@ export class PgStore {
           AND n.registered_at <= ${maxBlockHeight}
           AND n.canonical = true
           AND n.microblock_canonical = true
-        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        ORDER BY n.registered_at DESC,
+          n.microblock_sequence DESC,
+          n.tx_index DESC,
+          n.event_index DESC
         LIMIT 1
       `;
       if (nameZonefile.length === 0) {
@@ -3455,7 +3458,7 @@ export class PgStore {
         FROM names
         WHERE canonical = true AND microblock_canonical = true
         AND registered_at <= ${maxBlockHeight}
-        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;

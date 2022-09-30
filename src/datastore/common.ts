@@ -517,11 +517,12 @@ export interface DbBnsName {
   expire_block: number;
   grace_period?: number;
   renewal_deadline?: number;
-  resolver?: string | undefined;
+  resolver?: string;
   zonefile: string;
   zonefile_hash: string;
   tx_id: string;
   tx_index: number;
+  event_index?: number;
   status?: string;
   canonical: boolean;
 }
@@ -1106,6 +1107,7 @@ export interface BnsNameInsertValues {
   namespace_id: string;
   tx_index: number;
   tx_id: PgBytea;
+  event_index: number | null;
   status: string | null;
   canonical: boolean;
   index_block_hash: PgBytea;

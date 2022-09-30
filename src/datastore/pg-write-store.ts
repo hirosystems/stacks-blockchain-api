@@ -1404,12 +1404,25 @@ export class PgWriteStore extends PgStore {
       namespace_id,
       tx_id,
       tx_index,
+      event_index,
       status,
       canonical,
     } = bnsName;
-    // Try to figure out the name's expiration block based on its namespace's lifetime. However, if
-    // the name was only transferred, keep the expiration from the last register/renewal we had.
+    // Try to figure out the name's expiration block based on its namespace's lifetime.
     let expireBlock = expire_block;
+    const namespaceLifetime = await sql<{ lifetime: number }[]>`
+      SELECT lifetime
+      FROM namespaces
+      WHERE namespace_id = ${namespace_id}
+      AND canonical = true AND microblock_canonical = true
+      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1
+    `;
+    if (namespaceLifetime.length > 0) {
+      expireBlock = registered_at + namespaceLifetime[0].lifetime;
+    }
+    // If the name was transferred, keep the expiration from the last register/renewal we had (if
+    // any).
     if (status === 'name-transfer') {
       const prevExpiration = await sql<{ expire_block: number }[]>`
         SELECT expire_block
@@ -1421,18 +1434,6 @@ export class PgWriteStore extends PgStore {
       `;
       if (prevExpiration.length > 0) {
         expireBlock = prevExpiration[0].expire_block;
-      }
-    } else {
-      const namespaceLifetime = await sql<{ lifetime: number }[]>`
-        SELECT lifetime
-        FROM namespaces
-        WHERE namespace_id = ${namespace_id}
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT 1
-      `;
-      if (namespaceLifetime.length > 0) {
-        expireBlock = registered_at + namespaceLifetime[0].lifetime;
       }
     }
     // If we didn't receive a zonefile, keep the last valid one.
@@ -1476,6 +1477,7 @@ export class PgWriteStore extends PgStore {
       namespace_id: namespace_id,
       tx_index: tx_index,
       tx_id: tx_id,
+      event_index: event_index ?? null,
       status: status ?? null,
       canonical: canonical,
       index_block_hash: blockData.index_block_hash,
@@ -1486,7 +1488,7 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO names ${sql(nameValues)}
-      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash DO
+      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash_event_index DO
         UPDATE SET
           address = EXCLUDED.address,
           registered_at = EXCLUDED.registered_at,
@@ -1494,6 +1496,7 @@ export class PgWriteStore extends PgStore {
           zonefile_hash = EXCLUDED.zonefile_hash,
           namespace_id = EXCLUDED.namespace_id,
           tx_index = EXCLUDED.tx_index,
+          event_index = EXCLUDED.event_index,
           status = EXCLUDED.status,
           canonical = EXCLUDED.canonical,
           parent_index_block_hash = EXCLUDED.parent_index_block_hash,
