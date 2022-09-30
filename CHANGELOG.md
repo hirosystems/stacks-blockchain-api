@@ -1,3 +1,10 @@
+## [6.0.0-beta.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.8...v6.0.0-beta.9) (2022-09-30)
+
+
+### Bug Fixes
+
+* support multiple BNS name events in the same transaction ([#1337](https://github.com/hirosystems/stacks-blockchain-api/issues/1337)) ([1edb256](https://github.com/hirosystems/stacks-blockchain-api/commit/1edb25697df689dbf1da5d412f5d40e4aac024f3))
+
 ## [6.0.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.7...v6.0.0-beta.8) (2022-09-29)
 
 
