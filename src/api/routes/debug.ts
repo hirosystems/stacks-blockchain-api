@@ -41,8 +41,6 @@ import { PgStore } from '../../datastore/pg-store';
 import * as poxHelpers from '../../pox-helpers';
 import fetch from 'node-fetch';
 import {
-  RosettaConstructionDeriveRequest,
-  RosettaConstructionDeriveResponse,
   RosettaConstructionMetadataRequest,
   RosettaConstructionMetadataResponse,
   RosettaConstructionPayloadResponse,
@@ -51,6 +49,7 @@ import {
   RosettaConstructionPreprocessResponse,
   RosettaConstructionSubmitRequest,
   RosettaConstructionSubmitResponse,
+  RosettaOperation,
 } from '@stacks/stacks-blockchain-api-types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
 
@@ -578,150 +577,99 @@ export function createDebugRouter(db: PgStore): express.Router {
     btcAddr: string,
     cycleCount: number
   ): Promise<{ txId: string; burnBlockHeight: number }> {
-    const publicKey = account.pubKey;
-
-    const deriveRequest: RosettaConstructionDeriveRequest = {
-      network_identifier: {
-        blockchain: RosettaConstants.blockchain,
-        network: getRosettaNetworkName(ChainID.Testnet),
-      },
-      public_key: {
-        curve_type: 'secp256k1',
-        hex_bytes: publicKey,
-      },
+    const fetchRosetta = async <TPostBody, TRes>(endpoint: string, body: TPostBody) => {
+      const req = await fetch(`http://localhost:${port}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const result = await req.json();
+      return result as TRes;
     };
-    const deriveReq = await fetch(`http://localhost:${port}/rosetta/v1/construction/derive`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+
+    const rosettaNetwork = {
+      blockchain: RosettaConstants.blockchain,
+      network: getRosettaNetworkName(ChainID.Testnet),
+    };
+
+    const stackingOperations: RosettaOperation[] = [
+      {
+        operation_identifier: {
+          index: 0,
+          network_index: 0,
+        },
+        related_operations: [],
+        type: 'stack_stx',
+        account: {
+          address: account.stacksAddress,
+          metadata: {},
+        },
+        amount: {
+          value: '-' + ustxAmount.toString(),
+          currency: { symbol: 'STX', decimals: 6 },
+          metadata: {},
+        },
+        metadata: {
+          number_of_cycles: cycleCount,
+          pox_addr: btcAddr,
+        },
       },
-      body: JSON.stringify(deriveRequest),
-    });
-    const deriveResult: RosettaConstructionDeriveResponse = await deriveReq.json();
+      {
+        operation_identifier: {
+          index: 1,
+          network_index: 0,
+        },
+        related_operations: [],
+        type: 'fee',
+        account: {
+          address: account.stacksAddress,
+          metadata: {},
+        },
+        amount: {
+          value: '10000',
+          currency: { symbol: 'STX', decimals: 6 },
+        },
+      },
+    ];
 
     // preprocess
-    const fee = '10000';
-    const stacking_amount = ustxAmount.toString();
-    const sender = deriveResult.account_identifier!.address;
-    const number_of_cycles = cycleCount;
-    const pox_addr = btcAddr;
-    const max_fee = '12380898';
-    const preprocessRequest: RosettaConstructionPreprocessRequest = {
-      network_identifier: {
-        blockchain: RosettaConstants.blockchain,
-        network: getRosettaNetworkName(ChainID.Testnet),
-      },
-      operations: [
-        {
-          operation_identifier: {
-            index: 0,
-            network_index: 0,
-          },
-          related_operations: [],
-          type: 'stack_stx',
-          account: {
-            address: sender,
-            metadata: {},
-          },
-          amount: {
-            value: '-' + stacking_amount,
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-            metadata: {},
-          },
-          metadata: {
-            number_of_cycles: number_of_cycles,
-            pox_addr: pox_addr,
-          },
-        },
-        {
-          operation_identifier: {
-            index: 1,
-            network_index: 0,
-          },
-          related_operations: [],
-          type: 'fee',
-          account: {
-            address: sender,
-            metadata: {},
-          },
-          amount: {
-            value: fee,
-            currency: {
-              symbol: 'STX',
-              decimals: 6,
-            },
-          },
-        },
-      ],
+    const preprocessResult = await fetchRosetta<
+      RosettaConstructionPreprocessRequest,
+      RosettaConstructionPreprocessResponse
+    >('/rosetta/v1/construction/preprocess', {
+      network_identifier: rosettaNetwork,
+      operations: stackingOperations,
       metadata: {},
       max_fee: [
         {
-          value: max_fee,
-          currency: {
-            symbol: 'STX',
-            decimals: 6,
-          },
+          value: '12380898',
+          currency: { symbol: 'STX', decimals: 6 },
           metadata: {},
         },
       ],
       suggested_fee_multiplier: 1,
-    };
-    const preprocessReq = await fetch(
-      `http://localhost:${port}/rosetta/v1/construction/preprocess`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(preprocessRequest),
-      }
-    );
-    const preprocessResult: RosettaConstructionPreprocessResponse = await preprocessReq.json();
+    });
 
     // metadata
-    const metadataRequest: RosettaConstructionMetadataRequest = {
-      network_identifier: {
-        blockchain: RosettaConstants.blockchain,
-        network: getRosettaNetworkName(ChainID.Testnet),
-      },
+    const resultMetadata = await fetchRosetta<
+      RosettaConstructionMetadataRequest,
+      RosettaConstructionMetadataResponse
+    >('/rosetta/v1/construction/metadata', {
+      network_identifier: rosettaNetwork,
       options: preprocessResult.options!, // using options returned from preprocess
-      public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
-    };
-    const metadataReq = await fetch(`http://localhost:${port}/rosetta/v1/construction/metadata`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(metadataRequest),
+      public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
     });
-    const resultMetadata: RosettaConstructionMetadataResponse = await metadataReq.json();
 
     // payload
-    const payloadsRequest: RosettaConstructionPayloadsRequest = {
-      network_identifier: {
-        blockchain: RosettaConstants.blockchain,
-        network: getRosettaNetworkName(ChainID.Testnet),
-      },
-      operations: preprocessRequest.operations, // using operations same as preprocess request
+    const payloadsResult = await fetchRosetta<
+      RosettaConstructionPayloadsRequest,
+      RosettaConstructionPayloadResponse
+    >('/rosetta/v1/construction/payloads', {
+      network_identifier: rosettaNetwork,
+      operations: stackingOperations, // using same operations as preprocess request
       metadata: resultMetadata.metadata, // using metadata from metadata response
-      public_keys: [
-        {
-          hex_bytes: publicKey,
-          curve_type: 'secp256k1',
-        },
-      ],
-    };
-    const payloadsReq = await fetch(`http://localhost:${port}/rosetta/v1/construction/payloads`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payloadsRequest),
+      public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
     });
-    const payloadsResult: RosettaConstructionPayloadResponse = await payloadsReq.json();
 
     // sign tx
     const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
@@ -730,22 +678,13 @@ export function createDebugRouter(db: PgStore): express.Router {
     const signedSerializedTx = stacksTx.serialize().toString('hex');
 
     // submit
-    const submitRequest: RosettaConstructionSubmitRequest = {
-      network_identifier: {
-        blockchain: RosettaConstants.blockchain,
-        network: getRosettaNetworkName(ChainID.Testnet),
-      },
-      // signed transaction bytes
+    const submitResult = await fetchRosetta<
+      RosettaConstructionSubmitRequest,
+      RosettaConstructionSubmitResponse
+    >('/rosetta/v1/construction/submit', {
+      network_identifier: rosettaNetwork,
       signed_transaction: '0x' + signedSerializedTx,
-    };
-    const submitReq = await fetch(`http://localhost:${port}/rosetta/v1/construction/submit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(submitRequest),
     });
-    const submitResult: RosettaConstructionSubmitResponse = await submitReq.json();
 
     return {
       txId: submitResult.transaction_identifier.hash,
