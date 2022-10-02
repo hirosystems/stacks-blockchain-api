@@ -510,15 +510,20 @@ export function createDebugRouter(db: PgStore): express.Router {
       </datalist>
 
       <label for="recipient_address">Recipient address</label>
-      <input list="recipient_addresses" name="recipient_address" value="${
+      <input list="recipient_addresses" name="recipient_address" value="${stacksToBitcoinAddress(
         testnetKeys[1].stacksAddress
-      }">
+      )}">
       <datalist id="recipient_addresses">
-        ${testnetKeys.map(k => '<option value="' + k.stacksAddress + '">').join('\n')}
+        ${testnetKeys
+          .map(k => '<option value="' + stacksToBitcoinAddress(k.stacksAddress) + '">')
+          .join('\n')}
       </datalist>
 
-      <label for="stx_amount">uSTX amount</label>
-      <input type="number" id="stx_amount" name="stx_amount" value="5000">
+      <label for="stx_amount">uSTX amount (0 for automatic min_amount_ustx)</label>
+      <input type="number" id="stx_amount" name="stx_amount" value="0">
+
+      <label for="cycle_count">Cycles</label>
+      <input type="number" id="cycle_count" name="cycle_count" value="1">
 
       <label for="memo">Memo</label>
       <input type="text" id="memo" name="memo" value="hello" maxlength="34">
@@ -578,11 +583,13 @@ export function createDebugRouter(db: PgStore): express.Router {
   router.post(
     '/broadcast/stack',
     asyncHandler(async (req, res) => {
-      const { origin_key, recipient_address, stx_amount, memo } = req.body;
+      const { origin_key, recipient_address, stx_amount, cycle_count } = req.body;
       const client = new StacksCoreRpcClient();
-      const coreInfo = await client.getInfo();
       const poxInfo = await client.getPox();
-      const minStxAmount = BigInt(poxInfo.min_amount_ustx);
+      const minStxAmount =
+        Number(stx_amount) > 0
+          ? BigInt(stx_amount)
+          : BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       const sender = testnetKeys.filter(t => t.secretKey === origin_key)[0];
       const accountBalance = await client.getAccountBalance(sender.stacksAddress);
       if (accountBalance < minStxAmount) {
@@ -591,9 +598,9 @@ export function createDebugRouter(db: PgStore): express.Router {
         );
       }
       const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      const btcAddr = stacksToBitcoinAddress(sender.stacksAddress);
-      const { hashMode, data } = convertBTCAddress(btcAddr);
-      const cycles = 3;
+      const { hashMode, data } = convertBTCAddress(recipient_address);
+      const cycles = Number(cycle_count);
+      const burnBlockHeight = (poxInfo as any).current_burnchain_block_height;
       const txOptions: SignedContractCallOptions = {
         senderKey: sender.secretKey,
         contractAddress,
@@ -605,11 +612,12 @@ export function createDebugRouter(db: PgStore): express.Router {
             hashbytes: bufferCV(data),
             version: bufferCV(Buffer.from([hashMode])),
           }),
-          uintCV(coreInfo.burn_block_height),
+          uintCV(burnBlockHeight),
           uintCV(cycles),
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.Any,
+        fee: 10000,
       };
       const tx = await makeContractCall(txOptions);
       const expectedTxId = tx.txid();
@@ -618,13 +626,27 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
-        .send(
-          tokenTransferHtml +
-            '<h3>Broadcasted transaction:</h3>' +
-            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
-        );
+
+      res.set('Content-Type', 'text/html').send(
+        sendPoxHtml +
+          `
+          <h3>Broadcasted transaction:</h3>
+          <a href="/extended/v1/tx/${txId}">${txId}</a><br>
+          <ul>
+            <li>Contract used: <code>${poxInfo.contract_id}</code></li>
+            <li>Burn block height: <code>${burnBlockHeight}</code></li>
+            <li>uSTX amount: <code>${minStxAmount}</code></li>
+            <li>Cycles: <code>${cycles}</code></li>
+            <li>Stacking account: <code>${sender.stacksAddress}</code></li>
+            <li>Reward address: <code>${recipient_address}</code></li>
+          </ul>
+          <a href="/v2/accounts/${sender.stacksAddress}?proof=0">RPC account endpoint</a><br>
+          <a href="/extended/v1/address/${sender.stacksAddress}/stx">STX balance for ${sender.stacksAddress}</a><br>
+          <a href="/extended/v1/burnchain/reward_slot_holders/${recipient_address}">Reward slots for ${recipient_address}</a><br>
+          <a href="/extended/v1/burnchain/rewards/${recipient_address}">Rewards for ${recipient_address}</a><br>
+          <a href="/extended/v1/burnchain/rewards/${recipient_address}/total">Rewards for ${recipient_address} (total)</a><br>
+          `
+      );
     })
   );
 
