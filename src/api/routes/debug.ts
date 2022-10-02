@@ -38,9 +38,12 @@ import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-strea
 import { cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 import { PgStore } from '../../datastore/pg-store';
+import { DbTx } from '../../datastore/common';
 import * as poxHelpers from '../../pox-helpers';
 import fetch from 'node-fetch';
 import {
+  RosettaBlockTransactionRequest,
+  RosettaBlockTransactionResponse,
   RosettaConstructionMetadataRequest,
   RosettaConstructionMetadataResponse,
   RosettaConstructionPayloadResponse,
@@ -570,6 +573,21 @@ export function createDebugRouter(db: PgStore): express.Router {
     res.set('Content-Type', 'text/html').send(sendPoxHtml);
   });
 
+  async function fetchRosetta<TPostBody, TRes>(port: number, endpoint: string, body: TPostBody) {
+    const req = await fetch(`http://localhost:${port}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await req.json();
+    return result as TRes;
+  }
+
+  const rosettaNetwork = {
+    blockchain: RosettaConstants.blockchain,
+    network: getRosettaNetworkName(ChainID.Testnet),
+  };
+
   async function stackWithRosetta(
     port: number,
     account: SeededAccount,
@@ -577,21 +595,6 @@ export function createDebugRouter(db: PgStore): express.Router {
     btcAddr: string,
     cycleCount: number
   ): Promise<{ txId: string; burnBlockHeight: number }> {
-    const fetchRosetta = async <TPostBody, TRes>(endpoint: string, body: TPostBody) => {
-      const req = await fetch(`http://localhost:${port}${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const result = await req.json();
-      return result as TRes;
-    };
-
-    const rosettaNetwork = {
-      blockchain: RosettaConstants.blockchain,
-      network: getRosettaNetworkName(ChainID.Testnet),
-    };
-
     const stackingOperations: RosettaOperation[] = [
       {
         operation_identifier: {
@@ -636,7 +639,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     const preprocessResult = await fetchRosetta<
       RosettaConstructionPreprocessRequest,
       RosettaConstructionPreprocessResponse
-    >('/rosetta/v1/construction/preprocess', {
+    >(port, '/rosetta/v1/construction/preprocess', {
       network_identifier: rosettaNetwork,
       operations: stackingOperations,
       metadata: {},
@@ -654,7 +657,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     const resultMetadata = await fetchRosetta<
       RosettaConstructionMetadataRequest,
       RosettaConstructionMetadataResponse
-    >('/rosetta/v1/construction/metadata', {
+    >(port, '/rosetta/v1/construction/metadata', {
       network_identifier: rosettaNetwork,
       options: preprocessResult.options!, // using options returned from preprocess
       public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
@@ -664,7 +667,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     const payloadsResult = await fetchRosetta<
       RosettaConstructionPayloadsRequest,
       RosettaConstructionPayloadResponse
-    >('/rosetta/v1/construction/payloads', {
+    >(port, '/rosetta/v1/construction/payloads', {
       network_identifier: rosettaNetwork,
       operations: stackingOperations, // using same operations as preprocess request
       metadata: resultMetadata.metadata, // using metadata from metadata response
@@ -681,7 +684,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     const submitResult = await fetchRosetta<
       RosettaConstructionSubmitRequest,
       RosettaConstructionSubmitResponse
-    >('/rosetta/v1/construction/submit', {
+    >(port, '/rosetta/v1/construction/submit', {
       network_identifier: rosettaNetwork,
       signed_transaction: '0x' + signedSerializedTx,
     });
@@ -764,6 +767,7 @@ export function createDebugRouter(db: PgStore): express.Router {
           `
           <h3>Broadcasted transaction:</h3>
           <a href="/extended/v1/tx/${txId}">${txId}</a><br>
+          <a href="/extended/v1/debug/rosetta/tx/${txId}">Rosetta lookup</a><br>
           <ul>
             <li>Used Rosetta: <code>${useRosetta}</code></li>
             <li>Contract used: <code>${poxInfo.contract_id}</code></li>
@@ -780,6 +784,34 @@ export function createDebugRouter(db: PgStore): express.Router {
           <a href="/extended/v1/burnchain/rewards/${recipient_address}/total">Rewards for ${recipient_address} (total)</a><br>
           `
       );
+    })
+  );
+
+  router.get(
+    '/rosetta/tx/:tx_id',
+    asyncHandler(async (req, res) => {
+      const { tx_id } = req.params;
+      const searchResult = await db.searchHash({ hash: tx_id });
+      if (!searchResult.found) {
+        res.status(404).send('Transaction not found');
+        return;
+      }
+      if (searchResult.result.entity_type === 'mempool_tx_id') {
+        res.status(404).send('Transaction still pending in mempool');
+        return;
+      }
+      const dbTx = searchResult.result.entity_data as DbTx;
+      const port = req.socket.localPort as number;
+      const txResult = await fetchRosetta<
+        RosettaBlockTransactionRequest,
+        RosettaBlockTransactionResponse
+      >(port, '/rosetta/v1/block/transaction', {
+        network_identifier: rosettaNetwork,
+        block_identifier: { hash: dbTx.block_hash },
+        transaction_identifier: { hash: dbTx.tx_id },
+      });
+
+      res.set('Content-Type', 'application/json').send(JSON.stringify(txResult, null, 2));
     })
   );
 

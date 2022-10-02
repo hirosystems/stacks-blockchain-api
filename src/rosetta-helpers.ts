@@ -798,9 +798,16 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
     throw new Error(`Could not find field function_args in contract call`);
   }
 
+  // (define-public (delegate-stx
+  //   (amount-ustx uint)
+  //   (delegate-to principal)
+  //   (until-burn-ht (optional uint))
+  //   (pox-addr (optional { version: (buff 1),
+  //                         hashbytes: (buff 20) })))
+
   // Locked amount
   let argName = 'amount-ustx';
-  const amount_ustx = contract.contract_call.function_args?.find(a => a.name === argName);
+  const amount_ustx = contract.contract_call.function_args?.[0]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!amount_ustx) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -808,7 +815,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // Delegatee address
   argName = 'delegate-to';
-  const delegate_to = contract.contract_call.function_args?.find(a => a.name === argName);
+  const delegate_to = contract.contract_call.function_args?.[1]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!delegate_to) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -816,7 +823,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // Height on which the relation between delegator-delagatee will end  - OPTIONAL
   argName = 'until-burn-ht';
-  const until_burn = contract.contract_call.function_args.find(a => a.name === argName);
+  const until_burn = contract.contract_call.function_args?.[2]; // contract.contract_call.function_args.find(a => a.name === argName);
   if (!until_burn) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -825,7 +832,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // BTC reward address - OPTIONAL
   argName = 'pox-addr';
-  const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
+  const pox_address_raw = contract.contract_call.function_args?.[3]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
@@ -856,9 +863,15 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
     throw new Error(`Could not find field function_args in contract call`);
   }
 
+  // (define-public (stack-stx
+  //   (amount-ustx uint)
+  //   (pox-addr (tuple (version (buff 1)) (hashbytes (buff 20))))
+  //   (start-burn-ht uint)
+  //   (lock-period uint))
+
   // Locking period
   let argName = 'lock-period';
-  const lock_period = contract.contract_call.function_args.find(a => a.name === argName);
+  const lock_period = contract.contract_call.function_args?.[3]; // contract.contract_call.function_args.find(a => a.name === argName);
   if (!lock_period) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -866,7 +879,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Locked amount
   argName = 'amount-ustx';
-  const amount_ustx = contract.contract_call.function_args?.find(a => a.name === argName);
+  const amount_ustx = contract.contract_call.function_args?.[0]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!amount_ustx) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -874,7 +887,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Start burn height
   argName = 'start-burn-ht';
-  const start_burn_height = contract.contract_call.function_args?.find(a => a.name === argName);
+  const start_burn_height = contract.contract_call.function_args?.[2]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!start_burn_height) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -901,7 +914,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // BTC reward address
   argName = 'pox-addr';
-  const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
+  const pox_address_raw = contract.contract_call.function_args?.[1]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!pox_address_raw) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
