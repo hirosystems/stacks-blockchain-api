@@ -360,11 +360,16 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         case RosettaOperationType.StackStx: {
           // Getting stacking info
           const poxInfo = await new StacksCoreRpcClient().getPox();
-          const coreInfo = await new StacksCoreRpcClient().getInfo();
+          let burnBlockHeight = poxInfo.current_burnchain_block_height;
+          // In Stacks 2.1, the burn block height is inlcuded in `/v2/pox` so we can skip the extra network request
+          if (burnBlockHeight === undefined) {
+            const coreInfo = await new StacksCoreRpcClient().getInfo();
+            burnBlockHeight = coreInfo.burn_block_height;
+          }
           const contractInfo = poxInfo.contract_id.split('.');
           options.contract_address = contractInfo[0];
           options.contract_name = contractInfo[1];
-          options.burn_block_height = coreInfo.burn_block_height;
+          options.burn_block_height = burnBlockHeight;
           break;
         }
         case RosettaOperationType.DelegateStx: {
