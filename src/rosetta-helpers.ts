@@ -610,8 +610,10 @@ async function makeCallContractOperation(
     case 'delegate-stx':
     case 'revoke-delegate-stx':
       if (
-        stackContractCall.contract_call.contract_id == PoxContractIdentifier.testnet ||
-        stackContractCall.contract_call.contract_id == PoxContractIdentifier.mainnet
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.testnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.mainnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.testnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet
       ) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {
