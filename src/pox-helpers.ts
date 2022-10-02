@@ -1,0 +1,151 @@
+import * as btc from 'bitcoinjs-lib';
+import { bech32, bech32m } from '@scure/base';
+
+// TODO: switch to using @stacks/stacking lib once available
+//   currently borrowing its WIP code from:
+//    https://github.com/hirosystems/stacks.js/pull/1354/files
+//    https://github.com/hirosystems/stacks.js/blob/72b2db54a417d09028a66bcfb4f680d508e32c5c/packages/stacking/src/utils.ts
+
+/** Address versions corresponding to pox.clar, pox-2.clar */
+enum PoXAddressVersion {
+  /** (b58/legacy) p2pkh address, and `hashbytes` is the 20-byte hash160 of a single public key */
+  P2PKH = 0x00,
+  /** (b58/legacy) p2sh address, and `hashbytes` is the 20-byte hash160 of a redeemScript script */
+  P2SH = 0x01,
+  /** (b58/legacy) p2wpkh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wpkh witness script */
+  P2SHP2WPKH = 0x02, // likely unused, as indistinguishable from P2SH
+  /** (b58) p2wsh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wsh witness script */
+  P2SHP2WSH = 0x03, // likely unused, as indistinguishable from P2SH
+  /** (bech32/segwit) p2wpkh address, and `hashbytes` is the 20-byte hash160 of the witness script */
+  P2WPKH = 0x04,
+  /** (bech32/segwit) p2wsh address, and `hashbytes` is the 32-byte sha256 of the witness script */
+  P2WSH = 0x05,
+  /** (bech32/segwit) p2tr address, and `hashbytes` is the 32-byte sha256 of the witness script */
+  P2TR = 0x06,
+}
+
+const BitcoinNetworkVersion = {
+  mainnet: {
+    P2PKH: 0x00, // 0
+    P2SH: 0x05, // 5
+  },
+  testnet: {
+    P2PKH: 0x6f, // 111
+    P2SH: 0xc4, // 196
+  },
+} as const;
+
+// Valid prefix chars for mainnet and testnet P2PKH and P2SH addresses
+const B58_ADDR_PREFIXES = /^(1|3|m|n|2)/;
+
+// Valid prefixs for mainnet and testnet bech32/segwit addresses
+const SEGWIT_ADDR_PREFIXES = /^(bc|tb)/i;
+
+const SEGWIT_V0 = 0;
+const SEGWIT_V1 = 1;
+
+// Segwit/taproot address examples:
+//   Mainnet P2WPKH: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+//   Testnet P2WPKH: tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx
+//   Mainnet P2WSH: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
+//   Testnet P2WSH: tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7
+//   Mainnet P2TR: bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297
+//   Testnet P2TR: tb1p6h5fuzmnvpdthf5shf0qqjzwy7wsqc5rhmgq2ks9xrak4ry6mtrscsqvzp
+
+function btcAddressVersionToLegacyHashMode(btcAddressVersion: number): PoXAddressVersion {
+  switch (btcAddressVersion) {
+    case BitcoinNetworkVersion.mainnet.P2PKH:
+      return PoXAddressVersion.P2PKH;
+    case BitcoinNetworkVersion.testnet.P2PKH:
+      return PoXAddressVersion.P2PKH;
+    case BitcoinNetworkVersion.mainnet.P2SH:
+      return PoXAddressVersion.P2SH;
+    case BitcoinNetworkVersion.testnet.P2SH:
+      return PoXAddressVersion.P2SH;
+    default:
+      throw new Error('Invalid pox address version');
+  }
+}
+
+function bech32Decode(btcAddress: string) {
+  const { words: bech32Words } = bech32.decode(btcAddress);
+  const witnessVersion = bech32Words[0];
+
+  if (witnessVersion > 0)
+    throw new Error('Addresses with a witness version >= 1 should be encoded in bech32m');
+
+  return {
+    witnessVersion,
+    data: Uint8Array.from(bech32.fromWords(bech32Words.slice(1))),
+  };
+}
+
+function bech32MDecode(btcAddress: string) {
+  const { words: bech32MWords } = bech32m.decode(btcAddress);
+  const witnessVersion = bech32MWords[0];
+
+  if (witnessVersion == 0)
+    throw new Error('Addresses with witness version 1 should be encoded in bech32');
+
+  return {
+    witnessVersion,
+    data: Uint8Array.from(bech32m.fromWords(bech32MWords.slice(1))),
+  };
+}
+
+function nativeSegwitDecode(btcAddress: string): { witnessVersion: number; data: Uint8Array } {
+  try {
+    return bech32Decode(btcAddress);
+  } catch (_) {}
+  return bech32MDecode(btcAddress);
+}
+
+function nativeAddressToSegwitVersion(
+  witnessVersion: number,
+  dataLength: number
+): PoXAddressVersion {
+  if (witnessVersion === SEGWIT_V0 && dataLength === 20) {
+    return PoXAddressVersion.P2WPKH;
+  } else if (witnessVersion === SEGWIT_V0 && dataLength === 32) {
+    return PoXAddressVersion.P2WSH;
+  } else if (witnessVersion === SEGWIT_V1 && dataLength === 32) {
+    return PoXAddressVersion.P2TR;
+  } else {
+    throw new Error(
+      'Invalid native segwit witness version and byte length. Currently, only P2WPKH, P2WSH, and P2TR are supported.'
+    );
+  }
+}
+
+export function decodeBtcAddress(btcAddress: string): { version: number; data: Buffer } {
+  let b58DecodeError: any = undefined;
+  let segwitDecodeError: any = undefined;
+
+  if (B58_ADDR_PREFIXES.test(btcAddress)) {
+    try {
+      const b58 = btc.address.fromBase58Check(btcAddress);
+      const addressVersion = btcAddressVersionToLegacyHashMode(b58.version);
+      return {
+        version: addressVersion,
+        data: b58.hash,
+      };
+    } catch (e) {
+      b58DecodeError = e;
+    }
+  } else if (SEGWIT_ADDR_PREFIXES.test(btcAddress)) {
+    try {
+      const b32 = nativeSegwitDecode(btcAddress);
+      const addressVersion = nativeAddressToSegwitVersion(b32.witnessVersion, b32.data.length);
+      return {
+        version: addressVersion,
+        data: Buffer.from(b32.data),
+      };
+    } catch (e) {
+      segwitDecodeError = e;
+    }
+  }
+
+  throw new Error(
+    `Bad bitcoin address: ${btcAddress}, b58 error: ${b58DecodeError}, segwit error: ${segwitDecodeError}`
+  );
+}

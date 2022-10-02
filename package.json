@@ -100,6 +100,7 @@
     "@promster/express": "6.0.0",
     "@promster/server": "6.0.6",
     "@promster/types": "3.2.3",
+    "@scure/base": "1.1.1",
     "@stacks/network": "4.4.0-stacks2.1-alpha.0",
     "@stacks/stacking": "4.4.0-stacks2.1-alpha.0",
     "@stacks/transactions": "4.4.0-stacks2.1-alpha.0",

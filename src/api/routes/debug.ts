@@ -1,5 +1,4 @@
 import * as express from 'express';
-import * as btc from 'bitcoinjs-lib';
 import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../async-handler';
@@ -36,6 +35,7 @@ import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-strea
 import { cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 import { PgStore } from '../../datastore/pg-store';
+import * as poxHelpers from '../../pox-helpers';
 
 export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   {
@@ -539,47 +539,6 @@ export function createDebugRouter(db: PgStore): express.Router {
     res.set('Content-Type', 'text/html').send(sendPoxHtml);
   });
 
-  function convertBTCAddress(btcAddress: string): { hashMode: AddressHashMode; data: Buffer } {
-    function getAddressHashMode(btcAddress: string) {
-      if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
-        const { data } = btc.address.fromBech32(btcAddress);
-        if (data.length === 32) {
-          return AddressHashMode.SerializeP2WSH;
-        } else {
-          return AddressHashMode.SerializeP2WPKH;
-        }
-      } else {
-        const { version } = btc.address.fromBase58Check(btcAddress);
-        switch (version) {
-          case 0:
-            return AddressHashMode.SerializeP2PKH;
-          case 111:
-            return AddressHashMode.SerializeP2PKH;
-          case 5:
-            return AddressHashMode.SerializeP2SH;
-          case 196:
-            return AddressHashMode.SerializeP2SH;
-          default:
-            throw new Error('Invalid pox address version');
-        }
-      }
-    }
-    const hashMode = getAddressHashMode(btcAddress);
-    if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
-      const { data } = btc.address.fromBech32(btcAddress);
-      return {
-        hashMode,
-        data,
-      };
-    } else {
-      const { hash } = btc.address.fromBase58Check(btcAddress);
-      return {
-        hashMode,
-        data: hash,
-      };
-    }
-  }
-
   router.post(
     '/broadcast/stack',
     asyncHandler(async (req, res) => {
@@ -598,7 +557,8 @@ export function createDebugRouter(db: PgStore): express.Router {
         );
       }
       const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      const { hashMode, data } = convertBTCAddress(recipient_address);
+      const decodedBtcAddr = poxHelpers.decodeBtcAddress(recipient_address);
+
       const cycles = Number(cycle_count);
       const burnBlockHeight = (poxInfo as any).current_burnchain_block_height;
       const txOptions: SignedContractCallOptions = {
@@ -609,8 +569,8 @@ export function createDebugRouter(db: PgStore): express.Router {
         functionArgs: [
           uintCV(minStxAmount.toString()),
           tupleCV({
-            hashbytes: bufferCV(data),
-            version: bufferCV(Buffer.from([hashMode])),
+            hashbytes: bufferCV(decodedBtcAddr.data),
+            version: bufferCV(Buffer.from([decodedBtcAddr.version])),
           }),
           uintCV(burnBlockHeight),
           uintCV(cycles),
@@ -618,6 +578,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         network: stacksNetwork,
         anchorMode: AnchorMode.Any,
         fee: 10000,
+        validateWithAbi: false,
       };
       const tx = await makeContractCall(txOptions);
       const expectedTxId = tx.txid();
