@@ -99,8 +99,8 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "deploy-pg-and-local-node-krypton",
-      "postDebugTask": "stop-pg-and-local-node-krypton",
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
       "env": {
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",

@@ -227,7 +227,7 @@
     {
       "label": "deploy:krypton",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.bitcoind-krypton.yml up",
+      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-regtest.yml up",
       "isBackground": true,
       "problemMatcher": {
         "pattern":{
@@ -253,7 +253,7 @@
     {
       "label": "stop:krypton",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.bitcoind-krypton.yml down -v -t 0",
+      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-regtest.yml down -v -t 0",
       "presentation": {
         "echo": true,
         "reveal": "silent",
@@ -261,17 +261,6 @@
         "panel": "shared",
         "clear": false
       }
-    },
-    {
-      "label": "deploy-pg-and-local-node-krypton",
-      "dependsOn": ["deploy:local-stacks-node-krypton", "deploy:krypton"],
-      "dependsOrder": "parallel",
-      "problemMatcher": []
-    },
-    {
-      "label": "stop-pg-and-local-node-krypton",
-      "dependsOn": ["stop:local-stacks-node-krypton", "stop:krypton"],
-      "dependsOrder": "parallel"
     },
     {
       "label": "deploy-pg-and-local-node-helium",
