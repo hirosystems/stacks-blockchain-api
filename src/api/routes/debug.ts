@@ -556,12 +556,6 @@ export function createDebugRouter(db: PgStore): express.Router {
       <label for="cycle_count">Cycles</label>
       <input type="number" id="cycle_count" name="cycle_count" value="1">
 
-      <label for="memo">Memo</label>
-      <input type="text" id="memo" name="memo" value="hello" maxlength="34">
-
-      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
-      <label for="sponsored">Create sponsored transaction</label><br>
-
       <input type="checkbox" id="use_rosetta" name="use_rosetta" value="use_rosetta" style="display:initial;width:auto">
       <label for="use_rosetta">Use Rosetta</label>
 
@@ -766,9 +760,9 @@ export function createDebugRouter(db: PgStore): express.Router {
         sendPoxHtml +
           `
           <h3>Broadcasted transaction:</h3>
-          <a href="/extended/v1/tx/${txId}">${txId}</a><br>
-          <a href="/extended/v1/debug/rosetta/tx/${txId}">Rosetta lookup</a><br>
           <ul>
+            <li>Tx: <a href="/extended/v1/tx/${txId}">/extended/v1/tx/${txId}</a></li>
+            <li>Rosetta lookup: <a href="/extended/v1/debug/rosetta/tx/${txId}">/extended/v1/debug/rosetta/tx/${txId}</a></li>
             <li>Used Rosetta: <code>${useRosetta}</code></li>
             <li>Contract used: <code>${poxInfo.contract_id}</code></li>
             <li>Burn block height: <code>${burnBlockHeight}</code></li>
@@ -776,12 +770,12 @@ export function createDebugRouter(db: PgStore): express.Router {
             <li>Cycles: <code>${cycles}</code></li>
             <li>Stacking account: <code>${sender.stacksAddress}</code></li>
             <li>Reward address: <code>${recipient_address}</code></li>
+            <li>RPC account: <a href="/v2/accounts/${sender.stacksAddress}?proof=0">/v2/accounts/${sender.stacksAddress}</a></li>
+            <li>STX balance: <a href="/extended/v1/address/${sender.stacksAddress}/stx">/extended/v1/address/${sender.stacksAddress}/stx</a></li>
+            <li>Reward slots: <a href="/extended/v1/burnchain/reward_slot_holders/${recipient_address}">/extended/v1/burnchain/reward_slot_holders/${recipient_address}</a></li>
+            <li>Rewards: <a href="/extended/v1/burnchain/rewards/${recipient_address}">/extended/v1/burnchain/rewards/${recipient_address}</a></li>
+            <li>Rewards (total): <a href="/extended/v1/burnchain/rewards/${recipient_address}/total">/extended/v1/burnchain/rewards/${recipient_address}/total</a></li>
           </ul>
-          <a href="/v2/accounts/${sender.stacksAddress}?proof=0">RPC account endpoint</a><br>
-          <a href="/extended/v1/address/${sender.stacksAddress}/stx">STX balance for ${sender.stacksAddress}</a><br>
-          <a href="/extended/v1/burnchain/reward_slot_holders/${recipient_address}">Reward slots for ${recipient_address}</a><br>
-          <a href="/extended/v1/burnchain/rewards/${recipient_address}">Rewards for ${recipient_address}</a><br>
-          <a href="/extended/v1/burnchain/rewards/${recipient_address}/total">Rewards for ${recipient_address} (total)</a><br>
           `
       );
     })
