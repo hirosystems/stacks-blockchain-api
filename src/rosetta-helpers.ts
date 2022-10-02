@@ -57,7 +57,7 @@ import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import * as poxHelpers from './pox-helpers';
 import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 import {
   ClarityTypeID,
@@ -928,9 +928,8 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
         version: ClarityValueBuffer;
         hashbytes: ClarityValueBuffer;
       }>;
-      // TODO(perf): this should be able to use stacks-native-encoding stx-to-btc address fn
-      args.pox_addr = poxAddressToBtcAddress(
-        hexToBuffer(addressCV.data.version.buffer),
+      args.pox_addr = poxHelpers.poxAddressToBtcAddress(
+        hexToBuffer(addressCV.data.version.buffer)[0],
         hexToBuffer(addressCV.data.hashbytes.buffer),
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
