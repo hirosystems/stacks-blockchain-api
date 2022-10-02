@@ -46,7 +46,7 @@ import {
   someCV,
   AnchorMode,
 } from '@stacks/transactions';
-import { decodeBtcAddress } from '@stacks/stacking';
+import * as poxHelpers from '../../../pox-helpers';
 import * as express from 'express';
 import { StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
@@ -215,7 +215,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           }
           // dummy transaction to calculate size
           const poxAddress = options.pox_addr;
-          const { hashMode, data } = decodeBtcAddress(poxAddress);
+          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxAddress);
           const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
@@ -260,7 +260,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           let optionalPoxAddressCV: OptionalCV = noneCV();
           if (options.pox_addr) {
             const dummyPoxAddress = options.pox_addr;
-            const { hashMode, data } = decodeBtcAddress(dummyPoxAddress);
+            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(dummyPoxAddress);
             const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             optionalPoxAddressCV = someCV(
@@ -670,7 +670,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
           const poxBTCAddress = options.pox_addr;
-          const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
           const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
@@ -722,7 +722,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           if (options.pox_addr) {
             const poxBTCAddress = options.pox_addr;
-            const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
             const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             poxAddressCV = someCV(

@@ -52,7 +52,7 @@ import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
 import * as nock from 'nock';
-import { decodeBtcAddress } from '@stacks/stacking';
+import * as poxHelpers from '../pox-helpers';
 import { PgStore } from '../datastore/pg-store';
 
 describe('Rosetta offline API', () => {
@@ -887,7 +887,7 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -1038,7 +1038,7 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
