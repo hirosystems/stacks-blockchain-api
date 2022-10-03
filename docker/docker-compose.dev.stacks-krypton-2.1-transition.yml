@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  stacks-blockchain:
+    image: "zone117x/stacks-api-e2e:stacks2.1-transition"
+    ports:
+      - "18443:18443"
+      - "18444:18444"
+      - "20443:20443"
+      - "20444:20444"
+    environment:
+      MINE_INTERVAL: 2s
+      STACKS_EVENT_OBSERVER: host.docker.internal:3700
+      NOP_BLOCKSTACK_DEBUG: 1

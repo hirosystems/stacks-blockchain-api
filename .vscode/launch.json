@@ -51,7 +51,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: krypton local",
+      "name": "Launch: krypton Stacks",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -61,6 +61,26 @@
       "internalConsoleOptions": "openOnSessionStart",
       "preLaunchTask": "deploy:krypton",
       "postDebugTask": "stop:krypton",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Launch: krypton Stacks 2.1 transition",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "deploy:krypton-2.1-transition",
+      "postDebugTask": "stop:krypton-2.1-transition",
       "env": {
         "STACKS_CHAIN_ID": "0x80000000",
         "NODE_ENV": "development",
