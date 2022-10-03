@@ -1,4 +1,5 @@
 import * as c32check from 'c32check';
+import * as poxHelpers from '../pox-helpers';
 import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
@@ -160,4 +161,29 @@ test('bitcoin<->stacks address', () => {
       });
     });
   });
+});
+
+test('PoX bitcoin address encoding', () => {
+  const vectors: [string, 'mainnet' | 'testnet'][] = [
+    ['bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4', 'mainnet'], // P2WPKH
+    ['bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3', 'mainnet'], // P2WSH
+    ['bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297', 'mainnet'], // P2TR
+
+    ['tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx', 'testnet'], // P2WPKH
+    ['tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7', 'testnet'], // P2WSH
+    ['tb1p6h5fuzmnvpdthf5shf0qqjzwy7wsqc5rhmgq2ks9xrak4ry6mtrscsqvzp', 'testnet'], // P2TR
+
+    ['17VZNX1SN5NtKa8UQFxwQbFeFc3iqRYhem', 'mainnet'], // P2PKH
+    ['3EktnHQD7RiAE6uzMj2ZifT9YgRrkSgzQX', 'mainnet'], // P2SH
+
+    ['mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn', 'testnet'], // P2PKH
+    ['2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc', 'testnet'], // P2SH
+  ];
+
+  for (const v of vectors) {
+    const addr = v[0];
+    const decoded = poxHelpers.decodeBtcAddress(addr);
+    const encoded = poxHelpers.poxAddressToBtcAddress(decoded.version, decoded.data, v[1]);
+    expect(encoded).toBe(addr);
+  }
 });

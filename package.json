@@ -8,6 +8,7 @@
     "dev:integrated": "npm run devenv:build && concurrently npm:dev npm:devenv:deploy",
     "dev:follower": "npm run devenv:build && concurrently npm:dev npm:devenv:follower",
     "test": "cross-env NODE_ENV=development jest --config ./tests/jest.config.js --coverage --runInBand",
+    "test:2.1": "cross-env NODE_ENV=development jest --config ./tests/jest.config.2.1.js --coverage --runInBand",
     "test:rosetta": "cross-env NODE_ENV=development jest --config ./tests/jest.config.rosetta.js --coverage --runInBand",
     "test:rosetta-cli:data": "cross-env NODE_ENV=development STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-data.js --coverage --runInBand",
     "test:rosetta-cli:construction": "cross-env NODE_ENV=development STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-construction.js --coverage --runInBand",
@@ -17,6 +18,7 @@
     "test:tokens": "cross-env NODE_ENV=development jest --config ./tests/jest.config.tokens.js --coverage --runInBand",
     "test:watch": "cross-env NODE_ENV=development jest --config ./tests/jest.config.js --watch",
     "test:integration": "concurrently \"docker-compose -f docker/docker-compose.dev.postgres.yml up\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.js --no-cache --runInBand; npm run devenv:stop:pg\"",
+    "test:integration:2.1": "concurrently \"npm:devenv:deploy:2.1\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.2.1.js --no-cache --runInBand; npm run devenv:stop:2.1\"",
     "test:integration:rosetta": "concurrently \"docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml up\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.rosetta.js --no-cache --runInBand; npm run devenv:stop\"",
     "test:integration:rosetta-cli:data": "concurrently \"docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml up\" \"cross-env NODE_ENV=development STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-data.js --no-cache --runInBand; npm run devenv:stop\"",
     "test:integration:rosetta-cli:construction": "concurrently \"docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml up\" \"cross-env NODE_ENV=development STACKS_CHAIN_ID=0x80000000 jest --config ./tests/jest.config.rosetta-cli-construction.js --no-cache --runInBand\"",
@@ -39,8 +41,11 @@
     "devenv:deploy": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml -f docker/docker-compose.dev.bitcoind.yml up",
     "devenv:follower": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain-follower.yml up",
     "devenv:stop": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml -f docker/docker-compose.dev.bitcoind.yml down -v -t 0",
+    "devenv:deploy:2.1": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up",
+    "devenv:stop:2.1": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml down -v -t 0",
     "devenv:stop:pg": "docker-compose -f docker/docker-compose.dev.postgres.yml down -v -t 0",
-    "devenv:logs": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml -f docker/docker-compose.dev.bitcoind.yml logs -t -f"
+    "devenv:logs": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml -f docker/docker-compose.dev.bitcoind.yml logs -t -f",
+    "devenv:logs:2.1": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml logs -t -f"
   },
   "repository": {
     "type": "git",
@@ -100,6 +105,7 @@
     "@promster/express": "6.0.0",
     "@promster/server": "6.0.6",
     "@promster/types": "3.2.3",
+    "@scure/base": "1.1.1",
     "@stacks/network": "4.4.0-stacks2.1-alpha.0",
     "@stacks/stacking": "4.4.0-stacks2.1-alpha.0",
     "@stacks/transactions": "4.4.0-stacks2.1-alpha.0",

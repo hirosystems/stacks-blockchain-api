@@ -1,5 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as express from 'express';
-import * as btc from 'bitcoinjs-lib';
 import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../async-handler';
@@ -29,6 +29,8 @@ import {
   tupleCV,
   bufferCV,
   AnchorMode,
+  ChainID,
+  deserializeTransaction,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
@@ -36,8 +38,25 @@ import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-strea
 import { cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 import { PgStore } from '../../datastore/pg-store';
+import { DbTx } from '../../datastore/common';
+import * as poxHelpers from '../../pox-helpers';
+import fetch from 'node-fetch';
+import {
+  RosettaBlockTransactionRequest,
+  RosettaBlockTransactionResponse,
+  RosettaConstructionMetadataRequest,
+  RosettaConstructionMetadataResponse,
+  RosettaConstructionPayloadResponse,
+  RosettaConstructionPayloadsRequest,
+  RosettaConstructionPreprocessRequest,
+  RosettaConstructionPreprocessResponse,
+  RosettaConstructionSubmitRequest,
+  RosettaConstructionSubmitResponse,
+  RosettaOperation,
+} from '@stacks/stacks-blockchain-api-types';
+import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
 
-export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
+const testnetAccounts = [
   {
     secretKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
     stacksAddress: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -64,6 +83,18 @@ export const testnetKeys: { secretKey: string; stacksAddress: string }[] = [
   },
 ];
 
+interface SeededAccount {
+  secretKey: string;
+  stacksAddress: string;
+  pubKey: string;
+}
+
+export const testnetKeys: SeededAccount[] = testnetAccounts.map(t => ({
+  secretKey: t.secretKey,
+  stacksAddress: t.stacksAddress,
+  pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+}));
+
 const testnetKeyMap: Record<
   string,
   { address: string; secretKey: string; pubKey: string }
@@ -73,7 +104,7 @@ const testnetKeyMap: Record<
     {
       address: t.stacksAddress,
       secretKey: t.secretKey,
-      pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
+      pubKey: t.pubKey,
     },
   ])
 );
@@ -510,21 +541,23 @@ export function createDebugRouter(db: PgStore): express.Router {
       </datalist>
 
       <label for="recipient_address">Recipient address</label>
-      <input list="recipient_addresses" name="recipient_address" value="${
+      <input list="recipient_addresses" name="recipient_address" value="${stacksToBitcoinAddress(
         testnetKeys[1].stacksAddress
-      }">
+      )}">
       <datalist id="recipient_addresses">
-        ${testnetKeys.map(k => '<option value="' + k.stacksAddress + '">').join('\n')}
+        ${testnetKeys
+          .map(k => '<option value="' + stacksToBitcoinAddress(k.stacksAddress) + '">')
+          .join('\n')}
       </datalist>
 
-      <label for="stx_amount">uSTX amount</label>
-      <input type="number" id="stx_amount" name="stx_amount" value="5000">
+      <label for="stx_amount">uSTX amount (0 for automatic min_amount_ustx)</label>
+      <input type="number" id="stx_amount" name="stx_amount" value="0">
 
-      <label for="memo">Memo</label>
-      <input type="text" id="memo" name="memo" value="hello" maxlength="34">
+      <label for="cycle_count">Cycles</label>
+      <input type="number" id="cycle_count" name="cycle_count" value="1">
 
-      <input type="checkbox" id="sponsored" name="sponsored" value="sponsored" style="display:initial;width:auto">
-      <label for="sponsored">Create sponsored transaction</label>
+      <input type="checkbox" id="use_rosetta" name="use_rosetta" value="use_rosetta" style="display:initial;width:auto">
+      <label for="use_rosetta">Use Rosetta</label>
 
       <input type="submit" value="Submit">
     </form>
@@ -534,97 +567,245 @@ export function createDebugRouter(db: PgStore): express.Router {
     res.set('Content-Type', 'text/html').send(sendPoxHtml);
   });
 
-  function convertBTCAddress(btcAddress: string): { hashMode: AddressHashMode; data: Buffer } {
-    function getAddressHashMode(btcAddress: string) {
-      if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
-        const { data } = btc.address.fromBech32(btcAddress);
-        if (data.length === 32) {
-          return AddressHashMode.SerializeP2WSH;
-        } else {
-          return AddressHashMode.SerializeP2WPKH;
-        }
-      } else {
-        const { version } = btc.address.fromBase58Check(btcAddress);
-        switch (version) {
-          case 0:
-            return AddressHashMode.SerializeP2PKH;
-          case 111:
-            return AddressHashMode.SerializeP2PKH;
-          case 5:
-            return AddressHashMode.SerializeP2SH;
-          case 196:
-            return AddressHashMode.SerializeP2SH;
-          default:
-            throw new Error('Invalid pox address version');
-        }
-      }
-    }
-    const hashMode = getAddressHashMode(btcAddress);
-    if (btcAddress.startsWith('bc1') || btcAddress.startsWith('tb1')) {
-      const { data } = btc.address.fromBech32(btcAddress);
-      return {
-        hashMode,
-        data,
-      };
-    } else {
-      const { hash } = btc.address.fromBase58Check(btcAddress);
-      return {
-        hashMode,
-        data: hash,
-      };
-    }
+  async function fetchRosetta<TPostBody, TRes>(port: number, endpoint: string, body: TPostBody) {
+    const req = await fetch(`http://localhost:${port}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await req.json();
+    return result as TRes;
+  }
+
+  const rosettaNetwork = {
+    blockchain: RosettaConstants.blockchain,
+    network: getRosettaNetworkName(ChainID.Testnet),
+  };
+
+  async function stackWithRosetta(
+    port: number,
+    account: SeededAccount,
+    ustxAmount: bigint,
+    btcAddr: string,
+    cycleCount: number
+  ): Promise<{ txId: string; burnBlockHeight: number }> {
+    const stackingOperations: RosettaOperation[] = [
+      {
+        operation_identifier: {
+          index: 0,
+          network_index: 0,
+        },
+        related_operations: [],
+        type: 'stack_stx',
+        account: {
+          address: account.stacksAddress,
+          metadata: {},
+        },
+        amount: {
+          value: '-' + ustxAmount.toString(),
+          currency: { symbol: 'STX', decimals: 6 },
+          metadata: {},
+        },
+        metadata: {
+          number_of_cycles: cycleCount,
+          pox_addr: btcAddr,
+        },
+      },
+      {
+        operation_identifier: {
+          index: 1,
+          network_index: 0,
+        },
+        related_operations: [],
+        type: 'fee',
+        account: {
+          address: account.stacksAddress,
+          metadata: {},
+        },
+        amount: {
+          value: '10000',
+          currency: { symbol: 'STX', decimals: 6 },
+        },
+      },
+    ];
+
+    // preprocess
+    const preprocessResult = await fetchRosetta<
+      RosettaConstructionPreprocessRequest,
+      RosettaConstructionPreprocessResponse
+    >(port, '/rosetta/v1/construction/preprocess', {
+      network_identifier: rosettaNetwork,
+      operations: stackingOperations,
+      metadata: {},
+      max_fee: [
+        {
+          value: '12380898',
+          currency: { symbol: 'STX', decimals: 6 },
+          metadata: {},
+        },
+      ],
+      suggested_fee_multiplier: 1,
+    });
+
+    // metadata
+    const resultMetadata = await fetchRosetta<
+      RosettaConstructionMetadataRequest,
+      RosettaConstructionMetadataResponse
+    >(port, '/rosetta/v1/construction/metadata', {
+      network_identifier: rosettaNetwork,
+      options: preprocessResult.options!, // using options returned from preprocess
+      public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
+    });
+
+    // payload
+    const payloadsResult = await fetchRosetta<
+      RosettaConstructionPayloadsRequest,
+      RosettaConstructionPayloadResponse
+    >(port, '/rosetta/v1/construction/payloads', {
+      network_identifier: rosettaNetwork,
+      operations: stackingOperations, // using same operations as preprocess request
+      metadata: resultMetadata.metadata, // using metadata from metadata response
+      public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
+    });
+
+    // sign tx
+    const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
+    const signer = new TransactionSigner(stacksTx);
+    signer.signOrigin(createStacksPrivateKey(account.secretKey));
+    const signedSerializedTx = stacksTx.serialize().toString('hex');
+
+    // submit
+    const submitResult = await fetchRosetta<
+      RosettaConstructionSubmitRequest,
+      RosettaConstructionSubmitResponse
+    >(port, '/rosetta/v1/construction/submit', {
+      network_identifier: rosettaNetwork,
+      signed_transaction: '0x' + signedSerializedTx,
+    });
+
+    return {
+      txId: submitResult.transaction_identifier.hash,
+      burnBlockHeight: resultMetadata.metadata.burn_block_height as number,
+    };
   }
 
   router.post(
     '/broadcast/stack',
     asyncHandler(async (req, res) => {
-      const { origin_key, recipient_address, stx_amount, memo } = req.body;
+      const { origin_key, recipient_address, stx_amount, cycle_count } = req.body;
+      const cycles = Number(cycle_count);
+      const useRosetta = !!req.body.use_rosetta;
+
       const client = new StacksCoreRpcClient();
-      const coreInfo = await client.getInfo();
       const poxInfo = await client.getPox();
-      const minStxAmount = BigInt(poxInfo.min_amount_ustx);
+      const ustxAmount =
+        Number(stx_amount) > 0
+          ? BigInt(stx_amount)
+          : BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       const sender = testnetKeys.filter(t => t.secretKey === origin_key)[0];
       const accountBalance = await client.getAccountBalance(sender.stacksAddress);
-      if (accountBalance < minStxAmount) {
+      if (accountBalance < ustxAmount) {
         throw new Error(
-          `Min requirement pox amount is ${minStxAmount} but account balance is only ${accountBalance}`
+          `Min requirement pox amount is ${ustxAmount} but account balance is only ${accountBalance}`
         );
       }
-      const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      const btcAddr = stacksToBitcoinAddress(sender.stacksAddress);
-      const { hashMode, data } = convertBTCAddress(btcAddr);
-      const cycles = 3;
-      const txOptions: SignedContractCallOptions = {
-        senderKey: sender.secretKey,
-        contractAddress,
-        contractName,
-        functionName: 'stack-stx',
-        functionArgs: [
-          uintCV(minStxAmount.toString()),
-          tupleCV({
-            hashbytes: bufferCV(data),
-            version: bufferCV(Buffer.from([hashMode])),
-          }),
-          uintCV(coreInfo.burn_block_height),
-          uintCV(cycles),
-        ],
-        network: stacksNetwork,
-        anchorMode: AnchorMode.Any,
-      };
-      const tx = await makeContractCall(txOptions);
-      const expectedTxId = tx.txid();
-      const serializedTx = tx.serialize();
-      const { txId } = await sendCoreTx(serializedTx);
-      if (txId !== '0x' + expectedTxId) {
-        throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+
+      let txId: string;
+      let burnBlockHeight: number;
+
+      if (useRosetta) {
+        const serverPort = req.socket.localPort as number;
+        // const serverPort = new URL('http://' + req.headers.host).port;
+        ({ txId, burnBlockHeight } = await stackWithRosetta(
+          serverPort,
+          sender,
+          ustxAmount,
+          recipient_address,
+          cycles
+        ));
+      } else {
+        const [contractAddress, contractName] = poxInfo.contract_id.split('.');
+        const decodedBtcAddr = poxHelpers.decodeBtcAddress(recipient_address);
+        burnBlockHeight = poxInfo.current_burnchain_block_height as number;
+        const txOptions: SignedContractCallOptions = {
+          senderKey: sender.secretKey,
+          contractAddress,
+          contractName,
+          functionName: 'stack-stx',
+          functionArgs: [
+            uintCV(ustxAmount.toString()),
+            tupleCV({
+              hashbytes: bufferCV(decodedBtcAddr.data),
+              version: bufferCV(Buffer.from([decodedBtcAddr.version])),
+            }),
+            uintCV(burnBlockHeight),
+            uintCV(cycles),
+          ],
+          network: stacksNetwork,
+          anchorMode: AnchorMode.Any,
+          fee: 10000,
+          validateWithAbi: false,
+        };
+        const tx = await makeContractCall(txOptions);
+        const expectedTxId = tx.txid();
+        const serializedTx = tx.serialize();
+        const sendResult = await sendCoreTx(serializedTx);
+        txId = sendResult.txId;
+        if (txId !== '0x' + expectedTxId) {
+          throw new Error(`Expected ${expectedTxId}, core ${txId}`);
+        }
       }
-      res
-        .set('Content-Type', 'text/html')
-        .send(
-          tokenTransferHtml +
-            '<h3>Broadcasted transaction:</h3>' +
-            `<a href="/extended/v1/tx/${txId}">${txId}</a>`
-        );
+
+      res.set('Content-Type', 'text/html').send(
+        sendPoxHtml +
+          `
+          <h3>Broadcasted transaction:</h3>
+          <ul>
+            <li>Tx: <a href="/extended/v1/tx/${txId}">/extended/v1/tx/${txId}</a></li>
+            <li>Rosetta lookup: <a href="/extended/v1/debug/rosetta/tx/${txId}">/extended/v1/debug/rosetta/tx/${txId}</a></li>
+            <li>Used Rosetta: <code>${useRosetta}</code></li>
+            <li>Contract used: <code>${poxInfo.contract_id}</code></li>
+            <li>Burn block height: <code>${burnBlockHeight}</code></li>
+            <li>uSTX amount: <code>${ustxAmount}</code></li>
+            <li>Cycles: <code>${cycles}</code></li>
+            <li>Stacking account: <code>${sender.stacksAddress}</code></li>
+            <li>Reward address: <code>${recipient_address}</code></li>
+            <li>RPC account: <a href="/v2/accounts/${sender.stacksAddress}?proof=0">/v2/accounts/${sender.stacksAddress}</a></li>
+            <li>STX balance: <a href="/extended/v1/address/${sender.stacksAddress}/stx">/extended/v1/address/${sender.stacksAddress}/stx</a></li>
+            <li>Reward slots: <a href="/extended/v1/burnchain/reward_slot_holders/${recipient_address}">/extended/v1/burnchain/reward_slot_holders/${recipient_address}</a></li>
+            <li>Rewards: <a href="/extended/v1/burnchain/rewards/${recipient_address}">/extended/v1/burnchain/rewards/${recipient_address}</a></li>
+            <li>Rewards (total): <a href="/extended/v1/burnchain/rewards/${recipient_address}/total">/extended/v1/burnchain/rewards/${recipient_address}/total</a></li>
+          </ul>
+          `
+      );
+    })
+  );
+
+  router.get(
+    '/rosetta/tx/:tx_id',
+    asyncHandler(async (req, res) => {
+      const { tx_id } = req.params;
+      const searchResult = await db.searchHash({ hash: tx_id });
+      if (!searchResult.found) {
+        res.status(404).send('Transaction not found');
+        return;
+      }
+      if (searchResult.result.entity_type === 'mempool_tx_id') {
+        res.status(404).send('Transaction still pending in mempool');
+        return;
+      }
+      const dbTx = searchResult.result.entity_data as DbTx;
+      const port = req.socket.localPort as number;
+      const txResult = await fetchRosetta<
+        RosettaBlockTransactionRequest,
+        RosettaBlockTransactionResponse
+      >(port, '/rosetta/v1/block/transaction', {
+        network_identifier: rosettaNetwork,
+        block_identifier: { hash: dbTx.block_hash },
+        transaction_identifier: { hash: dbTx.tx_id },
+      });
+
+      res.set('Content-Type', 'application/json').send(JSON.stringify(txResult, null, 2));
     })
   );
 

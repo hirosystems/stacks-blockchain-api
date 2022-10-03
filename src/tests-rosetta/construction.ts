@@ -58,7 +58,7 @@ import {
   getStacksNetwork,
 } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
-import { decodeBtcAddress } from '@stacks/stacking';
+import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
@@ -1065,7 +1065,7 @@ describe('Rosetta Construction', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -1867,7 +1867,7 @@ describe('Rosetta Construction', () => {
         },
       ],
     };
-    const { hashMode, data } = decodeBtcAddress(pox_addr);
+    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(pox_addr);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -2321,7 +2321,7 @@ describe('Rosetta Construction', () => {
         },
       ],
     };
-    const { hashMode, data } = decodeBtcAddress(pox_addr);
+    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(pox_addr);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
