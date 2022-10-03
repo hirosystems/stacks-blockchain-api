@@ -51,7 +51,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: krypton Stacks",
+      "name": "Launch: krypton 2.1",
       "skipFiles": [
         "<node_internals>/**"
       ],
@@ -71,7 +71,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch: krypton Stacks 2.1 transition",
+      "name": "Launch: krypton 2.1-transition",
       "skipFiles": [
         "<node_internals>/**"
       ],
