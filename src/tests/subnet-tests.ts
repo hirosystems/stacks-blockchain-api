@@ -8,6 +8,8 @@ import { getRawEventRequests } from '../datastore/event-requests';
 import { startEventServer } from '../event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../api/init';
+import { getTxFromDataStore } from '../api/controllers/db-controller';
+import { ContractCallTransaction } from 'docs/generated';
 
 describe('subnet tests', () => {
   let db: PgWriteStore;
@@ -67,13 +69,18 @@ describe('subnet tests', () => {
             });
           }
         }
-        // test that the out-of-order microblocks were not stored
-        // const mbHash1 = '0xb714e75a7dae26fee0e77788317a0c84e513d1d8647a376b21b1c864e55c135a';
-        // const mbResult1 = await supertest(api.server).get(`/extended/v1/microblock/${mbHash1}`);
-        // expect(mbResult1.status).toBe(404);
-        // const mbHash2 = '0xab9112694f13f7b04996d4b4554af5b5890271fa4e0c9099e67353b42dcf9989';
-        // const mbResult2 = await supertest(api.server).get(`/extended/v1/microblock/${mbHash2}`);
-        // expect(mbResult2.status).toBe(404);
+
+        const mintTx = await getTxFromDataStore(db, {
+          txId: '0x8d042c14323cfd9d31e121cc48c2c641a8db01dce19a0f6dd531eb33689dff44',
+          includeUnanchored: false,
+          eventLimit: 10,
+          eventOffset: 0,
+        });
+        expect(mintTx.result?.tx_type).toBe('contract_call');
+        const contractCall = mintTx.result as ContractCallTransaction;
+        expect(contractCall.contract_call.function_name).toBe('nft-mint?');
+        expect(contractCall.sender_address).toBe('ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND');
+        expect(contractCall.events[0].event_type).toBe('non_fungible_token_asset');
       }
     );
   });
