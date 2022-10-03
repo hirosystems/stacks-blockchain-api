@@ -50,6 +50,11 @@ const SEGWIT_TESTNET_HRP = 'tb';
 const SEGWIT_V0 = 0;
 const SEGWIT_V1 = 1;
 
+// Valid prefixes for supported segwit address, structure is:
+//   HRP PREFIX + SEPARATOR (always '1') + C32_ENCODED SEGWIT_VERSION_BYTE ('q' for 0, 'p' for 1) + HASHDATA
+const SEGWIT_V0_ADDR_PREFIX = /^(bc1q|tb1q)/i;
+const SEGWIT_V1_ADDR_PREFIX = /^(bc1p|tb1p)/i;
+
 // Segwit/taproot address examples:
 //   mainnet P2WPKH: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
 //   testnet P2WPKH: tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx
@@ -69,7 +74,7 @@ function btcAddressVersionToLegacyHashMode(btcAddressVersion: number): PoXAddres
     case BitcoinNetworkVersion.testnet.P2SH:
       return PoXAddressVersion.P2SH;
     default:
-      throw new Error('Invalid pox address version');
+      throw new Error(`Invalid pox address version byte ${btcAddressVersion}`);
   }
 }
 
@@ -90,15 +95,18 @@ function legacyHashModeToBtcAddressVersion(
   } else if (hashMode === PoXAddressVersion.P2SH && network === 'testnet') {
     return BitcoinNetworkVersion.testnet.P2SH;
   }
-  throw new Error('Invalid pox address version');
+  throw new Error(`Invalid pox address hash mode byte: ${hashMode}`);
 }
 
 function bech32Decode(btcAddress: string) {
   const { words: bech32Words } = bech32.decode(btcAddress);
   const witnessVersion = bech32Words[0];
 
-  if (witnessVersion > 0)
-    throw new Error('Addresses with a witness version >= 1 should be encoded in bech32m');
+  if (witnessVersion > 0) {
+    throw new Error(
+      `Addresses with a witness version >= 1 should be encoded in bech32m, received version=${witnessVersion}`
+    );
+  }
 
   return {
     witnessVersion,
@@ -110,8 +118,11 @@ function bech32MDecode(btcAddress: string) {
   const { words: bech32MWords } = bech32m.decode(btcAddress);
   const witnessVersion = bech32MWords[0];
 
-  if (witnessVersion == 0)
-    throw new Error('Addresses with witness version 1 should be encoded in bech32');
+  if (witnessVersion == 0) {
+    throw new Error(
+      `Addresses with witness version 1 should be encoded in bech32, received version=${witnessVersion}`
+    );
+  }
 
   return {
     witnessVersion,
@@ -120,10 +131,14 @@ function bech32MDecode(btcAddress: string) {
 }
 
 function nativeSegwitDecode(btcAddress: string): { witnessVersion: number; data: Uint8Array } {
-  try {
+  if (SEGWIT_V0_ADDR_PREFIX.test(btcAddress)) {
     return bech32Decode(btcAddress);
-  } catch (_) {}
-  return bech32MDecode(btcAddress);
+  } else if (SEGWIT_V1_ADDR_PREFIX.test(btcAddress)) {
+    return bech32MDecode(btcAddress);
+  }
+  throw new Error(
+    `Segwit address ${btcAddress} does not match valid prefix ${SEGWIT_V0_ADDR_PREFIX} or ${SEGWIT_V1_ADDR_PREFIX}`
+  );
 }
 
 function nativeAddressToSegwitVersion(
@@ -138,15 +153,12 @@ function nativeAddressToSegwitVersion(
     return PoXAddressVersion.P2TR;
   } else {
     throw new Error(
-      'Invalid native segwit witness version and byte length. Currently, only P2WPKH, P2WSH, and P2TR are supported.'
+      `Invalid native segwit witness version and byte length. Currently, only P2WPKH, P2WSH, and P2TR are supported. Received version=${witnessVersion}, length=${dataLength}`
     );
   }
 }
 
 export function decodeBtcAddress(btcAddress: string): { version: number; data: Buffer } {
-  let b58DecodeError: any = undefined;
-  let segwitDecodeError: any = undefined;
-
   if (B58_ADDR_PREFIXES.test(btcAddress)) {
     try {
       const b58 = btc.address.fromBase58Check(btcAddress);
@@ -156,7 +168,7 @@ export function decodeBtcAddress(btcAddress: string): { version: number; data: B
         data: b58.hash,
       };
     } catch (e) {
-      b58DecodeError = e;
+      throw new Error(`Bad bitcoin b58 address: ${btcAddress}, ${e}`);
     }
   } else if (SEGWIT_ADDR_PREFIXES.test(btcAddress)) {
     try {
@@ -167,12 +179,11 @@ export function decodeBtcAddress(btcAddress: string): { version: number; data: B
         data: Buffer.from(b32.data),
       };
     } catch (e) {
-      segwitDecodeError = e;
+      throw new Error(`Bad bitcoin segwit address: ${btcAddress}, ${e}`);
     }
   }
-
   throw new Error(
-    `Bad bitcoin address: ${btcAddress}, b58 error: ${b58DecodeError}, segwit error: ${segwitDecodeError}`
+    `Bad bitcoin address: ${btcAddress}, does not match b58 prefix ${B58_ADDR_PREFIXES} or segwit prefix ${SEGWIT_ADDR_PREFIXES}`
   );
 }
 
