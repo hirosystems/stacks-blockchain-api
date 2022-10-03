@@ -137,7 +137,7 @@ export class StacksCoreRpcClient {
    * @param retryTimeout - milliseconds
    */
   async waitForConnection(retryTimeout = 60000): Promise<void> {
-    const retryInterval = 2500; // 1 second
+    const retryInterval = 2500; // 2.5 seconds
     const timer = stopwatch();
     let lastError: Error;
     do {
