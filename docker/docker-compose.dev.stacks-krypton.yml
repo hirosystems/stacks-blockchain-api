@@ -11,3 +11,5 @@ services:
       MINE_INTERVAL: 2s
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
       NOP_BLOCKSTACK_DEBUG: 1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
