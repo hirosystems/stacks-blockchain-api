@@ -86,15 +86,15 @@ describe('Stacks 2.1 tests', () => {
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
+        if (txId !== expectedTxId) {
+          return;
+        }
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
         if (!dbTxQuery.found) {
           return;
         }
-        const dbTx = dbTxQuery.result;
-        if (dbTx.tx_id === expectedTxId) {
-          api.datastore.eventEmitter.removeListener('txUpdate', listener);
-          resolve(dbTx);
-        }
+        api.datastore.eventEmitter.removeListener('txUpdate', listener);
+        resolve(dbTxQuery.result);
       };
       api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
@@ -203,8 +203,8 @@ describe('Stacks 2.1 tests', () => {
     const signer = new TransactionSigner(stacksTx);
     signer.signOrigin(createStacksPrivateKey(account.secretKey));
     const signedSerializedTx = stacksTx.serialize().toString('hex');
-    // const expectedTxId = stacksTx.txid();
-    // const txStandby = standByForTx(expectedTxId);
+    const expectedTxId = '0x' + stacksTx.txid();
+    const txStandby = standByForTx(expectedTxId);
 
     // submit
     const submitResult = await fetchRosetta<
@@ -215,11 +215,12 @@ describe('Stacks 2.1 tests', () => {
       signed_transaction: '0x' + signedSerializedTx,
     });
 
-    expect(submitResult.transaction_identifier.hash).toBeTruthy();
+    expect(resultMetadata.metadata.contract_name).toBe('pox-2');
     expect(resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+    expect(submitResult.transaction_identifier.hash).toBe(expectedTxId);
 
-    // const dbTx = await txStandby;
-    // expect(dbTx.contract_call_contract_id).toBe('asdfsadf.pox-2');
+    const dbTx = await txStandby;
+    expect(dbTx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
   });
 
   afterAll(async () => {

@@ -13,13 +13,16 @@ export interface TestEnvContext {
   client: StacksCoreRpcClient;
 }
 
-async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
+async function standByForPox2ToBeReady(client: StacksCoreRpcClient): Promise<void> {
   let tries = 0;
   while (true) {
     try {
       tries++;
-      await client.getPox();
-      return;
+      const poxInfo = await client.getPox();
+      if (poxInfo.contract_id.includes('pox-2')) {
+        return;
+      }
+      await timeout(500);
     } catch (error) {
       console.log('Error getting pox info on try ' + tries, error);
       await timeout(500);
@@ -45,7 +48,7 @@ beforeAll(async () => {
   const api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   const client = new StacksCoreRpcClient();
 
-  await standByForPoxToBeReady(client);
+  await standByForPox2ToBeReady(client);
 
   testEnv = {
     db,
