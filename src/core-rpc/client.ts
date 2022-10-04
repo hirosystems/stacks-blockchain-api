@@ -238,7 +238,7 @@ export class StacksCoreRpcClient {
     return nonce;
   }
 
-  async getAccountBalance(principal: string): Promise<BigInt> {
+  async getAccountBalance(principal: string): Promise<bigint> {
     const account = await this.getAccount(principal);
     const balance = BigInt(account.balance);
     return balance;
