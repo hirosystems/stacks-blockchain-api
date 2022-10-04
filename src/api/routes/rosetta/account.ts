@@ -86,16 +86,18 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
 
       if (subAccountIdentifier !== undefined) {
         switch (subAccountIdentifier.address) {
-          case RosettaConstants.StackedBalance:
+          case RosettaConstants.StackedBalance: {
             const lockedBalance = stxBalance.locked;
             balance = lockedBalance.toString();
             break;
-          case RosettaConstants.SpendableBalance:
+          }
+          case RosettaConstants.SpendableBalance: {
             const spendableBalance = stxBalance.balance - stxBalance.locked;
             balance = spendableBalance.toString();
             break;
+          }
           case RosettaConstants.VestingLockedBalance:
-          case RosettaConstants.VestingUnlockedBalance:
+          case RosettaConstants.VestingUnlockedBalance: {
             const stxVesting = await db.getTokenOfferingLocked(
               accountIdentifier.address,
               block.block_height
@@ -109,6 +111,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
               balance = '0';
             }
             break;
+          }
           default:
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSubAccount]);
             return;

@@ -1,17 +1,36 @@
 module.exports = {
   root: true,
-  extends: ['@stacks/eslint-config', 'prettier'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:prettier/recommended',
+  ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'eslint-plugin-tsdoc', 'prettier'],
   parserOptions: {
     tsconfigRootDir: __dirname,
-    project: './tsconfig.json',
+    project: ['./tsconfig.json'],
     ecmaVersion: 2020,
     sourceType: 'module',
   },
-  ignorePatterns: ['lib/*', 'client/*', 'utils/*'],
+  env: {
+    node: true,
+    browser: false,
+  },
   rules: {
-    'prettier/prettier': 'error',
+    'prettier/prettier': [
+      'error',
+      {
+        printWidth: 100,
+        tabWidth: 2,
+        useTabs: false,
+        semi: true,
+        trailingComma: 'es5',
+        singleQuote: true,
+        arrowParens: 'avoid'
+      }
+    ],
 
     '@typescript-eslint/no-inferrable-types': 'off',
     '@typescript-eslint/camelcase': 'off',

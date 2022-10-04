@@ -154,7 +154,7 @@ export async function startApiServer(opts: {
     expressWinston.logger({
       format: logger.format,
       transports: logger.transports,
-      metaField: (null as unknown) as string,
+      metaField: null as unknown as string,
       statusLevels: {
         error: 'error',
         warn: httpLogLevel ?? 'http',
@@ -315,7 +315,7 @@ export async function startApiServer(opts: {
   app.use(
     expressWinston.errorLogger({
       winstonInstance: logger as winston.Logger,
-      metaField: (null as unknown) as string,
+      metaField: null as unknown as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
       skip: (_req, _res, error) => {
         // Do not log errors for client 4xx responses

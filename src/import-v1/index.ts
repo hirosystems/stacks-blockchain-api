@@ -278,6 +278,7 @@ async function readZones(zfname: string): Promise<Map<string, string>> {
 
   const generator = asyncIterableToGenerator<string>(zstream);
 
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const [keyRes, chunkRes] = [await generator.next(), await generator.next()];
     if (!keyRes.done && !chunkRes.done) {

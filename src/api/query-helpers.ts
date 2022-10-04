@@ -28,8 +28,7 @@ export function booleanValueForParam(
       case '1':
       case 'yes':
       case 'on':
-      // If specified without a value, e.g. `?paramName` then treat it as true
-      case '':
+      case '': // If specified without a value, e.g. `?paramName` then treat it as true
         return true;
       case 'false':
       case '0':

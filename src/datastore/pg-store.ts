@@ -154,38 +154,46 @@ export class PgStore {
   async connectPgNotifier() {
     await this.notifier?.connect(notification => {
       switch (notification.type) {
-        case 'blockUpdate':
+        case 'blockUpdate': {
           const block = notification.payload as PgBlockNotificationPayload;
           this.eventEmitter.emit('blockUpdate', block.blockHash);
           break;
-        case 'microblockUpdate':
+        }
+        case 'microblockUpdate': {
           const microblock = notification.payload as PgMicroblockNotificationPayload;
           this.eventEmitter.emit('microblockUpdate', microblock.microblockHash);
           break;
-        case 'txUpdate':
+        }
+        case 'txUpdate': {
           const tx = notification.payload as PgTxNotificationPayload;
           this.eventEmitter.emit('txUpdate', tx.txId);
           break;
-        case 'addressUpdate':
+        }
+        case 'addressUpdate': {
           const address = notification.payload as PgAddressNotificationPayload;
           this.eventEmitter.emit('addressUpdate', address.address, address.blockHeight);
           break;
-        case 'tokensUpdate':
+        }
+        case 'tokensUpdate': {
           const tokens = notification.payload as PgTokensNotificationPayload;
           this.eventEmitter.emit('tokensUpdate', tokens.contractID);
           break;
-        case 'nameUpdate':
+        }
+        case 'nameUpdate': {
           const name = notification.payload as PgNameNotificationPayload;
           this.eventEmitter.emit('nameUpdate', name.nameInfo);
           break;
-        case 'tokenMetadataUpdateQueued':
+        }
+        case 'tokenMetadataUpdateQueued': {
           const metadata = notification.payload as PgTokenMetadataNotificationPayload;
           this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
           break;
-        case 'nftEventUpdate':
+        }
+        case 'nftEventUpdate': {
           const nftEvent = notification.payload as PgNftEventNotificationPayload;
           this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
           break;
+        }
       }
     });
   }
@@ -647,9 +655,7 @@ export class PgStore {
     });
   }
 
-  async getAddressNonces(args: {
-    stxAddress: string;
-  }): Promise<{
+  async getAddressNonces(args: { stxAddress: string }): Promise<{
     lastExecutedTxNonce: number | null;
     lastMempoolTxNonce: number | null;
     possibleNextNonce: number;

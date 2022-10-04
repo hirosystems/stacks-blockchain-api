@@ -248,15 +248,15 @@ async function calculateETag(
   req: Request
 ): Promise<ETag | undefined> {
   switch (etagType) {
-    case ETagType.chainTip:
+    case ETagType.chainTip: {
       const chainTip = await db.getUnanchoredChainTip();
       if (!chainTip.found) {
         // This should never happen unless the API is serving requests before it has synced any blocks.
         return;
       }
       return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
-
-    case ETagType.mempool:
+    }
+    case ETagType.mempool: {
       const digest = await db.getMempoolTxDigest();
       if (!digest.found) {
         // This should never happen unless the API is serving requests before it has synced any blocks.
@@ -267,8 +267,8 @@ async function calculateETag(
         return ETAG_EMPTY;
       }
       return digest.result.digest;
-
-    case ETagType.transaction:
+    }
+    case ETagType.transaction: {
       const { tx_id } = req.params;
       const normalizedTxId = normalizeHashString(tx_id);
       if (normalizedTxId === false) {
@@ -285,5 +285,6 @@ async function calculateETag(
         status.result.status.toString(),
       ];
       return elements.join(':');
+    }
   }
 }

@@ -26,7 +26,9 @@ import {
 import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
 
+// ts-unused-exports:disable-next-line
 export const isDevEnv = process.env.NODE_ENV === 'development';
+// ts-unused-exports:disable-next-line
 export const isTestEnv = process.env.NODE_ENV === 'test';
 export const isProdEnv =
   process.env.NODE_ENV === 'production' ||
@@ -35,6 +37,7 @@ export const isProdEnv =
   (!isTestEnv && !isDevEnv);
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
+// ts-unused-exports:disable-next-line
 export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
 
@@ -44,9 +47,9 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
-function createEnumChecker<T extends string, TEnumValue extends number>(
-  enumVariable: { [key in T]: TEnumValue }
-): (value: number) => value is TEnumValue {
+function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
+  [key in T]: TEnumValue;
+}): (value: number) => value is TEnumValue {
   // Create a set of valid enum number values.
   const enumValues = Object.values<number>(enumVariable).filter(v => typeof v === 'number');
   const enumValueSet = new Set<number>(enumValues);
@@ -458,13 +461,9 @@ export function parsePort(portVal: number | string | undefined): number | undefi
 
 /** Converts a unix timestamp (in seconds) to an ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) string */
 export function unixEpochToIso(timestamp: number): string {
-  try {
-    const date = new Date(timestamp * 1000);
-    const iso = date.toISOString();
-    return iso;
-  } catch (error) {
-    throw error;
-  }
+  const date = new Date(timestamp * 1000);
+  const iso = date.toISOString();
+  return iso;
 }
 
 export function getCurrentGitTag(): string {
@@ -701,10 +700,8 @@ export async function resolveOrTimeout(
 ) {
   let timer: NodeJS.Timeout;
   const result = await Promise.race([
-    new Promise(async (resolve, _) => {
-      await promise;
+    promise.finally(() => {
       clearTimeout(timer);
-      resolve(true);
     }),
     new Promise((resolve, _) => {
       timer = setInterval(() => {
@@ -894,7 +891,8 @@ export function parseDataUrl(
     if (url.protocol !== 'data:') {
       return false;
     }
-    const validDataUrlRegex = /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
+    const validDataUrlRegex =
+      /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
     const parts = validDataUrlRegex.exec(s.trim());
     if (parts === null) {
       return false;

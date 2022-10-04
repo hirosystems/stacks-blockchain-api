@@ -790,7 +790,7 @@ export async function startEventServer(opts: {
     expressWinston.logger({
       format: logger.format,
       transports: logger.transports,
-      metaField: (null as unknown) as string,
+      metaField: null as unknown as string,
       statusLevels: {
         error: 'error',
         warn: opts.httpLogLevel ?? 'http',
@@ -916,7 +916,7 @@ export async function startEventServer(opts: {
   app.use(
     expressWinston.errorLogger({
       winstonInstance: logger as winston.Logger,
-      metaField: (null as unknown) as string,
+      metaField: null as unknown as string,
       blacklistedMetaFields: ['trace', 'os', 'process'],
     })
   );

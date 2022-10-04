@@ -290,9 +290,7 @@ function initHeapSnapshot(
   return { start, stop, dispose, session, sessionType: 'memory', stopwatch: sw };
 }
 
-export async function startProfilerServer(
-  httpServerPort?: number | string
-): Promise<{
+export async function startProfilerServer(httpServerPort?: number | string): Promise<{
   server: Server;
   address: string;
   close: () => Promise<void>;
@@ -450,7 +448,9 @@ export async function startProfilerServer(
         const elapsedSeconds = existingSession.instance.stopwatch.getElapsedSeconds();
         const timestampSeconds = Math.round(Date.now() / 1000);
         const filename = `cpu_${timestampSeconds}_${elapsedSeconds}-seconds.cpuprofile`;
-        const result = await (existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>).stop();
+        const result = await (
+          existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>
+        ).stop();
         const resultString = JSON.stringify(result);
         logger.info(
           `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`
@@ -503,11 +503,15 @@ export async function startProfilerServer(
         await session?.instance.dispose().catch();
         try {
           fileWriteStream.destroy();
-        } catch (_) {}
+        } catch (_) {
+          /* ignore */
+        }
         try {
           logger.info(`[HeapProfiler] Cleaning up tmp file ${tmpFile}`);
           fs.unlinkSync(tmpFile);
-        } catch (_) {}
+        } catch (_) {
+          /* ignore */
+        }
       }
     })
   );

@@ -88,6 +88,7 @@ registerShutdownConfig();
 async function monitorCoreRpcConnection(): Promise<void> {
   const CORE_RPC_HEARTBEAT_INTERVAL = 5000; // 5 seconds
   let previouslyConnected = false;
+  // eslint-disable-next-line no-constant-condition
   while (true) {
     const client = new StacksCoreRpcClient();
     try {

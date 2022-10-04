@@ -185,7 +185,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       let transaction: StacksTransaction;
       switch (options.type as RosettaOperationType) {
-        case RosettaOperationType.TokenTransfer:
+        case RosettaOperationType.TokenTransfer: {
           // dummy transaction to calculate size
           const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
             recipient: options.token_transfer_recipient_address as string,
@@ -203,6 +203,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
           break;
+        }
         case RosettaOperationType.StackStx: {
           if (!options.number_of_cycles) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
@@ -345,7 +346,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       let response = {} as RosettaConstructionMetadataResponse;
       switch (options.type as RosettaOperationType) {
-        case RosettaOperationType.TokenTransfer:
+        case RosettaOperationType.TokenTransfer: {
           const recipientAddress = options.token_transfer_recipient_address;
           if (options?.decimals !== RosettaConstants.decimals) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
@@ -357,6 +358,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
           break;
+        }
         case RosettaOperationType.StackStx: {
           // Getting stacking info
           const poxInfo = await new StacksCoreRpcClient().getPox();

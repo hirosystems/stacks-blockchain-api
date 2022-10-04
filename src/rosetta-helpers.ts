@@ -181,11 +181,11 @@ async function processEvents(
   for (const event of events) {
     const txEventType = event.event_type;
     switch (txEventType) {
-      case DbEventTypeId.StxAsset:
+      case DbEventTypeId.StxAsset: {
         const stxAssetEvent = event;
         const txAssetEventType = stxAssetEvent.asset_event_type_id;
         switch (txAssetEventType) {
-          case DbAssetEventTypeId.Transfer:
+          case DbAssetEventTypeId.Transfer: {
             if (baseTx.type_id == DbTxTypeId.TokenTransfer) {
               // each 'token_transfer' transaction has a 'transfer' event associated with it.
               // We break here to avoid operation duplication
@@ -207,6 +207,7 @@ async function processEvents(
             operations.push(makeSenderOperation(tx, operations.length, stxAssetEvent.memo));
             operations.push(makeReceiverOperation(tx, operations.length, stxAssetEvent.memo));
             break;
+          }
           case DbAssetEventTypeId.Burn:
             operations.push(makeBurnOperation(stxAssetEvent, baseTx, operations.length));
             break;
@@ -217,13 +218,15 @@ async function processEvents(
             throw new Error(`Unexpected StxAsset event: ${txAssetEventType}`);
         }
         break;
-      case DbEventTypeId.StxLock:
+      }
+      case DbEventTypeId.StxLock: {
         const stxLockEvent = event;
         operations.push(makeStakeLockOperation(stxLockEvent, baseTx, operations.length));
         break;
+      }
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
-      case DbEventTypeId.FungibleTokenAsset:
+      case DbEventTypeId.FungibleTokenAsset: {
         const ftMetadata = await getValidatedFtMetadata(db, event.asset_identifier);
         if (!ftMetadata) {
           break;
@@ -243,6 +246,7 @@ async function processEvents(
             throw new Error(`Unexpected FungibleTokenAsset event: ${event.asset_event_type_id}`);
         }
         break;
+      }
       case DbEventTypeId.SmartContractLog:
         break;
       default:

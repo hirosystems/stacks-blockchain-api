@@ -12,9 +12,10 @@ function getFaucetPk(): string {
   return BTC_FAUCET_PK;
 }
 
-export function getFaucetAccount(
-  network: btc.Network
-): { key: btc.ECPairInterface; address: string } {
+export function getFaucetAccount(network: btc.Network): {
+  key: btc.ECPairInterface;
+  address: string;
+} {
   const pkBuffer = Buffer.from(getFaucetPk(), 'hex');
   const key = btc.ECPair.fromPrivateKey(pkBuffer, { network: network });
   return { key, address: getKeyAddress(key) };

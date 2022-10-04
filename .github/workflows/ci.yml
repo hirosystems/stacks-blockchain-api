@@ -45,9 +45,6 @@ jobs:
       - name: Lint ESLint
         run: npm run lint:eslint
 
-      - name: Lint Prettier
-        run: npm run lint:prettier
-
       - name: Lint Unused Exports
         run: npm run lint:unused-exports
 

@@ -1,11 +1,16 @@
 module.exports = {
   root: true,
-  extends: ['@stacks/eslint-config', 'prettier'],
+  extends: [
+    'eslint:recommended',
+    'plugin:@typescript-eslint/recommended',
+    'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'prettier',
+  ],
   parser: '@typescript-eslint/parser',
   plugins: ['@typescript-eslint', 'prettier'],
   parserOptions: {
     tsconfigRootDir: __dirname,
-    project: './tsconfig.json',
+    project: ['./tsconfig.json'],
     ecmaVersion: 2017,
     sourceType: 'module',
   },

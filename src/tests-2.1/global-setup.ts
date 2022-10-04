@@ -29,6 +29,7 @@ async function standByForPox2ToBeReady(client: StacksCoreRpcClient): Promise<voi
   }
 }
 
+// ts-unused-exports:disable-next-line
 export default async (): Promise<void> => {
   console.log('Jest - global setup..');
   if (!process.env.NODE_ENV) {

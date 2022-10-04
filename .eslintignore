@@ -7,12 +7,7 @@ coverage/
 scripts/
 stacks-blockchain/
 src/schemas/*
+src/test*
+client/
+utils/
 docs/
-#client/
-#src/tests/
-src/tests-rosetta/
-src/tests-rosetta-cli/
-src/tests-bns/
-client/src/
-config/
-utils/src/
