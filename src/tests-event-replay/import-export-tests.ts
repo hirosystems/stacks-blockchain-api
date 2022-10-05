@@ -1,9 +1,6 @@
 import * as fs from 'fs';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { dangerousDropAllTables, runMigrations } from '../datastore/migrations';
-import { databaseHasData } from '../datastore/event-requests';
-import { getPgClientConfig } from '../datastore/connection-legacy';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -15,10 +12,6 @@ describe('import/export tests', () => {
       withNotifier: false,
       skipMigrations: true,
     });
-  });
-
-  afterEach(async () => {
-    await db?.close();
   });
 
   test('event import and export cycle', async () => {
@@ -61,49 +54,7 @@ describe('import/export tests', () => {
     }
   });
 
-  test('import with db wipe options', async () => {
-    // Migrate first so we have some data.
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', false, false)
-    ).rejects.toThrowError('contains existing data');
-
-    // Create strange table
-    await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, false)
-    ).rejects.toThrowError('migration cycle failed');
-
-    // Force and test
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true)
-    ).resolves.not.toThrow();
-  });
-
-  test('db contains data', async () => {
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
-
-    // Having tables counts as having data as this may change across major versions.
-    await expect(databaseHasData()).resolves.toBe(true);
-
-    // Dropping all tables removes everything.
-    await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
-    await expect(databaseHasData()).resolves.toBe(false);
-
-    // Cycling migrations leaves the `pgmigrations` table.
-    await runMigrations(clientConfig, 'up', {});
-    await runMigrations(clientConfig, 'down', {});
-    await expect(databaseHasData()).resolves.toBe(true);
-    await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
-  });
-
-  test('Bns import occurs', async () => {
-    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
-    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
-    const configState = await db.getConfigState();
-    expect(configState.bns_names_onchain_imported).toBe(true);
-    expect(configState.bns_subdomains_imported).toBe(true);
+  afterEach(async () => {
+    await db?.close();
   });
 });
