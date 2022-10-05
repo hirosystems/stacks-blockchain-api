@@ -1,10 +1,13 @@
 import * as fs from 'fs';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
 import { PgWriteStore } from '../datastore/pg-write-store';
+<<<<<<< HEAD
 import { dangerousDropAllTables, runMigrations } from '../datastore/migrations';
 import { databaseHasData } from '../datastore/event-requests';
 import { getPgClientConfig } from '../datastore/connection-legacy';
 import * as http from 'http';
+=======
+>>>>>>> 17f76c8a (test: export import cycle)
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -56,67 +59,6 @@ describe('import/export tests', () => {
     } finally {
       fs.rmSync(tmpDir, { force: true, recursive: true });
     }
-  });
-
-  test('import with db wipe options', async () => {
-    // Migrate first so we have some data.
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', false, false)
-    ).rejects.toThrowError('contains existing data');
-
-    // Create strange table
-    await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, false)
-    ).rejects.toThrowError('migration cycle failed');
-
-    // Force and test
-    await expect(
-      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true)
-    ).resolves.not.toThrow();
-  });
-
-  test('db contains data', async () => {
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
-
-    // Having tables counts as having data as this may change across major versions.
-    await expect(databaseHasData()).resolves.toBe(true);
-
-    // Dropping all tables removes everything.
-    await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
-    await expect(databaseHasData()).resolves.toBe(false);
-
-    // Cycling migrations leaves the `pgmigrations` table.
-    await runMigrations(clientConfig, 'up', {});
-    await runMigrations(clientConfig, 'down', {});
-    await expect(databaseHasData()).resolves.toBe(true);
-    await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
-  });
-
-  test('IBD mode covers prune mode', async () => {
-    // Import from mocknet TSV
-    const responses = await importEventsFromTsv(
-      'src/tests-event-replay/tsv/mocknet.tsv',
-      'pruned',
-      true,
-      true,
-      1000
-    );
-    let hitIbdRoute = false;
-    for (const response of responses) {
-      if (response.response === 'IBD mode active.') {
-        hitIbdRoute = true;
-        expect(
-          ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'].includes(
-            (response as any)?.req?.path
-          )
-        ).toBe(true);
-      }
-    }
-    expect(hitIbdRoute).toBe(true);
   });
 
   afterEach(async () => {
