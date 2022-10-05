@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+<<<<<<< HEAD
 import {
   findTsvBlockHeight,
   getBnsGenesisBlockFromBlockMessage,
@@ -9,6 +10,14 @@ import { cycleMigrations, runMigrations } from 'src/datastore/migrations';
 import { PgWriteStore } from 'src/datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from 'src/event-stream/event-server';
 import { httpPostRequest } from 'src/helpers';
+=======
+import { PgSqlClient } from '../datastore/connection';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { httpPostRequest } from '../helpers';
+import { findTsvBlockHeight } from '../event-replay/helpers';
+>>>>>>> 2e9e56cd (feat: add event-replay test suite)
 import { ReverseFileStream } from '../event-replay/reverse-file-stream';
 import { ChainID } from '@stacks/transactions';
 
@@ -162,57 +171,59 @@ describe('BNS event server tests', () => {
       serverPort: 0,
       httpLogLevel: 'debug',
     });
+  });
 
-    afterEach(async () => {
-      await eventServer.closeAsync();
-      await db?.close();
-      await runMigrations(undefined, 'down');
-    });
+  afterEach(async () => {
+    await eventServer.closeAsync();
+    await db?.close();
+    await runMigrations(undefined, 'down');
+  });
 
-    test('IBD mode blocks certain API routes', () => {
-      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+  test('IBD mode blocks certain API routes', async () => {
+    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
 
-      const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
+    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
 
-      routes.forEach(async route => {
-        const response = await httpPostRequest({
-          host: '127.0.0.1',
-          port: eventServer.serverAddress.port,
-          path: route,
-          headers: { 'Content-Type': 'application/json' },
-          body: Buffer.from(JSON.stringify({}), 'utf8'),
-          throwOnNotOK: true,
-        });
-        expect(response.response).toBe(`${route} is not available while IBD mode is active.`);
+    for (const route of routes) {
+      const response = await httpPostRequest({
+        host: '127.0.0.1',
+        port: eventServer.serverAddress.port,
+        path: route,
+        headers: { 'Content-Type': 'application/json' },
+        body: Buffer.from(JSON.stringify({}), 'utf8'),
+        throwOnNotOK: false,
       });
+      // expect(response.statusCode).toBe(200);
+      expect(response.statusMessage).toBe('IBD mode active.');
+    }
 
-      process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-    });
+    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
+  });
 
-    test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', () => {
-      process.env.IBD_MODE_UNTIL_BLOCK = '0';
+  test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
+    process.env.IBD_MODE_UNTIL_BLOCK = '0';
 
-      const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
+    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
 
-      routes.forEach(async route => {
-        const response = await httpPostRequest({
-          host: '127.0.0.1',
-          port: eventServer.serverAddress.port,
-          path: route,
-          headers: { 'Content-Type': 'application/json' },
-          body: Buffer.from(JSON.stringify({}), 'utf8'),
-          throwOnNotOK: true,
-        });
-        expect(response.statusCode).toBe(500);
+    for (const route of routes) {
+      const response = await httpPostRequest({
+        host: '127.0.0.1',
+        port: eventServer.serverAddress.port,
+        path: route,
+        headers: { 'Content-Type': 'application/json' },
+        body: Buffer.from(JSON.stringify({}), 'utf8'),
+        throwOnNotOK: false,
       });
+      expect(response.statusCode).toBe(500);
+    }
 
-      process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-    });
+    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
+  });
 
-    test('IBD mode prevents refreshing materialized views', () => {
-      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-      expect(db.refreshMaterializedView('fizzbuzz', client)).toBe(undefined);
-      process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-    });
+  test('IBD mode prevents refreshing materialized views', async () => {
+    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+    const result = await db.refreshMaterializedView('fizzbuzz', client);
+    expect(result).toBe(undefined);
+    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
   });
 });

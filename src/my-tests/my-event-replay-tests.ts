@@ -8,7 +8,7 @@ import { findTsvBlockHeight } from '../event-replay/helpers';
 import { ReverseFileStream } from '../event-replay/reverse-file-stream';
 import { ChainID } from '@stacks/transactions';
 
-describe('event replay tests', () => {
+describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {
     try {
       fs.mkdirSync('./.tmp');
