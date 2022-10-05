@@ -52,6 +52,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'smallint',
       notNull: true,
     },
+    event_index: 'integer',
     status: {
       type: 'string',
       notNull: false
@@ -89,10 +90,11 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
     { name: 'registered_at', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
     { name: 'tx_index', sort: 'DESC' },
+    { name: 'event_index', sort: 'DESC' }
   ]);
   pgm.addConstraint(
     'names',
-    'unique_name_tx_id_index_block_hash_microblock_hash',
-    'UNIQUE(name, tx_id, index_block_hash, microblock_hash)'
+    'unique_name_tx_id_index_block_hash_microblock_hash_event_index',
+    'UNIQUE(name, tx_id, index_block_hash, microblock_hash, event_index)'
   );
 }

@@ -3066,56 +3066,6 @@ export class PgStore {
     return { found: true, result: result[0] } as const;
   }
 
-  /**
-   * @deprecated Use `getNftHoldings` instead.
-   */
-  async getAddressNFTEvent(args: {
-    stxAddress: string;
-    limit: number;
-    offset: number;
-    blockHeight: number;
-    includeUnanchored: boolean;
-  }): Promise<{ results: AddressNftEventIdentifier[]; total: number }> {
-    // Join against `nft_custody` materialized view only if we're looking for canonical results.
-    const result = await this.sql<(AddressNftEventIdentifier & { count: number })[]>`
-      WITH address_transfers AS (
-        SELECT asset_identifier, value, sender, recipient, block_height, microblock_sequence, tx_index, event_index, tx_id, asset_event_type_id
-        FROM nft_events
-        WHERE canonical = true AND microblock_canonical = true
-        AND recipient = ${args.stxAddress} AND block_height <= ${args.blockHeight}
-      ),
-      last_nft_transfers AS (
-        SELECT DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient
-        FROM nft_events
-        WHERE canonical = true AND microblock_canonical = true
-        AND block_height <= ${args.blockHeight}
-        ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      )
-      SELECT sender, recipient, asset_identifier, value, event_index, asset_event_type_id, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
-      FROM address_transfers
-      INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
-        USING (asset_identifier, value, recipient)
-      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT ${args.limit} OFFSET ${args.offset}
-    `;
-
-    const count = result.length > 0 ? result[0].count : 0;
-
-    const nftEvents = result.map(row => ({
-      sender: row.sender,
-      recipient: row.recipient,
-      asset_identifier: row.asset_identifier,
-      value: row.value,
-      block_height: row.block_height,
-      tx_id: row.tx_id,
-      event_index: row.event_index,
-      asset_event_type_id: row.asset_event_type_id,
-      tx_index: row.tx_index,
-    }));
-
-    return { results: nftEvents, total: count };
-  }
-
   async getTxListDetails({
     txIds,
     includeUnanchored,
@@ -3177,7 +3127,7 @@ export class PgStore {
         WHERE namespace_id = ${namespace}
         AND registered_at <= ${maxBlockHeight}
         AND canonical = true AND microblock_canonical = true
-        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;
@@ -3237,7 +3187,10 @@ export class PgStore {
           AND n.registered_at <= ${maxBlockHeight}
           AND n.canonical = true
           AND n.microblock_canonical = true
-        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+        ORDER BY n.registered_at DESC,
+          n.microblock_sequence DESC,
+          n.tx_index DESC,
+          n.event_index DESC
         LIMIT 1
       `;
       if (nameZonefile.length === 0) {
@@ -3505,7 +3458,7 @@ export class PgStore {
         FROM names
         WHERE canonical = true AND microblock_canonical = true
         AND registered_at <= ${maxBlockHeight}
-        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC
+        ORDER BY name, registered_at DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT 100
         OFFSET ${offset}
       `;

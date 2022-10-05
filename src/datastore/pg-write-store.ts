@@ -74,7 +74,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { connectPostgres, PgJsonb, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -134,9 +134,10 @@ export class PgWriteStore extends PgStore {
   }
 
   async getChainTip(
-    sql: PgSqlClient
+    sql: PgSqlClient,
+    useMaterializedView = true
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
-    if (!this.isEventReplay) {
+    if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
     // The `chain_tip` materialized view is not available during event replay.
@@ -161,7 +162,7 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.
@@ -182,19 +183,13 @@ export class PgWriteStore extends PgStore {
         `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
       );
     }
-    const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
-    if (exportEventsFile) {
-      const result = insertResult[0];
-      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
-      fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
-    }
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -538,7 +533,7 @@ export class PgWriteStore extends PgStore {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
@@ -1276,7 +1271,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
         const values: MempoolTxInsertValues = {
           pruned: tx.pruned,
@@ -1409,12 +1404,25 @@ export class PgWriteStore extends PgStore {
       namespace_id,
       tx_id,
       tx_index,
+      event_index,
       status,
       canonical,
     } = bnsName;
-    // Try to figure out the name's expiration block based on its namespace's lifetime. However, if
-    // the name was only transferred, keep the expiration from the last register/renewal we had.
+    // Try to figure out the name's expiration block based on its namespace's lifetime.
     let expireBlock = expire_block;
+    const namespaceLifetime = await sql<{ lifetime: number }[]>`
+      SELECT lifetime
+      FROM namespaces
+      WHERE namespace_id = ${namespace_id}
+      AND canonical = true AND microblock_canonical = true
+      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1
+    `;
+    if (namespaceLifetime.length > 0) {
+      expireBlock = registered_at + namespaceLifetime[0].lifetime;
+    }
+    // If the name was transferred, keep the expiration from the last register/renewal we had (if
+    // any).
     if (status === 'name-transfer') {
       const prevExpiration = await sql<{ expire_block: number }[]>`
         SELECT expire_block
@@ -1426,18 +1434,6 @@ export class PgWriteStore extends PgStore {
       `;
       if (prevExpiration.length > 0) {
         expireBlock = prevExpiration[0].expire_block;
-      }
-    } else {
-      const namespaceLifetime = await sql<{ lifetime: number }[]>`
-        SELECT lifetime
-        FROM namespaces
-        WHERE namespace_id = ${namespace_id}
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT 1
-      `;
-      if (namespaceLifetime.length > 0) {
-        expireBlock = registered_at + namespaceLifetime[0].lifetime;
       }
     }
     // If we didn't receive a zonefile, keep the last valid one.
@@ -1481,6 +1477,7 @@ export class PgWriteStore extends PgStore {
       namespace_id: namespace_id,
       tx_index: tx_index,
       tx_id: tx_id,
+      event_index: event_index ?? null,
       status: status ?? null,
       canonical: canonical,
       index_block_hash: blockData.index_block_hash,
@@ -1491,7 +1488,7 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO names ${sql(nameValues)}
-      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash DO
+      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash_event_index DO
         UPDATE SET
           address = EXCLUDED.address,
           registered_at = EXCLUDED.registered_at,
@@ -1499,6 +1496,7 @@ export class PgWriteStore extends PgStore {
           zonefile_hash = EXCLUDED.zonefile_hash,
           namespace_id = EXCLUDED.namespace_id,
           tx_index = EXCLUDED.tx_index,
+          event_index = EXCLUDED.event_index,
           status = EXCLUDED.status,
           canonical = EXCLUDED.canonical,
           parent_index_block_hash = EXCLUDED.parent_index_block_hash,
@@ -2447,7 +2445,7 @@ export class PgWriteStore extends PgStore {
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
-    await sql`REFRESH MATERIALIZED VIEW ${sql(viewName)}`;
+    await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
   }
 
   /**
