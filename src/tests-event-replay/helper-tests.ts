@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { findTsvBlockHeight } from '../event-replay/helpers';
 import { ReverseFileStream } from '../event-replay/reverse-file-stream';
 
-describe('event replay tests', () => {
+describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {
     try {
       fs.mkdirSync('./.tmp');
