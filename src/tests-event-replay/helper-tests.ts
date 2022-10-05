@@ -138,9 +138,7 @@ line4`;
   });
 
   test('BNS genesis block data is found', async () => {
-    const genesisBlock = await findBnsGenesisBlockData(
-      'src/tests-event-replay/tsv/first-3-blocks.tsv'
-    );
+    const genesisBlock = await findBnsGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
     expect(genesisBlock).toEqual({
       index_block_hash: '0x918697ef63f9d8bdf844c3312b299e72a231cde542f3173f7755bb8c1cdaf3a7',
       parent_index_block_hash: '0x55c9861be5cff984a20ce6d99d4aa65941412889bdc665094136429b84f8c2ee',
