@@ -1,7 +1,5 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore } from '../../../datastore/common';
-import { logger } from '../../../helpers';
 import { getRosettaBlockFromDataStore } from '../../controllers/db-controller';
 import { StacksCoreRpcClient, Neighbor } from '../../../core-rpc/client';
 import {
@@ -19,12 +17,12 @@ import {
   RosettaNetworkOptionsResponse,
   RosettaNetworkStatusResponse,
   RosettaSyncStatus,
-  RosettaPeers,
 } from '@stacks/stacks-blockchain-api-types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
+import { PgStore } from '../../../datastore/pg-store';
 
-export function createRosettaNetworkRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   router.use(express.json());
 

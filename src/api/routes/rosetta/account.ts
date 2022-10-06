@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore, DbBlock } from '../../../datastore/common';
+import { DbBlock } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { has0xPrefix, FoundOrNot } from '../../../helpers';
 import {
   NetworkIdentifier,
@@ -18,7 +19,7 @@ import { ChainID } from '@stacks/transactions';
 import { getValidatedFtMetadata } from '../../../rosetta-helpers';
 import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
 
-export function createRosettaAccountRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   router.use(express.json());
 

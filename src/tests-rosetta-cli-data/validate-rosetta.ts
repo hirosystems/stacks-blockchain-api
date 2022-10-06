@@ -1,10 +1,8 @@
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import fetch from 'node-fetch';
-import { DbBlock } from '../datastore/common';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -26,6 +24,8 @@ import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout, unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -95,8 +95,7 @@ const PORT = 20443;
 const stacksNetwork = getStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let eventServer: Server;
   let api: ApiServer;
   let rosettaOutput: any;
@@ -104,8 +103,7 @@ describe('Rosetta API', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
@@ -188,7 +186,6 @@ describe('Rosetta API', () => {
   afterAll(async () => {
     await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
@@ -321,6 +318,6 @@ function uniqueId() {
 
 async function waitForBlock(api: ApiServer) {
   await new Promise<string>(resolve =>
-    api.datastore.once('blockUpdate', blockHash => resolve(blockHash))
+    api.datastore.eventEmitter.once('blockUpdate', blockHash => resolve(blockHash))
   );
 }

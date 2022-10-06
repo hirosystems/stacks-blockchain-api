@@ -630,19 +630,6 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   }
 }
 
-export function distinctBy<T, V>(items: Iterable<T>, selector: (value: T) => V): T[] {
-  const result: T[] = [];
-  const set = new Set<V>();
-  for (const item of items) {
-    const key = selector(item);
-    if (!set.has(key)) {
-      set.add(key);
-      result.push(item);
-    }
-  }
-  return result;
-}
-
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
 function intMax(args: BN[]): BN;
@@ -683,9 +670,6 @@ export async function getOrAddAsync<K, V>(
   }
   return val;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
@@ -950,15 +934,13 @@ export function parseDataUrl(
  * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
  * received NFT events.
  */
-export function bnsNameCV(name: string): Buffer {
+export function bnsNameCV(name: string): string {
   const components = name.split('.');
-  return hexToBuffer(
-    cvToHex(
-      tupleCV({
-        name: bufferCV(Buffer.from(components[0])),
-        namespace: bufferCV(Buffer.from(components[1])),
-      })
-    )
+  return cvToHex(
+    tupleCV({
+      name: bufferCV(Buffer.from(components[0])),
+      namespace: bufferCV(Buffer.from(components[1])),
+    })
   );
 }
 
@@ -986,33 +968,6 @@ export function getSendManyContract(chainId: ChainID) {
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
-}
-
-/**
- * Determines if a transaction involved a smart contract.
- * @param dbTx - Transaction DB entry
- * @param stxEvents - Associated STX Events for this tx
- * @returns true if tx involved a smart contract, false otherwise
- */
-export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boolean {
-  if (
-    dbTx.smart_contract_contract_id ||
-    dbTx.contract_call_contract_id ||
-    isValidContractName(dbTx.sender_address) ||
-    (dbTx.token_transfer_recipient_address &&
-      isValidContractName(dbTx.token_transfer_recipient_address))
-  ) {
-    return true;
-  }
-  for (const stxEvent of stxEvents) {
-    if (
-      (stxEvent.sender && isValidContractName(stxEvent.sender)) ||
-      (stxEvent.recipient && isValidContractName(stxEvent.recipient))
-    ) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**

@@ -1,5 +1,3 @@
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
@@ -23,6 +21,9 @@ import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -43,8 +44,7 @@ type TestnetKey = {
 }
 
 describe('BNS integration tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let eventServer: Server;
   let api: ApiServer;
 
@@ -62,11 +62,11 @@ describe('BNS integration tests', () => {
             dbTx.status === DbTxStatus.AbortByResponse ||
             dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
-          api.datastore.removeListener('txUpdate', listener);
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
           resolve(dbTx);
         }
       };
-      api.datastore.addListener('txUpdate', listener);
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
 
     return broadcastTx;
@@ -75,11 +75,11 @@ describe('BNS integration tests', () => {
     const broadcastTx = new Promise<string>(resolve => {
       const listener: (txId: string) => void = txId => {
         if (txId === expectedTxId) {
-          api.datastore.removeListener('nameUpdate', listener);
+          api.datastore.eventEmitter.removeListener('nameUpdate', listener);
           resolve(txId);
         }
       };
-      api.datastore.addListener('nameUpdate', listener);
+      api.datastore.eventEmitter.addListener('nameUpdate', listener);
     });
 
     return broadcastTx;
@@ -326,8 +326,7 @@ describe('BNS integration tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
@@ -595,7 +594,6 @@ describe('BNS integration tests', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

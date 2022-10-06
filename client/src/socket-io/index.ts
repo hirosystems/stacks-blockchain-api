@@ -120,6 +120,30 @@ export class StacksApiSocketClient {
     this.handleSubscription(`transaction:${txId}` as const, false);
   }
 
+  subscribeNftEvent() {
+    return this.handleSubscription('nft-event', true);
+  }
+
+  unsubscribeNftEvent() {
+    this.handleSubscription('nft-event', false);
+  }
+
+  subscribeNftAssetEvent(assetIdentifier: string, value: string) {
+    return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, true);
+  }
+
+  unsubscribeNftAssetEvent(assetIdentifier: string, value: string) {
+    this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, false);
+  }
+
+  subscribeNftCollectionEvent(assetIdentifier: string) {
+    return this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, true);
+  }
+
+  unsubscribeNftCollectionEvent(assetIdentifier: string) {
+    this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, false);
+  }
+
   logEvents() {
     this.socket.on('connect', () => console.log('socket connected'));
     this.socket.on('disconnect', reason => console.warn('disconnected', reason));
@@ -132,6 +156,13 @@ export class StacksApiSocketClient {
     );
     this.socket.on('address-stx-balance', (address, data) =>
       console.log('address-stx-balance', address, data)
+    );
+    this.socket.on('nft-event', event => console.log('nft-event', event));
+    this.socket.on('nft-asset-event', (assetIdentifier, value, event) =>
+      console.log('nft-asset-event', assetIdentifier, value, event)
+    );
+    this.socket.on('nft-collection-event', (assetIdentifier, event) =>
+      console.log('nft-collection-event', assetIdentifier, event)
     );
   }
 }

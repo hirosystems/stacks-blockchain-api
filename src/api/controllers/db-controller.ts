@@ -17,18 +17,14 @@ import {
   BaseTransaction,
   Block,
   CoinbaseTransactionMetadata,
-  ContractCallTransaction,
   ContractCallTransactionMetadata,
-  MempoolContractCallTransaction,
   MempoolTransaction,
   MempoolTransactionStatus,
   Microblock,
   PoisonMicroblockTransactionMetadata,
-  PostCondition,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
-  SmartContractTransaction,
   SmartContractTransactionMetadata,
   TokenTransferTransactionMetadata,
   Transaction,
@@ -49,7 +45,6 @@ import {
 
 import {
   BlockIdentifier,
-  DataStore,
   DbAssetEventTypeId,
   DbBlock,
   DbEvent,
@@ -59,24 +54,15 @@ import {
   DbTx,
   DbTxStatus,
   DbTxTypeId,
-  DbSmartContract,
   DbSearchResultWithMetadata,
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
 } from '../../datastore/common';
-import {
-  unwrapOptional,
-  bufferToHexPrefixString,
-  ElementType,
-  FoundOrNot,
-  hexToBuffer,
-  logger,
-  unixEpochToIso,
-  EMPTY_HASH_256,
-} from '../../helpers';
+import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo, processUnlockingEvents } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
+import { PgStore } from '../../datastore/pg-store';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -140,9 +126,7 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
   }
 }
 
-export function getTxStatusString(
-  txStatus: DbTxStatus
-): TransactionStatus | MempoolTransactionStatus {
+function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTransactionStatus {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';
@@ -216,8 +200,7 @@ export function getAssetEventTypeString(
 export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
-      const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: TransactionEventSmartContractLog = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
@@ -226,7 +209,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           contract_id: dbEvent.contract_identifier,
           topic: dbEvent.topic,
           value: {
-            hex: bufferToHexPrefixString(valueBuffer),
+            hex: dbEvent.value,
             repr: parsedClarityValue,
           },
         },
@@ -276,8 +259,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
-      const valueBuffer = dbEvent.value;
-      const parsedClarityValue = decodeClarityValueToRepr(valueBuffer);
+      const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
       const event: TransactionEventNonFungibleAsset = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
@@ -288,7 +270,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           sender: dbEvent.sender || '',
           recipient: dbEvent.recipient || '',
           value: {
-            hex: bufferToHexPrefixString(valueBuffer),
+            hex: dbEvent.value,
             repr: parsedClarityValue,
           },
         },
@@ -310,7 +292,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
-  db: DataStore,
+  db: PgStore,
   fetchTransactions: boolean,
   blockHash?: string,
   blockHeight?: number
@@ -370,7 +352,7 @@ export async function getRosettaBlockFromDataStore(
   return { found: true, result: apiBlock };
 }
 
-export async function getUnanchoredTxsFromDataStore(db: DataStore): Promise<Transaction[]> {
+export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
   const dbTxs = await db.getUnanchoredTxs();
   const parsedTxs = dbTxs.txs.map(dbTx => parseDbTx(dbTx));
   return parsedTxs;
@@ -401,7 +383,7 @@ export async function getMicroblockFromDataStore({
   db,
   microblockHash,
 }: {
-  db: DataStore;
+  db: PgStore;
   microblockHash: string;
 }): Promise<FoundOrNot<Microblock>> {
   const query = await db.getMicroblock({ microblockHash: microblockHash });
@@ -418,7 +400,7 @@ export async function getMicroblockFromDataStore({
 }
 
 export async function getMicroblocksFromDataStore(args: {
-  db: DataStore;
+  db: PgStore;
   limit: number;
   offset: number;
 }): Promise<{ total: number; result: Microblock[] }> {
@@ -430,12 +412,26 @@ export async function getMicroblocksFromDataStore(args: {
   };
 }
 
+export async function getBlocksWithMetadata(args: { limit: number; offset: number; db: PgStore }) {
+  const blocks = await args.db.getBlocksWithMetadata({ limit: args.limit, offset: args.offset });
+  const results = blocks.results.map(block =>
+    parseDbBlock(
+      block.block,
+      block.txs,
+      block.microblocks_accepted,
+      block.microblocks_streamed,
+      block.microblock_tx_count
+    )
+  );
+  return { results, total: blocks.total };
+}
+
 export async function getBlockFromDataStore({
   blockIdentifer,
   db,
 }: {
   blockIdentifer: BlockIdentifier;
-  db: DataStore;
+  db: PgStore;
 }): Promise<FoundOrNot<Block>> {
   const blockQuery = await db.getBlockWithMetadata(blockIdentifer, {
     txs: true,
@@ -449,7 +445,8 @@ export async function getBlockFromDataStore({
     result.block,
     result.txs.map(tx => tx.tx_id),
     result.microblocks.accepted.map(mb => mb.microblock_hash),
-    result.microblocks.streamed.map(mb => mb.microblock_hash)
+    result.microblocks.streamed.map(mb => mb.microblock_hash),
+    result.microblock_tx_count
   );
   return { found: true, result: apiBlock };
 }
@@ -458,7 +455,8 @@ function parseDbBlock(
   dbBlock: DbBlock,
   txIds: string[],
   microblocksAccepted: string[],
-  microblocksStreamed: string[]
+  microblocksStreamed: string[],
+  microblock_tx_count: Record<string, number>
 ): Block {
   const apiBlock: Block = {
     canonical: dbBlock.canonical,
@@ -483,6 +481,7 @@ function parseDbBlock(
     execution_cost_runtime: dbBlock.execution_cost_runtime,
     execution_cost_write_count: dbBlock.execution_cost_write_count,
     execution_cost_write_length: dbBlock.execution_cost_write_length,
+    microblock_tx_count,
   };
   return apiBlock;
 }
@@ -491,7 +490,7 @@ async function parseRosettaTxDetail(opts: {
   block_height: number;
   indexBlockHash: string;
   tx: DbTx;
-  db: DataStore;
+  db: PgStore;
   minerRewards: DbMinerReward[];
   unlockingEvents: StxUnlockEvent[];
 }): Promise<RosettaTransaction> {
@@ -529,7 +528,7 @@ async function parseRosettaTxDetail(opts: {
 async function getRosettaBlockTxFromDataStore(opts: {
   tx: DbTx;
   block: DbBlock;
-  db: DataStore;
+  db: PgStore;
 }): Promise<FoundOrNot<RosettaTransaction>> {
   let minerRewards: DbMinerReward[] = [],
     unlockingEvents: StxUnlockEvent[] = [];
@@ -555,7 +554,7 @@ async function getRosettaBlockTxFromDataStore(opts: {
 async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
-  db: DataStore;
+  db: PgStore;
 }): Promise<FoundOrNot<RosettaTransaction[]>> {
   const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
   if (!blockQuery.found) {
@@ -592,7 +591,7 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
 
 export async function getRosettaTransactionFromDataStore(
   txId: string,
-  db: DataStore
+  db: PgStore
 ): Promise<FoundOrNot<RosettaTransaction>> {
   const txQuery = await db.getTx({ txId, includeUnanchored: false });
   if (!txQuery.found) {
@@ -679,8 +678,9 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
             dbTx.token_transfer_amount,
             () => 'Unexpected nullish token_transfer_amount'
           ).toString(10),
-          memo: bufferToHexPrefixString(
-            unwrapOptional(dbTx.token_transfer_memo, () => 'Unexpected nullish token_transfer_memo')
+          memo: unwrapOptional(
+            dbTx.token_transfer_memo,
+            () => 'Unexpected nullish token_transfer_memo'
           ),
         },
       };
@@ -709,12 +709,8 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: PoisonMicroblockTransactionMetadata = {
         tx_type: 'poison_microblock',
         poison_microblock: {
-          microblock_header_1: bufferToHexPrefixString(
-            unwrapOptional(dbTx.poison_microblock_header_1)
-          ),
-          microblock_header_2: bufferToHexPrefixString(
-            unwrapOptional(dbTx.poison_microblock_header_2)
-          ),
+          microblock_header_1: unwrapOptional(dbTx.poison_microblock_header_1),
+          microblock_header_2: unwrapOptional(dbTx.poison_microblock_header_2),
         },
       };
       return metadata;
@@ -723,9 +719,7 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: CoinbaseTransactionMetadata = {
         tx_type: 'coinbase',
         coinbase_payload: {
-          data: bufferToHexPrefixString(
-            unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload')
-          ),
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
         },
       };
       return metadata;
@@ -852,7 +846,7 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
 }
 
 export async function getMempoolTxsFromDataStore(
-  db: DataStore,
+  db: PgStore,
   args: GetTxsArgs
 ): Promise<MempoolTransaction[]> {
   const mempoolTxsQuery = await db.getMempoolTxs({
@@ -870,7 +864,7 @@ export async function getMempoolTxsFromDataStore(
 }
 
 async function getTxsFromDataStore(
-  db: DataStore,
+  db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<Transaction[]> {
   // fetching all requested transactions from db
@@ -916,7 +910,7 @@ async function getTxsFromDataStore(
 }
 
 export async function getTxFromDataStore(
-  db: DataStore,
+  db: PgStore,
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
   let dbTx: DbTx;
@@ -954,7 +948,7 @@ export async function getTxFromDataStore(
 }
 
 export async function searchTxs(
-  db: DataStore,
+  db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<TransactionList> {
   const minedTxs = await getTxsFromDataStore(db, args);
@@ -1012,7 +1006,7 @@ export async function searchTxs(
 }
 
 export async function searchTx(
-  db: DataStore,
+  db: PgStore,
   args: GetTxArgs | GetTxWithEventsArgs
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   // First, check the happy path: the tx is mined and in the canonical chain.
@@ -1041,7 +1035,7 @@ export async function searchTx(
 
 export async function searchHashWithMetadata(
   hash: string,
-  db: DataStore
+  db: PgStore
 ): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
   // checking for tx
   const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });
@@ -1083,7 +1077,8 @@ export async function searchHashWithMetadata(
       blockQuery.result.block,
       blockQuery.result.txs.map(tx => tx.tx_id),
       blockQuery.result.microblocks.accepted.map(mb => mb.microblock_hash),
-      blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash)
+      blockQuery.result.microblocks.streamed.map(mb => mb.microblock_hash),
+      blockQuery.result.microblock_tx_count
     );
     return {
       found: true,

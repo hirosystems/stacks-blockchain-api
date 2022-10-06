@@ -39,7 +39,6 @@ import {
 } from './api/rosetta-constants';
 import {
   BaseTx,
-  DataStore,
   DbAssetEventTypeId,
   DbEvent,
   DbEventTypeId,
@@ -75,6 +74,7 @@ import {
   TxPayloadTokenTransfer,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
+import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
 
 enum CoinAction {
@@ -104,23 +104,26 @@ type RosettaRevokeDelegateContractArgs = {
 };
 
 export function parseTransactionMemo(tx: BaseTx): string | null {
-  if (tx.token_transfer_memo) {
-    const memoBuffer = tx.token_transfer_memo;
-    // Check if the memo buffer is all null bytes.
-    if (memoBuffer.every(byte => byte === 0)) {
-      return null;
-    }
-    const memoString = tx.token_transfer_memo.toString();
+  const memoHex = tx.token_transfer_memo;
+  if (memoHex) {
     // Memos are a fixed-length 34 byte array. Any memo representing a string that is
     // less than 34 bytes long will have right-side padded null-bytes.
-    return memoString.replace(/\0.*$/g, '');
+    let memoBuffer = hexToBuffer(memoHex);
+    while (memoBuffer.length > 0 && memoBuffer[memoBuffer.length - 1] === 0) {
+      memoBuffer = memoBuffer.slice(0, memoBuffer.length - 1);
+    }
+    if (memoBuffer.length === 0) {
+      return null;
+    }
+    const memoDecoded = memoBuffer.toString('utf8');
+    return memoDecoded;
   }
   return null;
 }
 
 export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
-  db: DataStore,
+  db: PgStore,
   minerRewards?: DbMinerReward[],
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
@@ -164,14 +167,14 @@ export async function getOperations(
   return operations;
 }
 
-export function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
+function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
   events.forEach(event => {
     operations.push(makeStakeUnlockOperation(event, operations.length));
   });
 }
 
 async function processEvents(
-  db: DataStore,
+  db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
   operations: RosettaOperation[]
@@ -376,6 +379,9 @@ function makeFtBurnOperation(
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
       },
+      metadata: {
+        token_type: 'ft',
+      },
     },
   };
 
@@ -422,6 +428,9 @@ function makeFtMintOperation(
       currency: {
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
+      },
+      metadata: {
+        token_type: 'ft',
       },
     },
   };
@@ -473,6 +482,9 @@ function makeFtSenderOperation(
       currency: {
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
+      },
+      metadata: {
+        token_type: 'ft',
       },
     },
     coin_change: {
@@ -538,6 +550,9 @@ function makeFtReceiverOperation(
         decimals: ftMetadata.decimals,
         symbol: ftMetadata.symbol,
       },
+      metadata: {
+        token_type: 'ft',
+      },
     },
     coin_change: {
       coin_action: CoinAction.CoinCreated,
@@ -563,7 +578,7 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
 
 async function makeCallContractOperation(
   tx: BaseTx,
-  db: DataStore,
+  db: PgStore,
   index: number
 ): Promise<RosettaOperation> {
   const contractCallOp: RosettaOperation = {
@@ -1010,14 +1025,14 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 
   const txPayload = transaction.payload;
   if (txPayload.type_id === TxPayloadTypeID.TokenTransfer) {
-    dbtx.token_transfer_memo = hexToBuffer(txPayload.memo_hex);
+    dbtx.token_transfer_memo = txPayload.memo_hex;
   }
 
   return dbtx;
 }
 
 export async function getValidatedFtMetadata(
-  db: DataStore,
+  db: PgStore,
   assetIdentifier: string
 ): Promise<DbFungibleTokenMetadata | undefined> {
   if (!isFtMetadataEnabled()) {

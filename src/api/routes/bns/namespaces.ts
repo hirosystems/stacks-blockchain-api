@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { BnsErrors } from '../../../event-stream/bns/bns-constants';
@@ -10,7 +10,7 @@ import {
   setETagCacheHeaders,
 } from '../../../api/controllers/cache-controller';
 
-export function createBnsNamespacesRouter(db: DataStore): express.Router {
+export function createBnsNamespacesRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
 

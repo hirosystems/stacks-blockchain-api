@@ -1,5 +1,3 @@
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { DbMempoolTx, DbTxStatus, DbTxTypeId, DbTxAnchorMode } from '../datastore/common';
@@ -27,18 +25,22 @@ import {
   RosettaConstants,
 } from '../api/rosetta-constants';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
+import { bufferToHexPrefixString } from '../helpers';
+import * as nock from 'nock';
 
 describe('Rosetta API', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
@@ -128,6 +130,30 @@ describe('Rosetta API', () => {
 
     const block = blockData.block, genesisBlock = genesisData.block;
 
+    nock('http://127.0.0.1:20443')
+      .get('/v2/neighbors')
+      .reply(200, {
+        sample: [],
+        inbound: [],
+        outbound: []
+      });
+    nock('http://127.0.0.1:20443')
+      .get('/v2/info')
+      .reply(200, {
+        burn_block_height: block.burn_block_height,
+        burn_consensus: block.burn_block_hash,
+        exit_at_block_height: null,
+        network_id: 1,
+        parent_network_id: 1,
+        peer_version: 1,
+        server_version: 1,
+        stable_burn_block_height: block.burn_block_height,
+        stable_burn_consensus: block.burn_block_hash,
+        stacks_tip: block.block_hash,
+        stacks_tip_burn_block: block.burn_block_height,
+        stacks_tip_height: block.block_height,
+        unanchored_tip: ''
+      });
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
@@ -339,14 +365,14 @@ describe('Rosetta API', () => {
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
-      microblock_hash: '',
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      microblock_hash: '0x00',
+      post_conditions: '0x01f5',
       fee_rate: 180n,
       sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       abi: undefined,
       token_transfer_recipient_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       token_transfer_amount: 3852n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test1234')).padEnd(70, '0'),
     }
     const data = new TestBlockBuilder(block).addTx(tx).build();
     await db.update(data);
@@ -430,12 +456,12 @@ describe('Rosetta API', () => {
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: Buffer.from('test-raw-tx'),
+        raw_tx: ('0x6655443322'),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
-        coinbase_payload: Buffer.from('coinbase hi'),
+        coinbase_payload: '0x11818181',
         status: 1,
-        post_conditions: Buffer.from([0x01, 0xf5]),
+        post_conditions: '0x01f5',
         fee_rate: 1234n,
         sponsored: false,
         sponsor_address: undefined,
@@ -486,12 +512,12 @@ describe('Rosetta API', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.from('test-raw-tx'),
+      raw_tx: '0x6655443322',
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Success,
       receipt_time: 1594307695,
-      coinbase_payload: Buffer.from('coinbase hi'),
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      coinbase_payload: '0x11818181',
+      post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -651,7 +677,7 @@ describe('Rosetta API', () => {
       event_count: 1,
       token_transfer_recipient_address: testAddr1,
       token_transfer_amount: 10000000n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: '0x25463526',
       fee_rate: 180n,
     }
 
@@ -664,7 +690,7 @@ describe('Rosetta API', () => {
       event_count: 1,
       token_transfer_recipient_address: testAddr2,
       token_transfer_amount: 10n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: '0x25463526',
       fee_rate: 180n,
     }
 
@@ -677,7 +703,7 @@ describe('Rosetta API', () => {
       event_count: 1,
       token_transfer_recipient_address: testAddr2,
       token_transfer_amount: 10n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: '0x25463526',
       nonce: 1,
       fee_rate: 180n,
     }
@@ -691,7 +717,7 @@ describe('Rosetta API', () => {
       event_count: 1,
       token_transfer_recipient_address: testAddr2,
       token_transfer_amount: 10n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: '0x25463526',
       fee_rate: 180n,
     }
 
@@ -854,7 +880,7 @@ describe('Rosetta API', () => {
       event_count: 1,
       token_transfer_recipient_address: stxAddress,
       token_transfer_amount: 10000000000000000n,
-      token_transfer_memo: Buffer.from('test1234'),
+      token_transfer_memo: '0x25463526',
     }
 
     const stx1 =  {
@@ -1197,7 +1223,6 @@ describe('Rosetta API', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

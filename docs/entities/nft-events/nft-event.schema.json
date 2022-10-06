@@ -3,12 +3,13 @@
   "title": "NftEvent",
   "additionalProperties": false,
   "required": [
-    "sender",
-    "recipient",
     "asset_identifier",
     "value",
     "tx_id",
-    "block_height"
+    "tx_index",
+    "event_index",
+    "block_height",
+    "asset_event_type"
   ],
   "properties": {
     "sender": {
@@ -18,6 +19,9 @@
       "type": "string"
     },
     "asset_identifier": {
+      "type": "string"
+    },
+    "asset_event_type": {
       "type": "string"
     },
     "value": {
@@ -39,7 +43,13 @@
     "tx_id": {
       "type": "string"
     },
+    "tx_index": {
+      "type": "number"
+    },
     "block_height": {
+      "type": "number"
+    },
+    "event_index": {
       "type": "number"
     }
   }

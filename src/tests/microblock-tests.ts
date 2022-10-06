@@ -19,9 +19,8 @@ import {
   DbSmartContract,
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
-import { httpPostRequest, I32_MAX, logger } from '../helpers';
+import { PgSqlClient } from '../datastore/connection';
+import { bufferToHexPrefixString, httpPostRequest, I32_MAX, logger } from '../helpers';
 import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
@@ -39,16 +38,23 @@ import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { getRawEventRequests } from '../datastore/event-requests';
 
 describe('microblock tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
+    client = db.sql;
   });
 
   test('microblock out of order events', async () => {
@@ -63,7 +69,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-out-of-order-microblock.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -125,7 +131,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario1.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -191,7 +197,7 @@ describe('microblock tests', () => {
         const readStream = fs.createReadStream(
           'src/tests/event-replay-logs/mainnet-reorg-scenario2.tsv'
         );
-        const rawEventsIterator = PgDataStore.getRawEventRequests(readStream);
+        const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
       async () => {
@@ -285,7 +291,7 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '0x131313',
           index_block_hash: block1.index_block_hash,
           block_hash: block1.block_hash,
           block_height: block1.block_height,
@@ -295,19 +301,19 @@ describe('microblock tests', () => {
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sponsor_address: undefined,
           sender_address: addr1,
           origin_hash_mode: 1,
-          coinbase_payload: Buffer.from('hi'),
+          coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
           event_count: 1,
-          parent_index_block_hash: '',
-          parent_block_hash: '',
+          parent_index_block_hash: block1.parent_index_block_hash,
+          parent_block_hash: block1.parent_block_hash,
           microblock_canonical: true,
           microblock_sequence: I32_MAX,
-          microblock_hash: '',
+          microblock_hash: '0x00',
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
@@ -347,7 +353,7 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: serializeCV(bufferCVFromString('some val')),
+          value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,
@@ -400,19 +406,19 @@ describe('microblock tests', () => {
           tx_index: 0,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '0x141414',
           type_id: DbTxTypeId.TokenTransfer,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -440,19 +446,19 @@ describe('microblock tests', () => {
           tx_index: 1,
           anchor_mode: 3,
           nonce: 0,
-          raw_tx: Buffer.alloc(0),
+          raw_tx: '0x141415',
           type_id: DbTxTypeId.ContractCall,
           status: 1,
           raw_result: '0x0100000000000000000000000000000001', // u1
           canonical: true,
-          post_conditions: Buffer.from([0x01, 0xf5]),
+          post_conditions: '0x01f5',
           fee_rate: 1234n,
           sponsored: false,
           sender_address: addr1,
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: Buffer.from('hi'),
+          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -468,9 +474,8 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
           contract_call_contract_id: contractAddr,
           contract_call_function_name: 'test-contract-fn',
-          contract_call_function_args: createClarityValueArray(
-            uintCV(123456),
-            stringAsciiCV('hello')
+          contract_call_function_args: bufferToHexPrefixString(
+            createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
           ),
           abi: JSON.stringify(contractJsonAbi),
 
@@ -611,7 +616,7 @@ describe('microblock tests', () => {
         expect(txBody2.parent_block_hash).toBe(block1.block_hash);
         expect(txBody2.microblock_hash).toBe(mb1.microblock_hash);
         expect(txBody2.microblock_sequence).toBe(mb1.microblock_sequence);
-        expect(txBody2.block_hash).toBeFalsy();
+        expect(txBody2.block_hash).toBe('0x');
 
         const mbListResult1 = await supertest(api.server).get(`/extended/v1/microblock`);
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;
@@ -693,7 +698,6 @@ describe('microblock tests', () => {
   });
 
   afterEach(async () => {
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

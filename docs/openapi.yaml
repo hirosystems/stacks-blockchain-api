@@ -335,6 +335,25 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
+  /extended/v1/tx/mempool/stats:
+    get:
+      summary: Get statistics for mempool transactions
+      tags:
+        - Transactions
+      operationId: get_mempool_transaction_stats
+      description: |
+        Queries for transactions counts, age (by block height), fees (simple average), and size.
+        All results broken down by transaction type and percentiles (p25, p50, p75, p95).
+      responses:
+        200:
+          description: Statistics for mempool transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-mempool-stats.schema.json
+              example:
+                $ref: ./api/transaction/get-mempool-stats.example.json
+
   /extended/v1/tx/multiple:
     parameters:
       - name: tx_id
@@ -913,9 +932,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./entities/transactions/transaction-1-smart-contract.schema.json
+                $ref: ./entities/contracts/smart-contract.schema.json
               example:
-                $ref: ./entities/transactions/transaction-1-smart-contract.example.json
+                $ref: ./entities/contracts/smart-contract.example.json
         404:
           description: Cannot find contract of given ID
     parameters:

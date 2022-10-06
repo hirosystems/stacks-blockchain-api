@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore } from '../../../datastore/common';
+import { PgStore } from '../../../datastore/pg-store';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { ChainID } from '@stacks/transactions';
 import {
@@ -10,7 +10,7 @@ import {
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
-export function createBnsAddressesRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createBnsAddressesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
 

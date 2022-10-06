@@ -8,7 +8,6 @@ import * as cors from 'cors';
 import * as WebSocket from 'ws';
 import * as SocketIO from 'socket.io';
 
-import { DataStore } from '../datastore/common';
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createInfoRouter } from './routes/info';
@@ -26,8 +25,6 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { apiDocumentationUrl, isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
 import { InvalidRequestError } from '../errors';
-import { createWsRpcRouter } from './routes/ws/ws-rpc';
-import { createSocketIORouter } from './routes/ws/socket-io';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
@@ -47,20 +44,26 @@ import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { PgStore } from '../datastore/pg-store';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 
 export interface ApiServer {
   expressApp: express.Express;
   server: Server;
-  wss: WebSocket.Server;
-  io: SocketIO.Server;
+  ws: WebSocketTransmitter;
   address: string;
-  datastore: DataStore;
+  datastore: PgStore;
   terminate: () => Promise<void>;
   forceKill: () => Promise<void>;
 }
 
+/** API version as given by .git-info */
+export const API_VERSION: { branch?: string; commit?: string; tag?: string } = {};
+
 export async function startApiServer(opts: {
-  datastore: DataStore;
+  datastore: PgStore;
+  writeDatastore?: PgWriteStore;
   chainId: ChainID;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
   serverHost?: string;
@@ -68,7 +71,16 @@ export async function startApiServer(opts: {
   serverPort?: number;
   httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const { datastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+  const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+
+  try {
+    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
+    API_VERSION.branch = branch;
+    API_VERSION.commit = commit;
+    API_VERSION.tag = tag;
+  } catch (error) {
+    logger.error(`Unable to read API version from .git-info`, error);
+  }
 
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
@@ -128,6 +140,15 @@ export async function startApiServer(opts: {
     });
     app.use(promMiddleware);
   }
+  // Add API version to header
+  app.use((_, res, next) => {
+    res.setHeader(
+      'X-API-Version',
+      `${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`
+    );
+    res.append('Access-Control-Expose-Headers', 'X-API-Version');
+    next();
+  });
   // Setup request logging
   app.use(
     expressWinston.logger({
@@ -202,8 +223,10 @@ export async function startApiServer(opts: {
       router.use('/debug', createDebugRouter(datastore));
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/faucets', createFaucetRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
+      if (writeDatastore) {
+        router.use('/faucets', createFaucetRouter(writeDatastore));
+      }
       return router;
     })()
   );
@@ -343,11 +366,8 @@ export async function startApiServer(opts: {
     });
   });
 
-  // Setup socket.io server
-  const io = createSocketIORouter(datastore, server);
-
-  // Setup websockets RPC endpoint
-  const wss = createWsRpcRouter(datastore, server);
+  const ws = new WebSocketTransmitter(datastore, server);
+  ws.connect();
 
   await new Promise<void>((resolve, reject) => {
     try {
@@ -364,25 +384,13 @@ export async function startApiServer(opts: {
 
   const terminate = async () => {
     await new Promise<void>((resolve, reject) => {
-      logger.info('Closing Socket.io server...');
-      io.close(error => {
+      logger.info('Closing WebSocket channels...');
+      ws.close(error => {
         if (error) {
-          logError('Failed to gracefully close Socket.io server', error);
+          logError('Failed to gracefully close WebSocket channels', error);
           reject(error);
         } else {
-          logger.info('API socket.io server closed.');
-          resolve();
-        }
-      });
-    });
-    await new Promise<void>((resolve, reject) => {
-      logger.info('Closing WebSocket server...');
-      wss.close(error => {
-        if (error) {
-          logError('Failed to gracefully close WebSocket server.');
-          reject(error);
-        } else {
-          logger.info('WebSocket server closed.');
+          logger.info('API WebSocket channels closed.');
           resolve();
         }
       });
@@ -401,14 +409,13 @@ export async function startApiServer(opts: {
 
   const forceKill = async () => {
     logger.info('Force closing API server...');
-    const [ioClosePromise, wssClosePromise, serverClosePromise] = [waiter(), waiter(), waiter()];
-    io.close(() => ioClosePromise.finish());
-    wss.close(() => wssClosePromise.finish());
+    const [wsClosePromise, serverClosePromise] = [waiter(), waiter()];
+    ws.close(() => wsClosePromise.finish());
     server.close(() => serverClosePromise.finish());
     for (const socket of serverSockets) {
       socket.destroy();
     }
-    await Promise.allSettled([ioClosePromise, wssClosePromise, serverClosePromise]);
+    await Promise.allSettled([wsClosePromise, serverClosePromise]);
   };
 
   const addr = server.address();
@@ -419,8 +426,7 @@ export async function startApiServer(opts: {
   return {
     expressApp: app,
     server: server,
-    wss: wss,
-    io: io,
+    ws: ws,
     address: addrStr,
     datastore: datastore,
     terminate: terminate,

@@ -3,22 +3,28 @@ import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
 import { DbBlock, DbMicroblockPartial, DbTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
-import { I32_MAX } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgSqlClient } from '../datastore/connection';
 
 describe('cache-control tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
+  let client: PgSqlClient;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({
+      usageName: 'tests',
+      withNotifier: false,
+      skipMigrations: true,
+    });
+    client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -72,7 +78,7 @@ describe('cache-control tests', () => {
       index_block_hash: '0xdeadbeef',
       parent_index_block_hash: '0x5678',
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
       burn_block_time: 1594647996,
@@ -91,14 +97,14 @@ describe('cache-control tests', () => {
       anchor_mode: 3,
       tx_index: 4,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: 68456,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: Buffer.from('coinbase hi'),
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -107,7 +113,7 @@ describe('cache-control tests', () => {
       microblock_hash: '',
       parent_index_block_hash: '',
       parent_block_hash: '',
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sponsor_address: undefined,
@@ -158,7 +164,7 @@ describe('cache-control tests', () => {
       index_block_hash: '0xdeadbeef',
       height: 1,
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       txs: ['0x1234'],
       microblocks_accepted: [],
@@ -168,6 +174,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      microblock_tx_count: {},
     };
 
     expect(blockQuery.result).toEqual(expectedResp1);
@@ -230,19 +237,19 @@ describe('cache-control tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: Buffer.alloc(0),
+      raw_tx: '',
       type_id: DbTxTypeId.TokenTransfer,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
-      post_conditions: Buffer.from([0x01, 0xf5]),
+      post_conditions: '',
       fee_rate: 1234n,
       sponsored: false,
       sender_address: addr1,
       sponsor_address: undefined,
       origin_hash_mode: 1,
       token_transfer_amount: 50n,
-      token_transfer_memo: Buffer.from('hi'),
+      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
       token_transfer_recipient_address: addr2,
       event_count: 1,
       parent_index_block_hash: block1.index_block_hash,
@@ -302,7 +309,7 @@ describe('cache-control tests', () => {
       index_block_hash: '0xdeadbeef',
       height: 1,
       parent_block_hash: '0xff0011',
-      parent_microblock_hash: '',
+      parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       txs: ['0x1234'],
       microblocks_accepted: [],
@@ -312,6 +319,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      microblock_tx_count: {},
     };
 
     const fetchBlockByHash2 = await supertest(api.server).get(
@@ -415,9 +423,9 @@ describe('cache-control tests', () => {
     expect(request7.headers['etag']).toEqual('"0"');
 
     // Simulate an incompatible pg version (without `bit_xor`).
-    await db.queryTx(async client => {
-      await client.query(`DROP MATERIALIZED VIEW mempool_digest`);
-      await client.query(`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`);
+    await client.begin(async sql => {
+      await sql`DROP MATERIALIZED VIEW mempool_digest`;
+      await sql`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`;
     });
 
     // ETag is undefined as if mempool cache did not exist.
@@ -579,7 +587,6 @@ describe('cache-control tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -9,7 +9,7 @@ import { asyncHandler } from '../async-handler';
 import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
-import { DataStore } from '../../datastore/common';
+import { PgStore } from '../../datastore/pg-store';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -20,7 +20,7 @@ function GetStacksNodeProxyEndpoint() {
   return `${proxyHost}:${proxyPort}`;
 }
 
-export function createCoreNodeRpcProxyRouter(db: DataStore): express.Router {
+export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
   const router = express.Router();
   router.use(cors());
 

@@ -1,7 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import {
-  DataStore,
   DbBlock,
   DbTx,
   DbMempoolTx,
@@ -10,7 +9,6 @@ import {
 } from '../../datastore/common';
 import { isValidPrincipal, has0xPrefix, FoundOrNot } from '../../helpers';
 import {
-  Transaction,
   Block,
   SearchResult,
   BlockSearchResult,
@@ -27,8 +25,8 @@ import {
   parseDbTx,
   searchHashWithMetadata,
 } from '../controllers/db-controller';
-import { address } from 'bitcoinjs-lib';
 import { booleanValueForParam } from '../query-helpers';
+import { PgStore } from '../../datastore/pg-store';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -40,7 +38,7 @@ const enum SearchResultType {
   InvalidTerm = 'invalid_term',
 }
 
-export function createSearchRouter(db: DataStore): express.Router {
+export function createSearchRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {

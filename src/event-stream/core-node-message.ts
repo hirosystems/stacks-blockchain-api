@@ -228,7 +228,7 @@ export interface CoreNodeBlockMessage {
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
   parsed_tx: DecodedTxResult;
-  raw_tx: Buffer;
+  raw_tx: string;
   nonce: number;
   sender_address: string;
   sponsor_address: string | undefined;

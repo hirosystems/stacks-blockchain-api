@@ -23,7 +23,8 @@
     "execution_cost_read_length",
     "execution_cost_runtime",
     "execution_cost_write_count",
-    "execution_cost_write_length"
+    "execution_cost_write_length",
+    "microblock_tx_count"
   ],
   "properties": {
     "canonical": {
@@ -117,6 +118,13 @@
     "execution_cost_write_length": {
       "type": "integer",
       "description": "Execution cost write length."
+    },
+    "microblock_tx_count": {
+      "type": "object",
+      "description": "List of txs counts in each accepted microblock",
+      "additionalProperties": {
+        "type": "number"
+      }
     }
   }
 }

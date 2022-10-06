@@ -1,4 +1,4 @@
-FROM blockstack/stacks-blockchain:2.05.0.0.0-stretch as build
+FROM blockstack/stacks-blockchain:2.05.0.3.0-stretch as build
 
 FROM debian:stretch
 

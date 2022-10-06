@@ -7,7 +7,6 @@ import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
-
 import { hexToBuffer, logError, logger, LogLevel } from '../helpers';
 import {
   CoreNodeBlockMessage,
@@ -20,8 +19,6 @@ import {
   CoreNodeEvent,
 } from './core-node-message';
 import {
-  DataStore,
-  createDbTxFromCoreMsg,
   DbEventBase,
   DbSmartContractEvent,
   DbStxEvent,
@@ -31,16 +28,10 @@ import {
   DbNftEvent,
   DbBlock,
   DataStoreBlockUpdateData,
-  createDbMempoolTxFromCoreMsg,
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
-  getTxDbStatus,
   DbRewardSlotHolder,
-  DbBnsName,
-  DbBnsNamespace,
-  DbBnsSubdomain,
-  DbMicroblockPartial,
   DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
   DbMicroblock,
@@ -68,18 +59,24 @@ import {
   parseNameRenewalWithNoZonefileHashFromContractCall,
   parseNamespaceFromContractEvent,
 } from './bns/bns-helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import {
+  createDbMempoolTxFromCoreMsg,
+  createDbTxFromCoreMsg,
+  getTxDbStatus,
+} from '../datastore/helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
-  payload: string,
-  db: DataStore
+  payload: any,
+  db: PgWriteStore
 ): Promise<void> {
   await db.storeRawEventRequest(eventPath, payload);
 }
 
 async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
-  db: DataStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(
     `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
@@ -118,13 +115,12 @@ async function handleBurnBlockMessage(
   });
 }
 
-async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise<void> {
+async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
   logger.verbose(`Received ${rawTxs.length} mempool transactions`);
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
-  const rawTxBuffers = rawTxs.map(str => hexToBuffer(str));
-  const decodedTxs = rawTxBuffers.map(buffer => {
-    const parsedTx = decodeTransaction(buffer);
+  const decodedTxs = rawTxs.map(str => {
+    const parsedTx = decodeTransaction(str);
     const txSender = getTxSenderAddress(parsedTx);
     const sponsorAddress = getTxSponsorAddress(parsedTx);
     return {
@@ -132,7 +128,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
       sender: txSender,
       sponsorAddress,
       txData: parsedTx,
-      rawTx: buffer,
+      rawTx: str,
     };
   });
   const dbMempoolTxs = decodedTxs.map(tx => {
@@ -152,7 +148,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: DataStore): Promise
 
 async function handleDroppedMempoolTxsMessage(
   msg: CoreNodeDropMempoolTxMessage,
-  db: DataStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
@@ -162,7 +158,7 @@ async function handleDroppedMempoolTxsMessage(
 async function handleMicroblockMessage(
   chainId: ChainID,
   msg: CoreNodeMicroblockMessage,
-  db: DataStore
+  db: PgWriteStore
 ): Promise<void> {
   logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
   const dbMicroblocks = parseMicroblocksFromTxs({
@@ -219,7 +215,7 @@ async function handleMicroblockMessage(
 async function handleBlockMessage(
   chainId: ChainID,
   msg: CoreNodeBlockMessage,
-  db: DataStore
+  db: PgWriteStore
 ): Promise<void> {
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
@@ -387,7 +383,7 @@ function parseDataStoreTxEventData(
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: event.contract_event.contract_identifier,
           topic: event.contract_event.topic,
-          value: hexToBuffer(event.contract_event.raw_value),
+          value: event.contract_event.raw_value,
         };
         dbTx.contractLogEvents.push(entry);
         // Check if we have new BNS names or namespaces.
@@ -501,7 +497,7 @@ function parseDataStoreTxEventData(
           recipient: event.nft_transfer_event.recipient,
           sender: event.nft_transfer_event.sender,
           asset_identifier: event.nft_transfer_event.asset_identifier,
-          value: hexToBuffer(event.nft_transfer_event.raw_value),
+          value: event.nft_transfer_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;
@@ -513,7 +509,7 @@ function parseDataStoreTxEventData(
           asset_event_type_id: DbAssetEventTypeId.Mint,
           recipient: event.nft_mint_event.recipient,
           asset_identifier: event.nft_mint_event.asset_identifier,
-          value: hexToBuffer(event.nft_mint_event.raw_value),
+          value: event.nft_mint_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;
@@ -525,7 +521,7 @@ function parseDataStoreTxEventData(
           asset_event_type_id: DbAssetEventTypeId.Burn,
           sender: event.nft_burn_event.sender,
           asset_identifier: event.nft_burn_event.asset_identifier,
-          value: hexToBuffer(event.nft_burn_event.raw_value),
+          value: event.nft_burn_event.raw_value,
         };
         dbTx.nftEvents.push(entry);
         break;
@@ -556,7 +552,7 @@ function parseDataStoreTxEventData(
   return dbData;
 }
 
-async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: DataStore) {
+async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: PgWriteStore) {
   const attachments = msg
     .map(message => {
       if (
@@ -587,28 +583,31 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
 }
 
 interface EventMessageHandler {
-  handleRawEventRequest(eventPath: string, payload: string, db: DataStore): Promise<void> | void;
+  handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
-    db: DataStore
+    db: PgWriteStore
   ): Promise<void> | void;
   handleMicroblockMessage(
     chainId: ChainID,
     msg: CoreNodeMicroblockMessage,
-    db: DataStore
+    db: PgWriteStore
   ): Promise<void> | void;
-  handleMempoolTxs(rawTxs: string[], db: DataStore): Promise<void> | void;
-  handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: DataStore): Promise<void> | void;
-  handleDroppedMempoolTxs(msg: CoreNodeDropMempoolTxMessage, db: DataStore): Promise<void> | void;
-  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: DataStore): Promise<void> | void;
+  handleMempoolTxs(rawTxs: string[], db: PgWriteStore): Promise<void> | void;
+  handleBurnBlock(msg: CoreNodeBurnBlockMessage, db: PgWriteStore): Promise<void> | void;
+  handleDroppedMempoolTxs(
+    msg: CoreNodeDropMempoolTxMessage,
+    db: PgWriteStore
+  ): Promise<void> | void;
+  handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: string, db: DataStore) => {
+    handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
         .catch(e => {
@@ -616,7 +615,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: DataStore) => {
+    handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
@@ -624,7 +623,11 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleMicroblockMessage: (chainId: ChainID, msg: CoreNodeMicroblockMessage, db: DataStore) => {
+    handleMicroblockMessage: (
+      chainId: ChainID,
+      msg: CoreNodeMicroblockMessage,
+      db: PgWriteStore
+    ) => {
       return processorQueue
         .add(() => handleMicroblockMessage(chainId, msg, db))
         .catch(e => {
@@ -632,7 +635,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: DataStore) => {
+    handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleBurnBlockMessage(msg, db))
         .catch(e => {
@@ -640,7 +643,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleMempoolTxs: (rawTxs: string[], db: DataStore) => {
+    handleMempoolTxs: (rawTxs: string[], db: PgWriteStore) => {
       return processorQueue
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
@@ -648,7 +651,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: DataStore) => {
+    handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: PgWriteStore) => {
       return processorQueue
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
@@ -656,7 +659,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
           throw e;
         });
     },
-    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: DataStore) => {
+    handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: PgWriteStore) => {
       return processorQueue
         .add(() => handleNewAttachmentMessage(msg, db))
         .catch(e => {
@@ -675,7 +678,7 @@ export type EventStreamServer = net.Server & {
 };
 
 export async function startEventServer(opts: {
-  datastore: DataStore;
+  datastore: PgWriteStore;
   chainId: ChainID;
   messageHandler?: EventMessageHandler;
   /** If not specified, this is read from the STACKS_CORE_EVENT_HOST env var. */
@@ -730,7 +733,7 @@ export async function startEventServer(opts: {
     asyncHandler(async (req, res, next) => {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
-      await messageHandler.handleRawEventRequest(eventPath, payload, db);
+      await messageHandler.handleRawEventRequest(eventPath, req.body, db);
       if (logger.isDebugEnabled()) {
         // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
         if (payload.length > 10_000_000) {

@@ -241,7 +241,6 @@ export function parseMessageTransaction(
   allEvents: CoreNodeEvent[]
 ): CoreNodeParsedTxMessage | null {
   try {
-    const txBuffer = Buffer.from(coreTx.raw_tx.substring(2), 'hex');
     let rawTx: DecodedTxResult;
     let txSender: string;
     let sponsorAddress: string | undefined = undefined;
@@ -272,14 +271,14 @@ export function parseMessageTransaction(
         throw new Error('Unable to generate transaction from BTC tx');
       }
     } else {
-      rawTx = decodeTransaction(txBuffer);
+      rawTx = decodeTransaction(coreTx.raw_tx.substring(2));
       txSender = getTxSenderAddress(rawTx);
       sponsorAddress = getTxSponsorAddress(rawTx);
     }
     const parsedTx: CoreNodeParsedTxMessage = {
       core_tx: coreTx,
       nonce: Number(rawTx.auth.origin_condition.nonce),
-      raw_tx: txBuffer,
+      raw_tx: coreTx.raw_tx,
       parsed_tx: rawTx,
       block_hash: blockData.block_hash,
       index_block_hash: blockData.index_block_hash,

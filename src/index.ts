@@ -10,8 +10,6 @@ import {
   getStacksNodeChainID,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
-import { DataStore } from './datastore/common';
-import { PgDataStore } from './datastore/postgres-store';
 import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
@@ -24,8 +22,11 @@ import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
+import { PgStore } from './datastore/pg-store';
+import { PgWriteStore } from './datastore/pg-write-store';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
+import { registerMempoolPromStats } from './datastore/helpers';
 
 enum StacksApiMode {
   /**
@@ -110,64 +111,69 @@ async function init(): Promise<void> {
     );
   }
   const apiMode = getApiMode();
+  const dbStore =
+    apiMode === StacksApiMode.offline
+      ? OfflineDummyStore
+      : await PgStore.connect({
+          usageName: `datastore-${apiMode}`,
+        });
+  const dbWriteStore = await PgWriteStore.connect({
+    usageName: `write-datastore-${apiMode}`,
+    skipMigrations: false,
+  });
 
-  let db: DataStore;
-  if (apiMode === StacksApiMode.offline) {
-    db = OfflineDummyStore;
-  } else {
-    const skipMigrations = apiMode === StacksApiMode.readOnly;
-    db = await PgDataStore.connect({
-      usageName: `datastore-${apiMode}`,
-      skipMigrations: skipMigrations,
+  registerMempoolPromStats(dbWriteStore.eventEmitter);
+
+  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
+    const configuredChainID = getApiConfiguredChainID();
+    const eventServer = await startEventServer({
+      datastore: dbWriteStore,
+      chainId: configuredChainID,
+    });
+    registerShutdownConfig({
+      name: 'Event Server',
+      handler: () => eventServer.closeAsync(),
+      forceKillable: false,
     });
 
-    if (apiMode !== StacksApiMode.readOnly) {
-      const configuredChainID = getApiConfiguredChainID();
-      const eventServer = await startEventServer({
-        datastore: db,
-        chainId: configuredChainID,
-      });
+    const networkChainId = await getStacksNodeChainID();
+    if (networkChainId !== configuredChainID) {
+      const chainIdConfig = numberToHex(configuredChainID);
+      const chainIdNode = numberToHex(networkChainId);
+      const error = new Error(
+        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+      );
+      logError(error.message, error);
+      throw error;
+    }
+    monitorCoreRpcConnection().catch(error => {
+      logger.error(`Error monitoring RPC connection: ${error}`, error);
+    });
+
+    if (!isFtMetadataEnabled()) {
+      logger.warn('Fungible Token metadata processing is not enabled.');
+    }
+    if (!isNftMetadataEnabled()) {
+      logger.warn('Non-Fungible Token metadata processing is not enabled.');
+    }
+    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
+      const tokenMetadataProcessor = new TokensProcessorQueue(dbWriteStore, configuredChainID);
       registerShutdownConfig({
-        name: 'Event Server',
-        handler: () => eventServer.closeAsync(),
-        forceKillable: false,
+        name: 'Token Metadata Processor',
+        handler: () => tokenMetadataProcessor.close(),
+        forceKillable: true,
       });
-
-      const networkChainId = await getStacksNodeChainID();
-      if (networkChainId !== configuredChainID) {
-        const chainIdConfig = numberToHex(configuredChainID);
-        const chainIdNode = numberToHex(networkChainId);
-        const error = new Error(
-          `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
-        );
-        logError(error.message, error);
-        throw error;
-      }
-      monitorCoreRpcConnection().catch(error => {
-        logger.error(`Error monitoring RPC connection: ${error}`, error);
-      });
-
-      if (!isFtMetadataEnabled()) {
-        logger.warn('Fungible Token metadata processing is not enabled.');
-      }
-      if (!isNftMetadataEnabled()) {
-        logger.warn('Non-Fungible Token metadata processing is not enabled.');
-      }
-      if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
-        const tokenMetadataProcessor = new TokensProcessorQueue(db, configuredChainID);
-        registerShutdownConfig({
-          name: 'Token Metadata Processor',
-          handler: () => tokenMetadataProcessor.close(),
-          forceKillable: true,
-        });
-        // check if db has any non-processed token queues and await them all here
-        await tokenMetadataProcessor.drainDbQueue();
-      }
+      // check if db has any non-processed token queues and await them all here
+      await tokenMetadataProcessor.drainDbQueue();
     }
   }
 
-  if (apiMode !== StacksApiMode.writeOnly) {
-    const apiServer = await startApiServer({ datastore: db, chainId: getApiConfiguredChainID() });
+  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.readOnly) {
+    const apiServer = await startApiServer({
+      datastore: dbStore,
+      writeDatastore: dbWriteStore,
+      chainId: getApiConfiguredChainID(),
+    });
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
@@ -189,7 +195,10 @@ async function init(): Promise<void> {
 
   registerShutdownConfig({
     name: 'DB',
-    handler: () => db.close(),
+    handler: async () => {
+      await dbStore.close();
+      await dbWriteStore.close();
+    },
     forceKillable: false,
   });
 

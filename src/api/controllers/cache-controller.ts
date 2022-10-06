@@ -1,8 +1,8 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
 import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
-import { DataStore } from '../../datastore/common';
 import { asyncHandler } from '../async-handler';
+import { PgStore } from '../../datastore/pg-store';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -163,7 +163,7 @@ export function parseIfNoneMatchHeader(
  * returns a string which can be used later for setting the cache control `ETag` response header.
  */
 async function checkETagCacheOK(
-  db: DataStore,
+  db: PgStore,
   req: Request,
   etagType: ETagType
 ): Promise<ETag | undefined | typeof CACHE_OK> {
@@ -221,7 +221,7 @@ async function checkETagCacheOK(
  * ```
  */
 export function getETagCacheHandler(
-  db: DataStore,
+  db: PgStore,
   etagType: ETagType = ETagType.chainTip
 ): RequestHandler {
   const requestHandler = asyncHandler(async (req, res, next) => {
@@ -243,7 +243,7 @@ export function getETagCacheHandler(
 }
 
 async function calculateETag(
-  db: DataStore,
+  db: PgStore,
   etagType: ETagType,
   req: Request
 ): Promise<ETag | undefined> {
@@ -280,8 +280,8 @@ async function calculateETag(
       }
       const elements: string[] = [
         normalizedTxId,
-        bufferToHexPrefixString(status.result.index_block_hash),
-        bufferToHexPrefixString(status.result.microblock_hash),
+        status.result.index_block_hash ?? '',
+        status.result.microblock_hash ?? '',
         status.result.status.toString(),
       ];
       return elements.join(':');

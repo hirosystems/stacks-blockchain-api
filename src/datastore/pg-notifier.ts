@@ -1,7 +1,16 @@
-import { ClientConfig } from 'pg';
-import createPostgresSubscriber, { Subscriber } from 'pg-listen';
+import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
-import { DbTokenMetadataQueueEntry } from './common';
+import { connectPostgres, PgServer, PgSqlClient } from './connection';
+
+type PgNotificationType =
+  | 'blockUpdate'
+  | 'microblockUpdate'
+  | 'txUpdate'
+  | 'nftEventUpdate'
+  | 'addressUpdate'
+  | 'nameUpdate'
+  | 'tokenMetadataUpdateQueued'
+  | 'tokensUpdate';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -13,6 +22,11 @@ export type PgBlockNotificationPayload = {
 
 export type PgMicroblockNotificationPayload = {
   microblockHash: string;
+};
+
+export type PgNftEventNotificationPayload = {
+  txId: string;
+  eventIndex: number;
 };
 
 export type PgAddressNotificationPayload = {
@@ -33,16 +47,17 @@ export type PgTokensNotificationPayload = {
 };
 
 type PgNotificationPayload =
+  | PgAddressNotificationPayload
   | PgBlockNotificationPayload
   | PgMicroblockNotificationPayload
-  | PgTxNotificationPayload
-  | PgAddressNotificationPayload
-  | PgTokenMetadataNotificationPayload
   | PgNameNotificationPayload
-  | PgTokensNotificationPayload;
+  | PgNftEventNotificationPayload
+  | PgTokenMetadataNotificationPayload
+  | PgTokensNotificationPayload
+  | PgTxNotificationPayload;
 
 type PgNotification = {
-  type: string;
+  type: PgNotificationType;
   payload: PgNotificationPayload;
 };
 
@@ -55,32 +70,29 @@ type PgNotificationCallback = (notification: PgNotification) => void;
  */
 export class PgNotifier {
   readonly pgChannelName: string = 'stacks-api-pg-notifier';
-  subscriber: Subscriber;
+  readonly sql: PgSqlClient;
+  listener?: postgres.ListenMeta;
 
-  constructor(clientConfig: ClientConfig) {
-    this.subscriber = createPostgresSubscriber(clientConfig, {
-      native: false,
-      paranoidChecking: 30000, // 30s
-      retryLimit: Infinity, // Keep trying until it works or the API shuts down
-      retryTimeout: Infinity,
-      retryInterval: attempt => {
-        const retryMs = 1000;
-        logger.info(`PgNotifier reconnection attempt ${attempt}, trying again in ${retryMs}ms`);
-        return retryMs;
-      },
-    });
+  static async create(usageName: string) {
+    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.primary });
+    return new PgNotifier(sql);
+  }
+
+  constructor(sql: PgSqlClient) {
+    this.sql = sql;
   }
 
   public async connect(eventCallback: PgNotificationCallback) {
-    this.subscriber.notifications.on(this.pgChannelName, message =>
-      eventCallback(message.notification)
-    );
-    this.subscriber.events.on('connected', () =>
-      logger.info(`PgNotifier connected, listening on channel: ${this.pgChannelName}`)
-    );
-    this.subscriber.events.on('error', error => logError('PgNotifier fatal error', error));
-    await this.subscriber.connect();
-    await this.subscriber.listenTo(this.pgChannelName);
+    try {
+      this.listener = await this.sql.listen(
+        this.pgChannelName,
+        message => eventCallback(JSON.parse(message) as PgNotification),
+        () => logger.info(`PgNotifier connected, listening on channel: ${this.pgChannelName}`)
+      );
+    } catch (error) {
+      logError('PgNotifier fatal connection error', error);
+      throw error;
+    }
   }
 
   public async sendBlock(payload: PgBlockNotificationPayload) {
@@ -93,6 +105,10 @@ export class PgNotifier {
 
   public async sendTx(payload: PgTxNotificationPayload) {
     await this.notify({ type: 'txUpdate', payload: payload });
+  }
+
+  public async sendNftEvent(payload: PgNftEventNotificationPayload) {
+    await this.notify({ type: 'nftEventUpdate', payload: payload });
   }
 
   public async sendAddress(payload: PgAddressNotificationPayload) {
@@ -112,14 +128,15 @@ export class PgNotifier {
   }
 
   public async close() {
-    logger.info(`PgNotifier closing channel: ${this.pgChannelName}`);
-    await this.subscriber.unlisten(this.pgChannelName);
-    await this.subscriber.close();
+    await this.listener
+      ?.unlisten()
+      .then(() => logger.info(`PgNotifier closed channel: ${this.pgChannelName}`));
+    await this.sql.end();
   }
 
   private async notify(notification: PgNotification) {
-    await this.subscriber
-      .notify(this.pgChannelName, { notification: notification })
+    await this.sql
+      .notify(this.pgChannelName, JSON.stringify(notification))
       .catch(error =>
         logError(`PgNotifier error sending notification of type: ${notification.type}`, error)
       );

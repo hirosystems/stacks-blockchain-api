@@ -14,7 +14,6 @@ import {
   DbConfigState,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import { PgDataStore } from '../datastore/postgres-store';
 import {
   asyncBatchIterate,
   asyncIterableToGenerator,
@@ -23,8 +22,9 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-import { PoolClient } from 'pg';
 import { BnsGenesisBlock } from '../event-replay/helpers';
+import { PgSqlClient } from '../datastore/connection';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -77,20 +77,20 @@ class ChainProcessor extends stream.Writable {
   rowCount: number = 0;
   zhashes: Map<string, string>;
   namespace: Map<string, DbBnsNamespace>;
-  db: PgDataStore;
-  client: PoolClient;
+  db: PgWriteStore;
+  sql: PgSqlClient;
   genesisBlock: BnsGenesisBlock;
 
   constructor(
-    client: PoolClient,
-    db: PgDataStore,
+    sql: PgSqlClient,
+    db: PgWriteStore,
     zhashes: Map<string, string>,
     genesisBlock: BnsGenesisBlock
   ) {
     super();
     this.zhashes = zhashes;
     this.namespace = new Map();
-    this.client = client;
+    this.sql = sql;
     this.db = db;
     this.genesisBlock = genesisBlock;
     logger.info(`${this.tag}: importer starting`);
@@ -160,7 +160,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.client, this.genesisBlock, obj);
+          await this.db.updateNames(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.verbose(
@@ -187,7 +187,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.client, this.genesisBlock, obj);
+          await this.db.updateNamespaces(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
         }
       }
@@ -415,7 +415,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
 }
 
 export async function importV1BnsNames(
-  db: PgDataStore,
+  db: PgWriteStore,
   importDir: string,
   genesisBlock: BnsGenesisBlock
 ) {
@@ -426,34 +426,24 @@ export async function importV1BnsNames(
   }
   await validateBnsImportDir(importDir, ['chainstate.txt', 'name_zonefiles.txt']);
   logger.info('Stacks 1.0 BNS name import started');
-
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN');
+  await db.sql.begin(async sql => {
     const zhashes = await readZones(path.join(importDir, 'name_zonefiles.txt'));
     await pipeline(
       fs.createReadStream(path.join(importDir, 'chainstate.txt')),
       new LineReaderStream({ highWaterMark: 100 }),
-      new ChainProcessor(client, db, zhashes, genesisBlock)
+      new ChainProcessor(sql, db, zhashes, genesisBlock)
     );
     const updatedConfigState: DbConfigState = {
       ...configState,
       bns_names_onchain_imported: true,
     };
-    await db.updateConfigState(updatedConfigState, client);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-
+    await db.updateConfigState(updatedConfigState, sql);
+  });
   logger.info('Stacks 1.0 BNS name import completed');
 }
 
 export async function importV1BnsSubdomains(
-  db: PgDataStore,
+  db: PgWriteStore,
   importDir: string,
   genesisBlock: BnsGenesisBlock
 ) {
@@ -464,10 +454,7 @@ export async function importV1BnsSubdomains(
   }
   await validateBnsImportDir(importDir, ['subdomains.csv', 'subdomain_zonefiles.txt']);
   logger.info('Stacks 1.0 BNS subdomain import started');
-
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN');
+  await db.sql.begin(async sql => {
     let subdomainsImported = 0;
     const subdomainIter = readSubdomains(importDir, genesisBlock);
     for await (const subdomainBatch of asyncBatchIterate(
@@ -475,32 +462,22 @@ export async function importV1BnsSubdomains(
       SUBDOMAIN_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchSubdomains(client, [
+      await db.updateBatchSubdomains(sql, [
         { blockData: genesisBlock, subdomains: subdomainBatch },
       ]);
-      await db.updateBatchZonefiles(client, [
-        { blockData: genesisBlock, subdomains: subdomainBatch },
-      ]);
+      await db.updateBatchZonefiles(sql, [{ blockData: genesisBlock, subdomains: subdomainBatch }]);
       subdomainsImported += subdomainBatch.length;
       if (subdomainsImported % 10_000 === 0) {
         logger.info(`Subdomains imported: ${subdomainsImported}`);
       }
     }
     logger.info(`Subdomains imported: ${subdomainsImported}`);
-
     const updatedConfigState: DbConfigState = {
       ...configState,
       bns_subdomains_imported: true,
     };
-    await db.updateConfigState(updatedConfigState, client);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
-
+    await db.updateConfigState(updatedConfigState, sql);
+  });
   logger.info('Stacks 1.0 BNS subdomain import completed');
 }
 
@@ -517,7 +494,7 @@ class Sha256PassThrough extends stream.PassThrough {
   }
 }
 
-export async function importV1TokenOfferingData(db: PgDataStore) {
+export async function importV1TokenOfferingData(db: PgWriteStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
     logger.verbose('Stacks 1.0 token offering data is already imported');
@@ -547,16 +524,13 @@ export async function importV1TokenOfferingData(db: PgDataStore) {
     }
   );
 
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN');
-
+  await db.sql.begin(async sql => {
     for await (const stxVesting of asyncBatchIterate(
       stxVestingReader,
       STX_VESTING_BATCH_SIZE,
       false
     )) {
-      await db.updateBatchTokenOfferingLocked(client, stxVesting);
+      await db.updateBatchTokenOfferingLocked(sql, stxVesting);
     }
 
     const chainstateHash = hashPassthrough.getHash().toString('hex');
@@ -568,13 +542,7 @@ export async function importV1TokenOfferingData(db: PgDataStore) {
       ...configState,
       token_offering_imported: true,
     };
-    await db.updateConfigState(updatedConfigState, client);
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
-  } finally {
-    client.release();
-  }
+    await db.updateConfigState(updatedConfigState, sql);
+  });
   logger.info('Stacks 1.0 token offering data import completed');
 }

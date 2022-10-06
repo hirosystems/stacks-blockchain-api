@@ -79,7 +79,7 @@ create database stacks_db;
 grant all on database stacks_db to stacks;
 EOF
 $ sudo su - postgres -c "psql -f /tmp/file.sql" && rm -f /tmp/file.sql
-$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/12/main/pg_hba.conf
+$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
 $ sudo systemctl restart postgresql
 ```
 
@@ -203,10 +203,11 @@ $ sudo kill $(ps -ef | grep "/stacks-node/binaries/stacks-node" | grep -v grep |
 
 To verfiy the database is ready:
 
-1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db`
-    - use the password from the [Postgres Permissions Step](#postgres-permissions)
+1. Connect to the DB instance: `psql -h localhost -U stacks stacks_db`
+   - use the password from the [Postgres Permissions Step](#postgres-permissions)
 2. List current databases: `\l`
-3. Disconnect from the DB : `\q`
+3. Verify data is being written to the database: `select * from blocks limit 1;`
+4. Disconnect from the DB : `\q`
 
 ### stacks-blockchain testing
 
