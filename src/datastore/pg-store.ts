@@ -417,6 +417,12 @@ export class PgStore {
         indexBlockHashValues.push(indexBytea, parentBytea);
         blockHashValues.push(indexBytea);
       });
+      if (blockHashValues.length === 0) {
+        return {
+          results: [],
+          total: 0,
+        };
+      }
 
       // get txs in those blocks
       const txs = await sql<{ tx_id: string; index_block_hash: string }[]>`
@@ -942,6 +948,9 @@ export class PgStore {
     includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<DbMempoolTx[]> {
+    if (args.txIds.length === 0) {
+      return [];
+    }
     return this.sql.begin(async client => {
       const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
@@ -1816,28 +1825,6 @@ export class PgStore {
       return entry;
     });
     return entries;
-  }
-
-  async getSmartContractList(contractIds: string[]) {
-    const result = await this.sql<
-      {
-        contract_id: string;
-        canonical: boolean;
-        tx_id: string;
-        block_height: number;
-        source_code: string;
-        abi: unknown | null;
-      }[]
-    >`
-      SELECT DISTINCT ON (contract_id) contract_id, canonical, tx_id, block_height, source_code, abi
-      FROM smart_contracts
-      WHERE contract_id IN ${contractIds}
-      ORDER BY contract_id DESC, abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
-    `;
-    if (result.length === 0) {
-      [];
-    }
-    return result.map(r => parseQueryResultToSmartContract(r)).map(res => res.result);
   }
 
   async getSmartContract(contractId: string) {
@@ -2879,9 +2866,10 @@ export class PgStore {
     const nftCustody = args.includeUnanchored
       ? this.sql(`nft_custody_unanchored`)
       : this.sql(`nft_custody`);
-    const assetIdFilter = args.assetIdentifiers
-      ? this.sql`AND nft.asset_identifier IN ${this.sql(args.assetIdentifiers)}`
-      : this.sql``;
+    const assetIdFilter =
+      args.assetIdentifiers && args.assetIdentifiers.length > 0
+        ? this.sql`AND nft.asset_identifier IN ${this.sql(args.assetIdentifiers)}`
+        : this.sql``;
     const nftTxResults = await this.sql<
       (NftHoldingInfo & ContractTxQueryResult & { count: number })[]
     >`
@@ -3122,7 +3110,10 @@ export class PgStore {
   }: {
     txIds: string[];
     includeUnanchored: boolean;
-  }) {
+  }): Promise<DbTx[]> {
+    if (txIds.length === 0) {
+      return [];
+    }
     return this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
