@@ -21,13 +21,14 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
 } from '../datastore/common';
-import { parseDbEvent } from '../api/controllers/db-controller';
+import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { getPostgres, PgSqlClient } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
-import { ChainID, intCV, serializeCV } from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -4958,6 +4959,31 @@ describe('postgres datastore', () => {
     const query = await db.getFtMetadata(ftMetadata.contract_id);
     expect(query.found).toBe(true);
     if (query.found) expect(query.result).toStrictEqual(ftMetadata);
+  });
+
+  test('empty parameter lists are handled correctly', async () => {
+    const block = new TestBlockBuilder({ block_height: 1 }).addTx().build();
+    await db.update(block);
+
+    // Blocks with limit=0
+    await expect(getBlocksWithMetadata({ limit: 0, offset: 0, db: db })).resolves.not.toThrow();
+    // Mempool search with empty txIds
+    await expect(db.getMempoolTxs({ txIds: [], includeUnanchored: true })).resolves.not.toThrow();
+    // NFT holdings with empty asset identifier list
+    await expect(
+      db.getNftHoldings({
+        principal: 'S',
+        assetIdentifiers: [],
+        limit: 10,
+        offset: 0,
+        includeTxMetadata: false,
+        includeUnanchored: true,
+      })
+    ).resolves.not.toThrow();
+    // Tx list details with empty txIds
+    await expect(
+      db.getTxListDetails({ txIds: [], includeUnanchored: true })
+    ).resolves.not.toThrow();
   });
 
   afterEach(async () => {
