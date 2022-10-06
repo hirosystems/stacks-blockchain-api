@@ -31,5 +31,10 @@
   "execution_cost_read_length": 1659409,
   "execution_cost_runtime": 2520952000,
   "execution_cost_write_count": 608,
-  "execution_cost_write_length": 80170
+  "execution_cost_write_length": 80170,
+  "microblock_tx_count": {
+    "0xce0b1a4099d3fc7d5885cc7a3baa952b6d999f9709d0683b98b843597208231c": 5,
+    "0x4c0529b6448a5885991c5021bd869cc97f1692c128a98b382729dc962203c326": 6,
+    "0x64968846291dfea1015228a9d4bbd60aac81378cd6774b810b08e59e6b0e7494": 9
+  }
 }

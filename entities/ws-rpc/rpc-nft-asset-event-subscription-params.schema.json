@@ -1,0 +1,1 @@
+{"title":"RpcNftAssetEventSubscriptionParams","description":"","type":"object","required":["event","asset_identifier","value"],"additionalProperties":false,"properties":{"event":{"type":"string","enum":["nft_asset_event"]},"asset_identifier":{"type":"string"},"value":{"type":"string"}}}

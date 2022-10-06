@@ -1,0 +1,1 @@
+{"title":"RpcNftEventSubscriptionParams","description":"","type":"object","required":["event"],"additionalProperties":false,"properties":{"event":{"type":"string","enum":["nft_event"]}}}
