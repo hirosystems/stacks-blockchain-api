@@ -1,3 +1,10 @@
+## [6.0.0-beta.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.9...v6.0.0-beta.10) (2022-10-06)
+
+
+### Reverts
+
+* Revert "chore!: remove deprecated `/nft_events` endpoint (#1329)" (#1343) ([c537ee4](https://github.com/hirosystems/stacks-blockchain-api/commit/c537ee4c6f333c0a43c9e9e1ca1e073f03c58fc5)), closes [#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329) [#1343](https://github.com/hirosystems/stacks-blockchain-api/issues/1343)
+
 ## [6.0.0-beta.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.8...v6.0.0-beta.9) (2022-09-30)
 
 
