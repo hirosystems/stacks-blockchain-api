@@ -1,3 +1,10 @@
+## [6.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0...v6.0.1) (2022-10-06)
+
+
+### Bug Fixes
+
+* guard against empty lists before querying postgres ([#1345](https://github.com/hirosystems/stacks-blockchain-api/issues/1345)) ([6c88a16](https://github.com/hirosystems/stacks-blockchain-api/commit/6c88a166c8742c869222f7f754838af386e2cd16))
+
 ## [6.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.1...v6.0.0) (2022-10-06)
 
 
