@@ -47,6 +47,7 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
+import { PostgresError } from 'postgres';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -300,6 +301,8 @@ export async function startApiServer(opts: {
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
         res.status(error.status).json({ error: error.message }).end();
+      } else if (error instanceof PostgresError) {
+        res.status(503).json({ error: `The database service is unavailable` }).end();
       } else {
         res.status(500);
         const errorTag = uuid();
