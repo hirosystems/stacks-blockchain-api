@@ -5,8 +5,6 @@ import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
-import * as WebSocket from 'ws';
-import * as SocketIO from 'socket.io';
 
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
@@ -47,7 +45,7 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { PostgresError } from 'postgres';
+import { isPgConnectionError } from '../datastore/helpers';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -301,7 +299,7 @@ export async function startApiServer(opts: {
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
         res.status(error.status).json({ error: error.message }).end();
-      } else if (error instanceof PostgresError) {
+      } else if (isPgConnectionError(error)) {
         res.status(503).json({ error: `The database service is unavailable` }).end();
       } else {
         res.status(500);
