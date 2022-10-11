@@ -57,15 +57,18 @@ export class TokensProcessorQueue {
         return;
       }
       const queuedEntries = [...this.queuedEntries.keys()];
-      entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
       await this.queue.onEmpty();
-      // await this.queue.onIdle();
     } while (entries.length > 0 || this.queuedEntries.size > 0);
   }
 
@@ -76,10 +79,16 @@ export class TokensProcessorQueue {
     const queuedEntries = [...this.queuedEntries.keys()];
     const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
     if (limit > 0) {
-      const entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      let entries: DbTokenMetadataQueueEntry[];
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+        return;
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
