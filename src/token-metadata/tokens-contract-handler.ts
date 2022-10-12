@@ -149,30 +149,40 @@ export class TokensContractHandler {
       processingFinished = true;
     } catch (error) {
       if (error instanceof RetryableTokenMetadataError) {
-        const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
-        if (
-          getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
-          retries <= getTokenMetadataMaxRetries()
-        ) {
-          logger.info(
-            `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
-          );
-        } else {
-          logger.warn(
-            `[token-metadata] max retries reached while processing ${this.contractId}, giving up: ${error}`
-          );
+        try {
+          const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
+          if (
+            getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
+            retries <= getTokenMetadataMaxRetries()
+          ) {
+            logger.info(
+              `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
+            );
+          } else {
+            logger.warn(
+              `[token-metadata] max retries reached while processing ${this.contractId}, giving up: ${error}`
+            );
+            processingFinished = true;
+          }
+        } catch (error) {
+          logger.error(error);
           processingFinished = true;
         }
       } else {
         // Something more serious happened, mark this contract as done.
+        logger.error(error);
         processingFinished = true;
       }
     } finally {
       if (processingFinished) {
-        await this.db.updateProcessedTokenMetadataQueueEntry(this.dbQueueId);
-        logger.info(
-          `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
-        );
+        try {
+          await this.db.updateProcessedTokenMetadataQueueEntry(this.dbQueueId);
+          logger.info(
+            `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
+          );
+        } catch (error) {
+          logger.error(error);
+        }
       }
     }
   }

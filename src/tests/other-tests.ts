@@ -293,6 +293,13 @@ describe('other tests', () => {
     expect(result.body.status).toBe('ready');
   });
 
+  test('database unavailable responses', async () => {
+    // Close connection so we get an error.
+    await db.close();
+    const result = await supertest(api.server).get(`/extended/v1/block/`);
+    expect(result.body.error).toBe('The database service is unavailable');
+  });
+
   afterEach(async () => {
     await api.terminate();
     await db?.close();

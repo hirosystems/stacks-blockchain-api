@@ -14,7 +14,6 @@ import {
   DbNonFungibleTokenMetadata,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PoolClient } from 'pg';
 import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';

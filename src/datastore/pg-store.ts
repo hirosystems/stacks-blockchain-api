@@ -420,7 +420,7 @@ export class PgStore {
       if (blockHashValues.length === 0) {
         return {
           results: [],
-          total: 0,
+          total: block_count,
         };
       }
 
