@@ -1,3 +1,10 @@
+## [6.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.3...v6.0.4) (2022-10-12)
+
+
+### Bug Fixes
+
+* handle pg exceptions on web socket transmitter ([#1353](https://github.com/hirosystems/stacks-blockchain-api/issues/1353)) ([2e6448d](https://github.com/hirosystems/stacks-blockchain-api/commit/2e6448d7afc7bb35d5bcd3da88105f0552a13764))
+
 ## [6.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.2...v6.0.3) (2022-10-12)
 
 
