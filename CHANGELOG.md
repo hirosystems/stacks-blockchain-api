@@ -1,3 +1,10 @@
+## [6.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.2...v6.0.3) (2022-10-12)
+
+
+### Bug Fixes
+
+* skip migrations on read-only start ([#1351](https://github.com/hirosystems/stacks-blockchain-api/issues/1351)) ([1d32261](https://github.com/hirosystems/stacks-blockchain-api/commit/1d322614e70e125b924c7d0a8b9f536ca81eb48f))
+
 ## [6.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.1...v6.0.2) (2022-10-12)
 
 
