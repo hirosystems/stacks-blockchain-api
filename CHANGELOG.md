@@ -1,3 +1,10 @@
+## [6.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.1...v6.0.2) (2022-10-12)
+
+
+### Bug Fixes
+
+* catch pg exceptions on queries outside of express ([#1348](https://github.com/hirosystems/stacks-blockchain-api/issues/1348)) ([1f07b85](https://github.com/hirosystems/stacks-blockchain-api/commit/1f07b8587ccf0206e085d272e6cb5ee62f816fd9))
+
 ## [6.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0...v6.0.1) (2022-10-06)
 
 
