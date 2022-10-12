@@ -1,4 +1,4 @@
-FROM blockstack/stacks-blockchain:2.05.0.3.0-stretch as corenode
+FROM blockstack/stacks-blockchain:2.05.0.4.0 as corenode
 
 FROM gitpod/workspace-postgres
 
