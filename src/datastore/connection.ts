@@ -138,8 +138,8 @@ export function getPostgres({
     ssl: pgEnvValue('SSL'),
     schema: pgEnvValue('SCHEMA'),
     applicationName: pgEnvValue('APPLICATION_NAME'),
-    idleTimeout: parseInt(pgEnvValue('IDLE_TIMEOUT') ?? '10'),
-    maxLifetime: parseInt(pgEnvValue('MAX_LIFETIME') ?? '30'),
+    idleTimeout: parseInt(pgEnvValue('IDLE_TIMEOUT') ?? '30'),
+    maxLifetime: parseInt(pgEnvValue('MAX_LIFETIME') ?? '60'),
     poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '10'),
   };
   const defaultAppName = 'stacks-blockchain-api';
