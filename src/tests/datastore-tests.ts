@@ -196,6 +196,8 @@ describe('postgres datastore', () => {
         PG_SSL: 'true',
         PG_SCHEMA: 'pg_schema_schema1',
         PG_APPLICATION_NAME: 'test-env-vars',
+        PG_MAX_LIFETIME: '5',
+        PG_IDLE_TIMEOUT: '1',
       },
       () => {
         const sql = getPostgres({ usageName: 'tests' });
@@ -205,6 +207,8 @@ describe('postgres datastore', () => {
         expect(sql.options.host).toStrictEqual(['pg_host_host1']);
         expect(sql.options.port).toStrictEqual([9876]);
         expect(sql.options.ssl).toBe(true);
+        expect(sql.options.max_lifetime).toBe(5);
+        expect(sql.options.idle_timeout).toBe(1);
         expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
         expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
       }
