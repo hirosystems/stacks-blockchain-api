@@ -52,7 +52,7 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, nextSignature } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -606,6 +606,7 @@ interface EventMessageHandler {
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
+
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
@@ -728,12 +729,33 @@ export async function startEventServer(opts: {
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
+  const handleRawEventRequest = asyncHandler(async req => {
+    await messageHandler.handleRawEventRequest(req.path, req.body, db);
+  });
+
+  // app.post(
+  //   '*',
+  //   asyncHandler(async (req, res, next) => {
+  //     const eventPath = req.path;
+  //     let payload = JSON.stringify(req.body);
+  //     await messageHandler.handleRawEventRequest(eventPath, req.body, db);
+  //     if (logger.isDebugEnabled()) {
+  //       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+  //       if (payload.length > 10_000_000) {
+  //         payload = 'payload body too large for logging';
+  //       }
+  //       logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+  //     }
+  //     next();
+  //   })
+  // );
+
   app.post(
     '*',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler((req, res, next) => {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
-      await messageHandler.handleRawEventRequest(eventPath, req.body, db);
+      // await message.Handler.handleRawEventRequest(eventPath, req.body, db);
       if (logger.isDebugEnabled()) {
         // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
         if (payload.length > 10_000_000) {
@@ -747,86 +769,98 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_block',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeBlockMessage = req.body;
         await messageHandler.handleBlockMessage(opts.chainId, msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_block: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_burn_block',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeBurnBlockMessage = req.body;
         await messageHandler.handleBurnBlock(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_burn_block: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_mempool_tx',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const rawTxs: string[] = req.body;
         await messageHandler.handleMempoolTxs(rawTxs, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_mempool_tx: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/drop_mempool_tx',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/attachments/new',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeAttachmentMessage[] = req.body;
         await messageHandler.handleNewAttachment(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /attachments/new: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_microblocks',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_microblocks: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post('*', (req, res, next) => {
