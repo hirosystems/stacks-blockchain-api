@@ -1,9 +1,9 @@
-import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
+import * as path from 'path';
 import { Client } from 'pg';
-import { APP_DIR, isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
-import { getPgClientConfig, PgClientConfig } from './connection-legacy';
+import { isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
 import { connectPostgres, PgServer } from './connection';
+import { getPgClientConfig, PgClientConfig } from './connection-legacy';
 import { databaseHasData } from './event-requests';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
