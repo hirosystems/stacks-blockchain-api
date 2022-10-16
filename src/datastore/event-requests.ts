@@ -119,21 +119,28 @@ export async function* getRawEventRequests(
   }
 }
 
-export async function databaseHasData(): Promise<boolean> {
+/**
+ * Check the `pg_class` table for any data structures contained in the database. We will consider
+ * any and all results here as "data" contained in the DB, since anything that is not a completely
+ * empty DB could lead to strange errors when running the API. See:
+ * https://www.postgresql.org/docs/current/catalog-pg-class.html
+ * @returns `boolean` if the DB has data
+ */
+export async function databaseHasData(args?: {
+  ignoreMigrationTables?: boolean;
+}): Promise<boolean> {
   const sql = await connectPostgres({
     usageName: 'contains-data-check',
     pgServer: PgServer.primary,
   });
   try {
-    // Check the `pg_class` table for any data structures contained in the database. We will
-    // consider any and all results here as "data" contained in the DB, since anything that is not a
-    // completely empty DB could lead to strange errors when running the API. See:
-    // https://www.postgresql.org/docs/current/catalog-pg-class.html
+    const ignoreMigrationTables = args?.ignoreMigrationTables ?? false;
     const result = await sql<{ count: number }[]>`
       SELECT COUNT(*)
       FROM pg_class c
       JOIN pg_namespace s ON s.oid = c.relnamespace
       WHERE s.nspname = ${sql.options.connection.search_path}
+      ${ignoreMigrationTables ? sql`AND c.relname NOT LIKE 'pgmigrations%'` : sql``}
     `;
     return result.count > 0 && result[0].count > 0;
   } catch (error: any) {
