@@ -5,7 +5,7 @@ import { defaultLogLevel, getApiConfiguredChainID, httpPostRequest, logger } fro
 import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
 import {
-  containsAnyRawEventRequests,
+  databaseHasData,
   exportRawEventRequests,
   getRawEventRequests,
 } from '../datastore/event-requests';
@@ -90,7 +90,7 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await containsAnyRawEventRequests();
+  const hasData = await databaseHasData();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }

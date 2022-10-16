@@ -1,7 +1,7 @@
 import { pipelineAsync } from '../helpers';
 import { Readable, Writable } from 'stream';
 import { DbRawEventRequest } from './common';
-import { PgServer } from './connection';
+import { connectPostgres, PgServer } from './connection';
 import { connectPgPool, connectWithRetry } from './connection-legacy';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
@@ -119,22 +119,25 @@ export async function* getRawEventRequests(
   }
 }
 
-export async function containsAnyRawEventRequests(): Promise<boolean> {
-  const pool = await connectPgPool({
-    usageName: 'contains-raw-events-check',
+export async function databaseHasData(): Promise<boolean> {
+  const sql = await connectPostgres({
+    usageName: 'contains-data-check',
     pgServer: PgServer.primary,
   });
-  const client = await pool.connect();
   try {
-    const result = await client.query('SELECT id from event_observer_requests LIMIT 1');
-    return result.rowCount > 0;
+    const result = await sql<{ count: number }[]>`
+      SELECT COUNT(*)
+      FROM pg_class c
+      JOIN pg_namespace s ON s.oid = c.relnamespace
+      WHERE s.nspname = ${sql.options.connection.search_path}
+    `;
+    return result.count > 0 && result[0].count > 0;
   } catch (error: any) {
     if (error.message?.includes('does not exist')) {
       return false;
     }
     throw error;
   } finally {
-    client.release();
-    await pool.end();
+    await sql.end();
   }
 }
