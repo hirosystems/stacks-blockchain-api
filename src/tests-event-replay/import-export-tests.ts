@@ -1,6 +1,9 @@
 import * as fs from 'fs';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { dangerousDropAllTables, runMigrations } from '../datastore/migrations';
+import { databaseHasData } from '../datastore/event-requests';
+import { getPgClientConfig } from '../datastore/connection-legacy';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -52,6 +55,17 @@ describe('import/export tests', () => {
     } finally {
       fs.rmSync(tmpDir, { force: true, recursive: true });
     }
+  });
+
+  test('db contains data', async () => {
+    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
+    await runMigrations(clientConfig, 'up', {});
+
+    // Having tables counts as having data as this may change across major versions.
+    await expect(databaseHasData()).resolves.toBe(true);
+
+    await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
+    await expect(databaseHasData()).resolves.toBe(false);
   });
 
   afterEach(async () => {
