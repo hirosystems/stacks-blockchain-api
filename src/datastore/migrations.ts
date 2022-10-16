@@ -4,6 +4,7 @@ import { Client } from 'pg';
 import { APP_DIR, isDevEnv, isTestEnv, logError, logger } from '../helpers';
 import { getPgClientConfig, PgClientConfig } from './connection-legacy';
 import { connectPostgres, PgServer } from './connection';
+import { databaseHasData } from './event-requests';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
@@ -53,10 +54,14 @@ export async function runMigrations(
 export async function cycleMigrations(opts?: {
   // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
   dangerousAllowDataLoss?: boolean;
+  checkForEmptyData?: boolean;
 }): Promise<void> {
   const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
 
   await runMigrations(clientConfig, 'down', opts);
+  if (opts?.checkForEmptyData && (await databaseHasData({ ignoreMigrationTables: true }))) {
+    throw new Error('Migration down process did not completely remove DB tables');
+  }
   await runMigrations(clientConfig, 'up', opts);
 }
 

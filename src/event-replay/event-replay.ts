@@ -98,10 +98,14 @@ export async function importEventsFromTsv(
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
   }
 
-  // This performs a "migration down" which drops the tables, then re-creates them.
-  // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
-  // or the `--force` option can be used.
-  await cycleMigrations({ dangerousAllowDataLoss: true });
+  try {
+    await cycleMigrations({ dangerousAllowDataLoss: true, checkForEmptyData: true });
+  } catch (error) {
+    logger.error(error);
+    throw new Error(
+      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
+    );
+  }
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);

@@ -57,6 +57,26 @@ describe('import/export tests', () => {
     }
   });
 
+  test('import with db wipe options', async () => {
+    // Migrate first so we have some data.
+    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
+    await runMigrations(clientConfig, 'up', {});
+    await expect(
+      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', false, false)
+    ).rejects.toThrowError('contains existing data');
+
+    // Create strange table
+    await db.sql`CREATE TABLE IF NOT EXISTS test (a varchar(10))`;
+    await expect(
+      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, false)
+    ).rejects.toThrowError('migration cycle failed');
+
+    // Force and test
+    await expect(
+      importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true)
+    ).resolves.not.toThrow();
+  });
+
   test('db contains data', async () => {
     const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
     await runMigrations(clientConfig, 'up', {});
@@ -64,8 +84,15 @@ describe('import/export tests', () => {
     // Having tables counts as having data as this may change across major versions.
     await expect(databaseHasData()).resolves.toBe(true);
 
+    // Dropping all tables removes everything.
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
     await expect(databaseHasData()).resolves.toBe(false);
+
+    // Cycling migrations leaves the `pgmigrations` table.
+    await runMigrations(clientConfig, 'up', {});
+    await runMigrations(clientConfig, 'down', {});
+    await expect(databaseHasData()).resolves.toBe(true);
+    await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
   });
 
   afterEach(async () => {
