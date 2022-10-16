@@ -125,6 +125,10 @@ export async function databaseHasData(): Promise<boolean> {
     pgServer: PgServer.primary,
   });
   try {
+    // Check the `pg_class` table for any data structures contained in the database. We will
+    // consider any and all results here as "data" contained in the DB, since anything that is not a
+    // completely empty DB could lead to strange errors when running the API. See:
+    // https://www.postgresql.org/docs/current/catalog-pg-class.html
     const result = await sql<{ count: number }[]>`
       SELECT COUNT(*)
       FROM pg_class c
