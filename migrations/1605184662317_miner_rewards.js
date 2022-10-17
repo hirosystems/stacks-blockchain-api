@@ -1,6 +1,5 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-// block_hash, index_block_hash, canonical, recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed
-export async function up(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.up = pgm => {
   pgm.createTable('miner_rewards', {
     id: {
       type: 'serial',
