@@ -138,19 +138,28 @@ describe('PoX-2 tests', () => {
       r => r.event_type === DbEventTypeId.StxLock
     ) as DbStxLockEvent;
     expect(lockEvent1).toBeDefined();
+    expect(lockEvent1.locked_address).toBe(account.stacksAddress);
+    expect(lockEvent1.locked_amount).toBe(ustxAmount);
+
+    // Test that the unlock height event data in the API db matches the expected height from the
+    // calculated values from the /v2/pox data and the cycle count specified in the `stack-stx` tx.
+    const cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
+    const expectedUnlockHeight1 =
+      cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
+    expect(lockEvent1.unlock_height).toBe(expectedUnlockHeight1);
 
     await standByUntilBlock(dbTx1.block_height + 1);
 
     const nextPoxInfo = await client.getPox();
     expect(nextPoxInfo.next_reward_cycle_in).toBeTruthy();
 
-    const stackExtendCycleCount = 3;
+    const stackIncreaseAmount = 123n;
     const tx2 = await makeContractCall({
       senderKey: account.secretKey,
       contractAddress,
       contractName,
       functionName: 'stack-increase',
-      functionArgs: [uintCV(stackExtendCycleCount)],
+      functionArgs: [uintCV(stackIncreaseAmount)],
       network: stacksNetwork,
       anchorMode: AnchorMode.Any,
       fee: 10000,
@@ -174,5 +183,20 @@ describe('PoX-2 tests', () => {
       r => r.event_type === DbEventTypeId.StxLock
     ) as DbStxLockEvent;
     expect(lockEvent2).toBeDefined();
+
+    // Test that the locked STX amount has increased
+    const expectedLockedAmount2 = ustxAmount + stackIncreaseAmount;
+    expect(lockEvent2.locked_amount).toBe(expectedLockedAmount2);
+
+    // Test that the locked event data in the API db matches the data returned from the RPC /v2/accounts/<addr> endpoint
+    const rpcAccountInfo2 = await client.getAccount(account.stacksAddress);
+    expect(BigInt(rpcAccountInfo2.locked)).toBe(expectedLockedAmount2);
+    expect(rpcAccountInfo2.unlock_height).toBe(expectedUnlockHeight1);
+
+    // TODO: then perform a stack-extend
+    console.log('TODO');
+
+    // TODO: then wait for reward cycle block and check for burnchain rewards and /v2/accounts/<addr> info
+    console.log('TODO');
   });
 });

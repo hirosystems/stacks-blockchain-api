@@ -13,6 +13,7 @@ interface CoreRpcAccountInfo {
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
+  unlock_height: number;
 }
 
 interface CoreRpcInfo {
