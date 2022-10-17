@@ -790,7 +790,7 @@ export class PgStore {
     limit: number,
     offset: number
   ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const blockQuery = await this.getBlockInternal(sql, blockIdentifer);
       if (!blockQuery.found) {
         return { found: false };
@@ -951,7 +951,7 @@ export class PgStore {
     if (args.txIds.length === 0) {
       return [];
     }
-    return this.sql.begin(async client => {
+    return await this.sql.begin(async client => {
       const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
@@ -969,8 +969,8 @@ export class PgStore {
     txId: string;
     includeUnanchored: boolean;
     includePruned?: boolean;
-  }) {
-    return this.sql.begin(async sql => {
+  }): Promise<FoundOrNot<DbMempoolTx>> {
+    return await this.sql.begin(async sql => {
       const result = await sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
@@ -1289,8 +1289,14 @@ export class PgStore {
     return { found: true, result: { digest: result[0].digest } };
   }
 
-  async getTx({ txId, includeUnanchored }: { txId: string; includeUnanchored: boolean }) {
-    return this.sql.begin(async sql => {
+  async getTx({
+    txId,
+    includeUnanchored,
+  }: {
+    txId: string;
+    includeUnanchored: boolean;
+  }): Promise<FoundOrNot<DbTx>> {
+    return await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -1330,10 +1336,10 @@ export class PgStore {
     offset: number;
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
-  }) {
+  }): Promise<{ results: DbTx[]; total: number }> {
     let totalQuery: { count: number }[];
     let resultQuery: ContractTxQueryResult[];
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       if (txTypeFilter.length === 0) {
         totalQuery = await sql<{ count: number }[]>`
@@ -1373,15 +1379,15 @@ export class PgStore {
     });
   }
 
-  getTxListEvents(args: {
+  async getTxListEvents(args: {
     txs: {
       txId: string;
       indexBlockHash: string;
     }[];
     limit: number;
     offset: number;
-  }) {
-    return this.sql.begin(async sql => {
+  }): Promise<{ results: DbEvent[] }> {
+    return await this.sql.begin(async sql => {
       if (args.txs.length === 0) return { results: [] };
       // TODO: This hack has to be done because postgres.js can't figure out how to interpolate
       // these `bytea` VALUES comparisons yet.
@@ -1494,13 +1500,18 @@ export class PgStore {
   /**
    * TODO investigate if this method needs be deprecated in favor of {@link getTransactionEvents}
    */
-  async getTxEvents(args: { txId: string; indexBlockHash: string; limit: number; offset: number }) {
+  async getTxEvents(args: {
+    txId: string;
+    indexBlockHash: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: DbEvent[] }> {
     // Note: when this is used to fetch events for an unanchored microblock tx, the `indexBlockHash` is empty
     // which will cause the sql queries to also match micro-orphaned tx data (resulting in duplicate event results).
     // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
     // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
     // will never be returned.
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const stxLockResults = await sql<
@@ -1617,8 +1628,8 @@ export class PgStore {
     eventTypeFilter: DbEventTypeId[];
     limit: number;
     offset: number;
-  }) {
-    return this.sql.begin(async sql => {
+  }): Promise<{ results: DbEvent[] }> {
+    return await this.sql.begin(async sql => {
       const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
       const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
@@ -1947,7 +1958,7 @@ export class PgStore {
     stxAddress: string;
     includeUnanchored: boolean;
   }): Promise<DbStxBalance> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const blockQuery = await this.getCurrentBlockInternal(sql);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
@@ -1967,7 +1978,7 @@ export class PgStore {
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const chainTip = await this.getChainTip(sql);
       const blockHeightToQuery =
         blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
@@ -2079,8 +2090,8 @@ export class PgStore {
           blockHeight: number;
         }
       | { includeUnanchored: boolean }
-  ) {
-    return this.sql.begin(async sql => {
+  ): Promise<{ stx: bigint; blockHeight: number }> {
+    return await this.sql.begin(async sql => {
       let atBlockHeight: number;
       let atMatureBlockHeight: number;
       if ('blockHeight' in args) {
@@ -2337,7 +2348,7 @@ export class PgStore {
   }
 
   async getTxStatus(txId: string): Promise<FoundOrNot<DbTxGlobalStatus>> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const chainResult = await sql<DbTxGlobalStatus[]>`
         SELECT status, index_block_hash, microblock_hash
         FROM txs
@@ -2663,7 +2674,7 @@ export class PgStore {
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs WHERE tx_id = ${hash} LIMIT 1
@@ -3114,7 +3125,7 @@ export class PgStore {
     if (txIds.length === 0) {
       return [];
     }
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -3602,7 +3613,7 @@ export class PgStore {
   }
 
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
-    return this.sql.begin(async client => {
+    return await this.sql.begin(async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
@@ -3724,14 +3735,14 @@ export class PgStore {
     }
   }
 
-  getFtMetadataList({
+  async getFtMetadataList({
     limit,
     offset,
   }: {
     limit: number;
     offset: number;
   }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM ft_metadata
@@ -3761,14 +3772,14 @@ export class PgStore {
     });
   }
 
-  getNftMetadataList({
+  async getNftMetadataList({
     limit,
     offset,
   }: {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM nft_metadata

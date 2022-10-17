@@ -1182,7 +1182,7 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
   }): Promise<void> {
-    return this.sql.begin(async sql => {
+    return await this.sql.begin(async sql => {
       const existingRewards = await sql<
         {
           reward_recipient: string;
