@@ -11,6 +11,7 @@ import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
+import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 
 describe('PoX-2 tests', () => {
   let db: PgWriteStore;
@@ -80,7 +81,7 @@ describe('PoX-2 tests', () => {
     return result.body as TRes;
   }
 
-  test('PoX-2 - stack-stx', async () => {
+  test('PoX-2 - stack increase and stack extend', async () => {
     const account = testnetKeys[1];
 
     const btcAccount = btcLib.ECPair.makeRandom({
@@ -95,12 +96,15 @@ describe('PoX-2 tests', () => {
     const cycleCount = 5;
     const poxInfo = await client.getPox();
     const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+    const cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
     expect(contractName).toBe('pox-2');
 
     const decodedBtcAddr = poxHelpers.decodeBtcAddress(btcAddr);
     const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
+
+    // Create and broadcast a `stack-stx` tx
     const tx1 = await makeContractCall({
       senderKey: account.secretKey,
       contractAddress,
@@ -143,16 +147,22 @@ describe('PoX-2 tests', () => {
 
     // Test that the unlock height event data in the API db matches the expected height from the
     // calculated values from the /v2/pox data and the cycle count specified in the `stack-stx` tx.
-    const cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
     const expectedUnlockHeight1 =
       cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
     expect(lockEvent1.unlock_height).toBe(expectedUnlockHeight1);
 
+    // Test the API address balance data after a `stack-stx` operation
+    const addrBalance1 = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stacksAddress}/stx`
+    );
+    expect(addrBalance1.locked).toBe(ustxAmount.toString());
+    expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
+    expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
+    expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
+
     await standByUntilBlock(dbTx1.block_height + 1);
 
-    const nextPoxInfo = await client.getPox();
-    expect(nextPoxInfo.next_reward_cycle_in).toBeTruthy();
-
+    // Create and broadcast a `stack-increase` tx
     const stackIncreaseAmount = 123n;
     const tx2 = await makeContractCall({
       senderKey: account.secretKey,
@@ -193,14 +203,16 @@ describe('PoX-2 tests', () => {
     expect(BigInt(rpcAccountInfo2.locked)).toBe(expectedLockedAmount2);
     expect(rpcAccountInfo2.unlock_height).toBe(expectedUnlockHeight1);
 
-    /*
-    ;; Extend an active stacking lock.
-    ;; *New in Stacks 2.1*
-    ;; This method extends the `tx-sender`'s current lockup for an additional `extend-count`
-    ;;    and associates `pox-addr` with the rewards
-    (define-public (stack-extend (extend-count uint)
-                                 (pox-addr { version: (buff 1), hashbytes: (buff 20) }))
-    */
+    // Test the API address balance data after a `stack-increase` operation
+    const addrBalance2 = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stacksAddress}/stx`
+    );
+    expect(addrBalance2.locked).toBe(expectedLockedAmount2.toString());
+    expect(addrBalance2.burnchain_unlock_height).toBe(expectedUnlockHeight1);
+    expect(addrBalance2.lock_height).toBe(dbTx2.block_height);
+    expect(addrBalance2.lock_tx_id).toBe(dbTx2.tx_id);
+
+    // Create and broadcast a `stack-extend` tx
     const extendCycleAmount = 1;
     const tx3 = await makeContractCall({
       senderKey: account.secretKey,
@@ -249,7 +261,28 @@ describe('PoX-2 tests', () => {
     const rpcAccountInfo3 = await client.getAccount(account.stacksAddress);
     expect(rpcAccountInfo3.unlock_height).toBe(expectedUnlockHeight2);
 
+    // Test the API address balance data after a `stack-extend` operation
+    const addrBalance3 = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stacksAddress}/stx`
+    );
+    expect(addrBalance3.locked).toBe(expectedLockedAmount2.toString());
+    expect(addrBalance3.burnchain_unlock_height).toBe(expectedUnlockHeight2);
+    expect(addrBalance3.lock_height).toBe(dbTx3.block_height);
+    expect(addrBalance3.lock_tx_id).toBe(dbTx3.tx_id);
+
     // TODO: wait for reward cycle block and check for burnchain rewards, the /v2/accounts/<addr> info, and the bitcoin-rpc balance if possible
     console.log('TODO');
+  });
+
+  test.skip('PoX-2 - stack to P2TR address', () => {
+    // TODO
+  });
+
+  test.skip('PoX-2 - stack to P2WPKH address', () => {
+    // TODO
+  });
+
+  test.skip('PoX-2 - stack to P2WSH address', () => {
+    // TODO
   });
 });

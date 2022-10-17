@@ -59,6 +59,12 @@ exports.up = pgm => {
     },
   });
 
+  pgm.createIndex('stx_lock_events', [
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+  ]);
+
   pgm.createIndex('stx_lock_events', 'tx_id', { method: 'hash' });
   pgm.createIndex('stx_lock_events', 'index_block_hash', { method: 'hash' });
   pgm.createIndex('stx_lock_events', 'microblock_hash', { method: 'hash' });
