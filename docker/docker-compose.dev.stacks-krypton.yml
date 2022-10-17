@@ -1,15 +1,16 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "zone117x/stacks-api-e2e:stacks2.1-dd8f051"
+    image: "zone117x/stacks-api-e2e:stacks2.1-ca162a2"
     ports:
-      - "18443:18443"
-      - "18444:18444"
-      - "20443:20443"
-      - "20444:20444"
+      - "18443:18443" # bitcoin regtest JSON-RPC interface
+      - "18444:18444" # bitcoin regtest p2p
+      - "20443:20443" # stacks-node RPC interface
+      - "20444:20444" # stacks-node p2p
     environment:
       MINE_INTERVAL: 2s
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
-      NOP_BLOCKSTACK_DEBUG: 1
+      # STACKS_LOG_TRACE: 1
+      # STACKS_LOG_DEBUG: 1
     extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts

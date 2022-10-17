@@ -1,6 +1,5 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-
-export async function up(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.up = pgm => {
   pgm.createTable('reward_slot_holders', {
     id: {
       type: 'serial',

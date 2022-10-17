@@ -1,8 +1,5 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-
-export const shorthands: ColumnDefinitions | undefined = undefined;
-
-export async function up(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.up = pgm => {
   pgm.createTable('names', {
     id: {
       type: 'serial',

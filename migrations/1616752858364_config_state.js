@@ -1,6 +1,5 @@
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-
-export async function up(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.up = pgm => {
   pgm.createTable('config_state', {
     id: {
       type: 'bool',
@@ -31,6 +30,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   pgm.sql('INSERT INTO config_state VALUES(DEFAULT)');
 }
 
-export async function down(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.down = pgm => {
   pgm.dropTable('config_state');
 }

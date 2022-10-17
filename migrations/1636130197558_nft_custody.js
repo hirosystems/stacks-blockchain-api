@@ -1,9 +1,5 @@
-/* eslint-disable @typescript-eslint/camelcase */
-import { MigrationBuilder, ColumnDefinitions } from 'node-pg-migrate';
-
-export const shorthands: ColumnDefinitions | undefined = undefined;
-
-export async function up(pgm: MigrationBuilder): Promise<void> {
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.up = pgm => {
   pgm.createMaterializedView('nft_custody', {}, `
     SELECT
       DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, nft.block_height
