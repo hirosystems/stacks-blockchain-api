@@ -32,7 +32,7 @@ interface CoreRpcInfo {
   unanchored_tip: string;
 }
 
-interface CoreRpcPoxInfo {
+export interface CoreRpcPoxInfo {
   contract_id: string;
   pox_activation_threshold_ustx: number;
   first_burnchain_block_height: number;
