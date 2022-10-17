@@ -193,10 +193,63 @@ describe('PoX-2 tests', () => {
     expect(BigInt(rpcAccountInfo2.locked)).toBe(expectedLockedAmount2);
     expect(rpcAccountInfo2.unlock_height).toBe(expectedUnlockHeight1);
 
-    // TODO: then perform a stack-extend
-    console.log('TODO');
+    /*
+    ;; Extend an active stacking lock.
+    ;; *New in Stacks 2.1*
+    ;; This method extends the `tx-sender`'s current lockup for an additional `extend-count`
+    ;;    and associates `pox-addr` with the rewards
+    (define-public (stack-extend (extend-count uint)
+                                 (pox-addr { version: (buff 1), hashbytes: (buff 20) }))
+    */
+    const extendCycleAmount = 1;
+    const tx3 = await makeContractCall({
+      senderKey: account.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-extend',
+      functionArgs: [
+        uintCV(extendCycleAmount),
+        tupleCV({
+          hashbytes: bufferCV(decodedBtcAddr.data),
+          version: bufferCV(Buffer.from([decodedBtcAddr.version])),
+        }),
+      ],
+      network: stacksNetwork,
+      anchorMode: AnchorMode.Any,
+      fee: 10000,
+      validateWithAbi: false,
+    });
+    const expectedTxId3 = '0x' + tx3.txid();
+    const txStandby3 = standByForTx(expectedTxId3);
+    const sendResult3 = await client.sendTransaction(tx3.serialize());
+    expect(sendResult3.txId).toBe(expectedTxId3);
 
-    // TODO: then wait for reward cycle block and check for burnchain rewards and /v2/accounts/<addr> info
+    const dbTx3 = await txStandby3;
+    expect(dbTx3.status).toBe(DbTxStatus.Success);
+    const tx3Events = await api.datastore.getTxEvents({
+      txId: dbTx3.tx_id,
+      indexBlockHash: dbTx3.index_block_hash,
+      limit: 99999,
+      offset: 0,
+    });
+    expect(tx3Events.results).toBeTruthy();
+    const lockEvent3 = tx3Events.results.find(
+      r => r.event_type === DbEventTypeId.StxLock
+    ) as DbStxLockEvent;
+    expect(lockEvent3).toBeDefined();
+
+    // Test that the unlock height event data in the API db matches the expected height from the
+    // calculated values from the /v2/pox data and the cycle amount specified in the `stack-extend` tx.
+    const extendBlockCount = extendCycleAmount * poxInfo.reward_cycle_length;
+    const expectedUnlockHeight2 =
+      cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height + extendBlockCount;
+    expect(lockEvent3.unlock_height).toBe(expectedUnlockHeight2);
+
+    // Test that the locked event data in the API db matches the data returned from the RPC /v2/accounts/<addr> endpoint
+    const rpcAccountInfo3 = await client.getAccount(account.stacksAddress);
+    expect(rpcAccountInfo3.unlock_height).toBe(expectedUnlockHeight2);
+
+    // TODO: wait for reward cycle block and check for burnchain rewards, the /v2/accounts/<addr> info, and the bitcoin-rpc balance if possible
     console.log('TODO');
   });
 });

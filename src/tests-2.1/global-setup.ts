@@ -23,7 +23,7 @@ async function standByForPox2ToBeReady(client: StacksCoreRpcClient): Promise<voi
       }
       await timeout(500);
     } catch (error) {
-      console.log(`Waiting on PoX-2 to be ready, retrying  ater ${error}`);
+      console.log(`Waiting on PoX-2 to be ready, retrying after ${error}`);
       await timeout(500);
     }
   }
