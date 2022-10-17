@@ -52,7 +52,7 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID, nextSignature } from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -733,29 +733,11 @@ export async function startEventServer(opts: {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
   });
 
-  // app.post(
-  //   '*',
-  //   asyncHandler(async (req, res, next) => {
-  //     const eventPath = req.path;
-  //     let payload = JSON.stringify(req.body);
-  //     await messageHandler.handleRawEventRequest(eventPath, req.body, db);
-  //     if (logger.isDebugEnabled()) {
-  //       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-  //       if (payload.length > 10_000_000) {
-  //         payload = 'payload body too large for logging';
-  //       }
-  //       logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
-  //     }
-  //     next();
-  //   })
-  // );
-
   app.post(
     '*',
     asyncHandler((req, res, next) => {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
-      // await message.Handler.handleRawEventRequest(eventPath, req.body, db);
       if (logger.isDebugEnabled()) {
         // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
         if (payload.length > 10_000_000) {
