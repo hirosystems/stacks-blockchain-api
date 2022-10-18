@@ -65,6 +65,29 @@ describe('PoX-2 tests', () => {
     });
   }
 
+  function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
+    return new Promise<DbBlock>(async resolve => {
+      const curHeight = await api.datastore.getCurrentBlock();
+      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
+        const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        resolve(dbBlock.result);
+        return;
+      }
+      const listener: (blockHash: string) => void = async blockHash => {
+        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
+        if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
+          return;
+        }
+        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        resolve(dbBlockQuery.result);
+      };
+      api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    });
+  }
+
   async function fetchPost<TPostBody, TRes>(endpoint: string, body: TPostBody) {
     const result = await supertest(api.server)
       .post(endpoint)
@@ -91,7 +114,7 @@ describe('PoX-2 tests', () => {
     let contractAddress: string;
     let contractName: string;
     let ustxAmount: bigint;
-    const cycleCount = 5;
+    const cycleCount = 1;
 
     beforeAll(async () => {
       const btcAccount = btcLib.ECPair.makeRandom({
@@ -288,9 +311,30 @@ describe('PoX-2 tests', () => {
       expect(addrBalance3.lock_tx_id).toBe(dbTx3.tx_id);
     });
 
-    test.skip('stacking rewards', () => {
-      // TODO: wait for reward cycle block and check for burnchain rewards, the /v2/accounts/<addr> info, and the bitcoin-rpc balance if possible
-      console.log('TODO');
+    test.skip('stacking rewards - API burnchain endpoints', async () => {
+      // Wait until Stacking cycle has completed
+      const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height;
+      const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
+
+      // TODO: check API rewards endpoints:
+      //   * /extended/v1/burnchain/reward_slot_holders/{address}
+      //   * /extended/v1/burnchain/rewards/{address}
+      //   * /extended/v1/burnchain/rewards/{address}/total
+    });
+
+    test.skip('stx unlocked - API balance endpoint', () => {
+      // TODO: check that STX are no longer reported as locked by the RPC endpoints:
+      //  * /v2/accounts/{address}
+    });
+
+    test.skip('stx unlocked - RPC balance endpoint', () => {
+      // TODO: check that STX are no longer reported as locked by the API endpoints:
+      //  * /extended/v1/address/{address}/stx
+    });
+
+    test.skip('BTC stacking reward received', () => {
+      // TODO: check that BTC reward tx has been send via bitcoind json-rpc query
     });
   });
 

@@ -132,7 +132,7 @@ export function loadDotEnv(): void {
   if (didLoadDotEnv) {
     return;
   }
-  const dotenvConfig = dotenv.config();
+  const dotenvConfig = dotenv.config({ silent: true });
   if (dotenvConfig.error) {
     logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
     throw dotenvConfig.error;
