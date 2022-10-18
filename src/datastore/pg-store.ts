@@ -69,7 +69,7 @@ import {
   StxUnlockEvent,
   TransferQueryResult,
 } from './common';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { connectPostgres, getPgConnectionEnvValue, PgServer, PgSqlClient } from './connection';
 import {
   abiColumn,
   BLOCK_COLUMNS,
@@ -110,6 +110,9 @@ export class PgStore {
   readonly sql: PgSqlClient;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
+  protected get closeTimeout(): number {
+    return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5');
+  }
 
   constructor(sql: PgSqlClient, notifier: PgNotifier | undefined = undefined) {
     this.sql = sql;
@@ -133,7 +136,7 @@ export class PgStore {
 
   async close(): Promise<void> {
     await this.notifier?.close();
-    await this.sql.end();
+    await this.sql.end({ timeout: this.closeTimeout });
   }
 
   /**

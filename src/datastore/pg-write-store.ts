@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { logger, logError, getOrAdd, batchIterate, isProdEnv, I32_MAX } from '../helpers';
 import {
   DbBlock,
@@ -74,7 +73,13 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { connectPostgres, PgJsonb, PgServer, PgSqlClient } from './connection';
+import {
+  connectPostgres,
+  getPgConnectionEnvValue,
+  PgJsonb,
+  PgServer,
+  PgSqlClient,
+} from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -96,7 +101,9 @@ class MicroblockGapError extends Error {
  */
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
-  private cachedParameterizedInsertStrings = new Map<string, string>();
+  protected get closeTimeout(): number {
+    return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.primary) ?? '5');
+  }
 
   constructor(
     sql: PgSqlClient,
