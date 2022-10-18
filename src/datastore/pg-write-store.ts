@@ -2022,9 +2022,6 @@ export class PgWriteStore extends PgStore {
       RETURNING tx_id
     `;
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
-    for (const txId of deletedTxs) {
-      await this.notifier?.sendTx({ txId: txId });
-    }
     return { deletedTxs: deletedTxs };
   }
 
