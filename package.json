@@ -32,7 +32,7 @@
     "build:docs": "npm ci --prefix docs && npm run build --prefix docs && npm ci --prefix client && npm run generate:docs --prefix client",
     "start": "node ./lib/index.js",
     "lint": "npm run lint:eslint && npm run lint:prettier",
-    "lint:unused-exports": "ts-unused-exports tsconfig.json --ignoreFiles=src/migrations/*",
+    "lint:unused-exports": "ts-unused-exports tsconfig.json --showLineNumber",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f unix",
     "lint:prettier": "prettier --check src/**/*.{ts,json}",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx -f unix --fix && prettier --write --check src/**/*.{ts,json}",
