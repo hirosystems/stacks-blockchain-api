@@ -229,6 +229,7 @@ describe('postgres datastore', () => {
         PG_APPLICATION_NAME: 'test-env-vars',
         PG_MAX_LIFETIME: '5',
         PG_IDLE_TIMEOUT: '1',
+        // Primary values:
         PG_PRIMARY_DATABASE: 'primary_db',
         PG_PRIMARY_USER: 'primary_user',
         PG_PRIMARY_PASSWORD: 'primary_password',
@@ -237,11 +238,13 @@ describe('postgres datastore', () => {
       },
       () => {
         const sql = getPostgres({ usageName: 'tests', pgServer: PgServer.primary });
+        // Primary values take precedence.
         expect(sql.options.database).toBe('primary_db');
         expect(sql.options.user).toBe('primary_user');
         expect(sql.options.pass).toBe('primary_password');
         expect(sql.options.host).toStrictEqual(['primary_host']);
         expect(sql.options.port).toStrictEqual([9999]);
+        // Other values come from defaults.
         expect(sql.options.ssl).toBe(true);
         expect(sql.options.max_lifetime).toBe(5);
         expect(sql.options.idle_timeout).toBe(1);

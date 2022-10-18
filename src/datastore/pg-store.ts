@@ -954,7 +954,7 @@ export class PgStore {
     if (args.txIds.length === 0) {
       return [];
     }
-    return await this.sql.begin(async client => {
+    return await this.sql.begin('READ ONLY', async client => {
       const result = await this.sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
@@ -3616,7 +3616,7 @@ export class PgStore {
   }
 
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
-    return await this.sql.begin(async client => {
+    return await this.sql.begin('READ ONLY', async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
