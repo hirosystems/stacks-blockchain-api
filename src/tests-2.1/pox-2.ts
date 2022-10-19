@@ -363,7 +363,9 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
+      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
+      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
