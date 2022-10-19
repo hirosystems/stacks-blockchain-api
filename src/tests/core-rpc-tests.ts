@@ -1,7 +1,22 @@
+import { Server } from 'net';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { startEventServer } from '../event-stream/event-server';
 import { StacksCoreRpcClient } from '../core-rpc/client';
+import { ChainID } from '@stacks/transactions';
 
 describe('core RPC tests', () => {
   let client: StacksCoreRpcClient;
+  let db: PgWriteStore;
+  let eventServer: Server;
+
+  beforeAll(async () => {
+    db = await PgWriteStore.connect({ usageName: 'tests' });
+    eventServer = await startEventServer({
+      datastore: db,
+      chainId: ChainID.Testnet,
+      httpLogLevel: 'silly',
+    });
+  });
 
   beforeEach(() => {
     client = new StacksCoreRpcClient();
@@ -33,5 +48,10 @@ describe('core RPC tests', () => {
   test('get estimated transfer fee', async () => {
     const fee = await client.getEstimatedTransferFee();
     expect(fee).toBeTruthy();
+  });
+
+  afterAll(async () => {
+    eventServer.close();
+    await db.close();
   });
 });

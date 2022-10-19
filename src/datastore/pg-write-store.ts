@@ -74,7 +74,7 @@ import {
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { PgStore } from './pg-store';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { connectPostgres, PgJsonb, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
@@ -134,9 +134,10 @@ export class PgWriteStore extends PgStore {
   }
 
   async getChainTip(
-    sql: PgSqlClient
+    sql: PgSqlClient,
+    useMaterializedView = true
   ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
-    if (!this.isEventReplay) {
+    if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
     // The `chain_tip` materialized view is not available during event replay.
@@ -161,7 +162,7 @@ export class PgWriteStore extends PgStore {
     };
   }
 
-  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
+  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.
@@ -182,19 +183,15 @@ export class PgWriteStore extends PgStore {
         `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
       );
     }
-    const exportEventsFile = process.env['STACKS_EXPORT_EVENTS_FILE'];
-    if (exportEventsFile) {
-      const result = insertResult[0];
-      const tsvRow = [result.id, result.receive_timestamp, result.event_path, result.payload];
-      fs.appendFileSync(exportEventsFile, tsvRow.join('\t') + '\n');
-    }
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
+    let batchedTxData: DataStoreTxEventData[] = [];
+
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
@@ -262,7 +259,7 @@ export class PgWriteStore extends PgStore {
       data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
       data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
 
-      let batchedTxData: DataStoreTxEventData[] = data.txs;
+      batchedTxData = data.txs;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
       // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
@@ -363,8 +360,6 @@ export class PgWriteStore extends PgStore {
             await this.updateNames(sql, entry.tx, bnsName);
           }
         }
-        await this.refreshNftCustody(sql, batchedTxData);
-        await this.refreshMaterializedView(sql, 'chain_tip');
         const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
         if (mempoolGarbageResults.deletedTxs.length > 0) {
           logger.verbose(
@@ -403,6 +398,10 @@ export class PgWriteStore extends PgStore {
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
+
+    await this.refreshNftCustody(batchedTxData);
+    await this.refreshMaterializedView('chain_tip');
+    await this.refreshMaterializedView('mempool_digest');
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
     // event replay of the v1 blockchain.
@@ -534,11 +533,14 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
+    const txData: DataStoreTxEventData[] = [];
+    let dbMicroblocks: DbMicroblock[] = [];
+
     await this.sql.begin(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
       );
@@ -555,7 +557,7 @@ export class PgWriteStore extends PgStore {
 
       // The block height is just one after the current chain tip height
       const blockHeight = chainTip.blockHeight + 1;
-      const dbMicroblocks = data.microblocks.map(mb => {
+      dbMicroblocks = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
           canonical: true,
           microblock_canonical: true,
@@ -575,8 +577,6 @@ export class PgWriteStore extends PgStore {
         return dbMicroBlock;
       });
 
-      const txs: DataStoreTxEventData[] = [];
-
       for (const entry of data.txs) {
         // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
         const dbTx: DbTx = {
@@ -587,7 +587,7 @@ export class PgWriteStore extends PgStore {
 
         // Set all the `block_height` properties for the related tx objects, since it wasn't known
         // when creating the objects using only the stacks-node message payload.
-        txs.push({
+        txData.push({
           tx: dbTx,
           stxEvents: entry.stxEvents.map(e => ({ ...e, block_height: blockHeight })),
           contractLogEvents: entry.contractLogEvents.map(e => ({
@@ -603,7 +603,7 @@ export class PgWriteStore extends PgStore {
         });
       }
 
-      await this.insertMicroblockData(sql, dbMicroblocks, txs);
+      await this.insertMicroblockData(sql, dbMicroblocks, txData);
 
       // Find any microblocks that have been orphaned by this latest microblock chain tip.
       // This function also checks that each microblock parent hash points to an existing microblock in the db.
@@ -651,24 +651,25 @@ export class PgWriteStore extends PgStore {
         );
       }
 
-      await this.refreshNftCustody(sql, txs, true);
-      await this.refreshMaterializedView(sql, 'chain_tip');
-
       if (!this.isEventReplay) {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
-
-      if (this.notifier) {
-        for (const microblock of dbMicroblocks) {
-          await this.notifier.sendMicroblock({ microblockHash: microblock.microblock_hash });
-        }
-        for (const tx of txs) {
-          await this.notifier.sendTx({ txId: tx.tx.tx_id });
-        }
-        await this.emitAddressTxUpdates(txs);
-      }
     });
+
+    await this.refreshNftCustody(txData, true);
+    await this.refreshMaterializedView('chain_tip');
+    await this.refreshMaterializedView('mempool_digest');
+
+    if (this.notifier) {
+      for (const microblock of dbMicroblocks) {
+        await this.notifier.sendMicroblock({ microblockHash: microblock.microblock_hash });
+      }
+      for (const tx of txData) {
+        await this.notifier.sendTx({ txId: tx.tx.tx_id });
+      }
+      await this.emitAddressTxUpdates(txData);
+    }
   }
 
   async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
@@ -1276,7 +1277,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.sql.begin(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
         const values: MempoolTxInsertValues = {
           pruned: tx.pruned,
@@ -1318,13 +1319,12 @@ export class PgWriteStore extends PgStore {
           updatedTxs.push(tx);
         }
       }
-      await this.refreshMaterializedView(sql, 'mempool_digest');
-
       if (!this.isEventReplay) {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
+    await this.refreshMaterializedView('mempool_digest');
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
     }
@@ -1340,8 +1340,8 @@ export class PgWriteStore extends PgStore {
         RETURNING ${sql(MEMPOOL_TX_COLUMNS)}
       `;
       updatedTxs = updateResults.map(r => parseMempoolTxQueryResult(r));
-      await this.refreshMaterializedView(sql, 'mempool_digest');
     });
+    await this.refreshMaterializedView('mempool_digest');
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });
     }
@@ -1409,12 +1409,25 @@ export class PgWriteStore extends PgStore {
       namespace_id,
       tx_id,
       tx_index,
+      event_index,
       status,
       canonical,
     } = bnsName;
-    // Try to figure out the name's expiration block based on its namespace's lifetime. However, if
-    // the name was only transferred, keep the expiration from the last register/renewal we had.
+    // Try to figure out the name's expiration block based on its namespace's lifetime.
     let expireBlock = expire_block;
+    const namespaceLifetime = await sql<{ lifetime: number }[]>`
+      SELECT lifetime
+      FROM namespaces
+      WHERE namespace_id = ${namespace_id}
+      AND canonical = true AND microblock_canonical = true
+      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
+      LIMIT 1
+    `;
+    if (namespaceLifetime.length > 0) {
+      expireBlock = registered_at + namespaceLifetime[0].lifetime;
+    }
+    // If the name was transferred, keep the expiration from the last register/renewal we had (if
+    // any).
     if (status === 'name-transfer') {
       const prevExpiration = await sql<{ expire_block: number }[]>`
         SELECT expire_block
@@ -1426,18 +1439,6 @@ export class PgWriteStore extends PgStore {
       `;
       if (prevExpiration.length > 0) {
         expireBlock = prevExpiration[0].expire_block;
-      }
-    } else {
-      const namespaceLifetime = await sql<{ lifetime: number }[]>`
-        SELECT lifetime
-        FROM namespaces
-        WHERE namespace_id = ${namespace_id}
-        AND canonical = true AND microblock_canonical = true
-        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
-        LIMIT 1
-      `;
-      if (namespaceLifetime.length > 0) {
-        expireBlock = registered_at + namespaceLifetime[0].lifetime;
       }
     }
     // If we didn't receive a zonefile, keep the last valid one.
@@ -1481,6 +1482,7 @@ export class PgWriteStore extends PgStore {
       namespace_id: namespace_id,
       tx_index: tx_index,
       tx_id: tx_id,
+      event_index: event_index ?? null,
       status: status ?? null,
       canonical: canonical,
       index_block_hash: blockData.index_block_hash,
@@ -1491,7 +1493,7 @@ export class PgWriteStore extends PgStore {
     };
     await sql`
       INSERT INTO names ${sql(nameValues)}
-      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash DO
+      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash_event_index DO
         UPDATE SET
           address = EXCLUDED.address,
           registered_at = EXCLUDED.registered_at,
@@ -1499,6 +1501,7 @@ export class PgWriteStore extends PgStore {
           zonefile_hash = EXCLUDED.zonefile_hash,
           namespace_id = EXCLUDED.namespace_id,
           tx_index = EXCLUDED.tx_index,
+          event_index = EXCLUDED.event_index,
           status = EXCLUDED.status,
           canonical = EXCLUDED.canonical,
           parent_index_block_hash = EXCLUDED.parent_index_block_hash,
@@ -1966,7 +1969,6 @@ export class PgWriteStore extends PgStore {
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
-    await this.refreshMaterializedView(sql, 'mempool_digest');
     const restoredTxs = updateResults.map(r => r.tx_id);
     return { restoredTxs: restoredTxs };
   }
@@ -1990,7 +1992,6 @@ export class PgWriteStore extends PgStore {
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
-    await this.refreshMaterializedView(sql, 'mempool_digest');
     const removedTxs = updateResults.map(r => r.tx_id);
     return { removedTxs: removedTxs };
   }
@@ -2004,7 +2005,9 @@ export class PgWriteStore extends PgStore {
     // Get threshold block.
     const blockThreshold = process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? 256;
     const cutoffResults = await sql<{ block_height: number }[]>`
-      SELECT (block_height - ${blockThreshold}) AS block_height FROM chain_tip
+      SELECT (MAX(block_height) - ${blockThreshold}) AS block_height
+      FROM blocks
+      WHERE canonical = TRUE
     `;
     if (cutoffResults.length != 1) {
       return { deletedTxs: [] };
@@ -2018,7 +2021,6 @@ export class PgWriteStore extends PgStore {
       WHERE pruned = FALSE AND receipt_block_height < ${cutoffBlockHeight}
       RETURNING tx_id
     `;
-    await this.refreshMaterializedView(sql, 'mempool_digest');
     const deletedTxs = deletedTxResults.map(r => r.tx_id);
     for (const txId of deletedTxs) {
       await this.notifier?.sendTx({ txId: txId });
@@ -2439,15 +2441,16 @@ export class PgWriteStore extends PgStore {
 
   /**
    * Refreshes a Postgres materialized view.
-   * @param sql - Pg Client
    * @param viewName - Materialized view name
+   * @param sql - Pg scoped client. Will use the default client if none specified
    * @param skipDuringEventReplay - If we should skip refreshing during event replay
    */
-  async refreshMaterializedView(sql: PgSqlClient, viewName: string, skipDuringEventReplay = true) {
+  async refreshMaterializedView(viewName: string, sql?: PgSqlClient, skipDuringEventReplay = true) {
+    sql = sql ?? this.sql;
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
-    await sql`REFRESH MATERIALIZED VIEW ${sql(viewName)}`;
+    await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
   }
 
   /**
@@ -2456,34 +2459,32 @@ export class PgWriteStore extends PgStore {
    * @param txs - Transaction event data
    * @param unanchored - If this refresh is requested from a block or microblock
    */
-  async refreshNftCustody(
-    sql: PgSqlClient,
-    txs: DataStoreTxEventData[],
-    unanchored: boolean = false
-  ) {
-    const newNftEventCount = txs
-      .map(tx => tx.nftEvents.length)
-      .reduce((prev, cur) => prev + cur, 0);
-    if (newNftEventCount > 0) {
-      // Always refresh unanchored view since even if we're in a new anchored block we should update the
-      // unanchored state to the current one.
-      await this.refreshMaterializedView(sql, 'nft_custody_unanchored');
-      if (!unanchored) {
-        await this.refreshMaterializedView(sql, 'nft_custody');
+  async refreshNftCustody(txs: DataStoreTxEventData[], unanchored: boolean = false) {
+    await this.sql.begin(async sql => {
+      const newNftEventCount = txs
+        .map(tx => tx.nftEvents.length)
+        .reduce((prev, cur) => prev + cur, 0);
+      if (newNftEventCount > 0) {
+        // Always refresh unanchored view since even if we're in a new anchored block we should update the
+        // unanchored state to the current one.
+        await this.refreshMaterializedView('nft_custody_unanchored', sql);
+        if (!unanchored) {
+          await this.refreshMaterializedView('nft_custody', sql);
+        }
+      } else if (!unanchored) {
+        // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
+        // update the anchored view to reflect any changes made by previous microblocks.
+        const result = await sql<{ outdated: boolean }[]>`
+          WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
+            unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
+          SELECT unanchored > anchored AS outdated
+          FROM anchored_height CROSS JOIN unanchored_height
+        `;
+        if (result.length > 0 && result[0].outdated) {
+          await this.refreshMaterializedView('nft_custody', sql);
+        }
       }
-    } else if (!unanchored) {
-      // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
-      // update the anchored view to reflect any changes made by previous microblocks.
-      const result = await sql<{ outdated: boolean }[]>`
-        WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
-          unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
-        SELECT unanchored > anchored AS outdated
-        FROM anchored_height CROSS JOIN unanchored_height
-      `;
-      if (result.length > 0 && result[0].outdated) {
-        await this.refreshMaterializedView(sql, 'nft_custody');
-      }
-    }
+    });
   }
 
   /**
@@ -2494,10 +2495,10 @@ export class PgWriteStore extends PgStore {
       return;
     }
     await this.sql.begin(async sql => {
-      await this.refreshMaterializedView(sql, 'nft_custody', false);
-      await this.refreshMaterializedView(sql, 'nft_custody_unanchored', false);
-      await this.refreshMaterializedView(sql, 'chain_tip', false);
-      await this.refreshMaterializedView(sql, 'mempool_digest', false);
+      await this.refreshMaterializedView('nft_custody', sql, false);
+      await this.refreshMaterializedView('nft_custody_unanchored', sql, false);
+      await this.refreshMaterializedView('chain_tip', sql, false);
+      await this.refreshMaterializedView('mempool_digest', sql, false);
     });
   }
 }

@@ -1,5 +1,6 @@
-import { has0xPrefix, logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
+import { isPgConnectionError } from './helpers';
 
 export type PgSqlClient = postgres.Sql<any>;
 
@@ -87,7 +88,7 @@ export async function connectPostgres({
       connectionOkay = true;
       break;
     } catch (error: any) {
-      if (error instanceof postgres.PostgresError) {
+      if (isPgConnectionError(error) || error instanceof postgres.PostgresError) {
         const timeElapsed = initTimer.getElapsed();
         if (timeElapsed - lastElapsedLog > 2000) {
           lastElapsedLog = timeElapsed;
@@ -137,6 +138,8 @@ export function getPostgres({
     ssl: pgEnvValue('SSL'),
     schema: pgEnvValue('SCHEMA'),
     applicationName: pgEnvValue('APPLICATION_NAME'),
+    idleTimeout: parseInt(pgEnvValue('IDLE_TIMEOUT') ?? '30'),
+    maxLifetime: parseInt(pgEnvValue('MAX_LIFETIME') ?? '60'),
     poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '10'),
   };
   const defaultAppName = 'stacks-blockchain-api';
@@ -179,6 +182,8 @@ export function getPostgres({
       host: pgEnvVars.host,
       port: parsePort(pgEnvVars.port),
       ssl: parseArgBoolean(pgEnvVars.ssl),
+      idle_timeout: pgEnvVars.idleTimeout,
+      max_lifetime: pgEnvVars.maxLifetime,
       max: pgEnvVars.poolMax,
       types: PG_TYPE_MAPPINGS,
       connection: {

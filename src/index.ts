@@ -119,7 +119,7 @@ async function init(): Promise<void> {
         });
   const dbWriteStore = await PgWriteStore.connect({
     usageName: `write-datastore-${apiMode}`,
-    skipMigrations: false,
+    skipMigrations: apiMode === StacksApiMode.readOnly,
   });
 
   registerMempoolPromStats(dbWriteStore.eventEmitter);

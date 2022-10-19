@@ -1,5 +1,5 @@
 import { BufferCV, ChainID, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
-import { hexToBuffer, hexToUtf8String } from '../../helpers';
+import { bnsNameCV, hexToBuffer, hexToUtf8String } from '../../helpers';
 import {
   CoreNodeEvent,
   CoreNodeEventType,
@@ -281,6 +281,7 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
       zonefile: '',
       tx_id: tx.parsed_tx.tx_id,
       tx_index: tx.core_tx.tx_index,
+      event_index: undefined,
       status: 'name-renewal',
       canonical: true,
     };
@@ -290,7 +291,7 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
 export function parseNameFromContractEvent(
   event: SmartContractEvent,
   tx: CoreNodeParsedTxMessage,
-  txEvents: CoreNodeEvent[],
+  allEvents: CoreNodeEvent[],
   blockHeight: number,
   chainId: ChainID
 ): DbBnsName | undefined {
@@ -303,24 +304,27 @@ export function parseNameFromContractEvent(
   } catch (error) {
     return;
   }
-  let name_address = attachment.attachment.metadata.tx_sender.address;
+  const fullName = `${attachment.attachment.metadata.name}.${attachment.attachment.metadata.namespace}`;
+  let ownerAddress = attachment.attachment.metadata.tx_sender.address;
   // Is this a `name-transfer`? If so, look for the new owner in an `nft_transfer` event bundled in
   // the same transaction.
   if (attachment.attachment.metadata.op === 'name-transfer') {
-    for (const txEvent of txEvents) {
+    for (const eventItem of allEvents) {
       if (
-        txEvent.type === CoreNodeEventType.NftTransferEvent &&
-        txEvent.nft_transfer_event.asset_identifier === `${getBnsContractID(chainId)}::names`
+        eventItem.txid === event.txid &&
+        eventItem.type === CoreNodeEventType.NftTransferEvent &&
+        eventItem.nft_transfer_event.asset_identifier === `${getBnsContractID(chainId)}::names` &&
+        eventItem.nft_transfer_event.raw_value === bnsNameCV(fullName)
       ) {
-        name_address = txEvent.nft_transfer_event.recipient;
+        ownerAddress = eventItem.nft_transfer_event.recipient;
         break;
       }
     }
   }
   const name: DbBnsName = {
-    name: `${attachment.attachment.metadata.name}.${attachment.attachment.metadata.namespace}`,
+    name: fullName,
     namespace_id: attachment.attachment.metadata.namespace,
-    address: name_address,
+    address: ownerAddress,
     // expire_block will be calculated upon DB insert based on the namespace's lifetime.
     expire_block: 0,
     registered_at: blockHeight,
@@ -329,6 +333,7 @@ export function parseNameFromContractEvent(
     zonefile: '',
     tx_id: event.txid,
     tx_index: tx.core_tx.tx_index,
+    event_index: event.event_index,
     status: attachment.attachment.metadata.op,
     canonical: true,
   };
