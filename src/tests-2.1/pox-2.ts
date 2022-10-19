@@ -11,6 +11,7 @@ import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
+import { ECPair } from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
@@ -122,7 +123,7 @@ describe('PoX-2 tests', () => {
     const cycleCount = 1;
 
     beforeAll(async () => {
-      const btcAccount = btcLib.ECPair.makeRandom({
+      const btcAccount = ECPair.makeRandom({
         compressed: true,
         network: btcLib.networks.testnet,
       });
