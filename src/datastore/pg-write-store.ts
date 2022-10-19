@@ -1338,16 +1338,13 @@ export class PgWriteStore extends PgStore {
   }
 
   async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
-    let updatedTxs: DbMempoolTx[] = [];
-    await this.sql.begin(async sql => {
-      const updateResults = await sql<MempoolTxQueryResult[]>`
-        UPDATE mempool_txs
-        SET pruned = true, status = ${status}
-        WHERE tx_id IN ${sql(txIds)}
-        RETURNING ${sql(MEMPOOL_TX_COLUMNS)}
-      `;
-      updatedTxs = updateResults.map(r => parseMempoolTxQueryResult(r));
-    });
+    const updateResults = await this.sql<MempoolTxQueryResult[]>`
+      UPDATE mempool_txs
+      SET pruned = true, status = ${status}
+      WHERE tx_id IN ${this.sql(txIds)}
+      RETURNING ${this.sql(MEMPOOL_TX_COLUMNS)}
+    `;
+    const updatedTxs = updateResults.map(r => parseMempoolTxQueryResult(r));
     await this.refreshMaterializedView('mempool_digest');
     for (const tx of updatedTxs) {
       await this.notifier?.sendTx({ txId: tx.tx_id });

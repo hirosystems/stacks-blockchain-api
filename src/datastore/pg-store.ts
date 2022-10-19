@@ -380,24 +380,6 @@ export class PgStore {
     return { found: true, result: block } as const;
   }
 
-  async getBlocks({ limit, offset }: { limit: number; offset: number }) {
-    return await this.sql.begin('READ ONLY', async sql => {
-      const total = await sql<{ count: number }[]>`
-        SELECT block_count AS count FROM chain_tip
-      `;
-      const results = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      const parsed = results.map(r => parseBlockQueryResult(r));
-      return { results: parsed, total: total[0].count } as const;
-    });
-  }
-
   /**
    * Returns Block information with metadata, including accepted and streamed microblocks hash
    * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
@@ -410,8 +392,20 @@ export class PgStore {
     offset: number;
   }): Promise<BlocksWithMetadata> {
     return await this.sql.begin('READ ONLY', async sql => {
-      // get block list
-      const { results: blocks, total: block_count } = await this.getBlocks({ limit, offset });
+      // Get blocks with count.
+      const countQuery = await sql<{ count: number }[]>`
+        SELECT block_count AS count FROM chain_tip
+      `;
+      const block_count = countQuery[0].count;
+      const blocksQuery = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE canonical = true
+        ORDER BY block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const blocks = blocksQuery.map(r => parseBlockQueryResult(r));
       const blockHashValues: string[] = [];
       const indexBlockHashValues: string[] = [];
       blocks.forEach(block => {
@@ -954,13 +948,13 @@ export class PgStore {
     if (args.txIds.length === 0) {
       return [];
     }
-    return await this.sql.begin('READ ONLY', async client => {
-      const result = await this.sql<MempoolTxQueryResult[]>`
-        SELECT ${unsafeCols(this.sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
+    return await this.sql.begin('READ ONLY', async sql => {
+      const result = await sql<MempoolTxQueryResult[]>`
+        SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
-        WHERE tx_id IN ${this.sql(args.txIds)}
+        WHERE tx_id IN ${sql(args.txIds)}
       `;
-      return await this.parseMempoolTransactions(result, client, args.includeUnanchored);
+      return await this.parseMempoolTransactions(result, sql, args.includeUnanchored);
     });
   }
 
@@ -1346,9 +1340,7 @@ export class PgStore {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       if (txTypeFilter.length === 0) {
         totalQuery = await sql<{ count: number }[]>`
-          SELECT ${
-            includeUnanchored ? this.sql('tx_count_unanchored') : this.sql('tx_count')
-          } AS count
+          SELECT ${includeUnanchored ? sql('tx_count_unanchored') : sql('tx_count')} AS count
           FROM chain_tip
         `;
         resultQuery = await sql<ContractTxQueryResult[]>`
