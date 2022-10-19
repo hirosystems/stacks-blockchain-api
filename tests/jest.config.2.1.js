@@ -1,11 +1,14 @@
 module.exports = {
   preset: 'ts-jest',
+  testEnvironment: 'node',
   rootDir: `${require('path').dirname(__dirname)}/src`,
   testMatch: ['<rootDir>/tests-2.1/**/*.ts'],
-  testPathIgnorePatterns: ['<rootDir>/tests-2.1/setup.ts', '<rootDir>/tests-2.1/teardown.ts'],
+  testPathIgnorePatterns: ['<rootDir>/tests-2.1/global-setup.ts', '<rootDir>/tests-2.1/global-teardown.ts', '<rootDir>/tests-2.1/env-setup.ts'],
   collectCoverageFrom: ['<rootDir>/**/*.ts'],
   coveragePathIgnorePatterns: ['<rootDir>/tests*'],
   coverageDirectory: '<rootDir>/../coverage',
-  setupFilesAfterEnv: ['<rootDir>/tests-2.1/setup.ts'],
+  globalSetup: '<rootDir>/tests-2.1/global-setup.ts',
+  globalTeardown: '<rootDir>/tests-2.1/global-teardown.ts',
+  setupFilesAfterEnv: ['<rootDir>/tests-2.1/env-setup.ts'],
   testTimeout: 60000,
 }

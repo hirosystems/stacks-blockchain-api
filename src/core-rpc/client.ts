@@ -13,6 +13,7 @@ interface CoreRpcAccountInfo {
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
+  unlock_height: number;
 }
 
 interface CoreRpcInfo {
@@ -31,7 +32,7 @@ interface CoreRpcInfo {
   unanchored_tip: string;
 }
 
-interface CoreRpcPoxInfo {
+export interface CoreRpcPoxInfo {
   contract_id: string;
   pox_activation_threshold_ustx: number;
   first_burnchain_block_height: number;
@@ -238,7 +239,7 @@ export class StacksCoreRpcClient {
     return nonce;
   }
 
-  async getAccountBalance(principal: string): Promise<BigInt> {
+  async getAccountBalance(principal: string): Promise<bigint> {
     const account = await this.getAccount(principal);
     const balance = BigInt(account.balance);
     return balance;

@@ -2085,6 +2085,8 @@ export class PgStore {
       FROM stx_lock_events
       WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
       AND block_height <= ${blockHeight} AND unlock_height > ${burnBlockHeight}
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT 1
     `;
     let lockTxId: string = '';
     let locked: bigint = 0n;

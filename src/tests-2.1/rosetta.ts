@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { TestEnvContext } from './setup';
+import type { TestEnvContext } from './env-setup';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
@@ -66,15 +66,14 @@ import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
-describe('Stacks 2.1 tests', () => {
+describe('Rosetta - Stacks 2.1 tests', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
 
   beforeAll(async () => {
     const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, eventServer, api, client } = testEnv);
+    ({ db, api, client } = testEnv);
     await Promise.resolve();
   });
 
@@ -84,7 +83,7 @@ describe('Stacks 2.1 tests', () => {
   };
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>(resolve => {
+    return new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
         if (txId !== expectedTxId) {
           return;
@@ -98,8 +97,6 @@ describe('Stacks 2.1 tests', () => {
       };
       api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
-
-    return broadcastTx;
   }
 
   async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
