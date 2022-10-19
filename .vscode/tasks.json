@@ -25,7 +25,7 @@
     {
       "label": "deploy:krypton",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up",
       "isBackground": true,
       "problemMatcher": {
         "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
@@ -36,7 +36,7 @@
     {
       "label": "stop:krypton",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml down -v -t 0",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml down -v -t 0",
       "presentation": {
         "echo": true,
         "reveal": "silent",
@@ -48,7 +48,7 @@
     {
       "label": "deploy:krypton-2.1-transition",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml up",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml up",
       "isBackground": true,
       "problemMatcher": {
         "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
@@ -59,7 +59,7 @@
     {
       "label": "stop:krypton-2.1-transition",
       "type": "shell",
-      "command": "docker-compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml down -v -t 0",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml down -v -t 0",
       "presentation": {
         "echo": true,
         "reveal": "silent",

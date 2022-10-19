@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "zone117x/stacks-api-e2e:stacks2.1-transition-ca162a2"
+    image: "zone117x/stacks-api-e2e:stacks2.1-transition-8fb8b77"
     ports:
       - "18443:18443" # bitcoin regtest JSON-RPC interface
       - "18444:18444" # bitcoin regtest p2p
