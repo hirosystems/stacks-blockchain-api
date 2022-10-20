@@ -44,6 +44,7 @@ describe('PoX-2 tests', () => {
       user: BTC_RPC_USER,
       pass: BTC_RPC_PW,
       timeout: 120000,
+      wallet: '',
     });
     return client;
   }
@@ -164,6 +165,18 @@ describe('PoX-2 tests', () => {
       }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
 
       rpcClient = getRpcClient();
+
+      // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
+      btcRegtestAddr = getBitcoinAddressFromKey({
+        privateKey: btcPrivateKey,
+        network: 'regtest',
+        addressFormat: 'p2wpkh',
+      });
+      expect(btcRegtestAddr).toBe('bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
+
+      await rpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
+      const btcWalletAddrs = await rpcClient.getaddressesbylabel({ label: btcRegtestAddr });
+      expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
 
       poxInfo = await client.getPox();
       burnBlockHeight = poxInfo.current_burnchain_block_height as number;
@@ -418,9 +431,12 @@ describe('PoX-2 tests', () => {
       expect(addrBalance.lock_tx_id).toBe('');
     });
 
-    test.skip('BTC stacking reward received', () => {
-      // TODO: check that BTC reward tx has been send via bitcoind json-rpc query
-      // curl --user myusername --data-binary '{"jsonrpc": "1.0", "id": "curltest", "method": "getblock", "params": ["00000000c937983704a73af28acdec37b049d214adbda81d7e2a3dd146f6ed09"]}' -H 'content-type: text/plain;' http://127.0.0.1:8332/
+    test('BTC stacking reward received', async () => {
+      const received: number = await rpcClient.getreceivedbyaddress({
+        address: btcRegtestAddr,
+        minconf: 0,
+      });
+      expect(received).toBeGreaterThan(0);
     });
   });
 
