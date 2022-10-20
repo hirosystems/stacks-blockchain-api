@@ -25,6 +25,7 @@ import {
 } from 'winston/lib/winston/config';
 import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
+import { isArrayBufferView } from 'node:util/types';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -523,6 +524,31 @@ export function hexToBuffer(hex: string): Buffer {
     throw new Error(`Hex string is an odd number of digits: ${hex}`);
   }
   return Buffer.from(hex.substring(2), 'hex');
+}
+
+/**
+ * Decodes a hex string to a Buffer, trims the 0x-prefix if exists.
+ * If already a buffer, returns the input immediately.
+ */
+export function coerceToBuffer(hex: string | Buffer | ArrayBufferView): Buffer {
+  if (typeof hex === 'string') {
+    if (hex.startsWith('0x')) {
+      hex = hex.substring(2);
+    }
+    if (hex.length % 2 !== 0) {
+      throw new Error(`Hex string is an odd number of characters: ${hex}`);
+    }
+    if (!/^[0-9a-fA-F]*$/.test(hex)) {
+      throw new Error(`Hex string contains non-hexadecimal characters: ${hex}`);
+    }
+    return Buffer.from(hex, 'hex');
+  } else if (Buffer.isBuffer(hex)) {
+    return hex;
+  } else if (isArrayBufferView(hex)) {
+    return Buffer.from(hex.buffer, hex.byteOffset, hex.byteLength);
+  } else {
+    throw new Error(`Cannot convert to Buffer, unexpected type: ${hex.constructor.name}`);
+  }
 }
 
 export function hexToUtf8String(hex: string): string {

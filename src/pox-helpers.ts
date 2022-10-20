@@ -10,16 +10,22 @@ import { bech32, bech32m } from '@scure/base';
 enum PoXAddressVersion {
   /** (b58/legacy) p2pkh address, and `hashbytes` is the 20-byte hash160 of a single public key */
   P2PKH = 0x00,
+
   /** (b58/legacy) p2sh address, and `hashbytes` is the 20-byte hash160 of a redeemScript script */
   P2SH = 0x01,
+
   /** (b58/legacy) p2wpkh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wpkh witness script */
   P2SHP2WPKH = 0x02, // likely unused, as indistinguishable from P2SH
+
   /** (b58/legacy) p2wsh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wsh witness script */
   P2SHP2WSH = 0x03, // likely unused, as indistinguishable from P2SH
+
   /** (bech32/segwit_v0) p2wpkh address, and `hashbytes` is the 20-byte hash160 of the witness script */
   P2WPKH = 0x04,
+
   /** (bech32/segwit_v0) p2wsh address, and `hashbytes` is the 32-byte sha256 of the witness script */
   P2WSH = 0x05,
+
   /** (bech32m/segwit_v1) p2tr address, and `hashbytes` is the 32-byte sha256 of the witness script */
   P2TR = 0x06,
 }
