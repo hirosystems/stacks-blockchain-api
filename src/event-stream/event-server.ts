@@ -65,6 +65,7 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
+import { PgStore } from 'src/datastore/pg-store';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -722,6 +723,25 @@ export async function startEventServer(opts: {
   );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
+
+  if (process.env.IBD_MODE_UNTIL_BLOCK) {
+    app.use(['/new_mempool_tx', '/drop_mempool_tx'], async (req, res, next) => {
+      if (
+        process.env.IBD_MODE_UNTIL_BLOCK &&
+        app.locals.chainTipHeight > Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
+      ) {
+        next();
+      }
+
+      try {
+        const chainTip = await db.getChainTip(db.sql);
+        app.locals.chainTipHeight = chainTip.blockHeight;
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  }
+
   app.get('/', (req, res) => {
     res
       .status(200)
