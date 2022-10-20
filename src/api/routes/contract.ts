@@ -20,7 +20,7 @@ export function createContractRouter(db: PgStore): express.Router {
       const trait_abi = parseTraitAbi(req, res, next);
       const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const smartContracts = await db.getSmartContractByTrait({
+      const smartContracts = await db.getSmartContractByTrait(db.sql, {
         trait: trait_abi,
         limit,
         offset,
@@ -41,7 +41,7 @@ export function createContractRouter(db: PgStore): express.Router {
     '/:contract_id',
     asyncHandler(async (req, res) => {
       const { contract_id } = req.params;
-      const contractQuery = await db.getSmartContract(contract_id);
+      const contractQuery = await db.getSmartContract(db.sql, contract_id);
       if (!contractQuery.found) {
         res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
         return;
@@ -60,7 +60,7 @@ export function createContractRouter(db: PgStore): express.Router {
       const { contract_id } = req.params;
       const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const eventsQuery = await db.getSmartContractEvents({
+      const eventsQuery = await db.getSmartContractEvents(db.sql, {
         contractId: contract_id,
         limit,
         offset,

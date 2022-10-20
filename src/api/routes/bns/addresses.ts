@@ -25,7 +25,7 @@ export function createBnsAddressesRouter(db: PgStore, chainId: ChainID): express
         return;
       }
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const namesByAddress = await db.getNamesByAddressList({
+      const namesByAddress = await db.getNamesByAddressList(db.sql, {
         address: address,
         includeUnanchored,
         chainId,

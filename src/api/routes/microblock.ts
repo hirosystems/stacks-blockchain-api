@@ -30,7 +30,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res) => {
       const limit = parseMicroblockQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const query = await getMicroblocksFromDataStore({ db, offset, limit });
+      const query = await getMicroblocksFromDataStore(db.sql, { db, offset, limit });
       const response: MicroblockListResponse = {
         limit,
         offset,
@@ -54,7 +54,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
 
       validateRequestHexInput(hash);
 
-      const block = await getMicroblockFromDataStore({ db, microblockHash: hash });
+      const block = await getMicroblockFromDataStore(db.sql, { db, microblockHash: hash });
       if (!block.found) {
         res.status(404).json({ error: `cannot find microblock by hash ${hash}` });
         return;
@@ -69,7 +69,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
     '/unanchored/txs',
     asyncHandler(async (req, res) => {
       // TODO: implement pagination for /unanchored/txs
-      const txs = await getUnanchoredTxsFromDataStore(db);
+      const txs = await getUnanchoredTxsFromDataStore(db.sql, db);
       const response: UnanchoredTransactionListResponse = {
         total: txs.length,
         results: txs,

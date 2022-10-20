@@ -401,7 +401,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        const mempoolStats = await this.getMempoolStats(sql, {});
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
@@ -659,7 +659,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        const mempoolStats = await this.getMempoolStats(sql, {});
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
@@ -1327,7 +1327,7 @@ export class PgWriteStore extends PgStore {
         }
       }
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
+        const mempoolStats = await this.getMempoolStats(sql, {});
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });

@@ -28,7 +28,7 @@ export function createStxSupplyRouter(db: PgStore): express.Router {
     unlockedStx: string;
     blockHeight: number;
   }> {
-    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply(args);
+    const { stx: unlockedSupply, blockHeight } = await db.getUnlockedStxSupply(db.sql, args);
     const totalMicroStx = new BigNumber(TOTAL_STACKS).shiftedBy(STACKS_DECIMAL_PLACES);
     const unlockedPercent = new BigNumber(unlockedSupply.toString())
       .div(totalMicroStx)

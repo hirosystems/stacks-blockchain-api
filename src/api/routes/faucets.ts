@@ -77,7 +77,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         // Guard condition: requests are limited to 5 times per 5 minutes.
         // Only based on address for now, but we're keeping the IP in case
         // we want to escalate and implement a per IP policy
-        const lastRequests = await db.getBTCFaucetRequests(address);
+        const lastRequests = await db.getBTCFaucetRequests(db.sql, address);
         const now = Date.now();
         const window = 5 * 60 * 1000; // 5 minutes
         const requestsInWindow = lastRequests.results
@@ -133,7 +133,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
       await stxFaucetRequestQueue.add(async () => {
         const address: string = req.query.address || req.body.address;
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-        const lastRequests = await db.getSTXFaucetRequests(address);
+        const lastRequests = await db.getSTXFaucetRequests(db.sql, address);
 
         const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 

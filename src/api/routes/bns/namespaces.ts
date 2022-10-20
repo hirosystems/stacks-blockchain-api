@@ -9,6 +9,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../../../api/controllers/cache-controller';
+import { sqlTransaction } from 'src/datastore/connection';
 
 export function createBnsNamespacesRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -19,7 +20,7 @@ export function createBnsNamespacesRouter(db: PgStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results } = await db.getNamespaceList({ includeUnanchored });
+      const { results } = await db.getNamespaceList(db.sql, { includeUnanchored });
       const response: BnsGetAllNamespacesResponse = {
         namespaces: results,
       };
@@ -36,22 +37,30 @@ export function createBnsNamespacesRouter(db: PgStore): express.Router {
       const { tld } = req.params;
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const response = await db.getNamespace({ namespace: tld, includeUnanchored });
-      if (!response.found) {
-        res.status(404).json(BnsErrors.NoSuchNamespace);
-      } else {
-        const { results } = await db.getNamespaceNamesList({
-          namespace: tld,
-          page,
-          includeUnanchored,
-        });
-        if (results.length === 0 && req.query.page) {
-          res.status(400).json(BnsErrors.InvalidPageNumber);
+      await sqlTransaction(db.sql, async sql => {
+        const response = await db.getNamespace(sql, { namespace: tld, includeUnanchored });
+        if (!response.found) {
+          throw BnsErrors.NoSuchNamespace;
         } else {
+          const { results } = await db.getNamespaceNamesList(sql, {
+            namespace: tld,
+            page,
+            includeUnanchored,
+          });
+          if (results.length === 0 && req.query.page) {
+            throw BnsErrors.InvalidPageNumber;
+          } else {
+            return results;
+          }
+        }
+      })
+        .then(results => {
           setETagCacheHeaders(res);
           res.json(results);
-        }
-      }
+        })
+        .catch(error => {
+          res.status(400).json(error);
+        });
     })
   );
 

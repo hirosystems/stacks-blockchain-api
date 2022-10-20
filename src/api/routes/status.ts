@@ -1,7 +1,5 @@
 import * as express from 'express';
-import * as fs from 'fs';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
-import { logger } from '../../helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { API_VERSION } from '../init';
@@ -15,7 +13,7 @@ export function createStatusRouter(db: PgStore): express.Router {
         server_version: `stacks-blockchain-api ${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`,
         status: 'ready',
       };
-      const chainTip = await db.getUnanchoredChainTip();
+      const chainTip = await db.getUnanchoredChainTip(db.sql);
       if (chainTip.found) {
         response.chain_tip = {
           block_height: chainTip.result.blockHeight,

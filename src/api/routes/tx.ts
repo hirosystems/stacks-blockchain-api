@@ -8,17 +8,7 @@ import {
   parseDbTx,
   parseDbEvent,
 } from '../controllers/db-controller';
-import {
-  waiter,
-  has0xPrefix,
-  logError,
-  isProdEnv,
-  isValidC32Address,
-  bufferToHexPrefixString,
-  isValidPrincipal,
-  hexToBuffer,
-  parseEventTypeStrings,
-} from '../../helpers';
+import { has0xPrefix, isProdEnv, isValidC32Address, isValidPrincipal } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
@@ -34,7 +24,6 @@ import {
   TransactionResults,
   MempoolTransactionListResponse,
   GetRawTransactionResult,
-  Transaction,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   ETagType,
@@ -88,7 +77,7 @@ export function createTxRouter(db: PgStore): express.Router {
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results: txResults, total } = await db.getTxList({
+      const { results: txResults, total } = await db.getTxList(db.sql, {
         offset,
         limit,
         txTypeFilter,
@@ -118,7 +107,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       txList.forEach(tx => validateRequestHexInput(tx));
-      const txQuery = await searchTxs(db, {
+      const txQuery = await searchTxs(db.sql, db, {
         txIds: txList,
         eventLimit,
         eventOffset,
@@ -180,7 +169,7 @@ export function createTxRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
-      const { results: txResults, total } = await db.getMempoolTxList({
+      const { results: txResults, total } = await db.getMempoolTxList(db.sql, {
         offset,
         limit,
         includeUnanchored,
@@ -202,7 +191,7 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res) => {
       const limit = parseTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results: txResults, total } = await db.getDroppedTxs({
+      const { results: txResults, total } = await db.getDroppedTxs(db.sql, {
         offset,
         limit,
       });
@@ -217,7 +206,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool/stats',
     mempoolCacheHandler,
     asyncHandler(async (req, res) => {
-      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
+      const queryResult = await db.getMempoolStats(db.sql, { lastBlockCount: undefined });
       setETagCacheHeaders(res, ETagType.mempool);
       res.json(queryResult);
     })
@@ -233,7 +222,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const principalOrTxId = parseAddressOrTxId(req, res, next);
       const eventTypeFilter = parseEventTypeFilter(req, res, next);
 
-      const { results } = await db.getTransactionEvents({
+      const { results } = await db.getTransactionEvents(db.sql, {
         addressOrTxId: principalOrTxId,
         eventTypeFilter,
         offset,
@@ -261,7 +250,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       validateRequestHexInput(tx_id);
 
-      const txQuery = await searchTx(db, {
+      const txQuery = await searchTx(db.sql, db, {
         txId: tx_id,
         eventLimit,
         eventOffset,
@@ -286,7 +275,7 @@ export function createTxRouter(db: PgStore): express.Router {
       }
       validateRequestHexInput(tx_id);
 
-      const rawTxQuery = await db.getRawTx(tx_id);
+      const rawTxQuery = await db.getRawTx(db.sql, tx_id);
 
       if (rawTxQuery.found) {
         const response: GetRawTransactionResult = {
@@ -308,7 +297,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       validateRequestHexInput(block_hash);
-      const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
+      const result = await db.getTxsFromBlock(db.sql, { hash: block_hash }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found by hash ${block_hash}` });
         return;
@@ -339,7 +328,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const height = getBlockHeightPathParam(req, res, next);
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-      const result = await db.getTxsFromBlock({ height: height }, limit, offset);
+      const result = await db.getTxsFromBlock(db.sql, { height: height }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found at height ${height}` });
         return;

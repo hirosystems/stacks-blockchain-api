@@ -149,7 +149,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
    */
   async function logTxBroadcast(response: string): Promise<void> {
     try {
-      const blockHeightQuery = await db.getCurrentBlockHeight();
+      const blockHeightQuery = await db.getCurrentBlockHeight(db.sql);
       if (!blockHeightQuery.found) {
         return;
       }

@@ -10,6 +10,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../../../api/controllers/cache-controller';
+import { sqlTransaction } from '../../../datastore/connection';
 
 export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -21,7 +22,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name, zoneFileHash } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const zonefile = await db.getHistoricalZoneFile({
+      const zonefile = await db.getHistoricalZoneFile(db.sql, {
         name: name,
         zoneFileHash: zoneFileHash,
         includeUnanchored,
@@ -41,7 +42,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      const subdomainsList = await db.getSubdomainsListInName(db.sql, { name, includeUnanchored });
       setETagCacheHeaders(res);
       res.json(subdomainsList.results);
     })
@@ -53,7 +54,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
+      const zonefile = await db.getLatestZoneFile(db.sql, { name: name, includeUnanchored });
       if (zonefile.found) {
         setETagCacheHeaders(res);
         res.json(zonefile.result);
@@ -69,7 +70,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const page = parsePagingQueryInput(req.query.page ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results } = await db.getNamesList({ page, includeUnanchored });
+      const { results } = await db.getNamesList(db.sql, { page, includeUnanchored });
       if (results.length === 0 && req.query.page) {
         res.status(400).json(BnsErrors.InvalidPageNumber);
       } else {
@@ -85,62 +86,65 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      let nameInfoResponse: BnsGetNameInfoResponse;
-      // Subdomain case
-      if (name.split('.').length == 3) {
-        const subdomainQuery = await db.getSubdomain({ subdomain: name, includeUnanchored });
-        if (!subdomainQuery.found) {
-          const namePart = name.split('.').slice(1).join('.');
-          const resolverResult = await db.getSubdomainResolver({ name: namePart });
-          if (resolverResult.found) {
-            if (resolverResult.result === '') {
-              res.status(404).json({ error: `missing resolver from a malformed zonefile` });
+      const response = await sqlTransaction(db.sql, async sql => {
+        let nameInfoResponse: BnsGetNameInfoResponse;
+        // Subdomain case
+        if (name.split('.').length == 3) {
+          const subdomainQuery = await db.getSubdomain(sql, { subdomain: name, includeUnanchored });
+          if (!subdomainQuery.found) {
+            const namePart = name.split('.').slice(1).join('.');
+            const resolverResult = await db.getSubdomainResolver(sql, { name: namePart });
+            if (resolverResult.found) {
+              if (resolverResult.result === '') {
+                res.status(404).json({ error: `missing resolver from a malformed zonefile` });
+                return;
+              }
+              res.redirect(`${resolverResult.result}/v1/names${req.url}`);
               return;
             }
-            res.redirect(`${resolverResult.result}/v1/names${req.url}`);
+            res.status(404).json({ error: `cannot find subdomain ${name}` });
             return;
           }
-          res.status(404).json({ error: `cannot find subdomain ${name}` });
-          return;
-        }
-        const { result } = subdomainQuery;
+          const { result } = subdomainQuery;
 
-        nameInfoResponse = {
-          address: result.owner,
-          blockchain: bnsBlockchain,
-          last_txid: result.tx_id,
-          resolver: result.resolver,
-          status: 'registered_subdomain',
-          zonefile: result.zonefile,
-          zonefile_hash: result.zonefile_hash,
-        };
-      } else {
-        const nameQuery = await db.getName({
-          name,
-          includeUnanchored: includeUnanchored,
-          chainId: chainId,
-        });
-        if (!nameQuery.found) {
-          res.status(404).json({ error: `cannot find name ${name}` });
-          return;
+          nameInfoResponse = {
+            address: result.owner,
+            blockchain: bnsBlockchain,
+            last_txid: result.tx_id,
+            resolver: result.resolver,
+            status: 'registered_subdomain',
+            zonefile: result.zonefile,
+            zonefile_hash: result.zonefile_hash,
+          };
+        } else {
+          const nameQuery = await db.getName(sql, {
+            name,
+            includeUnanchored: includeUnanchored,
+            chainId: chainId,
+          });
+          if (!nameQuery.found) {
+            res.status(404).json({ error: `cannot find name ${name}` });
+            return;
+          }
+          const { result } = nameQuery;
+          nameInfoResponse = {
+            address: result.address,
+            blockchain: bnsBlockchain,
+            expire_block: result.expire_block,
+            grace_period: result.grace_period,
+            last_txid: result.tx_id ? result.tx_id : '',
+            resolver: result.resolver,
+            status: result.status ? result.status : '',
+            zonefile: result.zonefile,
+            zonefile_hash: result.zonefile_hash,
+          };
         }
-        const { result } = nameQuery;
-        nameInfoResponse = {
-          address: result.address,
-          blockchain: bnsBlockchain,
-          expire_block: result.expire_block,
-          grace_period: result.grace_period,
-          last_txid: result.tx_id ? result.tx_id : '',
-          resolver: result.resolver,
-          status: result.status ? result.status : '',
-          zonefile: result.zonefile,
-          zonefile_hash: result.zonefile_hash,
-        };
-      }
 
-      const response = Object.fromEntries(
-        Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
-      );
+        const response = Object.fromEntries(
+          Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
+        );
+        return response;
+      });
       setETagCacheHeaders(res);
       res.json(response);
     })

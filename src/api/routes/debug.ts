@@ -437,7 +437,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (Number.isInteger(Number.parseInt(nonce))) {
         txNonce = Number.parseInt(nonce);
       } else {
-        const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
+        const latestNonces = await db.getAddressNonces(db.sql, { stxAddress: senderAddress });
         txNonce = latestNonces.possibleNextNonce;
       }
 
@@ -750,7 +750,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     '/broadcast/contract-call/:contract_id',
     asyncHandler(async (req, res) => {
       const { contract_id } = req.params;
-      const dbContractQuery = await db.getSmartContract(contract_id);
+      const dbContractQuery = await db.getSmartContract(db.sql, contract_id);
       if (!dbContractQuery.found) {
         res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
         return;
@@ -800,7 +800,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     '/broadcast/contract-call/:contract_id',
     asyncHandler(async (req, res) => {
       const contractId: string = req.params['contract_id'];
-      const dbContractQuery = await db.getSmartContract(contractId);
+      const dbContractQuery = await db.getSmartContract(db.sql, contractId);
       if (!dbContractQuery.found) {
         res.status(404).json({ error: `could not find contract by ID ${contractId}` });
         return;
