@@ -4,6 +4,11 @@ import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
 import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
+import {
+  generateRandomP2TRAccount,
+  p2trAddressFromPrivateKey,
+  p2trAddressFromPublicKey,
+} from '../ec-helpers';
 
 test('get git tag', () => {
   const tag = getCurrentGitTag();
@@ -186,4 +191,39 @@ test('PoX bitcoin address encoding', () => {
     const encoded = poxHelpers.poxAddressToBtcAddress(decoded.version, decoded.data, v[1]);
     expect(encoded).toBe(addr);
   }
+});
+
+test('P2TR bitcoin address encoding', () => {
+  // Test vectors from
+  // https://github.com/bitcoin/bitcoin/blob/master/src/test/data/bip341_wallet_vectors.json
+  // https://github.com/chaintope/bitcoinrb/blob/c6d2cf564f069e37301b7ba5cd2ff8a25b94dbfe/spec/bitcoin/taproot/simple_builder_spec.rb#L31
+  const P2TR_TEST_VECTORS = [
+    {
+      privateKey: null,
+      publicKey: 'd6889cb081036e0faefa3a35157ad71086b123b2b144b649798b494c300a961d',
+      address: 'bc1p2wsldez5mud2yam29q22wgfh9439spgduvct83k3pm50fcxa5dps59h4z5',
+    },
+    {
+      privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
+      publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
+      address: 'bc1pmfr3p9j00pfxjh0zmgp99y8zftmd3s5pmedqhyptwy6lm87hf5sspknck9',
+    },
+  ] as const;
+
+  for (const vector of P2TR_TEST_VECTORS) {
+    const pubKeyBuff = Buffer.from(vector.publicKey, 'hex');
+    const p2trAddrFromPub = p2trAddressFromPublicKey(pubKeyBuff, 'mainnet');
+    expect(p2trAddrFromPub).toBe(vector.address);
+    if (vector.privateKey) {
+      const privKeyBuff = Buffer.from(vector.privateKey, 'hex');
+      const p2trAddrFromPriv = p2trAddressFromPrivateKey(privKeyBuff, 'mainnet');
+      expect(p2trAddrFromPriv).toBe(vector.address);
+    }
+  }
+
+  const randP2TRMainnet = generateRandomP2TRAccount('mainnet');
+  expect(randP2TRMainnet.address).toMatch(/^bc1p/);
+
+  const randP2TRTestnet = generateRandomP2TRAccount('testnet');
+  expect(randP2TRTestnet.address).toMatch(/^tb1p/);
 });
