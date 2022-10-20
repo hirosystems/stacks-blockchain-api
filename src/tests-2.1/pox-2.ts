@@ -8,16 +8,18 @@ import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
 import * as poxHelpers from '../pox-helpers';
+import { parsePort } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
-import { ECPair } from '../ec-helpers';
+import { ECPair, getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
+import { RPCClient } from 'rpc-bitcoin';
 
 describe('PoX-2 tests', () => {
   let db: PgWriteStore;
@@ -31,13 +33,32 @@ describe('PoX-2 tests', () => {
     await Promise.resolve();
   });
 
-  function standByForTx(expectedTxId: string): Promise<DbTx> {
+  function getRpcClient(): RPCClient {
+    const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
+    if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
+      throw new Error('Bitcoin JSON-RPC env vars not fully configured.');
+    }
+    const client = new RPCClient({
+      url: BTC_RPC_HOST,
+      port: parsePort(BTC_RPC_PORT),
+      user: BTC_RPC_USER,
+      pass: BTC_RPC_PW,
+      timeout: 120000,
+    });
+    return client;
+  }
+
+  async function standByForTx(expectedTxId: string): Promise<DbTx> {
+    const dbTxQuery = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
+    if (dbTxQuery.found) {
+      return dbTxQuery.result;
+    }
     return new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
-        if (txId !== expectedTxId) {
-          return;
-        }
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
+        const dbTxQuery = await api.datastore.getTx({
+          txId: expectedTxId,
+          includeUnanchored: false,
+        });
         if (!dbTxQuery.found) {
           return;
         }
@@ -110,9 +131,11 @@ describe('PoX-2 tests', () => {
     return result.body as TRes;
   }
 
-  describe('PoX-2 - Stacking operations', () => {
+  describe('PoX-2 - Stacking operations (P2WPKH) segwit', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
+    let btcRegtestAddr: string;
+    let btcPubKey: string;
     let decodedBtcAddr: { version: number; data: Buffer };
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
@@ -121,17 +144,26 @@ describe('PoX-2 tests', () => {
     let contractName: string;
     let ustxAmount: bigint;
     const cycleCount = 1;
+    const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
+    let rpcClient: RPCClient;
 
     beforeAll(async () => {
-      const btcAccount = ECPair.makeRandom({
-        compressed: true,
-        network: btcLib.networks.testnet,
+      btcAddr = getBitcoinAddressFromKey({
+        privateKey: btcPrivateKey,
+        network: 'testnet',
+        addressFormat: 'p2wpkh',
       });
-      btcAddr = btcLib.payments.p2pkh({
-        pubkey: btcAccount.publicKey,
-        network: btcLib.networks.testnet,
-      }).address!;
+      expect(btcAddr).toBe('tb1qq6hag67dl53wl99vzg42z8eyzfz2xlkvvlryfj');
+      btcPubKey = privateToPublicKey(btcPrivateKey).toString('hex');
+      expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
+
       decodedBtcAddr = poxHelpers.decodeBtcAddress(btcAddr);
+      expect({
+        data: decodedBtcAddr.data.toString('hex'),
+        version: decodedBtcAddr.version,
+      }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
+
+      rpcClient = getRpcClient();
 
       poxInfo = await client.getPox();
       burnBlockHeight = poxInfo.current_burnchain_block_height as number;
@@ -160,7 +192,7 @@ describe('PoX-2 tests', () => {
           uintCV(cycleCount),
         ],
         network: stacksNetwork,
-        anchorMode: AnchorMode.Any,
+        anchorMode: AnchorMode.OnChainOnly,
         fee: 10000,
         validateWithAbi: false,
       });
@@ -173,7 +205,7 @@ describe('PoX-2 tests', () => {
       const dbTx1 = await txStandby1;
       expect(dbTx1.status).toBe(DbTxStatus.Success);
       const tx1Events = await api.datastore.getTxEvents({
-        txId: dbTx1.tx_id,
+        txId: expectedTxId1,
         indexBlockHash: dbTx1.index_block_hash,
         limit: 99999,
         offset: 0,
@@ -214,7 +246,7 @@ describe('PoX-2 tests', () => {
         functionName: 'stack-increase',
         functionArgs: [uintCV(stackIncreaseAmount)],
         network: stacksNetwork,
-        anchorMode: AnchorMode.Any,
+        anchorMode: AnchorMode.OnChainOnly,
         fee: 10000,
         validateWithAbi: false,
       });
@@ -274,7 +306,7 @@ describe('PoX-2 tests', () => {
           }),
         ],
         network: stacksNetwork,
-        anchorMode: AnchorMode.Any,
+        anchorMode: AnchorMode.OnChainOnly,
         fee: 10000,
         validateWithAbi: false,
       });

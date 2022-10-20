@@ -222,3 +222,8 @@ export function getBitcoinAddressFromKey(
   }
   throw new Error(`Unexpected address format: ${args.addressFormat}`);
 }
+
+export function privateToPublicKey(privateKey: string | Buffer): Buffer {
+  const ecPair = ecPairFromKeyInputArgs({ privateKey, network: 'mainnet' });
+  return ecPair.publicKey;
+}
