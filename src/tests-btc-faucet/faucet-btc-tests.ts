@@ -1,5 +1,6 @@
 import * as supertest from 'supertest';
 import * as bitcoin from 'bitcoinjs-lib';
+import { ECPair } from '../ec-helpers';
 import {
   makeBtcFaucetPayment,
   getRpcClient,
@@ -39,12 +40,12 @@ describe('btc faucet', () => {
     const faucetBalanceInitial = await getBtcBalance(regtest, wallet.address);
 
     const btcToSend1 = 0.5;
-    const recipientAddress = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+    const recipientAddress = getKeyAddress(ECPair.makeRandom({ network: regtest }));
     const paymentResult = await makeBtcFaucetPayment(regtest, recipientAddress, btcToSend1);
     expect(paymentResult.txId).toBeTruthy();
 
     await client.generatetoaddress({
-      address: getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest })),
+      address: getKeyAddress(ECPair.makeRandom({ network: regtest })),
       nblocks: 100,
     });
     const faucetBalanceFinal = await getBtcBalance(regtest, wallet.address);
@@ -64,17 +65,17 @@ describe('btc faucet', () => {
     await client.generatetoaddress({ address: wallet.address, nblocks: 110 });
 
     const btcToSend1 = 55.2;
-    const recipientAddress1 = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+    const recipientAddress1 = getKeyAddress(ECPair.makeRandom({ network: regtest }));
     const paymentResult1 = await makeBtcFaucetPayment(regtest, recipientAddress1, btcToSend1);
     expect(paymentResult1.txId).toBeTruthy();
 
     const btcToSend2 = 60.5;
-    const recipientAddress2 = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+    const recipientAddress2 = getKeyAddress(ECPair.makeRandom({ network: regtest }));
     const paymentResult2 = await makeBtcFaucetPayment(regtest, recipientAddress2, btcToSend2);
     expect(paymentResult2.txId).toBeTruthy();
 
     const btcToSend3 = 0.5;
-    const recipientAddress3 = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+    const recipientAddress3 = getKeyAddress(ECPair.makeRandom({ network: regtest }));
     const paymentResult3 = await makeBtcFaucetPayment(regtest, recipientAddress3, btcToSend3);
     expect(paymentResult3.txId).toBeTruthy();
 
@@ -123,7 +124,7 @@ describe('btc faucet', () => {
     });
 
     test('faucet http receive endpoint', async () => {
-      const addr = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
       const response = await supertest(apiServer.server).post(
         `/extended/v1/faucets/btc?address=${addr}`
       );
@@ -134,13 +135,13 @@ describe('btc faucet', () => {
     });
 
     test('faucet http balance endpoint', async () => {
-      const addr = getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest }));
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
       const response = await supertest(apiServer.server).post(
         `/extended/v1/faucets/btc?address=${addr}`
       );
       expect(response.status).toBe(200);
       await getRpcClient().generatetoaddress({
-        address: getKeyAddress(bitcoin.ECPair.makeRandom({ network: regtest })),
+        address: getKeyAddress(ECPair.makeRandom({ network: regtest })),
         nblocks: 1,
       });
       const balanceResponse = await supertest(apiServer.server).get(
