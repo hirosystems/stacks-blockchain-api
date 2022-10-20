@@ -2,7 +2,24 @@ import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../hel
 import * as postgres from 'postgres';
 import { isPgConnectionError } from './helpers';
 
-export type PgSqlClient = postgres.Sql<any>;
+export type PgSqlClient = postgres.Sql<any> | postgres.TransactionSql<any>;
+
+type UnwrapPromiseArray<T> = T extends any[]
+  ? {
+      [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k];
+    }
+  : T;
+export async function sqlTransaction<T>(
+  sql: PgSqlClient,
+  callback: (sql: postgres.TransactionSql) => T | Promise<T>,
+  readOnly = true
+): Promise<UnwrapPromiseArray<T>> {
+  if ('savepoint' in sql) {
+    return sql.savepoint(callback);
+  } else {
+    return sql.begin(readOnly ? 'READ ONLY' : 'READ WRITE', callback);
+  }
+}
 
 /**
  * The postgres server being used for a particular connection, transaction or query.

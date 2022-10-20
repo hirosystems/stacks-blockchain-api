@@ -265,8 +265,12 @@ describe('postgres datastore', () => {
           skipMigrations: true,
         });
         try {
-          const name = await testDb.getConnectionApplicationName();
-          expect(name).toStrictEqual('test-app-name:test-usage-name;datastore-crud');
+          const result = await testDb.sql<{ application_name: string }[]>`
+            SELECT application_name FROM pg_stat_activity WHERE pid = pg_backend_pid()
+          `;
+          expect(result[0].application_name).toStrictEqual(
+            'test-app-name:test-usage-name;datastore-crud'
+          );
         } finally {
           await testDb.close();
         }
