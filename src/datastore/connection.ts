@@ -9,6 +9,17 @@ type UnwrapPromiseArray<T> = T extends any[]
       [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k];
     }
   : T;
+
+/**
+ * Start a SQL transaction using a specific sql client. If this client was already scoped inside a
+ * `BEGIN` transaction, a `SAVEPOINT` will be used. This flexibility allows us to avoid repeating
+ * code while making sure we don't arrive at SQL errors such as
+ * `WARNING: there is already a transaction in progress` which may cause result inconsistencies.
+ * @param sql - SQL client
+ * @param callback - Callback with a scoped SQL client
+ * @param readOnly - If a `BEGIN` transaction should be marked as `READ ONLY`
+ * @returns Transaction results
+ */
 export async function sqlTransaction<T>(
   sql: PgSqlClient,
   callback: (sql: postgres.TransactionSql) => T | Promise<T>,
@@ -17,7 +28,7 @@ export async function sqlTransaction<T>(
   if ('savepoint' in sql) {
     return sql.savepoint(callback);
   } else {
-    return sql.begin(readOnly ? 'READ ONLY' : 'READ WRITE', callback);
+    return sql.begin(readOnly ? 'READ ONLY' : '', callback);
   }
 }
 

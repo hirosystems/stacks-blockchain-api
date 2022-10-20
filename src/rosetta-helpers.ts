@@ -76,6 +76,7 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
+import { PgSqlClient, sqlTransaction } from './datastore/connection';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -122,49 +123,52 @@ export function parseTransactionMemo(tx: BaseTx): string | null {
 }
 
 export async function getOperations(
+  sql: PgSqlClient,
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
   minerRewards?: DbMinerReward[],
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
-  const operations: RosettaOperation[] = [];
-  const txType = getTxTypeString(tx.type_id);
-  switch (txType) {
-    case 'token_transfer':
-      operations.push(makeFeeOperation(tx));
-      operations.push(makeSenderOperation(tx, operations.length));
-      operations.push(makeReceiverOperation(tx, operations.length));
-      break;
-    case 'contract_call':
-      operations.push(makeFeeOperation(tx));
-      operations.push(await makeCallContractOperation(tx, db, operations.length));
-      break;
-    case 'smart_contract':
-      operations.push(makeFeeOperation(tx));
-      operations.push(makeDeployContractOperation(tx, operations.length));
-      break;
-    case 'coinbase':
-      operations.push(makeCoinbaseOperation(tx, 0));
-      if (minerRewards !== undefined) {
-        getMinerOperations(minerRewards, operations);
-      }
-      if (stxUnlockEvents && stxUnlockEvents?.length > 0) {
-        processUnlockingEvents(stxUnlockEvents, operations);
-      }
-      break;
-    case 'poison_microblock':
-      operations.push(makePoisonMicroblockOperation(tx, 0));
-      break;
-    default:
-      throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
-  }
+  return await sqlTransaction(sql, async sql => {
+    const operations: RosettaOperation[] = [];
+    const txType = getTxTypeString(tx.type_id);
+    switch (txType) {
+      case 'token_transfer':
+        operations.push(makeFeeOperation(tx));
+        operations.push(makeSenderOperation(tx, operations.length));
+        operations.push(makeReceiverOperation(tx, operations.length));
+        break;
+      case 'contract_call':
+        operations.push(makeFeeOperation(tx));
+        operations.push(await makeCallContractOperation(sql, tx, db, operations.length));
+        break;
+      case 'smart_contract':
+        operations.push(makeFeeOperation(tx));
+        operations.push(makeDeployContractOperation(tx, operations.length));
+        break;
+      case 'coinbase':
+        operations.push(makeCoinbaseOperation(tx, 0));
+        if (minerRewards !== undefined) {
+          getMinerOperations(minerRewards, operations);
+        }
+        if (stxUnlockEvents && stxUnlockEvents?.length > 0) {
+          processUnlockingEvents(stxUnlockEvents, operations);
+        }
+        break;
+      case 'poison_microblock':
+        operations.push(makePoisonMicroblockOperation(tx, 0));
+        break;
+      default:
+        throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
+    }
 
-  if (events !== undefined) {
-    await processEvents(db, events, tx, operations);
-  }
+    if (events !== undefined) {
+      await processEvents(sql, db, events, tx, operations);
+    }
 
-  return operations;
+    return operations;
+  });
 }
 
 function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
@@ -174,6 +178,7 @@ function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOpe
 }
 
 async function processEvents(
+  sql: PgSqlClient,
   db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
@@ -225,7 +230,7 @@ async function processEvents(
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
-        const ftMetadata = await getValidatedFtMetadata(db, event.asset_identifier);
+        const ftMetadata = await getValidatedFtMetadata(sql, db, event.asset_identifier);
         if (!ftMetadata) {
           break;
         }
@@ -577,6 +582,7 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
 }
 
 async function makeCallContractOperation(
+  sql: PgSqlClient,
   tx: BaseTx,
   db: PgStore,
   index: number
@@ -590,7 +596,7 @@ async function makeCallContractOperation(
     },
   };
 
-  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: false });
+  const parsed_tx = await getTxFromDataStore(sql, db, { txId: tx.tx_id, includeUnanchored: false });
   if (!parsed_tx.found) {
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
@@ -1032,6 +1038,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 }
 
 export async function getValidatedFtMetadata(
+  sql: PgSqlClient,
   db: PgStore,
   assetIdentifier: string
 ): Promise<DbFungibleTokenMetadata | undefined> {
@@ -1039,7 +1046,7 @@ export async function getValidatedFtMetadata(
     return;
   }
   const tokenContractId = assetIdentifier.split('::')[0];
-  const ftMetadata = await db.getFtMetadata(tokenContractId);
+  const ftMetadata = await db.getFtMetadata(sql, tokenContractId);
   if (!ftMetadata.found) {
     if (tokenMetadataErrorMode() === TokenMetadataErrorMode.warning) {
       logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
