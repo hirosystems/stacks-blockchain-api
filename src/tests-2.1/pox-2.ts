@@ -8,7 +8,7 @@ import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
 import * as poxHelpers from '../pox-helpers';
-import { parsePort } from '../helpers';
+import { hexToBuffer, parsePort } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
@@ -20,6 +20,7 @@ import {
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
 import { RPCClient } from 'rpc-bitcoin';
+import bignumber from 'bignumber.js';
 
 describe('PoX-2 tests', () => {
   let db: PgWriteStore;
@@ -404,6 +405,31 @@ describe('PoX-2 tests', () => {
       );
       expect(rewardsTotal.reward_recipient).toBe(btcAddr);
       expect(Number(rewardsTotal.reward_amount)).toBeGreaterThan(0);
+    });
+
+    test('stacking rewards - BTC JSON-RPC', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+      const blockResult: {
+        tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+      } = await rpcClient.getblock({
+        blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
+        verbosity: 2,
+      });
+      const vout = blockResult.tx
+        .flatMap(t => t.vout)
+        .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAddr) && t.value);
+      if (!vout || !vout.value) {
+        throw new Error(
+          `Could not find bitcoin vout for ${btcRegtestAddr} in block ${firstReward.burn_block_hash}`
+        );
+      }
+      const sats = new bignumber(vout.value).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
     });
 
     test('stx unlocked - RPC balance endpoint', async () => {
