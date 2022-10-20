@@ -25,7 +25,7 @@ import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-contr
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPostgres, PgSqlClient } from '../datastore/connection';
+import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
@@ -206,6 +206,45 @@ describe('postgres datastore', () => {
         expect(sql.options.pass).toBe('pg_password_password1');
         expect(sql.options.host).toStrictEqual(['pg_host_host1']);
         expect(sql.options.port).toStrictEqual([9876]);
+        expect(sql.options.ssl).toBe(true);
+        expect(sql.options.max_lifetime).toBe(5);
+        expect(sql.options.idle_timeout).toBe(1);
+        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
+        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
+      }
+    );
+  });
+
+  test('postgres primary env var config fallback', () => {
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: undefined,
+        PG_DATABASE: 'pg_db_db1',
+        PG_USER: 'pg_user_user1',
+        PG_PASSWORD: 'pg_password_password1',
+        PG_HOST: 'pg_host_host1',
+        PG_PORT: '9876',
+        PG_SSL: 'true',
+        PG_SCHEMA: 'pg_schema_schema1',
+        PG_APPLICATION_NAME: 'test-env-vars',
+        PG_MAX_LIFETIME: '5',
+        PG_IDLE_TIMEOUT: '1',
+        // Primary values:
+        PG_PRIMARY_DATABASE: 'primary_db',
+        PG_PRIMARY_USER: 'primary_user',
+        PG_PRIMARY_PASSWORD: 'primary_password',
+        PG_PRIMARY_HOST: 'primary_host',
+        PG_PRIMARY_PORT: '9999',
+      },
+      () => {
+        const sql = getPostgres({ usageName: 'tests', pgServer: PgServer.primary });
+        // Primary values take precedence.
+        expect(sql.options.database).toBe('primary_db');
+        expect(sql.options.user).toBe('primary_user');
+        expect(sql.options.pass).toBe('primary_password');
+        expect(sql.options.host).toStrictEqual(['primary_host']);
+        expect(sql.options.port).toStrictEqual([9999]);
+        // Other values come from defaults.
         expect(sql.options.ssl).toBe(true);
         expect(sql.options.max_lifetime).toBe(5);
         expect(sql.options.idle_timeout).toBe(1);

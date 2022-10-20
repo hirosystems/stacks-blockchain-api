@@ -115,6 +115,20 @@ export async function connectPostgres({
   return sql;
 }
 
+/**
+ * Retrieve a postgres ENV value depending on the target database server (read-replica/default or
+ * primary). We will fall back to read-replica values if a primary value was not given. See the
+ * `.env` file for more information on these options.
+ */
+export function getPgConnectionEnvValue(
+  name: string,
+  pgServer: PgServer = PgServer.default
+): string | undefined {
+  return pgServer === PgServer.primary
+    ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
+    : process.env[`PG_${name}`];
+}
+
 export function getPostgres({
   usageName,
   pgServer,
@@ -122,28 +136,21 @@ export function getPostgres({
   usageName: string;
   pgServer?: PgServer;
 }): PgSqlClient {
-  // Retrieve a postgres ENV value depending on the target database server (read-replica/default or primary).
-  // We will fall back to read-replica values if a primary value was not given.
-  // See the `.env` file for more information on these options.
-  const pgEnvValue = (name: string): string | undefined =>
-    pgServer === PgServer.primary
-      ? process.env[`PG_PRIMARY_${name}`] ?? process.env[`PG_${name}`]
-      : process.env[`PG_${name}`];
   const pgEnvVars = {
-    database: pgEnvValue('DATABASE'),
-    user: pgEnvValue('USER'),
-    password: pgEnvValue('PASSWORD'),
-    host: pgEnvValue('HOST'),
-    port: pgEnvValue('PORT'),
-    ssl: pgEnvValue('SSL'),
-    schema: pgEnvValue('SCHEMA'),
-    applicationName: pgEnvValue('APPLICATION_NAME'),
-    idleTimeout: parseInt(pgEnvValue('IDLE_TIMEOUT') ?? '30'),
-    maxLifetime: parseInt(pgEnvValue('MAX_LIFETIME') ?? '60'),
+    database: getPgConnectionEnvValue('DATABASE', pgServer),
+    user: getPgConnectionEnvValue('USER', pgServer),
+    password: getPgConnectionEnvValue('PASSWORD', pgServer),
+    host: getPgConnectionEnvValue('HOST', pgServer),
+    port: getPgConnectionEnvValue('PORT', pgServer),
+    ssl: getPgConnectionEnvValue('SSL', pgServer),
+    schema: getPgConnectionEnvValue('SCHEMA', pgServer),
+    applicationName: getPgConnectionEnvValue('APPLICATION_NAME', pgServer),
+    idleTimeout: parseInt(getPgConnectionEnvValue('IDLE_TIMEOUT', pgServer) ?? '30'),
+    maxLifetime: parseInt(getPgConnectionEnvValue('MAX_LIFETIME', pgServer) ?? '60'),
     poolMax: parseInt(process.env['PG_CONNECTION_POOL_MAX'] ?? '10'),
   };
   const defaultAppName = 'stacks-blockchain-api';
-  const pgConnectionUri = pgEnvValue('CONNECTION_URI');
+  const pgConnectionUri = getPgConnectionEnvValue('CONNECTION_URI', pgServer);
   const pgConfigEnvVar = Object.entries(pgEnvVars).find(([, v]) => typeof v === 'string')?.[0];
   if (pgConfigEnvVar && pgConnectionUri) {
     throw new Error(
