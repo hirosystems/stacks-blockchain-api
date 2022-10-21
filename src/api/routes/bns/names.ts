@@ -12,6 +12,14 @@ import {
 } from '../../../api/controllers/cache-controller';
 import { sqlTransaction } from '../../../datastore/connection';
 
+class NameRedirectError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.message = message;
+    this.name = this.constructor.name;
+  }
+}
+
 export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
@@ -86,7 +94,8 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const response = await sqlTransaction(db.sql, async sql => {
+
+      await sqlTransaction(db.sql, async sql => {
         let nameInfoResponse: BnsGetNameInfoResponse;
         // Subdomain case
         if (name.split('.').length == 3) {
@@ -96,14 +105,11 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
             const resolverResult = await db.getSubdomainResolver(sql, { name: namePart });
             if (resolverResult.found) {
               if (resolverResult.result === '') {
-                res.status(404).json({ error: `missing resolver from a malformed zonefile` });
-                return;
+                throw { error: `missing resolver from a malformed zonefile` };
               }
-              res.redirect(`${resolverResult.result}/v1/names${req.url}`);
-              return;
+              throw new NameRedirectError(`${resolverResult.result}/v1/names${req.url}`);
             }
-            res.status(404).json({ error: `cannot find subdomain ${name}` });
-            return;
+            throw { error: `cannot find subdomain ${name}` };
           }
           const { result } = subdomainQuery;
 
@@ -123,8 +129,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
             chainId: chainId,
           });
           if (!nameQuery.found) {
-            res.status(404).json({ error: `cannot find name ${name}` });
-            return;
+            throw { error: `cannot find name ${name}` };
           }
           const { result } = nameQuery;
           nameInfoResponse = {
@@ -144,9 +149,18 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
           Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
         );
         return response;
-      });
-      setETagCacheHeaders(res);
-      res.json(response);
+      })
+        .then(response => {
+          setETagCacheHeaders(res);
+          res.json(response);
+        })
+        .catch(error => {
+          if (error instanceof NameRedirectError) {
+            res.redirect(error.message);
+          } else {
+            res.status(400).json(error);
+          }
+        });
     })
   );
 
