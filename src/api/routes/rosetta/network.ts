@@ -22,7 +22,7 @@ import {
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 import { PgStore } from '../../../datastore/pg-store';
-import { sqlTransaction } from 'src/datastore/connection';
+import { sqlTransaction } from '../../../datastore/connection';
 
 export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

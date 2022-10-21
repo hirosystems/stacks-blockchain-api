@@ -9,7 +9,7 @@ import {
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../../../api/controllers/cache-controller';
-import { sqlTransaction } from 'src/datastore/connection';
+import { sqlTransaction } from '../../../datastore/connection';
 
 export function createBnsNamespacesRouter(db: PgStore): express.Router {
   const router = express.Router();

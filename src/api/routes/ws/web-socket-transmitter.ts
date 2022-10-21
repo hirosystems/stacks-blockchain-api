@@ -13,7 +13,7 @@ import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
 import { logger } from '../../../helpers';
-import { sqlTransaction } from 'src/datastore/connection';
+import { sqlTransaction } from '../../../datastore/connection';
 
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal

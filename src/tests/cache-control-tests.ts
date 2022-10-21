@@ -145,7 +145,7 @@ describe('cache-control tests', () => {
       ],
     });
 
-    const blockQuery = await getBlockFromDataStore({
+    const blockQuery = await getBlockFromDataStore(db.sql, {
       blockIdentifer: { hash: block1.block_hash },
       db,
     });
@@ -290,7 +290,7 @@ describe('cache-control tests', () => {
       ],
     });
 
-    const chainTip2 = await db.getUnanchoredChainTip();
+    const chainTip2 = await db.getUnanchoredChainTip(db.sql);
     expect(chainTip2.found).toBeTruthy();
     expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
     expect(chainTip2.result?.blockHeight).toBe(block1.block_height);

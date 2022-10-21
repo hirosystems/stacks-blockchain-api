@@ -116,7 +116,7 @@ describe('block tests', () => {
     };
     await db.updateTx(client, tx);
 
-    const blockQuery = await getBlockFromDataStore({
+    const blockQuery = await getBlockFromDataStore(db.sql, {
       blockIdentifer: { hash: block.block_hash },
       db,
     });

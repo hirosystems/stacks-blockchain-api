@@ -70,7 +70,7 @@ describe('Rosetta API', () => {
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>(resolve => {
       const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        const dbTxQuery = await api.datastore.getTx(db.sql, { txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
           return;
         }
@@ -1992,9 +1992,9 @@ describe('Rosetta API', () => {
     const stxLockedTransaction = await standByForTx(submitResult.body.transaction_identifier.hash);
 
     const blockHeight = stxLockedTransaction.block_height;
-    let block = await api.datastore.getBlock({ height: blockHeight });
+    let block = await api.datastore.getBlock(db.sql, { height: blockHeight });
     assert(block.found);
-    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    const txs = await api.datastore.getBlockTxsRows(db.sql, block.result.block_hash);
     assert(txs.found);
 
     const blockStxOpsQuery = await supertest(api.address)
@@ -2061,7 +2061,7 @@ describe('Rosetta API', () => {
     let current_burn_block_height = block.result.burn_block_height;
     //wait for the unlock block height
     while(current_burn_block_height < stxUnlockHeight){
-      block = await db.getCurrentBlock();
+      block = await db.getCurrentBlock(db.sql);
       assert(block.found);
       current_burn_block_height =  block.result?.burn_block_height;
       await timeout(100);
@@ -2449,9 +2449,9 @@ describe('Rosetta API', () => {
     const delegateStx = await standByForTx(submitResult.body.transaction_identifier.hash);
 
     const blockHeight = delegateStx.block_height;
-    let block = await api.datastore.getBlock({ height: blockHeight });
+    let block = await api.datastore.getBlock(db.sql, { height: blockHeight });
     assert(block.found);
-    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    const txs = await api.datastore.getBlockTxsRows(db.sql, block.result.block_hash);
     assert(txs.found);
 
     const blockStxOpsQuery = await supertest(api.address)

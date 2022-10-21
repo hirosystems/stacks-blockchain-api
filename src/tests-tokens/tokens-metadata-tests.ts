@@ -39,7 +39,10 @@ describe('api tests', () => {
   function standByForTx(expectedTxId: string): Promise<DbTx> {
     const broadcastTx = new Promise<DbTx>((resolve, reject) => {
       const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
+        const dbTxQuery = await api.datastore.getTx(db.sql, {
+          txId: txId,
+          includeUnanchored: true,
+        });
         if (!dbTxQuery.found) {
           return;
         }
@@ -167,7 +170,7 @@ describe('api tests', () => {
   test('failed processing is retried in next block', async () => {
     const entryProcessedWaiter: Waiter<string> = waiter();
     const blockHandler = async (blockHash: string) => {
-      const entry = await db.getTokenMetadataQueueEntry(1);
+      const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
       if (entry.result?.processed) {
         entryProcessedWaiter.finish(blockHash);
       }

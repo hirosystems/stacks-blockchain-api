@@ -55,7 +55,7 @@ describe('mempool tests', () => {
       }
 
       // Make sure we only have mempool txs for block_height >= 3
-      const mempoolTxResult = await db.getMempoolTxList({
+      const mempoolTxResult = await db.getMempoolTxList(db.sql, {
         limit: 10,
         offset: 0,
         includeUnanchored: false,

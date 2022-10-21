@@ -383,7 +383,7 @@ describe('microblock tests', () => {
           ],
         });
 
-        const chainTip1 = await db.getUnanchoredChainTip();
+        const chainTip1 = await db.getUnanchoredChainTip(db.sql);
         expect(chainTip1.found).toBeTruthy();
         expect(chainTip1.result?.blockHash).toBe(block1.block_hash);
         expect(chainTip1.result?.blockHeight).toBe(block1.block_height);
@@ -541,7 +541,7 @@ describe('microblock tests', () => {
           ],
         });
 
-        const chainTip2 = await db.getUnanchoredChainTip();
+        const chainTip2 = await db.getUnanchoredChainTip(db.sql);
         expect(chainTip2.found).toBeTruthy();
         expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
         expect(chainTip2.result?.blockHeight).toBe(block1.block_height);

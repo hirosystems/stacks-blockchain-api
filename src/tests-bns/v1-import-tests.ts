@@ -156,7 +156,7 @@ describe('BNS V1 import', () => {
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
     });
 
-    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
+    const dbquery = await db.getSubdomain(db.sql, { subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
     assert(dbquery.found)
     if (dbquery.result){
     expect(dbquery.result.name).toBe('id.blockstack');}

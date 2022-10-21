@@ -119,10 +119,10 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const namespaces = await db.getNamespaceList({ includeUnanchored: true });
+    const namespaces = await db.getNamespaceList(db.sql, { includeUnanchored: true });
     expect(namespaces.results).toStrictEqual(['fren']);
 
-    const namespace = await db.getNamespace({ namespace: 'fren', includeUnanchored: true });
+    const namespace = await db.getNamespace(db.sql, { namespace: 'fren', includeUnanchored: true });
     expect(namespace.found).toBe(true);
     expect(namespace.result?.namespace_id).toBe('fren');
     expect(namespace.result?.lifetime).toBe(52560);
@@ -170,7 +170,7 @@ describe('BNS event server tests', () => {
       .build();
     await db.updateMicroblocks(microblock);
 
-    const name1 = await db.getName({
+    const name1 = await db.getName(db.sql, {
       name: 'dayslikewater.btc',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -279,7 +279,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name2 = await db.getName({
+    const name2 = await db.getName(db.sql, {
       name: 'dayslikewater.btc',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -332,7 +332,7 @@ describe('BNS event server tests', () => {
       .build();
     await db.updateMicroblocks(microblock);
 
-    const name1 = await db.getName({
+    const name1 = await db.getName(db.sql, {
       name: 'friedger.id',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -406,7 +406,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name2 = await db.getName({
+    const name2 = await db.getName(db.sql, {
       name: 'friedger.id',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -509,7 +509,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name = await db.getName({ name: 'jnj.btc', chainId: ChainID.Mainnet, includeUnanchored: true });
+    const name = await db.getName(db.sql, { name: 'jnj.btc', chainId: ChainID.Mainnet, includeUnanchored: true });
     expect(name.found).toBe(true);
     expect(name.result?.zonefile_hash).toBe('9198e0b61a029671e53bd59aa229e7ae05af35a3');
     expect(name.result?.index_block_hash).toBe('0x0200');
@@ -822,7 +822,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name = await db.getName({
+    const name = await db.getName(db.sql, {
       name: 'cricketwireless.btc',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -1002,7 +1002,7 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name = await db.getName({
+    const name = await db.getName(db.sql, {
       name: 'ape.mega',
       includeUnanchored: true,
       chainId: ChainID.Mainnet
@@ -1014,11 +1014,11 @@ describe('BNS event server tests', () => {
     expect(name.result?.expire_block).toBe(1002);
     expect(name.result?.address).toBe('SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
 
-    const list = await db.getNamesList({ page: 0, includeUnanchored: true });
+    const list = await db.getNamesList(db.sql, { page: 0, includeUnanchored: true });
     expect(list.results.length).toBe(1);
     expect(list.results).toStrictEqual(['ape.mega']);
 
-    const namespaceList = await db.getNamespaceNamesList({
+    const namespaceList = await db.getNamespaceNamesList(db.sql, {
       namespace: 'mega',
       page: 0,
       includeUnanchored: true

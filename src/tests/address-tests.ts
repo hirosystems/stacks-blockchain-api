@@ -1962,7 +1962,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
+    const blockTxsRows = await api.datastore.getBlockTxsRows(api.datastore.sql, block.block_hash);
     expect(blockTxsRows.found).toBe(true);
     const blockTxsRowsResult = blockTxsRows.result as DbTx[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);
@@ -1981,7 +1981,7 @@ describe('address tests', () => {
     expect(searchResult8.type).toBe('application/json');
     expect(JSON.parse(searchResult8.text).result.metadata).toEqual(contractCallExpectedResults);
 
-    const blockTxResult = await db.getTxsFromBlock({ hash: '0x1234' }, 20, 0);
+    const blockTxResult = await db.getTxsFromBlock(api.datastore.sql, { hash: '0x1234' }, 20, 0);
     assert(blockTxResult.found);
     const contractCallResult2 = blockTxResult.result.results.find(
       tx => tx.tx_id === contractCall.tx_id
