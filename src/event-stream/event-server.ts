@@ -725,17 +725,17 @@ export async function startEventServer(opts: {
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
   if (process.env.IBD_MODE_UNTIL_BLOCK) {
-    app.use(['/new_mempool_tx', '/drop_mempool_tx'], async (req, res, next) => {
-      if (
-        process.env.IBD_MODE_UNTIL_BLOCK &&
-        app.locals.chainTipHeight > Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
-      ) {
-        next();
-      }
-
+    app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'], async (req, res, next) => {
       try {
         const chainTip = await db.getChainTip(db.sql);
-        app.locals.chainTipHeight = chainTip.blockHeight;
+        if (
+          process.env.IBD_MODE_UNTIL_BLOCK &&
+          chainTip.blockHeight > Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
+        ) {
+          next();
+        } else {
+          res.end();
+        }
       } catch (error) {
         console.error(error);
       }
