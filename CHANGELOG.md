@@ -1,3 +1,36 @@
+## [6.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.4...v6.1.0) (2022-10-13)
+
+
+### Features
+
+* configurable pg connection lifetime and idle timeouts ([#1355](https://github.com/hirosystems/stacks-blockchain-api/issues/1355)) ([46ccf06](https://github.com/hirosystems/stacks-blockchain-api/commit/46ccf0640de0c42e5fd71795521992fdfdc8d293))
+
+
+### Bug Fixes
+
+* refresh materialized views in their own pg connection ([#1356](https://github.com/hirosystems/stacks-blockchain-api/issues/1356)) ([9433d3c](https://github.com/hirosystems/stacks-blockchain-api/commit/9433d3c9c2d46eeff143a6c04438a94505549f3f))
+
+## [6.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.3...v6.0.4) (2022-10-12)
+
+
+### Bug Fixes
+
+* handle pg exceptions on web socket transmitter ([#1353](https://github.com/hirosystems/stacks-blockchain-api/issues/1353)) ([2e6448d](https://github.com/hirosystems/stacks-blockchain-api/commit/2e6448d7afc7bb35d5bcd3da88105f0552a13764))
+
+## [6.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.2...v6.0.3) (2022-10-12)
+
+
+### Bug Fixes
+
+* skip migrations on read-only start ([#1351](https://github.com/hirosystems/stacks-blockchain-api/issues/1351)) ([1d32261](https://github.com/hirosystems/stacks-blockchain-api/commit/1d322614e70e125b924c7d0a8b9f536ca81eb48f))
+
+## [6.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.1...v6.0.2) (2022-10-12)
+
+
+### Bug Fixes
+
+* catch pg exceptions on queries outside of express ([#1348](https://github.com/hirosystems/stacks-blockchain-api/issues/1348)) ([1f07b85](https://github.com/hirosystems/stacks-blockchain-api/commit/1f07b8587ccf0206e085d272e6cb5ee62f816fd9))
+
 ## [6.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0...v6.0.1) (2022-10-06)
 
 
