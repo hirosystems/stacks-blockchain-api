@@ -535,6 +535,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.json(response);
       } catch (error) {
         console.error(error);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.unknownError]);
       }
     })
   );

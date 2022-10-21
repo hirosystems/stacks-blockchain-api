@@ -1086,7 +1086,7 @@ describe('Rosetta API', () => {
       },
     };
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(500);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
     const expectResponse = { 

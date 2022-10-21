@@ -54,10 +54,10 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
+import { unwrapOptional, hexToBuffer, logger } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 import {
   ClarityTypeID,
@@ -71,7 +71,6 @@ import {
   ClarityValueTuple,
   ClarityValueUInt,
   PrincipalTypeID,
-  TxPayloadTokenTransfer,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
@@ -130,45 +129,60 @@ export async function getOperations(
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
-  return await sqlTransaction(sql, async sql => {
-    const operations: RosettaOperation[] = [];
-    const txType = getTxTypeString(tx.type_id);
-    switch (txType) {
-      case 'token_transfer':
-        operations.push(makeFeeOperation(tx));
-        operations.push(makeSenderOperation(tx, operations.length));
-        operations.push(makeReceiverOperation(tx, operations.length));
-        break;
-      case 'contract_call':
-        operations.push(makeFeeOperation(tx));
-        operations.push(await makeCallContractOperation(sql, tx, db, operations.length));
-        break;
-      case 'smart_contract':
-        operations.push(makeFeeOperation(tx));
-        operations.push(makeDeployContractOperation(tx, operations.length));
-        break;
-      case 'coinbase':
-        operations.push(makeCoinbaseOperation(tx, 0));
-        if (minerRewards !== undefined) {
-          getMinerOperations(minerRewards, operations);
-        }
-        if (stxUnlockEvents && stxUnlockEvents?.length > 0) {
-          processUnlockingEvents(stxUnlockEvents, operations);
-        }
-        break;
-      case 'poison_microblock':
-        operations.push(makePoisonMicroblockOperation(tx, 0));
-        break;
-      default:
-        throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
-    }
+  // Offline store does not support transactions
+  if (db instanceof PgStore) {
+    return await sqlTransaction(sql, async sql => {
+      return await getOperationsInternal(sql, tx, db, minerRewards, events, stxUnlockEvents);
+    });
+  }
+  return await getOperationsInternal(sql, tx, db, minerRewards, events, stxUnlockEvents);
+}
 
-    if (events !== undefined) {
-      await processEvents(sql, db, events, tx, operations);
-    }
+async function getOperationsInternal(
+  sql: PgSqlClient,
+  tx: DbTx | DbMempoolTx | BaseTx,
+  db: PgStore,
+  minerRewards?: DbMinerReward[],
+  events?: DbEvent[],
+  stxUnlockEvents?: StxUnlockEvent[]
+): Promise<RosettaOperation[]> {
+  const operations: RosettaOperation[] = [];
+  const txType = getTxTypeString(tx.type_id);
+  switch (txType) {
+    case 'token_transfer':
+      operations.push(makeFeeOperation(tx));
+      operations.push(makeSenderOperation(tx, operations.length));
+      operations.push(makeReceiverOperation(tx, operations.length));
+      break;
+    case 'contract_call':
+      operations.push(makeFeeOperation(tx));
+      operations.push(await makeCallContractOperation(sql, tx, db, operations.length));
+      break;
+    case 'smart_contract':
+      operations.push(makeFeeOperation(tx));
+      operations.push(makeDeployContractOperation(tx, operations.length));
+      break;
+    case 'coinbase':
+      operations.push(makeCoinbaseOperation(tx, 0));
+      if (minerRewards !== undefined) {
+        getMinerOperations(minerRewards, operations);
+      }
+      if (stxUnlockEvents && stxUnlockEvents?.length > 0) {
+        processUnlockingEvents(stxUnlockEvents, operations);
+      }
+      break;
+    case 'poison_microblock':
+      operations.push(makePoisonMicroblockOperation(tx, 0));
+      break;
+    default:
+      throw new Error(`Unexpected tx type: ${JSON.stringify(txType)}`);
+  }
 
-    return operations;
-  });
+  if (events !== undefined) {
+    await processEvents(sql, db, events, tx, operations);
+  }
+
+  return operations;
 }
 
 function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOperation[]) {
