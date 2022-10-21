@@ -476,6 +476,59 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     })
   );
 
+  /**
+   * @deprecated Use `/extended/v1/tokens/nft/holdings` instead.
+   */
+  router.get(
+    '/:stx_address/nft_events',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      // get recent asset event associated with address
+      const stxAddress = req.params['stx_address'];
+      validatePrincipal(stxAddress);
+
+      const untilBlock = parseUntilBlockQuery(req, res, next);
+      const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+      const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const includeUnanchored = isUnanchoredRequest(req, res, next);
+
+      const response = await db.getAddressNFTEvent({
+        stxAddress,
+        limit,
+        offset,
+        blockHeight,
+        includeUnanchored,
+      });
+      const nft_events = response.results.map(row => {
+        const parsedClarityValue = decodeClarityValueToRepr(row.value);
+        const r: NftEvent = {
+          sender: row.sender,
+          recipient: row.recipient,
+          asset_identifier: row.asset_identifier,
+          value: {
+            hex: row.value,
+            repr: parsedClarityValue,
+          },
+          tx_id: row.tx_id,
+          block_height: row.block_height,
+          event_index: row.event_index,
+          asset_event_type: getAssetEventTypeString(row.asset_event_type_id),
+          tx_index: row.tx_index,
+        };
+        return r;
+      });
+      const nftListResponse: AddressNftListResponse = {
+        nft_events: nft_events,
+        total: response.total,
+        limit: limit,
+        offset: offset,
+      };
+      setETagCacheHeaders(res);
+      res.json(nftListResponse);
+    })
+  );
+
   router.get(
     '/:address/mempool',
     mempoolCacheHandler,

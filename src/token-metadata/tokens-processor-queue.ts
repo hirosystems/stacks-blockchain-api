@@ -1,4 +1,4 @@
-import { logError, logger } from '../helpers';
+import { FoundOrNot, logError, logger } from '../helpers';
 import { Evt } from 'evt';
 import PQueue from 'p-queue';
 import { DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
@@ -57,15 +57,18 @@ export class TokensProcessorQueue {
         return;
       }
       const queuedEntries = [...this.queuedEntries.keys()];
-      entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
       await this.queue.onEmpty();
-      // await this.queue.onIdle();
     } while (entries.length > 0 || this.queuedEntries.size > 0);
   }
 
@@ -76,10 +79,16 @@ export class TokensProcessorQueue {
     const queuedEntries = [...this.queuedEntries.keys()];
     const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
     if (limit > 0) {
-      const entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      let entries: DbTokenMetadataQueueEntry[];
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+        return;
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
@@ -87,7 +96,13 @@ export class TokensProcessorQueue {
   }
 
   async queueNotificationHandler(queueId: number) {
-    const queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
+    let queueEntry: FoundOrNot<DbTokenMetadataQueueEntry>;
+    try {
+      queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
+    } catch (error) {
+      logger.error(error);
+      return;
+    }
     if (queueEntry.found) {
       await this.queueHandler(queueEntry.result);
     }
@@ -105,8 +120,15 @@ export class TokensProcessorQueue {
     ) {
       return;
     }
-    const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
-    if (!contractQuery.found || !contractQuery.result.abi) {
+    let abi: string;
+    try {
+      const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
+      if (!contractQuery.found || !contractQuery.result.abi) {
+        return;
+      }
+      abi = contractQuery.result.abi;
+    } catch (error) {
+      logger.error(error);
       return;
     }
     logger.info(
@@ -114,7 +136,7 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+    const contractAbi: ClarityAbi = JSON.parse(abi);
 
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,

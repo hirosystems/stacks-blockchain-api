@@ -184,6 +184,14 @@ export function isPgConnectionError(error: any): string | false {
     return 'Postgres connection ENOTFOUND';
   } else if (error.code === 'ECONNRESET') {
     return 'Postgres connection ECONNRESET';
+  } else if (error.code === 'CONNECTION_CLOSED') {
+    return 'Postgres connection CONNECTION_CLOSED';
+  } else if (error.code === 'CONNECTION_ENDED') {
+    return 'Postgres connection CONNECTION_ENDED';
+  } else if (error.code === 'CONNECTION_DESTROYED') {
+    return 'Postgres connection CONNECTION_DESTROYED';
+  } else if (error.code === 'CONNECTION_CONNECT_TIMEOUT') {
+    return 'Postgres connection CONNECTION_CONNECT_TIMEOUT';
   } else if (error.message) {
     const msg = (error as Error).message.toLowerCase();
     if (msg.includes('database system is starting up')) {
