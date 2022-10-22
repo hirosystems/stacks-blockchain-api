@@ -767,8 +767,7 @@ describe('PoX-2 tests', () => {
     });
   });
 
-  // TODO: skip until https://github.com/stacks-network/stacks-blockchain/pull/3283 is merged
-  describe.skip('PoX-2 - Stacking operations P2WPKH', () => {
+  describe('PoX-2 - Stacking operations P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -1015,8 +1014,7 @@ describe('PoX-2 tests', () => {
     });
   });
 
-  // TODO: skip until https://github.com/stacks-network/stacks-blockchain/pull/3283 is merged
-  describe.skip('PoX-2 - Stacking operations P2WSH', () => {
+  describe('PoX-2 - Stacking operations P2WSH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -1268,8 +1266,7 @@ describe('PoX-2 tests', () => {
     });
   });
 
-  // TODO: skip until https://github.com/stacks-network/stacks-blockchain/pull/3283 is merged
-  describe.skip('PoX-2 - Stacking operations P2TR', () => {
+  describe('PoX-2 - Stacking operations P2TR', () => {
     const account = testnetKeys[2];
     let btcAddr: string;
     let btcRegtestAddr: string;
