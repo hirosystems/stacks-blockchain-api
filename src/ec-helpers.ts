@@ -22,6 +22,11 @@ type KeyInputArgs = { network: keyof typeof BITCOIN_NETWORKS } & (
   | { publicKey: Buffer | string }
 );
 
+interface KeyOutput {
+  address: string;
+  ecPair: ECPairInterface;
+}
+
 function ecPairFromKeyInputArgs(args: KeyInputArgs, allowXOnlyPubkey = false): ECPairInterface {
   const network = BITCOIN_NETWORKS[args.network];
   if ('privateKey' in args) {
@@ -46,7 +51,7 @@ function ecPairFromKeyInputArgs(args: KeyInputArgs, allowXOnlyPubkey = false): E
  * `hashbytes` is the 20-byte hash160 of a single public key.
  * Encoded as base58.
  */
-function p2pkhAddressFromKey(args: KeyInputArgs): string {
+function p2pkhAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
@@ -56,29 +61,43 @@ function p2pkhAddressFromKey(args: KeyInputArgs): string {
       `Could not create P2PKH address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2pkhhResult.address;
+  return { ecPair, address: p2pkhhResult.address };
 }
 
 /**
  * Creates a P2SH "Pay To Script Hash" address.
- * Typically used to generate multi-signature wallets, however, this function creates a 1-of-1 "multisig" address.
+ * Typically used to generate multi-signature wallets, however, this function creates a P2PKH wrapped in P2SH address.
  * `hashbytes` is the 20-byte hash160 of a redeemScript script.
  * Encoded as base58.
  */
-function p2shAddressFromKey(args: KeyInputArgs): string {
+function p2shAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
-  const p2shResult = bitcoin.payments.p2sh({
-    redeem: bitcoin.payments.p2ms({ pubkeys: [ecPair.publicKey], m: 1, network }),
+  // P2SH(P2PKH) address example '3D4sXNTgnVbEWaU58pDgBD82zDkthVWazv' from https://matheo.uliege.be/bitstream/2268.2/11236/4/Master_Thesis.pdf
+  const p2sh_p2pkh_Result = bitcoin.payments.p2sh({
+    redeem: bitcoin.payments.p2pkh({ pubkey: ecPair.publicKey, network }),
     network,
   });
-  if (!p2shResult.address) {
+
+  // P2SH(P2PK) address example '3EuJgd52Tme58nZewZa39svoDtSUgL4Mgn' from https://matheo.uliege.be/bitstream/2268.2/11236/4/Master_Thesis.pdf
+  // const p2sh_p2pk_Result = bitcoin.payments.p2sh({
+  //   redeem: bitcoin.payments.p2pk({ pubkey: ecPair.publicKey, network }),
+  //   network,
+  // });
+
+  // 1-of-1 multisig, not sure if valid ...
+  // const p2shResult1 = bitcoin.payments.p2sh({
+  //   redeem: bitcoin.payments.p2ms({ pubkeys: [ecPair.publicKey], m: 1, network }),
+  //   network,
+  // });
+
+  if (!p2sh_p2pkh_Result.address) {
     throw new Error(
       `Could not create P2SH address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2shResult.address;
+  return { ecPair, address: p2sh_p2pkh_Result.address };
 }
 
 /**
@@ -88,7 +107,7 @@ function p2shAddressFromKey(args: KeyInputArgs): string {
  * `hashbytes` is the 20-byte hash160 of a p2wpkh witness script
  * Encoded as base58.
  */
-function p2shp2wpkhAddressFromKey(args: KeyInputArgs): string {
+function p2shp2wpkhAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
@@ -101,7 +120,7 @@ function p2shp2wpkhAddressFromKey(args: KeyInputArgs): string {
       `Could not create P2SH-P2WPHK address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2shResult.address;
+  return { ecPair, address: p2shResult.address };
 }
 
 /**
@@ -110,7 +129,7 @@ function p2shp2wpkhAddressFromKey(args: KeyInputArgs): string {
  * Typically used for multi-signature wallets, however, this function creates a 1-of-1 "multisig" address.
  * Allows non-SegWit wallets to generate a SegWit transaction, and allows non-SegWit client accept SegWit transaction.
  */
-function p2shp2wshAddressFromKeys(args: KeyInputArgs): string {
+function p2shp2wshAddressFromKeys(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
@@ -126,7 +145,7 @@ function p2shp2wshAddressFromKeys(args: KeyInputArgs): string {
       `Could not create P2SH-P2WPHK address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2shResult.address;
+  return { ecPair, address: p2shResult.address };
 }
 
 /**
@@ -135,7 +154,7 @@ function p2shp2wshAddressFromKeys(args: KeyInputArgs): string {
  * `hashbytes` is the 20-byte hash160 of the witness script.
  * Encoded as SEGWIT_V0 / bech32.
  */
-function p2wpkhAddressFromKey(args: KeyInputArgs): string {
+function p2wpkhAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
@@ -145,7 +164,7 @@ function p2wpkhAddressFromKey(args: KeyInputArgs): string {
       `Could not create p2wpkh address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2wpkhResult.address;
+  return { ecPair, address: p2wpkhResult.address };
 }
 
 /**
@@ -154,20 +173,20 @@ function p2wpkhAddressFromKey(args: KeyInputArgs): string {
  * `hashbytes` is the 32-byte sha256 of the witness script.
  * Encoded as SEGWIT_V0 / bech32.
  */
-function p2wshAddressFromKey(args: KeyInputArgs): string {
+function p2wshAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
-  const p2wpkhResult = bitcoin.payments.p2wsh({
+  const p2wshResult = bitcoin.payments.p2wsh({
     redeem: bitcoin.payments.p2ms({ m: 1, pubkeys: [ecPair.publicKey], network }),
     network,
   });
-  if (!p2wpkhResult.address) {
+  if (!p2wshResult.address) {
     throw new Error(
       `Could not create p2wpkh address from pubkey ${ecPair.publicKey.toString('hex')}`
     );
   }
-  return p2wpkhResult.address;
+  return { ecPair, address: p2wshResult.address };
 }
 
 /**
@@ -176,7 +195,7 @@ function p2wshAddressFromKey(args: KeyInputArgs): string {
  * Encoded as SEGWIT_V1 / bech32m.
  * @see https://github.com/bitcoinjs/bitcoinjs-lib/blob/424abf2376772bb57b7668bc35b29ed18879fa0a/test/integration/taproot.md
  */
-function p2trAddressFromKey(args: KeyInputArgs): string {
+function p2trAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
 
@@ -196,31 +215,53 @@ function p2trAddressFromKey(args: KeyInputArgs): string {
   ]);
 
   const address = bitcoin.address.fromOutputScript(scriptPubkey, network);
-  return address;
+  return { ecPair, address };
 }
 
-export function getBitcoinAddressFromKey(
+export interface VerboseKeyOutput {
+  address: string;
+  wif: string;
+  privateKey: Buffer;
+  publicKey: Buffer;
+}
+
+export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
   args: KeyInputArgs & {
     addressFormat: 'p2pkh' | 'p2sh' | 'p2sh-p2wpkh' | 'p2sh-p2wsh' | 'p2wpkh' | 'p2wsh' | 'p2tr';
+    verbose?: TVerbose;
   }
-): string {
-  switch (args.addressFormat) {
-    case 'p2pkh':
-      return p2pkhAddressFromKey(args);
-    case 'p2sh':
-      return p2shAddressFromKey(args);
-    case 'p2sh-p2wpkh':
-      return p2shp2wpkhAddressFromKey(args);
-    case 'p2sh-p2wsh':
-      return p2shp2wshAddressFromKeys(args);
-    case 'p2wpkh':
-      return p2wpkhAddressFromKey(args);
-    case 'p2wsh':
-      return p2wshAddressFromKey(args);
-    case 'p2tr':
-      return p2trAddressFromKey(args);
+): TVerbose extends true ? VerboseKeyOutput : string {
+  const keyOutput: KeyOutput = (() => {
+    switch (args.addressFormat) {
+      case 'p2pkh':
+        return p2pkhAddressFromKey(args);
+      case 'p2sh':
+        return p2shAddressFromKey(args);
+      case 'p2sh-p2wpkh':
+        return p2shp2wpkhAddressFromKey(args);
+      case 'p2sh-p2wsh':
+        return p2shp2wshAddressFromKeys(args);
+      case 'p2wpkh':
+        return p2wpkhAddressFromKey(args);
+      case 'p2wsh':
+        return p2wshAddressFromKey(args);
+      case 'p2tr':
+        return p2trAddressFromKey(args);
+    }
+    throw new Error(`Unexpected address format: ${args.addressFormat}`);
+  })();
+
+  if (args.verbose) {
+    const output: VerboseKeyOutput = {
+      address: keyOutput.address,
+      wif: keyOutput.ecPair.toWIF(),
+      privateKey: keyOutput.ecPair.privateKey as Buffer,
+      publicKey: keyOutput.ecPair.publicKey,
+    };
+    return output as TVerbose extends true ? VerboseKeyOutput : string;
+  } else {
+    return keyOutput.address as TVerbose extends true ? VerboseKeyOutput : string;
   }
-  throw new Error(`Unexpected address format: ${args.addressFormat}`);
 }
 
 export function privateToPublicKey(privateKey: string | Buffer): Buffer {

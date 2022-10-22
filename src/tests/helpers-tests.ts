@@ -193,6 +193,7 @@ test('PoX bitcoin address encoding', () => {
 describe('Bitcoin address encoding formats', () => {
   test('P2PKH bitcoin address encoding', () => {
     const TEST_VECTORS = [
+      // Test vector from https://github.com/bitcoinjs/bitcoinjs-lib/blob/54259d301960cefddc259d64012bb4a7c2366d48/test/fixtures/address.json#L3-L9
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
         publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
@@ -200,6 +201,7 @@ describe('Bitcoin address encoding formats', () => {
         network: 'mainnet',
         format: 'p2pkh',
       },
+      // Test vector from https://github.com/bitcoinjs/bitcoinjs-lib/blob/54259d301960cefddc259d64012bb4a7c2366d48/test/fixtures/address.json#L31-L37
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
         publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
@@ -238,24 +240,26 @@ describe('Bitcoin address encoding formats', () => {
 
   test('P2SH bitcoin address encoding', () => {
     const TEST_VECTORS = [
+      // Test vector from https://github.com/bitcoinjs/bitcoinjs-lib/blob/54259d301960cefddc259d64012bb4a7c2366d48/test/fixtures/address.json#L11-L15
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
         publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-        address: '3DicS6C8JZm59RsrgXr56iVHzYdQngiehV',
+        address: '3LRW7jeCvQCRdPF8S3yUCfRAx4eqXFmdcr',
         network: 'mainnet',
         format: 'p2sh',
       },
+      // Test vector from https://github.com/trezor-graveyard/bitcoinjs-trezor/blob/13b1c0be67abfea0bddbf5360548630c82331ce9/test/fixtures/address.json#L39-L43
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
         publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
-        address: '2N5GpVq89v2GRMDWQMfTwifUZCtqaczC6Y7',
+        address: '2NByiBUaEXrhmqAsg7BbLpcQSAQs1EDwt5w',
         network: 'testnet',
         format: 'p2sh',
       },
       {
         privateKey: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
         publicKey: '03797dd653040d344fd048c1ad05d4cbcb2178b30c6a0c4276994795f3e833da41',
-        address: '2MvP7MKq6B19JWe7VeBGR53xi3HcUo31VLc',
+        address: '2MygMgDLGPjN9wfEW8gaS1CqAwnuzLdNheW',
         network: 'testnet',
         format: 'p2sh',
       },
@@ -283,6 +287,7 @@ describe('Bitcoin address encoding formats', () => {
 
   test('P2SH-P2WPHK bitcoin address encoding', () => {
     const TEST_VECTORS = [
+      // Test vector from https://github.com/bitcoinjs/bitcoinjs-message/blob/c43430f4c03c292c719e7801e425d887cbdf7464/test/fixtures.json#L117
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
         publicKey: '0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798',
@@ -372,6 +377,7 @@ describe('Bitcoin address encoding formats', () => {
   });
 
   test('P2WPKH bitcoin address encoding', () => {
+    // Test vectors from https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki#examples
     const TEST_VECTORS = [
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
