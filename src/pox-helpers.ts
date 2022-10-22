@@ -10,28 +10,38 @@ import { bech32, bech32m } from '@scure/base';
 enum PoXAddressVersion {
   /** (b58/legacy) p2pkh address, and `hashbytes` is the 20-byte hash160 of a single public key */
   P2PKH = 0x00,
+
   /** (b58/legacy) p2sh address, and `hashbytes` is the 20-byte hash160 of a redeemScript script */
   P2SH = 0x01,
+
   /** (b58/legacy) p2wpkh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wpkh witness script */
   P2SHP2WPKH = 0x02, // likely unused, as indistinguishable from P2SH
+
   /** (b58/legacy) p2wsh-p2sh address, and `hashbytes` is the 20-byte hash160 of a p2wsh witness script */
   P2SHP2WSH = 0x03, // likely unused, as indistinguishable from P2SH
+
   /** (bech32/segwit_v0) p2wpkh address, and `hashbytes` is the 20-byte hash160 of the witness script */
   P2WPKH = 0x04,
+
   /** (bech32/segwit_v0) p2wsh address, and `hashbytes` is the 32-byte sha256 of the witness script */
   P2WSH = 0x05,
+
   /** (bech32m/segwit_v1) p2tr address, and `hashbytes` is the 32-byte sha256 of the witness script */
   P2TR = 0x06,
 }
 
 const BitcoinNetworkVersion = {
   mainnet: {
-    P2PKH: 0x00, // 0
-    P2SH: 0x05, // 5
+    P2PKH: btc.networks.bitcoin.pubKeyHash, // 0x00 / 0
+    P2SH: btc.networks.bitcoin.scriptHash, // 0x05 / 5
   },
   testnet: {
-    P2PKH: 0x6f, // 111
-    P2SH: 0xc4, // 196
+    P2PKH: btc.networks.testnet.pubKeyHash, // 0x6f / 111
+    P2SH: btc.networks.testnet.scriptHash, // 0xc4 / 196
+  },
+  regtest: {
+    P2PKH: btc.networks.regtest.pubKeyHash, // 0x6f / 111
+    P2SH: btc.networks.regtest.scriptHash, // 0xc4 / 196
   },
 } as const;
 
@@ -40,20 +50,23 @@ const BitcoinNetworkVersion = {
 //  testnet P2PKH: m or n
 //  mainnet P2SH: 3
 //  testnet P2SH: 2
+//  regtest P2PKH: m or n
+//  regtest P2SH: 2
 const B58_ADDR_PREFIXES = /^(1|3|m|n|2)/;
 
 // Valid prefixs for mainnet and testnet bech32/segwit addresses
 const SEGWIT_ADDR_PREFIXES = /^(bc|tb)/i;
 const SEGWIT_MAINNET_HRP = 'bc';
 const SEGWIT_TESTNET_HRP = 'tb';
+const SEGWIT_REGTEST_HRP = 'bcrt';
 
 const SEGWIT_V0 = 0;
 const SEGWIT_V1 = 1;
 
 // Valid prefixes for supported segwit address, structure is:
 //   HRP PREFIX + SEPARATOR (always '1') + C32_ENCODED SEGWIT_VERSION_BYTE ('q' for 0, 'p' for 1) + HASHDATA
-const SEGWIT_V0_ADDR_PREFIX = /^(bc1q|tb1q)/i;
-const SEGWIT_V1_ADDR_PREFIX = /^(bc1p|tb1p)/i;
+const SEGWIT_V0_ADDR_PREFIX = /^(bc1q|tb1q|bcrt1q)/i;
+const SEGWIT_V1_ADDR_PREFIX = /^(bc1p|tb1p|bcrt1p)/i;
 
 // Segwit/taproot address examples:
 //   mainnet P2WPKH: bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
@@ -69,9 +82,13 @@ function btcAddressVersionToLegacyHashMode(btcAddressVersion: number): PoXAddres
       return PoXAddressVersion.P2PKH;
     case BitcoinNetworkVersion.testnet.P2PKH:
       return PoXAddressVersion.P2PKH;
+    case BitcoinNetworkVersion.regtest.P2PKH:
+      return PoXAddressVersion.P2PKH;
     case BitcoinNetworkVersion.mainnet.P2SH:
       return PoXAddressVersion.P2SH;
     case BitcoinNetworkVersion.testnet.P2SH:
+      return PoXAddressVersion.P2SH;
+    case BitcoinNetworkVersion.regtest.P2SH:
       return PoXAddressVersion.P2SH;
     default:
       throw new Error(`Invalid pox address version byte ${btcAddressVersion}`);
@@ -80,7 +97,7 @@ function btcAddressVersionToLegacyHashMode(btcAddressVersion: number): PoXAddres
 
 function legacyHashModeToBtcAddressVersion(
   hashMode: PoXAddressVersion,
-  network: 'mainnet' | 'testnet'
+  network: 'mainnet' | 'testnet' | 'regtest'
 ): number {
   if (hashMode === PoXAddressVersion.P2SHP2WPKH || hashMode === PoXAddressVersion.P2SHP2WSH) {
     // Use the same btc address version as P2SH
@@ -90,10 +107,14 @@ function legacyHashModeToBtcAddressVersion(
     return BitcoinNetworkVersion.mainnet.P2PKH;
   } else if (hashMode === PoXAddressVersion.P2PKH && network === 'testnet') {
     return BitcoinNetworkVersion.testnet.P2PKH;
+  } else if (hashMode === PoXAddressVersion.P2PKH && network === 'regtest') {
+    return BitcoinNetworkVersion.regtest.P2PKH;
   } else if (hashMode === PoXAddressVersion.P2SH && network === 'mainnet') {
     return BitcoinNetworkVersion.mainnet.P2SH;
   } else if (hashMode === PoXAddressVersion.P2SH && network === 'testnet') {
     return BitcoinNetworkVersion.testnet.P2SH;
+  } else if (hashMode === PoXAddressVersion.P2SH && network === 'regtest') {
+    return BitcoinNetworkVersion.regtest.P2SH;
   }
   throw new Error(`Invalid pox address hash mode byte: ${hashMode}`);
 }
@@ -187,10 +208,22 @@ export function decodeBtcAddress(btcAddress: string): { version: number; data: B
   );
 }
 
+function networkToHrp(network: 'mainnet' | 'testnet' | 'regtest'): string {
+  switch (network) {
+    case 'mainnet':
+      return SEGWIT_MAINNET_HRP;
+    case 'testnet':
+      return SEGWIT_TESTNET_HRP;
+    case 'regtest':
+      return SEGWIT_REGTEST_HRP;
+  }
+  throw new Error(`Unexpected network: ${network}`);
+}
+
 export function poxAddressToBtcAddress(
   version: number,
   hashBytes: Uint8Array,
-  network: 'mainnet' | 'testnet'
+  network: 'mainnet' | 'testnet' | 'regtest'
 ): string {
   switch (version) {
     case PoXAddressVersion.P2PKH:
@@ -202,13 +235,13 @@ export function poxAddressToBtcAddress(
     }
     case PoXAddressVersion.P2WPKH:
     case PoXAddressVersion.P2WSH: {
-      const prefix = network === 'mainnet' ? SEGWIT_MAINNET_HRP : SEGWIT_TESTNET_HRP;
+      const prefix = networkToHrp(network);
       const words = bech32.toWords(hashBytes);
       const btcAddress = bech32.encode(prefix, [SEGWIT_V0, ...words]);
       return btcAddress;
     }
     case PoXAddressVersion.P2TR: {
-      const prefix = network === 'mainnet' ? SEGWIT_MAINNET_HRP : SEGWIT_TESTNET_HRP;
+      const prefix = networkToHrp(network);
       const words = bech32m.toWords(hashBytes);
       const btcAddress = bech32m.encode(prefix, [SEGWIT_V1, ...words]);
       return btcAddress;
