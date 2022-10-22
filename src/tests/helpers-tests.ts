@@ -423,6 +423,10 @@ describe('Bitcoin address encoding formats', () => {
   });
 
   test('P2WSH bitcoin address encoding', () => {
+    // TODO: right now the `P2WSH` function is creating 1-of-1 multisig addresses (and has not been verified to work).
+    // There's a more standard approach that creates addresses using "key OP_CHECKSIG as script" as referenced in BIP173:
+    //  - mainnet: bc1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3qccfmv3
+    //  - testnet: tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7
     const TEST_VECTORS = [
       {
         privateKey: '0000000000000000000000000000000000000000000000000000000000000001',
