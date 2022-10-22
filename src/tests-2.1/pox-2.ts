@@ -398,7 +398,7 @@ describe('PoX-2 tests', () => {
       expect(Number(rewardsTotal.reward_amount)).toBeGreaterThan(0);
     });
 
-    test('stacking rewards - BTC JSON-RPC', async () => {
+    test('stacking rewards - BTC JSON-RPC - getblock', async () => {
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
@@ -420,6 +420,33 @@ describe('PoX-2 tests', () => {
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
+    test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      const received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await rpcClient.listtransactions({
+        label: btcRegtestAddr,
+        include_watchonly: true,
+      });
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
       expect(sats).toBe(firstReward.reward_amount);
     });
 
@@ -643,6 +670,33 @@ describe('PoX-2 tests', () => {
       expect(sats).toBe(firstReward.reward_amount);
     });
 
+    test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      const received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await rpcClient.listtransactions({
+        label: btcRegtestAddr,
+        include_watchonly: true,
+      });
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
@@ -860,6 +914,33 @@ describe('PoX-2 tests', () => {
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
+    test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      const received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await rpcClient.listtransactions({
+        label: btcRegtestAddr,
+        include_watchonly: true,
+      });
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
       expect(sats).toBe(firstReward.reward_amount);
     });
 
@@ -1088,6 +1169,33 @@ describe('PoX-2 tests', () => {
       expect(sats).toBe(firstReward.reward_amount);
     });
 
+    test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      const received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await rpcClient.listtransactions({
+        label: btcRegtestAddr,
+        include_watchonly: true,
+      });
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
@@ -1310,6 +1418,33 @@ describe('PoX-2 tests', () => {
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
+    test('stacking rewards - BTC JSON-RPC - listtransactions', async () => {
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddr}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      const received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await rpcClient.listtransactions({
+        label: btcRegtestAddr,
+        include_watchonly: true,
+      });
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
       expect(sats).toBe(firstReward.reward_amount);
     });
 
