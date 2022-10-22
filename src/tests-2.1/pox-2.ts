@@ -460,7 +460,7 @@ describe('PoX-2 tests', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      const received: {
+      let received: {
         address: string;
         category: string;
         amount: number;
@@ -472,6 +472,7 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAccount.address,
         include_watchonly: true,
       });
+      received = received.filter(r => r.address === btcRegtestAccount.address);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -714,7 +715,7 @@ describe('PoX-2 tests', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      const received: {
+      let received: {
         address: string;
         category: string;
         amount: number;
@@ -726,6 +727,7 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAccount.address,
         include_watchonly: true,
       });
+      received = received.filter(r => r.address === btcRegtestAccount.address);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -961,7 +963,7 @@ describe('PoX-2 tests', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      const received: {
+      let received: {
         address: string;
         category: string;
         amount: number;
@@ -973,6 +975,7 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAddr,
         include_watchonly: true,
       });
+      received = received.filter(r => r.address === btcRegtestAddr);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -1213,7 +1216,7 @@ describe('PoX-2 tests', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      const received: {
+      let received: {
         address: string;
         category: string;
         amount: number;
@@ -1225,6 +1228,7 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAddr,
         include_watchonly: true,
       });
+      received = received.filter(r => r.address === btcRegtestAddr);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -1465,7 +1469,7 @@ describe('PoX-2 tests', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      const received: {
+      let received: {
         address: string;
         category: string;
         amount: number;
@@ -1477,6 +1481,7 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAddr,
         include_watchonly: true,
       });
+      received = received.filter(r => r.address === btcRegtestAddr);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
