@@ -152,3 +152,23 @@ export async function databaseHasData(args?: {
     await sql.end();
   }
 }
+
+export async function getRawEventCount(): Promise<number> {
+  const pool = await connectPgPool({
+    usageName: 'get-raw-events-count',
+    pgServer: PgServer.primary,
+  });
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT count(*) from event_observer_requests');
+    return result.rowCount;
+  } catch (error: any) {
+    if (error.message?.includes('does not exist')) {
+      return 0;
+    }
+    throw error;
+  } finally {
+    client.release();
+    await pool.end();
+  }
+}
