@@ -27,28 +27,13 @@ describe('PoX-2 tests', () => {
   let api: ApiServer;
   let client: StacksCoreRpcClient;
   let stacksNetwork: StacksNetwork;
+  let bitcoinRpcClient: RPCClient;
 
   beforeAll(async () => {
     const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork } = testEnv);
+    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
     await Promise.resolve();
   });
-
-  function getRpcClient(): RPCClient {
-    const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
-    if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
-      throw new Error('Bitcoin JSON-RPC env vars not fully configured.');
-    }
-    const client = new RPCClient({
-      url: BTC_RPC_HOST,
-      port: parsePort(BTC_RPC_PORT),
-      user: BTC_RPC_USER,
-      pass: BTC_RPC_PW,
-      timeout: 120000,
-      wallet: '',
-    });
-    return client;
-  }
 
   async function standByForTx(expectedTxId: string): Promise<DbTx> {
     const dbTxQuery = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
@@ -138,7 +123,6 @@ describe('PoX-2 tests', () => {
     let ustxAmount: bigint;
     const cycleCount = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
-    let rpcClient: RPCClient;
 
     beforeAll(async () => {
       btcAddr = getBitcoinAddressFromKey({
@@ -156,8 +140,6 @@ describe('PoX-2 tests', () => {
         version: decodedBtcAddr.version,
       }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 });
 
-      rpcClient = getRpcClient();
-
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
       btcRegtestAccount = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
@@ -167,12 +149,12 @@ describe('PoX-2 tests', () => {
       });
       expect(btcRegtestAccount.address).toBe('mg8Jz5776UdyiYcBb9Z873NTozEiADRW5H');
 
-      await rpcClient.importprivkey({
+      await bitcoinRpcClient.importprivkey({
         privkey: btcRegtestAccount.wif,
         label: btcRegtestAccount.address,
         rescan: false,
       });
-      const btcWalletAddrs: Record<string, unknown> = await rpcClient.getaddressesbylabel({
+      const btcWalletAddrs: Record<string, unknown> = await bitcoinRpcClient.getaddressesbylabel({
         label: btcRegtestAccount.address,
       });
 
@@ -436,7 +418,7 @@ describe('PoX-2 tests', () => {
       )[0];
       const blockResult: {
         tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
-      } = await rpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -468,7 +450,7 @@ describe('PoX-2 tests', () => {
         blockheight: number;
         txid: string;
         confirmations: number;
-      }[] = await rpcClient.listtransactions({
+      }[] = await bitcoinRpcClient.listtransactions({
         label: btcRegtestAccount.address,
         include_watchonly: true,
       });
@@ -506,7 +488,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('BTC stacking reward received', async () => {
-      const received: number = await rpcClient.getreceivedbyaddress({
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress({
         address: btcRegtestAccount.address,
         minconf: 0,
       });
@@ -528,7 +510,6 @@ describe('PoX-2 tests', () => {
     let ustxAmount: bigint;
     const cycleCount = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
-    let rpcClient: RPCClient;
 
     beforeAll(async () => {
       btcAddr = getBitcoinAddressFromKey({
@@ -546,8 +527,6 @@ describe('PoX-2 tests', () => {
         version: decodedBtcAddr.version,
       }).toEqual({ data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 });
 
-      rpcClient = getRpcClient();
-
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
       btcRegtestAccount = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
@@ -557,12 +536,12 @@ describe('PoX-2 tests', () => {
       });
       expect(btcRegtestAccount.address).toBe('2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
 
-      await rpcClient.importprivkey({
+      await bitcoinRpcClient.importprivkey({
         privkey: btcRegtestAccount.wif,
         label: btcRegtestAccount.address,
         rescan: false,
       });
-      const btcWalletAddrs = await rpcClient.getaddressesbylabel({
+      const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({
         label: btcRegtestAccount.address,
       });
       expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAccount.address);
@@ -691,7 +670,7 @@ describe('PoX-2 tests', () => {
       )[0];
       const blockResult: {
         tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
-      } = await rpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -723,7 +702,7 @@ describe('PoX-2 tests', () => {
         blockheight: number;
         txid: string;
         confirmations: number;
-      }[] = await rpcClient.listtransactions({
+      }[] = await bitcoinRpcClient.listtransactions({
         label: btcRegtestAccount.address,
         include_watchonly: true,
       });
@@ -761,7 +740,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('BTC stacking reward received', async () => {
-      const received: number = await rpcClient.getreceivedbyaddress({
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress({
         address: btcRegtestAccount.address,
         minconf: 0,
       });
@@ -783,7 +762,6 @@ describe('PoX-2 tests', () => {
     let ustxAmount: bigint;
     const cycleCount = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
-    let rpcClient: RPCClient;
 
     beforeAll(async () => {
       btcAddr = getBitcoinAddressFromKey({
@@ -801,8 +779,6 @@ describe('PoX-2 tests', () => {
         version: decodedBtcAddr.version,
       }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
 
-      rpcClient = getRpcClient();
-
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
       btcRegtestAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
@@ -811,8 +787,8 @@ describe('PoX-2 tests', () => {
       });
       expect(btcRegtestAddr).toBe('bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
 
-      await rpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
-      const btcWalletAddrs = await rpcClient.getaddressesbylabel({ label: btcRegtestAddr });
+      await bitcoinRpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
+      const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({ label: btcRegtestAddr });
       expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
 
       poxInfo = await client.getPox();
@@ -939,7 +915,7 @@ describe('PoX-2 tests', () => {
       )[0];
       const blockResult: {
         tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
-      } = await rpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -971,7 +947,7 @@ describe('PoX-2 tests', () => {
         blockheight: number;
         txid: string;
         confirmations: number;
-      }[] = await rpcClient.listtransactions({
+      }[] = await bitcoinRpcClient.listtransactions({
         label: btcRegtestAddr,
         include_watchonly: true,
       });
@@ -1009,7 +985,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('BTC stacking reward received', async () => {
-      const received: number = await rpcClient.getreceivedbyaddress({
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress({
         address: btcRegtestAddr,
         minconf: 0,
       });
@@ -1031,7 +1007,6 @@ describe('PoX-2 tests', () => {
     let ustxAmount: bigint;
     const cycleCount = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
-    let rpcClient: RPCClient;
 
     beforeAll(async () => {
       btcAddr = getBitcoinAddressFromKey({
@@ -1052,8 +1027,6 @@ describe('PoX-2 tests', () => {
         version: 5,
       });
 
-      rpcClient = getRpcClient();
-
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
       btcRegtestAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
@@ -1064,8 +1037,8 @@ describe('PoX-2 tests', () => {
         'bcrt1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqpm5e2n'
       );
 
-      await rpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
-      const btcWalletAddrs = await rpcClient.getaddressesbylabel({ label: btcRegtestAddr });
+      await bitcoinRpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
+      const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({ label: btcRegtestAddr });
       expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
 
       poxInfo = await client.getPox();
@@ -1192,7 +1165,7 @@ describe('PoX-2 tests', () => {
       )[0];
       const blockResult: {
         tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
-      } = await rpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -1224,7 +1197,7 @@ describe('PoX-2 tests', () => {
         blockheight: number;
         txid: string;
         confirmations: number;
-      }[] = await rpcClient.listtransactions({
+      }[] = await bitcoinRpcClient.listtransactions({
         label: btcRegtestAddr,
         include_watchonly: true,
       });
@@ -1262,7 +1235,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('BTC stacking reward received', async () => {
-      const received: number = await rpcClient.getreceivedbyaddress({
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress({
         address: btcRegtestAddr,
         minconf: 0,
       });
@@ -1284,7 +1257,6 @@ describe('PoX-2 tests', () => {
     let ustxAmount: bigint;
     const cycleCount = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
-    let rpcClient: RPCClient;
 
     beforeAll(async () => {
       btcAddr = getBitcoinAddressFromKey({
@@ -1305,8 +1277,6 @@ describe('PoX-2 tests', () => {
         version: 6,
       });
 
-      rpcClient = getRpcClient();
-
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
       btcRegtestAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
@@ -1317,8 +1287,8 @@ describe('PoX-2 tests', () => {
         'bcrt1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9laspse7la'
       );
 
-      await rpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
-      const btcWalletAddrs = await rpcClient.getaddressesbylabel({ label: btcRegtestAddr });
+      await bitcoinRpcClient.importaddress({ address: btcRegtestAddr, label: btcRegtestAddr });
+      const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({ label: btcRegtestAddr });
       expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
 
       poxInfo = await client.getPox();
@@ -1445,7 +1415,7 @@ describe('PoX-2 tests', () => {
       )[0];
       const blockResult: {
         tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
-      } = await rpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -1477,7 +1447,7 @@ describe('PoX-2 tests', () => {
         blockheight: number;
         txid: string;
         confirmations: number;
-      }[] = await rpcClient.listtransactions({
+      }[] = await bitcoinRpcClient.listtransactions({
         label: btcRegtestAddr,
         include_watchonly: true,
       });
@@ -1515,7 +1485,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('BTC stacking reward received', async () => {
-      const received: number = await rpcClient.getreceivedbyaddress({
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress({
         address: btcRegtestAddr,
         minconf: 0,
       });

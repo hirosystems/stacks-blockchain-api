@@ -3684,6 +3684,24 @@ export class PgStore {
     }
   }
 
+  async getBlockByBurnBlockHeight(burnBlockHeight: number): Promise<FoundOrNot<DbBlock>> {
+    return await this.sql.begin(async sql => {
+      const result = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE canonical = true AND burn_block_height >= ${burnBlockHeight}
+        ORDER BY block_height ASC
+        LIMIT 1
+      `;
+      if (result.length === 0) {
+        return { found: false } as const;
+      }
+      const row = result[0];
+      const block = parseBlockQueryResult(row);
+      return { found: true, result: block } as const;
+    });
+  }
+
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
     return this.sql.begin(async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
@@ -3711,10 +3729,12 @@ export class PgStore {
         tx_id: string;
       }[]
     >`
-      SELECT locked_amount, unlock_height, locked_address
+      SELECT DISTINCT ON (locked_address) locked_address, locked_amount, unlock_height
       FROM stx_lock_events
       WHERE microblock_canonical = true AND canonical = true
       AND unlock_height <= ${current_burn_height} AND unlock_height > ${previous_burn_height}
+      ORDER BY locked_address, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT 1
     `;
 
     const txIdQuery = await sql<{ tx_id: string }[]>`
