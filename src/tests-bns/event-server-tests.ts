@@ -6,6 +6,7 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
+import { CoreNodeBlockMessage } from 'src/event-stream/core-node-message';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -1025,6 +1026,25 @@ describe('BNS event server tests', () => {
     });
     expect(namespaceList.results.length).toBe(1);
     expect(namespaceList.results).toStrictEqual(['ape.mega']);
+  });
+
+  test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
+    const routes = ['/new_block', '/new_burn_block', '/new_mempool_tx', '/drop_mempool_tx', '/attachments/new', '/new_microblocks']
+
+    routes.forEach(async route => {
+      const rawEventRequestCountBefore = db.getRawEventCount();
+      const post = await httpPostRequest({
+        host: '127.0.0.1',
+        port: eventServer.serverAddress.port,
+        path: route,
+        headers: { 'Content-Type': 'application/json' },
+        body: Buffer.from(JSON.stringify({}), 'utf8'),
+        throwOnNotOK: true,
+      });
+      expect(post.statusCode).toBe(500);
+      const rawEventRequestCountAfter = db.getRawEventCount();
+      expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
+    })
   });
 
   afterEach(async () => {

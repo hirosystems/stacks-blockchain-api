@@ -734,22 +734,6 @@ export async function startEventServer(opts: {
   });
 
   app.post(
-    '*',
-    asyncHandler((req, res, next) => {
-      const eventPath = req.path;
-      let payload = JSON.stringify(req.body);
-      if (logger.isDebugEnabled()) {
-        // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-        if (payload.length > 10_000_000) {
-          payload = 'payload body too large for logging';
-        }
-        logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
-      }
-      next();
-    })
-  );
-
-  app.post(
     '/new_block',
     asyncHandler(async (req, res, next) => {
       try {
