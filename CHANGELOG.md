@@ -1,3 +1,10 @@
+## [3.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.3...v3.0.4) (2022-10-24)
+
+
+### Bug Fixes
+
+* log poison microblock tx v3 ([#1384](https://github.com/hirosystems/stacks-blockchain-api/issues/1384)) ([3e3cf90](https://github.com/hirosystems/stacks-blockchain-api/commit/3e3cf9015c5cc107317faf6128b3050fe8726293))
+
 ## [3.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v3.0.2...v3.0.3) (2022-04-04)
 
 
