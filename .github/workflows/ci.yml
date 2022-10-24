@@ -51,55 +51,55 @@ jobs:
       - name: Lint Unused Exports
         run: npm run lint:unused-exports
 
-  lint-docs:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+  # lint-docs:
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: ./docs
+  #   steps:
+  #     - uses: actions/checkout@v2
+  #       with:
+  #         fetch-depth: 0
 
-      - name: Use Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version-file: '.nvmrc'
+  #     - name: Use Node.js
+  #       uses: actions/setup-node@v2
+  #       with:
+  #         node-version-file: '.nvmrc'
 
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
+  #     - name: Cache node modules
+  #       uses: actions/cache@v2
+  #       env:
+  #         cache-name: cache-node-modules
+  #       with:
+  #         path: |
+  #           ~/.npm
+  #           **/node_modules
+  #         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-build-${{ env.cache-name }}-
+  #           ${{ runner.os }}-build-
+  #           ${{ runner.os }}-
 
-      - name: Install deps
-        run: npm ci --audit=false
+  #     - name: Install deps
+  #       run: npm ci --audit=false
 
-      - name: Build schema & docs
-        run: npm run build
+  #     - name: Build schema & docs
+  #       run: npm run build
 
-      - name: Validate generated types
-        run: tsc index.d.ts
+  #     - name: Validate generated types
+  #       run: tsc index.d.ts
 
-      - name: Lint JSON
-        run: npm run lint:json
+  #     - name: Lint JSON
+  #       run: npm run lint:json
 
-      - name: Lint YAML
-        run: npm run lint:yaml
+  #     - name: Lint YAML
+  #       run: npm run lint:yaml
 
-      - name: Lint OpenAPI
-        run: npm run lint:openapi
+  #     - name: Lint OpenAPI
+  #       run: npm run lint:openapi
 
-      - name: Validate schemas
-        run: npm run validate:schemas
+  #     - name: Validate schemas
+  #       run: npm run validate:schemas
 
   test:
     runs-on: ubuntu-latest
