@@ -1,3 +1,10 @@
+## [5.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.1...v5.0.2) (2022-10-24)
+
+
+### Bug Fixes
+
+* log poison microblock tx v5 ([#1380](https://github.com/hirosystems/stacks-blockchain-api/issues/1380)) ([5c3ce4b](https://github.com/hirosystems/stacks-blockchain-api/commit/5c3ce4b6b60829e294a74d0aa30ccbdf16f93cd7))
+
 ## [5.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v5.0.1) (2022-09-20)
 
 
