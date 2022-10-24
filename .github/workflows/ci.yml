@@ -371,7 +371,6 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - lint
-      - lint-docs
       - test
       - test-bns
       - test-rosetta
