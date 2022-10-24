@@ -321,6 +321,12 @@ export function parseMessageTransaction(
         );
         break;
       }
+      case TxPayloadTypeID.PoisonMicroblock: {
+        logger.verbose(
+          `Poison microblock: header1 ${payload.microblock_header_1}), header2: ${payload.microblock_header_2}`
+        );
+        break;
+      }
       default: {
         throw new NotImplementedError(
           `extracting data for tx type: ${getEnumDescription(
