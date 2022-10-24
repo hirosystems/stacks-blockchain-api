@@ -10,7 +10,7 @@
     "test": "rimraf .tmp && run-s lint:yaml lint:json lint:openapi validate:schemas",
     "lint:yaml": "yamllint ./openapi.yaml",
     "lint:json": "jsonlint-cli ./api/**/*.json ./entities/**/*.json",
-    "lint:openapi": "lint-openapi ./openapi.yaml",
+    "lint:openapi": "swagger-cli validate ./openapi.yaml",
     "generate:types": "ts-node ./scripts/generate-types.ts",
     "generate:schemas": "gulp && npm run generate:types",
     "generate:git-info": "npm run generate:git-info --prefix .. && export API_VERSION=$(shx tail -n 1 ../.git-info) && speccy resolve --output .tmp/openapi.resolved.yaml openapi.yaml && shx sed -i 'STACKS_API_VERSION' ${API_VERSION:-1.0.0} .tmp/openapi.resolved.yaml > /dev/null",
