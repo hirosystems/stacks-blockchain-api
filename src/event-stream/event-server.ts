@@ -734,7 +734,7 @@ export async function startEventServer(opts: {
         ) {
           next();
         } else {
-          res.end();
+          res.send(`${req.path} is not available while IBM mode is active`);
         }
       } catch (error) {
         console.error(error);
