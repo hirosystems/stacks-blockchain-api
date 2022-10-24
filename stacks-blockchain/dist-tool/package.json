@@ -4,7 +4,7 @@
   "description": "Utility script to build and upload the Stacks Blockchain core node from source.",
   "main": "index.js",
   "scripts": {
-    "start": "npm i && node index.js",
+    "start": "npm ci && node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
