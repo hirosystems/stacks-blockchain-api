@@ -801,14 +801,14 @@ export async function startEventServer(opts: {
   if (process.env.IBD_MODE_UNTIL_BLOCK) {
     app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'], async (req, res, next) => {
       try {
-        const chainTip = await db.getChainTip(db.sql);
+        const chainTip = await db.getChainTip(db.sql, false);
         if (
           process.env.IBD_MODE_UNTIL_BLOCK &&
           chainTip.blockHeight > Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
         ) {
           next();
         } else {
-          res.send(`${req.path} is not available while IBM mode is active`);
+          res.send(`${req.originalUrl} is not available while IBD mode is active.`);
         }
       } catch (error) {
         console.error(error);
