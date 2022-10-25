@@ -1,7 +1,6 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    platform: linux/amd64
     build:
       context: ../stacks-blockchain/docker
     command: stacks-node start --config=/app/config/Stacks-dev.toml

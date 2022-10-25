@@ -154,9 +154,8 @@ export class PgWriteStore extends PgStore {
       FROM blocks
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
     `;
-    const height = currentTipBlock[0]?.block_height ?? 0;
     return {
-      blockHeight: height,
+      blockHeight: currentTipBlock[0]?.block_height ?? 0,
       blockHash: currentTipBlock[0]?.block_hash ?? '',
       indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
     };
