@@ -732,9 +732,9 @@ export async function startEventServer(opts: {
   const handleRawEventRequest = asyncHandler(async req => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
-    const eventPath = req.path;
-    let payload = JSON.stringify(req.body);
     if (logger.isDebugEnabled()) {
+      const eventPath = req.path;
+      let payload = JSON.stringify(req.body);
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
       if (payload.length > 10_000_000) {
         payload = 'payload body too large for logging';

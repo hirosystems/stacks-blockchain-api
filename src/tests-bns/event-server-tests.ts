@@ -7,6 +7,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 import { CoreNodeBlockMessage } from 'src/event-stream/core-node-message';
+import { getRawEventRequests } from 'src/datastore/event-requests';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -1031,8 +1032,11 @@ describe('BNS event server tests', () => {
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
     const routes = ['/new_block', '/new_burn_block', '/new_mempool_tx', '/drop_mempool_tx', '/attachments/new', '/new_microblocks']
 
+    const getRawEventCount = async () => await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
+
     routes.forEach(async route => {
-      const rawEventRequestCountBefore = db.getRawEventCount();
+      const rawEventRequestCountResultBefore = await getRawEventCount();
+      const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0]
       const post = await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,
@@ -1042,7 +1046,8 @@ describe('BNS event server tests', () => {
         throwOnNotOK: true,
       });
       expect(post.statusCode).toBe(500);
-      const rawEventRequestCountAfter = db.getRawEventCount();
+      const rawEventRequestCountResultAfter = await getRawEventCount();
+      const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
       expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
     })
   });
