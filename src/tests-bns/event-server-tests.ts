@@ -1030,8 +1030,9 @@ describe('BNS event server tests', () => {
   });
 
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
+    // expect(0).toEqual(0);
     const routes = ['/new_block', '/new_burn_block', '/new_mempool_tx', '/drop_mempool_tx', '/attachments/new', '/new_microblocks']
-
+    const invalidBody = {}
     const getRawEventCount = async () => await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
 
     routes.forEach(async route => {
@@ -1042,7 +1043,7 @@ describe('BNS event server tests', () => {
         port: eventServer.serverAddress.port,
         path: route,
         headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify({}), 'utf8'),
+        body: Buffer.from(JSON.stringify(invalidBody), 'utf8'),
         throwOnNotOK: true,
       });
       expect(post.statusCode).toBe(500);
