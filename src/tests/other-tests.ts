@@ -119,6 +119,7 @@ describe('other tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });

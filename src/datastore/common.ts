@@ -1,6 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 import { PgBytea, PgJsonb, PgNumeric } from './connection';
+import { PoX2Event } from '../pox-helpers';
 
 export interface DbBlock {
   block_hash: string;
@@ -296,6 +297,8 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
+export type DbPoX2Event = DbEventBase & PoX2Event;
+
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
@@ -433,6 +436,7 @@ export interface DataStoreTxEventData {
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
+  pox2Events: DbPoX2Event[];
 }
 
 export interface DbSearchResult {
@@ -796,6 +800,7 @@ export interface UpdatedEntities {
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
+    pox2Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -811,6 +816,7 @@ export interface UpdatedEntities {
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
+    pox2Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;

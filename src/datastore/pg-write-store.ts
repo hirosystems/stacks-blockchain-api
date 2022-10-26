@@ -55,6 +55,7 @@ import {
   TxQueryResult,
   UpdatedEntities,
   BlockQueryResult,
+  DbPoX2Event,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -206,6 +207,7 @@ export class PgWriteStore extends PgStore {
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
           names: tx.names.map(e => ({ ...e, canonical: false })),
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+          pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
         }));
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
@@ -339,6 +341,9 @@ export class PgWriteStore extends PgStore {
           await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+          for (const pox2Event of entry.pox2Events) {
+            await this.updatePox2Event(sql, entry.tx, pox2Event);
+          }
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
           }
@@ -599,6 +604,7 @@ export class PgWriteStore extends PgStore {
           smartContracts: entry.smartContracts.map(e => ({ ...e, block_height: blockHeight })),
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
+          pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
         });
       }
 
@@ -668,6 +674,31 @@ export class PgWriteStore extends PgStore {
         await this.emitAddressTxUpdates(txs);
       }
     });
+  }
+
+  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPoX2Event) {
+    await Promise.resolve();
+    throw new Error('Not implemented');
+    /*
+    const values: StxLockEventInsertValues = {
+      event_index: event.event_index,
+      tx_id: event.tx_id,
+      tx_index: event.tx_index,
+      block_height: event.block_height,
+      index_block_hash: tx.index_block_hash,
+      parent_index_block_hash: tx.parent_index_block_hash,
+      microblock_hash: tx.microblock_hash,
+      microblock_sequence: tx.microblock_sequence,
+      microblock_canonical: tx.microblock_canonical,
+      canonical: event.canonical,
+      locked_amount: event.locked_amount.toString(),
+      unlock_height: event.unlock_height,
+      locked_address: event.locked_address,
+    };
+    await sql`
+      INSERT INTO stx_lock_events ${sql(values)}
+    `;
+    */
   }
 
   async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
@@ -1604,6 +1635,9 @@ export class PgWriteStore extends PgStore {
       await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
       await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
       await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+      for (const pox2Event of entry.pox2Events) {
+        await this.updatePox2Event(sql, entry.tx, pox2Event);
+      }
       for (const stxLockEvent of entry.stxLockEvents) {
         await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
       }
@@ -1928,6 +1962,17 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
     }
 
+    const poxResult = await sql`
+      UPDATE pox_events
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
+    if (canonical) {
+      updatedEntities.markedCanonical.pox2Events += poxResult.count;
+    } else {
+      updatedEntities.markedNonCanonical.pox2Events += poxResult.count;
+    }
+
     const contractLogResult = await sql`
       UPDATE contract_logs
       SET canonical = ${canonical}
@@ -2130,6 +2175,7 @@ export class PgWriteStore extends PgStore {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -2145,6 +2191,7 @@ export class PgWriteStore extends PgStore {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,

@@ -380,6 +380,7 @@ describe('microblock tests', () => {
               smartContracts: [smartContract1],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
           ],
         });
@@ -527,6 +528,7 @@ describe('microblock tests', () => {
               smartContracts: [],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
             {
               tx: mbTx2,
@@ -538,6 +540,7 @@ describe('microblock tests', () => {
               smartContracts: [],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
           ],
         });

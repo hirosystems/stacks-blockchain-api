@@ -125,6 +125,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -136,6 +137,7 @@ describe('smart contract tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -244,6 +246,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -344,6 +347,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -1525,6 +1529,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -1536,6 +1541,7 @@ describe('smart contract tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });

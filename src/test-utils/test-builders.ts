@@ -241,6 +241,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     smartContracts: [],
     names: [],
     namespaces: [],
+    pox2Events: [],
   };
   return data;
 }

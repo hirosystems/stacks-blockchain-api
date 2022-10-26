@@ -17,6 +17,7 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
+  CoreNodeTxMessage,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -38,6 +39,7 @@ import {
   DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
   DbMicroblock,
+  DbPoX2Event,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -76,6 +78,14 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
+import { decodePoX2Event, PoX2ContractIdentifer } from '../pox-helpers';
+
+/**
+ * Events that are generated in a Stacks block which do not correspond to an actual transaction in that
+ * block (for example synthetic PoX `stack-unlock` events) use this special constant value for their txid.
+ * See https://github.com/stacks-network/stacks-blockchain/pull/3318 where this behavior was introduced.
+ */
+export const TransactionOriginTxId = 'NetworkProtocol';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -210,7 +220,7 @@ async function handleMicroblockMessage(
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
+    txs: parseDataStoreTxEventData(chainId, parsedTxs, msg.events, {
       block_height: -1, // TODO: fill during initial db insert
       index_block_hash: '',
     }),
@@ -310,13 +320,14 @@ async function handleBlockMessage(
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
+    txs: parseDataStoreTxEventData(chainId, parsedTxs, msg.events, msg),
   };
 
   await db.update(dbData);
 }
 
 function parseDataStoreTxEventData(
+  chainId: ChainID,
   parsedTxs: CoreNodeParsedTxMessage[],
   events: CoreNodeEvent[],
   blockData: {
@@ -335,6 +346,7 @@ function parseDataStoreTxEventData(
       smartContracts: [],
       names: [],
       namespaces: [],
+      pox2Events: [],
     };
     if (
       tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract ||
@@ -387,6 +399,19 @@ function parseDataStoreTxEventData(
         };
         dbTx.contractLogEvents.push(entry);
         if (
+          event.contract_event.topic === printTopic &&
+          (event.contract_event.contract_identifier === PoX2ContractIdentifer.mainnet ||
+            event.contract_event.contract_identifier === PoX2ContractIdentifer.testnet)
+        ) {
+          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const poxEventData = decodePoX2Event(event.contract_event.raw_value, network);
+          console.log(`PoX2 event data:`, poxEventData);
+          const dbPoxEvent: DbPoX2Event = {
+            ...dbEvent,
+            ...poxEventData,
+          };
+          dbTx.pox2Events.push(dbPoxEvent);
+        } else if (
           event.contract_event.topic === printTopic &&
           (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
             event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
@@ -568,6 +593,7 @@ function parseDataStoreTxEventData(
       tx.nftEvents,
       tx.stxEvents,
       tx.stxLockEvents,
+      tx.pox2Events,
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
