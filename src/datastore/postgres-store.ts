@@ -7284,8 +7284,9 @@ export class PgDataStore
           };
         }
       } catch (error) {
-        return nameZonefile.rows[0];
+        // Something went wrong. We'll display `zonefile` table data.
       }
+      return nameZonefile.rows[0];
     });
     if (queryResult) {
       return {
