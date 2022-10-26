@@ -21,7 +21,6 @@ import {
   parseRecoverableSignature,
   PayloadType,
   StacksTransaction,
-  tupleCV,
 } from '@stacks/transactions';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
@@ -182,7 +181,7 @@ function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOpe
 }
 
 /**
- * If `tx` is a contract call to the `send-many-memo` contract, return an array of `memo` value for
+ * If `tx` is a contract call to the `send-many-memo` contract, return an array of `memo` values for
  * all STX transfers sorted by event index.
  * @param tx - Base transaction
  * @returns Array of `memo` values
@@ -196,10 +195,9 @@ function decodeSendManyContractCallMemos(tx: BaseTx): string[] | undefined {
     tx.contract_call_function_args
   ) {
     const decodeMemo = (memo?: ClarityValue): string => {
-      if (memo && memo.type_id === ClarityTypeID.Buffer) {
-        return (hexToCV(memo.hex) as BufferCV).buffer.toString('utf8');
-      }
-      return '';
+      return memo && memo.type_id === ClarityTypeID.Buffer
+        ? (hexToCV(memo.hex) as BufferCV).buffer.toString('utf8')
+        : '';
     };
     try {
       const argList = decodeClarityValueList(tx.contract_call_function_args, true);
