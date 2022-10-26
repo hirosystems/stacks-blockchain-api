@@ -48,13 +48,13 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
         return;
       }
 
-      const block = await getRosettaBlockFromDataStore(db, false);
+      const block = await getRosettaBlockFromDataStore(db, false, chainId);
       if (!block.found) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
         return;
       }
 
-      const genesis = await getRosettaBlockFromDataStore(db, false, undefined, 1);
+      const genesis = await getRosettaBlockFromDataStore(db, false, chainId, undefined, 1);
       if (!genesis.found) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
         return;

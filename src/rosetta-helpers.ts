@@ -56,7 +56,7 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, hexToBuffer, logger } from './helpers';
+import { unwrapOptional, hexToBuffer, logger, getSendManyContract } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
@@ -80,9 +80,6 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
-
-const SEND_MANY_MEMO_CONTRACT_ID = 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE.send-many-memo';
-const SEND_MANY_FUNCTION_NAMES = ['send-many', 'send-stx-with-memo'];
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -131,6 +128,7 @@ export function parseTransactionMemo(tx: BaseTx): string | null {
 export async function getOperations(
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
+  chainID: ChainID,
   minerRewards?: DbMinerReward[],
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
@@ -168,7 +166,7 @@ export async function getOperations(
   }
 
   if (events !== undefined) {
-    await processEvents(db, events, tx, operations);
+    await processEvents(db, events, tx, operations, chainID);
   }
 
   return operations;
@@ -186,12 +184,12 @@ function processUnlockingEvents(events: StxUnlockEvent[], operations: RosettaOpe
  * @param tx - Base transaction
  * @returns Array of `memo` values
  */
-function decodeSendManyContractCallMemos(tx: BaseTx): string[] | undefined {
+function decodeSendManyContractCallMemos(tx: BaseTx, chainID: ChainID): string[] | undefined {
   if (
     getTxTypeString(tx.type_id) === 'contract_call' &&
-    tx.contract_call_contract_id === SEND_MANY_MEMO_CONTRACT_ID &&
+    tx.contract_call_contract_id === getSendManyContract(chainID) &&
     tx.contract_call_function_name &&
-    SEND_MANY_FUNCTION_NAMES.includes(tx.contract_call_function_name) &&
+    ['send-many', 'send-stx-with-memo'].includes(tx.contract_call_function_name) &&
     tx.contract_call_function_args
   ) {
     const decodeMemo = (memo?: ClarityValue): string => {
@@ -218,13 +216,14 @@ async function processEvents(
   db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
-  operations: RosettaOperation[]
+  operations: RosettaOperation[],
+  chainID: ChainID
 ) {
   // Is this a `send-many-memo` contract call transaction? If so, we must include the provided
   // `memo` values inside STX operation metadata entries. STX transfer events inside
   // `send-many-memo` contract calls come in the same order as the provided args, therefore we can
   // match them by index.
-  const sendManyMemos = decodeSendManyContractCallMemos(baseTx);
+  const sendManyMemos = decodeSendManyContractCallMemos(baseTx, chainID);
   let sendManyStxTransferEventIndex = 0;
 
   for (const event of events) {
@@ -1064,7 +1063,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
       transactionType = DbTxTypeId.PoisonMicroblock;
       break;
   }
-  const dbtx: BaseTx = {
+  const dbTx: BaseTx = {
     token_transfer_recipient_address: recipientAddr,
     tx_id: txId,
     anchor_mode: 3,
@@ -1080,10 +1079,10 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 
   const txPayload = transaction.payload;
   if (txPayload.type_id === TxPayloadTypeID.TokenTransfer) {
-    dbtx.token_transfer_memo = txPayload.memo_hex;
+    dbTx.token_transfer_memo = txPayload.memo_hex;
   }
 
-  return dbtx;
+  return dbTx;
 }
 
 export async function getValidatedFtMetadata(
