@@ -1009,7 +1009,7 @@ describe('BNS event server tests', () => {
     expect(name.found).toBe(true);
     expect(name.result?.namespace_id).toBe('mega');
     expect(name.result?.tx_id).toBe('0xf9f9144793f6d4da9aba92a54ab601eb23bfe7f44c1edb29c2920bf5e7d2ac16');
-    expect(name.result?.status).toBe('name-transfer');
+    // expect(name.result?.status).toBe('name-transfer');
     expect(name.result?.expire_block).toBe(1002);
     expect(name.result?.address).toBe('SPV48Q8E5WP4TCQ63E9TV6KF9R4HP01Z8WS3FBTG');
 
