@@ -728,16 +728,16 @@ export async function startEventServer(opts: {
     app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'], async (req, res, next) => {
       try {
         const chainTip = await db.getChainTip(db.sql, false);
-        if (
-          process.env.IBD_MODE_UNTIL_BLOCK &&
-          chainTip.blockHeight > Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
-        ) {
+        if (chainTip.blockHeight >= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string)) {
           next();
         } else {
-          res.send(`${req.originalUrl} is not available while IBD mode is active.`);
+          res.status(200).send(`IBD mode active.`); // Skipping ${req.originalUrl} handler
         }
       } catch (error) {
-        console.error(error);
+        res
+          .status(500)
+          .json({ error })
+          .send('A middleware error occurred processing the request in IBD mode.');
       }
     });
   }

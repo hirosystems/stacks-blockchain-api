@@ -1027,56 +1027,6 @@ describe('BNS event server tests', () => {
     expect(namespaceList.results).toStrictEqual(['ape.mega']);
   });
 
-  test('IBD mode blocks certain API routes', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-
-    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block']
-
-    routes.forEach(async route => {
-      const response = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: route,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify({}), 'utf8'),
-        throwOnNotOK: true,
-      });
-      expect(response.response).toBe(
-        `${route} is not available while IBD mode is active.`
-      );
-    })
-
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  });
-
-  test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '0';
-
-    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block']
-
-    routes.forEach(async route => {
-      const response = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: route,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify({}), 'utf8'),
-        throwOnNotOK: true,
-      });
-      expect(response.statusCode).toBe(
-        500
-      );
-    })
-
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  });
-
-  test('IBD mode prevents refreshing materialized views', () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    expect(db.refreshMaterializedView('fizzbuzz', client)).toBe(undefined);
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  });
-
   afterEach(async () => {
     await eventServer.closeAsync();
     await db?.close();
