@@ -28,6 +28,12 @@ describe('BNS event server tests', () => {
     });
   });
 
+  afterEach(async () => {
+    await eventServer.closeAsync();
+    await db?.close();
+    await runMigrations(undefined, 'down');
+  });
+
   test('namespace-ready called by a contract other than BNS', async () => {
     const block = new TestBlockBuilder({
       block_height: 1,
@@ -1030,12 +1036,11 @@ describe('BNS event server tests', () => {
   });
 
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
-    // expect(0).toEqual(0);
     const routes = ['/new_block', '/new_burn_block', '/new_mempool_tx', '/drop_mempool_tx', '/attachments/new', '/new_microblocks']
     const invalidBody = {}
     const getRawEventCount = async () => await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
 
-    routes.forEach(async route => {
+    for (const route of routes) {
       const rawEventRequestCountResultBefore = await getRawEventCount();
       const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0]
       const post = await httpPostRequest({
@@ -1050,12 +1055,6 @@ describe('BNS event server tests', () => {
       const rawEventRequestCountResultAfter = await getRawEventCount();
       const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
       expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
-    })
-  });
-
-  afterEach(async () => {
-    await eventServer.closeAsync();
-    await db?.close();
-    await runMigrations(undefined, 'down');
+    }
   });
 });
