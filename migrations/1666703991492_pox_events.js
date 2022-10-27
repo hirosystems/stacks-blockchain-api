@@ -1,6 +1,6 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.up = pgm => {
-  pgm.createTable('pox_events', {
+  pgm.createTable('pox2_events', {
     id: {
       type: 'bigserial',
       primaryKey: true,
@@ -45,10 +45,6 @@ exports.up = pgm => {
       type: 'boolean',
       notNull: true,
     },
-    contract_identifier: {
-      type: 'string',
-      notNull: true,
-    },
     stacker: {
       type: 'string',
       notNull: true,
@@ -71,15 +67,9 @@ exports.up = pgm => {
     },
     pox_addr: {
       type: 'string',
-      notNull: true,
     },
     pox_addr_raw: {
       type: 'bytea',
-      notNull: true,
-    },
-    value: {
-      type: 'bytea',
-      notNull: true,
     },
     delegator: {
       type: 'string',
@@ -89,12 +79,23 @@ exports.up = pgm => {
     },
     lock_amount: {
       type: 'numeric'
+    },
+    increase_by: {
+      type: 'numeric',
+    },
+    extend_count: {
+      type: 'numeric',
     }
   });
 
-  pgm.createIndex('pox_events', 'tx_id');
-  pgm.createIndex('pox_events', 'index_block_hash');
-  pgm.createIndex('pox_events', 'microblock_hash');
+  pgm.createIndex('pox2_events', 'block_height');
+  pgm.createIndex('pox2_events', 'tx_id');
+  pgm.createIndex('pox2_events', 'index_block_hash');
+  pgm.createIndex('pox2_events', 'microblock_hash');
 
-  pgm.createIndex('pox_events', 'stacker');
+  pgm.createIndex('pox2_events', 'stacker');
+  pgm.createIndex('pox2_events', 'burnchain_unlock_height');
+  pgm.createIndex('pox2_events', 'pox_addr');
+  pgm.createIndex('pox2_events', 'delegator');
+  pgm.createIndex('pox2_events', 'name');
 }

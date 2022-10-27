@@ -1,7 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 import { PgBytea, PgJsonb, PgNumeric } from './connection';
-import { PoX2Event } from '../pox-helpers';
+import { Pox2Event } from '../pox-helpers';
 
 export interface DbBlock {
   block_hash: string;
@@ -297,7 +297,7 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
-export type DbPoX2Event = DbEventBase & PoX2Event;
+export type DbPox2Event = DbEventBase & Pox2Event;
 
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
@@ -436,7 +436,7 @@ export interface DataStoreTxEventData {
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
-  pox2Events: DbPoX2Event[];
+  pox2Events: DbPox2Event[];
 }
 
 export interface DbSearchResult {
@@ -1046,6 +1046,31 @@ export interface StxLockEventInsertValues {
   locked_amount: PgNumeric;
   unlock_height: number;
   locked_address: string;
+}
+
+export interface Pox2EventInsertValues {
+  event_index: number;
+  tx_id: PgBytea;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  stacker: string;
+  locked: PgNumeric;
+  balance: PgNumeric;
+  burnchain_unlock_height: PgNumeric;
+  name: string;
+  pox_addr: string | null;
+  pox_addr_raw: PgBytea | null;
+  delegator: string | null;
+  lock_period: PgNumeric | null;
+  lock_amount: PgNumeric | null;
+  increase_by: PgNumeric | null;
+  extend_count: PgNumeric | null;
 }
 
 export interface NftEventInsertValues {

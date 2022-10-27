@@ -55,7 +55,8 @@ import {
   TxQueryResult,
   UpdatedEntities,
   BlockQueryResult,
-  DbPoX2Event,
+  DbPox2Event,
+  Pox2EventInsertValues,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -676,11 +677,8 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPoX2Event) {
-    await Promise.resolve();
-    throw new Error('Not implemented');
-    /*
-    const values: StxLockEventInsertValues = {
+  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPox2Event) {
+    const values: Pox2EventInsertValues = {
       event_index: event.event_index,
       tx_id: event.tx_id,
       tx_index: event.tx_index,
@@ -691,14 +689,63 @@ export class PgWriteStore extends PgStore {
       microblock_sequence: tx.microblock_sequence,
       microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
-      locked_amount: event.locked_amount.toString(),
-      unlock_height: event.unlock_height,
-      locked_address: event.locked_address,
+      stacker: event.stacker,
+      locked: event.locked.toString(),
+      balance: event.balance.toString(),
+      burnchain_unlock_height: event.burnchainUnlockHeight.toString(),
+      name: event.name,
+      pox_addr: event.poxAddr,
+      pox_addr_raw: event.poxAddrRaw,
+      delegator: null,
+      lock_period: null,
+      lock_amount: null,
+      increase_by: null,
+      extend_count: null,
     };
+    // Set event-specific columns
+    switch (event.name) {
+      case 'handle-unlock': {
+        break;
+      }
+      case 'stack-stx': {
+        values.lock_period = event.data.lockPeriod.toString();
+        values.lock_amount = event.data.lockAmount.toString();
+        break;
+      }
+      case 'stack-increase': {
+        values.increase_by = event.data.increaseBy.toString();
+        break;
+      }
+      case 'stack-extend': {
+        values.extend_count = event.data.extendCount.toString();
+        break;
+      }
+      case 'delegate-stack-stx': {
+        values.lock_period = event.data.lockPeriod.toString();
+        values.lock_amount = event.data.lockAmount.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case 'delegate-stack-increase': {
+        values.increase_by = event.data.increaseBy.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case 'delegate-stack-extend': {
+        values.extend_count = event.data.extendCount.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case 'stack-aggregation-commit': {
+        break;
+      }
+      default: {
+        throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
+      }
+    }
     await sql`
-      INSERT INTO stx_lock_events ${sql(values)}
+      INSERT INTO pox2_events ${sql(values)}
     `;
-    */
   }
 
   async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
@@ -1963,7 +2010,7 @@ export class PgWriteStore extends PgStore {
     }
 
     const poxResult = await sql`
-      UPDATE pox_events
+      UPDATE pox2_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
     `;
