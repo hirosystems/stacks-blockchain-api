@@ -1,14 +1,8 @@
 import * as fs from 'fs';
-import { PgSqlClient } from '../datastore/connection';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { httpPostRequest } from '../helpers';
-import { findTsvBlockHeight } from '../event-replay/helpers';
+import { findBnsGenesisBlockData, findTsvBlockHeight } from '../event-replay/helpers';
 import { ReverseFileStream } from '../event-replay/reverse-file-stream';
-import { ChainID } from '@stacks/transactions';
 
-describe('event replay tests', () => {
+describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {
     try {
       fs.mkdirSync('./.tmp');
@@ -125,78 +119,17 @@ line4`;
       fs.unlinkSync(testFilePath);
     }
   });
-});
 
-describe('BNS event server tests', () => {
-  let db: PgWriteStore;
-  let client: PgSqlClient;
-  let eventServer: EventStreamServer;
-
-  beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    client = db.sql;
-    eventServer = await startEventServer({
-      datastore: db,
-      chainId: ChainID.Mainnet,
-      serverHost: '127.0.0.1',
-      serverPort: 0,
-      httpLogLevel: 'debug',
+  test('BNS genesis block data is found', async () => {
+    const genesisBlock = await findBnsGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
+    expect(genesisBlock).toEqual({
+      index_block_hash: '0x918697ef63f9d8bdf844c3312b299e72a231cde542f3173f7755bb8c1cdaf3a7',
+      parent_index_block_hash: '0x55c9861be5cff984a20ce6d99d4aa65941412889bdc665094136429b84f8c2ee',
+      microblock_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      microblock_sequence: 0,
+      microblock_canonical: true,
+      tx_id: '0x2f079994c9bd92b2272258b9de73e278824d76efe1b5a83a3b00941f9559de8a',
+      tx_index: 7,
     });
-  });
-
-  afterEach(async () => {
-    await eventServer.closeAsync();
-    await db?.close();
-    await runMigrations(undefined, 'down');
-  });
-
-  test('IBD mode blocks certain API routes', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-
-    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
-
-    for (const route of routes) {
-      const response = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: route,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify({}), 'utf8'),
-        throwOnNotOK: false,
-      });
-      // expect(response.statusCode).toBe(200);
-      expect(response.statusMessage).toBe('IBD mode active.');
-    }
-
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  });
-
-  test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '0';
-
-    const routes = ['/new_mempool_tx', '/drop_mempool_tx', '/new_burn_block'];
-
-    for (const route of routes) {
-      const response = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: route,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify({}), 'utf8'),
-        throwOnNotOK: false,
-      });
-      expect(response.statusCode).toBe(500);
-    }
-
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  });
-
-  test('IBD mode prevents refreshing materialized views', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    const result = await db.refreshMaterializedView('fizzbuzz', client);
-    expect(result).toBe(undefined);
-    process.env.IBD_MODE_UNTIL_BLOCK = undefined;
   });
 });
