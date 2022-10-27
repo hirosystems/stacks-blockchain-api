@@ -31,6 +31,12 @@ describe('BNS event server tests', () => {
     });
   });
 
+  afterEach(async () => {
+    await eventServer.closeAsync();
+    await db?.close();
+    await runMigrations(undefined, 'down');
+  });
+
   test('namespace-ready called by a contract other than BNS', async () => {
     const block = new TestBlockBuilder({
       block_height: 1,
