@@ -158,14 +158,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: My Tests",
+      "name": "Jest: Event Replay",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.mytests.js"
+        "${workspaceRoot}/jest.config.event-replay.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

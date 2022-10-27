@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
@@ -6,8 +7,8 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
-import { CoreNodeBlockMessage } from 'src/event-stream/core-node-message';
-import { getRawEventRequests } from 'src/datastore/event-requests';
+import { getRawEventRequests } from '../datastore/event-requests';
+import { useWithCleanup } from '../tests/test-helpers';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -1036,25 +1037,54 @@ describe('BNS event server tests', () => {
   });
 
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {
-    const routes = ['/new_block', '/new_burn_block', '/new_mempool_tx', '/drop_mempool_tx', '/attachments/new', '/new_microblocks']
-    const invalidBody = {}
-    const getRawEventCount = async () => await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
+    const getRawEventCount = async () =>
+      await client<Promise<number>[]>`SELECT count(*) from event_observer_requests`;
 
-    for (const route of routes) {
-      const rawEventRequestCountResultBefore = await getRawEventCount();
-      const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0]
-      const post = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: route,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(JSON.stringify(invalidBody), 'utf8'),
-        throwOnNotOK: true,
-      });
-      expect(post.statusCode).toBe(500);
-      const rawEventRequestCountResultAfter = await getRawEventCount();
-      const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
-      expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
-    }
+    await useWithCleanup(
+      () => {
+        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+        const rawEventsIterator = getRawEventRequests(readStream);
+        return [rawEventsIterator, () => readStream.close()] as const;
+      },
+      async () => {
+        const eventServer = await startEventServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+          serverHost: '127.0.0.1',
+          serverPort: 0,
+          httpLogLevel: 'debug',
+        });
+        return [eventServer, eventServer.closeAsync] as const;
+      },
+      async (rawEventsIterator, eventServer) => {
+        for await (const rawEvents of rawEventsIterator) {
+          for (const rawEvent of rawEvents) {
+            try {
+              if (rawEvent.event_path === '/new_block') {
+                const payloadJson = JSON.parse(rawEvent.payload);
+                payloadJson.transactions = undefined;
+                rawEvent.payload = JSON.stringify(payloadJson);
+              }
+            } catch (error) {}
+            const rawEventRequestCountResultBefore = await getRawEventCount();
+            const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0];
+            const response = await httpPostRequest({
+              host: '127.0.0.1',
+              port: eventServer.serverAddress.port,
+              path: rawEvent.event_path,
+              headers: { 'Content-Type': 'application/json' },
+              body: Buffer.from(rawEvent.payload, 'utf8'),
+              throwOnNotOK: false,
+            });
+            if (rawEvent.event_path === '/new_block') {
+              expect(response.statusCode).toBe(500);
+              const rawEventRequestCountResultAfter = await getRawEventCount();
+              const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
+              expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
+            }
+          }
+        }
+      }
+    );
   });
 });
