@@ -158,6 +158,23 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest: Event Replay",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/jest.config.event-replay.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev"
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest: Rosetta",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
