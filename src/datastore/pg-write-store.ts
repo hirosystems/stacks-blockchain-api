@@ -2780,12 +2780,8 @@ export class PgWriteStore extends PgStore {
       return;
     }
     if (process.env.IBD_MODE_UNTIL_BLOCK) {
-      const db = new PgWriteStore(sql);
-      const chainTip = await db.getChainTip(sql);
-      if (
-        process.env.IBD_MODE_UNTIL_BLOCK &&
-        chainTip.blockHeight <= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)
-      ) {
+      const chainTip = await this.getChainTip(sql);
+      if (chainTip.blockHeight <= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)) {
         return;
       }
     }
