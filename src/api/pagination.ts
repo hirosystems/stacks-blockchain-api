@@ -60,6 +60,9 @@ const pagedApiRoutes = [
   '/address/:address/mempool',
   '/address/:stx_address/stx_inbound',
   '/burnchain/reward_slot_holders',
+  '/burnchain/reward_slot_holders/:address',
+  '/burnchain/rewards',
+  '/burnchain/rewards/:address',
   '/contract/by_trait',
   '/contract/:contract_id/events',
   '/microblock',
@@ -111,6 +114,18 @@ const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit
     maxLimit: MAX_STX_INBOUND_PER_REQUEST,
   },
   '/burnchain/reward_slot_holders': {
+    defaultLimit: 96,
+    maxLimit: MAX_BLOCKS_PER_REQUEST,
+  },
+  '/burnchain/reward_slot_holders/:address': {
+    defaultLimit: 96,
+    maxLimit: MAX_BLOCKS_PER_REQUEST,
+  },
+  '/burnchain/rewards': {
+    defaultLimit: 96,
+    maxLimit: MAX_BLOCKS_PER_REQUEST,
+  },
+  '/burnchain/rewards/:address': {
     defaultLimit: 96,
     maxLimit: MAX_BLOCKS_PER_REQUEST,
   },
@@ -185,9 +200,6 @@ const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit
 };
 
 export function getPagingQueryLimit(queryRoute: PagedApiRoutes, limitOverride?: any) {
-  if (!(queryRoute in pagingQueryLimits)) {
-    throw new Error('The provided query route does not exist');
-  }
   const pagingQueryLimit = pagingQueryLimits[queryRoute];
   if (!limitOverride) {
     return pagingQueryLimit.defaultLimit;

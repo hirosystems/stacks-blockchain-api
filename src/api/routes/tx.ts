@@ -43,7 +43,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = getPagingQueryLimit('/tx');
+      const limit = getPagingQueryLimit('/tx', req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const typeQuery = req.query.type;
@@ -110,7 +110,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = getPagingQueryLimit('/tx/mempool');
+      const limit = getPagingQueryLimit('/tx/mempool', req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       let addrParams: (string | undefined)[];
@@ -171,7 +171,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool/dropped',
     mempoolCacheHandler,
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/tx/mempool/dropped');
+      const limit = getPagingQueryLimit('/tx/mempool/dropped', req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { results: txResults, total } = await db.getDroppedTxs({
         offset,
