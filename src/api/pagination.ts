@@ -25,21 +25,6 @@ export function parsePagingQueryInput(val: any) {
   return parsedInput;
 }
 
-interface ParseLimitQueryParams {
-  maxItems: number;
-  errorMsg: string;
-  defaultLimit?: number | undefined;
-}
-
-export function parseLimitQuery({ maxItems, errorMsg, defaultLimit }: ParseLimitQueryParams) {
-  return (val: any) => {
-    const limit = parsePagingQueryInput(val);
-    if (limit > maxItems)
-      throw new InvalidRequestError(errorMsg, InvalidRequestErrorType.invalid_query);
-    return limit;
-  };
-}
-
 const MAX_BLOCKS_PER_REQUEST = 30;
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
