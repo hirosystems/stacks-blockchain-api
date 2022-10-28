@@ -20,7 +20,7 @@ describe('parsePagingQueryInput()', () => {
 
 describe('getPagingQueryLimit()', () => {
   test('If a limit is not provided, the default limit is used for the specified route', () => {
-    expect(() => getPagingQueryLimit('/block')).toBe(20);
+    expect(getPagingQueryLimit('/block')).toBe(20);
   });
   test('Error is thrown when value is larger than input', () => {
     expect(() => getPagingQueryLimit('/block', 31)).toThrowError();
