@@ -4,15 +4,33 @@ import { ApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { Server } from 'net';
 import { DbBlock, DbEventTypeId, DbStxLockEvent, DbTx, DbTxStatus } from '../datastore/common';
-import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
+import {
+  getAddressFromPrivateKey,
+  makeSTXTokenTransfer,
+  AnchorMode,
+  bufferCV,
+  makeContractCall,
+  noneCV,
+  someCV,
+  standardPrincipalCV,
+  TransactionVersion,
+  TupleCV,
+  tupleCV,
+  uintCV,
+} from '@stacks/transactions';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
 import * as poxHelpers from '../pox-helpers';
-import { hexToBuffer, parsePort } from '../helpers';
+import { coerceToBuffer, hexToBuffer, parsePort, stxToMicroStx } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
-import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
+import {
+  ECPair,
+  getBitcoinAddressFromKey,
+  privateToPublicKey,
+  VerboseKeyOutput,
+} from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
@@ -108,6 +126,198 @@ describe('PoX-2 tests', () => {
     expect(result.type).toBe('application/json');
     return result.body as TRes;
   }
+
+  describe('PoX-2 - Delegate Stacking operations', () => {
+    const seedKey = testnetKeys[4].secretKey;
+    const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
+    const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
+
+    type Account = {
+      secretKey: string;
+      pubKey: string;
+      stxAddr: string;
+      btcAddr: string;
+      poxAddr: { version: number; data: Buffer };
+      poxAddrClar: TupleCV;
+      wif: string;
+    };
+    let seedAccount: Account;
+    let delegatorAccount: Account;
+    let delegateeAccount: Account;
+
+    let poxInfo: CoreRpcPoxInfo;
+    let contractAddress: string;
+    let contractName: string;
+    let cycleBlockLength: number;
+
+    function accountFromKey(privateKey: string): Account {
+      const privKeyBuff = coerceToBuffer(privateKey);
+      if (privKeyBuff.byteLength !== 33) {
+        throw new Error('Only compressed private keys supported');
+      }
+      const ecPair = ECPair.fromPrivateKey(privKeyBuff.slice(0, 32), { compressed: true });
+      const secretKey = ecPair.privateKey!.toString('hex') + '01';
+      if (secretKey.slice(0, 64) !== privateKey.slice(0, 64)) {
+        throw new Error(`key mismatch`);
+      }
+      const pubKey = ecPair.publicKey.toString('hex');
+      const stxAddr = getAddressFromPrivateKey(secretKey, TransactionVersion.Testnet);
+      const btcAccount = getBitcoinAddressFromKey({
+        privateKey: ecPair.privateKey!,
+        network: 'regtest',
+        addressFormat: 'p2pkh',
+        verbose: true,
+      });
+      const btcAddr = btcAccount.address;
+      const poxAddr = poxHelpers.decodeBtcAddress(btcAddr);
+      const poxAddrClar = tupleCV({
+        hashbytes: bufferCV(poxAddr.data),
+        version: bufferCV(Buffer.from([poxAddr.version])),
+      });
+      const wif = btcAccount.wif;
+      return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, wif };
+    }
+
+    beforeAll(() => {
+      seedAccount = accountFromKey(seedKey);
+      delegatorAccount = accountFromKey(delegatorKey);
+      delegateeAccount = accountFromKey(delegateeKey);
+    });
+
+    test('Import testing accounts to bitcoind', async () => {
+      // register delegate accounts to bitcoind wallet
+      // TODO: only one of these (delegatee ?) should be required..
+      for (const account of [delegatorAccount, delegateeAccount]) {
+        await bitcoinRpcClient.importprivkey({
+          privkey: account.wif,
+          label: account.btcAddr,
+          rescan: false,
+        });
+      }
+    });
+
+    test('Get pox-info', async () => {
+      poxInfo = await client.getPox();
+      cycleBlockLength = poxInfo.reward_cycle_length;
+      [contractAddress, contractName] = poxInfo.contract_id.split('.');
+      expect(contractName).toBe('pox-2');
+    });
+
+    test('Seed delegate accounts', async () => {
+      // transfer 10 STX (for tx fees) from seed to delegator account
+      const gasAmount = stxToMicroStx(100);
+      const stxXfer1 = await makeSTXTokenTransfer({
+        senderKey: seedAccount.secretKey,
+        recipient: delegatorAccount.stxAddr,
+        amount: gasAmount,
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 200,
+      });
+      const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
+      const stxXferTx1 = await standByForTx(stxXferId1);
+      expect(stxXferTx1.status).toBe(DbTxStatus.Success);
+      expect(stxXferTx1.token_transfer_recipient_address).toBe(delegatorAccount.stxAddr);
+
+      // transfer pox "min_amount_ustx" from seed to delegatee account
+      const stackingAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+      const stxXfer2 = await makeSTXTokenTransfer({
+        senderKey: seedAccount.secretKey,
+        recipient: delegateeAccount.stxAddr,
+        amount: stackingAmount,
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 200,
+      });
+      const { txId: stxXferId2 } = await client.sendTransaction(stxXfer2.serialize());
+      const stxXferTx2 = await standByForTx(stxXferId2);
+      expect(stxXferTx2.status).toBe(DbTxStatus.Success);
+      expect(stxXferTx2.token_transfer_recipient_address).toBe(delegateeAccount.stxAddr);
+
+      // ensure delegator account balance is correct
+      const delegatorBalance = await client.getAccountBalance(delegatorAccount.stxAddr);
+      expect(delegatorBalance.toString()).toBe(gasAmount.toString());
+
+      // ensure delegatee account balance is correct
+      const delegateeBalance = await client.getAccountBalance(delegateeAccount.stxAddr);
+      expect(delegateeBalance.toString()).toBe(stackingAmount.toString());
+    });
+
+    test('Perform delegate-stx operation', async () => {
+      const txFee = 10000n;
+      const balanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      const balanceTotal = BigInt(balanceInfo.balance);
+      expect(balanceTotal).toBeGreaterThan(txFee);
+      const balanceLocked = BigInt(balanceInfo.locked);
+      expect(balanceLocked).toBe(0n);
+      const delegateAmount = balanceTotal - txFee * 2n;
+      const delegateStxTx = await makeContractCall({
+        senderKey: delegateeAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'delegate-stx',
+        functionArgs: [
+          uintCV(delegateAmount),
+          standardPrincipalCV(delegatorAccount.stxAddr),
+          noneCV(), // untilBurnBlockHeight
+          someCV(delegateeAccount.poxAddrClar),
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: txFee,
+        validateWithAbi: false,
+      });
+      const { txId: delegateStxTxId } = await client.sendTransaction(delegateStxTx.serialize());
+      const delegateStxDbTx = await standByForTx(delegateStxTxId);
+      expect(delegateStxDbTx.status).toBe(DbTxStatus.Success);
+
+      // check delegatee locked amount is still zero
+      const balanceInfo2 = await client.getAccount(delegateeAccount.stxAddr);
+      expect(BigInt(balanceInfo2.locked)).toBe(0n);
+    });
+
+    // ;; As a delegate, stack the given principal's STX using partial-stacked-by-cycle
+    // ;; Once the delegate has stacked > minimum, the delegate should call stack-aggregation-commit
+    // (define-public (delegate-stack-stx (stacker principal)
+    //                                    (amount-ustx uint)
+    //                                    (pox-addr { version: (buff 1), hashbytes: (buff 20) })
+    //                                    (start-burn-ht uint)
+    //                                    (lock-period uint))
+    /*
+    test('Perform delegate-stack-stx operation', async () => {
+      // get amount delegated
+      await client.
+
+      const txFee = 10000n;
+      const balanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      const balanceTotal = BigInt(balanceInfo.balance);
+      expect(balanceTotal).toBeGreaterThan(txFee);
+      const balanceLocked = BigInt(balanceInfo.locked);
+      expect(balanceLocked).toBe(0n);
+      const delegateAmount = balanceTotal - txFee * 2n;
+      const delegateStxTx = await makeContractCall({
+        senderKey: delegateeAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'delegate-stack-stx',
+        functionArgs: [
+          standardPrincipalCV(delegateeAccount.stxAddr),
+          uintCV(amountMicroStx),
+          address,
+          uintCV(burnBlockHeight),
+          uintCV(cycles),
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: txFee,
+        validateWithAbi: false,
+      });
+      const { txId: delegateStxTxId } = await client.sendTransaction(delegateStxTx.serialize());
+      const delegateStxDbTx = await standByForTx(delegateStxTxId);
+      expect(delegateStxDbTx.status).toBe(DbTxStatus.Success);
+    });
+    */
+  });
 
   describe('PoX-2 - Stacking operations P2PKH', () => {
     const account = testnetKeys[1];
