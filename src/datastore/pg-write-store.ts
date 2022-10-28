@@ -693,17 +693,19 @@ export class PgWriteStore extends PgStore {
       stacker: event.stacker,
       locked: event.locked.toString(),
       balance: event.balance.toString(),
-      burnchain_unlock_height: event.burnchainUnlockHeight.toString(),
+      burnchain_unlock_height: event.burnchain_unlock_height.toString(),
       name: event.name,
-      pox_addr: event.poxAddr,
-      pox_addr_raw: event.poxAddrRaw,
+      pox_addr: event.pox_addr,
+      pox_addr_raw: event.pox_addr_raw,
       first_cycle_locked: null,
       first_unlocked_cycle: null,
       lock_period: null,
       lock_amount: null,
       start_burn_height: null,
+      unlock_burn_height: null,
       delegator: null,
       increase_by: null,
+      total_locked: null,
       extend_count: null,
       reward_cycle: null,
       amount_ustx: null,
@@ -711,44 +713,50 @@ export class PgWriteStore extends PgStore {
     // Set event-specific columns
     switch (event.name) {
       case Pox2EventName.HandleUnlock: {
-        values.first_cycle_locked = event.data.firstCycleLocked.toString();
-        values.first_unlocked_cycle = event.data.firstUnlockedCycle.toString();
+        values.first_cycle_locked = event.data.first_cycle_locked.toString();
+        values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
         break;
       }
       case Pox2EventName.StackStx: {
-        values.lock_period = event.data.lockPeriod.toString();
-        values.lock_amount = event.data.lockAmount.toString();
-        values.start_burn_height = event.data.startBurnHeight.toString();
+        values.lock_period = event.data.lock_period.toString();
+        values.lock_amount = event.data.lock_amount.toString();
+        values.start_burn_height = event.data.start_burn_height.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
         break;
       }
       case Pox2EventName.StackIncrease: {
-        values.increase_by = event.data.increaseBy.toString();
+        values.increase_by = event.data.increase_by.toString();
+        values.total_locked = event.data.total_locked.toString();
         break;
       }
       case Pox2EventName.StackExtend: {
-        values.extend_count = event.data.extendCount.toString();
+        values.extend_count = event.data.extend_count.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
         break;
       }
       case Pox2EventName.DelegateStackStx: {
-        values.lock_period = event.data.lockPeriod.toString();
-        values.lock_amount = event.data.lockAmount.toString();
-        values.start_burn_height = event.data.startBurnHeight.toString();
+        values.lock_period = event.data.lock_period.toString();
+        values.lock_amount = event.data.lock_amount.toString();
+        values.start_burn_height = event.data.start_burn_height.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
         values.delegator = event.data.delegator;
         break;
       }
       case Pox2EventName.DelegateStackIncrease: {
-        values.increase_by = event.data.increaseBy.toString();
+        values.increase_by = event.data.increase_by.toString();
+        values.total_locked = event.data.total_locked.toString();
         values.delegator = event.data.delegator;
         break;
       }
       case Pox2EventName.DelegateStackExtend: {
-        values.extend_count = event.data.extendCount.toString();
+        values.extend_count = event.data.extend_count.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
         values.delegator = event.data.delegator;
         break;
       }
       case Pox2EventName.StackAggregationCommit: {
-        values.reward_cycle = event.data.rewardCycle.toString();
-        values.amount_ustx = event.data.amountUstx.toString();
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
       default: {

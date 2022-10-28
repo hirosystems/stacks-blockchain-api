@@ -12,7 +12,19 @@ import {
   ClarityTypeID,
   ClarityValueResponse,
 } from 'stacks-encoding-native-js';
-import { coerceToBuffer, logger } from './helpers';
+import { bufferToHexPrefixString, coerceToBuffer, logger } from './helpers';
+import {
+  DbPox2BaseEventData,
+  DbPox2DelegateStackExtendEvent,
+  DbPox2DelegateStackIncreaseEvent,
+  DbPox2DelegateStackStxEvent,
+  DbPox2EventData,
+  DbPox2HandleUnlockEvent,
+  DbPox2StackAggregationCommitEvent,
+  DbPox2StackExtendEvent,
+  DbPox2StackIncreaseEvent,
+  DbPox2StackStxEvent,
+} from './datastore/common';
 
 // TODO: switch to using @stacks/stacking lib once available
 //   currently borrowing its WIP code from:
@@ -380,96 +392,6 @@ interface Pox2PrintEventTypes {
   };
 }
 
-export interface Pox2BaseEventData {
-  stacker: string;
-  locked: bigint;
-  balance: bigint;
-  burnchainUnlockHeight: bigint;
-  poxAddr: string | null;
-  poxAddrRaw: Buffer | null;
-}
-
-export interface Pox2HandleUnlockEvent extends Pox2BaseEventData {
-  name: Pox2EventName.HandleUnlock;
-  data: {
-    firstCycleLocked: bigint;
-    firstUnlockedCycle: bigint;
-  };
-}
-
-export interface Pox2StackStxEvent extends Pox2BaseEventData {
-  name: Pox2EventName.StackStx;
-  data: {
-    lockAmount: bigint;
-    lockPeriod: bigint;
-    startBurnHeight: bigint;
-    unlockBurnHeight: bigint;
-  };
-}
-
-export interface Pox2StackIncreaseEvent extends Pox2BaseEventData {
-  name: Pox2EventName.StackIncrease;
-  data: {
-    increaseBy: bigint;
-    totalLocked: bigint;
-  };
-}
-
-export interface Pox2StackExtendEvent extends Pox2BaseEventData {
-  name: Pox2EventName.StackExtend;
-  data: {
-    extendCount: bigint;
-    unlockBurnHeight: bigint;
-  };
-}
-
-export interface Pox2DelegateStackStxEvent extends Pox2BaseEventData {
-  name: Pox2EventName.DelegateStackStx;
-  data: {
-    lockAmount: bigint;
-    unlockBurnHeight: bigint;
-    startBurnHeight: bigint;
-    lockPeriod: bigint;
-    delegator: string;
-  };
-}
-
-export interface Pox2DelegateStackIncreaseEvent extends Pox2BaseEventData {
-  name: Pox2EventName.DelegateStackIncrease;
-  data: {
-    increaseBy: bigint;
-    totalLocked: bigint;
-    delegator: string;
-  };
-}
-
-export interface Pox2DelegateStackExtendEvent extends Pox2BaseEventData {
-  name: Pox2EventName.DelegateStackExtend;
-  data: {
-    unlockBurnHeight: bigint;
-    extendCount: bigint;
-    delegator: string;
-  };
-}
-
-export interface Pox2StackAggregationCommitEvent extends Pox2BaseEventData {
-  name: Pox2EventName.StackAggregationCommit;
-  data: {
-    rewardCycle: bigint;
-    amountUstx: bigint;
-  };
-}
-
-export type Pox2Event =
-  | Pox2HandleUnlockEvent
-  | Pox2StackStxEvent
-  | Pox2StackIncreaseEvent
-  | Pox2StackExtendEvent
-  | Pox2DelegateStackStxEvent
-  | Pox2DelegateStackIncreaseEvent
-  | Pox2DelegateStackExtendEvent
-  | Pox2StackAggregationCommitEvent;
-
 function clarityPrincipalToFullAddress(
   principal: ClarityValuePrincipalStandard | ClarityValuePrincipalContract
 ): string {
@@ -483,10 +405,10 @@ function clarityPrincipalToFullAddress(
   );
 }
 
-export function decodePoX2Event(
+export function decodePox2PrintEvent(
   rawClarityData: string,
   network: 'mainnet' | 'testnet' | 'regtest'
-): Pox2Event {
+): DbPox2EventData {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
   if (decoded.type_id !== ClarityTypeID.ResponseOk) {
     throw new Error(
@@ -500,13 +422,13 @@ export function decodePoX2Event(
   }
   const opData = (decoded.value as PoX2EventData).data;
 
-  const baseEventData: Pox2BaseEventData = {
+  const baseEventData: DbPox2BaseEventData = {
     stacker: clarityPrincipalToFullAddress(opData.stacker),
     locked: BigInt(opData.locked.value),
     balance: BigInt(opData.balance.value),
-    burnchainUnlockHeight: BigInt(opData['burnchain-unlock-height'].value),
-    poxAddr: null,
-    poxAddrRaw: null,
+    burnchain_unlock_height: BigInt(opData['burnchain-unlock-height'].value),
+    pox_addr: null,
+    pox_addr_raw: null,
   };
 
   const eventName = opData.name.data as keyof Pox2PrintEventTypes;
@@ -526,71 +448,71 @@ export function decodePoX2Event(
   if ('pox-addr' in eventData) {
     const eventPoxAddr = eventData['pox-addr'] as Pox2Addr;
     const encodedArr = tryClarityPoxAddressToBtcAddress(eventPoxAddr, network);
-    baseEventData.poxAddr = encodedArr.btcAddr;
-    baseEventData.poxAddrRaw = encodedArr.raw;
+    baseEventData.pox_addr = encodedArr.btcAddr;
+    baseEventData.pox_addr_raw = bufferToHexPrefixString(encodedArr.raw);
   }
 
   switch (eventName) {
     case Pox2EventName.HandleUnlock: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2HandleUnlockEvent = {
+      const parsedData: DbPox2HandleUnlockEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          firstCycleLocked: BigInt(d['first-cycle-locked'].value),
-          firstUnlockedCycle: BigInt(d['first-unlocked-cycle'].value),
+          first_cycle_locked: BigInt(d['first-cycle-locked'].value),
+          first_unlocked_cycle: BigInt(d['first-unlocked-cycle'].value),
         },
       };
       return parsedData;
     }
     case Pox2EventName.StackStx: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2StackStxEvent = {
+      const parsedData: DbPox2StackStxEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          lockAmount: BigInt(d['lock-amount'].value),
-          lockPeriod: BigInt(d['lock-period'].value),
-          startBurnHeight: BigInt(d['start-burn-height'].value),
-          unlockBurnHeight: BigInt(d['unlock-burn-height'].value),
+          lock_amount: BigInt(d['lock-amount'].value),
+          lock_period: BigInt(d['lock-period'].value),
+          start_burn_height: BigInt(d['start-burn-height'].value),
+          unlock_burn_height: BigInt(d['unlock-burn-height'].value),
         },
       };
       return parsedData;
     }
     case Pox2EventName.StackIncrease: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2StackIncreaseEvent = {
+      const parsedData: DbPox2StackIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          increaseBy: BigInt(d['increase-by'].value),
-          totalLocked: BigInt(d['total-locked'].value),
+          increase_by: BigInt(d['increase-by'].value),
+          total_locked: BigInt(d['total-locked'].value),
         },
       };
       return parsedData;
     }
     case Pox2EventName.StackExtend: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2StackExtendEvent = {
+      const parsedData: DbPox2StackExtendEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          extendCount: BigInt(d['extend-count'].value),
-          unlockBurnHeight: BigInt(d['unlock-burn-height'].value),
+          extend_count: BigInt(d['extend-count'].value),
+          unlock_burn_height: BigInt(d['unlock-burn-height'].value),
         },
       };
       return parsedData;
     }
     case Pox2EventName.DelegateStackStx: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2DelegateStackStxEvent = {
+      const parsedData: DbPox2DelegateStackStxEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          lockAmount: BigInt(d['lock-amount'].value),
-          unlockBurnHeight: BigInt(d['unlock-burn-height'].value),
-          startBurnHeight: BigInt(d['start-burn-height'].value),
-          lockPeriod: BigInt(d['lock-period'].value),
+          lock_amount: BigInt(d['lock-amount'].value),
+          unlock_burn_height: BigInt(d['unlock-burn-height'].value),
+          start_burn_height: BigInt(d['start-burn-height'].value),
+          lock_period: BigInt(d['lock-period'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
@@ -598,12 +520,12 @@ export function decodePoX2Event(
     }
     case Pox2EventName.DelegateStackIncrease: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2DelegateStackIncreaseEvent = {
+      const parsedData: DbPox2DelegateStackIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          increaseBy: BigInt(d['increase-by'].value),
-          totalLocked: BigInt(d['total-locked'].value),
+          increase_by: BigInt(d['increase-by'].value),
+          total_locked: BigInt(d['total-locked'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
@@ -611,12 +533,12 @@ export function decodePoX2Event(
     }
     case Pox2EventName.DelegateStackExtend: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2DelegateStackExtendEvent = {
+      const parsedData: DbPox2DelegateStackExtendEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          unlockBurnHeight: BigInt(d['unlock-burn-height'].value),
-          extendCount: BigInt(d['extend-count'].value),
+          unlock_burn_height: BigInt(d['unlock-burn-height'].value),
+          extend_count: BigInt(d['extend-count'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
@@ -624,12 +546,12 @@ export function decodePoX2Event(
     }
     case Pox2EventName.StackAggregationCommit: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: Pox2StackAggregationCommitEvent = {
+      const parsedData: DbPox2StackAggregationCommitEvent = {
         ...baseEventData,
         name: eventName,
         data: {
-          rewardCycle: BigInt(d['reward-cycle'].value),
-          amountUstx: BigInt(d['amount-ustx'].value),
+          reward_cycle: BigInt(d['reward-cycle'].value),
+          amount_ustx: BigInt(d['amount-ustx'].value),
         },
       };
       return parsedData;

@@ -12,6 +12,7 @@ import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
+import { parsePox2Event } from '../controllers/db-controller';
 
 const MAX_EVENTS_PER_REQUEST = 250;
 
@@ -30,10 +31,11 @@ export function createPox2EventsRouter(db: PgStore): express.Router {
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const queryResults = await db.getPox2Events({ offset, limit });
+      const parsedResult = queryResults.map(r => parsePox2Event(r));
       const response = {
         limit,
         offset,
-        results: queryResults,
+        results: parsedResult,
       };
       res.json(response);
     })

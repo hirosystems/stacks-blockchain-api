@@ -13,7 +13,16 @@ import {
   DbMempoolTx,
   DbMicroblock,
   DbNftEvent,
+  DbPox2BaseEventData,
+  DbPox2DelegateStackExtendEvent,
+  DbPox2DelegateStackIncreaseEvent,
+  DbPox2DelegateStackStxEvent,
   DbPox2Event,
+  DbPox2HandleUnlockEvent,
+  DbPox2StackAggregationCommitEvent,
+  DbPox2StackExtendEvent,
+  DbPox2StackIncreaseEvent,
+  DbPox2StackStxEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
@@ -47,18 +56,7 @@ import { PgSqlClient } from './connection';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
-import {
-  Pox2BaseEventData,
-  Pox2DelegateStackExtendEvent,
-  Pox2DelegateStackIncreaseEvent,
-  Pox2DelegateStackStxEvent,
-  Pox2EventName,
-  Pox2HandleUnlockEvent,
-  Pox2StackAggregationCommitEvent,
-  Pox2StackExtendEvent,
-  Pox2StackIncreaseEvent,
-  Pox2StackStxEvent,
-} from '../pox-helpers';
+import { Pox2EventName } from '../pox-helpers';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -196,7 +194,7 @@ export const POX2_EVENT_COLUMNS = [
   'tx_id',
   'tx_index',
   'block_height',
-  'index_block_height',
+  'index_block_hash',
   'parent_index_block_hash',
   'microblock_hash',
   'microblock_sequence',
@@ -214,8 +212,10 @@ export const POX2_EVENT_COLUMNS = [
   'lock_period',
   'lock_amount',
   'start_burn_height',
+  'unlock_burn_height',
   'delegator',
   'increase_by',
+  'total_locked',
   'extend_count',
   'reward_cycle',
   'amount_ustx',
@@ -579,23 +579,23 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     block_height: row.block_height,
     canonical: row.canonical,
   };
-  const basePox2Event: Pox2BaseEventData = {
+  const basePox2Event: DbPox2BaseEventData = {
     stacker: row.stacker,
-    locked: BigInt(row.lock_amount ?? 0),
+    locked: BigInt(row.locked ?? 0),
     balance: BigInt(row.balance),
-    burnchainUnlockHeight: BigInt(row.burnchain_unlock_height),
-    poxAddr: row.pox_addr ?? null,
-    poxAddrRaw: row.pox_addr_raw ? hexToBuffer(row.pox_addr_raw) : null,
+    burnchain_unlock_height: BigInt(row.burnchain_unlock_height),
+    pox_addr: row.pox_addr ?? null,
+    pox_addr_raw: row.pox_addr_raw ?? null,
   };
   const rowName = row.name as Pox2EventName;
   switch (rowName) {
     case Pox2EventName.HandleUnlock: {
-      const eventData: Pox2HandleUnlockEvent = {
+      const eventData: DbPox2HandleUnlockEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          firstCycleLocked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
-          firstUnlockedCycle: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+          first_cycle_locked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+          first_unlocked_cycle: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
         },
       };
       return {
@@ -604,14 +604,14 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.StackStx: {
-      const eventData: Pox2StackStxEvent = {
+      const eventData: DbPox2StackStxEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          lockAmount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
-          lockPeriod: BigInt(unwrapOptionalProp(row, 'lock_period')),
-          startBurnHeight: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
-          unlockBurnHeight: BigInt(unwrapOptionalProp(row, 'burnchain_unlock_height')),
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
         },
       };
       return {
@@ -620,12 +620,12 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.StackIncrease: {
-      const eventData: Pox2StackIncreaseEvent = {
+      const eventData: DbPox2StackIncreaseEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          increaseBy: BigInt(unwrapOptionalProp(row, 'increase_by')),
-          totalLocked: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
         },
       };
       return {
@@ -634,12 +634,12 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.StackExtend: {
-      const eventData: Pox2StackExtendEvent = {
+      const eventData: DbPox2StackExtendEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          extendCount: BigInt(unwrapOptionalProp(row, 'extend_count')),
-          unlockBurnHeight: BigInt(unwrapOptionalProp(row, 'burnchain_unlock_height')),
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
         },
       };
       return {
@@ -648,14 +648,14 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.DelegateStackStx: {
-      const eventData: Pox2DelegateStackStxEvent = {
+      const eventData: DbPox2DelegateStackStxEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          lockAmount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
-          unlockBurnHeight: BigInt(unwrapOptionalProp(row, 'burnchain_unlock_height')),
-          startBurnHeight: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
-          lockPeriod: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
           delegator: unwrapOptionalProp(row, 'delegator'),
         },
       };
@@ -665,12 +665,12 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.DelegateStackIncrease: {
-      const eventData: Pox2DelegateStackIncreaseEvent = {
+      const eventData: DbPox2DelegateStackIncreaseEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          increaseBy: BigInt(unwrapOptionalProp(row, 'increase_by')),
-          totalLocked: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
           delegator: unwrapOptionalProp(row, 'delegator'),
         },
       };
@@ -680,12 +680,12 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.DelegateStackExtend: {
-      const eventData: Pox2DelegateStackExtendEvent = {
+      const eventData: DbPox2DelegateStackExtendEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          unlockBurnHeight: BigInt(unwrapOptionalProp(row, 'burnchain_unlock_height')),
-          extendCount: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           delegator: unwrapOptionalProp(row, 'delegator'),
         },
       };
@@ -695,12 +695,12 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
       };
     }
     case Pox2EventName.StackAggregationCommit: {
-      const eventData: Pox2StackAggregationCommitEvent = {
+      const eventData: DbPox2StackAggregationCommitEvent = {
         ...basePox2Event,
         name: rowName,
         data: {
-          rewardCycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
-          amountUstx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
         },
       };
       return {

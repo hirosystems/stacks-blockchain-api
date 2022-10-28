@@ -1,7 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 import { PgBytea, PgJsonb, PgNumeric } from './connection';
-import { Pox2Event } from '../pox-helpers';
+import { Pox2EventName } from '../pox-helpers';
 
 export interface DbBlock {
   block_hash: string;
@@ -297,7 +297,97 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
-export type DbPox2Event = DbEventBase & Pox2Event;
+export interface DbPox2BaseEventData {
+  stacker: string;
+  locked: bigint;
+  balance: bigint;
+  burnchain_unlock_height: bigint;
+  pox_addr: string | null;
+  pox_addr_raw: string | null;
+}
+
+export interface DbPox2HandleUnlockEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.HandleUnlock;
+  data: {
+    first_cycle_locked: bigint;
+    first_unlocked_cycle: bigint;
+  };
+}
+
+export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackStx;
+  data: {
+    lock_amount: bigint;
+    lock_period: bigint;
+    start_burn_height: bigint;
+    unlock_burn_height: bigint;
+  };
+}
+
+export interface DbPox2StackIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackIncrease;
+  data: {
+    increase_by: bigint;
+    total_locked: bigint;
+  };
+}
+
+export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackExtend;
+  data: {
+    extend_count: bigint;
+    unlock_burn_height: bigint;
+  };
+}
+
+export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackStx;
+  data: {
+    lock_amount: bigint;
+    unlock_burn_height: bigint;
+    start_burn_height: bigint;
+    lock_period: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackIncrease;
+  data: {
+    increase_by: bigint;
+    total_locked: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackExtend;
+  data: {
+    unlock_burn_height: bigint;
+    extend_count: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2StackAggregationCommitEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationCommit;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
+export type DbPox2EventData =
+  | DbPox2HandleUnlockEvent
+  | DbPox2StackStxEvent
+  | DbPox2StackIncreaseEvent
+  | DbPox2StackExtendEvent
+  | DbPox2DelegateStackStxEvent
+  | DbPox2DelegateStackIncreaseEvent
+  | DbPox2DelegateStackExtendEvent
+  | DbPox2StackAggregationCommitEvent;
+
+export type DbPox2Event = DbEventBase & DbPox2EventData;
 
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
@@ -1082,11 +1172,17 @@ export interface Pox2EventQueryResult {
   // unique to stack-stx, delegate-stack-stx
   start_burn_height: string | null;
 
+  // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend
+  unlock_burn_height: string | null;
+
   // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
   delegator: string | null;
 
   // unique to stack-increase, delegate-stack-increase
   increase_by: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  total_locked: string | null;
 
   // unique to stack-extend, delegate-stack-extend
   extend_count: string | null;
@@ -1132,11 +1228,16 @@ export interface Pox2EventInsertValues {
   // unique to stack-stx, delegate-stack-stx
   start_burn_height: PgNumeric | null;
 
+  unlock_burn_height: PgNumeric | null;
+
   // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
   delegator: string | null;
 
   // unique to stack-increase, delegate-stack-increase
   increase_by: PgNumeric | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  total_locked: PgNumeric | null;
 
   // unique to stack-extend, delegate-stack-extend
   extend_count: PgNumeric | null;

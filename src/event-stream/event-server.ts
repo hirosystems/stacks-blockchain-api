@@ -78,7 +78,7 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
-import { decodePoX2Event, Pox2ContractIdentifer } from '../pox-helpers';
+import { decodePox2PrintEvent, Pox2ContractIdentifer } from '../pox-helpers';
 
 /**
  * Events that are generated in a Stacks block which do not correspond to an actual transaction in that
@@ -404,7 +404,7 @@ function parseDataStoreTxEventData(
             event.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
         ) {
           const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
-          const poxEventData = decodePoX2Event(event.contract_event.raw_value, network);
+          const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
           console.log(`PoX2 event data:`, poxEventData);
           const dbPoxEvent: DbPox2Event = {
             ...dbEvent,

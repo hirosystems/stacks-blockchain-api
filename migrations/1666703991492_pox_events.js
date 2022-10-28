@@ -86,10 +86,16 @@ exports.up = pgm => {
     start_burn_height: { // unique to stack-stx, delegate-stack-stx
       type: 'numeric',
     },
+    unlock_burn_height: { // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend
+      type: 'numeric',
+    },
     delegator: { // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
       type: 'string',
     },
     increase_by: { // unique to stack-increase, delegate-stack-increase
+      type: 'numeric',
+    },
+    total_locked: { // unique to stack-increase, delegate-stack-increase
       type: 'numeric',
     },
     extend_count: { // unique to stack-extend, delegate-stack-extend
@@ -111,31 +117,37 @@ exports.up = pgm => {
   pgm.addConstraint('pox2_events', 'valid_stack_stx', `CHECK(name != 'stack-stx' OR (
     lock_period IS NOT NULL AND 
     lock_amount IS NOT NULL AND 
-    start_burn_height IS NOT NULL
+    start_burn_height IS NOT NULL AND 
+    unlock_burn_height IS NOT NULL
   ))`);
 
   pgm.addConstraint('pox2_events', 'valid_stack_increase', `CHECK(name != 'stack-increase' OR (
-    increase_by IS NOT NULL
+    increase_by IS NOT NULL AND 
+    total_locked IS NOT NULL
   ))`);
 
   pgm.addConstraint('pox2_events', 'valid_stack_extend', `CHECK(name != 'stack-extend' OR (
-    extend_count IS NOT NULL
+    extend_count IS NOT NULL AND 
+    unlock_burn_height IS NOT NULL
   ))`);
 
   pgm.addConstraint('pox2_events', 'valid_delegate_stack_stx', `CHECK(name != 'delegate-stack-stx' OR (
     lock_period IS NOT NULL AND 
     lock_amount IS NOT NULL AND 
     start_burn_height IS NOT NULL AND 
+    unlock_burn_height IS NOT NULL AND 
     delegator IS NOT NULL
   ))`);
 
   pgm.addConstraint('pox2_events', 'valid_delegate_stack_increase', `CHECK(name != 'delegate-stack-increase' OR (
     increase_by IS NOT NULL AND 
+    total_locked IS NOT NULL AND
     delegator IS NOT NULL
   ))`);
 
   pgm.addConstraint('pox2_events', 'valid_delegate_stack_extend', `CHECK(name != 'delegate-stack-extend' OR (
     extend_count IS NOT NULL AND 
+    unlock_burn_height IS NOT NULL AND 
     delegator IS NOT NULL
   ))`);
 
