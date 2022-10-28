@@ -71,22 +71,78 @@ exports.up = pgm => {
     pox_addr_raw: {
       type: 'bytea',
     },
-    delegator: {
+    first_cycle_locked: { // unique to handle-unlock
+      type: 'numeric',
+    },
+    first_unlocked_cycle: { // unique to handle-unlock
+      type: 'numeric',
+    },
+    lock_period: { // unique to stack-stx, delegate-stack-stx
+      type: 'numeric'
+    },
+    lock_amount: { // unique to stack-stx, delegate-stack-stx
+      type: 'numeric'
+    },
+    start_burn_height: { // unique to stack-stx, delegate-stack-stx
+      type: 'numeric',
+    },
+    delegator: { // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
       type: 'string',
     },
-    lock_period: {
-      type: 'numeric'
-    },
-    lock_amount: {
-      type: 'numeric'
-    },
-    increase_by: {
+    increase_by: { // unique to stack-increase, delegate-stack-increase
       type: 'numeric',
     },
-    extend_count: {
+    extend_count: { // unique to stack-extend, delegate-stack-extend
       type: 'numeric',
-    }
+    },
+    reward_cycle: { // unique to stack-aggregation-commit
+      type: 'numeric',
+    },
+    amount_ustx: { // unique to stack-aggregation-commit
+      type: 'numeric',
+    },
   });
+
+  pgm.addConstraint('pox2_events', 'valid_handle_unlock', `CHECK(name != 'handle-unlock' OR (
+    first_cycle_locked IS NOT NULL AND 
+    first_unlocked_cycle IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_stack_stx', `CHECK(name != 'stack-stx' OR (
+    lock_period IS NOT NULL AND 
+    lock_amount IS NOT NULL AND 
+    start_burn_height IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_stack_increase', `CHECK(name != 'stack-increase' OR (
+    increase_by IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_stack_extend', `CHECK(name != 'stack-extend' OR (
+    extend_count IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_delegate_stack_stx', `CHECK(name != 'delegate-stack-stx' OR (
+    lock_period IS NOT NULL AND 
+    lock_amount IS NOT NULL AND 
+    start_burn_height IS NOT NULL AND 
+    delegator IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_delegate_stack_increase', `CHECK(name != 'delegate-stack-increase' OR (
+    increase_by IS NOT NULL AND 
+    delegator IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_delegate_stack_extend', `CHECK(name != 'delegate-stack-extend' OR (
+    extend_count IS NOT NULL AND 
+    delegator IS NOT NULL
+  ))`);
+
+  pgm.addConstraint('pox2_events', 'valid_stack_aggregation_commit', `CHECK(name != 'stack-aggregation-commit' OR (
+    reward_cycle IS NOT NULL AND 
+    amount_ustx IS NOT NULL
+  ))`);
 
   pgm.createIndex('pox2_events', 'block_height');
   pgm.createIndex('pox2_events', 'tx_id');

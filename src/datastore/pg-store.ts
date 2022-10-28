@@ -43,6 +43,7 @@ import {
   DbMinerReward,
   DbNftEvent,
   DbNonFungibleTokenMetadata,
+  DbPox2Event,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -66,6 +67,7 @@ import {
   NftHoldingInfo,
   NftHoldingInfoWithTxMetadata,
   NonFungibleTokenMetadataQueryResult,
+  Pox2EventQueryResult,
   RawTxQueryResult,
   StxUnlockEvent,
   TransferQueryResult,
@@ -78,12 +80,14 @@ import {
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
   parseDbEvents,
+  parseDbPox2Event,
   parseFaucetRequestQueryResult,
   parseMempoolTxQueryResult,
   parseMicroblockQueryResult,
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
+  POX2_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
   unsafeCols,
@@ -1904,6 +1908,27 @@ export class PgStore {
     }
     const row = result[0];
     return parseQueryResultToSmartContract(row);
+  }
+
+  async getPox2Events({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<DbPox2Event[]> {
+    return await this.sql.begin(async sql => {
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox2_events
+        WHERE canonical = true AND microblock_canonical = true
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return result;
+    });
   }
 
   async getSmartContractEvents({

@@ -77,6 +77,7 @@ import { connectPostgres, PgServer, PgSqlClient } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
+import { Pox2EventName } from '../pox-helpers';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -696,47 +697,58 @@ export class PgWriteStore extends PgStore {
       name: event.name,
       pox_addr: event.poxAddr,
       pox_addr_raw: event.poxAddrRaw,
-      delegator: null,
+      first_cycle_locked: null,
+      first_unlocked_cycle: null,
       lock_period: null,
       lock_amount: null,
+      start_burn_height: null,
+      delegator: null,
       increase_by: null,
       extend_count: null,
+      reward_cycle: null,
+      amount_ustx: null,
     };
     // Set event-specific columns
     switch (event.name) {
-      case 'handle-unlock': {
+      case Pox2EventName.HandleUnlock: {
+        values.first_cycle_locked = event.data.firstCycleLocked.toString();
+        values.first_unlocked_cycle = event.data.firstUnlockedCycle.toString();
         break;
       }
-      case 'stack-stx': {
+      case Pox2EventName.StackStx: {
         values.lock_period = event.data.lockPeriod.toString();
         values.lock_amount = event.data.lockAmount.toString();
+        values.start_burn_height = event.data.startBurnHeight.toString();
         break;
       }
-      case 'stack-increase': {
+      case Pox2EventName.StackIncrease: {
         values.increase_by = event.data.increaseBy.toString();
         break;
       }
-      case 'stack-extend': {
+      case Pox2EventName.StackExtend: {
         values.extend_count = event.data.extendCount.toString();
         break;
       }
-      case 'delegate-stack-stx': {
+      case Pox2EventName.DelegateStackStx: {
         values.lock_period = event.data.lockPeriod.toString();
         values.lock_amount = event.data.lockAmount.toString();
+        values.start_burn_height = event.data.startBurnHeight.toString();
         values.delegator = event.data.delegator;
         break;
       }
-      case 'delegate-stack-increase': {
+      case Pox2EventName.DelegateStackIncrease: {
         values.increase_by = event.data.increaseBy.toString();
         values.delegator = event.data.delegator;
         break;
       }
-      case 'delegate-stack-extend': {
+      case Pox2EventName.DelegateStackExtend: {
         values.extend_count = event.data.extendCount.toString();
         values.delegator = event.data.delegator;
         break;
       }
-      case 'stack-aggregation-commit': {
+      case Pox2EventName.StackAggregationCommit: {
+        values.reward_cycle = event.data.rewardCycle.toString();
+        values.amount_ustx = event.data.amountUstx.toString();
         break;
       }
       default: {

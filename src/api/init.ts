@@ -47,6 +47,7 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
+import { createPox2EventsRouter } from './routes/pox2';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -224,6 +225,7 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
+      router.use('/pox2_events', createPox2EventsRouter(datastore));
       if (writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }

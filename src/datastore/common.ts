@@ -1048,6 +1048,56 @@ export interface StxLockEventInsertValues {
   locked_address: string;
 }
 
+export interface Pox2EventQueryResult {
+  event_index: number;
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  stacker: string;
+  locked: string;
+  balance: string;
+  burnchain_unlock_height: string;
+  name: string;
+  pox_addr: string | null;
+  pox_addr_raw: string | null;
+
+  // unique to handle-unlock
+  first_cycle_locked: string | null;
+
+  // unique to handle-unlock
+  first_unlocked_cycle: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_period: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_amount: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  start_burn_height: string | null;
+
+  // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
+  delegator: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  increase_by: string | null;
+
+  // unique to stack-extend, delegate-stack-extend
+  extend_count: string | null;
+
+  // unique to stack-aggregation-commit
+  reward_cycle: string | null;
+
+  // unique to stack-aggregation-commit
+  amount_ustx: string | null;
+}
+
 export interface Pox2EventInsertValues {
   event_index: number;
   tx_id: PgBytea;
@@ -1066,11 +1116,36 @@ export interface Pox2EventInsertValues {
   name: string;
   pox_addr: string | null;
   pox_addr_raw: PgBytea | null;
-  delegator: string | null;
+
+  // unique to handle-unlock
+  first_cycle_locked: PgNumeric | null;
+
+  // unique to handle-unlock
+  first_unlocked_cycle: PgNumeric | null;
+
+  // unique to stack-stx, delegate-stack-stx
   lock_period: PgNumeric | null;
+
+  // unique to stack-stx, delegate-stack-stx
   lock_amount: PgNumeric | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  start_burn_height: PgNumeric | null;
+
+  // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
+  delegator: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
   increase_by: PgNumeric | null;
+
+  // unique to stack-extend, delegate-stack-extend
   extend_count: PgNumeric | null;
+
+  // unique to stack-aggregation-commit
+  reward_cycle: PgNumeric | null;
+
+  // unique to stack-aggregation-commit
+  amount_ustx: PgNumeric | null;
 }
 
 export interface NftEventInsertValues {
