@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as Bluebird from 'bluebird';
 import { BlockIdentifier } from '../../datastore/common';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
 import {
   isUnanchoredRequest,
   getBlockParams,
@@ -10,7 +10,6 @@ import {
   validatePrincipal,
 } from '../query-helpers';
 import {
-  bufferToHexPrefixString,
   formatMapToObject,
   getSendManyContract,
   has0xPrefix,
@@ -51,25 +50,6 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-
-const MAX_TX_PER_REQUEST = 50;
-const MAX_ASSETS_PER_REQUEST = 50;
-const MAX_STX_INBOUND_PER_REQUEST = 500;
-
-const parseTxQueryLimit = parseLimitQuery({
-  maxItems: MAX_TX_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_TX_PER_REQUEST,
-});
-
-const parseAssetsQueryLimit = parseLimitQuery({
-  maxItems: MAX_ASSETS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_ASSETS_PER_REQUEST,
-});
-
-const parseStxInboundLimit = parseLimitQuery({
-  maxItems: MAX_STX_INBOUND_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_STX_INBOUND_PER_REQUEST,
-});
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -246,7 +226,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       } else {
         blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
       }
-      const limit = parseTxQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit('/address/:principal/transactions');
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results: txResults, total } = await db.getAddressTxs({
@@ -322,7 +302,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       } else {
         blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
       }
-      const limit = parseTxQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit('/address/:stx_address/transactions_with_transfers');
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
         stxAddress: stxAddress,
@@ -395,7 +375,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
-      const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit('/address/:stx_address/assets');
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { results: assetEvents, total } = await db.getAddressAssetEvents({
         stxAddress,
@@ -442,7 +422,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         }
 
-        const limit = parseStxInboundLimit(req.query.limit ?? 20);
+        const limit = getPagingQueryLimit('/address/:stx_address/stx_inbound');
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
         const { results, total } = await db.getInboundTransfers({
           stxAddress,
@@ -489,7 +469,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
 
       const untilBlock = parseUntilBlockQuery(req, res, next);
       const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
-      const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit('/address/:stx_address/nft_events');
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
 
@@ -533,7 +513,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     '/:address/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? MAX_TX_PER_REQUEST);
+      const limit = getPagingQueryLimit('/address/:address/mempool');
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const address = req.params['address'];
