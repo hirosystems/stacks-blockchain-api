@@ -12,8 +12,8 @@ type UnwrapPromiseArray<T> = T extends any[]
 
 /**
  * Start a SQL transaction using a specific sql client. If this client was already scoped inside a
- * `BEGIN` transaction, a `SAVEPOINT` will be used. This flexibility allows us to avoid repeating
- * code while making sure we don't arrive at SQL errors such as
+ * `BEGIN` transaction, the callback will be called directly. This flexibility allows us to avoid
+ * repeating code while making sure we don't arrive at SQL errors such as
  * `WARNING: there is already a transaction in progress` which may cause result inconsistencies.
  * @param sql - SQL client
  * @param callback - Callback with a scoped SQL client
@@ -26,9 +26,11 @@ export async function sqlTransaction<T>(
   readOnly = true
 ): Promise<UnwrapPromiseArray<T>> {
   if ('savepoint' in sql) {
-    return sql.savepoint(callback);
+    // Only the `postgres.TransactionSql` type contains a `savepoint` method, which means we're
+    // already inside a SQL transaction.
+    return callback(sql) as UnwrapPromiseArray<T>;
   } else {
-    return sql.begin(readOnly ? 'READ ONLY' : '', callback);
+    return sql.begin(readOnly ? 'read only' : '', callback);
   }
 }
 
