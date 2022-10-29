@@ -202,6 +202,8 @@ describe('PoX-2 tests', () => {
     const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
     const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
 
+    const stxToDelegateIncrease = 2000n;
+
     type Account = {
       secretKey: string;
       pubKey: string;
@@ -361,6 +363,8 @@ describe('PoX-2 tests', () => {
       const amountDelegated = BigInt(getDelegationInfo1.data['amount-ustx'].value);
       expect(amountDelegated).toBeGreaterThan(0n);
 
+      const amountToDelegateInitial = amountDelegated - stxToDelegateIncrease;
+
       const poxInfo2 = await client.getPox();
 
       /*
@@ -396,7 +400,7 @@ describe('PoX-2 tests', () => {
         functionName: 'delegate-stack-stx',
         functionArgs: [
           standardPrincipalCV(delegateeAccount.stxAddr), // stacker
-          uintCV(amountDelegated), // amount-ustx
+          uintCV(amountToDelegateInitial), // amount-ustx
           delegateeAccount.poxAddrClar, // pox-addr
           uintCV(startBurnHt), // start-burn-ht
           uintCV(1), // lock-period
@@ -412,6 +416,31 @@ describe('PoX-2 tests', () => {
       const delegateStackStxDbTx = await standByForTx(delegateStackStxTxId);
       expect(delegateStackStxDbTx.status).toBe(DbTxStatus.Success);
       await standByUntilBlock(delegateStackStxDbTx.block_height);
+    });
+
+    test('Perform delegate-stack-increase', async () => {
+      const txFee = 10000n;
+      const delegateStackIncreaseTx = await makeContractCall({
+        senderKey: delegatorAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'delegate-stack-increase',
+        functionArgs: [
+          standardPrincipalCV(delegateeAccount.stxAddr), // stacker
+          delegateeAccount.poxAddrClar, // pox-addr
+          uintCV(stxToDelegateIncrease), // increase-by
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: txFee,
+        validateWithAbi: false,
+      });
+      const { txId: delegateStackIncreaseTxId } = await client.sendTransaction(
+        delegateStackIncreaseTx.serialize()
+      );
+      const delegateStackIncreaseDbTx = await standByForTx(delegateStackIncreaseTxId);
+      expect(delegateStackIncreaseDbTx.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(delegateStackIncreaseDbTx.block_height);
     });
 
     test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
