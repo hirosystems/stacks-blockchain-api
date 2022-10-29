@@ -443,6 +443,31 @@ describe('PoX-2 tests', () => {
       await standByUntilBlock(delegateStackIncreaseDbTx.block_height);
     });
 
+    test('Perform delegate-stack-extend', async () => {
+      const txFee = 10000n;
+      const delegateStackExtendTx = await makeContractCall({
+        senderKey: delegatorAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'delegate-stack-extend',
+        functionArgs: [
+          standardPrincipalCV(delegateeAccount.stxAddr), // stacker
+          delegateeAccount.poxAddrClar, // pox-addr
+          uintCV(1), // extend-count
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: txFee,
+        validateWithAbi: false,
+      });
+      const { txId: delegateStackExtendTxId } = await client.sendTransaction(
+        delegateStackExtendTx.serialize()
+      );
+      const delegateStackExtendDbTx = await standByForTx(delegateStackExtendTxId);
+      expect(delegateStackExtendDbTx.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(delegateStackExtendDbTx.block_height);
+    });
+
     test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
       const poxInfo2 = await client.getPox();
       const rewardCycle = BigInt(poxInfo2.next_cycle.id);
@@ -476,9 +501,21 @@ describe('PoX-2 tests', () => {
         poxInfo2.reward_phase_block_length +
         1;
       await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+      const poxInfo3 = await client.getPox();
+      expect(poxInfo3.current_cycle.id).toBeGreaterThan(poxInfo2.current_cycle.id);
+
+      // Wait until end of next reward phase
+      const rewardPhaseEndBurnBlock2 =
+        poxInfo2.next_cycle.reward_phase_start_block_height +
+        poxInfo2.reward_phase_block_length +
+        1;
+      await standByUntilBurnBlock(rewardPhaseEndBurnBlock2);
     });
 
     test('Check pox2 events endpoint', async () => {
+      // TODO: endpoint to get pox2_events for a specific address, then test the parsed events after each operation
+      // TODO: check the extended rewards endpoints and the bitcoind RPC balance endpoints
+      // TODO: validate Stacks RPC account locked state matches the extended endpoint after each operation
       const res = await fetchGet(`/extended/v1/pox2_events`);
       expect(res).toBeDefined();
     });
