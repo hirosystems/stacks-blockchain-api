@@ -343,7 +343,8 @@ describe('PoX-2 tests', () => {
       poxInfo = await client.getPox();
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
       expect(contractName).toBe('pox-2');
-      await standByUntilBurnBlock(poxInfo.current_burnchain_block_height! + 1);
+      // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
+      await standByUntilBurnBlock(poxInfo.next_cycle.prepare_phase_start_block_height);
     });
 
     test('Seed delegate accounts', async () => {

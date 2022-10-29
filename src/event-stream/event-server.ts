@@ -81,13 +81,6 @@ import {
 } from '../datastore/helpers';
 import { decodePox2PrintEvent, Pox2ContractIdentifer } from '../pox-helpers';
 
-/**
- * Events that are generated in a Stacks block which do not correspond to an actual transaction in that
- * block (for example synthetic PoX `stack-unlock` events) use this special constant value for their txid.
- * See https://github.com/stacks-network/stacks-blockchain/pull/3318 where this behavior was introduced.
- */
-export const TransactionOriginTxId = 'NetworkProtocol';
-
 async function handleRawEventRequest(
   eventPath: string,
   payload: string,
