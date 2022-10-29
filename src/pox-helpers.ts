@@ -11,6 +11,7 @@ import {
   ClarityValuePrincipalContract,
   ClarityTypeID,
   ClarityValueResponse,
+  ClarityValueAbstract,
 } from 'stacks-encoding-native-js';
 import { bufferToHexPrefixString, coerceToBuffer, logger } from './helpers';
 import {
@@ -408,11 +409,16 @@ function clarityPrincipalToFullAddress(
 export function decodePox2PrintEvent(
   rawClarityData: string,
   network: 'mainnet' | 'testnet' | 'regtest'
-): DbPox2EventData {
+): DbPox2EventData | null {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
+  if (decoded.type_id === ClarityTypeID.ResponseError) {
+    logger.info(`Received ResponseError when decoding Pox2 print event: ${decoded.repr}`);
+    return null;
+  }
   if (decoded.type_id !== ClarityTypeID.ResponseOk) {
+    const valCommon: ClarityValueAbstract = decoded;
     throw new Error(
-      `Unexpected PoX2 event Clarity type ID, expected ResponseOk, got ${decoded.type_id}`
+      `Unexpected PoX2 event Clarity type ID, expected ResponseOk, got ${valCommon.type_id}: ${valCommon.repr}`
     );
   }
   if (decoded.value.type_id !== ClarityTypeID.Tuple) {

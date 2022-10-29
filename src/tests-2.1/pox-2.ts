@@ -17,11 +17,13 @@ import {
   TupleCV,
   tupleCV,
   uintCV,
+  UIntCV,
+  ClarityValue,
 } from '@stacks/transactions';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
 import * as poxHelpers from '../pox-helpers';
-import { coerceToBuffer, hexToBuffer, parsePort, stxToMicroStx } from '../helpers';
+import { coerceToBuffer, hexToBuffer, parsePort, stxToMicroStx, timeout } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
 import * as btcLib from 'bitcoinjs-lib';
@@ -39,6 +41,17 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { RPCClient } from 'rpc-bitcoin';
 import bignumber from 'bignumber.js';
+import {
+  ClarityTypeID,
+  ClarityValue as NativeClarityValue,
+  ClarityValueCommon,
+  ClarityValueOptional,
+  ClarityValueOptionalSome,
+  ClarityValuePrincipalStandard,
+  ClarityValueTuple,
+  ClarityValueUInt,
+  decodeClarityValue,
+} from 'stacks-encoding-native-js';
 
 describe('PoX-2 tests', () => {
   let db: PgWriteStore;
@@ -74,8 +87,8 @@ describe('PoX-2 tests', () => {
     });
   }
 
-  function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
-    return new Promise<DbBlock>(async resolve => {
+  async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+    const dbBlock = await new Promise<DbBlock>(async resolve => {
       const curHeight = await api.datastore.getCurrentBlockHeight();
       if (curHeight.found && curHeight.result >= blockHeight) {
         const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
@@ -95,10 +108,19 @@ describe('PoX-2 tests', () => {
       };
       api.datastore.eventEmitter.addListener('blockUpdate', listener);
     });
+    while (true) {
+      const nodeInfo = await client.getInfo();
+      if (nodeInfo.stacks_tip_height >= blockHeight) {
+        break;
+      } else {
+        await timeout(100);
+      }
+    }
+    return dbBlock;
   }
 
-  function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
-    return new Promise<DbBlock>(async resolve => {
+  async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
+    const dbBlock = await new Promise<DbBlock>(async resolve => {
       const curHeight = await api.datastore.getCurrentBlock();
       if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
         const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
@@ -118,6 +140,15 @@ describe('PoX-2 tests', () => {
       };
       api.datastore.eventEmitter.addListener('blockUpdate', listener);
     });
+    while (true) {
+      const nodeInfo = await client.getInfo();
+      if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
+        break;
+      } else {
+        await timeout(100);
+      }
+    }
+    return dbBlock;
   }
 
   async function fetchGet<TRes>(endpoint: string) {
@@ -125,6 +156,45 @@ describe('PoX-2 tests', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     return result.body as TRes;
+  }
+
+  async function readOnlyFnCall<T extends NativeClarityValue>(
+    contract: string | [string, string],
+    fnName: string,
+    args?: ClarityValue[],
+    sender?: string,
+    unwrap = true
+  ): Promise<T> {
+    const [contractAddr, contractName] =
+      typeof contract === 'string' ? contract.split('.') : contract;
+    const callResp = await client.sendReadOnlyContractCall(
+      contractAddr,
+      contractName,
+      fnName,
+      sender ?? testnetKeys[0].stacksAddress,
+      args ?? []
+    );
+    if (!callResp.okay) {
+      throw new Error(`Failed to call ${contract}::${fnName}`);
+    }
+    const decodedVal = decodeClarityValue<T>(callResp.result);
+    if (unwrap) {
+      if (decodedVal.type_id === ClarityTypeID.OptionalSome) {
+        return decodedVal.value as T;
+      }
+      if (decodedVal.type_id === ClarityTypeID.ResponseOk) {
+        return decodedVal.value as T;
+      }
+      if (decodedVal.type_id === ClarityTypeID.OptionalNone) {
+        throw new Error(`OptionNone result for call to ${contract}::${fnName}`);
+      }
+      if (decodedVal.type_id === ClarityTypeID.ResponseError) {
+        throw new Error(
+          `ResultError result for call to ${contract}::${fnName}: ${decodedVal.repr}`
+        );
+      }
+    }
+    return decodedVal;
   }
 
   describe('PoX-2 - Delegate Stacking operations', () => {
@@ -148,7 +218,6 @@ describe('PoX-2 tests', () => {
     let poxInfo: CoreRpcPoxInfo;
     let contractAddress: string;
     let contractName: string;
-    let cycleBlockLength: number;
 
     function accountFromKey(privateKey: string): Account {
       const privKeyBuff = coerceToBuffer(privateKey);
@@ -198,9 +267,9 @@ describe('PoX-2 tests', () => {
 
     test('Get pox-info', async () => {
       poxInfo = await client.getPox();
-      cycleBlockLength = poxInfo.reward_cycle_length;
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
       expect(contractName).toBe('pox-2');
+      await standByUntilBurnBlock(poxInfo.current_burnchain_block_height! + 1);
     });
 
     test('Seed delegate accounts', async () => {
@@ -218,6 +287,7 @@ describe('PoX-2 tests', () => {
       const stxXferTx1 = await standByForTx(stxXferId1);
       expect(stxXferTx1.status).toBe(DbTxStatus.Success);
       expect(stxXferTx1.token_transfer_recipient_address).toBe(delegatorAccount.stxAddr);
+      await standByUntilBlock(stxXferTx1.block_height);
 
       // transfer pox "min_amount_ustx" from seed to delegatee account
       const stackingAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
@@ -233,6 +303,7 @@ describe('PoX-2 tests', () => {
       const stxXferTx2 = await standByForTx(stxXferId2);
       expect(stxXferTx2.status).toBe(DbTxStatus.Success);
       expect(stxXferTx2.token_transfer_recipient_address).toBe(delegateeAccount.stxAddr);
+      await standByUntilBlock(stxXferTx2.block_height);
 
       // ensure delegator account balance is correct
       const delegatorBalance = await client.getAccountBalance(delegatorAccount.stxAddr);
@@ -258,9 +329,9 @@ describe('PoX-2 tests', () => {
         functionName: 'delegate-stx',
         functionArgs: [
           uintCV(delegateAmount),
-          standardPrincipalCV(delegatorAccount.stxAddr),
+          standardPrincipalCV(delegatorAccount.stxAddr), // delegate-to
           noneCV(), // untilBurnBlockHeight
-          someCV(delegateeAccount.poxAddrClar),
+          someCV(delegateeAccount.poxAddrClar), // pox-addr
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -270,53 +341,118 @@ describe('PoX-2 tests', () => {
       const { txId: delegateStxTxId } = await client.sendTransaction(delegateStxTx.serialize());
       const delegateStxDbTx = await standByForTx(delegateStxTxId);
       expect(delegateStxDbTx.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(delegateStxDbTx.block_height);
 
       // check delegatee locked amount is still zero
       const balanceInfo2 = await client.getAccount(delegateeAccount.stxAddr);
       expect(BigInt(balanceInfo2.locked)).toBe(0n);
     });
 
-    // ;; As a delegate, stack the given principal's STX using partial-stacked-by-cycle
-    // ;; Once the delegate has stacked > minimum, the delegate should call stack-aggregation-commit
-    // (define-public (delegate-stack-stx (stacker principal)
-    //                                    (amount-ustx uint)
-    //                                    (pox-addr { version: (buff 1), hashbytes: (buff 20) })
-    //                                    (start-burn-ht uint)
-    //                                    (lock-period uint))
-    /*
     test('Perform delegate-stack-stx operation', async () => {
       // get amount delegated
-      await client.
+      const getDelegationInfo1 = await readOnlyFnCall<
+        ClarityValueTuple<{ 'amount-ustx': ClarityValueUInt }>
+      >(
+        [contractAddress, contractName],
+        'get-delegation-info',
+        [standardPrincipalCV(delegateeAccount.stxAddr)],
+        delegateeAccount.stxAddr
+      );
+      const amountDelegated = BigInt(getDelegationInfo1.data['amount-ustx'].value);
+      expect(amountDelegated).toBeGreaterThan(0n);
+
+      const poxInfo2 = await client.getPox();
+
+      /*
+      // get burn height of next reward cycle id
+      const nextRewardCycleHeight = await readOnlyFnCall<ClarityValueUInt>(
+        [contractAddress, contractName],
+        'reward-cycle-to-burn-height',
+        [uintCV(poxInfo2.next_cycle.id)]
+      ).then(v => BigInt(v.value));
+
+      const burnHeightToRewardCycle = await readOnlyFnCall<ClarityValueUInt>(
+        [contractAddress, contractName],
+        'burn-height-to-reward-cycle',
+        [uintCV(nextRewardCycleHeight)]
+      ).then(v => BigInt(v.value));
+
+      const currentPoxRewardCycle = await readOnlyFnCall<ClarityValueUInt>(
+        [contractAddress, contractName],
+        'current-pox-reward-cycle'
+      ).then(v => BigInt(v.value));
+
+      expect(burnHeightToRewardCycle).toBeGreaterThan(currentPoxRewardCycle);
+      const startBurnHt = nextRewardCycleHeight;
+      */
+
+      const startBurnHt = poxInfo2.current_burnchain_block_height as number;
 
       const txFee = 10000n;
-      const balanceInfo = await client.getAccount(delegateeAccount.stxAddr);
-      const balanceTotal = BigInt(balanceInfo.balance);
-      expect(balanceTotal).toBeGreaterThan(txFee);
-      const balanceLocked = BigInt(balanceInfo.locked);
-      expect(balanceLocked).toBe(0n);
-      const delegateAmount = balanceTotal - txFee * 2n;
-      const delegateStxTx = await makeContractCall({
-        senderKey: delegateeAccount.secretKey,
+      const delegateStackStxTx = await makeContractCall({
+        senderKey: delegatorAccount.secretKey,
         contractAddress,
         contractName,
         functionName: 'delegate-stack-stx',
         functionArgs: [
-          standardPrincipalCV(delegateeAccount.stxAddr),
-          uintCV(amountMicroStx),
-          address,
-          uintCV(burnBlockHeight),
-          uintCV(cycles),
+          standardPrincipalCV(delegateeAccount.stxAddr), // stacker
+          uintCV(amountDelegated), // amount-ustx
+          delegateeAccount.poxAddrClar, // pox-addr
+          uintCV(startBurnHt), // start-burn-ht
+          uintCV(1), // lock-period
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
         fee: txFee,
         validateWithAbi: false,
       });
-      const { txId: delegateStxTxId } = await client.sendTransaction(delegateStxTx.serialize());
-      const delegateStxDbTx = await standByForTx(delegateStxTxId);
-      expect(delegateStxDbTx.status).toBe(DbTxStatus.Success);
+      const { txId: delegateStackStxTxId } = await client.sendTransaction(
+        delegateStackStxTx.serialize()
+      );
+      const delegateStackStxDbTx = await standByForTx(delegateStackStxTxId);
+      expect(delegateStackStxDbTx.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(delegateStackStxDbTx.block_height);
     });
-    */
+
+    test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
+      const poxInfo2 = await client.getPox();
+      const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+      const stackAggrCommitTx = await makeContractCall({
+        senderKey: delegatorAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'stack-aggregation-commit',
+        functionArgs: [
+          delegateeAccount.poxAddrClar, // pox-addr
+          uintCV(rewardCycle), // reward-cycle
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 10000,
+        validateWithAbi: false,
+      });
+      const { txId: stackAggrCommitTxId } = await client.sendTransaction(
+        stackAggrCommitTx.serialize()
+      );
+      const stackAggrCommmitDbTx = await standByForTx(stackAggrCommitTxId);
+      expect(stackAggrCommmitDbTx.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(stackAggrCommmitDbTx.block_height);
+    });
+
+    test('Wait for current pox cycle to complete', async () => {
+      const poxInfo2 = await client.getPox();
+      // Wait until end of reward phase
+      const rewardPhaseEndBurnBlock =
+        poxInfo2.next_cycle.reward_phase_start_block_height +
+        poxInfo2.reward_phase_block_length +
+        1;
+      await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+    });
+
+    test('Check pox2 events endpoint', async () => {
+      const res = await fetchGet(`/extended/v1/pox2_events`);
+      expect(res).toBeDefined();
+    });
   });
 
   describe('PoX-2 - Stacking operations P2PKH', () => {

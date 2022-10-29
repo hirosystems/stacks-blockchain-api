@@ -40,6 +40,7 @@ import {
   DataStoreTxEventData,
   DbMicroblock,
   DbPox2Event,
+  DbTxStatus,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -380,6 +381,25 @@ function parseDataStoreTxEventData(
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);
     }
 
+    if (dbTx.tx.status !== DbTxStatus.Success) {
+      if (event.type === CoreNodeEventType.ContractEvent) {
+        let reprStr = '?';
+        try {
+          reprStr = decodeClarityValue(event.contract_event.raw_value).repr;
+        } catch (e) {
+          logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
+        }
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}, repr: ${reprStr}`
+        );
+      } else {
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}`
+        );
+      }
+      continue;
+    }
+
     const dbEvent: DbEventBase = {
       event_index: event.event_index,
       tx_id: event.txid,
@@ -405,12 +425,14 @@ function parseDataStoreTxEventData(
         ) {
           const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
           const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
-          console.log(`PoX2 event data:`, poxEventData);
-          const dbPoxEvent: DbPox2Event = {
-            ...dbEvent,
-            ...poxEventData,
-          };
-          dbTx.pox2Events.push(dbPoxEvent);
+          if (poxEventData !== null) {
+            logger.debug(`Pox2 event data:`, poxEventData);
+            const dbPoxEvent: DbPox2Event = {
+              ...dbEvent,
+              ...poxEventData,
+            };
+            dbTx.pox2Events.push(dbPoxEvent);
+          }
         } else if (
           event.contract_event.topic === printTopic &&
           (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
