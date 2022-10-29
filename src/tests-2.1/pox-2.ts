@@ -53,6 +53,17 @@ import {
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 
+type Account = {
+  secretKey: string;
+  pubKey: string;
+  stxAddr: string;
+  btcAddr: string;
+  btcTestnetAddr: string;
+  poxAddr: { version: number; data: Buffer };
+  poxAddrClar: TupleCV;
+  wif: string;
+};
+
 describe('PoX-2 tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
@@ -197,6 +208,104 @@ describe('PoX-2 tests', () => {
     return decodedVal;
   }
 
+  function accountFromKey(privateKey: string): Account {
+    const privKeyBuff = coerceToBuffer(privateKey);
+    if (privKeyBuff.byteLength !== 33) {
+      throw new Error('Only compressed private keys supported');
+    }
+    const ecPair = ECPair.fromPrivateKey(privKeyBuff.slice(0, 32), { compressed: true });
+    const secretKey = ecPair.privateKey!.toString('hex') + '01';
+    if (secretKey.slice(0, 64) !== privateKey.slice(0, 64)) {
+      throw new Error(`key mismatch`);
+    }
+    const pubKey = ecPair.publicKey.toString('hex');
+    const stxAddr = getAddressFromPrivateKey(secretKey, TransactionVersion.Testnet);
+    const btcAccount = getBitcoinAddressFromKey({
+      privateKey: ecPair.privateKey!,
+      network: 'regtest',
+      addressFormat: 'p2pkh',
+      verbose: true,
+    });
+    const btcAddr = btcAccount.address;
+    const poxAddr = poxHelpers.decodeBtcAddress(btcAddr);
+    const poxAddrClar = tupleCV({
+      hashbytes: bufferCV(poxAddr.data),
+      version: bufferCV(Buffer.from([poxAddr.version])),
+    });
+    const wif = btcAccount.wif;
+    const btcTestnetAddr = getBitcoinAddressFromKey({
+      privateKey: ecPair.privateKey!,
+      network: 'testnet',
+      addressFormat: 'p2pkh',
+    });
+    return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, btcTestnetAddr, wif };
+  }
+
+  describe('PoX-2 - handle-unlock for missed reward slots', () => {
+    const seedKey = testnetKeys[3].secretKey;
+    let seedAccount: Account;
+    let poxInfo: CoreRpcPoxInfo;
+    let contractAddress: string;
+    let contractName: string;
+
+    beforeAll(() => {
+      seedAccount = accountFromKey(seedKey);
+    });
+
+    test('Get pox-info', async () => {
+      poxInfo = await client.getPox();
+      [contractAddress, contractName] = poxInfo.contract_id.split('.');
+      expect(contractName).toBe('pox-2');
+      await standByUntilBurnBlock(poxInfo.current_burnchain_block_height! + 1);
+    });
+
+    test('Perform stack-stx with less than min required stacking amount', async () => {
+      // use half the required min amount of stx
+      const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
+      const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
+      const cycleCount = 1;
+      // Create and broadcast a `stack-stx` tx
+      const tx1 = await makeContractCall({
+        senderKey: seedAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'stack-stx',
+        functionArgs: [
+          uintCV(ustxAmount.toString()),
+          seedAccount.poxAddrClar,
+          uintCV(burnBlockHeight),
+          uintCV(cycleCount),
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 10000,
+        validateWithAbi: false,
+      });
+      const sendResult1 = await client.sendTransaction(tx1.serialize());
+      const txStandby1 = await standByForTx(sendResult1.txId);
+      expect(txStandby1.status).toBe(DbTxStatus.Success);
+      await standByUntilBlock(txStandby1.block_height);
+    });
+
+    test('Wait for current pox cycle to complete', async () => {
+      const poxInfo2 = await client.getPox();
+      // Wait until end of reward phase
+      const rewardPhaseEndBurnBlock =
+        poxInfo2.next_cycle.reward_phase_start_block_height +
+        poxInfo2.reward_phase_block_length +
+        1;
+      await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+    });
+
+    test('Check pox2 events endpoint', async () => {
+      // TODO: endpoint to get pox2_events for a specific address, then test the parsed events after each operation
+      // TODO: check the extended rewards endpoints and the bitcoind RPC balance endpoints
+      // TODO: validate Stacks RPC account locked state matches the extended endpoint after each operation
+      const res = await fetchGet(`/extended/v1/pox2_events`);
+      expect(res).toBeDefined();
+    });
+  });
+
   describe('PoX-2 - Delegate Stacking operations', () => {
     const seedKey = testnetKeys[4].secretKey;
     const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
@@ -204,15 +313,6 @@ describe('PoX-2 tests', () => {
 
     const stxToDelegateIncrease = 2000n;
 
-    type Account = {
-      secretKey: string;
-      pubKey: string;
-      stxAddr: string;
-      btcAddr: string;
-      poxAddr: { version: number; data: Buffer };
-      poxAddrClar: TupleCV;
-      wif: string;
-    };
     let seedAccount: Account;
     let delegatorAccount: Account;
     let delegateeAccount: Account;
@@ -220,34 +320,6 @@ describe('PoX-2 tests', () => {
     let poxInfo: CoreRpcPoxInfo;
     let contractAddress: string;
     let contractName: string;
-
-    function accountFromKey(privateKey: string): Account {
-      const privKeyBuff = coerceToBuffer(privateKey);
-      if (privKeyBuff.byteLength !== 33) {
-        throw new Error('Only compressed private keys supported');
-      }
-      const ecPair = ECPair.fromPrivateKey(privKeyBuff.slice(0, 32), { compressed: true });
-      const secretKey = ecPair.privateKey!.toString('hex') + '01';
-      if (secretKey.slice(0, 64) !== privateKey.slice(0, 64)) {
-        throw new Error(`key mismatch`);
-      }
-      const pubKey = ecPair.publicKey.toString('hex');
-      const stxAddr = getAddressFromPrivateKey(secretKey, TransactionVersion.Testnet);
-      const btcAccount = getBitcoinAddressFromKey({
-        privateKey: ecPair.privateKey!,
-        network: 'regtest',
-        addressFormat: 'p2pkh',
-        verbose: true,
-      });
-      const btcAddr = btcAccount.address;
-      const poxAddr = poxHelpers.decodeBtcAddress(btcAddr);
-      const poxAddrClar = tupleCV({
-        hashbytes: bufferCV(poxAddr.data),
-        version: bufferCV(Buffer.from([poxAddr.version])),
-      });
-      const wif = btcAccount.wif;
-      return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, wif };
-    }
 
     beforeAll(() => {
       seedAccount = accountFromKey(seedKey);
