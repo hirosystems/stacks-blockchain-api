@@ -1931,6 +1931,41 @@ export class PgStore {
     });
   }
 
+  async getPox2EventsForTx({ txId }: { txId: string }): Promise<FoundOrNot<DbPox2Event[]>> {
+    // TODO: this query should be performed in the same sql tx as the next
+    const dbTx = await this.getTx({ txId, includeUnanchored: true });
+    if (!dbTx.found) {
+      return { found: false };
+    }
+    return await this.sql.begin(async sql => {
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox2_events
+        WHERE canonical = true AND microblock_canonical = true AND tx_id = ${txId}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return { found: true, result: result };
+    });
+  }
+
+  async getPox2EventsForStacker({
+    principal,
+  }: {
+    principal: string;
+  }): Promise<FoundOrNot<DbPox2Event[]>> {
+    return await this.sql.begin(async sql => {
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox2_events
+        WHERE canonical = true AND microblock_canonical = true AND stacker = ${principal}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return { found: true, result: result };
+    });
+  }
+
   async getSmartContractEvents({
     contractId,
     limit,

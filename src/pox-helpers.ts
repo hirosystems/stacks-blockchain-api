@@ -406,6 +406,10 @@ function clarityPrincipalToFullAddress(
   );
 }
 
+// TODO: this and the logic referencing it can be removed once the "stale" data issue is fixed in
+// https://github.com/stacks-network/stacks-blockchain/pull/3318
+const PATCH_EVENT_BALANCES = true;
+
 export function decodePox2PrintEvent(
   rawClarityData: string,
   network: 'mainnet' | 'testnet' | 'regtest'
@@ -469,6 +473,11 @@ export function decodePox2PrintEvent(
           first_unlocked_cycle: BigInt(d['first-unlocked-cycle'].value),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.burnchain_unlock_height = 0n;
+        parsedData.balance += parsedData.locked;
+        parsedData.locked = 0n;
+      }
       return parsedData;
     }
     case Pox2EventName.StackStx: {
@@ -483,6 +492,11 @@ export function decodePox2PrintEvent(
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+        parsedData.balance -= parsedData.data.lock_amount;
+        parsedData.locked = parsedData.data.lock_amount;
+      }
       return parsedData;
     }
     case Pox2EventName.StackIncrease: {
@@ -495,6 +509,10 @@ export function decodePox2PrintEvent(
           total_locked: BigInt(d['total-locked'].value),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.balance -= parsedData.data.increase_by;
+        parsedData.locked += parsedData.data.increase_by;
+      }
       return parsedData;
     }
     case Pox2EventName.StackExtend: {
@@ -507,6 +525,9 @@ export function decodePox2PrintEvent(
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+      }
       return parsedData;
     }
     case Pox2EventName.DelegateStackStx: {
@@ -522,6 +543,11 @@ export function decodePox2PrintEvent(
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+        parsedData.balance -= parsedData.data.lock_amount;
+        parsedData.locked = parsedData.data.lock_amount;
+      }
       return parsedData;
     }
     case Pox2EventName.DelegateStackIncrease: {
@@ -535,6 +561,10 @@ export function decodePox2PrintEvent(
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.balance -= parsedData.data.increase_by;
+        parsedData.locked += parsedData.data.increase_by;
+      }
       return parsedData;
     }
     case Pox2EventName.DelegateStackExtend: {
@@ -548,6 +578,9 @@ export function decodePox2PrintEvent(
           delegator: clarityPrincipalToFullAddress(d['delegator']),
         },
       };
+      if (PATCH_EVENT_BALANCES) {
+        parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+      }
       return parsedData;
     }
     case Pox2EventName.StackAggregationCommit: {

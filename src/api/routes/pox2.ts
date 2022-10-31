@@ -13,6 +13,7 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
 import { parsePox2Event } from '../controllers/db-controller';
+import { validatePrincipal, validateRequestHexInput } from '../query-helpers';
 
 const MAX_EVENTS_PER_REQUEST = 250;
 
@@ -35,6 +36,44 @@ export function createPox2EventsRouter(db: PgStore): express.Router {
       const response = {
         limit,
         offset,
+        results: parsedResult,
+      };
+      res.json(response);
+    })
+  );
+
+  // TODO: this should probably be a tx route e.g. /extended/v1/tx/:tx_id/pox2_events
+  router.get(
+    '/tx/:tx_id',
+    asyncHandler(async (req, res) => {
+      const { tx_id } = req.params;
+      validateRequestHexInput(tx_id);
+      const queryResults = await db.getPox2EventsForTx({ txId: tx_id });
+      if (!queryResults.found) {
+        res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
+        return;
+      }
+      const parsedResult = queryResults.result.map(r => parsePox2Event(r));
+      const response = {
+        results: parsedResult,
+      };
+      res.json(response);
+    })
+  );
+
+  // TODO: this should probably be an account route e.g. /extended/v1/address/:stx_address/pox2_events
+  router.get(
+    '/stacker/:principal',
+    asyncHandler(async (req, res) => {
+      const { principal } = req.params;
+      validatePrincipal(principal);
+      const queryResults = await db.getPox2EventsForStacker({ principal });
+      if (!queryResults.found) {
+        res.status(404).json({ error: `could not find principal ${principal}` });
+        return;
+      }
+      const parsedResult = queryResults.result.map(r => parsePox2Event(r));
+      const response = {
         results: parsedResult,
       };
       res.json(response);

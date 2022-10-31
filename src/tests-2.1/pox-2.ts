@@ -284,7 +284,36 @@ describe('PoX-2 tests', () => {
       const sendResult1 = await client.sendTransaction(tx1.serialize());
       const txStandby1 = await standByForTx(sendResult1.txId);
       expect(txStandby1.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(txStandby1.block_height);
+
+      // validate stacks-node balance state
+      const coreBalance = await client.getAccount(seedAccount.stxAddr);
+      expect(BigInt(coreBalance.locked)).toBe(ustxAmount);
+
+      // validate the pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendResult1.txId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'stack-stx',
+          pox_addr: seedAccount.btcTestnetAddr,
+          stacker: seedAccount.stxAddr,
+          balance: BigInt(coreBalance.balance).toString(),
+          locked: ustxAmount.toString(),
+          burnchain_unlock_height: coreBalance.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          lock_period: '1',
+          lock_amount: ustxAmount.toString(),
+        })
+      );
+
+      // TODO: validate API balance state
     });
 
     test('Wait for current pox cycle to complete', async () => {
@@ -295,6 +324,25 @@ describe('PoX-2 tests', () => {
         poxInfo2.reward_phase_block_length +
         1;
       await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+    });
+
+    test('Validate pox2 handle-unlock for stacker', async () => {
+      const coreBalance = await client.getAccount(seedAccount.stxAddr);
+      expect(BigInt(coreBalance.balance)).toBeGreaterThan(0n);
+      expect(BigInt(coreBalance.locked)).toBe(0n);
+      expect(coreBalance.unlock_height).toBe(0);
+      const res: any = await fetchGet(`/extended/v1/pox2_events/stacker/${seedAccount.stxAddr}`);
+      const unlockEvent = res.results.find((r: any) => r.name === 'handle-unlock');
+      expect(unlockEvent).toBeDefined();
+      expect(unlockEvent).toEqual(
+        expect.objectContaining({
+          name: 'handle-unlock',
+          stacker: seedAccount.stxAddr,
+          balance: BigInt(coreBalance.balance).toString(),
+          locked: '0',
+          burnchain_unlock_height: '0',
+        })
+      );
     });
 
     test('Check pox2 events endpoint', async () => {
@@ -362,6 +410,8 @@ describe('PoX-2 tests', () => {
       const stxXferTx1 = await standByForTx(stxXferId1);
       expect(stxXferTx1.status).toBe(DbTxStatus.Success);
       expect(stxXferTx1.token_transfer_recipient_address).toBe(delegatorAccount.stxAddr);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(stxXferTx1.block_height);
 
       // transfer pox "min_amount_ustx" from seed to delegatee account
@@ -378,6 +428,8 @@ describe('PoX-2 tests', () => {
       const stxXferTx2 = await standByForTx(stxXferId2);
       expect(stxXferTx2.status).toBe(DbTxStatus.Success);
       expect(stxXferTx2.token_transfer_recipient_address).toBe(delegateeAccount.stxAddr);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(stxXferTx2.block_height);
 
       // ensure delegator account balance is correct
@@ -416,6 +468,8 @@ describe('PoX-2 tests', () => {
       const { txId: delegateStxTxId } = await client.sendTransaction(delegateStxTx.serialize());
       const delegateStxDbTx = await standByForTx(delegateStxTxId);
       expect(delegateStxDbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(delegateStxDbTx.block_height);
 
       // check delegatee locked amount is still zero
@@ -488,10 +542,42 @@ describe('PoX-2 tests', () => {
       );
       const delegateStackStxDbTx = await standByForTx(delegateStackStxTxId);
       expect(delegateStackStxDbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(delegateStackStxDbTx.block_height);
+
+      // validate stacks-node balance
+      const coreBalanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      expect(BigInt(coreBalanceInfo.locked)).toBe(amountToDelegateInitial);
+      expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
+
+      // validate delegate-stack-stx pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackStxTxId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'delegate-stack-stx',
+          pox_addr: delegateeAccount.btcTestnetAddr,
+          stacker: delegateeAccount.stxAddr,
+          balance: BigInt(coreBalanceInfo.balance).toString(),
+          locked: amountToDelegateInitial.toString(),
+          burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          lock_period: '1',
+          lock_amount: amountToDelegateInitial.toString(),
+        })
+      );
+
+      // TODO: validate API endpoint balance state for account
     });
 
     test('Perform delegate-stack-increase', async () => {
+      const coreBalanceInfoPreIncrease = await client.getAccount(delegateeAccount.stxAddr);
+
       const txFee = 10000n;
       const delegateStackIncreaseTx = await makeContractCall({
         senderKey: delegatorAccount.secretKey,
@@ -513,11 +599,52 @@ describe('PoX-2 tests', () => {
       );
       const delegateStackIncreaseDbTx = await standByForTx(delegateStackIncreaseTxId);
       expect(delegateStackIncreaseDbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(delegateStackIncreaseDbTx.block_height);
+
+      // validate stacks-node balance
+      const coreBalanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      expect(BigInt(coreBalanceInfo.locked)).toBe(
+        BigInt(coreBalanceInfoPreIncrease.locked) + stxToDelegateIncrease
+      );
+      expect(BigInt(coreBalanceInfo.balance)).toBe(
+        BigInt(coreBalanceInfoPreIncrease.balance) - stxToDelegateIncrease
+      );
+      expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
+
+      // validate delegate-stack-stx pox2 event for this tx
+      const res: any = await fetchGet(
+        `/extended/v1/pox2_events/tx/${delegateStackIncreaseDbTx.tx_id}`
+      );
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'delegate-stack-increase',
+          pox_addr: delegateeAccount.btcTestnetAddr,
+          stacker: delegateeAccount.stxAddr,
+          balance: BigInt(coreBalanceInfo.balance).toString(),
+          locked: BigInt(coreBalanceInfo.locked).toString(),
+          burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          delegator: delegatorAccount.stxAddr,
+          increase_by: stxToDelegateIncrease.toString(),
+          total_locked: BigInt(coreBalanceInfo.locked).toString(),
+        })
+      );
+
+      // TODO: validate API endpoint balance state for account
     });
 
     test('Perform delegate-stack-extend', async () => {
+      const coreBalanceInfoPreIncrease = await client.getAccount(delegateeAccount.stxAddr);
+
       const txFee = 10000n;
+      const extendCount = 1n;
       const delegateStackExtendTx = await makeContractCall({
         senderKey: delegatorAccount.secretKey,
         contractAddress,
@@ -526,7 +653,7 @@ describe('PoX-2 tests', () => {
         functionArgs: [
           standardPrincipalCV(delegateeAccount.stxAddr), // stacker
           delegateeAccount.poxAddrClar, // pox-addr
-          uintCV(1), // extend-count
+          uintCV(extendCount), // extend-count
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -538,7 +665,41 @@ describe('PoX-2 tests', () => {
       );
       const delegateStackExtendDbTx = await standByForTx(delegateStackExtendTxId);
       expect(delegateStackExtendDbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(delegateStackExtendDbTx.block_height);
+
+      // validate stacks-node balance
+      const coreBalanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      expect(BigInt(coreBalanceInfo.locked)).toBeGreaterThan(0n);
+      expect(BigInt(coreBalanceInfo.balance)).toBeGreaterThan(0n);
+      expect(coreBalanceInfo.unlock_height).toBeGreaterThan(
+        coreBalanceInfoPreIncrease.unlock_height
+      );
+
+      // validate delegate-stack-extend pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackExtendTxId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'delegate-stack-extend',
+          pox_addr: delegateeAccount.btcTestnetAddr,
+          stacker: delegateeAccount.stxAddr,
+          balance: BigInt(coreBalanceInfo.balance).toString(),
+          locked: BigInt(coreBalanceInfo.locked).toString(),
+          burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          delegator: delegatorAccount.stxAddr,
+          extend_count: extendCount.toString(),
+          unlock_burn_height: coreBalanceInfo.unlock_height.toString(),
+        })
+      );
+
+      // TODO: validate API endpoint balance state for account
     });
 
     test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
@@ -563,7 +724,21 @@ describe('PoX-2 tests', () => {
       );
       const stackAggrCommmitDbTx = await standByForTx(stackAggrCommitTxId);
       expect(stackAggrCommmitDbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
       await standByUntilBlock(stackAggrCommmitDbTx.block_height);
+
+      // validate stack-aggregation-commit pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${stackAggrCommitTxId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'stack-aggregation-commit',
+          pox_addr: delegateeAccount.btcTestnetAddr,
+          stacker: delegatorAccount.stxAddr,
+        })
+      );
     });
 
     test('Wait for current pox cycle to complete', async () => {
@@ -585,10 +760,18 @@ describe('PoX-2 tests', () => {
       await standByUntilBurnBlock(rewardPhaseEndBurnBlock2);
     });
 
+    test('Validate account balances are unlocked', async () => {
+      // validate stacks-node balance
+      const coreBalanceInfo = await client.getAccount(delegateeAccount.stxAddr);
+      expect(BigInt(coreBalanceInfo.locked)).toBe(0n);
+      expect(BigInt(coreBalanceInfo.balance)).toBe(0n);
+      expect(coreBalanceInfo.unlock_height).toBe(0);
+
+      // TODO: validate API endpoint balance state for account
+    });
+
     test('Check pox2 events endpoint', async () => {
-      // TODO: endpoint to get pox2_events for a specific address, then test the parsed events after each operation
       // TODO: check the extended rewards endpoints and the bitcoind RPC balance endpoints
-      // TODO: validate Stacks RPC account locked state matches the extended endpoint after each operation
       const res = await fetchGet(`/extended/v1/pox2_events`);
       expect(res).toBeDefined();
     });
@@ -606,7 +789,7 @@ describe('PoX-2 tests', () => {
     let contractAddress: string;
     let contractName: string;
     let ustxAmount: bigint;
-    const cycleCount = 1;
+    const lockPeriod = 1;
     const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
     beforeAll(async () => {
@@ -670,15 +853,18 @@ describe('PoX-2 tests', () => {
       burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
-      cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
+      cycleBlockLength = lockPeriod * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
       expect(contractName).toBe('pox-2');
     });
 
     test('stack-stx tx', async () => {
+      const coreBalancePreStackStx = await client.getAccount(account.stacksAddress);
+
       // Create and broadcast a `stack-stx` tx
-      const tx1 = await makeContractCall({
+      const txFee = 10000n;
+      const stackStxTx = await makeContractCall({
         senderKey: account.secretKey,
         contractAddress,
         contractName,
@@ -690,57 +876,93 @@ describe('PoX-2 tests', () => {
             version: bufferCV(Buffer.from([decodedBtcAddr.version])),
           }),
           uintCV(burnBlockHeight),
-          uintCV(cycleCount),
+          uintCV(lockPeriod), // lock-period
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
-        fee: 10000,
+        fee: txFee,
         validateWithAbi: false,
       });
-      const expectedTxId1 = '0x' + tx1.txid();
-      const txStandby1 = standByForTx(expectedTxId1);
-      const sendResult1 = await client.sendTransaction(tx1.serialize());
-      expect(sendResult1.txId).toBe(expectedTxId1);
+      const expectedTxId = '0x' + stackStxTx.txid();
+      const sendTxResult = await client.sendTransaction(stackStxTx.serialize());
+      expect(sendTxResult.txId).toBe(expectedTxId);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await txStandby1;
-      expect(dbTx1.status).toBe(DbTxStatus.Success);
-      const tx1Events = await api.datastore.getTxEvents({
-        txId: expectedTxId1,
-        indexBlockHash: dbTx1.index_block_hash,
+      const dbTx = await standByForTx(expectedTxId);
+      expect(dbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx.block_height);
+
+      const tx1Event = await api.datastore.getTxEvents({
+        txId: expectedTxId,
+        indexBlockHash: dbTx.index_block_hash,
         limit: 99999,
         offset: 0,
       });
-      expect(tx1Events.results).toBeTruthy();
-      const lockEvent1 = tx1Events.results.find(
+      expect(tx1Event.results).toBeTruthy();
+      const lockEvent = tx1Event.results.find(
         r => r.event_type === DbEventTypeId.StxLock
       ) as DbStxLockEvent;
-      expect(lockEvent1).toBeDefined();
-      expect(lockEvent1.locked_address).toBe(account.stacksAddress);
-      expect(lockEvent1.locked_amount).toBe(ustxAmount);
+      expect(lockEvent).toBeDefined();
+      expect(lockEvent.locked_address).toBe(account.stacksAddress);
+      expect(lockEvent.locked_amount).toBe(ustxAmount);
 
       // Test that the unlock height event data in the API db matches the expected height from the
       // calculated values from the /v2/pox data and the cycle count specified in the `stack-stx` tx.
-      const expectedUnlockHeight1 =
+      const expectedUnlockHeight =
         cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
-      expect(lockEvent1.unlock_height).toBe(expectedUnlockHeight1);
+      expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-stx` operation
-      const addrBalance1 = await fetchGet<AddressStxBalanceResponse>(
+      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
-      expect(addrBalance1.locked).toBe(ustxAmount.toString());
-      expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
-      expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
-      expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
+      expect(addrBalance.locked).toBe(ustxAmount.toString());
+      expect(addrBalance.burnchain_unlock_height).toBe(expectedUnlockHeight);
+      expect(addrBalance.lock_height).toBe(dbTx.block_height);
+      expect(addrBalance.lock_tx_id).toBe(dbTx.tx_id);
 
-      await standByUntilBlock(dbTx1.block_height + 1);
+      // validate stacks-node balance state
+      const coreBalance = await client.getAccount(account.stacksAddress);
+      expect(BigInt(coreBalance.locked)).toBe(ustxAmount);
+      expect(BigInt(coreBalance.balance)).toBe(
+        BigInt(coreBalancePreStackStx.balance) - ustxAmount - txFee
+      );
+      expect(coreBalance.unlock_height).toBeGreaterThan(0);
+
+      // validate the pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'stack-stx',
+          pox_addr: btcAddr,
+          stacker: account.stacksAddress,
+          balance: BigInt(coreBalance.balance).toString(),
+          locked: BigInt(coreBalance.locked).toString(),
+          burnchain_unlock_height: coreBalance.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          lock_amount: ustxAmount.toString(),
+          lock_period: lockPeriod.toString(),
+          unlock_burn_height: coreBalance.unlock_height.toString(),
+        })
+      );
+
+      // TODO: validate API balance state
     });
 
     test('stack-increase tx', async () => {
+      const coreBalancePreIncrease = await client.getAccount(account.stacksAddress);
+
       // Create and broadcast a `stack-increase` tx
       const stackIncreaseAmount = 123n;
-      const tx2 = await makeContractCall({
+      const stackIncreaseTxFee = 10000n;
+      const stackIncreaseTx = await makeContractCall({
         senderKey: account.secretKey,
         contractAddress,
         contractName,
@@ -748,53 +970,90 @@ describe('PoX-2 tests', () => {
         functionArgs: [uintCV(stackIncreaseAmount)],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
-        fee: 10000,
+        fee: stackIncreaseTxFee,
         validateWithAbi: false,
       });
-      const expectedTxId2 = '0x' + tx2.txid();
-      const txStandby2 = standByForTx(expectedTxId2);
-      const sendResult2 = await client.sendTransaction(tx2.serialize());
-      expect(sendResult2.txId).toBe(expectedTxId2);
+      const expectedTxId = '0x' + stackIncreaseTx.txid();
+      const sendTxResult = await client.sendTransaction(stackIncreaseTx.serialize());
+      expect(sendTxResult.txId).toBe(expectedTxId);
 
-      const dbTx2 = await txStandby2;
-      expect(dbTx2.status).toBe(DbTxStatus.Success);
-      const tx2Events = await api.datastore.getTxEvents({
-        txId: dbTx2.tx_id,
-        indexBlockHash: dbTx2.index_block_hash,
+      const dbTx = await standByForTx(sendTxResult.txId);
+      expect(dbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx.block_height);
+
+      const txEvents = await api.datastore.getTxEvents({
+        txId: dbTx.tx_id,
+        indexBlockHash: dbTx.index_block_hash,
         limit: 99999,
         offset: 0,
       });
-      expect(tx2Events.results).toBeTruthy();
-      const lockEvent2 = tx2Events.results.find(
+      expect(txEvents.results).toBeTruthy();
+      const lockEvent2 = txEvents.results.find(
         r => r.event_type === DbEventTypeId.StxLock
       ) as DbStxLockEvent;
       expect(lockEvent2).toBeDefined();
 
       // Test that the locked STX amount has increased
-      const expectedLockedAmount2 = ustxAmount + stackIncreaseAmount;
-      expect(lockEvent2.locked_amount).toBe(expectedLockedAmount2);
+      const expectedLockedAmount = ustxAmount + stackIncreaseAmount;
+      expect(lockEvent2.locked_amount).toBe(expectedLockedAmount);
 
       // Test that the locked event data in the API db matches the data returned from the RPC /v2/accounts/<addr> endpoint
-      const rpcAccountInfo2 = await client.getAccount(account.stacksAddress);
-      const expectedUnlockHeight2 =
+      const rpcAccountInfo = await client.getAccount(account.stacksAddress);
+      const expectedUnlockHeight =
         cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
-      expect(BigInt(rpcAccountInfo2.locked)).toBe(expectedLockedAmount2);
-      expect(rpcAccountInfo2.unlock_height).toBe(expectedUnlockHeight2);
+      expect(BigInt(rpcAccountInfo.locked)).toBe(expectedLockedAmount);
+      expect(rpcAccountInfo.unlock_height).toBe(expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-increase` operation
-      const addrBalance2 = await fetchGet<AddressStxBalanceResponse>(
+      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
-      expect(addrBalance2.locked).toBe(expectedLockedAmount2.toString());
-      expect(addrBalance2.burnchain_unlock_height).toBe(expectedUnlockHeight2);
-      expect(addrBalance2.lock_height).toBe(dbTx2.block_height);
-      expect(addrBalance2.lock_tx_id).toBe(dbTx2.tx_id);
+      expect(addrBalance.locked).toBe(expectedLockedAmount.toString());
+      expect(addrBalance.burnchain_unlock_height).toBe(expectedUnlockHeight);
+      expect(addrBalance.lock_height).toBe(dbTx.block_height);
+      expect(addrBalance.lock_tx_id).toBe(dbTx.tx_id);
+
+      // validate stacks-node balance state
+      const coreBalance = await client.getAccount(account.stacksAddress);
+      expect(BigInt(coreBalance.locked)).toBe(expectedLockedAmount);
+      expect(BigInt(coreBalance.balance)).toBe(
+        BigInt(coreBalancePreIncrease.balance) - stackIncreaseAmount - stackIncreaseTxFee
+      );
+      expect(coreBalance.unlock_height).toBe(expectedUnlockHeight);
+
+      // validate the pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'stack-increase',
+          pox_addr: btcAddr,
+          stacker: account.stacksAddress,
+          balance: BigInt(coreBalance.balance).toString(),
+          locked: expectedLockedAmount.toString(),
+          burnchain_unlock_height: coreBalance.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          increase_by: stackIncreaseAmount.toString(),
+          total_locked: expectedLockedAmount.toString(),
+        })
+      );
+
+      // TODO: validate API balance state
     });
 
     test('stack-extend tx', async () => {
+      const coreBalancePreStackExtend = await client.getAccount(account.stacksAddress);
+
       // Create and broadcast a `stack-extend` tx
       const extendCycleAmount = 1;
-      const tx3 = await makeContractCall({
+      const txFee = 10000n;
+      const stackExtendTx = await makeContractCall({
         senderKey: account.secretKey,
         contractAddress,
         contractName,
@@ -808,46 +1067,80 @@ describe('PoX-2 tests', () => {
         ],
         network: stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
-        fee: 10000,
+        fee: txFee,
         validateWithAbi: false,
       });
-      const expectedTxId3 = '0x' + tx3.txid();
-      const txStandby3 = standByForTx(expectedTxId3);
-      const sendResult3 = await client.sendTransaction(tx3.serialize());
-      expect(sendResult3.txId).toBe(expectedTxId3);
+      const expectedTxId = '0x' + stackExtendTx.txid();
+      const sendTxResult = await client.sendTransaction(stackExtendTx.serialize());
+      expect(sendTxResult.txId).toBe(expectedTxId);
 
-      const dbTx3 = await txStandby3;
-      expect(dbTx3.status).toBe(DbTxStatus.Success);
-      const tx3Events = await api.datastore.getTxEvents({
-        txId: dbTx3.tx_id,
-        indexBlockHash: dbTx3.index_block_hash,
+      const dbTx = await standByForTx(expectedTxId);
+      expect(dbTx.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx.block_height);
+
+      const txEvents = await api.datastore.getTxEvents({
+        txId: dbTx.tx_id,
+        indexBlockHash: dbTx.index_block_hash,
         limit: 99999,
         offset: 0,
       });
-      expect(tx3Events.results).toBeTruthy();
-      const lockEvent3 = tx3Events.results.find(
+      expect(txEvents.results).toBeTruthy();
+      const lockEvent = txEvents.results.find(
         r => r.event_type === DbEventTypeId.StxLock
       ) as DbStxLockEvent;
-      expect(lockEvent3).toBeDefined();
+      expect(lockEvent).toBeDefined();
 
       // Test that the unlock height event data in the API db matches the expected height from the
       // calculated values from the /v2/pox data and the cycle amount specified in the `stack-extend` tx.
       const extendBlockCount = extendCycleAmount * poxInfo.reward_cycle_length;
-      const expectedUnlockHeight2 =
+      const expectedUnlockHeight =
         cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height + extendBlockCount;
-      expect(lockEvent3.unlock_height).toBe(expectedUnlockHeight2);
+      expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
 
       // Test that the locked event data in the API db matches the data returned from the RPC /v2/accounts/<addr> endpoint
-      const rpcAccountInfo3 = await client.getAccount(account.stacksAddress);
-      expect(rpcAccountInfo3.unlock_height).toBe(expectedUnlockHeight2);
+      const rpcAccountInfo = await client.getAccount(account.stacksAddress);
+      expect(rpcAccountInfo.unlock_height).toBe(expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-extend` operation
-      const addrBalance3 = await fetchGet<AddressStxBalanceResponse>(
+      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
-      expect(addrBalance3.burnchain_unlock_height).toBe(expectedUnlockHeight2);
-      expect(addrBalance3.lock_height).toBe(dbTx3.block_height);
-      expect(addrBalance3.lock_tx_id).toBe(dbTx3.tx_id);
+      expect(addrBalance.burnchain_unlock_height).toBe(expectedUnlockHeight);
+      expect(addrBalance.lock_height).toBe(dbTx.block_height);
+      expect(addrBalance.lock_tx_id).toBe(dbTx.tx_id);
+
+      // validate stacks-node balance state
+      const coreBalance = await client.getAccount(account.stacksAddress);
+      expect(BigInt(coreBalance.locked)).toBeGreaterThan(0n);
+      expect(BigInt(coreBalance.locked)).toBe(BigInt(coreBalancePreStackExtend.locked));
+      expect(BigInt(coreBalance.balance)).toBeGreaterThan(0n);
+      expect(BigInt(coreBalance.balance)).toBe(BigInt(coreBalancePreStackExtend.balance) - txFee);
+      expect(coreBalance.unlock_height).toBeGreaterThan(coreBalancePreStackExtend.unlock_height);
+
+      // validate the pox2 event for this tx
+      const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+      expect(res).toBeDefined();
+      expect(res.results).toHaveLength(1);
+      expect(res.results[0]).toEqual(
+        expect.objectContaining({
+          name: 'stack-extend',
+          pox_addr: btcAddr,
+          stacker: account.stacksAddress,
+          balance: BigInt(coreBalance.balance).toString(),
+          locked: BigInt(coreBalance.locked).toString(),
+          burnchain_unlock_height: coreBalance.unlock_height.toString(),
+        })
+      );
+      expect(res.results[0].data).toEqual(
+        expect.objectContaining({
+          extend_count: extendCycleAmount.toString(),
+          unlock_burn_height: coreBalance.unlock_height.toString(),
+        })
+      );
+
+      // TODO: validate API balance state
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
@@ -939,7 +1232,9 @@ describe('PoX-2 tests', () => {
         label: btcRegtestAccount.address,
         include_watchonly: true,
       });
-      received = received.filter(r => r.address === btcRegtestAccount.address);
+      received = received.filter(
+        r => r.address === btcRegtestAccount.address && r.confirmations > 0
+      );
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -1063,13 +1358,16 @@ describe('PoX-2 tests', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const txStandby1 = standByForTx(expectedTxId1);
       const sendResult1 = await client.sendTransaction(tx1.serialize());
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await txStandby1;
+      const dbTx1 = await standByForTx(expectedTxId1);
       expect(dbTx1.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx1.block_height);
+
       const tx1Events = await api.datastore.getTxEvents({
         txId: expectedTxId1,
         indexBlockHash: dbTx1.index_block_hash,
@@ -1098,8 +1396,6 @@ describe('PoX-2 tests', () => {
       expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
       expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
       expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
-
-      await standByUntilBlock(dbTx1.block_height + 1);
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
@@ -1308,13 +1604,16 @@ describe('PoX-2 tests', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const txStandby1 = standByForTx(expectedTxId1);
       const sendResult1 = await client.sendTransaction(tx1.serialize());
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await txStandby1;
+      const dbTx1 = await standByForTx(expectedTxId1);
       expect(dbTx1.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx1.block_height);
+
       const tx1Events = await api.datastore.getTxEvents({
         txId: expectedTxId1,
         indexBlockHash: dbTx1.index_block_hash,
@@ -1343,8 +1642,6 @@ describe('PoX-2 tests', () => {
       expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
       expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
       expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
-
-      await standByUntilBlock(dbTx1.block_height + 1);
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
@@ -1558,13 +1855,16 @@ describe('PoX-2 tests', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const txStandby1 = standByForTx(expectedTxId1);
       const sendResult1 = await client.sendTransaction(tx1.serialize());
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await txStandby1;
+      const dbTx1 = await standByForTx(expectedTxId1);
       expect(dbTx1.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx1.block_height);
+
       const tx1Events = await api.datastore.getTxEvents({
         txId: expectedTxId1,
         indexBlockHash: dbTx1.index_block_hash,
@@ -1593,8 +1893,6 @@ describe('PoX-2 tests', () => {
       expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
       expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
       expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
-
-      await standByUntilBlock(dbTx1.block_height + 1);
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
@@ -1808,13 +2106,16 @@ describe('PoX-2 tests', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const txStandby1 = standByForTx(expectedTxId1);
       const sendResult1 = await client.sendTransaction(tx1.serialize());
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await txStandby1;
+      const dbTx1 = await standByForTx(expectedTxId1);
       expect(dbTx1.status).toBe(DbTxStatus.Success);
+
+      // ensure stacks-node is caught up
+      await standByUntilBlock(dbTx1.block_height);
+
       const tx1Events = await api.datastore.getTxEvents({
         txId: expectedTxId1,
         indexBlockHash: dbTx1.index_block_hash,
@@ -1843,8 +2144,6 @@ describe('PoX-2 tests', () => {
       expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
       expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
       expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
-
-      await standByUntilBlock(dbTx1.block_height + 1);
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
