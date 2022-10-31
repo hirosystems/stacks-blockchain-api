@@ -1,8 +1,8 @@
-ARG STACKS_API_VERSION=v0.71.2
+ARG STACKS_API_VERSION
 ARG STACKS_NODE_VERSION=2.05.0.4.0
-ARG STACKS_API_REPO=blockstack/stacks-blockchain-api
-ARG STACKS_NODE_REPO=blockstack/stacks-blockchain
-ARG PG_VERSION=12
+ARG STACKS_API_REPO=hirosystems/stacks-blockchain-api
+ARG STACKS_NODE_REPO=stacks-network/stacks-blockchain
+ARG PG_VERSION=14
 ARG STACKS_NETWORK=mainnet
 ARG STACKS_LOG_DIR=/var/log/stacks-node
 ARG STACKS_SVC_DIR=/etc/service
