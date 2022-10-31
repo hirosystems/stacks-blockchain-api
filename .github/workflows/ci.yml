@@ -564,7 +564,7 @@ jobs:
         with:
           context: .
           build-args: |
-            STACKS_API_VERSION=${{ github.head_ref }}
+            STACKS_API_VERSION=${{ github.head_ref || github.ref_name }}
           file: docker/stx-rosetta.Dockerfile
           tags: ${{ steps.meta_standalone.outputs.tags }}
           labels: ${{ steps.meta_standalone.outputs.labels }}
