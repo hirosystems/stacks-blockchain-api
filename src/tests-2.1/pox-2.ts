@@ -742,29 +742,24 @@ describe('PoX-2 tests', () => {
     });
 
     test('Wait for current pox cycle to complete', async () => {
-      const poxInfo2 = await client.getPox();
-      // Wait until end of reward phase
-      const rewardPhaseEndBurnBlock =
-        poxInfo2.next_cycle.reward_phase_start_block_height +
-        poxInfo2.reward_phase_block_length +
-        1;
-      await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
-      const poxInfo3 = await client.getPox();
-      expect(poxInfo3.current_cycle.id).toBeGreaterThan(poxInfo2.current_cycle.id);
-
-      // Wait until end of next reward phase
-      const rewardPhaseEndBurnBlock2 =
-        poxInfo2.next_cycle.reward_phase_start_block_height +
-        poxInfo2.reward_phase_block_length +
-        1;
-      await standByUntilBurnBlock(rewardPhaseEndBurnBlock2);
+      const waitForCurrentPoxCycleComplete = async () => {
+        const firstPoxInfo = await client.getPox();
+        // Wait until end of reward phase
+        const rewardPhaseEndBurnBlock =
+          firstPoxInfo.next_cycle.reward_phase_start_block_height +
+          firstPoxInfo.reward_phase_block_length;
+        await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+        const secondPoxInfo = await client.getPox();
+        expect(firstPoxInfo.current_cycle.id).toBe(secondPoxInfo.current_cycle.id - 1);
+      };
+      await waitForCurrentPoxCycleComplete();
+      await waitForCurrentPoxCycleComplete();
     });
 
     test('Validate account balances are unlocked', async () => {
       // validate stacks-node balance
       const coreBalanceInfo = await client.getAccount(delegateeAccount.stxAddr);
       expect(BigInt(coreBalanceInfo.locked)).toBe(0n);
-      expect(BigInt(coreBalanceInfo.balance)).toBe(0n);
       expect(coreBalanceInfo.unlock_height).toBe(0);
 
       // TODO: validate API endpoint balance state for account
