@@ -1,3 +1,10 @@
+## [5.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.2...v5.0.3) (2022-10-31)
+
+
+### Bug Fixes
+
+* v5 backport BNS ownership for multiple name operations in the same transaction ([#1390](https://github.com/hirosystems/stacks-blockchain-api/issues/1390)) ([0c318d7](https://github.com/hirosystems/stacks-blockchain-api/commit/0c318d7f9f4cd5b43aa7ecc5ed8054d2c877fee4))
+
 ## [5.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.1...v5.0.2) (2022-10-24)
 
 
