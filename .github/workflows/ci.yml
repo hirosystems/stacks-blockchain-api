@@ -526,6 +526,8 @@ jobs:
           images: |
             blockstack/${{ github.event.repository.name }}
             hirosystems/${{ github.event.repository.name }}
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -540,6 +542,8 @@ jobs:
           images: |
             blockstack/${{ github.event.repository.name }}-standalone
             hirosystems/${{ github.event.repository.name }}-standalone
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=branch
             type=ref,event=pr
