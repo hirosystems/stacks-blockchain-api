@@ -543,11 +543,17 @@ describe('/block tests', () => {
     const result = JSON.parse(query1.text);
     expect(result.transaction_identifier.hash).toEqual('0x1112');
     expect(result.operations[2].metadata).toEqual({ memo: 'memo-1' });
+    expect(result.operations[2].operation_identifier.index).toEqual(2);
     expect(result.operations[3].metadata).toEqual({ memo: 'memo-1' });
+    expect(result.operations[3].operation_identifier.index).toEqual(3);
     expect(result.operations[4].metadata).toEqual({ memo: 'memo-2' });
+    expect(result.operations[4].operation_identifier.index).toEqual(4);
     expect(result.operations[5].metadata).toEqual({ memo: 'memo-2' });
+    expect(result.operations[5].operation_identifier.index).toEqual(5);
     expect(result.operations[6].metadata).toEqual({ memo: '' });
+    expect(result.operations[6].operation_identifier.index).toEqual(6);
     expect(result.operations[7].metadata).toEqual({ memo: '' });
+    expect(result.operations[7].operation_identifier.index).toEqual(7);
 
     // send-stx-with-memo
     const block3 = new TestBlockBuilder({

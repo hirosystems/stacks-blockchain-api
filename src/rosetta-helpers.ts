@@ -252,8 +252,9 @@ async function processEvents(
               stxAssetEvent.amount,
               () => 'Unexpected nullish amount'
             );
-            const sender = makeSenderOperation(tx, operations.length);
-            const receiver = makeReceiverOperation(tx, operations.length);
+            let index = operations.length;
+            const sender = makeSenderOperation(tx, index++);
+            const receiver = makeReceiverOperation(tx, index++);
             if (sendManyMemos) {
               sender.metadata = receiver.metadata = {
                 memo: sendManyMemos[sendManyStxTransferEventIndex++],
