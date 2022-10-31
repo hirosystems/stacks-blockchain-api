@@ -805,7 +805,7 @@ export async function startEventServer(opts: {
         if (chainTip.blockHeight >= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string)) {
           next();
         } else {
-          res.status(200).send(`IBD mode active.`); // Skipping ${req.originalUrl} handler
+          res.status(200).send(`IBD mode active.`);
         }
       } catch (error) {
         res
