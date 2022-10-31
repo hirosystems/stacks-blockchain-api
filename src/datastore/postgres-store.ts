@@ -7258,6 +7258,34 @@ export class PgDataStore
       if (nameZonefile.rowCount === 0) {
         return;
       }
+      // The following query patches an issue that is fixed in the API v6+ with regards to how name
+      // ownership is calculated when there are more than 1 name events for the same name in the
+      // same transaction. This does *not* fix the `status` of the name being returned, though, only
+      // its ownership. See https://github.com/hirosystems/stacks-blockchain-api/pull/1337
+      try {
+        const value = bnsNameCV(name);
+        const assetIdentifier =
+          chainId === ChainID.Mainnet
+            ? 'SP000000000000000000002Q6VF78.bns::names'
+            : 'ST000000000000000000002AMW42H.bns::names';
+        const nftCustody = includeUnanchored ? 'nft_custody_unanchored' : 'nft_custody';
+        const nameCustody = await client.query<{ recipient: string }>(
+          `
+          SELECT recipient
+          FROM ${nftCustody}
+          WHERE asset_identifier = $1 AND value = $2
+          `,
+          [assetIdentifier, value]
+        );
+        if (nameCustody.rowCount > 0) {
+          return {
+            ...nameZonefile.rows[0],
+            address: nameCustody.rows[0].recipient,
+          };
+        }
+      } catch (error) {
+        // Something went wrong. We'll display `zonefile` table data.
+      }
       return nameZonefile.rows[0];
     });
     if (queryResult) {
