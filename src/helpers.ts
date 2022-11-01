@@ -255,6 +255,12 @@ export function isValidBitcoinAddress(address: string): boolean {
   } catch (e) {
     // ignore
   }
+  try {
+    btc.address.toOutputScript(address, btc.networks.regtest);
+    return true;
+  } catch (e) {
+    // ignore
+  }
   return false;
 }
 

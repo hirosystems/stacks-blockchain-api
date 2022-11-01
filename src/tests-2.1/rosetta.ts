@@ -70,19 +70,33 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { RPCClient } from 'rpc-bitcoin';
 import bignumber from 'bignumber.js';
+import { getBitcoinAddressFromKey } from '../ec-helpers';
 
 describe('Rosetta - Stacks 2.1 tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
   let bitcoinRpcClient: RPCClient;
-  const btcAddr = 'mipcBbFg9gMiCh81Kj8tqqdgoZub1ZJRfn';
+  let btcAddr: string;
+  let btcAddrTestnet: string;
   const account = testnetKeys[0];
   let poxInfo: CoreRpcPoxInfo;
 
   beforeAll(async () => {
     const testEnv: TestEnvContext = (global as any).testEnv;
     ({ db, api, client, bitcoinRpcClient } = testEnv);
+
+    btcAddr = getBitcoinAddressFromKey({
+      privateKey: account.secretKey,
+      network: 'regtest',
+      addressFormat: 'p2wpkh',
+    });
+    btcAddrTestnet = getBitcoinAddressFromKey({
+      privateKey: account.secretKey,
+      network: 'testnet',
+      addressFormat: 'p2wpkh',
+    });
+
     await Promise.resolve();
   });
 
@@ -285,7 +299,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
 
     const rewards = await fetchGet<BurnchainRewardListResponse>(
-      `/extended/v1/burnchain/rewards/${btcAddr}`
+      `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
     );
     const firstReward = rewards.results.sort(
       (a, b) => a.burn_block_height - b.burn_block_height
