@@ -69,7 +69,7 @@ export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): expre
         return;
       }
 
-      const operations = await getOperations(mempoolTxQuery.result, db);
+      const operations = await getOperations(mempoolTxQuery.result, db, chainId);
       const txMemo = parseTransactionMemo(mempoolTxQuery.result);
       const transaction: RosettaTransaction = {
         transaction_identifier: { hash: tx_id },

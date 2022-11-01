@@ -1,5 +1,6 @@
 import {
   abiFunctionToString,
+  ChainID,
   ClarityAbi,
   ClarityAbiFunction,
   getTypeString,
@@ -288,12 +289,14 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * If neither argument is present, the most recent block is returned.
  * @param db -- datastore
  * @param fetchTransactions -- return block transactions
+ * @param chainId -- chain ID
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
   db: PgStore,
   fetchTransactions: boolean,
+  chainId: ChainID,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
@@ -318,6 +321,7 @@ export async function getRosettaBlockFromDataStore(
       blockHash: dbBlock.block_hash,
       indexBlockHash: dbBlock.index_block_hash,
       db,
+      chainId,
     });
   }
 
@@ -493,6 +497,7 @@ async function parseRosettaTxDetail(opts: {
   db: PgStore;
   minerRewards: DbMinerReward[];
   unlockingEvents: StxUnlockEvent[];
+  chainId: ChainID;
 }): Promise<RosettaTransaction> {
   let events: DbEvent[] = [];
   if (opts.block_height > 1) {
@@ -508,6 +513,7 @@ async function parseRosettaTxDetail(opts: {
   const operations = await getOperations(
     opts.tx,
     opts.db,
+    opts.chainId,
     opts.minerRewards,
     events,
     opts.unlockingEvents
@@ -529,6 +535,7 @@ async function getRosettaBlockTxFromDataStore(opts: {
   tx: DbTx;
   block: DbBlock;
   db: PgStore;
+  chainId: ChainID;
 }): Promise<FoundOrNot<RosettaTransaction>> {
   let minerRewards: DbMinerReward[] = [],
     unlockingEvents: StxUnlockEvent[] = [];
@@ -545,6 +552,7 @@ async function getRosettaBlockTxFromDataStore(opts: {
     indexBlockHash: opts.tx.index_block_hash,
     tx: opts.tx,
     db: opts.db,
+    chainId: opts.chainId,
     minerRewards,
     unlockingEvents,
   });
@@ -555,6 +563,7 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
   blockHash: string;
   indexBlockHash: string;
   db: PgStore;
+  chainId: ChainID;
 }): Promise<FoundOrNot<RosettaTransaction[]>> {
   const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
   if (!blockQuery.found) {
@@ -580,6 +589,7 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
       indexBlockHash: opts.indexBlockHash,
       tx,
       db: opts.db,
+      chainId: opts.chainId,
       minerRewards,
       unlockingEvents,
     });
@@ -591,7 +601,8 @@ async function getRosettaBlockTransactionsFromDataStore(opts: {
 
 export async function getRosettaTransactionFromDataStore(
   txId: string,
-  db: PgStore
+  db: PgStore,
+  chainId: ChainID
 ): Promise<FoundOrNot<RosettaTransaction>> {
   const txQuery = await db.getTx({ txId, includeUnanchored: false });
   if (!txQuery.found) {
@@ -609,6 +620,7 @@ export async function getRosettaTransactionFromDataStore(
     tx: txQuery.result,
     block: blockQuery.result,
     db,
+    chainId,
   });
 
   if (!rosettaTx.found) {

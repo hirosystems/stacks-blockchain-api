@@ -514,7 +514,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
       try {
         const baseTx = rawTxToBaseTx(inputTx);
-        const operations = await getOperations(baseTx, db);
+        const operations = await getOperations(baseTx, db, chainId);
         const txMemo = parseTransactionMemo(baseTx);
         let response: RosettaConstructionParseResponse;
         if (signed) {
