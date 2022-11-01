@@ -311,7 +311,7 @@ export function isValidPrincipal(
   return false;
 }
 
-type HttpClientResponse = http.IncomingMessage & {
+export type HttpClientResponse = http.IncomingMessage & {
   statusCode: number;
   statusMessage: string;
   response: string;

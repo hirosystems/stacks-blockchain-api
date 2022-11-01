@@ -1,7 +1,13 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { startEventServer } from '../event-stream/event-server';
-import { defaultLogLevel, getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import {
+  defaultLogLevel,
+  getApiConfiguredChainID,
+  HttpClientResponse,
+  httpPostRequest,
+  logger,
+} from '../helpers';
 import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
 import {
@@ -26,12 +32,6 @@ enum EventImportMode {
    */
   pruned = 'pruned',
 }
-
-/**
- * Event paths that will be ignored during `EventImportMode.pruned` if received outside of the
- * pruned block window.
- */
-const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
@@ -69,8 +69,9 @@ export async function importEventsFromTsv(
   filePath?: string,
   importMode?: string,
   wipeDb: boolean = false,
-  force: boolean = false
-): Promise<void> {
+  force: boolean = false,
+  prunedBlockHeightOption?: number
+): Promise<HttpClientResponse[]> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
@@ -112,12 +113,13 @@ export async function importEventsFromTsv(
   const blockWindowSize = parseInt(
     process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
   );
-  const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
-  process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
+  const prunedBlockHeight =
+    prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
+    process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
   // Look for the TSV's genesis block information for BNS import.
   const tsvGenesisBlockData = await findBnsGenesisBlockData(resolvedFilePath);
@@ -157,16 +159,15 @@ export async function importEventsFromTsv(
   logger.level = 'warn';
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
-  let isPruneFinished = false;
+  const responses = [];
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (blockHeight == prunedBlockHeight && !isPruneFinished) {
-          isPruneFinished = true;
+        if (blockHeight === prunedBlockHeight) {
           console.log(`Resuming prunable event import...`);
         }
       }
-      await httpPostRequest({
+      const response = await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,
         path: rawEvent.event_path,
@@ -180,6 +181,7 @@ export async function importEventsFromTsv(
           console.log(`Event file block height reached: ${blockHeight}`);
         }
       }
+      responses.push(response);
     }
   }
   await db.finishEventReplay();
@@ -190,4 +192,5 @@ export async function importEventsFromTsv(
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+  return responses;
 }
