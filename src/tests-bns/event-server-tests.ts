@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
@@ -7,8 +6,6 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
-import { getRawEventRequests } from '../datastore/event-requests';
-import { useWithCleanup } from '../tests/test-helpers';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -27,12 +24,6 @@ describe('BNS event server tests', () => {
       serverPort: 0,
       httpLogLevel: 'debug',
     });
-  });
-
-  afterEach(async () => {
-    await eventServer.closeAsync();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 
   test('namespace-ready called by a contract other than BNS', async () => {
@@ -1034,5 +1025,11 @@ describe('BNS event server tests', () => {
     });
     expect(namespaceList.results.length).toBe(1);
     expect(namespaceList.results).toStrictEqual(['ape.mega']);
+  });
+
+  afterEach(async () => {
+    await eventServer.closeAsync();
+    await db?.close();
+    await runMigrations(undefined, 'down');
   });
 });
