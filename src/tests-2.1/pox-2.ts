@@ -325,7 +325,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API balance state
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${seedAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
     test('Wait for current pox cycle to complete', async () => {
@@ -349,6 +354,13 @@ describe('PoX-2 tests', () => {
           burnchain_unlock_height: '0',
         })
       );
+
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${seedAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(coreBalance.locked));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
     test('Check pox2 events endpoint', async () => {
@@ -578,7 +590,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API endpoint balance state for account
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(amountToDelegateInitial));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
     });
 
     test('Perform delegate-stack-increase', async () => {
@@ -643,7 +660,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API endpoint balance state for account
+      // validate API endpoint balance state for account
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
     });
 
     test('Perform delegate-stack-extend', async () => {
@@ -705,7 +727,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API endpoint balance state for account
+      // validate API endpoint balance state for account
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
     });
 
     test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
@@ -758,7 +785,12 @@ describe('PoX-2 tests', () => {
       expect(BigInt(coreBalanceInfo.locked)).toBe(0n);
       expect(coreBalanceInfo.unlock_height).toBe(0);
 
-      // TODO: validate API endpoint balance state for account
+      // validate API endpoint balance state for account
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
     });
 
     test('Check pox2 events endpoint', async () => {
@@ -944,7 +976,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API balance state
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${account.stacksAddress}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
     test('stack-increase tx', async () => {
@@ -1035,7 +1072,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API balance state
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${account.stacksAddress}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(expectedLockedAmount);
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
     test('stack-extend tx', async () => {
@@ -1131,7 +1173,12 @@ describe('PoX-2 tests', () => {
         })
       );
 
-      // TODO: validate API balance state
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${account.stacksAddress}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(coreBalance.locked));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
@@ -1145,14 +1192,14 @@ describe('PoX-2 tests', () => {
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
       );
-      expect(rewardSlotHolders.total).toBe(1);
-      expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(
+      const firstRewardSlot = rewardSlotHolders.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+      expect(firstRewardSlot.address).toBe(btcAddr);
+      expect(firstRewardSlot.burn_block_height).toBeGreaterThanOrEqual(
         poxInfo.next_cycle.prepare_phase_start_block_height
       );
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(
-        preparePhaseEndBurnBlock
-      );
+      expect(firstRewardSlot.burn_block_height).toBeLessThanOrEqual(preparePhaseEndBurnBlock);
     });
 
     test('stacking rewards - API /burnchain/rewards', async () => {
@@ -1238,7 +1285,7 @@ describe('PoX-2 tests', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
       let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
       burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
@@ -1493,7 +1540,7 @@ describe('PoX-2 tests', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
       let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
       burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
@@ -1742,7 +1789,7 @@ describe('PoX-2 tests', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
       let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
       burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
@@ -1995,7 +2042,7 @@ describe('PoX-2 tests', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
       let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
       burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
@@ -2249,7 +2296,7 @@ describe('PoX-2 tests', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
       let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // TODO: wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
+      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
       burnBlockUnlockHeight++;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 

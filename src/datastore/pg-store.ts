@@ -2165,6 +2165,30 @@ export class PgStore {
       const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
       burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
     }
+
+    let pox2Event: DbPox2Event;
+    const pox2EventQuery = await sql<Pox2EventQueryResult[]>`
+      SELECT ${sql(POX2_EVENT_COLUMNS)}
+      FROM pox2_events
+      WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+      AND block_height <= ${blockHeight} AND (burnchain_unlock_height > ${burnBlockHeight} OR burnchain_unlock_height = 0)
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT 1
+    `;
+    if (
+      pox2EventQuery.length >= 1 &&
+      (lockQuery.length === 0 ||
+        Number(pox2EventQuery[0].block_height) >= Number(lockQuery[0].block_height))
+    ) {
+      pox2Event = parseDbPox2Event(pox2EventQuery[0]);
+      lockTxId = pox2Event.tx_id;
+      locked = pox2Event.locked;
+      burnchainUnlockHeight = Number(pox2Event.burnchain_unlock_height);
+      lockHeight = pox2Event.block_height;
+      const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+      burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+    }
+
     const minerRewardQuery = await sql<{ amount: string }[]>`
       SELECT sum(
         coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
