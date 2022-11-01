@@ -26,14 +26,18 @@ export function parsePagingQueryInput(val: any) {
 }
 
 const MAX_BLOCKS_PER_REQUEST = 30;
+const DEFAULT_BLOCKS_PER_REQUEST = 20;
+
 const MAX_TX_PER_REQUEST = 50;
+const DEFAULT_TX_PER_REQUEST = 20;
+
 const MAX_ASSETS_PER_REQUEST = 50;
 const MAX_STX_INBOUND_PER_REQUEST = 500;
-const CONTRACT_MAX_EVENTS_PER_REQUEST = 50;
+const MAX_CONTRACT_EVENTS_PER_REQUEST = 50;
 const MAX_MICROBLOCKS_PER_REQUEST = 200;
 const MAX_TXS_PER_REQUEST = 200;
 const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
-const TX_MAX_EVENTS_PER_REQUEST = 200;
+const MAX_TX_EVENTS_PER_REQUEST = 200;
 const MAX_TOKENS_PER_REQUEST = 200;
 
 const pagedApiRoutes = [
@@ -116,11 +120,11 @@ const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit
   },
   '/contract/by_trait': {
     defaultLimit: 20,
-    maxLimit: CONTRACT_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
   },
   '/contract/:contract_id/events': {
     defaultLimit: 20,
-    maxLimit: CONTRACT_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
   },
   '/microblock': {
     defaultLimit: 20,
@@ -140,23 +144,23 @@ const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit
   },
   '/tx/multiple': {
     defaultLimit: 96,
-    maxLimit: TX_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
   },
   '/tx/events': {
     defaultLimit: 96,
-    maxLimit: TX_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
   },
   '/tx/:tx_id': {
     defaultLimit: 96,
-    maxLimit: TX_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
   },
   '/tx/block/:block_hash': {
     defaultLimit: 96,
-    maxLimit: TX_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
   },
   '/tx/block_height/:height': {
     defaultLimit: 96,
-    maxLimit: TX_MAX_EVENTS_PER_REQUEST,
+    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
   },
   '/mempool': {
     defaultLimit: 20,
@@ -184,8 +188,84 @@ const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit
   },
 };
 
-export function getPagingQueryLimit(queryRoute: PagedApiRoutes, limitOverride?: any) {
-  const pagingQueryLimit = pagingQueryLimits[queryRoute];
+enum ResourceType {
+  Block,
+  AddressTx,
+  AddressEvent,
+  AddressStxTransfer,
+  AddressMempoolTx,
+  BurnchainAddresses,
+  BurnchainRewards,
+  ContractEvents,
+  Microblock,
+  Tx,
+  TokensNft,
+  TokensNftEvent,
+  TokensNftMetadata,
+}
+
+const pagingQueryLimitsByResourceType: Record<
+  ResourceType,
+  { defaultLimit: number; maxLimit: number }
+> = {
+  [ResourceType.Block]: {
+    defaultLimit: 20,
+    maxLimit: 30,
+  },
+  [ResourceType.AddressTx]: {
+    defaultLimit: 20,
+    maxLimit: 50,
+  },
+  [ResourceType.AddressEvent]: {
+    defaultLimit: 20,
+    maxLimit: MAX_ASSETS_PER_REQUEST,
+  },
+  [ResourceType.AddressMempoolTx]: {
+    // not docs /address/:address/mempool
+    defaultLimit: 50,
+    maxLimit: 50,
+  },
+  [ResourceType.AddressStxTransfer]: {
+    defaultLimit: 20,
+    maxLimit: 500,
+  },
+  [ResourceType.BurnchainAddresses]: {
+    defaultLimit: 96,
+    maxLimit: 250,
+  },
+  [ResourceType.BurnchainRewards]: {
+    defaultLimit: 96,
+    maxLimit: 250,
+  },
+  [ResourceType.ContractEvents]: {
+    defaultLimit: 20,
+    maxLimit: 50,
+  },
+  [ResourceType.Microblock]: {
+    defaultLimit: 20,
+    maxLimit: 200,
+  },
+  [ResourceType.Tx]: {
+    defaultLimit: 96,
+    maxLimit: 200,
+  },
+  [ResourceType.TokensNft]: {
+    defaultLimit: 50,
+    maxLimit: 200,
+  },
+  [ResourceType.TokensNftEvent]: {
+    defaultLimit: 50,
+    maxLimit: 200,
+  },
+  [ResourceType.TokensNftMetadata]: {
+    defaultLimit: 96,
+    maxLimit: 200,
+  },
+  // not in docs /tokens/ft/metadata
+};
+
+export function getPagingQueryLimitByResourceType(resourceType: ResourceType, limitOverride?: any) {
+  const pagingQueryLimit = pagingQueryLimitsByResourceType[resourceType];
   if (!limitOverride) {
     return pagingQueryLimit.defaultLimit;
   }
