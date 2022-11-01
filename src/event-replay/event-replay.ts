@@ -113,6 +113,7 @@ export async function importEventsFromTsv(
     process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
   );
   const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
+  process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
@@ -149,10 +150,6 @@ export async function importEventsFromTsv(
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
-          // Prunable events are ignored here.
-          continue;
-        }
         if (blockHeight == prunedBlockHeight && !isPruneFinished) {
           isPruneFinished = true;
           console.log(`Resuming prunable event import...`);
