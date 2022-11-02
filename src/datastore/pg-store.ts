@@ -2846,20 +2846,6 @@ export class PgStore {
     return { found: true, result: queryResult };
   }
 
-  async getRawEventCount(): Promise<number> {
-    try {
-      const result = await this.sql<
-        Promise<number>[]
-      >`SELECT count(*) from event_observer_requests`;
-      return result[0];
-    } catch (error: any) {
-      if (error.message?.includes('does not exist')) {
-        return 0;
-      }
-      throw error;
-    }
-  }
-
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
    * including optional transaction metadata.
