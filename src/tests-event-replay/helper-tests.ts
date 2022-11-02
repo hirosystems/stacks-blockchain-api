@@ -8,7 +8,13 @@ import { startEventServer } from 'src/event-stream/event-server';
 import { httpPostRequest } from 'src/helpers';
 import { useWithCleanup } from 'src/tests/test-helpers';
 import { findBnsGenesisBlockData, findTsvBlockHeight } from '../event-replay/helpers';
+import { PgSqlClient } from 'src/datastore/connection';
+import { cycleMigrations, runMigrations } from 'src/datastore/migrations';
+import { PgWriteStore } from 'src/datastore/pg-write-store';
+import { EventStreamServer, startEventServer } from 'src/event-stream/event-server';
+import { httpPostRequest } from 'src/helpers';
 import { ReverseFileStream } from '../event-replay/reverse-file-stream';
+import { ChainID } from '@stacks/transactions';
 
 describe('helper tests', () => {
   function writeTmpFile(fileName: string, contents: string): string {
