@@ -3,7 +3,7 @@ import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
@@ -16,7 +16,7 @@ export function createBlockRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/block', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await getBlocksWithMetadata({ offset, limit, db });

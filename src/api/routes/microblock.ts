@@ -11,7 +11,7 @@ import {
   getUnanchoredTxsFromDataStore,
 } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
-import { getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validateRequestHexInput } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
 
@@ -21,7 +21,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/microblock', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Microblock, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const query = await getMicroblocksFromDataStore({ db, offset, limit });
       const response: MicroblockListResponse = {

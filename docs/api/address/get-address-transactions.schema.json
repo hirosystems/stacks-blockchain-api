@@ -7,7 +7,7 @@
   "properties": {
     "limit": {
       "type": "integer",
-      "maximum": 30
+      "maximum": 50
     },
     "offset": {
       "type": "integer"

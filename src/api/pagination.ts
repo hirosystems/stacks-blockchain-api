@@ -25,247 +25,238 @@ export function parsePagingQueryInput(val: any) {
   return parsedInput;
 }
 
-const MAX_BLOCKS_PER_REQUEST = 30;
-const DEFAULT_BLOCKS_PER_REQUEST = 20;
+// const MAX_BLOCKS_PER_REQUEST = 30;
+// const DEFAULT_BLOCKS_PER_REQUEST = 20;
 
-const MAX_TX_PER_REQUEST = 50;
-const DEFAULT_TX_PER_REQUEST = 20;
+// const MAX_BLOCKS_PER_REQUEST_BURNCHAIN = 250;
 
-const MAX_ASSETS_PER_REQUEST = 50;
-const MAX_STX_INBOUND_PER_REQUEST = 500;
-const MAX_CONTRACT_EVENTS_PER_REQUEST = 50;
-const MAX_MICROBLOCKS_PER_REQUEST = 200;
-const MAX_TXS_PER_REQUEST = 200;
-const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
-const MAX_TX_EVENTS_PER_REQUEST = 200;
-const MAX_TOKENS_PER_REQUEST = 200;
+// const MAX_TX_PER_REQUEST = 50;
+// const DEFAULT_TX_PER_REQUEST = 20;
 
-const pagedApiRoutes = [
-  '/block',
-  '/address/:principal/transactions',
-  '/address/:stx_address/assets',
-  '/address/:stx_address/nft_events',
-  '/address/:stx_address/transactions_with_transfers',
-  '/address/:address/mempool',
-  '/address/:stx_address/stx_inbound',
-  '/burnchain/reward_slot_holders',
-  '/burnchain/reward_slot_holders/:address',
-  '/burnchain/rewards',
-  '/burnchain/rewards/:address',
-  '/contract/by_trait',
-  '/contract/:contract_id/events',
-  '/microblock',
-  '/tx',
-  '/tx/mempool/dropped',
-  '/tx/mempool',
-  '/tx/multiple',
-  '/tx/events',
-  '/tx/:tx_id',
-  '/tx/block/:block_hash',
-  '/tx/block_height/:height',
-  '/mempool',
-  '/tokens/nft/holdings',
-  '/tokens/nft/history',
-  '/tokens/nft/mints',
-  '/tokens/ft/metadata',
-  '/tokens/nft/metadata',
-] as const;
+// const MAX_ASSETS_PER_REQUEST = 50;
+// const MAX_STX_INBOUND_PER_REQUEST = 500;
+// const MAX_CONTRACT_EVENTS_PER_REQUEST = 50;
+// const MAX_MICROBLOCKS_PER_REQUEST = 200;
+// const MAX_TXS_PER_REQUEST = 200;
+// const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
+// const MAX_TX_EVENTS_PER_REQUEST = 200;
+// const MAX_TOKENS_PER_REQUEST = 200;
 
-type PagedApiRoutes = typeof pagedApiRoutes[number];
+// const pagedApiRoutes = [
+//   '/block',
+//   '/address/:principal/transactions',
+//   '/address/:stx_address/assets',
+//   '/address/:stx_address/nft_events',
+//   '/address/:stx_address/transactions_with_transfers',
+//   '/address/:address/mempool',
+//   '/address/:stx_address/stx_inbound',
+//   '/burnchain/reward_slot_holders',
+//   '/burnchain/reward_slot_holders/:address',
+//   '/burnchain/rewards',
+//   '/burnchain/rewards/:address',
+//   '/contract/by_trait',
+//   '/contract/:contract_id/events',
+//   '/microblock',
+//   '/tx',
+//   '/tx/mempool/dropped',
+//   '/tx/mempool',
+//   '/tx/multiple',
+//   '/tx/events',
+//   '/tx/:tx_id',
+//   '/tx/block/:block_hash',
+//   '/tx/block_height/:height',
+//   '/tokens/nft/holdings',
+//   '/tokens/nft/history',
+//   '/tokens/nft/mints',
+//   '/tokens/ft/metadata',
+//   '/tokens/nft/metadata',
+// ] as const;
 
-const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit: number }> = {
-  '/block': {
-    defaultLimit: 20,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/address/:principal/transactions': {
-    defaultLimit: 20,
-    maxLimit: MAX_TX_PER_REQUEST,
-  },
-  '/address/:stx_address/assets': {
-    defaultLimit: 20,
-    maxLimit: MAX_ASSETS_PER_REQUEST,
-  },
-  '/address/:stx_address/nft_events': {
-    defaultLimit: 20,
-    maxLimit: MAX_ASSETS_PER_REQUEST,
-  },
-  '/address/:stx_address/transactions_with_transfers': {
-    defaultLimit: 20,
-    maxLimit: MAX_TX_PER_REQUEST,
-  },
-  '/address/:address/mempool': {
-    defaultLimit: MAX_TX_PER_REQUEST,
-    maxLimit: MAX_TX_PER_REQUEST,
-  },
-  '/address/:stx_address/stx_inbound': {
-    defaultLimit: 20,
-    maxLimit: MAX_STX_INBOUND_PER_REQUEST,
-  },
-  '/burnchain/reward_slot_holders': {
-    defaultLimit: 96,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/burnchain/reward_slot_holders/:address': {
-    defaultLimit: 96,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/burnchain/rewards': {
-    defaultLimit: 96,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/burnchain/rewards/:address': {
-    defaultLimit: 96,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/contract/by_trait': {
-    defaultLimit: 20,
-    maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
-  },
-  '/contract/:contract_id/events': {
-    defaultLimit: 20,
-    maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
-  },
-  '/microblock': {
-    defaultLimit: 20,
-    maxLimit: MAX_MICROBLOCKS_PER_REQUEST,
-  },
-  '/tx': {
-    defaultLimit: 96,
-    maxLimit: MAX_TXS_PER_REQUEST,
-  },
-  '/tx/mempool/dropped': {
-    defaultLimit: 96,
-    maxLimit: MAX_TXS_PER_REQUEST,
-  },
-  '/tx/mempool': {
-    defaultLimit: 96,
-    maxLimit: MAX_MEMPOOL_TXS_PER_REQUEST,
-  },
-  '/tx/multiple': {
-    defaultLimit: 96,
-    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
-  },
-  '/tx/events': {
-    defaultLimit: 96,
-    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
-  },
-  '/tx/:tx_id': {
-    defaultLimit: 96,
-    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
-  },
-  '/tx/block/:block_hash': {
-    defaultLimit: 96,
-    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
-  },
-  '/tx/block_height/:height': {
-    defaultLimit: 96,
-    maxLimit: MAX_TX_EVENTS_PER_REQUEST,
-  },
-  '/mempool': {
-    defaultLimit: 20,
-    maxLimit: MAX_BLOCKS_PER_REQUEST,
-  },
-  '/tokens/nft/holdings': {
-    defaultLimit: 50,
-    maxLimit: MAX_TOKENS_PER_REQUEST,
-  },
-  '/tokens/nft/history': {
-    defaultLimit: 50,
-    maxLimit: MAX_TOKENS_PER_REQUEST,
-  },
-  '/tokens/nft/mints': {
-    defaultLimit: 50,
-    maxLimit: MAX_TOKENS_PER_REQUEST,
-  },
-  '/tokens/ft/metadata': {
-    defaultLimit: 96,
-    maxLimit: MAX_TOKENS_PER_REQUEST,
-  },
-  '/tokens/nft/metadata': {
-    defaultLimit: 96,
-    maxLimit: MAX_TOKENS_PER_REQUEST,
-  },
-};
+// type PagedApiRoutes = typeof pagedApiRoutes[number];
 
-enum ResourceType {
+// const pagingQueryLimits: Record<PagedApiRoutes, { defaultLimit: number; maxLimit: number }> = {
+//   '/block': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_BLOCKS_PER_REQUEST,
+//   },
+//   '/address/:principal/transactions': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_TX_PER_REQUEST,
+//   },
+//   '/address/:stx_address/assets': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_ASSETS_PER_REQUEST,
+//   },
+//   '/address/:stx_address/nft_events': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_ASSETS_PER_REQUEST,
+//   },
+//   '/address/:stx_address/transactions_with_transfers': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_TX_PER_REQUEST,
+//   },
+//   '/address/:address/mempool': {
+//     defaultLimit: MAX_TX_PER_REQUEST,
+//     maxLimit: MAX_TX_PER_REQUEST,
+//   },
+//   '/address/:stx_address/stx_inbound': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_STX_INBOUND_PER_REQUEST,
+//   },
+//   '/burnchain/reward_slot_holders': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_BLOCKS_PER_REQUEST_BURNCHAIN,
+//   },
+//   '/burnchain/reward_slot_holders/:address': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_BLOCKS_PER_REQUEST_BURNCHAIN,
+//   },
+//   '/burnchain/rewards': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_BLOCKS_PER_REQUEST_BURNCHAIN,
+//   },
+//   '/burnchain/rewards/:address': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_BLOCKS_PER_REQUEST_BURNCHAIN,
+//   },
+//   '/contract/by_trait': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
+//   },
+//   '/contract/:contract_id/events': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_CONTRACT_EVENTS_PER_REQUEST,
+//   },
+//   '/microblock': {
+//     defaultLimit: 20,
+//     maxLimit: MAX_MICROBLOCKS_PER_REQUEST,
+//   },
+//   '/tx': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TXS_PER_REQUEST,
+//   },
+//   '/tx/mempool/dropped': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TXS_PER_REQUEST,
+//   },
+//   '/tx/mempool': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_MEMPOOL_TXS_PER_REQUEST,
+//   },
+//   '/tx/multiple': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TX_EVENTS_PER_REQUEST,
+//   },
+//   '/tx/events': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TX_EVENTS_PER_REQUEST,
+//   },
+//   '/tx/:tx_id': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TX_EVENTS_PER_REQUEST,
+//   },
+//   '/tx/block/:block_hash': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TX_EVENTS_PER_REQUEST,
+//   },
+//   '/tx/block_height/:height': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TX_EVENTS_PER_REQUEST,
+//   },
+//   '/tokens/nft/holdings': {
+//     defaultLimit: 50,
+//     maxLimit: MAX_TOKENS_PER_REQUEST,
+//   },
+//   '/tokens/nft/history': {
+//     defaultLimit: 50,
+//     maxLimit: MAX_TOKENS_PER_REQUEST,
+//   },
+//   '/tokens/nft/mints': {
+//     defaultLimit: 50,
+//     maxLimit: MAX_TOKENS_PER_REQUEST,
+//   },
+//   '/tokens/ft/metadata': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TOKENS_PER_REQUEST,
+//   },
+//   '/tokens/nft/metadata': {
+//     defaultLimit: 96,
+//     maxLimit: MAX_TOKENS_PER_REQUEST,
+//   },
+// };
+
+export enum ResourceType {
   Block,
-  AddressTx,
-  AddressEvent,
-  AddressStxTransfer,
-  AddressMempoolTx,
-  BurnchainAddresses,
-  BurnchainRewards,
-  ContractEvents,
-  Microblock,
   Tx,
-  TokensNft,
-  TokensNftEvent,
-  TokensNftMetadata,
+  Event,
+  Burnchain,
+  Contract,
+  Microblock,
+  Token,
 }
 
-const pagingQueryLimitsByResourceType: Record<
-  ResourceType,
-  { defaultLimit: number; maxLimit: number }
-> = {
+const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
   [ResourceType.Block]: {
     defaultLimit: 20,
     maxLimit: 30,
   },
-  [ResourceType.AddressTx]: {
+  // '/block'
+  [ResourceType.Tx]: {
     defaultLimit: 20,
     maxLimit: 50,
   },
-  [ResourceType.AddressEvent]: {
+  // '/address/:principal/transactions'
+  // '/address/:stx_address/transactions_with_transfers'
+  //'/address/:address/mempool'
+  // '/address/:address/mempool'
+  // '/address/:stx_address/stx_inbound'
+  // '/tx'
+  // '/tx/mempool/dropped'
+  // '/tx/mempool'
+  // '/tx/multiple'
+  // '/tx/events'
+  // '/tx/:tx_id'
+  // '/tx/block/:block_hash'
+  // '/tx/block_height/:height'
+  // '/tx/mempool'
+  [ResourceType.Event]: {
     defaultLimit: 20,
-    maxLimit: MAX_ASSETS_PER_REQUEST,
-  },
-  [ResourceType.AddressMempoolTx]: {
-    // not docs /address/:address/mempool
-    defaultLimit: 50,
     maxLimit: 50,
   },
-  [ResourceType.AddressStxTransfer]: {
-    defaultLimit: 20,
-    maxLimit: 500,
-  },
-  [ResourceType.BurnchainAddresses]: {
+  // '/address/:stx_address/assets' 20/50
+  // '/address/:stx_address/nft_events' 20/50 Deprecated
+  [ResourceType.Burnchain]: {
     defaultLimit: 96,
     maxLimit: 250,
   },
-  [ResourceType.BurnchainRewards]: {
-    defaultLimit: 96,
-    maxLimit: 250,
-  },
-  [ResourceType.ContractEvents]: {
+  // '/burnchain/reward_slot_holders'
+  // '/burnchain/reward_slot_holders/:address'
+  // '/burnchain/rewards'
+  // '/burnchain/rewards/:address'
+  [ResourceType.Contract]: {
     defaultLimit: 20,
     maxLimit: 50,
   },
+  // '/contract/by_trait'
+  // '/contract/:contract_id/events'
   [ResourceType.Microblock]: {
     defaultLimit: 20,
     maxLimit: 200,
   },
-  [ResourceType.Tx]: {
-    defaultLimit: 96,
-    maxLimit: 200,
-  },
-  [ResourceType.TokensNft]: {
+  //'/microblock': {
+  [ResourceType.Token]: {
     defaultLimit: 50,
     maxLimit: 200,
   },
-  [ResourceType.TokensNftEvent]: {
-    defaultLimit: 50,
-    maxLimit: 200,
-  },
-  [ResourceType.TokensNftMetadata]: {
-    defaultLimit: 96,
-    maxLimit: 200,
-  },
-  // not in docs /tokens/ft/metadata
+  // '/tokens/nft/holdings'
+  // '/tokens/nft/history'
+  // '/tokens/nft/mints'
+  // '/tokens/ft/metadata'
+  // '/tokens/nft/metadata'
 };
 
-export function getPagingQueryLimitByResourceType(resourceType: ResourceType, limitOverride?: any) {
-  const pagingQueryLimit = pagingQueryLimitsByResourceType[resourceType];
+export function getPagingQueryLimit(resourceType: ResourceType, limitOverride?: any) {
+  const pagingQueryLimit = pagingQueryLimits[resourceType];
   if (!limitOverride) {
     return pagingQueryLimit.defaultLimit;
   }

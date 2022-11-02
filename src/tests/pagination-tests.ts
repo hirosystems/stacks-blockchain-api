@@ -1,4 +1,4 @@
-import { parsePagingQueryInput, getPagingQueryLimit } from '../api/pagination';
+import { parsePagingQueryInput, getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('parsePagingQueryInput()', () => {
   test('it returns same input when passed number', () => {
@@ -20,9 +20,9 @@ describe('parsePagingQueryInput()', () => {
 
 describe('getPagingQueryLimit()', () => {
   test('If a limit is not provided, the default limit is used for the specified route', () => {
-    expect(getPagingQueryLimit('/block')).toBe(20);
+    expect(getPagingQueryLimit(ResourceType.Block)).toBe(20);
   });
   test('Error is thrown when value is larger than input', () => {
-    expect(() => getPagingQueryLimit('/block', 31)).toThrowError();
+    expect(() => getPagingQueryLimit(ResourceType.Block, 31)).toThrowError();
   });
 });

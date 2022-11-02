@@ -10,7 +10,7 @@ import {
 
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
 
 export function createBurnchainRouter(db: PgStore): express.Router {
@@ -19,7 +19,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
   router.get(
     '/reward_slot_holders',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/burnchain/reward_slot_holders', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const queryResults = await db.getBurnchainRewardSlotHolders({ offset, limit });
@@ -46,7 +46,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
   router.get(
     '/reward_slot_holders/:address',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/burnchain/reward_slot_holders/:address', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { address } = req.params;
 
@@ -95,7 +95,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
   router.get(
     '/rewards',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/burnchain/rewards', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const queryResults = await db.getBurnchainRewards({ offset, limit });
@@ -120,7 +120,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
   router.get(
     '/rewards/:address',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit('/burnchain/rewards/:address', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { address } = req.params;
 

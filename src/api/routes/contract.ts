@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
 import { parseTraitAbi } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
@@ -12,7 +12,7 @@ export function createContractRouter(db: PgStore): express.Router {
     '/by_trait',
     asyncHandler(async (req, res, next) => {
       const trait_abi = parseTraitAbi(req, res, next);
-      const limit = getPagingQueryLimit('/contract/by_trait', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const smartContracts = await db.getSmartContractByTrait({
         trait: trait_abi,
@@ -52,7 +52,7 @@ export function createContractRouter(db: PgStore): express.Router {
     '/:contract_id/events',
     asyncHandler(async (req, res) => {
       const { contract_id } = req.params;
-      const limit = getPagingQueryLimit('/contract/:contract_id/events', req.query.limit);
+      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const eventsQuery = await db.getSmartContractEvents({
         contractId: contract_id,
