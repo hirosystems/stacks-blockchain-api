@@ -1,5 +1,6 @@
 import {
   abiFunctionToString,
+  ChainID,
   ClarityAbi,
   ClarityAbiFunction,
   getTypeString,
@@ -289,6 +290,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * If neither argument is present, the most recent block is returned.
  * @param db -- datastore
  * @param fetchTransactions -- return block transactions
+ * @param chainId -- chain ID
  * @param blockHash -- hexadecimal hash string
  * @param blockHeight -- number
  */
@@ -296,6 +298,7 @@ export async function getRosettaBlockFromDataStore(
   sql: PgSqlClient,
   db: PgStore,
   fetchTransactions: boolean,
+  chainId: ChainID,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
@@ -321,6 +324,7 @@ export async function getRosettaBlockFromDataStore(
         blockHash: dbBlock.block_hash,
         indexBlockHash: dbBlock.index_block_hash,
         db,
+        chainId,
       });
     }
 
@@ -520,6 +524,7 @@ async function parseRosettaTxDetail(
     db: PgStore;
     minerRewards: DbMinerReward[];
     unlockingEvents: StxUnlockEvent[];
+    chainId: ChainID;
   }
 ): Promise<RosettaTransaction> {
   return await sqlTransaction(sql, async sql => {
@@ -538,6 +543,7 @@ async function parseRosettaTxDetail(
       sql,
       opts.tx,
       opts.db,
+      opts.chainId,
       opts.minerRewards,
       events,
       opts.unlockingEvents
@@ -562,6 +568,7 @@ async function getRosettaBlockTxFromDataStore(
     tx: DbTx;
     block: DbBlock;
     db: PgStore;
+    chainId: ChainID;
   }
 ): Promise<FoundOrNot<RosettaTransaction>> {
   return await sqlTransaction(sql, async sql => {
@@ -582,6 +589,7 @@ async function getRosettaBlockTxFromDataStore(
       db: opts.db,
       minerRewards,
       unlockingEvents,
+      chainId: opts.chainId,
     });
     return { found: true, result: rosettaTx };
   });
@@ -593,6 +601,7 @@ async function getRosettaBlockTransactionsFromDataStore(
     blockHash: string;
     indexBlockHash: string;
     db: PgStore;
+    chainId: ChainID;
   }
 ): Promise<FoundOrNot<RosettaTransaction[]>> {
   return await sqlTransaction(sql, async sql => {
@@ -622,6 +631,7 @@ async function getRosettaBlockTransactionsFromDataStore(
         db: opts.db,
         minerRewards,
         unlockingEvents,
+        chainId: opts.chainId,
       });
       transactions.push(rosettaTx);
     }
@@ -633,7 +643,8 @@ async function getRosettaBlockTransactionsFromDataStore(
 export async function getRosettaTransactionFromDataStore(
   sql: PgSqlClient,
   txId: string,
-  db: PgStore
+  db: PgStore,
+  chainId: ChainID
 ): Promise<FoundOrNot<RosettaTransaction>> {
   return await sqlTransaction(sql, async sql => {
     const txQuery = await db.getTx(sql, { txId, includeUnanchored: false });
@@ -652,6 +663,7 @@ export async function getRosettaTransactionFromDataStore(
       tx: txQuery.result,
       block: blockQuery.result,
       db,
+      chainId,
     });
 
     if (!rosettaTx.found) {

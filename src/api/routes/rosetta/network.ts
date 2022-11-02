@@ -54,11 +54,11 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
       let genesis: RosettaBlock;
       try {
         const results = await sqlTransaction(db.sql, async sql => {
-          const block = await getRosettaBlockFromDataStore(sql, db, false);
+          const block = await getRosettaBlockFromDataStore(sql, db, false, chainId);
           if (!block.found) {
             throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
           }
-          const genesis = await getRosettaBlockFromDataStore(sql, db, false, undefined, 1);
+          const genesis = await getRosettaBlockFromDataStore(sql, db, false, chainId, undefined, 1);
           if (!genesis.found) {
             throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
           }

@@ -73,7 +73,7 @@ export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): expre
           throw RosettaErrors[RosettaErrorsTypes.transactionNotFound];
         }
 
-        const operations = await getOperations(sql, mempoolTxQuery.result, db);
+        const operations = await getOperations(sql, mempoolTxQuery.result, db, chainId);
         const txMemo = parseTransactionMemo(mempoolTxQuery.result);
         const transaction: RosettaTransaction = {
           transaction_identifier: { hash: tx_id },
