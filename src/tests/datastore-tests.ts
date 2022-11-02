@@ -30,7 +30,7 @@ import {
   PgServer,
   PgSqlClient,
   sqlTransaction,
-  sqlTransactionAsyncLocalStorage,
+  sqlTransactionContext,
 } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
@@ -307,38 +307,29 @@ describe('postgres datastore', () => {
   });
 
   test('postgres transaction connection integrity', async () => {
-    expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined();
+    const usageName = 'stacks-blockchain-api:tests;datastore-crud';
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
 
     await sqlTransaction(db.sql, async sql => {
       // Transaction flag is open.
-      expect(sqlTransactionAsyncLocalStorage.getStore()).toBe(true);
+      expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
       // Correct connection.
       await expect(sql`SELECT version()`).resolves.not.toThrow();
       // Incorrect connection.
-      let sqlError;
-      try {
-        await db.sql`SELECT version()`;
-      } catch (error) {
-        sqlError = error;
-      }
-      expect((sqlError as Error).message).toMatch(/prohibited/);
+      await expect(new Promise(() => db.sql`SELECT version()`)).rejects.toThrow(/prohibited/);
 
       // Nested tx.
       await sqlTransaction(sql, async sql => {
-        expect(sqlTransactionAsyncLocalStorage.getStore()).toBe(true);
+        expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
         await expect(sql`SELECT version()`).resolves.not.toThrow();
       });
 
       // Nested tx with incorrect argument.
-      let sqlError2;
-      try {
-        await sqlTransaction(db.sql, _ => {});
-      } catch (error) {
-        sqlError2 = error;
-      }
-      expect((sqlError2 as Error).message).toMatch(/prohibited/);
+      await expect(new Promise(() => sqlTransaction(db.sql, _ => {}))).rejects.toThrow(
+        /prohibited/
+      );
     });
-    expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined();
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
 
     // Racing promises with different async stacks, both using their respective connections.
     await Promise.all([
@@ -346,7 +337,7 @@ describe('postgres datastore', () => {
         await expect(sql`SELECT version()`).resolves.not.toThrow();
       }),
       expect(db.sql`SELECT version()`).resolves.not.toThrow(),
-      expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined(),
+      expect(sqlTransactionContext.getStore()).toBeUndefined(),
     ]);
   });
 

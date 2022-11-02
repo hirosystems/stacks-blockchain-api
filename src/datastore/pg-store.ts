@@ -74,7 +74,7 @@ import {
   getPgConnectionEnvValue,
   PgServer,
   PgSqlClient,
-  sqlTransactionAsyncLocalStorage,
+  sqlTransactionContext,
   sqlTransaction,
 } from './connection';
 import {
@@ -121,7 +121,7 @@ export class PgStore {
   }
   private readonly _sql: PgSqlClient;
   get sql(): PgSqlClient {
-    if (sqlTransactionAsyncLocalStorage.getStore() === true) {
+    if (sqlTransactionContext.getStore()) {
       throw new Error('Connections inside an open postgres transaction are prohibited');
     }
     return this._sql;

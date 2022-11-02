@@ -11,11 +11,14 @@ type UnwrapPromiseArray<T> = T extends any[]
     }
   : T;
 
+type SqlTransactionContext = {
+  usageName: string;
+};
 /**
  * AsyncLocalStorage which determines if the current async context is running inside a SQL
  * transaction.
  */
-export const sqlTransactionAsyncLocalStorage = new AsyncLocalStorage();
+export const sqlTransactionContext = new AsyncLocalStorage<SqlTransactionContext>();
 
 /**
  * Start a SQL transaction using a specific sql client. If this client was already scoped inside a
@@ -32,10 +35,11 @@ export async function sqlTransaction<T>(
   callback: (sql: PgSqlClient) => T | Promise<T>,
   readOnly = true
 ): Promise<UnwrapPromiseArray<T>> {
-  if (sqlTransactionAsyncLocalStorage.getStore() === true) {
+  if (sqlTransactionContext.getStore()) {
     return callback(sql) as UnwrapPromiseArray<T>;
   }
-  return sqlTransactionAsyncLocalStorage.run(true, () => {
+  const usageName = sql.options.connection.application_name ?? '';
+  return sqlTransactionContext.run({ usageName }, () => {
     return sql.begin(readOnly ? 'read only' : '', callback);
   });
 }
