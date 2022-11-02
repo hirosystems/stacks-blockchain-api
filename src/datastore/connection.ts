@@ -40,8 +40,21 @@ export async function sqlTransaction<T>(
   }
   const usageName = sql.options.connection.application_name ?? '';
   return sqlTransactionContext.run({ usageName }, () => {
-    return sql.begin(readOnly ? 'read only' : '', callback);
+    return sql.begin(readOnly ? 'read only' : 'read write', callback);
   });
+}
+
+/**
+ * Start a SQL write transaction. See `sqlTransaction`.
+ * @param sql - SQL client
+ * @param callback - Callback with a scoped SQL client
+ * @returns Transaction results
+ */
+export async function sqlWriteTransaction<T>(
+  sql: PgSqlClient,
+  callback: (sql: PgSqlClient) => T | Promise<T>
+): Promise<UnwrapPromiseArray<T>> {
+  return sqlTransaction(sql, callback, false);
 }
 
 /**
