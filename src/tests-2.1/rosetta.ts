@@ -81,6 +81,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
   let btcAddrTestnet: string;
   const account = testnetKeys[0];
   let poxInfo: CoreRpcPoxInfo;
+  let ustxAmount: bigint;
 
   beforeAll(async () => {
     const testEnv: TestEnvContext = (global as any).testEnv;
@@ -120,6 +121,38 @@ describe('Rosetta - Stacks 2.1 tests', () => {
       };
       api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
+  }
+
+  async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+    const dbBlock = await new Promise<DbBlock>(async resolve => {
+      const curHeight = await api.datastore.getCurrentBlockHeight();
+      if (curHeight.found && curHeight.result >= blockHeight) {
+        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        resolve(dbBlock.result);
+        return;
+      }
+      const listener: (blockHash: string) => void = async blockHash => {
+        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
+        if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
+          return;
+        }
+        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        resolve(dbBlockQuery.result);
+      };
+      api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    });
+    while (true) {
+      const nodeInfo = await client.getInfo();
+      if (nodeInfo.stacks_tip_height >= blockHeight) {
+        break;
+      } else {
+        await timeout(100);
+      }
+    }
+    return dbBlock;
   }
 
   function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
@@ -186,7 +219,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     const cycleCount = 1;
 
     poxInfo = await client.getPox();
-    const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+    ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
     const stackingOperations: RosettaOperation[] = [
       {
@@ -290,6 +323,12 @@ describe('Rosetta - Stacks 2.1 tests', () => {
 
     const dbTx = await txStandby;
     expect(dbTx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
+    await standByUntilBlock(dbTx.block_height);
+  });
+
+  test('Verify expected amount of STX are locked', async () => {
+    const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
+    expect(BigInt(rpcAccountInfo1.locked)).toBe(ustxAmount);
   });
 
   test('Verify PoX rewards - Bitcoin RPC', async () => {
