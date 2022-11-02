@@ -1,6 +1,7 @@
 import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
 import { isPgConnectionError } from './helpers';
+import { AsyncLocalStorage } from 'async_hooks';
 
 export type PgSqlClient = postgres.Sql<any> | postgres.TransactionSql<any>;
 
@@ -9,6 +10,12 @@ type UnwrapPromiseArray<T> = T extends any[]
       [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k];
     }
   : T;
+
+/**
+ * AsyncLocalStorage which determines if the current async context is running inside a SQL
+ * transaction.
+ */
+export const sqlTransactionAsyncLocalStorage = new AsyncLocalStorage();
 
 /**
  * Start a SQL transaction using a specific sql client. If this client was already scoped inside a
@@ -22,16 +29,15 @@ type UnwrapPromiseArray<T> = T extends any[]
  */
 export async function sqlTransaction<T>(
   sql: PgSqlClient,
-  callback: (sql: postgres.TransactionSql) => T | Promise<T>,
+  callback: (sql: PgSqlClient) => T | Promise<T>,
   readOnly = true
 ): Promise<UnwrapPromiseArray<T>> {
-  if ('savepoint' in sql) {
-    // Only the `postgres.TransactionSql` type contains a `savepoint` method, which means we're
-    // already inside a SQL transaction.
+  if (sqlTransactionAsyncLocalStorage.getStore() === true) {
     return callback(sql) as UnwrapPromiseArray<T>;
-  } else {
-    return sql.begin(readOnly ? 'read only' : '', callback);
   }
+  return sqlTransactionAsyncLocalStorage.run(true, () => {
+    return sql.begin(readOnly ? 'read only' : '', callback);
+  });
 }
 
 /**

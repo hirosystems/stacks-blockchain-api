@@ -25,7 +25,13 @@ import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-contr
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
+import {
+  getPostgres,
+  PgServer,
+  PgSqlClient,
+  sqlTransaction,
+  sqlTransactionAsyncLocalStorage,
+} from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
@@ -298,6 +304,50 @@ describe('postgres datastore', () => {
         }).toThrowError();
       }
     );
+  });
+
+  test('postgres transaction connection integrity', async () => {
+    expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined();
+
+    await sqlTransaction(db.sql, async sql => {
+      // Transaction flag is open.
+      expect(sqlTransactionAsyncLocalStorage.getStore()).toBe(true);
+      // Correct connection.
+      await expect(sql`SELECT version()`).resolves.not.toThrow();
+      // Incorrect connection.
+      let sqlError;
+      try {
+        await db.sql`SELECT version()`;
+      } catch (error) {
+        sqlError = error;
+      }
+      expect((sqlError as Error).message).toMatch(/prohibited/);
+
+      // Nested tx.
+      await sqlTransaction(sql, async sql => {
+        expect(sqlTransactionAsyncLocalStorage.getStore()).toBe(true);
+        await expect(sql`SELECT version()`).resolves.not.toThrow();
+      });
+
+      // Nested tx with incorrect argument.
+      let sqlError2;
+      try {
+        await sqlTransaction(db.sql, _ => {});
+      } catch (error) {
+        sqlError2 = error;
+      }
+      expect((sqlError2 as Error).message).toMatch(/prohibited/);
+    });
+    expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined();
+
+    // Racing promises with different async stacks, both using their respective connections.
+    await Promise.all([
+      sqlTransaction(db.sql, async sql => {
+        await expect(sql`SELECT version()`).resolves.not.toThrow();
+      }),
+      expect(db.sql`SELECT version()`).resolves.not.toThrow(),
+      expect(sqlTransactionAsyncLocalStorage.getStore()).toBeUndefined(),
+    ]);
   });
 
   test('pg address STX balances', async () => {

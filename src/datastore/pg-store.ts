@@ -74,6 +74,7 @@ import {
   getPgConnectionEnvValue,
   PgServer,
   PgSqlClient,
+  sqlTransactionAsyncLocalStorage,
   sqlTransaction,
 } from './connection';
 import {
@@ -113,15 +114,21 @@ import {
  * happened in the `PgServer.primary` server (see `.env`).
  */
 export class PgStore {
-  readonly sql: PgSqlClient;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
   protected get closeTimeout(): number {
     return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5');
   }
+  private readonly _sql: PgSqlClient;
+  get sql(): PgSqlClient {
+    if (sqlTransactionAsyncLocalStorage.getStore() === true) {
+      throw new Error('Connections inside an open postgres transaction are prohibited');
+    }
+    return this._sql;
+  }
 
   constructor(sql: PgSqlClient, notifier: PgNotifier | undefined = undefined) {
-    this.sql = sql;
+    this._sql = sql;
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
   }
