@@ -80,7 +80,6 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
-import { PgSqlClient } from './datastore/connection';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',

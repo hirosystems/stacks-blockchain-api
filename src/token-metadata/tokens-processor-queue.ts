@@ -59,7 +59,6 @@ export class TokensProcessorQueue {
       const queuedEntries = [...this.queuedEntries.keys()];
       try {
         entries = await this.db.getTokenMetadataQueue(
-          this.db.sql,
           TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
           queuedEntries
         );
@@ -83,7 +82,6 @@ export class TokensProcessorQueue {
       let entries: DbTokenMetadataQueueEntry[];
       try {
         entries = await this.db.getTokenMetadataQueue(
-          this.db.sql,
           TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
           queuedEntries
         );
@@ -100,7 +98,7 @@ export class TokensProcessorQueue {
   async queueNotificationHandler(queueId: number) {
     let queueEntry: FoundOrNot<DbTokenMetadataQueueEntry>;
     try {
-      queueEntry = await this.db.getTokenMetadataQueueEntry(this.queueId);
+      queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
     } catch (error) {
       logger.error(error);
       return;
@@ -124,7 +122,7 @@ export class TokensProcessorQueue {
     }
     let abi: string;
     try {
-      const contractQuery = await this.db.getSmartContract(this.queueEntry.contractId);
+      const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
       if (!contractQuery.found || !contractQuery.result.abi) {
         return;
       }

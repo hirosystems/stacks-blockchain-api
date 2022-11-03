@@ -1,7 +1,9 @@
 import * as express from 'express';
+import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
+
 import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
-import { has0xPrefix } from '../../helpers';
+import { timeout, waiter, has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
@@ -67,10 +69,7 @@ export function createBlockRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
-      const block = await getBlockFromDataStore({
-        blockIdentifer: { burnBlockHeight },
-        db,
-      });
+      const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHeight }, db });
       if (!block.found) {
         res.status(404).json({ error: `cannot find block by height ${burnBlockHeight}` });
         return;
