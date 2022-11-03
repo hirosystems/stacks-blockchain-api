@@ -72,14 +72,13 @@ import {
   validateZonefileHash,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
-import { PgStore } from './pg-store';
+import { PgStore, UnwrapPromiseArray } from './pg-store';
 import {
   connectPostgres,
   getPgConnectionEnvValue,
   PgJsonb,
   PgServer,
   PgSqlClient,
-  sqlWriteTransaction,
 } from './connection';
 import { runMigrations } from './migrations';
 import { getPgClientConfig } from './connection-legacy';
@@ -141,6 +140,12 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
+  async sqlWriteTransaction<T>(
+    callback: (sql: PgSqlClient) => T | Promise<T>
+  ): Promise<UnwrapPromiseArray<T>> {
+    return super.sqlTransaction(callback, false);
+  }
+
   async getChainTip(
     sql: PgSqlClient,
     useMaterializedView = true
@@ -198,11 +203,10 @@ export class PgWriteStore extends PgStore {
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
 
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
-      // If the incoming block is not of greater height than current chain tip, then store data as
-      // non-canonical.
+      // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
       const isCanonical = data.block.block_height > chainTip.blockHeight;
       if (!isCanonical) {
         data.block = { ...data.block, canonical: false };
@@ -403,7 +407,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStats(sql, {});
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
@@ -490,7 +494,7 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     slotHolders: DbRewardSlotHolder[];
   }): Promise<void> {
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       const existingSlotHolders = await sql<{ address: string }[]>`
         UPDATE reward_slot_holders
         SET canonical = false
@@ -545,7 +549,7 @@ export class PgWriteStore extends PgStore {
     const txData: DataStoreTxEventData[] = [];
     let dbMicroblocks: DbMicroblock[] = [];
 
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
       // current known canonical chain tip. We assume this holds true so incoming microblock data is always
       // treated as being built off the current canonical anchor block.
@@ -661,7 +665,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStats(sql, {});
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
@@ -886,7 +890,7 @@ export class PgWriteStore extends PgStore {
     data: DbBnsSubdomain[]
   ): Promise<void> {
     if (data.length == 0) return;
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       await this.updateBatchSubdomains(sql, [{ blockData, subdomains: data }]);
       await this.updateBatchZonefiles(sql, [{ blockData, subdomains: data }]);
     });
@@ -1009,7 +1013,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       // Each attachment will batch insert zonefiles for name and all subdomains that apply.
       for (const attachment of attachments) {
         const subdomainData: DataStoreAttachmentSubdomainData[] = [];
@@ -1191,7 +1195,7 @@ export class PgWriteStore extends PgStore {
     burnchainBlockHeight: number;
     rewards: DbBurnchainReward[];
   }): Promise<void> {
-    return await sqlWriteTransaction(this.sql, async sql => {
+    return await this.sqlWriteTransaction(async sql => {
       const existingRewards = await sql<
         {
           reward_recipient: string;
@@ -1285,7 +1289,7 @@ export class PgWriteStore extends PgStore {
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
         const values: MempoolTxInsertValues = {
@@ -1329,7 +1333,7 @@ export class PgWriteStore extends PgStore {
         }
       }
       if (!this.isEventReplay) {
-        const mempoolStats = await this.getMempoolStats(sql, {});
+        const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
@@ -1573,7 +1577,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
-    const length = await sqlWriteTransaction(this.sql, async sql => {
+    const length = await this.sqlWriteTransaction(async sql => {
       const values: FtMetadataInsertValues = {
         token_uri: ftMetadata.token_uri,
         name: ftMetadata.name,
@@ -1607,7 +1611,7 @@ export class PgWriteStore extends PgStore {
     nftMetadata: DbNonFungibleTokenMetadata,
     dbQueueId: number
   ): Promise<number> {
-    const length = await sqlWriteTransaction(this.sql, async sql => {
+    const length = await this.sqlWriteTransaction(async sql => {
       const values: NftMetadataInsertValues = {
         token_uri: nftMetadata.token_uri,
         name: nftMetadata.name,
@@ -2463,7 +2467,7 @@ export class PgWriteStore extends PgStore {
    * @param unanchored - If this refresh is requested from a block or microblock
    */
   async refreshNftCustody(txs: DataStoreTxEventData[], unanchored: boolean = false) {
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       const newNftEventCount = txs
         .map(tx => tx.nftEvents.length)
         .reduce((prev, cur) => prev + cur, 0);
@@ -2497,7 +2501,7 @@ export class PgWriteStore extends PgStore {
     if (!this.isEventReplay) {
       return;
     }
-    await sqlWriteTransaction(this.sql, async sql => {
+    await this.sqlWriteTransaction(async sql => {
       await this.refreshMaterializedView('nft_custody', sql, false);
       await this.refreshMaterializedView('nft_custody_unanchored', sql, false);
       await this.refreshMaterializedView('chain_tip', sql, false);

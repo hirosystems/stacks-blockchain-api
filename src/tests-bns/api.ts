@@ -156,7 +156,7 @@ describe('BNS API tests', () => {
 
   test('Namespace not found', async () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/def/names`);
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(404);
   });
 
   test('Validate: names returned length', async () => {
@@ -737,7 +737,7 @@ describe('BNS API tests', () => {
 
   test('Failure: name info', async () => {
     const query1 = await supertest(api.server).get(`/v1/names/testname`);
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(404);
   });
 
   test('Success: fetching name info', async () => {

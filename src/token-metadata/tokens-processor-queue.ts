@@ -100,7 +100,7 @@ export class TokensProcessorQueue {
   async queueNotificationHandler(queueId: number) {
     let queueEntry: FoundOrNot<DbTokenMetadataQueueEntry>;
     try {
-      queueEntry = await this.db.getTokenMetadataQueueEntry(this.db.sql, queueId);
+      queueEntry = await this.db.getTokenMetadataQueueEntry(this.queueId);
     } catch (error) {
       logger.error(error);
       return;
@@ -124,7 +124,7 @@ export class TokensProcessorQueue {
     }
     let abi: string;
     try {
-      const contractQuery = await this.db.getSmartContract(this.db.sql, queueEntry.contractId);
+      const contractQuery = await this.db.getSmartContract(this.queueEntry.contractId);
       if (!contractQuery.found || !contractQuery.result.abi) {
         return;
       }

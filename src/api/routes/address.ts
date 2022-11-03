@@ -50,7 +50,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-import { PgSqlClient, sqlTransaction } from '../../datastore/connection';
+import { PgSqlClient } from '../../datastore/connection';
 
 const MAX_TX_PER_REQUEST = 50;
 const MAX_ASSETS_PER_REQUEST = 50;
@@ -72,7 +72,6 @@ const parseStxInboundLimit = parseLimitQuery({
 });
 
 async function getBlockHeight(
-  sql: PgSqlClient,
   untilBlock: number | string | undefined,
   req: Request,
   res: Response,
@@ -83,7 +82,7 @@ async function getBlockHeight(
   if (typeof untilBlock === 'number') {
     blockHeight = untilBlock;
   } else if (typeof untilBlock === 'string') {
-    const block = await db.getBlock(sql, { hash: untilBlock });
+    const block = await db.getBlock({ hash: untilBlock });
     if (!block.found) {
       const error = `block not found with hash ${untilBlock}`;
       res.status(404).json({ error: error });
@@ -93,7 +92,7 @@ async function getBlockHeight(
     blockHeight = block.result.block_height;
   } else {
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const currentBlockHeight = await db.getCurrentBlockHeight(sql);
+    const currentBlockHeight = await db.getCurrentBlockHeight();
     if (!currentBlockHeight.found) {
       const error = `no current block`;
       res.status(404).json({ error: error });
@@ -127,11 +126,11 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
-      const result = await sqlTransaction(db.sql, async sql => {
-        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+      const result = await db.sqlTransaction(async sql => {
+        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         // Get balance info for STX token
-        const stxBalanceResult = await db.getStxBalanceAtBlock(sql, stxAddress, blockHeight);
-        const tokenOfferingLocked = await db.getTokenOfferingLocked(sql, stxAddress, blockHeight);
+        const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
+        const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
         const result: AddressStxBalanceResponse = {
           balance: stxBalanceResult.balance.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
@@ -163,15 +162,15 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
-      const result = await sqlTransaction(db.sql, async sql => {
-        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+      const result = await db.sqlTransaction(async sql => {
+        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
         // Get balance info for STX token
-        const stxBalanceResult = await db.getStxBalanceAtBlock(sql, stxAddress, blockHeight);
-        const tokenOfferingLocked = await db.getTokenOfferingLocked(sql, stxAddress, blockHeight);
+        const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
+        const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
 
         // Get balances for fungible tokens
-        const ftBalancesResult = await db.getFungibleTokenBalances(sql, {
+        const ftBalancesResult = await db.getFungibleTokenBalances({
           stxAddress,
           untilBlock: blockHeight,
         });
@@ -184,7 +183,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         });
 
         // Get counts for non-fungible tokens
-        const nftBalancesResult = await db.getNonFungibleTokenCounts(sql, {
+        const nftBalancesResult = await db.getNonFungibleTokenCounts({
           stxAddress,
           untilBlock: blockHeight,
         });
@@ -237,7 +236,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const limit = parseTxQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const response = await sqlTransaction(db.sql, async sql => {
+      const response = await db.sqlTransaction(async sql => {
         const blockParams = getBlockParams(req, res, next);
         let atSingleBlock = false;
         let blockHeight = 0;
@@ -251,10 +250,10 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+          blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         }
 
-        const { results: txResults, total } = await db.getAddressTxs(sql, {
+        const { results: txResults, total } = await db.getAddressTxs({
           stxAddress: principal,
           limit,
           offset,
@@ -280,10 +279,10 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       if (!has0xPrefix(tx_id)) {
         tx_id = '0x' + tx_id;
       }
-      const result = await sqlTransaction(db.sql, async sql => {
-        const results = await db.getInformationTxsWithStxTransfers(sql, { stxAddress, tx_id });
+      const result = await db.sqlTransaction(async sql => {
+        const results = await db.getInformationTxsWithStxTransfers({ stxAddress, tx_id });
         if (results && results.tx) {
-          const txQuery = await getTxFromDataStore(sql, db, {
+          const txQuery = await getTxFromDataStore(db, {
             txId: results.tx.tx_id,
             dbTx: results.tx,
             includeUnanchored: false,
@@ -321,7 +320,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
-      const response = await sqlTransaction(db.sql, async sql => {
+      const response = await db.sqlTransaction(async sql => {
         const blockParams = getBlockParams(req, res, next);
         let atSingleBlock = false;
         let blockHeight = 0;
@@ -335,11 +334,11 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+          blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         }
         const limit = parseTxQueryLimit(req.query.limit ?? 20);
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
-        const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers(sql, {
+        const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
           stxAddress: stxAddress,
           limit,
           offset,
@@ -348,7 +347,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         });
 
         const results = await Bluebird.mapSeries(txResults, async entry => {
-          const txQuery = await getTxFromDataStore(sql, db, {
+          const txQuery = await getTxFromDataStore(db, {
             txId: entry.tx.tx_id,
             dbTx: entry.tx,
             includeUnanchored: blockParams.includeUnanchored ?? false,
@@ -412,9 +411,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const limit = parseAssetsQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const response = await sqlTransaction(db.sql, async sql => {
-        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
-        const { results: assetEvents, total } = await db.getAddressAssetEvents(sql, {
+      const response = await db.sqlTransaction(async sql => {
+        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+        const { results: assetEvents, total } = await db.getAddressAssetEvents({
           stxAddress,
           limit,
           offset,
@@ -444,7 +443,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         }
         validatePrincipal(stxAddress);
 
-        const response = await sqlTransaction(db.sql, async sql => {
+        const response = await db.sqlTransaction(async sql => {
           let atSingleBlock = false;
           const untilBlock = parseUntilBlockQuery(req, res, next);
           const blockParams = getBlockParams(req, res, next);
@@ -459,12 +458,12 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             atSingleBlock = true;
             blockHeight = blockParams.blockHeight;
           } else {
-            blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+            blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
           }
 
           const limit = parseStxInboundLimit(req.query.limit ?? 20);
           const offset = parsePagingQueryInput(req.query.offset ?? 0);
-          const { results, total } = await db.getInboundTransfers(sql, {
+          const { results, total } = await db.getInboundTransfers({
             stxAddress,
             limit,
             offset,
@@ -513,10 +512,10 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
-      const nftListResponse = await sqlTransaction(db.sql, async sql => {
-        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
+      const nftListResponse = await db.sqlTransaction(async sql => {
+        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
-        const response = await db.getAddressNFTEvent(sql, {
+        const response = await db.getAddressNFTEvent({
           stxAddress,
           limit,
           offset,
@@ -570,7 +569,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results: txResults, total } = await db.getMempoolTxList(db.sql, {
+      const { results: txResults, total } = await db.getMempoolTxList({
         offset,
         limit,
         address,
@@ -622,7 +621,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         blockIdentifier = { hash: blockHashQuery };
       }
       if (blockIdentifier) {
-        const nonceQuery = await db.getAddressNonceAtBlock(db.sql, { stxAddress, blockIdentifier });
+        const nonceQuery = await db.getAddressNonceAtBlock({ stxAddress, blockIdentifier });
         if (!nonceQuery.found) {
           res.status(404).json({
             error: `No block found for ${JSON.stringify(blockIdentifier)}`,
@@ -639,9 +638,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         setETagCacheHeaders(res);
         res.json(results);
       } else {
-        const nonces = await db.getAddressNonces(db.sql, {
-          stxAddress,
-        });
+        const nonces = await db.getAddressNonces({ stxAddress });
         const results: AddressNonces = {
           last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
           last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,

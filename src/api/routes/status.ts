@@ -13,7 +13,7 @@ export function createStatusRouter(db: PgStore): express.Router {
         server_version: `stacks-blockchain-api ${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`,
         status: 'ready',
       };
-      const chainTip = await db.getUnanchoredChainTip(db.sql);
+      const chainTip = await db.getUnanchoredChainTip();
       if (chainTip.found) {
         response.chain_tip = {
           block_height: chainTip.result.blockHeight,

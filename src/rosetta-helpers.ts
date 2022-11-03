@@ -80,7 +80,7 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
-import { PgSqlClient, sqlTransaction } from './datastore/connection';
+import { PgSqlClient } from './datastore/connection';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -127,7 +127,6 @@ export function parseTransactionMemo(tx: BaseTx): string | null {
 }
 
 export async function getOperations(
-  sql: PgSqlClient,
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
   chainID: ChainID,
@@ -137,23 +136,14 @@ export async function getOperations(
 ): Promise<RosettaOperation[]> {
   // Offline store does not support transactions
   if (db instanceof PgStore) {
-    return await sqlTransaction(sql, async sql => {
-      return await getOperationsInternal(
-        sql,
-        tx,
-        db,
-        chainID,
-        minerRewards,
-        events,
-        stxUnlockEvents
-      );
+    return await db.sqlTransaction(async sql => {
+      return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
     });
   }
-  return await getOperationsInternal(sql, tx, db, chainID, minerRewards, events, stxUnlockEvents);
+  return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
 }
 
 async function getOperationsInternal(
-  sql: PgSqlClient,
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
   chainID: ChainID,
@@ -171,7 +161,7 @@ async function getOperationsInternal(
       break;
     case 'contract_call':
       operations.push(makeFeeOperation(tx));
-      operations.push(await makeCallContractOperation(sql, tx, db, operations.length));
+      operations.push(await makeCallContractOperation(tx, db, operations.length));
       break;
     case 'smart_contract':
       operations.push(makeFeeOperation(tx));
@@ -194,7 +184,7 @@ async function getOperationsInternal(
   }
 
   if (events !== undefined) {
-    await processEvents(sql, db, events, tx, operations, chainID);
+    await processEvents(db, events, tx, operations, chainID);
   }
 
   return operations;
@@ -241,7 +231,6 @@ function decodeSendManyContractCallMemos(tx: BaseTx, chainID: ChainID): string[]
 }
 
 async function processEvents(
-  sql: PgSqlClient,
   db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
@@ -309,7 +298,7 @@ async function processEvents(
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
-        const ftMetadata = await getValidatedFtMetadata(sql, db, event.asset_identifier);
+        const ftMetadata = await getValidatedFtMetadata(db, event.asset_identifier);
         if (!ftMetadata) {
           break;
         }
@@ -661,7 +650,6 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
 }
 
 async function makeCallContractOperation(
-  sql: PgSqlClient,
   tx: BaseTx,
   db: PgStore,
   index: number
@@ -675,7 +663,7 @@ async function makeCallContractOperation(
     },
   };
 
-  const parsed_tx = await getTxFromDataStore(sql, db, { txId: tx.tx_id, includeUnanchored: false });
+  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: false });
   if (!parsed_tx.found) {
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
@@ -1117,7 +1105,6 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
 }
 
 export async function getValidatedFtMetadata(
-  sql: PgSqlClient,
   db: PgStore,
   assetIdentifier: string
 ): Promise<DbFungibleTokenMetadata | undefined> {
@@ -1125,7 +1112,7 @@ export async function getValidatedFtMetadata(
     return;
   }
   const tokenContractId = assetIdentifier.split('::')[0];
-  const ftMetadata = await db.getFtMetadata(sql, tokenContractId);
+  const ftMetadata = await db.getFtMetadata(tokenContractId);
   if (!ftMetadata.found) {
     if (tokenMetadataErrorMode() === TokenMetadataErrorMode.warning) {
       logger.warn(`FT metadata not found for token: ${assetIdentifier}`);

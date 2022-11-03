@@ -27,7 +27,6 @@ import {
 } from '../controllers/db-controller';
 import { booleanValueForParam } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
-import { PgSqlClient, sqlTransaction } from '../../datastore/connection';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -42,11 +41,7 @@ const enum SearchResultType {
 export function createSearchRouter(db: PgStore): express.Router {
   const router = express.Router();
 
-  const performSearch = async (
-    sql: PgSqlClient,
-    term: string,
-    includeMetadata: boolean
-  ): Promise<SearchResult> => {
+  const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {
     // Check if term is a 32-byte hash, e.g.:
     //   `0x4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
@@ -62,9 +57,9 @@ export function createSearchRouter(db: PgStore): express.Router {
         found: false,
       };
       if (!includeMetadata) {
-        queryResult = await db.searchHash(sql, { hash });
+        queryResult = await db.searchHash({ hash });
       } else {
-        queryResult = await searchHashWithMetadata(sql, hash, db);
+        queryResult = await searchHashWithMetadata(hash, db);
       }
       if (queryResult.found) {
         if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
@@ -161,7 +156,7 @@ export function createSearchRouter(db: PgStore): express.Router {
     //   `ST2TJRHDHMYBQ417HFB0BDX430TQA5PXRX6495G1V.contract-name`
     const principalCheck = isValidPrincipal(term);
     if (principalCheck) {
-      const principalResult = await db.searchPrincipal(sql, { principal: term });
+      const principalResult = await db.searchPrincipal({ principal: term });
       const entityType =
         principalCheck.type === 'contractAddress'
           ? SearchResultType.ContractAddress
@@ -231,7 +226,7 @@ export function createSearchRouter(db: PgStore): express.Router {
           },
         };
         if (includeMetadata) {
-          const currentBlockHeight = await db.getCurrentBlockHeight(sql);
+          const currentBlockHeight = await db.getCurrentBlockHeight();
           if (!currentBlockHeight.found) {
             throw new Error('No current block');
           }
@@ -239,7 +234,6 @@ export function createSearchRouter(db: PgStore): express.Router {
           const blockHeight = currentBlockHeight.result + 1;
 
           const stxBalanceResult = await db.getStxBalanceAtBlock(
-            sql,
             principalResult.result.entity_id,
             blockHeight
           );
@@ -280,8 +274,8 @@ export function createSearchRouter(db: PgStore): express.Router {
       const { term: rawTerm } = req.params;
       const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
       const term = rawTerm.trim();
-      const searchResult = await sqlTransaction(db.sql, async sql => {
-        return await performSearch(sql, term, includeMetadata);
+      const searchResult = await db.sqlTransaction(async sql => {
+        return await performSearch(term, includeMetadata);
       });
       if (!searchResult.found) {
         res.status(404);

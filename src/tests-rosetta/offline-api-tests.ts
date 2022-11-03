@@ -104,7 +104,7 @@ describe('Rosetta offline API', () => {
     const query1 = await supertest(api.address)
       .post(`/rosetta/v1/network/status`)
       .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
-    expect(query1.status).toBe(400);
+    expect(query1.status).toBe(500);
   });
 
   test('Fail: Offline - block - get latest', async () => {

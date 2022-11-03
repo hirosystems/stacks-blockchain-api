@@ -598,7 +598,7 @@ describe('Rosetta API', () => {
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
 
-    const curren_block = await api.datastore.getCurrentBlock(db.sql);
+    const curren_block = await api.datastore.getCurrentBlock();
     assert(curren_block.found);
 
     const amount: RosettaAmount = {
@@ -1086,7 +1086,7 @@ describe('Rosetta API', () => {
       },
     };
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
+    expect(result.status).toBe(500);
     expect(result.type).toBe('application/json');
 
     const expectResponse = { 

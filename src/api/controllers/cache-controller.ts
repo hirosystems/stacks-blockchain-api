@@ -250,7 +250,7 @@ async function calculateETag(
   switch (etagType) {
     case ETagType.chainTip:
       try {
-        const chainTip = await db.getUnanchoredChainTip(db.sql);
+        const chainTip = await db.getUnanchoredChainTip();
         if (!chainTip.found) {
           // This should never happen unless the API is serving requests before it has synced any
           // blocks.
@@ -264,7 +264,7 @@ async function calculateETag(
 
     case ETagType.mempool:
       try {
-        const digest = await db.getMempoolTxDigest(db.sql);
+        const digest = await db.getMempoolTxDigest();
         if (!digest.found) {
           // This should never happen unless the API is serving requests before it has synced any
           // blocks.
@@ -287,7 +287,7 @@ async function calculateETag(
         if (normalizedTxId === false) {
           return ETAG_EMPTY;
         }
-        const status = await db.getTxStatus(db.sql, normalizedTxId);
+        const status = await db.getTxStatus(normalizedTxId);
         if (!status.found) {
           return ETAG_EMPTY;
         }

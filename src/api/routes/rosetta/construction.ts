@@ -392,7 +392,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       const nonce = accountInfo.nonce;
 
       let recentBlockHash = undefined;
-      const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock(db.sql);
+      const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
       if (blockQuery.found) {
         recentBlockHash = blockQuery.result.block_hash;
       }
@@ -514,7 +514,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
       try {
         const baseTx = rawTxToBaseTx(inputTx);
-        const operations = await getOperations(db.sql, baseTx, db, chainId);
+        const operations = await getOperations(baseTx, db, chainId);
         const txMemo = parseTransactionMemo(baseTx);
         let response: RosettaConstructionParseResponse;
         if (signed) {

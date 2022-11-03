@@ -77,7 +77,7 @@ export function createTxRouter(db: PgStore): express.Router {
       }
 
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results: txResults, total } = await db.getTxList(db.sql, {
+      const { results: txResults, total } = await db.getTxList({
         offset,
         limit,
         txTypeFilter,
@@ -107,7 +107,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       txList.forEach(tx => validateRequestHexInput(tx));
-      const txQuery = await searchTxs(db.sql, db, {
+      const txQuery = await searchTxs(db, {
         txIds: txList,
         eventLimit,
         eventOffset,
@@ -169,7 +169,7 @@ export function createTxRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
-      const { results: txResults, total } = await db.getMempoolTxList(db.sql, {
+      const { results: txResults, total } = await db.getMempoolTxList({
         offset,
         limit,
         includeUnanchored,
@@ -191,7 +191,7 @@ export function createTxRouter(db: PgStore): express.Router {
     asyncHandler(async (req, res) => {
       const limit = parseTxQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results: txResults, total } = await db.getDroppedTxs(db.sql, {
+      const { results: txResults, total } = await db.getDroppedTxs({
         offset,
         limit,
       });
@@ -206,7 +206,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/mempool/stats',
     mempoolCacheHandler,
     asyncHandler(async (req, res) => {
-      const queryResult = await db.getMempoolStats(db.sql, { lastBlockCount: undefined });
+      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
       setETagCacheHeaders(res, ETagType.mempool);
       res.json(queryResult);
     })
@@ -222,7 +222,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const principalOrTxId = parseAddressOrTxId(req, res, next);
       const eventTypeFilter = parseEventTypeFilter(req, res, next);
 
-      const { results } = await db.getTransactionEvents(db.sql, {
+      const { results } = await db.getTransactionEvents({
         addressOrTxId: principalOrTxId,
         eventTypeFilter,
         offset,
@@ -250,7 +250,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       validateRequestHexInput(tx_id);
 
-      const txQuery = await searchTx(db.sql, db, {
+      const txQuery = await searchTx(db, {
         txId: tx_id,
         eventLimit,
         eventOffset,
@@ -275,7 +275,7 @@ export function createTxRouter(db: PgStore): express.Router {
       }
       validateRequestHexInput(tx_id);
 
-      const rawTxQuery = await db.getRawTx(db.sql, tx_id);
+      const rawTxQuery = await db.getRawTx(tx_id);
 
       if (rawTxQuery.found) {
         const response: GetRawTransactionResult = {
@@ -297,7 +297,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       validateRequestHexInput(block_hash);
-      const result = await db.getTxsFromBlock(db.sql, { hash: block_hash }, limit, offset);
+      const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found by hash ${block_hash}` });
         return;
@@ -328,7 +328,7 @@ export function createTxRouter(db: PgStore): express.Router {
       const height = getBlockHeightPathParam(req, res, next);
       const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-      const result = await db.getTxsFromBlock(db.sql, { height: height }, limit, offset);
+      const result = await db.getTxsFromBlock({ height: height }, limit, offset);
       if (!result.found) {
         res.status(404).json({ error: `no block found at height ${height}` });
         return;

@@ -26,7 +26,7 @@ export function createBlockRouter(db: PgStore): express.Router {
       const limit = parseBlockQueryLimit(req.query.limit ?? 20);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const { results, total } = await getBlocksWithMetadata(db.sql, { offset, limit, db });
+      const { results, total } = await getBlocksWithMetadata({ offset, limit, db });
       setETagCacheHeaders(res);
       // TODO: block schema validation
       const response: BlockListResponse = { limit, offset, total, results };
@@ -39,7 +39,7 @@ export function createBlockRouter(db: PgStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       const height = getBlockHeightPathParam(req, res, next);
-      const block = await getBlockFromDataStore(db.sql, { blockIdentifer: { height }, db });
+      const block = await getBlockFromDataStore({ blockIdentifer: { height }, db });
       if (!block.found) {
         res.status(404).json({ error: `cannot find block by height ${height}` });
         return;
@@ -67,7 +67,7 @@ export function createBlockRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
-      const block = await getBlockFromDataStore(db.sql, {
+      const block = await getBlockFromDataStore({
         blockIdentifer: { burnBlockHeight },
         db,
       });
@@ -92,7 +92,7 @@ export function createBlockRouter(db: PgStore): express.Router {
       }
       validateRequestHexInput(hash);
 
-      const block = await getBlockFromDataStore(db.sql, { blockIdentifer: { hash }, db });
+      const block = await getBlockFromDataStore({ blockIdentifer: { hash }, db });
       if (!block.found) {
         res.status(404).json({ error: `cannot find block by hash ${hash}` });
         return;
@@ -113,7 +113,7 @@ export function createBlockRouter(db: PgStore): express.Router {
         return res.redirect('/extended/v1/block/by_burn_block_hash/0x' + burnBlockHash);
       }
 
-      const block = await getBlockFromDataStore(db.sql, { blockIdentifer: { burnBlockHash }, db });
+      const block = await getBlockFromDataStore({ blockIdentifer: { burnBlockHash }, db });
       if (!block.found) {
         res.status(404).json({ error: `cannot find block by burn block hash ${burnBlockHash}` });
         return;

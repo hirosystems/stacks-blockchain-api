@@ -12,7 +12,6 @@ import {
 import { getOperations, parseTransactionMemo } from '../../../rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { ChainID } from '@stacks/transactions';
-import { sqlTransaction } from '../../../datastore/connection';
 
 const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
 const parseMempoolTxQueryLimit = parseLimitQuery({
@@ -33,7 +32,7 @@ export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): expre
         return;
       }
 
-      const { results: txResults } = await db.getMempoolTxList(db.sql, {
+      const { results: txResults } = await db.getMempoolTxList({
         limit: Number.MAX_SAFE_INTEGER,
         offset: 0,
         includeUnanchored: false,
@@ -63,32 +62,33 @@ export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): expre
       if (!has0xPrefix(tx_id)) {
         tx_id = '0x' + tx_id;
       }
-      await sqlTransaction(db.sql, async sql => {
-        const mempoolTxQuery = await db.getMempoolTx(sql, {
-          txId: tx_id,
-          includeUnanchored: false,
-        });
+      await db
+        .sqlTransaction(async sql => {
+          const mempoolTxQuery = await db.getMempoolTx({
+            txId: tx_id,
+            includeUnanchored: false,
+          });
 
-        if (!mempoolTxQuery.found) {
-          throw RosettaErrors[RosettaErrorsTypes.transactionNotFound];
-        }
+          if (!mempoolTxQuery.found) {
+            throw RosettaErrors[RosettaErrorsTypes.transactionNotFound];
+          }
 
-        const operations = await getOperations(sql, mempoolTxQuery.result, db, chainId);
-        const txMemo = parseTransactionMemo(mempoolTxQuery.result);
-        const transaction: RosettaTransaction = {
-          transaction_identifier: { hash: tx_id },
-          operations: operations,
-        };
-        if (txMemo) {
-          transaction.metadata = {
-            memo: txMemo,
+          const operations = await getOperations(mempoolTxQuery.result, db, chainId);
+          const txMemo = parseTransactionMemo(mempoolTxQuery.result);
+          const transaction: RosettaTransaction = {
+            transaction_identifier: { hash: tx_id },
+            operations: operations,
           };
-        }
-        const result: RosettaMempoolTransactionResponse = {
-          transaction: transaction,
-        };
-        return result;
-      })
+          if (txMemo) {
+            transaction.metadata = {
+              memo: txMemo,
+            };
+          }
+          const result: RosettaMempoolTransactionResponse = {
+            transaction: transaction,
+          };
+          return result;
+        })
         .then(result => {
           res.json(result);
         })

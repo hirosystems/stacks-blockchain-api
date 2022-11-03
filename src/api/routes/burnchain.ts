@@ -29,7 +29,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
       const limit = parseQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const queryResults = await db.getBurnchainRewardSlotHolders(db.sql, { offset, limit });
+      const queryResults = await db.getBurnchainRewardSlotHolders({ offset, limit });
       const results = queryResults.slotHolders.map(r => {
         const slotHolder: BurnchainRewardSlotHolder = {
           canonical: r.canonical,
@@ -74,7 +74,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
         );
       }
 
-      const queryResults = await db.getBurnchainRewardSlotHolders(db.sql, {
+      const queryResults = await db.getBurnchainRewardSlotHolders({
         offset,
         limit,
         burnchainAddress,
@@ -105,7 +105,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
       const limit = parseQueryLimit(req.query.limit ?? 96);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const queryResults = await db.getBurnchainRewards(db.sql, { offset, limit });
+      const queryResults = await db.getBurnchainRewards({ offset, limit });
       const results = queryResults.map(r => {
         const reward: BurnchainReward = {
           canonical: r.canonical,
@@ -148,7 +148,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
         );
       }
 
-      const queryResults = await db.getBurnchainRewards(db.sql, {
+      const queryResults = await db.getBurnchainRewards({
         burnchainRecipient: burnchainAddress,
         offset,
         limit,
@@ -193,7 +193,7 @@ export function createBurnchainRouter(db: PgStore): express.Router {
         );
       }
 
-      const queryResults = await db.getBurnchainRewardsTotal(db.sql, burnchainAddress);
+      const queryResults = await db.getBurnchainRewardsTotal(burnchainAddress);
       const response: BurnchainRewardsTotal = {
         reward_recipient: queryResults.reward_recipient,
         reward_amount: queryResults.reward_amount.toString(),

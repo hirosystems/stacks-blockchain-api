@@ -22,7 +22,6 @@ import {
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '@stacks/transactions';
 import { PgStore } from '../../../datastore/pg-store';
-import { sqlTransaction } from '../../../datastore/connection';
 
 export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -53,12 +52,12 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
       let block: RosettaBlock;
       let genesis: RosettaBlock;
       try {
-        const results = await sqlTransaction(db.sql, async sql => {
-          const block = await getRosettaBlockFromDataStore(sql, db, false, chainId);
+        const results = await db.sqlTransaction(async sql => {
+          const block = await getRosettaBlockFromDataStore(db, false, chainId);
           if (!block.found) {
             throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
           }
-          const genesis = await getRosettaBlockFromDataStore(sql, db, false, chainId, undefined, 1);
+          const genesis = await getRosettaBlockFromDataStore(db, false, chainId, undefined, 1);
           if (!genesis.found) {
             throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
           }

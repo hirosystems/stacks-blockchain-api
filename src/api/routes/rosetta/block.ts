@@ -30,14 +30,7 @@ export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express
         block_hash = '0x' + block_hash;
       }
 
-      const block = await getRosettaBlockFromDataStore(
-        db.sql,
-        db,
-        true,
-        chainId,
-        block_hash,
-        index
-      );
+      const block = await getRosettaBlockFromDataStore(db, true, chainId, block_hash, index);
 
       if (!block.found) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
@@ -64,7 +57,7 @@ export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express
         tx_hash = '0x' + tx_hash;
       }
 
-      const transaction = await getRosettaTransactionFromDataStore(db.sql, tx_hash, db, chainId);
+      const transaction = await getRosettaTransactionFromDataStore(tx_hash, db, chainId);
       if (!transaction.found) {
         res.status(500).json(RosettaErrors[RosettaErrorsTypes.transactionNotFound]);
         return;

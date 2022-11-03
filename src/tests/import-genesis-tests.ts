@@ -24,19 +24,19 @@ describe('import genesis data tests', () => {
     expect(newDbConfigState.token_offering_imported).toBe(true);
 
     const addr1 = 'SP04MFJ3RWTADV6ZWTWD68DBZ14EJSDXT50Q7TE6';
-    const res1 = await db.getTokenOfferingLocked(db.sql, addr1, 0);
+    const res1 = await db.getTokenOfferingLocked(addr1, 0);
     expect(res1?.result?.total_locked).toEqual('33115155552');
 
     const addr2 = 'SM2M7XTPCJK6S5XG7JKH4SGYDY9W49ZQ962MC4XPM';
-    const res2 = await db.getTokenOfferingLocked(db.sql, addr2, 0);
+    const res2 = await db.getTokenOfferingLocked(addr2, 0);
     expect(res2?.result?.total_locked).toEqual('111111111108');
 
     const addr3 = 'SM37EFPD9ZVR3YRJE7673MJ3W0T350JM1HVZVCDC3';
-    const res3 = await db.getTokenOfferingLocked(db.sql, addr3, 0);
+    const res3 = await db.getTokenOfferingLocked(addr3, 0);
     expect(res3?.result?.total_locked).toEqual('111111109');
 
     const addr4 = 'SM260QHD6ZM2KKPBKZB8PFE5XWP0MHSKTD1B7BHYR';
-    const res4 = await db.getTokenOfferingLocked(db.sql, addr4, 0);
+    const res4 = await db.getTokenOfferingLocked(addr4, 0);
     expect(res4?.result?.total_locked).toEqual('1666666664');
   });
 

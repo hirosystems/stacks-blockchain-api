@@ -150,7 +150,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toBe(1);
     expect(entry.result?.processed).toBe(false);
   });
@@ -167,7 +167,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(true);
   });
@@ -185,7 +185,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
   });
@@ -236,7 +236,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
   });
@@ -260,7 +260,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(0);
     expect(entry.result?.processed).toBe(true);
   });
@@ -284,7 +284,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
   });
@@ -308,11 +308,10 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(0);
     expect(entry.result?.processed).toBe(true);
     const metadata = await db.getNftMetadata(
-      db.sql,
       'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1'
     );
     expect(metadata.result?.token_uri).toEqual('');
@@ -346,7 +345,7 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(0);
     expect(entry.result?.processed).toBe(true);
   });
@@ -372,12 +371,12 @@ describe('token metadata strict mode', () => {
       dbQueueId: 1,
     });
     await handler.start();
-    const entry = await db.getTokenMetadataQueueEntry(db.sql, 1);
+    const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(0);
     expect(entry.result?.processed).toBe(true);
 
     // Metadata still contains the rest of the data.
-    const metadata = await db.getNftMetadata(db.sql, contractId);
+    const metadata = await db.getNftMetadata(contractId);
     expect(metadata.found).toBe(true);
     expect(metadata.result?.token_uri).toBe('http://indigo.com/nft.jpeg');
   });
