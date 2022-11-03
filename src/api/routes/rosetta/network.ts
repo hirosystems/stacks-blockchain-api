@@ -13,6 +13,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const middleware_version = require('../../../../package.json').version;
 import {
+  RosettaBlock,
   RosettaNetworkListResponse,
   RosettaNetworkOptionsResponse,
   RosettaNetworkStatusResponse,
@@ -48,15 +49,24 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
         return;
       }
 
-      const block = await getRosettaBlockFromDataStore(db, false, chainId);
-      if (!block.found) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
-        return;
-      }
-
-      const genesis = await getRosettaBlockFromDataStore(db, false, chainId, undefined, 1);
-      if (!genesis.found) {
-        res.status(500).json(RosettaErrors[RosettaErrorsTypes.blockNotFound]);
+      let block: RosettaBlock;
+      let genesis: RosettaBlock;
+      try {
+        const results = await db.sqlTransaction(async sql => {
+          const block = await getRosettaBlockFromDataStore(db, false, chainId);
+          if (!block.found) {
+            throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
+          }
+          const genesis = await getRosettaBlockFromDataStore(db, false, chainId, undefined, 1);
+          if (!genesis.found) {
+            throw RosettaErrors[RosettaErrorsTypes.blockNotFound];
+          }
+          return { block: block.result, genesis: genesis.result };
+        });
+        block = results.block;
+        genesis = results.genesis;
+      } catch (error) {
+        res.status(400).json(error);
         return;
       }
 
@@ -75,21 +85,20 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
         return { peer_id: peerId };
       });
 
-      const currentTipHeight = block.result.block_identifier.index;
+      const currentTipHeight = block.block_identifier.index;
 
       const response: RosettaNetworkStatusResponse = {
         current_block_identifier: {
-          index: block.result.block_identifier.index,
-          hash: block.result.block_identifier.hash,
+          index: block.block_identifier.index,
+          hash: block.block_identifier.hash,
         },
-        current_block_timestamp: block.result.timestamp,
+        current_block_timestamp: block.timestamp,
         genesis_block_identifier: {
-          index: genesis.result.block_identifier.index,
-          hash: genesis.result.block_identifier.hash,
+          index: genesis.block_identifier.index,
+          hash: genesis.block_identifier.hash,
         },
         peers,
       };
-
       const nodeInfo = await stacksCoreRpcClient.getInfo();
       const referenceNodeTipHeight = nodeInfo.stacks_tip_height;
       const synced = currentTipHeight === referenceNodeTipHeight;
@@ -100,7 +109,6 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
         synced: synced,
       };
       response.sync_status = status;
-
       res.json(response);
     })
   );

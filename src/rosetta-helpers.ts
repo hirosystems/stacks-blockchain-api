@@ -133,6 +133,23 @@ export async function getOperations(
   events?: DbEvent[],
   stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
+  // Offline store does not support transactions
+  if (db instanceof PgStore) {
+    return await db.sqlTransaction(async sql => {
+      return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
+    });
+  }
+  return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
+}
+
+async function getOperationsInternal(
+  tx: DbTx | DbMempoolTx | BaseTx,
+  db: PgStore,
+  chainID: ChainID,
+  minerRewards?: DbMinerReward[],
+  events?: DbEvent[],
+  stxUnlockEvents?: StxUnlockEvent[]
+): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
   const txType = getTxTypeString(tx.type_id);
   switch (txType) {

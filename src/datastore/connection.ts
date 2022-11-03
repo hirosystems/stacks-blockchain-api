@@ -2,7 +2,7 @@ import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../hel
 import * as postgres from 'postgres';
 import { isPgConnectionError } from './helpers';
 
-export type PgSqlClient = postgres.Sql<any>;
+export type PgSqlClient = postgres.Sql<any> | postgres.TransactionSql<any>;
 
 /**
  * The postgres server being used for a particular connection, transaction or query.

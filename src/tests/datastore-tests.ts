@@ -29,6 +29,7 @@ import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { sqlTransactionContext } from '../datastore/pg-store';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -294,6 +295,34 @@ describe('postgres datastore', () => {
         }).toThrowError();
       }
     );
+  });
+
+  test('postgres transaction connection integrity', async () => {
+    const usageName = 'stacks-blockchain-api:tests;datastore-crud';
+    const obj = db.sql;
+
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
+    await db.sqlTransaction(async sql => {
+      // Transaction flag is open.
+      expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
+      // New connection object.
+      const newObj = sql;
+      expect(obj).not.toEqual(newObj);
+      expect(sqlTransactionContext.getStore()?.sql).toEqual(newObj);
+
+      // Nested tx uses the same connection object.
+      await db.sqlTransaction(sql => {
+        expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
+        expect(newObj).toEqual(sql);
+      });
+
+      // Getter returns the same connection object too.
+      expect(db.sql).toEqual(newObj);
+    });
+
+    // Back to normal.
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
+    expect(db.sql).toEqual(obj);
   });
 
   test('pg address STX balances', async () => {

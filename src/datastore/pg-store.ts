@@ -99,6 +99,23 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './pg-notifier';
+import { AsyncLocalStorage } from 'async_hooks';
+
+export type UnwrapPromiseArray<T> = T extends any[]
+  ? {
+      [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k];
+    }
+  : T;
+
+type SqlTransactionContext = {
+  usageName: string;
+  sql: PgSqlClient;
+};
+/**
+ * AsyncLocalStorage which determines if the current async context is running inside a SQL
+ * transaction.
+ */
+export const sqlTransactionContext = new AsyncLocalStorage<SqlTransactionContext>();
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
@@ -107,15 +124,24 @@ import {
  * happened in the `PgServer.primary` server (see `.env`).
  */
 export class PgStore {
-  readonly sql: PgSqlClient;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
   protected get closeTimeout(): number {
     return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5');
   }
 
+  private readonly _sql: PgSqlClient;
+  /**
+   * Getter for a SQL client. If used inside `sqlTransaction`, the scoped client within the current
+   * async context will be returned to guarantee transaction consistency.
+   */
+  get sql(): PgSqlClient {
+    const sqlContext = sqlTransactionContext.getStore();
+    return sqlContext ? sqlContext.sql : this._sql;
+  }
+
   constructor(sql: PgSqlClient, notifier: PgNotifier | undefined = undefined) {
-    this.sql = sql;
+    this._sql = sql;
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
   }
@@ -137,6 +163,31 @@ export class PgStore {
   async close(): Promise<void> {
     await this.notifier?.close();
     await this.sql.end({ timeout: this.closeTimeout });
+  }
+
+  /**
+   * Start a SQL transaction. If any SQL client used within the callback was already scoped inside a
+   * `BEGIN` transaction, no new transaction will be opened. This flexibility allows us to avoid
+   * repeating code while making sure we don't arrive at SQL errors such as
+   * `WARNING: there is already a transaction in progress` which may cause result inconsistencies.
+   * @param callback - Callback with a scoped SQL client
+   * @param readOnly - If a `BEGIN` transaction should be marked as `READ ONLY`
+   * @returns Transaction results
+   */
+  async sqlTransaction<T>(
+    callback: (sql: PgSqlClient) => T | Promise<T>,
+    readOnly = true
+  ): Promise<UnwrapPromiseArray<T>> {
+    // Do we have a scoped client already? Use it directly.
+    const sqlContext = sqlTransactionContext.getStore();
+    if (sqlContext) {
+      return callback(sqlContext.sql) as UnwrapPromiseArray<T>;
+    }
+    // Otherwise, start a transaction and store the scoped connection in the current async context.
+    const usageName = this._sql.options.connection.application_name ?? '';
+    return this._sql.begin(readOnly ? 'read only' : 'read write', sql => {
+      return sqlTransactionContext.run({ usageName, sql }, () => callback(sql));
+    });
   }
 
   /**
@@ -211,11 +262,11 @@ export class PgStore {
   }
 
   async getBlockWithMetadata<TWithTxs extends boolean, TWithMicroblocks extends boolean>(
-    blockIdentifer: BlockIdentifier,
+    blockIdentifier: BlockIdentifier,
     metadata?: DbGetBlockWithMetadataOpts<TWithTxs, TWithMicroblocks>
   ): Promise<FoundOrNot<DbGetBlockWithMetadataResponse<TWithTxs, TWithMicroblocks>>> {
-    return await this.sql.begin('READ ONLY', async sql => {
-      const block = await this.getBlockInternal(sql, blockIdentifer);
+    return await this.sqlTransaction(async sql => {
+      const block = await this.getBlockInternal(sql, blockIdentifier);
       if (!block.found) {
         return { found: false };
       }
@@ -391,7 +442,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<BlocksWithMetadata> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       // Get blocks with count.
       const countQuery = await sql<{ count: number }[]>`
         SELECT block_count AS count FROM chain_tip
@@ -499,7 +550,7 @@ export class PgStore {
   }
 
   async getBlockTxsRows(blockHash: string): Promise<FoundOrNot<DbTx[]>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const blockQuery = await this.getBlockInternal(sql, { hash: blockHash });
       if (!blockQuery.found) {
         throw new Error(`Could not find block by hash ${blockHash}`);
@@ -522,7 +573,7 @@ export class PgStore {
   async getMicroblock(args: {
     microblockHash: string;
   }): Promise<FoundOrNot<{ microblock: DbMicroblock; txs: string[] }>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const result = await sql<MicroblockQueryResult[]>`
         SELECT ${sql(MICROBLOCK_COLUMNS)}
         FROM microblocks
@@ -549,7 +600,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ result: { microblock: DbMicroblock; txs: string[] }[]; total: number }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const countQuery = await sql<
         { total: number }[]
       >`SELECT microblock_count AS total FROM chain_tip`;
@@ -600,7 +651,7 @@ export class PgStore {
   }
 
   async getUnanchoredTxs(): Promise<{ txs: DbTx[] }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       return this.getUnanchoredTxsInternal(sql);
     });
   }
@@ -609,7 +660,7 @@ export class PgStore {
     stxAddress: string;
     blockIdentifier: BlockIdentifier;
   }): Promise<FoundOrNot<{ lastExecutedTxNonce: number | null; possibleNextNonce: number }>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const dbBlock = await this.getBlockInternal(sql, args.blockIdentifier);
       if (!dbBlock.found) {
         return { found: false };
@@ -641,7 +692,7 @@ export class PgStore {
     possibleNextNonce: number;
     detectedMissingNonces: number[];
   }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const executedTxNonce = await sql<{ nonce: number | null }[]>`
         SELECT MAX(nonce) nonce
         FROM txs
@@ -787,7 +838,7 @@ export class PgStore {
     limit: number,
     offset: number
   ): Promise<FoundOrNot<{ results: DbTx[]; total: number }>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const blockQuery = await this.getBlockInternal(sql, blockIdentifer);
       if (!blockQuery.found) {
         return { found: false };
@@ -948,7 +999,7 @@ export class PgStore {
     if (args.txIds.length === 0) {
       return [];
     }
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const result = await sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
@@ -967,7 +1018,7 @@ export class PgStore {
     includeUnanchored: boolean;
     includePruned?: boolean;
   }): Promise<FoundOrNot<DbMempoolTx>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const result = await sql<MempoolTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
         FROM mempool_txs
@@ -1011,7 +1062,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const droppedStatuses = [
         DbTxStatus.DroppedReplaceByFee,
         DbTxStatus.DroppedReplaceAcrossFork,
@@ -1048,7 +1099,7 @@ export class PgStore {
   }
 
   async getMempoolStats({ lastBlockCount }: { lastBlockCount?: number }): Promise<DbMempoolStats> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       return await this.getMempoolStatsInternal({ sql, lastBlockCount });
     });
   }
@@ -1225,7 +1276,7 @@ export class PgStore {
     recipientAddress?: string;
     address?: string;
   }): Promise<{ results: DbMempoolTx[]; total: number }> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       // If caller did not opt-in to unanchored tx data, then treat unanchored txs as pending mempool txs.
       const unanchoredTxs: string[] = !includeUnanchored
         ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => tx.tx_id)
@@ -1293,7 +1344,7 @@ export class PgStore {
     txId: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbTx>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -1336,7 +1387,7 @@ export class PgStore {
   }): Promise<{ results: DbTx[]; total: number }> {
     let totalQuery: { count: number }[];
     let resultQuery: ContractTxQueryResult[];
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       if (txTypeFilter.length === 0) {
         totalQuery = await sql<{ count: number }[]>`
@@ -1382,7 +1433,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[] }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       if (args.txs.length === 0) return { results: [] };
       // TODO: This hack has to be done because postgres.js can't figure out how to interpolate
       // these `bytea` VALUES comparisons yet.
@@ -1506,7 +1557,7 @@ export class PgStore {
     // To prevent that, all micro-orphaned events are excluded using `microblock_orphaned=false`.
     // That means, unlike regular orphaned txs, if a micro-orphaned tx is never re-mined, the micro-orphaned event data
     // will never be returned.
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const stxLockResults = await sql<
@@ -1624,7 +1675,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbEvent[] }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const refValue = args.addressOrTxId.address ?? args.addressOrTxId.txId;
       const isAddress = args.addressOrTxId.address !== undefined;
       const emptyEvents = sql`SELECT NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL`;
@@ -1953,7 +2004,7 @@ export class PgStore {
     stxAddress: string;
     includeUnanchored: boolean;
   }): Promise<DbStxBalance> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const blockQuery = await this.getCurrentBlockInternal(sql);
       if (!blockQuery.found) {
         throw new Error(`Could not find current block`);
@@ -1973,7 +2024,7 @@ export class PgStore {
   }
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const chainTip = await this.getChainTip(sql);
       const blockHeightToQuery =
         blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
@@ -2086,7 +2137,7 @@ export class PgStore {
         }
       | { includeUnanchored: boolean }
   ): Promise<{ stx: bigint; blockHeight: number }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       let atBlockHeight: number;
       let atMatureBlockHeight: number;
       if ('blockHeight' in args) {
@@ -2343,7 +2394,7 @@ export class PgStore {
   }
 
   async getTxStatus(txId: string): Promise<FoundOrNot<DbTxGlobalStatus>> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const chainResult = await sql<DbTxGlobalStatus[]>`
         SELECT status, index_block_hash, microblock_hash
         FROM txs
@@ -2669,7 +2720,7 @@ export class PgStore {
 
   async searchHash({ hash }: { hash: string }): Promise<FoundOrNot<DbSearchResult>> {
     // TODO(mb): add support for searching for microblock by hash
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const txQuery = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
         FROM txs WHERE tx_id = ${hash} LIMIT 1
@@ -2728,7 +2779,7 @@ export class PgStore {
         entity_id: principal,
       },
     } as const;
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       if (isContract) {
         const contractMempoolTxResult = await sql<MempoolTxQueryResult[]>`
           SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}
@@ -3120,7 +3171,7 @@ export class PgStore {
     if (txIds.length === 0) {
       return [];
     }
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const result = await sql<ContractTxQueryResult[]>`
         SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -3140,7 +3191,7 @@ export class PgStore {
   }
 
   async getNamespaceList({ includeUnanchored }: { includeUnanchored: boolean }) {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<{ namespace_id: string }[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id
@@ -3166,7 +3217,7 @@ export class PgStore {
     results: string[];
   }> {
     const offset = page * 100;
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<{ name: string }[]>`
         SELECT DISTINCT ON (name) name
@@ -3190,7 +3241,7 @@ export class PgStore {
     namespace: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsNamespace & { index_block_hash: string }>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<(DbBnsNamespace & { tx_id: string; index_block_hash: string })[]>`
         SELECT DISTINCT ON (namespace_id) namespace_id, *
@@ -3224,7 +3275,7 @@ export class PgStore {
     includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const nameZonefile = await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
         SELECT n.*, z.zonefile
@@ -3263,7 +3314,7 @@ export class PgStore {
     zoneFileHash: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: args.includeUnanchored,
       });
@@ -3319,7 +3370,7 @@ export class PgStore {
     name: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       // Depending on the kind of name we got, use the correct table to pivot on canonical chain
       // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
@@ -3372,7 +3423,7 @@ export class PgStore {
     includeUnanchored: boolean;
     chainId: ChainID;
   }): Promise<FoundOrNot<string[]>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       // 1. Get subdomains owned by this address.
       // These don't produce NFT events so we have to look directly at the `subdomains` table.
@@ -3456,7 +3507,7 @@ export class PgStore {
     name: string;
     includeUnanchored: boolean;
   }): Promise<{ results: string[] }> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
@@ -3480,7 +3531,7 @@ export class PgStore {
     includeUnanchored: boolean;
   }) {
     const offset = page * 100;
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
@@ -3498,7 +3549,7 @@ export class PgStore {
 
   async getNamesList({ page, includeUnanchored }: { page: number; includeUnanchored: boolean }) {
     const offset = page * 100;
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<{ name: string }[]>`
         SELECT DISTINCT ON (name) name
@@ -3521,7 +3572,7 @@ export class PgStore {
     subdomain: string;
     includeUnanchored: boolean;
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
-    const queryResult = await this.sql.begin('READ ONLY', async sql => {
+    const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       return await sql<(DbBnsSubdomain & { tx_id: string; index_block_hash: string })[]>`
         SELECT s.*, z.zonefile
@@ -3608,7 +3659,7 @@ export class PgStore {
   }
 
   async getUnlockedAddressesAtBlock(block: DbBlock): Promise<StxUnlockEvent[]> {
-    return await this.sql.begin('READ ONLY', async client => {
+    return await this.sqlTransaction(async client => {
       return await this.internalGetUnlockedAccountsAtHeight(client, block);
     });
   }
@@ -3737,7 +3788,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM ft_metadata
@@ -3774,7 +3825,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    return await this.sql.begin('READ ONLY', async sql => {
+    return await this.sqlTransaction(async sql => {
       const totalQuery = await sql<{ count: number }[]>`
         SELECT COUNT(*)::integer
         FROM nft_metadata
