@@ -332,10 +332,10 @@ describe('api tests', () => {
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/ft/metadata?limit=20&offset=10`
@@ -365,10 +365,10 @@ describe('api tests', () => {
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/metadata?limit=20&offset=10`
