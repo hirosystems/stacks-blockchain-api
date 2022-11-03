@@ -18,6 +18,7 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -688,7 +689,7 @@ describe('mempool tests', () => {
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 2,
       results: [

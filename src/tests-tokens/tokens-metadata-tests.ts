@@ -24,6 +24,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -332,7 +333,7 @@ describe('api tests', () => {
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
     expect(query.status).toBe(200);
     expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
     expect(query.body.results.length).toStrictEqual(96);
 
@@ -365,7 +366,7 @@ describe('api tests', () => {
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
     expect(query.status).toBe(200);
     expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
     expect(query.body.results.length).toStrictEqual(96);
 
