@@ -227,7 +227,7 @@ describe('tx tests', () => {
     const block = new TestBlockBuilder().build();
     await db.update(block);
     const expectedResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       results: [],
       total: 0,
@@ -837,7 +837,7 @@ describe('tx tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
 
     const expectedListResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [expectedResp],
@@ -1338,7 +1338,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?address=${address}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
