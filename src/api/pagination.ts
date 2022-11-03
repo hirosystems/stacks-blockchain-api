@@ -207,7 +207,7 @@ const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: 
   },
   // '/address/:principal/transactions'
   // '/address/:stx_address/transactions_with_transfers'
-  //'/address/:address/mempool'
+  // '/address/:address/mempool'
   // '/address/:address/mempool'
   // '/address/:stx_address/stx_inbound'
   // '/tx'
@@ -223,8 +223,8 @@ const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: 
     defaultLimit: 20,
     maxLimit: 50,
   },
-  // '/address/:stx_address/assets' 20/50
-  // '/address/:stx_address/nft_events' 20/50 Deprecated
+  // '/address/:stx_address/assets'
+  // '/address/:stx_address/nft_events' Deprecated?
   [ResourceType.Burnchain]: {
     defaultLimit: 96,
     maxLimit: 250,
