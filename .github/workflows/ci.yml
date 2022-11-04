@@ -322,7 +322,6 @@ jobs:
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
@@ -389,7 +388,6 @@ jobs:
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
-          echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
