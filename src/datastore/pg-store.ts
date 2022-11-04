@@ -880,13 +880,14 @@ export class PgStore {
         index_block_hash: string;
         mature_block_height: number;
         recipient: string;
+        miner_address: string | null;
         coinbase_amount: number;
         tx_fees_anchored: number;
         tx_fees_streamed_confirmed: number;
         tx_fees_streamed_produced: number;
       }[]
     >`
-      SELECT id, mature_block_height, recipient, block_hash, index_block_hash, from_index_block_hash,
+      SELECT id, mature_block_height, recipient, miner_address, block_hash, index_block_hash, from_index_block_hash,
         canonical, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced
       FROM miner_rewards
       WHERE canonical = true AND mature_block_height = ${blockHeight}
@@ -900,6 +901,8 @@ export class PgStore {
         canonical: true,
         mature_block_height: r.mature_block_height,
         recipient: r.recipient,
+        // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+        miner_address: r.miner_address ?? r.recipient,
         coinbase_amount: BigInt(r.coinbase_amount),
         tx_fees_anchored: BigInt(r.tx_fees_anchored),
         tx_fees_streamed_confirmed: BigInt(r.tx_fees_streamed_confirmed),
