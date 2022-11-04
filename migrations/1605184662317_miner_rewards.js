@@ -29,6 +29,9 @@ exports.up = pgm => {
       type: 'string',
       notNull: true,
     },
+    miner_address: {
+      type: 'string',
+    },
     coinbase_amount: {
       type: 'numeric',
       notNull: true,
@@ -49,5 +52,6 @@ exports.up = pgm => {
 
   pgm.createIndex('miner_rewards', 'index_block_hash', { method: 'hash' });
   pgm.createIndex('miner_rewards', 'recipient', { method: 'hash' });
+  pgm.createIndex('miner_rewards', 'miner_address');
   pgm.createIndex('miner_rewards', [{ name: 'mature_block_height', sort: 'DESC' }]);
 }

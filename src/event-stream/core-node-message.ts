@@ -216,6 +216,8 @@ export interface CoreNodeBlockMessage {
     from_stacks_block_hash: string;
     /** STX principal */
     recipient: string;
+    /** STX principal (available starting in Stacks 2.1) */
+    miner_address: string | null;
     /** String quoted micro-STX amount. */
     coinbase_amount: string;
     /** String quoted micro-STX amount. */
