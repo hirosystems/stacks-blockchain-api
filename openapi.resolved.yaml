@@ -4613,7 +4613,7 @@ paths:
   "/extended/v1/address/{principal}/{tx_id}/with_transfers":
     get:
       summary: Get account transaction information for specific transaction
-      description: Retrieves transaction details for a given Transcation Id `tx_id`,
+      description: Retrieves transaction details for a given Transaction Id `tx_id`,
         for a given account or contract Identifier.
       tags:
         - Accounts
@@ -7324,7 +7324,7 @@ paths:
         - Rosetta
       summary: Get All Mempool Transactions
       operationId: rosetta_mempool
-      description: Retrieves a list of transcations currently in the mempool for a
+      description: Retrieves a list of transactions currently in the mempool for a
         given network.
       responses:
         "200":
