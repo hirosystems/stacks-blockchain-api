@@ -1964,23 +1964,14 @@ export class PgWriteStore extends PgStore {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
 
-    // const updateResults = await sql<{ tx_id: string }[]>`
-    // INSERT INTO mempool_txs
-    // VALUES(${sql(txIds)})
-    // ON CONFLICT DO UPDATE
-    // SET pruned = false
-    // WHERE tx_id IN ${sql(txIds)}
-    // RETURNING tx_id
-    // `;
-
     const updateResults = await sql<{ tx_id: string }[]>`
-    INSERT INTO mempool_txs
-    SET pruned = false
-    VALUES(${sql(txIds)})
-    ON CONFLICT ON CONSTRAINT tx_id 
-    UPDATE
-    RETURNING tx_id
-  `;
+      INSERT INTO mempool_txs
+      SET pruned = false
+      VALUES(${sql(txIds)})
+      ON CONFLICT ON CONSTRAINT tx_id 
+      UPDATE
+      RETURNING tx_id
+    `;
 
     // const updateResults = await sql<{ tx_id: string }[]>`
     //   UPDATE mempool_txs
@@ -1988,6 +1979,7 @@ export class PgWriteStore extends PgStore {
     //   WHERE tx_id IN ${sql(txIds)}
     //   RETURNING tx_id
     // `;
+
     const restoredTxs = updateResults.map(r => r.tx_id);
     return { restoredTxs: restoredTxs };
   }
