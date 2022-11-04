@@ -1,3 +1,10 @@
+## [6.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.1...v6.2.0-beta.2) (2022-11-04)
+
+
+### Bug Fixes
+
+* log PoisonMicroblock tx instead rather than throwing ([#1379](https://github.com/hirosystems/stacks-blockchain-api/issues/1379)) ([cee6352](https://github.com/hirosystems/stacks-blockchain-api/commit/cee63529b4785d9bedc8fcfd568a27aedef0914d))
+
 ## [6.2.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.1.0...v6.2.0-beta.1) (2022-11-03)
 
 
