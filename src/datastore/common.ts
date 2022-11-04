@@ -252,13 +252,8 @@ export interface DbSmartContract {
   abi: string | null;
 }
 
-export enum DbFaucetRequestCurrency {
-  BTC = 'btc',
-  STX = 'stx',
-}
-
 export interface DbFaucetRequest {
-  currency: DbFaucetRequestCurrency;
+  currency: 'stx';
   address: string;
   ip: string;
   occurred_at: number;
@@ -1170,7 +1165,7 @@ export interface BnsZonefileInsertValues {
 }
 
 export interface FaucetRequestInsertValues {
-  currency: DbFaucetRequestCurrency;
+  currency: 'stx';
   address: string;
   ip: string;
   occurred_at: number;

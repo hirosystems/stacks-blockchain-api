@@ -131,49 +131,6 @@ paths:
                 $ref: ./api/faucet/run-faucet.example.json
         500:
           description: Faucet call failed
-  /extended/v1/faucets/btc:
-    parameters:
-      - name: address
-        in: query
-        description: A valid testnet BTC address
-        required: true
-        schema:
-          type: string
-          example: "2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts"
-    post:
-      summary: Add testnet BTC tokens to address
-      description: |
-        Add 1 BTC token to the specified testnet BTC address.
-
-        The endpoint returns the transaction ID, which you can use to view the transaction in a testnet Bitcoin block
-        explorer. The tokens are delivered once the transaction has been included in a block.
-
-        **Note:** This is a testnet only endpoint. This endpoint will not work on the mainnet.
-      tags:
-        - Faucets
-      operationId: run_faucet_btc
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                address:
-                  description: BTC testnet address
-                  type: string
-              example:
-                address: 2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/faucet/run-faucet.schema.json
-              example:
-                $ref: ./api/faucet/run-faucet.example.json
-        500:
-          description: Faucet call failed
 
   /extended/v1/tx:
     get:
