@@ -780,18 +780,6 @@ export function stopwatch(): Stopwatch {
   return result;
 }
 
-export async function time<T>(
-  fn: () => Promise<T>,
-  onFinish: (elapsedMs: number) => void
-): Promise<T> {
-  const watch = stopwatch();
-  try {
-    return await fn();
-  } finally {
-    onFinish(watch.getElapsed());
-  }
-}
-
 /**
  * Escape a string for use as a css selector name.
  * From https://github.com/mathiasbynens/CSS.escape/blob/master/css.escape.js
