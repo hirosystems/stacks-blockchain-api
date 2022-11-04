@@ -1974,11 +1974,20 @@ export class PgWriteStore extends PgStore {
     // `;
 
     const updateResults = await sql<{ tx_id: string }[]>`
-      UPDATE mempool_txs
-      SET pruned = false
-      WHERE tx_id IN ${sql(txIds)}
-      RETURNING tx_id
-    `;
+    INSERT INTO mempool_txs
+    SET pruned = false
+    VALUES(${sql(txIds)})
+    ON CONFLICT ON CONSTRAINT tx_id 
+    UPDATE
+    RETURNING tx_id
+  `;
+
+    // const updateResults = await sql<{ tx_id: string }[]>`
+    //   UPDATE mempool_txs
+    //   SET pruned = false
+    //   WHERE tx_id IN ${sql(txIds)}
+    //   RETURNING tx_id
+    // `;
     const restoredTxs = updateResults.map(r => r.tx_id);
     return { restoredTxs: restoredTxs };
   }
