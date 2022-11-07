@@ -22,7 +22,7 @@ tags:
   - name: Blocks
     description: Read-only endpoints to obtain Stacks block details
   - name: Faucets
-    description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
+    description: Endpoints to request STX tokens (not possible on Mainnet)
   - name: Fees
     description: Read-only endpoints to obtain fee details
   - name: Fungible Tokens
