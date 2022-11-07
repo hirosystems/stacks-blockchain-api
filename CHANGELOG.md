@@ -1,3 +1,10 @@
+## [6.2.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.2...v6.2.0-beta.3) (2022-11-07)
+
+
+### Bug Fixes
+
+* update testnet send-many-memo contract id ENV ([#1420](https://github.com/hirosystems/stacks-blockchain-api/issues/1420)) ([45ea24d](https://github.com/hirosystems/stacks-blockchain-api/commit/45ea24d9a2df96d582aaae70e433b0717a0e47cf))
+
 ## [6.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.1...v6.2.0-beta.2) (2022-11-04)
 
 
