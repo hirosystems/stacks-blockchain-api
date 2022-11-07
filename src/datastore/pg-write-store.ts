@@ -1964,12 +1964,21 @@ export class PgWriteStore extends PgStore {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
 
+    // const updateResults = await sql<{ tx_id: string }[]>`
+    //   INSERT INTO mempool_txs
+    //   SET pruned = false
+    //   VALUES(${sql(txIds)})
+    //   ON CONFLICT ON CONSTRAINT tx_id
+    //   UPDATE
+    //   RETURNING tx_id
+    // `;
+
     const updateResults = await sql<{ tx_id: string }[]>`
       INSERT INTO mempool_txs
-      SET pruned = false
       VALUES(${sql(txIds)})
-      ON CONFLICT ON CONSTRAINT tx_id 
-      UPDATE
+      ON CONFLICT (tx_id)
+      DO UPDATE
+      SET pruned = false
       RETURNING tx_id
     `;
 
