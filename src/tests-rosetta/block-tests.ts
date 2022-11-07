@@ -376,7 +376,7 @@ describe('/block tests', () => {
   });
 
   test('block/transaction - send-many-memo includes memo metadata', async () => {
-    const sendManyAddr = 'STR8P3RD1EHA8AA37ERSSSZSWKS9T2GYQFGXNA4C.send-many-memo';
+    const sendManyAddr = 'ST3F1X4QGV2SM8XD96X45M6RTQXKA1PZJZZCQAB4B.send-many-memo';
     const sendManyAbi = {
       "maps": [],
       "functions": [
