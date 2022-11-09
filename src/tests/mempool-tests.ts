@@ -18,6 +18,7 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -688,7 +689,7 @@ describe('mempool tests', () => {
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
     const expectedResp1 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 2,
       results: [
@@ -740,7 +741,7 @@ describe('mempool tests', () => {
     expect(searchResult2.status).toBe(200);
     expect(searchResult2.type).toBe('application/json');
     const expectedResp2 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 2,
       results: [
@@ -792,7 +793,7 @@ describe('mempool tests', () => {
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
     const expectedResp3 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [
@@ -825,7 +826,7 @@ describe('mempool tests', () => {
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
     const expectedResp4 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 2,
       results: [
@@ -877,7 +878,7 @@ describe('mempool tests', () => {
     expect(searchResult5.status).toBe(200);
     expect(searchResult5.type).toBe('application/json');
     const expectedResp5 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 2,
       results: [
@@ -929,7 +930,7 @@ describe('mempool tests', () => {
     expect(searchResult6.status).toBe(200);
     expect(searchResult6.type).toBe('application/json');
     const expectedResp6 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [
@@ -961,7 +962,7 @@ describe('mempool tests', () => {
     expect(searchResult7.status).toBe(200);
     expect(searchResult7.type).toBe('application/json');
     const expectedResp7 = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [
