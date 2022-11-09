@@ -1966,14 +1966,6 @@ export class PgWriteStore extends PgStore {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
 
-    // const updateResults = await sql<{ tx_id: string }[]>`
-    //   INSERT INTO mempool_txs ${sql(txIds)}
-    //   ON CONFLICT (tx_id)
-    //   DO UPDATE
-    //   SET pruned = false
-    //   RETURNING tx_id
-    // `;
-
     const updatedRows = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = false
@@ -1985,30 +1977,18 @@ export class PgWriteStore extends PgStore {
 
     // txs that didnt exist in the mempool need to be inserted into the mempool
     if (updatedRows.length < txIds.length) {
-      // TODO: refactor into separate function
-      // Get txIds for txs that were missing from the mempool_txs table
       const updatedTxs = updatedRows.map(r => r.tx_id);
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
 
-      // get txs data for txs that were missing from the mempool_txs table
       const txs: TxQueryResult[] = await sql`
         SELECT * FROM txs
         WHERE tx_id IN ${sql(txsRequiringInsertion)}
       `;
 
-      // const txs = txRows.map(r => {
-      //   return r.tx;
-      // });
-      // convert txs to mempool txs
       const mempoolTxs = convertTxQueryREsultToDbMempoolTx(txs);
 
-      // const insertedRows = await sql<{ tx_id: string }[]>`
-      //   INSERT INTO mempool_txs ${sql(mempoolTxs)}
-      //   RETURNING tx_id
-      // `;
       await this.updateMempoolTxs({ mempoolTxs });
 
-      // const insertedTxs = insertedRows.map(r => r.tx_id);
       restoredTxs.concat(txsRequiringInsertion);
     }
 
