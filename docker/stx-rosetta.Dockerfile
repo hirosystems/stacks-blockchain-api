@@ -1,9 +1,9 @@
-ARG STACKS_API_VERSION=v0.71.2
+ARG STACKS_API_VERSION
 ARG STACKS_NODE_VERSION=2.05.0.4.0
 ARG STACKS_API_REPO=hirosystems/stacks-blockchain-api
 ARG STACKS_NODE_REPO=stacks-network/stacks-blockchain
-ARG PG_VERSION=12
-ARG STACKS_NETWORK=testnet
+ARG PG_VERSION=14
+ARG STACKS_NETWORK=mainnet
 ARG STACKS_LOG_DIR=/var/log/stacks-node
 ARG STACKS_SVC_DIR=/etc/service
 ARG STACKS_BLOCKCHAIN_DIR=/stacks-blockchain
@@ -30,7 +30,7 @@ RUN apt-get update -y \
         jq \
         openjdk-11-jre-headless \
         cmake \
-    && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
+    && git clone -b ${STACKS_API_VERSION} https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
     && npm config set unsafe-perm true \
     && npm ci \
@@ -121,14 +121,14 @@ RUN mkdir -p \
     && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* ${STACKS_SVC_DIR}/getty*
 COPY --from=stacks-blockchain-build /out ${STACKS_BLOCKCHAIN_DIR}
 COPY --from=stacks-blockchain-api-build /app ${STACKS_BLOCKCHAIN_API_DIR}
-COPY --from=stacks-blockchain-build /src/testnet/stacks-node/conf/*follower-conf.toml ${STACKS_BLOCKCHAIN_DIR}/
+COPY stacks-blockchain/Stacks-*.toml ${STACKS_BLOCKCHAIN_DIR}/
 
 ###################################
 ##  runit service files
 RUN printf '#!/bin/sh\nexec 2>&1\n[ ! -d %s ] && mkdir -p %s && chown -R postgres:postgres %s && gosu postgres /usr/lib/postgresql/%s/bin/pg_ctl init -D %s\nexec gosu postgres /usr/lib/postgresql/%s/bin/postmaster -D %s' ${PG_DATA} ${PG_DATA} ${PG_DATA} ${PG_VERSION} ${PG_DATA} ${PG_VERSION} ${PG_DATA} > ${STACKS_SVC_DIR}/postgresql/run \
     && printf '#!/bin/sh\nrm -rf %s' ${PG_DATA} > ${STACKS_SVC_DIR}/postgresql/finish \
     && printf '#!/bin/sh\nexec svlogd -tt %s/postgresql' ${STACKS_LOG_DIR} > ${STACKS_SVC_DIR}/postgresql/log/run \
-    && printf '#!/bin/sh\nexec 2>&1\ncase $STACKS_NETWORK in\n    testnet)\n        exec %s/stacks-node start --config=%s/testnet-follower-conf.toml 2>&1\n        ;;\n    mocknet)\n        exec %s/stacks-node start --config=%s/mocknet-follower-conf.toml 2>&1\n        ;;\n    *)\n        exec %s/stacks-node start --config=%s/mainnet-follower-conf.toml 2>&1\n        ;;\nesac' ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain/run \
+    && printf '#!/bin/sh\nexec 2>&1\ncase $STACKS_NETWORK in\n    testnet)\n        exec %s/stacks-node start --config=%s/Stacks-testnet.toml 2>&1\n        ;;\n    mocknet)\n        exec %s/stacks-node start --config=%s/Stacks-mocknet.toml 2>&1\n        ;;\n    *)\n        exec %s/stacks-node start --config=%s/Stacks-mainnet.toml 2>&1\n        ;;\nesac' ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} ${STACKS_BLOCKCHAIN_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain/run \
     && printf '#!/bin/bash\nexec 2>&1\nsv start postgresql stacks-blockchain || exit 1\nif [ $STACKS_NETWORK != "mainnet" ]; then\n    export STACKS_CHAIN_ID=%s\nelse\n    export STACKS_CHAIN_ID=%s\n    export V2_POX_MIN_AMOUNT_USTX=%s\nfi\ncd %s && exec node ./lib/index.js 2>&1' ${TESTNET_STACKS_CHAIN_ID} ${MAINNET_STACKS_CHAIN_ID} ${V2_POX_MIN_AMOUNT_USTX} ${STACKS_BLOCKCHAIN_API_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain-api/run \
     && printf '#!/bin/sh\nexec svlogd -tt %s/stacks-blockchain-api' ${STACKS_LOG_DIR} > ${STACKS_SVC_DIR}/stacks-blockchain-api/log/run \
     && printf '#!/bin/sh\n/usr/bin/runsvdir %s' ${STACKS_SVC_DIR} > /entrypoint.sh \
