@@ -62,6 +62,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
+  convertTxQueryREsultToDbMempoolTx,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -80,6 +81,7 @@ import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
+import { isNamespaceExportDeclaration } from 'typescript';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -1965,31 +1967,51 @@ export class PgWriteStore extends PgStore {
     }
 
     // const updateResults = await sql<{ tx_id: string }[]>`
-    //   INSERT INTO mempool_txs
+    //   INSERT INTO mempool_txs ${sql(txIds)}
+    //   ON CONFLICT (tx_id)
+    //   DO UPDATE
     //   SET pruned = false
-    //   VALUES(${sql(txIds)})
-    //   ON CONFLICT ON CONSTRAINT tx_id
-    //   UPDATE
     //   RETURNING tx_id
     // `;
 
-    const updateResults = await sql<{ tx_id: string }[]>`
-      INSERT INTO mempool_txs
-      VALUES(${sql(txIds)})
-      ON CONFLICT (tx_id)
-      DO UPDATE
+    const updatedRows = await sql<{ tx_id: string }[]>`
+      UPDATE mempool_txs
       SET pruned = false
+      WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
 
-    // const updateResults = await sql<{ tx_id: string }[]>`
-    //   UPDATE mempool_txs
-    //   SET pruned = false
-    //   WHERE tx_id IN ${sql(txIds)}
-    //   RETURNING tx_id
-    // `;
+    const restoredTxs = updatedRows.map(r => r.tx_id);
 
-    const restoredTxs = updateResults.map(r => r.tx_id);
+    // txs that didnt exist in the mempool need to be inserted into the mempool
+    if (updatedRows.length < txIds.length) {
+      // TODO: refactor into separate function
+      // Get txIds for txs that were missing from the mempool_txs table
+      const updatedTxs = updatedRows.map(r => r.tx_id);
+      const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
+
+      // get txs data for txs that were missing from the mempool_txs table
+      const txs: TxQueryResult[] = await sql`
+        SELECT * FROM txs
+        WHERE tx_id IN ${sql(txsRequiringInsertion)}
+      `;
+
+      // const txs = txRows.map(r => {
+      //   return r.tx;
+      // });
+      // convert txs to mempool txs
+      const mempoolTxs = convertTxQueryREsultToDbMempoolTx(txs);
+
+      // const insertedRows = await sql<{ tx_id: string }[]>`
+      //   INSERT INTO mempool_txs ${sql(mempoolTxs)}
+      //   RETURNING tx_id
+      // `;
+      await this.updateMempoolTxs({ mempoolTxs });
+
+      // const insertedTxs = insertedRows.map(r => r.tx_id);
+      restoredTxs.concat(txsRequiringInsertion);
+    }
+
     return { restoredTxs: restoredTxs };
   }
 

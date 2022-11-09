@@ -898,3 +898,18 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
     });
   });
 }
+
+export function convertTxQueryREsultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTx[] {
+  const dbMempoolTxs: DbMempoolTx[] = [];
+  for (const tx of txs) {
+    const dbMempoolTx: DbMempoolTx = Object.assign(tx, {
+      pruned: false,
+      receipt_time: Math.round(Date.now() / 1000),
+      fee_rate: BigInt(tx.fee_rate),
+      token_transfer_amount: BigInt(tx.token_transfer_amount ?? 0),
+      sponsor_address: tx.sponsor_address ?? undefined,
+    });
+    dbMempoolTxs.push(dbMempoolTx);
+  }
+  return dbMempoolTxs;
+}
