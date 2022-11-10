@@ -35,6 +35,8 @@ export class SocketIOChannel extends WebSocketChannel {
   connect(): void {
     const io = new SocketIOServer<ClientToServerMessages, ServerToClientMessages>(this.server, {
       cors: { origin: '*' },
+      pingInterval: 5_000,
+      pingTimeout: 5_000,
     });
     this.io = io;
 

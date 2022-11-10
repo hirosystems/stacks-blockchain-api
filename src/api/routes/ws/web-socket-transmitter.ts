@@ -33,7 +33,7 @@ export class WebSocketTransmitter {
     this.queue = new PQueue({
       autoStart: true,
       concurrency: 1,
-      timeout: 10_000, // 10 seconds
+      timeout: 5_000, // 5 seconds
       throwOnTimeout: true,
     });
   }
