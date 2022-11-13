@@ -899,7 +899,7 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
   });
 }
 
-export function convertTxQueryREsultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTx[] {
+export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTx[] {
   const dbMempoolTxs: DbMempoolTx[] = [];
   for (const tx of txs) {
     const dbMempoolTx: DbMempoolTx = Object.assign(tx, {

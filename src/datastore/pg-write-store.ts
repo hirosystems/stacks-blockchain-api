@@ -62,7 +62,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
-  convertTxQueryREsultToDbMempoolTx,
+  convertTxQueryResultToDbMempoolTx,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -1981,11 +1981,11 @@ export class PgWriteStore extends PgStore {
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
 
       const txs: TxQueryResult[] = await sql`
-        SELECT * FROM txs
+        SELECT ${sql(TX_COLUMNS)} FROM txs
         WHERE tx_id IN ${sql(txsRequiringInsertion)}
       `;
 
-      const mempoolTxs = convertTxQueryREsultToDbMempoolTx(txs);
+      const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
 
       await this.updateMempoolTxs({ mempoolTxs });
 
