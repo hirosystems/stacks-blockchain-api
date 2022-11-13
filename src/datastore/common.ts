@@ -549,6 +549,7 @@ export interface DbConfigState {
   bns_names_onchain_imported: boolean;
   bns_subdomains_imported: boolean;
   token_offering_imported: boolean;
+  bns_import_needs_genesis: boolean;
 }
 
 export interface DbTokenOfferingLocked {
