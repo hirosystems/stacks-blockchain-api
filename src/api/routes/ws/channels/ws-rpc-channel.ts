@@ -42,7 +42,7 @@ import {
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
-import { getWsMessageTimeout, getWsPingInterval } from '../web-socket-transmitter';
+import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -65,7 +65,7 @@ class SubscriptionManager {
   // Sockets that are responding to ping.
   liveSockets: Set<WebSocket> = new Set();
   heartbeatInterval?: NodeJS.Timeout;
-  readonly heartbeatIntervalMs = getWsPingInterval();
+  readonly heartbeatIntervalMs = getWsPingIntervalMs();
 
   addSubscription(client: WebSocket, topicId: string) {
     if (this.subscriptions.size === 0) {
@@ -787,7 +787,7 @@ export class WsRpcChannel extends WebSocketChannel {
     );
     // If the payload takes more than 5 seconds to be processed by the client,
     // it will be disconnected.
-    const successful = await resolveOrTimeout(sendPromise, getWsMessageTimeout());
+    const successful = await resolveOrTimeout(sendPromise, getWsMessageTimeoutMs());
     if (!successful) {
       manager.removeSubscription(client, topicId);
     }

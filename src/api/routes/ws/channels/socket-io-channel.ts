@@ -18,9 +18,9 @@ import {
   WebSocketTopics,
 } from '../web-socket-channel';
 import {
-  getWsMessageTimeout,
-  getWsPingInterval,
-  getWsPingTimeout,
+  getWsMessageTimeoutMs,
+  getWsPingIntervalMs,
+  getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
 
 /**
@@ -42,8 +42,8 @@ export class SocketIOChannel extends WebSocketChannel {
       this.server,
       {
         cors: { origin: '*' },
-        pingInterval: getWsPingInterval(),
-        pingTimeout: getWsPingTimeout(),
+        pingInterval: getWsPingIntervalMs(),
+        pingTimeout: getWsPingTimeoutMs(),
       }
     );
     this.io = io;
@@ -187,7 +187,7 @@ export class SocketIOChannel extends WebSocketChannel {
     }
     // If a client takes more than this number of ms to respond to an event `emit`, it will be
     // disconnected.
-    const timeout = getWsMessageTimeout();
+    const timeout = getWsMessageTimeoutMs();
     switch (payload) {
       case 'block': {
         const [block] = args as ListenerType<WebSocketPayload['block']>;

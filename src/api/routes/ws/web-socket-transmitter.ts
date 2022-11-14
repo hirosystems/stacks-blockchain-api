@@ -15,16 +15,16 @@ import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
 import { logger } from '../../../helpers';
 
-export function getWsPingInterval(): number {
-  return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5000');
+export function getWsPingIntervalMs(): number {
+  return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;
 }
 
-export function getWsPingTimeout(): number {
-  return parseInt(process.env['STACKS_API_WS_PING_TIMEOUT'] ?? '5000');
+export function getWsPingTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_PING_TIMEOUT'] ?? '5') * 1000;
 }
 
-export function getWsMessageTimeout(): number {
-  return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5000');
+export function getWsMessageTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5') * 1000;
 }
 
 /**
