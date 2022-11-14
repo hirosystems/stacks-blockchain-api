@@ -493,6 +493,58 @@ describe('socket-io', () => {
     }
   });
 
+  test('message timeout disconnects client', async () => {
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+      // Block message will go unanswered, triggering a disconnect.
+      query: { subscriptions: `block` },
+    });
+
+    process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] = '0';
+    const disconnectWaiter = waiter();
+    let disconnectReason = '';
+
+    socket.on('disconnect', reason => {
+      disconnectReason = reason;
+      socket.close();
+      disconnectWaiter.finish();
+    });
+
+    socket.on('connect', async () => {
+      const block = new TestBlockBuilder().addTx().build();
+      await db.update(block);
+    });
+
+    await disconnectWaiter;
+    expect(disconnectReason).toBe('io server disconnect');
+  });
+
+  test('ping timeout disconnects client', async () => {
+    const address = apiServer.address;
+    const socket = io(`http://${address}`, {
+      reconnection: false,
+    });
+
+    process.env['STACKS_API_WS_PING_TIMEOUT'] = '0';
+    const disconnectWaiter = waiter();
+    let disconnectReason = '';
+
+    socket.on('disconnect', reason => {
+      disconnectReason = reason;
+      socket.close();
+      disconnectWaiter.finish();
+    });
+
+    socket.on('connect', () => {
+      // Make all pings go unanswered.
+      socket.io.engine['onPacket'] = () => {};
+    });
+
+    await disconnectWaiter;
+    expect(disconnectReason).toBe('ping timeout');
+  });
+
   afterEach(async () => {
     await apiServer.terminate();
     await db?.close();
