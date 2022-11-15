@@ -21,12 +21,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bool',
       notNull: true,
       default: false,
-    }, 
-    bns_import_needs_genesis: {
-      type: 'bool',
-      notNull: true,
-      default: true,
-    }
+    },
   });
 
   // Ensure only a single row can exist

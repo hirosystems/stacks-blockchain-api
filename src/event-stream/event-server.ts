@@ -731,7 +731,7 @@ export async function startEventServer(opts: {
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
-  const handleRawEventRequest = asyncHandler(async (req, res, next) => {
+  const handleRawEventRequest = asyncHandler(async req => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
     if (logger.isDebugEnabled()) {
@@ -743,8 +743,6 @@ export async function startEventServer(opts: {
       }
       logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
     }
-
-    next();
   });
 
   // Imports
@@ -769,12 +767,6 @@ export async function startEventServer(opts: {
         await handleBnsImport(blockMessage);
         res.status(200).json({ result: 'ok' });
         next();
-
-        // handler
-        // when receive blokc height 1
-        // check config table for val of import bns names
-        // check if user defined directory for bns data
-        // import
       } catch (error) {
         logError(`error processing core-node /new_block: ${error}`, error);
         res.status(500).json({ error: error });
