@@ -27,6 +27,10 @@ export function getWsMessageTimeoutMs(): number {
   return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5') * 1000;
 }
 
+export function getWsUpdateQueueTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_UPDATE_QUEUE_TIMEOUT'] ?? '5') * 1000;
+}
+
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal
  * `PgStoreEventEmitter` notifications. If a match is found, the relevant data is queried from the
@@ -45,7 +49,7 @@ export class WebSocketTransmitter {
     this.queue = new PQueue({
       autoStart: true,
       concurrency: 1,
-      timeout: 5_000, // 5 seconds
+      timeout: getWsUpdateQueueTimeoutMs(),
       throwOnTimeout: true,
     });
   }
