@@ -770,7 +770,7 @@ export class WsRpcChannel extends WebSocketChannel {
     }
   }
 
-  private async sendWithTimeout(
+  private sendWithTimeout(
     manager: SubscriptionManager,
     topicId: string,
     client: WebSocket,
@@ -785,11 +785,14 @@ export class WsRpcChannel extends WebSocketChannel {
         }
       })
     );
-    // If the payload takes more than 5 seconds to be processed by the client,
+    // If the payload takes more than a set number of seconds to be processed by the client,
     // it will be disconnected.
-    const successful = await resolveOrTimeout(sendPromise, getWsMessageTimeoutMs());
-    if (!successful) {
-      manager.removeSubscription(client, topicId);
-    }
+    resolveOrTimeout(sendPromise, getWsMessageTimeoutMs())
+      .then(successful => {
+        if (!successful) {
+          manager.removeSubscription(client, topicId);
+        }
+      })
+      .catch(_ => manager.removeSubscription(client, topicId));
   }
 }

@@ -193,7 +193,9 @@ export class SocketIOChannel extends WebSocketChannel {
         const [block] = args as ListenerType<WebSocketPayload['block']>;
         this.prometheus?.sendEvent('block');
         void this.getTopicSockets('block').then(sockets =>
-          sockets?.map(s => s.timeout(timeout).emit('block', block, _ => s.disconnect(true)))
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('block', block, _ => socket.disconnect(true))
+          )
         );
         break;
       }
@@ -201,8 +203,8 @@ export class SocketIOChannel extends WebSocketChannel {
         const [microblock] = args as ListenerType<WebSocketPayload['microblock']>;
         this.prometheus?.sendEvent('microblock');
         void this.getTopicSockets('microblock').then(sockets =>
-          sockets?.map(s =>
-            s.timeout(timeout).emit('microblock', microblock, _ => s.disconnect(true))
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('microblock', microblock, _ => socket.disconnect(true))
           )
         );
         break;
@@ -211,7 +213,9 @@ export class SocketIOChannel extends WebSocketChannel {
         const [tx] = args as ListenerType<WebSocketPayload['mempoolTransaction']>;
         this.prometheus?.sendEvent('mempool');
         void this.getTopicSockets('mempool').then(sockets =>
-          sockets?.map(s => s.timeout(timeout).emit('mempool', tx, _ => s.disconnect(true)))
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('mempool', tx, _ => socket.disconnect(true))
+          )
         );
         break;
       }
@@ -219,7 +223,9 @@ export class SocketIOChannel extends WebSocketChannel {
         const [tx] = args as ListenerType<WebSocketPayload['transaction']>;
         this.prometheus?.sendEvent('transaction');
         void this.getTopicSockets(`transaction:${tx.tx_id}`).then(sockets =>
-          sockets?.map(s => s.timeout(timeout).emit('transaction', tx, _ => s.disconnect(true)))
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('transaction', tx, _ => socket.disconnect(true))
+          )
         );
         break;
       }
@@ -227,7 +233,9 @@ export class SocketIOChannel extends WebSocketChannel {
         const [event] = args as ListenerType<WebSocketPayload['nftEvent']>;
         this.prometheus?.sendEvent('nft-event');
         void this.getTopicSockets(`nft-event`).then(sockets =>
-          sockets?.map(s => s.timeout(timeout).emit('nft-event', event, _ => s.disconnect(true)))
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('nft-event', event, _ => socket.disconnect(true))
+          )
         );
         break;
       }
@@ -237,7 +245,7 @@ export class SocketIOChannel extends WebSocketChannel {
         >;
         this.prometheus?.sendEvent('nft-asset-event');
         void this.getTopicSockets(`nft-event`).then(sockets =>
-          sockets?.map(socket =>
+          sockets?.forEach(socket =>
             socket
               .timeout(timeout)
               .emit('nft-asset-event', assetIdentifier, value, event, _ => socket.disconnect(true))
@@ -251,7 +259,7 @@ export class SocketIOChannel extends WebSocketChannel {
         >;
         this.prometheus?.sendEvent('nft-collection-event');
         void this.getTopicSockets(`nft-event`).then(sockets =>
-          sockets?.map(socket =>
+          sockets?.forEach(socket =>
             socket
               .timeout(timeout)
               .emit('nft-collection-event', assetIdentifier, event, _ => socket.disconnect(true))
@@ -264,9 +272,11 @@ export class SocketIOChannel extends WebSocketChannel {
         const topic: AddressTransactionTopic = `address-transaction:${principal}`;
         this.prometheus?.sendEvent('address-transaction');
         void this.getTopicSockets(topic).then(sockets =>
-          sockets?.map(s => {
-            s.timeout(timeout).emit('address-transaction', principal, tx, _ => s.disconnect(true));
-            s.timeout(timeout).emit(topic, principal, tx, _ => s.disconnect(true));
+          sockets?.forEach(socket => {
+            socket
+              .timeout(timeout)
+              .emit('address-transaction', principal, tx, _ => socket.disconnect(true));
+            socket.timeout(timeout).emit(topic, principal, tx, _ => socket.disconnect(true));
           })
         );
         break;
@@ -276,11 +286,11 @@ export class SocketIOChannel extends WebSocketChannel {
         const topic: AddressStxBalanceTopic = `address-stx-balance:${principal}`;
         this.prometheus?.sendEvent('address-stx-balance');
         void this.getTopicSockets(topic).then(sockets =>
-          sockets?.map(s => {
-            s.timeout(timeout).emit('address-stx-balance', principal, balance, _ =>
-              s.disconnect(true)
-            );
-            s.timeout(timeout).emit(topic, principal, balance, _ => s.disconnect(true));
+          sockets?.forEach(socket => {
+            socket
+              .timeout(timeout)
+              .emit('address-stx-balance', principal, balance, _ => socket.disconnect(true));
+            socket.timeout(timeout).emit(topic, principal, balance, _ => socket.disconnect(true));
           })
         );
         break;
