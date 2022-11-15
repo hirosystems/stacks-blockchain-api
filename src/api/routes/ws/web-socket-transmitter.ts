@@ -27,7 +27,7 @@ export function getWsMessageTimeoutMs(): number {
   return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5') * 1000;
 }
 
-export function getWsUpdateQueueTimeoutMs(): number {
+function getWsUpdateQueueTimeoutMs(): number {
   return parseInt(process.env['STACKS_API_WS_UPDATE_QUEUE_TIMEOUT'] ?? '5') * 1000;
 }
 
