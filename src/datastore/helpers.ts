@@ -904,9 +904,12 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
   for (const tx of txs) {
     const dbMempoolTx: DbMempoolTx = Object.assign(tx, {
       pruned: false,
-      receipt_time: Math.round(Date.now() / 1000),
+      receipt_time: tx.burn_block_time,
       fee_rate: BigInt(tx.fee_rate),
-      token_transfer_amount: BigInt(tx.token_transfer_amount ?? 0),
+      token_transfer_amount:
+        tx.token_transfer_amount != null
+          ? BigInt(tx.token_transfer_amount)
+          : tx.token_transfer_amount,
       sponsor_address: tx.sponsor_address ?? undefined,
     });
     dbMempoolTxs.push(dbMempoolTx);
