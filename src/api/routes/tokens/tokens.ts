@@ -14,7 +14,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
-import { bufferToHexPrefixString, has0xPrefix, isValidPrincipal } from '../../../helpers';
+import { has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
@@ -118,44 +118,53 @@ export function createTokenRouter(db: PgStore): express.Router {
       if (!has0xPrefix(value)) {
         value = `0x${value}`;
       }
+      const strValue = value;
       const limit = parseTokenQueryLimit(req.query.limit ?? 50);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const chainTip = await db.getCurrentBlockHeight();
-      if (!chainTip.found) {
-        res.status(400).json({ error: `Unable to find a valid block to query` });
-        return;
-      }
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
 
-      const { results, total } = await db.getNftHistory({
-        assetIdentifier: assetIdentifier,
-        value: value,
-        limit: limit,
-        offset: offset,
-        blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
-        includeTxMetadata: includeTxMetadata,
-      });
-      const parsedResults: NonFungibleTokenHistoryEvent[] = results.map(result => {
-        const parsedNftData = {
-          sender: result.nft_event.sender,
-          recipient: result.nft_event.recipient,
-          event_index: result.nft_event.event_index,
-          asset_event_type: getAssetEventTypeString(result.nft_event.asset_event_type_id),
-        };
-        if (includeTxMetadata && result.tx) {
-          return { ...parsedNftData, tx: parseDbTx(result.tx) };
-        }
-        return { ...parsedNftData, tx_id: result.nft_event.tx_id };
-      });
-      const response: NonFungibleTokenHistoryEventList = {
-        limit: limit,
-        offset: offset,
-        total: total,
-        results: parsedResults,
-      };
-      setETagCacheHeaders(res);
-      res.status(200).json(response);
+      await db
+        .sqlTransaction(async sql => {
+          const chainTip = await db.getCurrentBlockHeight();
+          if (!chainTip.found) {
+            throw { error: `Unable to find a valid block to query` };
+          }
+          const { results, total } = await db.getNftHistory({
+            assetIdentifier: assetIdentifier,
+            value: strValue,
+            limit: limit,
+            offset: offset,
+            blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+            includeTxMetadata: includeTxMetadata,
+          });
+          const parsedResults: NonFungibleTokenHistoryEvent[] = results.map(result => {
+            const parsedNftData = {
+              sender: result.nft_event.sender,
+              recipient: result.nft_event.recipient,
+              event_index: result.nft_event.event_index,
+              asset_event_type: getAssetEventTypeString(result.nft_event.asset_event_type_id),
+            };
+            if (includeTxMetadata && result.tx) {
+              return { ...parsedNftData, tx: parseDbTx(result.tx) };
+            }
+            return { ...parsedNftData, tx_id: result.nft_event.tx_id };
+          });
+          const response: NonFungibleTokenHistoryEventList = {
+            limit: limit,
+            offset: offset,
+            total: total,
+            results: parsedResults,
+          };
+          return response;
+        })
+        .then(response => {
+          setETagCacheHeaders(res);
+          res.status(200).json(response);
+        })
+        .catch(error => {
+          res.status(400).json(error);
+        });
     })
   );
 
@@ -173,44 +182,52 @@ export function createTokenRouter(db: PgStore): express.Router {
       }
       const limit = parseTokenQueryLimit(req.query.limit ?? 50);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const chainTip = await db.getCurrentBlockHeight();
-      if (!chainTip.found) {
-        res.status(400).json({ error: `Unable to find a valid block to query` });
-        return;
-      }
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
 
-      const { results, total } = await db.getNftMints({
-        assetIdentifier: assetIdentifier,
-        limit: limit,
-        offset: offset,
-        blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
-        includeTxMetadata: includeTxMetadata,
-      });
-      const parsedResults: NonFungibleTokenMint[] = results.map(result => {
-        const parsedClarityValue = decodeClarityValueToRepr(result.nft_event.value);
-        const parsedNftData = {
-          recipient: result.nft_event.recipient,
-          event_index: result.nft_event.event_index,
-          value: {
-            hex: result.nft_event.value,
-            repr: parsedClarityValue,
-          },
-        };
-        if (includeTxMetadata && result.tx) {
-          return { ...parsedNftData, tx: parseDbTx(result.tx) };
-        }
-        return { ...parsedNftData, tx_id: result.nft_event.tx_id };
-      });
-      const response: NonFungibleTokenMintList = {
-        limit: limit,
-        offset: offset,
-        total: total,
-        results: parsedResults,
-      };
-      setETagCacheHeaders(res);
-      res.status(200).json(response);
+      await db
+        .sqlTransaction(async sql => {
+          const chainTip = await db.getCurrentBlockHeight();
+          if (!chainTip.found) {
+            throw { error: `Unable to find a valid block to query` };
+          }
+          const { results, total } = await db.getNftMints({
+            assetIdentifier: assetIdentifier,
+            limit: limit,
+            offset: offset,
+            blockHeight: includeUnanchored ? chainTip.result + 1 : chainTip.result,
+            includeTxMetadata: includeTxMetadata,
+          });
+          const parsedResults: NonFungibleTokenMint[] = results.map(result => {
+            const parsedClarityValue = decodeClarityValueToRepr(result.nft_event.value);
+            const parsedNftData = {
+              recipient: result.nft_event.recipient,
+              event_index: result.nft_event.event_index,
+              value: {
+                hex: result.nft_event.value,
+                repr: parsedClarityValue,
+              },
+            };
+            if (includeTxMetadata && result.tx) {
+              return { ...parsedNftData, tx: parseDbTx(result.tx) };
+            }
+            return { ...parsedNftData, tx_id: result.nft_event.tx_id };
+          });
+          const response: NonFungibleTokenMintList = {
+            limit: limit,
+            offset: offset,
+            total: total,
+            results: parsedResults,
+          };
+          return response;
+        })
+        .then(response => {
+          setETagCacheHeaders(res);
+          res.status(200).json(response);
+        })
+        .catch(error => {
+          res.status(400).json(error);
+        });
     })
   );
 

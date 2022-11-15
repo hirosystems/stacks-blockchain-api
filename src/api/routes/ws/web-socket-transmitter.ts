@@ -115,22 +115,27 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('transaction', txId))) {
       try {
-        // Look at the `txs` table first so we always prefer the confirmed transaction.
-        const txQuery = await getTxFromDataStore(this.db, {
-          txId: txId,
-          includeUnanchored: true,
-        });
-        if (txQuery.found) {
-          this.channels.forEach(c => c.send('transaction', txQuery.result));
-        } else {
-          // Tx is not yet confirmed, look at `mempool_txs`.
-          const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
-            txIds: [txId],
+        const result = await this.db.sqlTransaction(async sql => {
+          // Look at the `txs` table first so we always prefer the confirmed transaction.
+          const txQuery = await getTxFromDataStore(this.db, {
+            txId: txId,
             includeUnanchored: true,
           });
-          if (mempoolTxs.length > 0) {
-            this.channels.forEach(c => c.send('transaction', mempoolTxs[0]));
+          if (txQuery.found) {
+            return txQuery.result;
+          } else {
+            // Tx is not yet confirmed, look at `mempool_txs`.
+            const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
+              txIds: [txId],
+              includeUnanchored: true,
+            });
+            if (mempoolTxs.length > 0) {
+              return mempoolTxs[0];
+            }
           }
+        });
+        if (result) {
+          this.channels.forEach(c => c.send('transaction', result));
         }
       } catch (error) {
         logger.error(error);
@@ -197,23 +202,26 @@ export class WebSocketTransmitter {
 
     if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
       try {
-        const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
-        const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
-        const balance: AddressStxBalanceResponse = {
-          balance: stxBalanceResult.balance.toString(),
-          total_sent: stxBalanceResult.totalSent.toString(),
-          total_received: stxBalanceResult.totalReceived.toString(),
-          total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
-          total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
-          lock_tx_id: stxBalanceResult.lockTxId,
-          locked: stxBalanceResult.locked.toString(),
-          lock_height: stxBalanceResult.lockHeight,
-          burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
-          burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
-        };
-        if (tokenOfferingLocked.found) {
-          balance.token_offering_locked = tokenOfferingLocked.result;
-        }
+        const balance = await this.db.sqlTransaction(async sql => {
+          const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
+          const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
+          const balance: AddressStxBalanceResponse = {
+            balance: stxBalanceResult.balance.toString(),
+            total_sent: stxBalanceResult.totalSent.toString(),
+            total_received: stxBalanceResult.totalReceived.toString(),
+            total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+            total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+            lock_tx_id: stxBalanceResult.lockTxId,
+            locked: stxBalanceResult.locked.toString(),
+            lock_height: stxBalanceResult.lockHeight,
+            burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+            burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+          };
+          if (tokenOfferingLocked.found) {
+            balance.token_offering_locked = tokenOfferingLocked.result;
+          }
+          return balance;
+        });
         this.channels.forEach(c => c.send('principalStxBalance', address, balance));
       } catch (error) {
         logger.error(error);

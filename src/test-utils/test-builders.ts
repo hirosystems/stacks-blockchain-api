@@ -394,6 +394,9 @@ interface TestSmartContractLogEventArgs {
   contract_identifier?: string;
   event_index?: number;
   tx_index?: number;
+  canonical?: boolean;
+  topic?: string;
+  value?: string;
 }
 
 /**
@@ -407,11 +410,11 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
-    canonical: true,
+    canonical: args?.canonical ?? true,
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
-    topic: 'some-topic',
-    value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+    topic: args?.topic ?? 'some-topic',
+    value: args?.value ?? bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
   };
 }
 

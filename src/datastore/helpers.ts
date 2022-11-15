@@ -192,6 +192,8 @@ export function isPgConnectionError(error: any): string | false {
     return 'Postgres connection CONNECTION_DESTROYED';
   } else if (error.code === 'CONNECTION_CONNECT_TIMEOUT') {
     return 'Postgres connection CONNECTION_CONNECT_TIMEOUT';
+  } else if (error.code === 'CONNECT_TIMEOUT') {
+    return 'Postgres connection CONNECT_TIMEOUT';
   } else if (error.message) {
     const msg = (error as Error).message.toLowerCase();
     if (msg.includes('database system is starting up')) {
