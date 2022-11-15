@@ -65,6 +65,8 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
+import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
+import { getBnsRegistrationEvent } from '../event-replay/helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -729,7 +731,7 @@ export async function startEventServer(opts: {
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
-  const handleRawEventRequest = asyncHandler(async req => {
+  const handleRawEventRequest = asyncHandler(async (req, res, next) => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
     if (logger.isDebugEnabled()) {
@@ -741,16 +743,38 @@ export async function startEventServer(opts: {
       }
       logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
     }
+
+    next();
   });
+
+  // Imports
+  const handleBnsImport = async (blockMessage: CoreNodeBlockMessage) => {
+    const bnsDir = process.env.BNS_IMPORT_DIR;
+    if (blockMessage.block_height === 1 && bnsDir) {
+      const configState = await db.getConfigState();
+      if (!configState.bns_names_onchain_imported && !configState.bns_subdomains_imported) {
+        const bnsRegistrationEvent = getBnsRegistrationEvent(blockMessage);
+        await importV1BnsNames(db, bnsDir, bnsRegistrationEvent);
+        await importV1BnsSubdomains(db, bnsDir, bnsRegistrationEvent);
+      }
+    }
+  };
 
   app.post(
     '/new_block',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeBlockMessage = req.body;
-        await messageHandler.handleBlockMessage(opts.chainId, msg, db);
+        const blockMessage: CoreNodeBlockMessage = req.body;
+        await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
+        await handleBnsImport(blockMessage);
         res.status(200).json({ result: 'ok' });
         next();
+
+        // handler
+        // when receive blokc height 1
+        // check config table for val of import bns names
+        // check if user defined directory for bns data
+        // import
       } catch (error) {
         logError(`error processing core-node /new_block: ${error}`, error);
         res.status(500).json({ error: error });

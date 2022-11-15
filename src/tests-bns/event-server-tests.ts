@@ -6,6 +6,7 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
+import { findBnsGenesisBlockData, getGenesisBlockData } from 'src/event-replay/helpers';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -24,6 +25,12 @@ describe('BNS event server tests', () => {
       serverPort: 0,
       httpLogLevel: 'debug',
     });
+  });
+
+  afterEach(async () => {
+    await eventServer.closeAsync();
+    await db?.close();
+    await runMigrations(undefined, 'down');
   });
 
   test('namespace-ready called by a contract other than BNS', async () => {
@@ -1027,9 +1034,22 @@ describe('BNS event server tests', () => {
     expect(namespaceList.results).toStrictEqual(['ape.mega']);
   });
 
-  afterEach(async () => {
-    await eventServer.closeAsync();
-    await db?.close();
-    await runMigrations(undefined, 'down');
-  });
-});
+  test('Bns import occurs when the genesis block is imported ', async () => {
+    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
+    const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
+
+    await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: '/new_block',
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(JSON.stringify(genesisBlock), 'utf8'),
+      throwOnNotOK: true,
+    });
+
+    // query config state and check if bns and bns sub domains were imported
+    const configState = await db.getConfigState();
+    expect(configState.bns_names_onchain_imported).toBe(true)
+    expect(configState.bns_subdomains_imported).toBe(true)
+  })
+})

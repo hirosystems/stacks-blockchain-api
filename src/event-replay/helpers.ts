@@ -4,6 +4,7 @@ import * as readline from 'readline';
 import { decodeTransaction, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { DataStoreBnsBlockData } from '../datastore/common';
 import { ReverseFileStream } from './reverse-file-stream';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 export type BnsGenesisBlock = DataStoreBnsBlockData & {
   tx_id: string;
@@ -50,27 +51,63 @@ export async function findBnsGenesisBlockData(filePath: string): Promise<BnsGene
     const columns = line.split('\t');
     const eventName = columns[2];
     if (eventName === '/new_block') {
-      const payload = JSON.parse(columns[3]);
-      // Look for block 1
-      if (payload.block_height === 1) {
-        for (const tx of payload.transactions) {
-          const decodedTx = decodeTransaction(tx.raw_tx);
-          // Look for the only token transfer transaction in the genesis block. This is the one
-          // that contains all the events, including all BNS name registrations.
-          if (decodedTx.payload.type_id === TxPayloadTypeID.TokenTransfer) {
-            rl.close();
-            return {
-              index_block_hash: payload.index_block_hash,
-              parent_index_block_hash: payload.parent_index_block_hash,
-              microblock_hash: payload.parent_microblock,
-              microblock_sequence: payload.parent_microblock_sequence,
-              microblock_canonical: true,
-              tx_id: decodedTx.tx_id,
-              tx_index: tx.tx_index,
-            };
-          }
+      try {
+        const blockMessage = JSON.parse(columns[3]);
+        if (blockMessage.block_height === 1) {
+          const bnsGenesisBlock = getBnsRegistrationEvent(blockMessage as CoreNodeBlockMessage);
+          return bnsGenesisBlock;
         }
+      } catch (error) {
+        throw error;
+      } finally {
+        rl.close();
       }
+    }
+  }
+  throw new Error('BNS genesis block data not found');
+}
+
+export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlockMessage> {
+  const rl = readline.createInterface({
+    input: fs.createReadStream(filePath),
+    crlfDelay: Infinity,
+  });
+  for await (const line of rl) {
+    const columns = line.split('\t');
+    const eventName = columns[2];
+    if (eventName === '/new_block') {
+      const blockMessage = JSON.parse(columns[3]);
+      if (blockMessage.block_height === 1) {
+        return blockMessage as CoreNodeBlockMessage;
+      }
+    }
+  }
+  throw new Error('Genesis block data not found');
+}
+
+export function getBnsRegistrationEvent(
+  bnsGenesisBlockMessage: CoreNodeBlockMessage
+): BnsGenesisBlock {
+  if (bnsGenesisBlockMessage.block_height !== 1) {
+    throw new Error(
+      `This block message with height ${bnsGenesisBlockMessage.block_height} is not the genesis block message`
+    );
+  }
+  const txs = bnsGenesisBlockMessage.transactions;
+  for (const tx of txs) {
+    const decodedTx = decodeTransaction(tx.raw_tx);
+    // Look for the only token transfer transaction in the genesis block. This is the one
+    // that contains all the events, including all BNS name registrations.
+    if (decodedTx.payload.type_id === TxPayloadTypeID.TokenTransfer) {
+      return {
+        index_block_hash: bnsGenesisBlockMessage.index_block_hash,
+        parent_index_block_hash: bnsGenesisBlockMessage.parent_index_block_hash,
+        microblock_hash: bnsGenesisBlockMessage.parent_microblock,
+        microblock_sequence: bnsGenesisBlockMessage.parent_microblock_sequence,
+        microblock_canonical: true,
+        tx_id: decodedTx.tx_id,
+        tx_index: tx.tx_index,
+      };
     }
   }
   throw new Error('BNS genesis block data not found');
