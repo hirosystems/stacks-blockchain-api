@@ -208,6 +208,8 @@ export function isPgConnectionError(error: any): string | false {
       return 'Postgres client has encountered a connection error and is not queryable';
     } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
       return 'Postgres connection terminating due to unexpected postmaster exit';
+    } else if (msg.includes('getaddrinfo eai_again')) {
+      return 'Postgres connection failed due to a DNS lookup error';
     }
   }
   return false;
