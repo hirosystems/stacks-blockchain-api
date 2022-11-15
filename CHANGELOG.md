@@ -1,3 +1,12 @@
+## [6.2.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.4...v6.2.0-beta.5) (2022-11-15)
+
+
+### Bug Fixes
+
+* handle postgres dns lookup error ([#1433](https://github.com/hirosystems/stacks-blockchain-api/issues/1433)) ([e00efd4](https://github.com/hirosystems/stacks-blockchain-api/commit/e00efd4e64a3f0072ffa103e9ec011e5a080e7ed))
+* handle websocket messages with a priority queue ([#1427](https://github.com/hirosystems/stacks-blockchain-api/issues/1427)) ([f0cb01c](https://github.com/hirosystems/stacks-blockchain-api/commit/f0cb01c0541496959b924b29b5962caf63099432))
+* revert to 404 error code on bns name errors ([#1440](https://github.com/hirosystems/stacks-blockchain-api/issues/1440)) ([cdc039c](https://github.com/hirosystems/stacks-blockchain-api/commit/cdc039cea88749103a48cfc66d55d3ba14b3c2a3))
+
 ## [6.2.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.3...v6.2.0-beta.4) (2022-11-08)
 
 
