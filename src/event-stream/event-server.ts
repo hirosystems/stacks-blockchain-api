@@ -745,7 +745,6 @@ export async function startEventServer(opts: {
     }
   });
 
-  // Imports
   const handleBnsImport = async (blockMessage: CoreNodeBlockMessage) => {
     const bnsDir = process.env.BNS_IMPORT_DIR;
     if (blockMessage.block_height === 1 && bnsDir) {

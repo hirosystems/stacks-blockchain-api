@@ -21,7 +21,7 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
       type: 'bool',
       notNull: true,
       default: false,
-    },
+    }
   });
 
   // Ensure only a single row can exist
