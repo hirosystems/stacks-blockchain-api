@@ -161,7 +161,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
           if (error instanceof NameRedirectError) {
             res.redirect(error.message);
           } else {
-            res.status(400).json(error);
+            res.status(404).json(error);
           }
         });
     })
