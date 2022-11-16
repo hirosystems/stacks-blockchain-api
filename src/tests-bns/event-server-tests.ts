@@ -6,7 +6,7 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
-import { findBnsGenesisBlockData, getGenesisBlockData } from 'src/event-replay/helpers';
+import { getGenesisBlockData } from '../event-replay/helpers';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
