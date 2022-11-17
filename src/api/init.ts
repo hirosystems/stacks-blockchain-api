@@ -46,6 +46,7 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { isPgConnectionError } from '../datastore/helpers';
+import { createBtcRouter } from './routes/btc/btc';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -223,6 +224,7 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
+      router.use('/btc', createBtcRouter(datastore));
       if (writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }

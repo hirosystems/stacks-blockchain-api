@@ -50,6 +50,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
+import { PgWriteStore } from 'src/datastore/pg-write-store';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -92,6 +93,67 @@ interface AddressAssetEvents {
   offset: number;
   total: number;
 }
+
+// export async function getStxBalance(stxAddress: string, db: PgStore) {
+//   validatePrincipal(stxAddress);
+
+//   const untilBlock = parseUntilBlockQuery(req, res, next);
+//   const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+
+//   // Get balance info for STX token
+//   const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
+//   const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
+
+//   // Get balances for fungible tokens
+//   const ftBalancesResult = await db.getFungibleTokenBalances({
+//     stxAddress,
+//     untilBlock: blockHeight,
+//   });
+//   const ftBalances = formatMapToObject(ftBalancesResult, val => {
+//     return {
+//       balance: val.balance.toString(),
+//       total_sent: val.totalSent.toString(),
+//       total_received: val.totalReceived.toString(),
+//     };
+//   });
+
+//   // Get counts for non-fungible tokens
+//   const nftBalancesResult = await db.getNonFungibleTokenCounts({
+//     stxAddress,
+//     untilBlock: blockHeight,
+//   });
+//   const nftBalances = formatMapToObject(nftBalancesResult, val => {
+//     return {
+//       count: val.count.toString(),
+//       total_sent: val.totalSent.toString(),
+//       total_received: val.totalReceived.toString(),
+//     };
+//   });
+
+//   const result: AddressBalanceResponse = {
+//     stx: {
+//       balance: stxBalanceResult.balance.toString(),
+//       total_sent: stxBalanceResult.totalSent.toString(),
+//       total_received: stxBalanceResult.totalReceived.toString(),
+//       total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+//       total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+//       lock_tx_id: stxBalanceResult.lockTxId,
+//       locked: stxBalanceResult.locked.toString(),
+//       lock_height: stxBalanceResult.lockHeight,
+//       burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+//       burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+//     },
+//     fungible_tokens: ftBalances,
+//     non_fungible_tokens: nftBalances,
+//   };
+
+//   if (tokenOfferingLocked.found) {
+//     result.token_offering_locked = tokenOfferingLocked.result;
+//   }
+
+//   setETagCacheHeaders(res);
+//   return result;
+// }
 
 export function createAddressRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
