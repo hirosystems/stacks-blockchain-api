@@ -326,10 +326,10 @@ describe('postgres datastore', () => {
   });
 
   test('pg address STX balances', async () => {
-    const dbBlock: DbBlock = {
+    const block = new TestBlockBuilder({
       block_hash: '0x9876',
       index_block_hash: '0x5432',
-      block_height: 68456,
+      block_height: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
@@ -339,13 +339,8 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(client, dbBlock);
+    }).build();
+    await db.update(block);
 
     const createMinerReward = (
       recipient: string,
@@ -359,7 +354,7 @@ describe('postgres datastore', () => {
         block_hash: '0x9876',
         index_block_hash: '0x5432',
         from_index_block_hash: '0x6789',
-        mature_block_height: 68456,
+        mature_block_height: 1,
         canonical: canonical,
         recipient: recipient,
         coinbase_amount: amount,
@@ -388,7 +383,7 @@ describe('postgres datastore', () => {
       raw_tx: '0x',
       index_block_hash: '0x5432',
       block_hash: '0x9876',
-      block_height: 68456,
+      block_height: 1,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -494,8 +489,8 @@ describe('postgres datastore', () => {
       totalFeesSent: 1334n,
       totalMinerRewardsReceived: 100010n,
       burnchainLockHeight: 123,
-      burnchainUnlockHeight: 68656,
-      lockHeight: 68456,
+      burnchainUnlockHeight: 201,
+      lockHeight: 1,
       lockTxId: '0x1234',
       locked: 400n,
     });
