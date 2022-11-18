@@ -1,3 +1,10 @@
+## [6.2.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.5...v6.2.0-beta.6) (2022-11-18)
+
+
+### Bug Fixes
+
+* get rosetta latest block from chain_tip view ([#1445](https://github.com/hirosystems/stacks-blockchain-api/issues/1445)) ([ad386d3](https://github.com/hirosystems/stacks-blockchain-api/commit/ad386d30d18afcf22aba51f0c898f306eaaf5fdf))
+
 ## [6.2.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.4...v6.2.0-beta.5) (2022-11-15)
 
 
