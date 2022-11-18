@@ -1,7 +1,13 @@
 import * as http from 'http';
 import * as WebSocket from 'ws';
 import * as net from 'net';
-import { isProdEnv, isValidPrincipal, logError, normalizeHashString } from '../../../../helpers';
+import {
+  isProdEnv,
+  isValidPrincipal,
+  logError,
+  normalizeHashString,
+  resolveOrTimeout,
+} from '../../../../helpers';
 import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
   ListenerType,
@@ -36,6 +42,7 @@ import {
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
+import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -58,7 +65,7 @@ class SubscriptionManager {
   // Sockets that are responding to ping.
   liveSockets: Set<WebSocket> = new Set();
   heartbeatInterval?: NodeJS.Timeout;
-  readonly heartbeatIntervalMs = 5_000;
+  readonly heartbeatIntervalMs = getWsPingIntervalMs();
 
   addSubscription(client: WebSocket, topicId: string) {
     if (this.subscriptions.size === 0) {
@@ -567,10 +574,16 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processTxUpdate(tx: Transaction | MempoolTransaction) {
     try {
-      const subscribers = this.subscriptions.get('transaction')?.subscriptions.get(tx.tx_id);
+      const manager = this.subscriptions.get('transaction');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get(tx.tx_id);
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('tx_update', tx).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, tx.tx_id, client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('transaction');
       }
     } catch (error) {
@@ -580,9 +593,11 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processAddressUpdate(principal: string, tx: AddressTransactionWithTransfers) {
     try {
-      const subscribers = this.subscriptions
-        .get('principalTransactions')
-        ?.subscriptions.get(principal);
+      const manager = this.subscriptions.get('principalTransactions');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get(principal);
       if (subscribers) {
         const updateNotification = {
           address: principal,
@@ -595,7 +610,9 @@ export class WsRpcChannel extends WebSocketChannel {
           'address_tx_update',
           updateNotification
         ).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, principal, client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('address-transaction');
       }
     } catch (error) {
@@ -604,7 +621,11 @@ export class WsRpcChannel extends WebSocketChannel {
   }
 
   private processAddressBalanceUpdate(principal: string, balance: AddressStxBalanceResponse) {
-    const subscribers = this.subscriptions.get('principalStxBalance')?.subscriptions.get(principal);
+    const manager = this.subscriptions.get('principalStxBalance');
+    if (!manager) {
+      return;
+    }
+    const subscribers = manager.subscriptions.get(principal);
     if (subscribers) {
       try {
         const balanceNotification = {
@@ -615,7 +636,9 @@ export class WsRpcChannel extends WebSocketChannel {
           'address_balance_update',
           balanceNotification
         ).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, principal, client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('address-stx-balance');
       } catch (error) {
         logError(`error sending websocket stx balance update to ${principal}`, error);
@@ -625,10 +648,16 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processBlockUpdate(block: Block) {
     try {
-      const subscribers = this.subscriptions.get('block')?.subscriptions.get('block');
+      const manager = this.subscriptions.get('block');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get('block');
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('block', block).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, 'block', client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('block');
       }
     } catch (error) {
@@ -638,10 +667,16 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processMicroblockUpdate(microblock: Microblock) {
     try {
-      const subscribers = this.subscriptions.get('microblock')?.subscriptions.get('microblock');
+      const manager = this.subscriptions.get('microblock');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get('microblock');
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('microblock', microblock).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, 'microblock', client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('microblock');
       }
     } catch (error) {
@@ -651,10 +686,16 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processMempoolUpdate(transaction: MempoolTransaction) {
     try {
-      const subscribers = this.subscriptions.get('mempool')?.subscriptions.get('mempool');
+      const manager = this.subscriptions.get('mempool');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get('mempool');
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('mempool', transaction).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, 'mempool', client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('mempool');
       }
     } catch (error) {
@@ -664,10 +705,16 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processNftEventUpdate(event: NftEvent) {
     try {
-      const subscribers = this.subscriptions.get('nftEvent')?.subscriptions.get('nft_event');
+      const manager = this.subscriptions.get('nftEvent');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get('nft_event');
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('nft_event', event).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, 'nft_event', client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
@@ -677,12 +724,17 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processNftAssetEventUpdate(assetIdentifier: string, value: string, event: NftEvent) {
     try {
-      const subscribers = this.subscriptions
-        .get('nftAssetEvent')
-        ?.subscriptions.get(`${assetIdentifier}+${value}`);
+      const manager = this.subscriptions.get('nftAssetEvent');
+      if (!manager) {
+        return;
+      }
+      const topicId = `${assetIdentifier}+${value}`;
+      const subscribers = manager.subscriptions.get(topicId);
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification('nft_asset_event', event).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, topicId, client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
@@ -695,15 +747,19 @@ export class WsRpcChannel extends WebSocketChannel {
 
   private processNftCollectionEventUpdate(assetIdentifier: string, event: NftEvent) {
     try {
-      const subscribers = this.subscriptions
-        .get('nftCollectionEvent')
-        ?.subscriptions.get(assetIdentifier);
+      const manager = this.subscriptions.get('nftCollectionEvent');
+      if (!manager) {
+        return;
+      }
+      const subscribers = manager.subscriptions.get(assetIdentifier);
       if (subscribers) {
         const rpcNotificationPayload = jsonRpcNotification(
           'nft_collection_event',
           event
         ).serialize();
-        subscribers.forEach(client => client.send(rpcNotificationPayload));
+        subscribers.forEach(client =>
+          this.sendWithTimeout(manager, assetIdentifier, client, rpcNotificationPayload)
+        );
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
@@ -712,5 +768,31 @@ export class WsRpcChannel extends WebSocketChannel {
         error
       );
     }
+  }
+
+  private sendWithTimeout(
+    manager: SubscriptionManager,
+    topicId: string,
+    client: WebSocket,
+    payload: string
+  ) {
+    const sendPromise = new Promise<void>((resolve, reject) =>
+      client.send(payload, err => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
+        }
+      })
+    );
+    // If the payload takes more than a set number of seconds to be processed by the client,
+    // it will be disconnected.
+    resolveOrTimeout(sendPromise, getWsMessageTimeoutMs())
+      .then(successful => {
+        if (!successful) {
+          manager.removeSubscription(client, topicId);
+        }
+      })
+      .catch(_ => manager.removeSubscription(client, topicId));
   }
 }

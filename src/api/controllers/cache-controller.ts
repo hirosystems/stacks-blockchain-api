@@ -249,41 +249,58 @@ async function calculateETag(
 ): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:
-      const chainTip = await db.getUnanchoredChainTip();
-      if (!chainTip.found) {
-        // This should never happen unless the API is serving requests before it has synced any blocks.
+      try {
+        const chainTip = await db.getUnanchoredChainTip();
+        if (!chainTip.found) {
+          // This should never happen unless the API is serving requests before it has synced any
+          // blocks.
+          return;
+        }
+        return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
+      } catch (error) {
+        logger.error(`Unable to calculate chain_tip ETag: ${error}`);
         return;
       }
-      return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
 
     case ETagType.mempool:
-      const digest = await db.getMempoolTxDigest();
-      if (!digest.found) {
-        // This should never happen unless the API is serving requests before it has synced any blocks.
+      try {
+        const digest = await db.getMempoolTxDigest();
+        if (!digest.found) {
+          // This should never happen unless the API is serving requests before it has synced any
+          // blocks.
+          return;
+        }
+        if (digest.result.digest === null) {
+          // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
+          return ETAG_EMPTY;
+        }
+        return digest.result.digest;
+      } catch (error) {
+        logger.error(`Unable to calculate mempool ETag: ${error}`);
         return;
       }
-      if (digest.result.digest === null) {
-        // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
-        return ETAG_EMPTY;
-      }
-      return digest.result.digest;
 
     case ETagType.transaction:
-      const { tx_id } = req.params;
-      const normalizedTxId = normalizeHashString(tx_id);
-      if (normalizedTxId === false) {
-        return ETAG_EMPTY;
+      try {
+        const { tx_id } = req.params;
+        const normalizedTxId = normalizeHashString(tx_id);
+        if (normalizedTxId === false) {
+          return ETAG_EMPTY;
+        }
+        const status = await db.getTxStatus(normalizedTxId);
+        if (!status.found) {
+          return ETAG_EMPTY;
+        }
+        const elements: string[] = [
+          normalizedTxId,
+          status.result.index_block_hash ?? '',
+          status.result.microblock_hash ?? '',
+          status.result.status.toString(),
+        ];
+        return elements.join(':');
+      } catch (error) {
+        logger.error(`Unable to calculate transaction ETag: ${error}`);
+        return;
       }
-      const status = await db.getTxStatus(normalizedTxId);
-      if (!status.found) {
-        return ETAG_EMPTY;
-      }
-      const elements: string[] = [
-        normalizedTxId,
-        status.result.index_block_hash ?? '',
-        status.result.microblock_hash ?? '',
-        status.result.status.toString(),
-      ];
-      return elements.join(':');
   }
 }
