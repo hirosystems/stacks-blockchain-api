@@ -418,9 +418,8 @@ export class PgStore {
   async getCurrentBlockInternal(sql: PgSqlClient): Promise<FoundOrNot<DbBlock>> {
     const result = await sql<BlockQueryResult[]>`
       SELECT ${sql(BLOCK_COLUMNS)}
-      FROM blocks
-      WHERE canonical = true
-      ORDER BY block_height DESC
+      FROM blocks b
+      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height)
       LIMIT 1
     `;
     if (result.length === 0) {
