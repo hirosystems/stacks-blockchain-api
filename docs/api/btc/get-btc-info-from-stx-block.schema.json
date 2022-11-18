@@ -1,0 +1,42 @@
+{
+  "stacksBlockHash": {
+    "type": "string",
+    "description": "Stacks block hash"
+  },
+  "stacksBlockExplorer": {
+    "type": "string",
+    "description": "Stacks block explorer"
+  },
+  "bitcoinBlockHash": {
+    "type": "string",
+    "description": "Bitcoin block hash"
+  },
+  "bitcoinBlockExplorer": {
+    "type": "string",
+    "description": "Bitcoin block explorer"
+  },
+  "bitcoinTx": {
+    "type": "string",
+    "description": "Bitcoin transaction"
+  },
+  "bitcoinTxExplorer": {
+    "type": "string",
+    "description": "Bitcoin transaction explorer"
+  },
+  "minerBtcAddress": {
+    "type": "string",
+    "description": "Miner Bitcoin address"
+  },
+  "minerBtcAddressExplorer": {
+    "type": "string",
+    "description": "Miner Bitcoin address explorer"
+  },
+  "minerStxAddress": {
+    "type": "string",
+    "description": "Miner Stacks address"
+  },
+  "minerStxAddressExplorer": {
+    "type": "string",
+    "description": "Miner Stacks address explorer"
+  }
+}

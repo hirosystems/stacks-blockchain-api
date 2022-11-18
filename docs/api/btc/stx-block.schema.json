@@ -1,0 +1,21 @@
+{
+  "description": "Stacks block related to the given Bitcoin block",
+  "title": "StxBlockInfoResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success"],
+  "properties": {
+    "height": {
+      "type": "integer",
+      "description": "Stacks block height"
+    },
+    "hash": {
+      "type": "integer",
+      "description": "Stacks block hash"
+    },
+    "parent_block_hash": {
+      "type": "string",
+      "description": "Stacks parent block hash"
+    }
+  }
+}

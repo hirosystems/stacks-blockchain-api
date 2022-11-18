@@ -1,0 +1,22 @@
+{
+  "stacks": {
+    "address": {
+      "type": "string",
+      "description": "Specify either a Stacks or Bitcoin address"
+    },
+    "balance": {
+      "type": "string",
+      "description": "Account balance for the Stacks address"
+    }
+  },
+  "bitcoin": {
+    "address": {
+      "type": "string",
+      "description": "Bitcoin address"
+    },
+    "balance": {
+      "type": "string",
+      "description": "Account balance for the Bitcoin address"
+    }
+  }
+}

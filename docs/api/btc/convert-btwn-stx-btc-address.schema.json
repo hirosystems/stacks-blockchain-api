@@ -1,0 +1,14 @@
+{
+  "stacks": {
+    "type": "string",
+    "description": "Stacks address"
+  },
+  "bitcoin": {
+    "type": "string",
+    "description": "Bitcoin address"
+  },
+  "network": {
+    "type": "string",
+    "description": "Network"
+  }
+}
