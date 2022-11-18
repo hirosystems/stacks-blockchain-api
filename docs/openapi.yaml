@@ -3465,7 +3465,7 @@ paths:
           description: Stacks or Bitcoin address to convert from
           required: true
           schema:
-            type: strings
+            type: string
             example: ['SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7', '1FzTxL9Mxnm2fdmnQEArfhzJHevwbvcH6d']
         - name: network
           in: path
@@ -3487,31 +3487,110 @@ paths:
   /extended/v1/btc/addr/{address}/balances:
       get:
         summary: Get the STX and BTC balance for an address
-        description: Provide either a Stacks or Bitcoin address, and receive the Stacks address, Bitcoin address, and network version.
         tags: 
           - Bitcoin Info
         parameters:
           - name: address
             in: query
-            description: Stacks or Bitcoin address to convert from
+            description: Specify either a Stacks or Bitcoin address
             required: true
             schema:
-              type: strings
-              example: ['SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7', '1FzTxL9Mxnm2fdmnQEArfhzJHevwbvcH6d']
-          - name: network
-            in: path
-            required: false
-            schema:
-              # type: enum
-              enum: [testnet, mainnet]
-              example: mainnet
-            description: Specify if the address should be converted to mainnet or testnet
+              type: string
+              example: ['SPRSDSRT18DS9R8Y2W13JTKF89NFHEGDWQPB78RE', '15XCtJkEDxE1nhFawvPY4QEkEyNywxNSfL']
       responses:
         200:
-          description: The Stacks address, Bitcoin address, and network version
+          description: The Bitcoin and Stacks account balances for the given address
           content:
             application/json:
               schema:
                 $ref: ./api/transaction/get-transaction-events.schema.json // TODO: 
               example:
                 $ref: ./api/transaction/get-transaction-events.example.json
+  /extended/v1/btc//miner-participants/:block':
+      get:
+        summary: Get miners that participated for a Stacks block
+        description: Lookup the miners and their Bitcoin txs that participated in mining a given Stacks blocks.
+        tags: 
+          - Bitcoin Info
+        parameters:
+          - name: block
+            in: query
+            description: A Stacks block hash or block height
+            required: true
+            schema:
+              type: object
+              properties:
+                block:
+                  description: A Stacks block hash or block height
+                  type:
+                    - string
+                    - integer
+                  examples: ['0x42a148bf018463f6680e8e215037434b845b145d09272305e16d2411283ca39c', 66687]
+      responses:
+        200:
+          description: The Bitcoin and Stacks account balances for the given address
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transaction-events.schema.json // TODO: 
+              example:
+                $ref: ./api/transaction/get-transaction-events.example.json
+  /extended/v1/btc-block-stx-ops/:block':
+      get:
+        summary: Get miners that participated for a Stacks block
+        description: Decode any Stacks operations contained with a given Bitcoin block's transactions. Shows Stacks miners that have participated in a given Bitcoin block.
+        tags: 
+          - Bitcoin Info
+        parameters:
+          - name: block
+            in: query
+            description: A Bitcoin block hash or block height
+            required: true
+            schema:
+              type: object
+              properties:
+                block:
+                  description: A Bitcoin block hash or block height
+                  type:
+                    - string
+                    - integer
+                  examples: ['000000000000000000080e839f4b079220929dab9ce9567e8ba24923c413e14d', 746204]
+      responses:
+        200:
+          description: The Bitcoin and Stacks account balances for the given address
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transaction-events.schema.json // TODO: 
+              example:
+                $ref: ./api/transaction/get-transaction-events.example.json
+
+    /extended/v1/btc-info-from-stx-tx/:txid':
+      get:
+        summary: Get Bitcoin information for a Stacks tx
+        description: Get Bitcoin information related to a given Stacks transaction
+        tags: 
+          - Bitcoin Info
+        parameters:
+          - name: txid
+            in: query
+            description: A Bitcoin block hash or block height
+            required: true
+            schema:
+              type: object
+              properties:
+                txid:
+                  description: A Stacks transaction ID
+                  pattern: ^(0x[0-9a-fA-F]{64}|[0-9a-fA-F]{64})$
+                  examples: ['0xc4778249d7af16d004d5344be2683fae5c9263e22d5a2cdd6e1abf38bbdb8fa3']
+                  type:
+                    - string
+      responses:
+        200:
+          description: Bitcoin information related to the given Stacks transaction
+          content:
+            application/json:
+              schema:
+                $ref: ./api/btc/get-btc-from-stx-tx.schema.json 
+              example:
+                $ref: ./api/btc/get-btc-from-stx-tx.example.json

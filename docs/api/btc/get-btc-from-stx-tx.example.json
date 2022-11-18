@@ -1,0 +1,14 @@
+{
+  "stacksTx": "0xc4778249d7af16d004d5344be2683fae5c9263e22d5a2cdd6e1abf38bbdb8fa3",
+  "stacksTxExplorer": "https://explorer.stacks.co/txid/0xc4778249d7af16d004d5344be2683fae5c9263e22d5a2cdd6e1abf38bbdb8fa3?chain=mainnet",
+  "stacksBlockHash": "0x529ed0f3ef381bbb25e9ffe46db87aa3d3de185e31129004a4da010495cc0daa",
+  "stacksBlockExplorer": "https://explorer.stacks.co/block/0x529ed0f3ef381bbb25e9ffe46db87aa3d3de185e31129004a4da010495cc0daa?chain=mainnet",
+  "bitcoinBlockHash": "00000000000000000003e70c11501aaba9c0b21229ec75b6be9af4649cd2f8d9",
+  "bitcoinBlockExplorer": "https://www.blockchain.com/btc/block/00000000000000000003e70c11501aaba9c0b21229ec75b6be9af4649cd2f8d9",
+  "bitcoinTx": "d62956b9a1d7cc39e9f6210e3753bfaf10e5c6709b17245c1335befa3fe06d4c",
+  "bitcoinTxExplorer": "https://www.blockchain.com/btc/tx/d62956b9a1d7cc39e9f6210e3753bfaf10e5c6709b17245c1335befa3fe06d4c",
+  "minerBtcAddress": "18HTpsp3YuFqndkxxCJA6PXdtaFUQCfwK6",
+  "minerBtcAddressExplorer": "https://www.blockchain.com/btc/address/18HTpsp3YuFqndkxxCJA6PXdtaFUQCfwK6",
+  "minerStxAddress": "SP17YBVDTV7FNWDM5Y8PWXB9MQRT0FTWZXQBFA97A",
+  "minerStxAddressExplorer": "https://explorer.stacks.co/address/SP17YBVDTV7FNWDM5Y8PWXB9MQRT0FTWZXQBFA97A?chain=mainnet"
+}
