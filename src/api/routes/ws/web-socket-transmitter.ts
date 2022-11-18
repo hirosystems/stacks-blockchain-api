@@ -1,4 +1,5 @@
 import * as http from 'http';
+import PQueue from 'p-queue';
 import { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'docs/generated';
 import {
   getBlockFromDataStore,
@@ -8,11 +9,27 @@ import {
   parseDbTx,
 } from '../../controllers/db-controller';
 import { PgStore } from '../../../datastore/pg-store';
-import { WebSocketChannel } from './web-socket-channel';
+import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-channel';
 import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
 import { logger } from '../../../helpers';
+
+export function getWsPingIntervalMs(): number {
+  return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;
+}
+
+export function getWsPingTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_PING_TIMEOUT'] ?? '5') * 1000;
+}
+
+export function getWsMessageTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_MESSAGE_TIMEOUT'] ?? '5') * 1000;
+}
+
+function getWsUpdateQueueTimeoutMs(): number {
+  return parseInt(process.env['STACKS_API_WS_UPDATE_QUEUE_TIMEOUT'] ?? '5') * 1000;
+}
 
 /**
  * This object matches real time update `WebSocketTopics` subscriptions with internal
@@ -23,23 +40,45 @@ export class WebSocketTransmitter {
   readonly db: PgStore;
   readonly server: http.Server;
   private channels: WebSocketChannel[] = [];
+  private queue: PQueue;
 
   constructor(db: PgStore, server: http.Server) {
     this.db = db;
     this.server = server;
+    // This queue will send all messages through web socket channels, one at a time.
+    this.queue = new PQueue({
+      autoStart: true,
+      concurrency: 1,
+      timeout: getWsUpdateQueueTimeoutMs(),
+      throwOnTimeout: true,
+    });
   }
 
   connect() {
-    this.db.eventEmitter.addListener('blockUpdate', blockHash => this.blockUpdate(blockHash));
+    this.db.eventEmitter.addListener('blockUpdate', blockHash =>
+      this.queue
+        .add(() => this.blockUpdate(blockHash))
+        .catch(error => logger.error(`WebSocketTransmitter blockUpdate error: ${error}`))
+    );
     this.db.eventEmitter.addListener('microblockUpdate', microblockHash =>
-      this.microblockUpdate(microblockHash)
+      this.queue
+        .add(() => this.microblockUpdate(microblockHash))
+        .catch(error => logger.error(`WebSocketTransmitter microblockUpdate error: ${error}`))
     );
     this.db.eventEmitter.addListener('nftEventUpdate', (txId, eventIndex) =>
-      this.nftEventUpdate(txId, eventIndex)
+      this.queue
+        .add(() => this.nftEventUpdate(txId, eventIndex))
+        .catch(error => logger.error(`WebSocketTransmitter nftEventUpdate error: ${error}`))
     );
-    this.db.eventEmitter.addListener('txUpdate', txId => this.txUpdate(txId));
+    this.db.eventEmitter.addListener('txUpdate', txId =>
+      this.queue
+        .add(() => this.txUpdate(txId))
+        .catch(error => logger.error(`WebSocketTransmitter txUpdate error: ${error}`))
+    );
     this.db.eventEmitter.addListener('addressUpdate', (address, blockHeight) =>
-      this.addressUpdate(address, blockHeight)
+      this.queue
+        .add(() => this.addressUpdate(address, blockHeight))
+        .catch(error => logger.error(`WebSocketTransmitter addressUpdate error: ${error}`))
     );
 
     this.channels.push(new SocketIOChannel(this.server));
@@ -48,6 +87,8 @@ export class WebSocketTransmitter {
   }
 
   close(callback: (err?: Error | undefined) => void) {
+    this.queue.pause();
+    this.queue.clear();
     Promise.all(
       this.channels.map(
         c =>
@@ -66,6 +107,13 @@ export class WebSocketTransmitter {
       .catch(error => callback(error));
   }
 
+  private send<P extends keyof WebSocketPayload>(
+    payload: P,
+    ...args: ListenerType<WebSocketPayload[P]>
+  ): Promise<void[]> {
+    return Promise.all(this.channels.map(c => c.send(payload, ...args)));
+  }
+
   private async blockUpdate(blockHash: string) {
     if (this.channels.find(c => c.hasListeners('block'))) {
       try {
@@ -74,7 +122,7 @@ export class WebSocketTransmitter {
           db: this.db,
         });
         if (blockQuery.found) {
-          this.channels.forEach(c => c.send('block', blockQuery.result));
+          await this.send('block', blockQuery.result);
         }
       } catch (error) {
         logger.error(error);
@@ -90,7 +138,7 @@ export class WebSocketTransmitter {
           microblockHash: microblockHash,
         });
         if (microblockQuery.found) {
-          this.channels.forEach(c => c.send('microblock', microblockQuery.result));
+          await this.send('microblock', microblockQuery.result);
         }
       } catch (error) {
         logger.error(error);
@@ -106,7 +154,7 @@ export class WebSocketTransmitter {
           includeUnanchored: true,
         });
         if (mempoolTxs.length > 0) {
-          this.channels.forEach(c => c.send('mempoolTransaction', mempoolTxs[0]));
+          await this.send('mempoolTransaction', mempoolTxs[0]);
         }
       } catch (error) {
         logger.error(error);
@@ -135,7 +183,7 @@ export class WebSocketTransmitter {
           }
         });
         if (result) {
-          this.channels.forEach(c => c.send('transaction', result));
+          await this.send('transaction', result);
         }
       } catch (error) {
         logger.error(error);
@@ -154,13 +202,13 @@ export class WebSocketTransmitter {
       const event = parseNftEvent(nftEvent.result);
 
       if (this.channels.find(c => c.hasListeners('nftEvent'))) {
-        this.channels.forEach(c => c.send('nftEvent', event));
+        await this.send('nftEvent', event);
       }
       if (this.channels.find(c => c.hasListeners('nftAssetEvent', assetIdentifier, value))) {
-        this.channels.forEach(c => c.send('nftAssetEvent', assetIdentifier, value, event));
+        await this.send('nftAssetEvent', assetIdentifier, value, event);
       }
       if (this.channels.find(c => c.hasListeners('nftCollectionEvent', assetIdentifier))) {
-        this.channels.forEach(c => c.send('nftCollectionEvent', assetIdentifier, event));
+        await this.send('nftCollectionEvent', assetIdentifier, event);
       }
     } catch (error) {
       logger.error(error);
@@ -193,7 +241,7 @@ export class WebSocketTransmitter {
               };
             }),
           };
-          this.channels.forEach(c => c.send('principalTransaction', address, result));
+          await this.send('principalTransaction', address, result);
         }
       } catch (error) {
         logger.error(error);
@@ -222,7 +270,7 @@ export class WebSocketTransmitter {
           }
           return balance;
         });
-        this.channels.forEach(c => c.send('principalStxBalance', address, balance));
+        await this.send('principalStxBalance', address, balance);
       } catch (error) {
         logger.error(error);
       }

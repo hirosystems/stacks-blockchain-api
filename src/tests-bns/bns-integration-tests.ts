@@ -436,7 +436,7 @@ describe('BNS integration tests', () => {
     expect(query4.status).toBe(200);
 
     const query5 = await supertest(api.server).get(`/v1/names/excluded.${name}.${namespace}`);
-    expect(query5.status).toBe(400);
+    expect(query5.status).toBe(404);
     expect(query5.type).toBe('application/json');
 
     // testing nameupdate 3
