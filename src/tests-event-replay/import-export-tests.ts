@@ -17,6 +17,10 @@ describe('import/export tests', () => {
     });
   });
 
+  afterEach(async () => {
+    await db?.close();
+  });
+
   test('event import and export cycle', async () => {
     // Import from mocknet TSV
     await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
@@ -95,7 +99,12 @@ describe('import/export tests', () => {
     await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
   });
 
-  afterEach(async () => {
-    await db?.close();
+  test('Bns import occurs when the genesis block is imported', async () => {
+    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
+    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    // query config state and check if bns and bns sub domains were imported
+    const configState = await db.getConfigState();
+    expect(configState.bns_names_onchain_imported).toBe(true);
+    expect(configState.bns_subdomains_imported).toBe(true);
   });
 });

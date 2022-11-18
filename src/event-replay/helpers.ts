@@ -45,7 +45,7 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
  */
 export async function findBnsGenesisBlockData(filePath: string): Promise<BnsGenesisBlock> {
   const genesisBlockMessage = await getGenesisBlockData(filePath);
-  const bnsGenesisBlock = getBnsRegistrationEvent(genesisBlockMessage);
+  const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(genesisBlockMessage);
   return bnsGenesisBlock;
 }
 
@@ -71,7 +71,7 @@ export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlo
   throw new Error('Genesis block data not found');
 }
 
-export function getBnsRegistrationEvent(
+export function getBnsGenesisBlockFromBlockMessage(
   genesisBlockMessage: CoreNodeBlockMessage
 ): BnsGenesisBlock {
   if (genesisBlockMessage.block_height !== 1) {

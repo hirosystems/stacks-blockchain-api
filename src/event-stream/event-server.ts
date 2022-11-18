@@ -66,7 +66,7 @@ import {
   getTxDbStatus,
 } from '../datastore/helpers';
 import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
-import { getBnsRegistrationEvent } from '../event-replay/helpers';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -750,8 +750,10 @@ export async function startEventServer(opts: {
     if (blockMessage.block_height === 1 && bnsDir) {
       const configState = await db.getConfigState();
       if (!configState.bns_names_onchain_imported && !configState.bns_subdomains_imported) {
-        const bnsRegistrationEvent = getBnsRegistrationEvent(blockMessage);
+        const bnsRegistrationEvent = getBnsGenesisBlockFromBlockMessage(blockMessage);
+        logger.verbose('Starting V1 BNS names import');
         await importV1BnsNames(db, bnsDir, bnsRegistrationEvent);
+        logger.verbose('Starting V1 BNS subdomains import');
         await importV1BnsSubdomains(db, bnsDir, bnsRegistrationEvent);
       }
     }
