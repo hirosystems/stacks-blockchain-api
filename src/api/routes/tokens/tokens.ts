@@ -12,7 +12,7 @@ import {
   NonFungibleTokenMintList,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
-import { parseLimitQuery, parsePagingQueryInput } from './../../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from './../../pagination';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
 import { has0xPrefix, isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
@@ -20,12 +20,6 @@ import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { PgStore } from '../../../datastore/pg-store';
-
-const MAX_TOKENS_PER_REQUEST = 200;
-const parseTokenQueryLimit = parseLimitQuery({
-  maxItems: MAX_TOKENS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_TOKENS_PER_REQUEST,
-});
 
 export function createTokenRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -58,7 +52,7 @@ export function createTokenRouter(db: PgStore): express.Router {
           }
         }
       }
-      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -119,7 +113,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         value = `0x${value}`;
       }
       const strValue = value;
-      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -180,7 +174,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         res.status(400).json({ error: `Invalid or missing asset_identifier` });
         return;
       }
-      const limit = parseTokenQueryLimit(req.query.limit ?? 50);
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -241,7 +235,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
 
-      const limit = parseTokenQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await db.getFtMetadataList({ offset, limit });
@@ -267,7 +261,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
 
-      const limit = parseTokenQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await db.getNftMetadataList({ offset, limit });

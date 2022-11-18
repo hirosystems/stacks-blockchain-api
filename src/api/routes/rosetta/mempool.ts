@@ -2,7 +2,6 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
 import { has0xPrefix } from '../../../helpers';
-import { parseLimitQuery } from '../../pagination';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import {
   RosettaMempoolResponse,
@@ -12,12 +11,6 @@ import {
 import { getOperations, parseTransactionMemo } from '../../../rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { ChainID } from '@stacks/transactions';
-
-const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
-const parseMempoolTxQueryLimit = parseLimitQuery({
-  maxItems: MAX_MEMPOOL_TXS_PER_REQUEST,
-  errorMsg: `'limit' must be equal to or less than ${MAX_MEMPOOL_TXS_PER_REQUEST}`,
-});
 
 export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

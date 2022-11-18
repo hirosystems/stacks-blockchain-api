@@ -1,22 +1,13 @@
 import * as express from 'express';
-import * as Bluebird from 'bluebird';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
-
 import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
-import { timeout, waiter, has0xPrefix } from '../../helpers';
+import { has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
-
-const MAX_BLOCKS_PER_REQUEST = 30;
-
-const parseBlockQueryLimit = parseLimitQuery({
-  maxItems: MAX_BLOCKS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_BLOCKS_PER_REQUEST,
-});
 
 export function createBlockRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -25,7 +16,7 @@ export function createBlockRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      const limit = parseBlockQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await getBlocksWithMetadata({ offset, limit, db });

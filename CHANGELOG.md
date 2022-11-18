@@ -76,6 +76,7 @@
 * sql transaction consistency ([#1410](https://github.com/hirosystems/stacks-blockchain-api/issues/1410)) ([01e26d9](https://github.com/hirosystems/stacks-blockchain-api/commit/01e26d9c89472c8e07ee9d44372d3de86ee0fdb0))
 
 
+
 ## [6.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.1.0...v6.1.1) (2022-10-24)
 
 
