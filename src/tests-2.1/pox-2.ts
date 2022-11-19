@@ -168,13 +168,10 @@ describe('PoX-2 tests', () => {
     const firstPoxInfo = await client.getPox();
     let lastPoxInfo: CoreRpcPoxInfo = JSON.parse(JSON.stringify(firstPoxInfo));
     do {
-      const dbBlock = await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1);
+      await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1);
       lastPoxInfo = await client.getPox();
     } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
     expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
-    expect(lastPoxInfo.current_burnchain_block_height).toBe(
-      firstPoxInfo.next_cycle.reward_phase_start_block_height + 1
-    );
   }
 
   async function fetchGet<TRes>(endpoint: string) {
@@ -338,7 +335,8 @@ describe('PoX-2 tests', () => {
 
     test('Wait for current pox cycle to complete', async () => {
       await standByForPoxCycle();
-      await standByForPoxCycle();
+      const nextPoxInfo = await client.getPox();
+      await standByUntilBurnBlock(nextPoxInfo.next_cycle.prepare_phase_start_block_height - 1);
     });
 
     test('Validate pox2 handle-unlock for stacker', async () => {
