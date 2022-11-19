@@ -130,7 +130,7 @@
       "request": "launch",
       "name": "Launch: import-events",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/Users/nicholasbarnett/Work/stacks-blockchain-api-tsv/stacks-node-events-mainnet.tsv", "--wipe-db"],
+      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
