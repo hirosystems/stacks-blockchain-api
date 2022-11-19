@@ -99,7 +99,7 @@ describe('import/export tests', () => {
     await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
   });
 
-  test('Bns import occurs when the genesis block is imported', async () => {
+  test('Bns import occurs', async () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const configState = await db.getConfigState();
