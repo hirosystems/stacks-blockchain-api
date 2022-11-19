@@ -269,6 +269,8 @@ async function handleBlockMessage(
       from_index_block_hash: minerReward.from_index_consensus_hash,
       mature_block_height: msg.block_height,
       recipient: minerReward.recipient,
+      // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+      miner_address: minerReward.miner_address ?? minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),

@@ -505,6 +505,7 @@ function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
     mature_block_height: args?.mature_block_height ?? BLOCK_HEIGHT,
     canonical: args?.canonical ?? true,
     recipient: args?.recipient ?? MINER_RECIPIENT,
+    miner_address: args?.recipient ?? MINER_RECIPIENT,
     coinbase_amount: args?.coinbase_amount ?? COINBASE_AMOUNT,
     tx_fees_anchored: args?.tx_fees_anchored ?? TX_FEES_ANCHORED,
     tx_fees_streamed_confirmed: args?.tx_fees_streamed_confirmed ?? TX_FEES_STREAMED_CONFIRMED,

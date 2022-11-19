@@ -73,6 +73,8 @@ export interface DbMinerReward {
   canonical: boolean;
   /** STX principal */
   recipient: string;
+  /** STX principal */
+  miner_address: string | null;
   coinbase_amount: bigint;
   tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
@@ -1116,6 +1118,7 @@ export interface MinerRewardInsertValues {
   mature_block_height: number;
   canonical: boolean;
   recipient: string;
+  miner_address: string | null;
   coinbase_amount: PgNumeric;
   tx_fees_anchored: PgNumeric;
   tx_fees_streamed_confirmed: PgNumeric;

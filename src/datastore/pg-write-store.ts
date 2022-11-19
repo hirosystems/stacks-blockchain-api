@@ -441,6 +441,8 @@ export class PgWriteStore extends PgStore {
       mature_block_height: minerReward.mature_block_height,
       canonical: minerReward.canonical,
       recipient: minerReward.recipient,
+      // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+      miner_address: minerReward.miner_address ?? minerReward.recipient,
       coinbase_amount: minerReward.coinbase_amount.toString(),
       tx_fees_anchored: minerReward.tx_fees_anchored.toString(),
       tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed.toString(),
