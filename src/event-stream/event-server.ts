@@ -747,14 +747,14 @@ export async function startEventServer(opts: {
 
   const handleBnsImport = async (blockMessage: CoreNodeBlockMessage) => {
     const bnsDir = process.env.BNS_IMPORT_DIR;
-    if (blockMessage.block_height === 1 && bnsDir) {
+    if (blockMessage.block_height === 1 && bnsDir && process.env.TSV_IMPORT_IN_PROCESS !== 'true') {
       const configState = await db.getConfigState();
       if (!configState.bns_names_onchain_imported && !configState.bns_subdomains_imported) {
-        const bnsRegistrationEvent = getBnsGenesisBlockFromBlockMessage(blockMessage);
+        const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
         logger.verbose('Starting V1 BNS names import');
-        await importV1BnsNames(db, bnsDir, bnsRegistrationEvent);
+        await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
         logger.verbose('Starting V1 BNS subdomains import');
-        await importV1BnsSubdomains(db, bnsDir, bnsRegistrationEvent);
+        await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
       }
     }
   };
