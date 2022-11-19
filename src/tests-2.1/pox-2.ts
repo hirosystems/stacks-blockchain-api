@@ -132,15 +132,6 @@ describe('PoX-2 tests', () => {
 
   async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
     const dbBlock = await new Promise<DbBlock>(async resolve => {
-      const curHeight = await api.datastore.getCurrentBlock();
-      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        resolve(dbBlock.result);
-        return;
-      }
       const listener: (blockHash: string) => void = async blockHash => {
         const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
         if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
@@ -150,13 +141,24 @@ describe('PoX-2 tests', () => {
         resolve(dbBlockQuery.result);
       };
       api.datastore.eventEmitter.addListener('blockUpdate', listener);
+
+      // Check if block height already reached
+      const curHeight = await api.datastore.getCurrentBlock();
+      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
+        const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        resolve(dbBlock.result);
+      }
     });
     while (true) {
       const nodeInfo = await client.getInfo();
       if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
         break;
       } else {
-        await timeout(100);
+        await timeout(50);
       }
     }
     return dbBlock;
@@ -164,13 +166,14 @@ describe('PoX-2 tests', () => {
 
   async function standByForPoxCycle(): Promise<void> {
     const firstPoxInfo = await client.getPox();
-    // Wait until end of reward phase
-    const rewardPhaseEndBurnBlock =
-      firstPoxInfo.next_cycle.reward_phase_start_block_height + firstPoxInfo.reward_cycle_length;
-    await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
-    const secondPoxInfo = await client.getPox();
-    expect(secondPoxInfo.current_cycle.id).toBeGreaterThanOrEqual(
-      firstPoxInfo.current_cycle.id - 1
+    let lastPoxInfo: CoreRpcPoxInfo = JSON.parse(JSON.stringify(firstPoxInfo));
+    do {
+      const dbBlock = await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1);
+      lastPoxInfo = await client.getPox();
+    } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
+    expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
+    expect(lastPoxInfo.current_burnchain_block_height).toBe(
+      firstPoxInfo.next_cycle.reward_phase_start_block_height + 1
     );
   }
 
@@ -334,6 +337,7 @@ describe('PoX-2 tests', () => {
     });
 
     test('Wait for current pox cycle to complete', async () => {
+      await standByForPoxCycle();
       await standByForPoxCycle();
     });
 
@@ -1284,9 +1288,7 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
-      burnBlockUnlockHeight++;
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
@@ -1539,9 +1541,7 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
-      burnBlockUnlockHeight++;
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
@@ -1788,9 +1788,7 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
-      burnBlockUnlockHeight++;
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
@@ -2041,9 +2039,7 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
-      burnBlockUnlockHeight++;
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
@@ -2295,9 +2291,7 @@ describe('PoX-2 tests', () => {
     test('stx unlocked - RPC balance endpoint', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-      let burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      // wait one more block due to test flakiness.. Q for stacks-node, why does the account take an extra block for STX to unlock?
-      burnBlockUnlockHeight++;
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
       const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
