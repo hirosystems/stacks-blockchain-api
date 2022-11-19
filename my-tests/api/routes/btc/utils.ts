@@ -14,8 +14,13 @@ const defaultFetchTimeout = 15_000; // 15 seconds
 //   }
 // }
 
+export enum Network {
+  mainnet = 'mainnet',
+  testnet = 'testnet',
+}
+
 /** Provide either a Stacks or Bitcoin address, and receive the Stacks address, Bitcoin address, and network version */
-export function getAddressInfo(addr: string, network: 'mainnet' | 'testnet' = 'mainnet') {
+export function getAddressInfo(addr: string, network: Network = Network.mainnet) {
   let b58addr: string;
   if (addr.match(/^S[0123456789ABCDEFGHJKMNPQRSTVWXYZ]+$/)) {
     b58addr = c32check.c32ToB58(addr);
@@ -32,7 +37,7 @@ export function getAddressInfo(addr: string, network: 'mainnet' | 'testnet' = 'm
   // Check if address needs coerced from one network version to another
   if (network) {
     if (
-      network === 'mainnet' &&
+      network === Network.mainnet &&
       decodedStxAddr[0] !== c32check.versions.mainnet.p2pkh &&
       decodedStxAddr[0] !== c32check.versions.mainnet.p2sh
     ) {
@@ -46,7 +51,7 @@ export function getAddressInfo(addr: string, network: 'mainnet' | 'testnet' = 'm
         );
       }
     } else if (
-      network === 'testnet' &&
+      network === Network.testnet &&
       decodedStxAddr[0] !== c32check.versions.testnet.p2pkh &&
       decodedStxAddr[0] !== c32check.versions.testnet.p2sh
     ) {

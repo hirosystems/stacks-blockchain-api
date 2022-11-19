@@ -1,10 +1,5 @@
 import * as express from 'express';
-import { getBlockFromDataStore, getBlocksWithMetadata } from '../../controllers/db-controller';
-import { has0xPrefix } from '../../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination';
-import { getBlockHeightPathParam, validateRequestHexInput } from '../../query-helpers';
-import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
+import { getETagCacheHandler } from '../../controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
 import * as stacksApiClient from '@stacks/blockchain-api-client';
@@ -16,6 +11,7 @@ import {
   decodeStxTransferOp,
   fetchJson,
   getAddressInfo,
+  Network,
 } from './utils';
 import {
   BLOCKCHAIN_EXPLORER_ENDPOINT,
@@ -23,17 +19,21 @@ import {
   STACKS_API_ENDPOINT,
   STACKS_EXPLORER_ENDPOINT,
 } from './consts';
-import fetch, { RequestInit } from 'node-fetch';
+import fetch from 'node-fetch';
 import BigNumber from 'bignumber.js';
 import { b58ToC32 } from 'c32check';
-import * as btc from 'bitcoinjs-lib';
 
 export function createBtcRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
 
   router.get('/addr/:address', cacheHandler, (req, res) => {
-    const addrInfo = getAddressInfo(req.params.address, req.query.network);
+    if (req.query.network && req.query.network !== 'mainnet' && req.query.network !== 'testnet') {
+      res
+        .status(400)
+        .send("Query string parameter, network, must be set to either 'mainnet' or 'testnet'");
+    }
+    const addrInfo = getAddressInfo(req.params.address, (req.query.network as Network));
     res.json(addrInfo);
   });
 
@@ -41,7 +41,7 @@ export function createBtcRouter(db: PgStore): express.Router {
     '/addr/:address/balances',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const addrInfo = getAddressInfo(req.params.address, 'mainnet');
+      const addrInfo = getAddressInfo(req.params.address, Network.mainnet);
 
       const stxBalanceReq = await fetch(
         `${STACKS_API_ENDPOINT}/extended/v1/address/${addrInfo.stacks}/balances`,
