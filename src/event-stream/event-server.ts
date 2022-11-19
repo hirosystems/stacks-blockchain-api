@@ -79,7 +79,8 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
-import { decodePox2PrintEvent, Pox2ContractIdentifer } from '../pox-helpers';
+import { Pox2ContractIdentifer } from '../pox-helpers';
+import { decodePox2PrintEvent } from './pox2-event-parsing';
 
 async function handleRawEventRequest(
   eventPath: string,
