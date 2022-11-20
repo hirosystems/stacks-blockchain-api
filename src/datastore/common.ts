@@ -529,6 +529,7 @@ export interface DataStoreBlockUpdateData {
   microblocks: DbMicroblock[];
   minerRewards: DbMinerReward[];
   txs: DataStoreTxEventData[];
+  pox_v1_unlock_height?: number;
 }
 
 export interface DataStoreMicroblockUpdateData {

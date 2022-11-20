@@ -329,6 +329,15 @@ export class PgWriteStore extends PgStore {
         });
       }
 
+      if (isCanonical && data.pox_v1_unlock_height !== undefined) {
+        // update the pox_state.pox_v1_unlock_height singleton
+        await sql`
+          UPDATE pox_state 
+          SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
+          WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
+        `;
+      }
+
       // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
 
       // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below

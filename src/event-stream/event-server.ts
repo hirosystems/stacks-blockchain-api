@@ -318,6 +318,7 @@ async function handleBlockMessage(
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(chainId, parsedTxs, msg.events, msg),
+    pox_v1_unlock_height: msg.pox_v1_unlock_height,
   };
 
   await db.update(dbData);

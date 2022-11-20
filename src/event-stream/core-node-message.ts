@@ -227,6 +227,7 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     tx_fees_streamed_produced: string;
   }[];
+  pox_v1_unlock_height?: number;
 }
 
 export interface CoreNodeParsedTxMessage {
