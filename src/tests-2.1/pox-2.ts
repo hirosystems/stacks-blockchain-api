@@ -259,6 +259,7 @@ describe('PoX-2 tests', () => {
     let poxInfo: CoreRpcPoxInfo;
     let contractAddress: string;
     let contractName: string;
+    let unlockBurnHeight: number;
 
     beforeAll(() => {
       seedAccount = accountFromKey(seedKey);
@@ -275,7 +276,7 @@ describe('PoX-2 tests', () => {
       // use half the required min amount of stx
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
       const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
-      const cycleCount = 1;
+      const cycleCount = 5;
       // Create and broadcast a `stack-stx` tx
       const tx1 = await makeContractCall({
         senderKey: seedAccount.secretKey,
@@ -303,6 +304,7 @@ describe('PoX-2 tests', () => {
       // validate stacks-node balance state
       const coreBalance = await client.getAccount(seedAccount.stxAddr);
       expect(BigInt(coreBalance.locked)).toBe(ustxAmount);
+      unlockBurnHeight = coreBalance.unlock_height;
 
       // validate the pox2 event for this tx
       const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendResult1.txId}`);
@@ -320,7 +322,7 @@ describe('PoX-2 tests', () => {
       );
       expect(res.results[0].data).toEqual(
         expect.objectContaining({
-          lock_period: '1',
+          lock_period: '5',
           lock_amount: ustxAmount.toString(),
         })
       );
@@ -353,9 +355,11 @@ describe('PoX-2 tests', () => {
           stacker: seedAccount.stxAddr,
           balance: BigInt(coreBalance.balance).toString(),
           locked: '0',
-          burnchain_unlock_height: '0',
         })
       );
+
+      // the unlock height should now be less than the initial height reported after `stack-stx` operation
+      expect(Number(unlockEvent.burnchain_unlock_height)).toBeLessThan(unlockBurnHeight);
 
       // validate API balance state
       const apiBalance = await fetchGet<AddressStxBalanceResponse>(

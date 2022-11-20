@@ -65,6 +65,7 @@ type PoX2EventData = ClarityValueTuple<{
   'burnchain-unlock-height': ClarityValueUInt;
   data: ClarityValueTuple;
 }>;
+
 interface Pox2PrintEventTypes {
   [Pox2EventName.HandleUnlock]: {
     'first-cycle-locked': ClarityValueUInt;
@@ -195,8 +196,7 @@ export function decodePox2PrintEvent(
         },
       };
       if (PATCH_EVENT_BALANCES) {
-        // TODO: burnchain_unlock_height appears to be correct now.. need to test
-        parsedData.burnchain_unlock_height = 0n;
+        // Note: `burnchain_unlock_height` is correct for `handle-unlock`, and does not need "patched" like the others
         parsedData.balance += parsedData.locked;
         parsedData.locked = 0n;
       }

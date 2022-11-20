@@ -13,6 +13,7 @@ import {
   bnsHexValueToName,
   bnsNameCV,
   getBnsSmartContractId,
+  logger,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -104,6 +105,7 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './pg-notifier';
+import { Pox2EventName } from '../pox-helpers';
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
@@ -2169,27 +2171,40 @@ export class PgStore {
       burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
     }
 
-    let pox2Event: DbPox2Event;
     const pox2EventQuery = await sql<Pox2EventQueryResult[]>`
       SELECT ${sql(POX2_EVENT_COLUMNS)}
       FROM pox2_events
       WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
-      AND block_height <= ${blockHeight} AND (burnchain_unlock_height > ${burnBlockHeight} OR burnchain_unlock_height = 0)
+      AND block_height <= ${blockHeight}
+      AND (burnchain_unlock_height > ${burnBlockHeight} OR name = ${Pox2EventName.HandleUnlock})
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       LIMIT 1
     `;
     if (
-      pox2EventQuery.length >= 1 &&
+      pox2EventQuery.length > 0 &&
       (lockQuery.length === 0 ||
         Number(pox2EventQuery[0].block_height) >= Number(lockQuery[0].block_height))
     ) {
-      pox2Event = parseDbPox2Event(pox2EventQuery[0]);
-      lockTxId = pox2Event.tx_id;
-      locked = pox2Event.locked;
-      burnchainUnlockHeight = Number(pox2Event.burnchain_unlock_height);
-      lockHeight = pox2Event.block_height;
-      const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
-      burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      const pox2Event = parseDbPox2Event(pox2EventQuery[0]);
+      if (pox2Event.name === Pox2EventName.HandleUnlock) {
+        // sanity check, this should never happen
+        if (pox2Event.locked !== 0n) {
+          logger.error(`Pox2 handle-unlock event has a non-zero locked value: ${pox2Event.locked}`);
+        }
+        // on a handle-unlock, set all of the locked stx related property to empty/default
+        lockTxId = '';
+        locked = 0n;
+        burnchainUnlockHeight = 0;
+        lockHeight = 0;
+        burnchainLockHeight = 0;
+      } else {
+        lockTxId = pox2Event.tx_id;
+        locked = pox2Event.locked;
+        burnchainUnlockHeight = Number(pox2Event.burnchain_unlock_height);
+        lockHeight = pox2Event.block_height;
+        const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      }
     }
 
     const minerRewardQuery = await sql<{ amount: string }[]>`
