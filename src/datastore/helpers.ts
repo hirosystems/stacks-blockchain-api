@@ -20,6 +20,8 @@ import {
   DbPox2Event,
   DbPox2HandleUnlockEvent,
   DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
   DbPox2StackExtendEvent,
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
@@ -696,6 +698,34 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     }
     case Pox2EventName.StackAggregationCommit: {
       const eventData: DbPox2StackAggregationCommitEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      const eventData: DbPox2StackAggregationCommitIndexedEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      const eventData: DbPox2StackAggregationIncreaseEvent = {
         ...basePox2Event,
         name: rowName,
         data: {

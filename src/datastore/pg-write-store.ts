@@ -761,6 +761,16 @@ export class PgWriteStore extends PgStore {
         values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
+      case Pox2EventName.StackAggregationCommitIndexed: {
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
+        break;
+      }
+      case Pox2EventName.StackAggregationIncrease: {
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
+        break;
+      }
       default: {
         throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
       }

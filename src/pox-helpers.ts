@@ -22,6 +22,8 @@ import {
   DbPox2EventData,
   DbPox2HandleUnlockEvent,
   DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
   DbPox2StackExtendEvent,
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
@@ -303,6 +305,8 @@ export const enum Pox2EventName {
   DelegateStackIncrease = 'delegate-stack-increase',
   DelegateStackExtend = 'delegate-stack-extend',
   StackAggregationCommit = 'stack-aggregation-commit',
+  StackAggregationCommitIndexed = 'stack-aggregation-commit-indexed',
+  StackAggregationIncrease = 'stack-aggregation-increase',
 }
 
 export const enum Pox2ContractIdentifer {

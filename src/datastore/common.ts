@@ -379,6 +379,22 @@ export interface DbPox2StackAggregationCommitEvent extends DbPox2BaseEventData {
   };
 }
 
+export interface DbPox2StackAggregationCommitIndexedEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationCommitIndexed;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
+export interface DbPox2StackAggregationIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationIncrease;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
 export type DbPox2EventData =
   | DbPox2HandleUnlockEvent
   | DbPox2StackStxEvent
@@ -387,7 +403,9 @@ export type DbPox2EventData =
   | DbPox2DelegateStackStxEvent
   | DbPox2DelegateStackIncreaseEvent
   | DbPox2DelegateStackExtendEvent
-  | DbPox2StackAggregationCommitEvent;
+  | DbPox2StackAggregationCommitEvent
+  | DbPox2StackAggregationCommitIndexedEvent
+  | DbPox2StackAggregationIncreaseEvent;
 
 export type DbPox2Event = DbEventBase & DbPox2EventData;
 

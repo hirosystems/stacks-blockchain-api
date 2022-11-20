@@ -295,6 +295,24 @@ export function parsePox2Event(poxEvent: DbPox2Event) {
         },
       };
     }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
     default:
       throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
   }

@@ -6,6 +6,8 @@ import {
   DbPox2EventData,
   DbPox2HandleUnlockEvent,
   DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
   DbPox2StackExtendEvent,
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
@@ -108,6 +110,16 @@ interface Pox2PrintEventTypes {
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
   [Pox2EventName.StackAggregationCommit]: {
+    'pox-addr': Pox2Addr;
+    'reward-cycle': ClarityValueUInt;
+    'amount-ustx': ClarityValueUInt;
+  };
+  [Pox2EventName.StackAggregationCommitIndexed]: {
+    'pox-addr': Pox2Addr;
+    'reward-cycle': ClarityValueUInt;
+    'amount-ustx': ClarityValueUInt;
+  };
+  [Pox2EventName.StackAggregationIncrease]: {
     'pox-addr': Pox2Addr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
@@ -308,6 +320,30 @@ export function decodePox2PrintEvent(
     case Pox2EventName.StackAggregationCommit: {
       const d = eventData as Pox2PrintEventTypes[typeof eventName];
       const parsedData: DbPox2StackAggregationCommitEvent = {
+        ...baseEventData,
+        name: eventName,
+        data: {
+          reward_cycle: BigInt(d['reward-cycle'].value),
+          amount_ustx: BigInt(d['amount-ustx'].value),
+        },
+      };
+      return parsedData;
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      const d = eventData as Pox2PrintEventTypes[typeof eventName];
+      const parsedData: DbPox2StackAggregationCommitIndexedEvent = {
+        ...baseEventData,
+        name: eventName,
+        data: {
+          reward_cycle: BigInt(d['reward-cycle'].value),
+          amount_ustx: BigInt(d['amount-ustx'].value),
+        },
+      };
+      return parsedData;
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      const d = eventData as Pox2PrintEventTypes[typeof eventName];
+      const parsedData: DbPox2StackAggregationIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
