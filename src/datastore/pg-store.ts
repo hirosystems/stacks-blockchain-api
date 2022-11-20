@@ -3866,7 +3866,6 @@ export class PgStore {
       WHERE microblock_canonical = true AND canonical = true
       AND unlock_height <= ${current_burn_height} AND unlock_height > ${previous_burn_height}
       ORDER BY locked_address, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT 1
     `;
 
     const txIdQuery = await sql<{ tx_id: string }[]>`
@@ -3889,18 +3888,6 @@ export class PgStore {
     });
 
     return result;
-  }
-
-  async getStxUnlockHeightAtTransaction(txId: string): Promise<FoundOrNot<number>> {
-    const lockQuery = await this.sql<{ unlock_height: number }[]>`
-      SELECT unlock_height
-      FROM stx_lock_events
-      WHERE canonical = true AND tx_id = ${txId}
-    `;
-    if (lockQuery.length > 0) {
-      return { found: true, result: lockQuery[0].unlock_height };
-    }
-    return { found: false };
   }
 
   async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
