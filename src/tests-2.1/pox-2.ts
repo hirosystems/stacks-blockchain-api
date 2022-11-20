@@ -214,8 +214,6 @@ describe('PoX-2 tests', () => {
 
   async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
     const firstPoxInfo = await client.getPox();
-    // works:
-    // await standByUntilBurnBlock(firstPoxInfo.next_cycle.prepare_phase_start_block_height + 1);
     await standByUntilBurnBlock(firstPoxInfo.next_cycle.prepare_phase_start_block_height);
     const lastPoxInfo = await client.getPox();
     const info = await client.getInfo();
