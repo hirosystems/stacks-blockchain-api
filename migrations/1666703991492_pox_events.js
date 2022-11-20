@@ -182,3 +182,9 @@ exports.up = pgm => {
   pgm.createIndex('pox2_events', 'delegator');
   pgm.createIndex('pox2_events', 'name');
 }
+
+/** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+exports.down = pgm => {
+  pgm.dropTable('pox_state');
+  pgm.dropTable('pox2_events');
+}
