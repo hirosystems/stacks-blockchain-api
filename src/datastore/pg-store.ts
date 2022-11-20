@@ -298,6 +298,26 @@ export class PgStore {
     });
   }
 
+  async getPox1UnlockHeightInternal(sql: PgSqlClient): Promise<FoundOrNot<number>> {
+    const query = await sql<{ pox_v1_unlock_height: number }[]>`
+      SELECT pox_v1_unlock_height
+      FROM pox_state
+      LIMIt 1
+    `;
+    if (query.length === 0) {
+      return { found: false };
+    }
+    const unlockHeight = query[0].pox_v1_unlock_height;
+    if (unlockHeight === 0) {
+      return { found: false };
+    }
+    return { found: true, result: unlockHeight };
+  }
+
+  async getPox1UnlockHeight(): Promise<FoundOrNot<number>> {
+    return this.getPox1UnlockHeightInternal(this.sql);
+  }
+
   async getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
     const result = await this.sql<
       {
@@ -2138,37 +2158,51 @@ export class PgStore {
         AND ((sender_address = ${stxAddress} AND sponsored = false) OR (sponsor_address = ${stxAddress} AND sponsored = true))
         AND block_height <= ${blockHeight}
     `;
-    const lockQuery = await sql<
-      {
-        locked_amount: string;
-        unlock_height: string;
-        block_height: string;
-        tx_id: string;
-      }[]
-    >`
-      SELECT locked_amount, unlock_height, block_height, tx_id
-      FROM stx_lock_events
-      WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
-      AND block_height <= ${blockHeight} AND unlock_height > ${burnBlockHeight}
-      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT 1
-    `;
+
     let lockTxId: string = '';
     let locked: bigint = 0n;
     let lockHeight = 0;
     let burnchainLockHeight = 0;
     let burnchainUnlockHeight = 0;
-    if (lockQuery.length > 1) {
-      throw new Error(
-        `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
-      );
-    } else if (lockQuery.length === 1) {
-      lockTxId = lockQuery[0].tx_id;
-      locked = BigInt(lockQuery[0].locked_amount);
-      burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
-      lockHeight = parseInt(lockQuery[0].block_height);
-      const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
-      burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+
+    let includePox1State = true;
+    const v1UnlockHeight = await this.getPox1UnlockHeightInternal(sql);
+    if (v1UnlockHeight.found) {
+      if (burnBlockHeight > v1UnlockHeight.result) {
+        includePox1State = false;
+      }
+    }
+
+    // Once the pox_v1_unlock_height is reached, stop using `stx_lock_events` to determinel locked state,
+    // because it includes pox-v1 entries. We only care about pox-v2, so only need to query `pox2_events`.
+    if (includePox1State) {
+      const lockQuery = await sql<
+        {
+          locked_amount: string;
+          unlock_height: string;
+          block_height: string;
+          tx_id: string;
+        }[]
+      >`
+        SELECT locked_amount, unlock_height, block_height, tx_id
+        FROM stx_lock_events
+        WHERE canonical = true AND microblock_canonical = true AND locked_address = ${stxAddress}
+        AND block_height <= ${blockHeight} AND unlock_height > ${burnBlockHeight}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT 1
+      `;
+      if (lockQuery.length > 1) {
+        throw new Error(
+          `stx_lock_events event query for ${stxAddress} should return zero or one rows but returned ${lockQuery.length}`
+        );
+      } else if (lockQuery.length === 1) {
+        lockTxId = lockQuery[0].tx_id;
+        locked = BigInt(lockQuery[0].locked_amount);
+        burnchainUnlockHeight = parseInt(lockQuery[0].unlock_height);
+        lockHeight = parseInt(lockQuery[0].block_height);
+        const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      }
     }
 
     const pox2EventQuery = await sql<Pox2EventQueryResult[]>`
@@ -2180,11 +2214,7 @@ export class PgStore {
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       LIMIT 1
     `;
-    if (
-      pox2EventQuery.length > 0 &&
-      (lockQuery.length === 0 ||
-        Number(pox2EventQuery[0].block_height) >= Number(lockQuery[0].block_height))
-    ) {
+    if (pox2EventQuery.length > 0) {
       const pox2Event = parseDbPox2Event(pox2EventQuery[0]);
       if (pox2Event.name === Pox2EventName.HandleUnlock) {
         // sanity check, this should never happen
