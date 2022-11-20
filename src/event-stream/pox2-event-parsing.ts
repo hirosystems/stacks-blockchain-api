@@ -148,7 +148,6 @@ export function decodePox2PrintEvent(
   network: 'mainnet' | 'testnet' | 'regtest'
 ): DbPox2EventData | null {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
-  console.error('__GOT DECODED POX2 EVENT__', decoded.repr);
   if (decoded.type_id === ClarityTypeID.ResponseError) {
     logger.info(`Received ResponseError when decoding Pox2 print event: ${decoded.repr}`);
     return null;
