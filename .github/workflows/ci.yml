@@ -404,7 +404,13 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  test-2_1-transition-suite-1:
+  test-2_1-transition:
+    strategy:
+      matrix:
+        suite: [
+          Stacking on pox-2 after pox-1 force unlock,
+          Consistent API and RPC account balances through pox transitions
+        ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -441,66 +447,7 @@ jobs:
           npm run devenv:logs:2.1-transition -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.1-transition -- -t "Consistent API and RPC account balances through pox transitions"
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop:2.1-transition
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-2_1-transition-suite-2:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Use Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy:2.1-transition -- -d
-          npm run devenv:logs:2.1-transition -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:2.1-transition -- -t "Stacking on pox-2 after pox-1 force unlock"
+        run: npm run test:2.1-transition -- -t "${{ matrix.suite }}"
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -765,8 +712,7 @@ jobs:
     needs:
       - test
       - test-2_1
-      - test-2_1-transition-suite-1
-      - test-2_1-transition-suite-2
+      - test-2_1-transition
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction
