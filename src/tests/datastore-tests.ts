@@ -4200,7 +4200,12 @@ describe('postgres datastore', () => {
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
-    expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    expect(chainTip1).toEqual({
+      blockHash: '0x33',
+      blockHeight: 3,
+      indexBlockHash: '0xcc',
+      burnBlockHeight: 123,
+    });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(1);
     const names = await db.getNamespaceNamesList({
