@@ -29,6 +29,7 @@ export function createStatusRouter(db: PgStore): express.Router {
           index_block_hash: chainTip.result.indexBlockHash,
           microblock_hash: chainTip.result.microblockHash,
           microblock_sequence: chainTip.result.microblockSequence,
+          burn_block_height: chainTip.result.burnBlockHeight,
         };
       }
       setETagCacheHeaders(res);

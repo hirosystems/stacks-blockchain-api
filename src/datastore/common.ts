@@ -732,6 +732,7 @@ export interface DbChainTip {
   blockHash: string;
   microblockHash?: string;
   microblockSequence?: number;
+  burnBlockHeight: number;
 }
 
 export interface BlockQueryResult {

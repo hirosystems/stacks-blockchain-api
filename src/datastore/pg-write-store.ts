@@ -133,7 +133,12 @@ export class PgWriteStore extends PgStore {
 
   async getChainTip(
     sql: PgSqlClient
-  ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
+  ): Promise<{
+    blockHeight: number;
+    blockHash: string;
+    indexBlockHash: string;
+    burnBlockHeight: number;
+  }> {
     if (!this.isEventReplay) {
       return super.getChainTip(sql);
     }
@@ -145,9 +150,10 @@ export class PgWriteStore extends PgStore {
         block_height: number;
         block_hash: string;
         index_block_hash: string;
+        burn_block_height: number;
       }[]
     >`
-      SELECT block_height, block_hash, index_block_hash
+      SELECT block_height, block_hash, index_block_hash, burn_block_height
       FROM blocks
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
     `;
@@ -156,6 +162,7 @@ export class PgWriteStore extends PgStore {
       blockHeight: height,
       blockHash: currentTipBlock[0]?.block_hash ?? '',
       indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
+      burnBlockHeight: currentTipBlock[0]?.burn_block_height ?? 0,
     };
   }
 

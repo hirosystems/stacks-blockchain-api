@@ -1636,6 +1636,10 @@ export interface ChainTip {
    * the current microblock sequence number
    */
   microblock_sequence?: number;
+  /**
+   * the current burn chain block height
+   */
+  burn_block_height: number;
 }
 /**
  * GET request that returns network target block times

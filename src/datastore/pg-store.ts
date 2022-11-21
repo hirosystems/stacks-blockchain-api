@@ -198,19 +198,26 @@ export class PgStore {
 
   async getChainTip(
     sql: PgSqlClient
-  ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
+  ): Promise<{
+    blockHeight: number;
+    blockHash: string;
+    indexBlockHash: string;
+    burnBlockHeight: number;
+  }> {
     const currentTipBlock = await sql<
       {
         block_height: number;
         block_hash: string;
         index_block_hash: string;
+        burn_block_height: number;
       }[]
-    >`SELECT block_height, block_hash, index_block_hash FROM chain_tip`;
+    >`SELECT block_height, block_hash, index_block_hash, burn_block_height FROM chain_tip`;
     const height = currentTipBlock[0]?.block_height ?? 0;
     return {
       blockHeight: height,
       blockHash: currentTipBlock[0]?.block_hash ?? '',
       indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
+      burnBlockHeight: currentTipBlock[0]?.burn_block_height ?? 0,
     };
   }
 
@@ -326,8 +333,9 @@ export class PgStore {
         block_hash: string;
         microblock_hash: string | null;
         microblock_sequence: number | null;
+        burn_block_height: number;
       }[]
-    >`SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence
+    >`SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence, burn_block_height
       FROM chain_tip`;
     if (result.length === 0) {
       return { found: false } as const;
@@ -339,6 +347,7 @@ export class PgStore {
       blockHash: row.block_hash,
       microblockHash: row.microblock_hash === null ? undefined : row.microblock_hash,
       microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
+      burnBlockHeight: row.burn_block_height,
     };
     return { found: true, result: chainTipResult };
   }

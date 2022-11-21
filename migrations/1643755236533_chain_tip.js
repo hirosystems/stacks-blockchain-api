@@ -2,7 +2,7 @@
 exports.up = pgm => {
   pgm.createMaterializedView('chain_tip', {}, `
     WITH block_tip AS (
-      SELECT block_height, block_hash, index_block_hash
+      SELECT block_height, block_hash, index_block_hash, burn_block_height
         FROM blocks
         WHERE block_height = (SELECT MAX(block_height) FROM blocks WHERE canonical = TRUE)
     ),
