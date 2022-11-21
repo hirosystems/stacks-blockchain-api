@@ -246,6 +246,31 @@ describe('PoX-2 tests', () => {
     return nextCycleInfo;
   }
 
+  async function standByForAccountUnlock(address: string): Promise<void> {
+    while (true) {
+      const poxInfo = await client.getPox();
+      const info = await client.getInfo();
+      const accountInfo = await client.getAccount(address);
+      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${address}/stx`
+      );
+      const status = await fetchGet<ServerStatusResponse>('/extended/v1/status');
+      console.log({
+        poxInfo,
+        contract_versions: poxInfo.contract_versions,
+        info,
+        status,
+        accountInfo,
+        addrBalance,
+      });
+      expect(BigInt(addrBalance.locked)).toBe(BigInt(accountInfo.locked));
+      if (BigInt(accountInfo.locked) === 0n) {
+        break;
+      }
+      await standByUntilBlock(info.stacks_tip_height + 1);
+    }
+  }
+
   async function fetchGet<TRes>(endpoint: string) {
     const result = await supertest(api.server).get(endpoint);
     expect(result.status).toBe(200);
