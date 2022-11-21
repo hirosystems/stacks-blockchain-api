@@ -811,6 +811,7 @@ export class PgWriteStore extends PgStore {
       locked_amount: event.locked_amount.toString(),
       unlock_height: event.unlock_height,
       locked_address: event.locked_address,
+      contract_name: event.contract_name,
     };
     await sql`
       INSERT INTO stx_lock_events ${sql(values)}

@@ -421,6 +421,7 @@ export interface DbStxLockEvent extends DbEventBase {
   locked_amount: bigint;
   unlock_height: number;
   locked_address: string;
+  contract_name: string;
 }
 
 export enum DbAssetEventTypeId {
@@ -1159,6 +1160,7 @@ export interface StxLockEventInsertValues {
   locked_amount: PgNumeric;
   unlock_height: number;
   locked_address: string;
+  contract_name: string;
 }
 
 export interface Pox2EventQueryResult {

@@ -485,6 +485,8 @@ function parseDataStoreTxEventData(
           locked_amount: BigInt(event.stx_lock_event.locked_amount),
           unlock_height: Number(event.stx_lock_event.unlock_height),
           locked_address: event.stx_lock_event.locked_address,
+          // if not available, then we can correctly assume pox-v1
+          contract_name: event.stx_lock_event.contract_identifier?.split('.')[1] ?? 'pox',
         };
         dbTx.stxLockEvents.push(entry);
         break;

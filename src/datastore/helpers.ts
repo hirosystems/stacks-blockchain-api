@@ -435,6 +435,7 @@ export function parseDbEvents(
     locked_amount: string;
     unlock_height: string;
     locked_address: string;
+    contract_name: string;
   }[],
   stxResults: {
     event_index: number;
@@ -502,6 +503,7 @@ export function parseDbEvents(
       locked_amount: BigInt(result.locked_amount),
       unlock_height: Number(result.unlock_height),
       locked_address: result.locked_address,
+      contract_name: result.contract_name,
     };
     events[rowIndex++] = event;
   }

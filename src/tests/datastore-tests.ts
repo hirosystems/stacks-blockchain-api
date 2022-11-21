@@ -396,6 +396,7 @@ describe('postgres datastore', () => {
         locked_amount: amount,
         unlock_height: unlockHeight ?? tx.block_height + 200,
         locked_address: sender,
+        contract_name: 'pox',
       };
       return stxEvent;
     };
@@ -3649,6 +3650,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: 20,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     // inserts blocks directly -- just runs sql insert without any reorg handling
@@ -3878,6 +3880,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: block1.block_height + 100000,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     const stxLockEvent2: DbStxLockEvent = {
@@ -3887,6 +3890,7 @@ describe('postgres datastore', () => {
       locked_amount: 45n,
       unlock_height: block2.block_height + 100000,
       locked_address: 'locked-addr2',
+      contract_name: 'pox',
     };
 
     await db.update({
