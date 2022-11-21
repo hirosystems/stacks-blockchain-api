@@ -2214,12 +2214,18 @@ export class PgStore {
       }
     }
 
+    // Query for the latest lock event that still applies to the current burn block height.
+    // Special case for `handle-unlock` which should be returned if it is the last received event.
     const pox2EventQuery = await sql<Pox2EventQueryResult[]>`
       SELECT ${sql(POX2_EVENT_COLUMNS)}
       FROM pox2_events
       WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
       AND block_height <= ${blockHeight}
-      AND (burnchain_unlock_height >= ${burnBlockHeight} OR name = ${Pox2EventName.HandleUnlock})
+      AND (
+        (name != ${Pox2EventName.HandleUnlock} AND burnchain_unlock_height >= ${burnBlockHeight})
+        OR
+        (name = ${Pox2EventName.HandleUnlock} AND burnchain_unlock_height < ${burnBlockHeight})
+      )
       ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       LIMIT 1
     `;

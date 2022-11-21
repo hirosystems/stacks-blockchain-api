@@ -35,6 +35,7 @@ import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
+  ServerStatusResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { RPCClient } from 'rpc-bitcoin';
 import bignumber from 'bignumber.js';
@@ -245,6 +246,34 @@ describe('PoX-2 tests', () => {
     return nextCycleInfo;
   }
 
+  async function standByForAccountUnlock(address: string): Promise<void> {
+    while (true) {
+      const poxInfo = await client.getPox();
+      const info = await client.getInfo();
+      const accountInfo = await client.getAccount(address);
+      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${address}/stx`
+      );
+      const status = await fetchGet<ServerStatusResponse>('/extended/v1/status');
+      console.log({
+        poxInfo,
+        contract_versions: poxInfo.contract_versions,
+        info,
+        status,
+        accountInfo,
+        addrBalance,
+      });
+      if (BigInt(addrBalance.locked) !== BigInt(accountInfo.locked)) {
+        console.log('womp');
+      }
+      expect(BigInt(addrBalance.locked)).toBe(BigInt(accountInfo.locked));
+      if (BigInt(accountInfo.locked) === 0n) {
+        break;
+      }
+      await standByUntilBlock(info.stacks_tip_height + 1);
+    }
+  }
+
   async function fetchGet<TRes>(endpoint: string) {
     const result = await supertest(api.server).get(endpoint);
     expect(result.status).toBe(200);
@@ -327,7 +356,6 @@ describe('PoX-2 tests', () => {
   describe('PoX-2 - handle-unlock for missed reward slots', () => {
     const seedKey = testnetKeys[3].secretKey;
     let seedAccount: Account;
-    let poxInfo: CoreRpcPoxInfo;
     let contractAddress: string;
     let contractName: string;
     let unlockBurnHeight: number;
@@ -337,14 +365,14 @@ describe('PoX-2 tests', () => {
     });
 
     test('Get pox-info', async () => {
-      poxInfo = await client.getPox();
+      const poxInfo = await standByForNextPoxCycle();
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
       expect(contractName).toBe('pox-2');
-      await standByUntilBurnBlock(poxInfo.current_burnchain_block_height! + 1);
     });
 
     test('Perform stack-stx with less than min required stacking amount', async () => {
       // use half the required min amount of stx
+      const poxInfo = await client.getPox();
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
       const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       const cycleCount = 5;
@@ -402,10 +430,18 @@ describe('PoX-2 tests', () => {
       expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
 
-    test('Wait for current pox cycle to complete', async () => {
-      await standByForPoxCycle();
-      const nextPoxInfo = await client.getPox();
-      await standByUntilBurnBlock(nextPoxInfo.next_cycle.prepare_phase_start_block_height - 1);
+    test('Wait for account to unlock', async () => {
+      const firstPoxInfo = await client.getPox();
+      const firstInfo = await client.getInfo();
+      await standByForAccountUnlock(seedAccount.stxAddr);
+      const lastPoxInfo = await client.getPox();
+      const lastInfo = await client.getInfo();
+      console.log({
+        firstPoxInfo,
+        lastPoxInfo,
+        firstInfo,
+        lastInfo,
+      });
     });
 
     test('Validate pox2 handle-unlock for stacker', async () => {
@@ -442,6 +478,45 @@ describe('PoX-2 tests', () => {
       // TODO: validate Stacks RPC account locked state matches the extended endpoint after each operation
       const res = await fetchGet(`/extended/v1/pox2_events`);
       expect(res).toBeDefined();
+    });
+
+    test('Perform stack-stx in time for next cycle', async () => {
+      // use half the required min amount of stx
+      const poxInfo = await client.getPox();
+      const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+      const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
+      const cycleCount = 1;
+      // Create and broadcast a `stack-stx` tx
+      const tx1 = await makeContractCall({
+        senderKey: seedAccount.secretKey,
+        contractAddress,
+        contractName,
+        functionName: 'stack-stx',
+        functionArgs: [
+          uintCV(ustxAmount.toString()),
+          seedAccount.poxAddrClar,
+          uintCV(burnBlockHeight),
+          uintCV(cycleCount),
+        ],
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 10000,
+        validateWithAbi: false,
+      });
+      const sendResult1 = await client.sendTransaction(tx1.serialize());
+      const txStandby1 = await standByForTxSuccess(sendResult1.txId);
+
+      // validate stacks-node balance state
+      const coreBalance = await client.getAccount(seedAccount.stxAddr);
+      expect(BigInt(coreBalance.locked)).toBe(ustxAmount);
+      unlockBurnHeight = coreBalance.unlock_height;
+
+      // validate API balance state
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${seedAccount.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.locked)).toBe(BigInt(coreBalance.locked));
+      expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
     });
   });
 
