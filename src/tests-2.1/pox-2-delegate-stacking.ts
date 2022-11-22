@@ -400,10 +400,4 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
   });
-
-  test('Check pox2 events endpoint', async () => {
-    // TODO: check the extended rewards endpoints and the bitcoind RPC balance endpoints
-    const res = await fetchGet(`/extended/v1/pox2_events`);
-    expect(res).toBeDefined();
-  });
 });
