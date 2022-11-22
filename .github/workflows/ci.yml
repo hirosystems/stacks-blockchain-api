@@ -409,7 +409,8 @@ jobs:
       matrix:
         suite: [
           Stacking on pox-2 after pox-1 force unlock,
-          Consistent API and RPC account balances through pox transitions
+          Consistent API and RPC account balances through pox transitions,
+          Rosetta - Stacks 2.1 transition tests,
         ]
     runs-on: ubuntu-latest
     steps:

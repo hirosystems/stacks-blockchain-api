@@ -17,6 +17,10 @@ import {
   tupleCV,
   uintCV,
   ClarityValue,
+  ChainID,
+  deserializeTransaction,
+  TransactionSigner,
+  createStacksPrivateKey,
 } from '@stacks/transactions';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
@@ -35,6 +39,18 @@ import {
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
+  NetworkIdentifier,
+  RosettaBlockRequest,
+  RosettaBlockResponse,
+  RosettaConstructionMetadataRequest,
+  RosettaConstructionMetadataResponse,
+  RosettaConstructionPayloadResponse,
+  RosettaConstructionPayloadsRequest,
+  RosettaConstructionPreprocessRequest,
+  RosettaConstructionPreprocessResponse,
+  RosettaConstructionSubmitRequest,
+  RosettaConstructionSubmitResponse,
+  RosettaOperation,
   ServerStatusResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { RPCClient } from 'rpc-bitcoin';
@@ -49,6 +65,7 @@ import {
   ClarityValueUInt,
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
+import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
 
 type Account = {
   secretKey: string;
@@ -276,6 +293,24 @@ describe('PoX-2 tests', () => {
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     return result.body as TRes;
+  }
+
+  async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
+    const result = await supertest(api.server)
+      .post(endpoint)
+      .send(body as any);
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    return result.body as TRes;
+  }
+
+  async function getRosettaBlockByBurnBlockHeight(burnBlockHeight: number) {
+    const unlockDbBlock = await api.datastore.getBlockByBurnBlockHeight(burnBlockHeight);
+    expect(unlockDbBlock.found).toBeTruthy();
+    return fetchRosetta<RosettaBlockRequest, RosettaBlockResponse>('/rosetta/v1/block', {
+      network_identifier: { blockchain: 'stacks', network: 'testnet' },
+      block_identifier: { hash: unlockDbBlock.result!.block_hash },
+    });
   }
 
   async function readOnlyFnCall<T extends NativeClarityValue>(
@@ -686,6 +721,211 @@ describe('PoX-2 tests', () => {
       expect(addrBalance.burnchain_unlock_height).toBe(0);
       expect(addrBalance.lock_height).toBe(0);
       expect(addrBalance.lock_tx_id).toBe('');
+    });
+  });
+
+  describe('Rosetta - Stacks 2.1 transition tests', () => {
+    const account = testnetKeys[0];
+    let poxInfo: CoreRpcPoxInfo;
+    let ustxAmount: bigint;
+    let btcAddr: string;
+    let btcAddrTestnet: string;
+    const rosettaNetwork: NetworkIdentifier = {
+      blockchain: RosettaConstants.blockchain,
+      network: getRosettaNetworkName(ChainID.Testnet),
+    };
+
+    test('stack-stx in pox-v1', async () => {
+      btcAddr = getBitcoinAddressFromKey({
+        privateKey: account.secretKey,
+        network: 'regtest',
+        addressFormat: 'p2pkh',
+      });
+      btcAddrTestnet = getBitcoinAddressFromKey({
+        privateKey: account.secretKey,
+        network: 'testnet',
+        addressFormat: 'p2pkh',
+      });
+      await bitcoinRpcClient.importaddress({ address: btcAddr, label: btcAddr, rescan: false });
+      const cycleCount = 1;
+
+      poxInfo = await client.getPox();
+      ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+
+      const stackingOperations: RosettaOperation[] = [
+        {
+          operation_identifier: {
+            index: 0,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'stack_stx',
+          account: {
+            address: account.stacksAddress,
+            metadata: {},
+          },
+          amount: {
+            value: '-' + ustxAmount.toString(),
+            currency: { symbol: 'STX', decimals: 6 },
+            metadata: {},
+          },
+          metadata: {
+            number_of_cycles: cycleCount,
+            pox_addr: btcAddr,
+          },
+        },
+        {
+          operation_identifier: {
+            index: 1,
+            network_index: 0,
+          },
+          related_operations: [],
+          type: 'fee',
+          account: {
+            address: account.stacksAddress,
+            metadata: {},
+          },
+          amount: {
+            value: '10000',
+            currency: { symbol: 'STX', decimals: 6 },
+          },
+        },
+      ];
+
+      // preprocess
+      const preprocessResult = await fetchRosetta<
+        RosettaConstructionPreprocessRequest,
+        RosettaConstructionPreprocessResponse
+      >('/rosetta/v1/construction/preprocess', {
+        network_identifier: rosettaNetwork,
+        operations: stackingOperations,
+        metadata: {},
+        max_fee: [
+          {
+            value: '12380898',
+            currency: { symbol: 'STX', decimals: 6 },
+            metadata: {},
+          },
+        ],
+        suggested_fee_multiplier: 1,
+      });
+
+      // metadata
+      const resultMetadata = await fetchRosetta<
+        RosettaConstructionMetadataRequest,
+        RosettaConstructionMetadataResponse
+      >('/rosetta/v1/construction/metadata', {
+        network_identifier: rosettaNetwork,
+        options: preprocessResult.options!, // using options returned from preprocess
+        public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
+      });
+
+      // payload
+      const payloadsResult = await fetchRosetta<
+        RosettaConstructionPayloadsRequest,
+        RosettaConstructionPayloadResponse
+      >('/rosetta/v1/construction/payloads', {
+        network_identifier: rosettaNetwork,
+        operations: stackingOperations, // using same operations as preprocess request
+        metadata: resultMetadata.metadata, // using metadata from metadata response
+        public_keys: [{ hex_bytes: account.pubKey, curve_type: 'secp256k1' }],
+      });
+
+      // sign tx
+      const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
+      const signer = new TransactionSigner(stacksTx);
+      signer.signOrigin(createStacksPrivateKey(account.secretKey));
+      const signedSerializedTx = stacksTx.serialize().toString('hex');
+      const expectedTxId = '0x' + stacksTx.txid();
+      const txStandby = standByForTx(expectedTxId);
+
+      // submit
+      const submitResult = await fetchRosetta<
+        RosettaConstructionSubmitRequest,
+        RosettaConstructionSubmitResponse
+      >('/rosetta/v1/construction/submit', {
+        network_identifier: rosettaNetwork,
+        signed_transaction: '0x' + signedSerializedTx,
+      });
+
+      expect(resultMetadata.metadata.contract_name).toBe('pox');
+      expect(resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+      expect(submitResult.transaction_identifier.hash).toBe(expectedTxId);
+
+      const dbTx = await txStandby;
+      expect(dbTx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox');
+      await standByUntilBlock(dbTx.block_height);
+    });
+
+    test('Verify expected amount of STX are locked', async () => {
+      const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
+      expect(BigInt(rpcAccountInfo1.locked)).toBe(ustxAmount);
+    });
+
+    test('Verify PoX rewards - Bitcoin RPC', async () => {
+      // Wait until end of reward phase
+      const rewardPhaseEndBurnBlock =
+        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
+      await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+
+      const rewards = await fetchGet<BurnchainRewardListResponse>(
+        `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
+      );
+      const firstReward = rewards.results.sort(
+        (a, b) => a.burn_block_height - b.burn_block_height
+      )[0];
+
+      let received: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+        txid: string;
+        confirmations: number;
+      }[] = await bitcoinRpcClient.listtransactions({
+        label: btcAddr,
+        include_watchonly: true,
+      });
+      received = received.filter(r => r.address === btcAddr);
+      expect(received.length).toBe(1);
+      expect(received[0].category).toBe('receive');
+      expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
+      expect(sats).toBe(firstReward.reward_amount);
+    });
+
+    test('Rosetta unlock events from pox-v1', async () => {
+      // unlock_height: 115
+      const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
+      const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
+      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
+
+      // Wait until account has unlocked (finished Stacking cycles)
+      // (wait one more block due to test flakiness..)
+      await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
+
+      // Check that STX are no longer reported as locked by the RPC endpoints:
+      const rpcAccountInfo = await client.getAccount(account.stacksAddress);
+      expect(BigInt(rpcAccountInfo.locked)).toBe(0n);
+      expect(rpcAccountInfo.unlock_height).toBe(0);
+
+      // Get Stacks block associated with the burn block `unlock_height` reported by RPC
+      const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height);
+
+      // Ensure Rosetta block contains a stx_unlock operation
+      const unlockOp = unlockRstaBlock
+        .block!.transactions.flatMap(t => t.operations)
+        .find(op => op.type === 'stx_unlock')!;
+      expect(unlockOp).toBeDefined();
+      expect(unlockOp).toEqual(
+        expect.objectContaining({
+          type: 'stx_unlock',
+          status: 'success',
+          account: { address: account.stacksAddress },
+          amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
+        })
+      );
     });
   });
 });
