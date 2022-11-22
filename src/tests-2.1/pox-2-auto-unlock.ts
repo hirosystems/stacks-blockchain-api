@@ -150,14 +150,6 @@ describe('PoX-2 - Auto unlock', () => {
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalance.unlock_height);
   });
 
-  test('Check pox2 events endpoint', async () => {
-    // TODO: endpoint to get pox2_events for a specific address, then test the parsed events after each operation
-    // TODO: check the extended rewards endpoints and the bitcoind RPC balance endpoints
-    // TODO: validate Stacks RPC account locked state matches the extended endpoint after each operation
-    const res = await fetchGet(`/extended/v1/pox2_events`);
-    expect(res).toBeDefined();
-  });
-
   test('Perform stack-stx in time for next cycle', async () => {
     // use half the required min amount of stx
     const poxInfo = await client.getPox();
