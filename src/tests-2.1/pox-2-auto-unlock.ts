@@ -42,10 +42,11 @@ describe('PoX-2 - Auto unlock', () => {
     expect(contractName).toBe('pox-2');
   });
 
+  let ustxAmount: bigint;
   test('Perform stack-stx with less than min required stacking amount', async () => {
     // use half the required min amount of stx
     const poxInfo = await client.getPox();
-    const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
+    ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
     const burnBlockHeight = poxInfo.current_burnchain_block_height as number;
     const cycleCount = 5;
     // Create and broadcast a `stack-stx` tx
@@ -134,7 +135,7 @@ describe('PoX-2 - Auto unlock', () => {
         name: 'handle-unlock',
         stacker: seedAccount.stxAddr,
         balance: BigInt(coreBalance.balance).toString(),
-        locked: '0',
+        locked: ustxAmount.toString(),
       })
     );
 

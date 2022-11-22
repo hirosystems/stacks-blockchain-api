@@ -209,7 +209,6 @@ export function decodePox2PrintEvent(
       if (PATCH_EVENT_BALANCES) {
         // Note: `burnchain_unlock_height` is correct for `handle-unlock`, and does not need "patched" like the others
         parsedData.balance += parsedData.locked;
-        parsedData.locked = 0n;
       }
       return parsedData;
     }

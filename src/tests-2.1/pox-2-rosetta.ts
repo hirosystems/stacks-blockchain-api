@@ -522,7 +522,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
         type: 'stx_unlock',
         status: 'success',
         account: { address: account.stxAddr },
-        amount: { value: '0', currency: { symbol: 'STX', decimals: 6 } },
+        amount: { value: ustxAmount.toString(), currency: { symbol: 'STX', decimals: 6 } },
       })
     );
 
