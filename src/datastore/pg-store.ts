@@ -3935,15 +3935,24 @@ export class PgStore {
       FROM pox2_events
       WHERE canonical = true AND microblock_canonical = true
       AND block_height <= ${block.block_height}
-      AND burnchain_unlock_height <= ${current_burn_height} AND burnchain_unlock_height > ${previous_burn_height}
-      AND name IN ${sql([
-        Pox2EventName.StackStx,
-        Pox2EventName.StackIncrease,
-        Pox2EventName.StackExtend,
-        Pox2EventName.DelegateStackStx,
-        Pox2EventName.DelegateStackIncrease,
-        Pox2EventName.DelegateStackExtend,
-      ])}
+      AND (
+        (
+          burnchain_unlock_height <= ${current_burn_height}
+          AND burnchain_unlock_height > ${previous_burn_height}
+          AND name IN ${sql([
+            Pox2EventName.StackStx,
+            Pox2EventName.StackIncrease,
+            Pox2EventName.StackExtend,
+            Pox2EventName.DelegateStackStx,
+            Pox2EventName.DelegateStackIncrease,
+            Pox2EventName.DelegateStackExtend,
+          ])}
+        ) OR (
+          name = ${Pox2EventName.HandleUnlock}
+          AND burnchain_unlock_height < ${current_burn_height}
+          AND burnchain_unlock_height >= ${previous_burn_height}
+        )
+      )
       ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       LIMIT 1
     `;

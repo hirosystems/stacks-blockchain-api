@@ -103,17 +103,22 @@ describe('PoX-2 - Auto unlock', () => {
   });
 
   test('Wait for account to unlock', async () => {
+    const firstAccountInfo = await client.getAccount(seedAccount.stxAddr);
     const firstPoxInfo = await client.getPox();
     const firstInfo = await client.getInfo();
     await standByForAccountUnlock(seedAccount.stxAddr);
     const lastPoxInfo = await client.getPox();
     const lastInfo = await client.getInfo();
+    const lastAccountInfo = await client.getAccount(seedAccount.stxAddr);
     console.log({
       firstPoxInfo,
       lastPoxInfo,
       firstInfo,
       lastInfo,
+      firstAccountInfo,
+      lastAccountInfo,
     });
+    expect(lastPoxInfo.current_burnchain_block_height).toBeLessThan(firstAccountInfo.unlock_height);
   });
 
   test('Validate pox2 handle-unlock for stacker', async () => {
