@@ -79,7 +79,7 @@ import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { StacksNetwork } from '@stacks/network';
 import { decodeClarityValue } from 'stacks-encoding-native-js';
 
-describe('Rosetta - Stacks 2.1 tests', () => {
+describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   let db: PgWriteStore;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
@@ -88,7 +88,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
   let btcAddr: string;
   let btcAddrTestnet: string;
   const seedAccount = testnetKeys[0];
-  const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
+  const accountKey = 'f4c5f7b724799370bea997b36ec922f1817e40637cb91d03ea14c8172b4ad9af01';
   let account: {
     stxAddr: string;
     secretKey: string;
@@ -98,7 +98,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
   let lastPoxInfo: CoreRpcPoxInfo;
   let ustxAmount: bigint;
 
-  beforeAll(async () => {
+  beforeAll(() => {
     const testEnv: TestEnvContext = (global as any).testEnv;
     ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
 
@@ -121,8 +121,6 @@ describe('Rosetta - Stacks 2.1 tests', () => {
       network: 'testnet',
       addressFormat: 'p2wpkh',
     });
-
-    await Promise.resolve();
   });
 
   const rosettaNetwork: NetworkIdentifier = {
