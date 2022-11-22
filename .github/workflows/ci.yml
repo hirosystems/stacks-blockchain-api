@@ -346,6 +346,16 @@ jobs:
           parallel: true
 
   test-2_1:
+    strategy:
+      matrix:
+        suite: [
+          pox-2-auto-unlock,
+          pox-2-btc-address-formats,
+          pox-2-delegate-aggregation,
+          pox-2-delegate-stacking,
+          pox-2-stack-extend-increase,
+          pox-2-rosetta
+        ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -382,7 +392,7 @@ jobs:
           npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.1
+        run: npm run test:2.1 -- --testPathPattern "${{ matrix.suite }}"
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt

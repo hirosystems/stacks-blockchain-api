@@ -78,6 +78,13 @@ import bignumber from 'bignumber.js';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { StacksNetwork } from '@stacks/network';
 import { decodeClarityValue } from 'stacks-encoding-native-js';
+import {
+  fetchGet,
+  standByForTx,
+  standByForTxSuccess,
+  standByUntilBlock,
+  standByUntilBurnBlock,
+} from './test-helpers';
 
 describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   let db: PgWriteStore;
@@ -128,99 +135,10 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     network: getRosettaNetworkName(ChainID.Testnet),
   };
 
-  function standByForTx(expectedTxId: string): Promise<DbTx> {
-    return new Promise<DbTx>(resolve => {
-      const listener: (txId: string) => void = async txId => {
-        if (txId !== expectedTxId) {
-          return;
-        }
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: false });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('txUpdate', listener);
-        resolve(dbTxQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-    });
-  }
-
-  async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
-    const tx = await standByForTx(expectedTxId);
-    if (tx.status !== DbTxStatus.Success) {
-      const txResult = decodeClarityValue(tx.raw_result);
-      const resultRepr = txResult.repr;
-      throw new Error(`Tx failed with status ${tx.status}, result: ${resultRepr}`);
-    }
-    return tx;
-  }
-
-  async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
-    const dbBlock = await new Promise<DbBlock>(async resolve => {
-      const curHeight = await api.datastore.getCurrentBlockHeight();
-      if (curHeight.found && curHeight.result >= blockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        resolve(dbBlock.result);
-        return;
-      }
-      const listener: (blockHash: string) => void = async blockHash => {
-        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-        if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlockQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('blockUpdate', listener);
-    });
-    while (true) {
-      const nodeInfo = await client.getInfo();
-      if (nodeInfo.stacks_tip_height >= blockHeight) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-    return dbBlock;
-  }
-
-  function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
-    return new Promise<DbBlock>(async resolve => {
-      const curHeight = await api.datastore.getCurrentBlock();
-      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        resolve(dbBlock.result);
-        return;
-      }
-      const listener: (blockHash: string) => void = async blockHash => {
-        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-        if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlockQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('blockUpdate', listener);
-    });
-  }
-
   async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
     const result = await supertest(api.server)
       .post(endpoint)
       .send(body as any);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    return result.body as TRes;
-  }
-
-  async function fetchGet<TRes>(endpoint: string) {
-    const result = await supertest(api.server).get(endpoint);
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
     return result.body as TRes;
@@ -286,8 +204,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     });
     const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
 
-    const stxXferTx1 = await standByForTx(stxXferId1);
-    expect(stxXferTx1.status).toBe(DbTxStatus.Success);
+    const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
     await standByUntilBlock(stxXferTx1.block_height);
   });
