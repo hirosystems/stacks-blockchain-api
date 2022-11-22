@@ -459,7 +459,6 @@ export interface DbNftEvent extends DbContractAssetEvent {
 
 export interface StxUnlockEvent {
   tx_id: string;
-  unlock_height: string;
   stacker_address: string;
   unlocked_amount: string;
 }

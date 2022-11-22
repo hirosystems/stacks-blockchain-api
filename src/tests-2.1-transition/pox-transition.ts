@@ -1088,24 +1088,33 @@ describe('PoX-2 tests', () => {
       expect(poxInfo.current_burnchain_block_height).toBe(poxV1UnlockHeight + 1);
     });
 
-    // TODO: unlock operations not yet generated for pox_v1_unlock_height transition
-    test.skip('Ensure unlock ops are generated for pox_v1_unlock_height block', async () => {
-      // Get Stacks block associated with the burn block `unlock_height` reported by RPC
-      const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(poxV1UnlockHeight + 1);
+    test('Ensure unlock ops are generated for pox_v1_unlock_height block', async () => {
+      await standByUntilBurnBlock(poxV1UnlockHeight + 3);
 
-      // Ensure Rosetta block contains a stx_unlock operation
-      const unlockOp = unlockRstaBlock
+      // Get Stacks block associated with the burn block `unlock_height` reported by RPC
+      const poxV1UnlockHeightBlock = await getRosettaBlockByBurnBlockHeight(poxV1UnlockHeight + 1);
+      const poxV1UnlockOps = poxV1UnlockHeightBlock
         .block!.transactions.flatMap(t => t.operations)
-        .find(op => op.type === 'stx_unlock')!;
-      expect(unlockOp).toBeDefined();
-      expect(unlockOp).toEqual(
+        .filter(op => op.type === 'stx_unlock');
+      expect(poxV1UnlockOps).toHaveLength(1);
+      expect(poxV1UnlockOps[0]).toEqual(
         expect.objectContaining({
           type: 'stx_unlock',
           status: 'success',
           account: { address: account.stxAddr },
-          amount: { value: ustxAmount, currency: { symbol: 'STX', decimals: 6 } },
+          amount: { value: ustxAmount.toString(), currency: { symbol: 'STX', decimals: 6 } },
         })
       );
+
+      // Ensure unlocks are not reported in the before and after blocks
+      const surroundingBlocks = [poxV1UnlockHeight - 1, poxV1UnlockHeight, poxV1UnlockHeight + 2];
+      for (const surroundingBlock of surroundingBlocks) {
+        const block = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
+        const unlockOps = block
+          .block!.transactions.flatMap(t => t.operations)
+          .filter(op => op.type === 'stx_unlock');
+        expect(unlockOps).toHaveLength(0);
+      }
     });
   });
 });
