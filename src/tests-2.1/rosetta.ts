@@ -12,6 +12,7 @@ import {
   ChainID,
   createStacksPrivateKey,
   deserializeTransaction,
+  getAddressFromPrivateKey,
   getPublicKey,
   makeSTXTokenTransfer,
   makeUnsignedContractCall,
@@ -23,6 +24,7 @@ import {
   someCV,
   standardPrincipalCV,
   TransactionSigner,
+  TransactionVersion,
   tupleCV,
   uintCV,
   UnsignedContractCallOptions,
@@ -53,6 +55,9 @@ import {
   BurnchainRewardListResponse,
   RosettaBlockResponse,
   RosettaBlockRequest,
+  RosettaAccountBalanceRequest,
+  RosettaAccountBalanceResponse,
+  AddressStxBalanceResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   getRosettaNetworkName,
@@ -70,22 +75,41 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { RPCClient } from 'rpc-bitcoin';
 import bignumber from 'bignumber.js';
-import { getBitcoinAddressFromKey } from '../ec-helpers';
+import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
+import { StacksNetwork } from '@stacks/network';
+import { decodeClarityValue } from 'stacks-encoding-native-js';
 
 describe('Rosetta - Stacks 2.1 tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
+  let stacksNetwork: StacksNetwork;
   let bitcoinRpcClient: RPCClient;
   let btcAddr: string;
   let btcAddrTestnet: string;
-  const account = testnetKeys[0];
-  let poxInfo: CoreRpcPoxInfo;
+  const seedAccount = testnetKeys[0];
+  const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
+  let account: {
+    stxAddr: string;
+    secretKey: string;
+    pubKey: string;
+  };
+  let testAccountBalance: bigint;
+  let lastPoxInfo: CoreRpcPoxInfo;
   let ustxAmount: bigint;
 
   beforeAll(async () => {
     const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, bitcoinRpcClient } = testEnv);
+    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+
+    const ecPair = ECPair.fromPrivateKey(Buffer.from(accountKey, 'hex').slice(0, 32), {
+      compressed: true,
+    });
+    account = {
+      stxAddr: getAddressFromPrivateKey(accountKey, TransactionVersion.Testnet),
+      secretKey: accountKey,
+      pubKey: ecPair.publicKey.toString('hex'),
+    };
 
     btcAddr = getBitcoinAddressFromKey({
       privateKey: account.secretKey,
@@ -123,6 +147,16 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     });
   }
 
+  async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
+    const tx = await standByForTx(expectedTxId);
+    if (tx.status !== DbTxStatus.Success) {
+      const txResult = decodeClarityValue(tx.raw_result);
+      const resultRepr = txResult.repr;
+      throw new Error(`Tx failed with status ${tx.status}, result: ${resultRepr}`);
+    }
+    return tx;
+  }
+
   async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
     const dbBlock = await new Promise<DbBlock>(async resolve => {
       const curHeight = await api.datastore.getCurrentBlockHeight();
@@ -149,7 +183,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
       if (nodeInfo.stacks_tip_height >= blockHeight) {
         break;
       } else {
-        await timeout(100);
+        await timeout(50);
       }
     }
     return dbBlock;
@@ -214,11 +248,76 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     });
   }
 
-  test('Rosetta - stack-stx', async () => {
+  async function getRosettaAccountBalance(stacksAddress: string, atBlockHeight?: number) {
+    const req: RosettaAccountBalanceRequest = {
+      network_identifier: { blockchain: 'stacks', network: 'testnet' },
+      account_identifier: { address: stacksAddress },
+    };
+    if (atBlockHeight) {
+      req.block_identifier = { index: atBlockHeight };
+    }
+    const account = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
+      '/rosetta/v1/account/balance',
+      req
+    );
+    // Also query for locked balance, requires specifying a special constant sub_account
+    req.account_identifier.sub_account = { address: RosettaConstants.StackedBalance };
+    const locked = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
+      '/rosetta/v1/account/balance',
+      req
+    );
+    return {
+      account,
+      locked,
+    };
+  }
+
+  test('Fund new account for testing', async () => {
     await bitcoinRpcClient.importaddress({ address: btcAddr, label: btcAddr, rescan: false });
+
+    // transfer pox "min_amount_ustx" from seed to test account
+    const poxInfo = await client.getPox();
+    testAccountBalance = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
+    const stxXfer1 = await makeSTXTokenTransfer({
+      senderKey: seedAccount.secretKey,
+      recipient: account.stxAddr,
+      amount: testAccountBalance,
+      network: stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: 200,
+    });
+    const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
+
+    const stxXferTx1 = await standByForTx(stxXferId1);
+    expect(stxXferTx1.status).toBe(DbTxStatus.Success);
+    expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
+    await standByUntilBlock(stxXferTx1.block_height);
+  });
+
+  test('Validate test account balance', async () => {
+    // test stacks-node account RPC balance
+    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
+    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+
+    // test API address endpoint balance
+    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stxAddr}/stx`
+    );
+    expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
+    expect(BigInt(apiBalance.locked)).toBe(0n);
+
+    // test Rosetta address endpoint balance
+    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+    expect(BigInt(rosettaBalance.account.balances[0].value)).toBe(testAccountBalance);
+    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
+  });
+
+  test('Rosetta - stack-stx', async () => {
     const cycleCount = 1;
 
-    poxInfo = await client.getPox();
+    const poxInfo = await client.getPox();
+    lastPoxInfo = poxInfo;
     ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
     const stackingOperations: RosettaOperation[] = [
@@ -230,7 +329,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
         related_operations: [],
         type: 'stack_stx',
         account: {
-          address: account.stacksAddress,
+          address: account.stxAddr,
           metadata: {},
         },
         amount: {
@@ -251,7 +350,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
         related_operations: [],
         type: 'fee',
         account: {
-          address: account.stacksAddress,
+          address: account.stxAddr,
           metadata: {},
         },
         amount: {
@@ -306,7 +405,6 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     signer.signOrigin(createStacksPrivateKey(account.secretKey));
     const signedSerializedTx = stacksTx.serialize().toString('hex');
     const expectedTxId = '0x' + stacksTx.txid();
-    const txStandby = standByForTx(expectedTxId);
 
     // submit
     const submitResult = await fetchRosetta<
@@ -321,20 +419,36 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     expect(resultMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(submitResult.transaction_identifier.hash).toBe(expectedTxId);
 
-    const dbTx = await txStandby;
+    const dbTx = await standByForTxSuccess(expectedTxId);
     expect(dbTx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
     await standByUntilBlock(dbTx.block_height);
   });
 
   test('Verify expected amount of STX are locked', async () => {
-    const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
-    expect(BigInt(rpcAccountInfo1.locked)).toBe(ustxAmount);
+    // test stacks-node account RPC balance
+    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    expect(BigInt(coreNodeBalance.balance)).toBeLessThan(testAccountBalance);
+    expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
+
+    // test API address endpoint balance
+    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stxAddr}/stx`
+    );
+    expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);
+    expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
+
+    // test Rosetta address endpoint balance
+    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+    expect(BigInt(rosettaBalance.account.balances[0].value)).toBeLessThan(testAccountBalance);
+    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
   });
 
   test('Verify PoX rewards - Bitcoin RPC', async () => {
     // Wait until end of reward phase
     const rewardPhaseEndBurnBlock =
-      poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
+      lastPoxInfo.next_cycle.reward_phase_start_block_height +
+      lastPoxInfo.reward_phase_block_length +
+      1;
     await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
 
     const rewards = await fetchGet<BurnchainRewardListResponse>(
@@ -366,7 +480,7 @@ describe('Rosetta - Stacks 2.1 tests', () => {
 
   test('Rosetta unlock events', async () => {
     // unlock_height: 115
-    const rpcAccountInfo1 = await client.getAccount(account.stacksAddress);
+    const rpcAccountInfo1 = await client.getAccount(account.stxAddr);
     const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
     const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
 
@@ -374,10 +488,20 @@ describe('Rosetta - Stacks 2.1 tests', () => {
     // (wait one more block due to test flakiness..)
     await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
 
-    // Check that STX are no longer reported as locked by the RPC endpoints:
-    const rpcAccountInfo = await client.getAccount(account.stacksAddress);
-    expect(BigInt(rpcAccountInfo.locked)).toBe(0n);
-    expect(rpcAccountInfo.unlock_height).toBe(0);
+    // verify STX unlocked - stacks-node account RPC balance
+    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+    expect(coreNodeBalance.unlock_height).toBe(0);
+
+    // verify STX unlocked - API address endpoint balance
+    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stxAddr}/stx`
+    );
+    expect(BigInt(apiBalance.locked)).toBe(0n);
+
+    // verify STX unlocked - Rosetta address endpoint balance
+    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
 
     // Get Stacks block associated with the burn block `unlock_height` reported by RPC
     const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height);
@@ -391,83 +515,9 @@ describe('Rosetta - Stacks 2.1 tests', () => {
       expect.objectContaining({
         type: 'stx_unlock',
         status: 'success',
-        account: { address: account.stacksAddress },
+        account: { address: account.stxAddr },
         amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
       })
     );
-
-    // ---- DEBUG junk under here
-    return;
-
-    const rewards = await fetchGet<BurnchainRewardListResponse>(
-      `/extended/v1/burnchain/rewards/${btcAddr}`
-    );
-    // This is burn_block_height: 111
-    const firstReward = rewards.results.sort(
-      (a, b) => a.burn_block_height - b.burn_block_height
-    )[0];
-
-    // This is burn_block_height: 111 and (stacks) block_height: 8
-    const dbBlock1 = await api.datastore.getBlockByBurnBlockHeight(firstReward.burn_block_height);
-    if (!dbBlock1.found) {
-      throw new Error(
-        `Could not find block associated with burn block ${firstReward.burn_block_height}`
-      );
-    }
-
-    // This is block_height: 4 and unlock_height: 1 ... ?????
-    const unlockEvent = (
-      await api.datastore.getAddressAssetEvents({
-        stxAddress: account.stacksAddress,
-        limit: 9999,
-        offset: 0,
-        blockHeight: 9999,
-      })
-    ).results.filter(r => r.event_type === DbEventTypeId.StxLock)[0];
-    expect(unlockEvent).toBeDefined();
-
-    const txQuery1 = await api.datastore.getTx({
-      txId: unlockEvent.tx_id,
-      includeUnanchored: false,
-    });
-    expect(txQuery1).toBeDefined();
-
-    // block height: 12
-    let actualUnlockBlock: RosettaBlockResponse | undefined;
-    const chaintip = await api.datastore.getChainTip(api.datastore.sql);
-    for (let i = unlockEvent.block_height; i <= chaintip.blockHeight; i++) {
-      const b = await getRosettaBlockByHeight(i);
-      if (b.block?.transactions.find(t => t.operations.find(op => op.type === 'stx_unlock'))) {
-        actualUnlockBlock = b;
-        break;
-      }
-    }
-    if (!actualUnlockBlock) {
-      throw new Error('Could not find actual unlock block height');
-    }
-
-    // burn_block_height: 115
-    const unlockDbBlock = (
-      await api.datastore.getBlock({
-        height: actualUnlockBlock!.block!.block_identifier.index,
-      })
-    ).result!;
-    expect(unlockDbBlock).toBeDefined();
-
-    // block height: 12
-    const expectedUnlockDbBlock = (
-      await api.datastore.getBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height)
-    ).result!;
-    expect(expectedUnlockDbBlock).toBeDefined();
-
-    expect(expectedUnlockDbBlock.block_height).toBe(
-      actualUnlockBlock!.block!.block_identifier.index
-    );
-
-    console.log('idk');
-  });
-
-  afterAll(async () => {
-    await Promise.resolve();
   });
 });
