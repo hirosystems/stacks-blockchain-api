@@ -171,7 +171,13 @@ exports.up = pgm => {
     END
   )`);
 
-  pgm.createIndex('pox2_events', 'block_height');
+  pgm.createIndex('pox2_events', [
+    { name: 'block_height', sort: 'DESC' },
+    { name: 'microblock_sequence', sort: 'DESC' },
+    { name: 'tx_index', sort: 'DESC' },
+    { name: 'event_index', sort: 'DESC' },
+  ]);
+
   pgm.createIndex('pox2_events', 'tx_id');
   pgm.createIndex('pox2_events', 'index_block_hash');
   pgm.createIndex('pox2_events', 'microblock_hash');
