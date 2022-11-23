@@ -3,7 +3,7 @@ import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbTxStatus,
   DataStoreBlockUpdateData,
@@ -80,7 +80,7 @@ describe('block tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       anchor_mode: 3,
       tx_index: 4,
@@ -398,7 +398,7 @@ describe('block tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const dbTx1: DbTx = {
+    const dbTx1: DbTxRaw = {
       ...dbBlock,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -428,7 +428,7 @@ describe('block tests', () => {
       execution_cost_write_count: 1,
       execution_cost_write_length: 1,
     };
-    const dbTx2: DbTx = {
+    const dbTx2: DbTxRaw = {
       ...dbBlock,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
       anchor_mode: 3,

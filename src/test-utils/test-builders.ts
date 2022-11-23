@@ -17,6 +17,7 @@ import {
   DbEventTypeId,
   DbFtEvent,
   DbMempoolTx,
+  DbMempoolTxRaw,
   DbMicroblockPartial,
   DbMinerReward,
   DbNftEvent,
@@ -260,9 +261,9 @@ interface TestMempoolTxArgs {
 /**
  * Generate a test mempool transaction.
  * @param args - Optional transaction data
- * @returns `DbMempoolTx`
+ * @returns `DbMempoolTxRaw`
  */
-export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTx {
+export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
   return {
     pruned: args?.pruned ?? false,
     tx_id: args?.tx_id ?? TX_ID,

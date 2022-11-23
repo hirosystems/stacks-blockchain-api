@@ -16,19 +16,20 @@ import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction } from 'stacks-encoding-native-js';
 import {
   DbBlock,
-  DbTx,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
-  DbMempoolTx,
   DbSmartContract,
   DbSmartContractEvent,
   DbTokenOfferingLocked,
   DataStoreTxEventData,
   DataStoreMicroblockUpdateData,
+  DbTxRaw,
+  DbMempoolTxRaw,
+  DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
@@ -94,8 +95,8 @@ describe('address tests', () => {
       stxEventCount = 1,
       ftEventCount = 1,
       nftEventCount = 1
-    ): [DbTx, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
-      const tx: DbTx = {
+    ): [DbTxRaw, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
+      const tx: DbTxRaw = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
@@ -862,8 +863,8 @@ describe('address tests', () => {
       amount: number,
       canonical: boolean = true,
       sponsoredAddress: string | undefined = undefined
-    ): DbTx => {
-      const tx: DbTx = {
+    ): DbTxRaw => {
+      const tx: DbTxRaw = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
@@ -913,7 +914,7 @@ describe('address tests', () => {
       createStxTx(testAddr2, testAddr4, 35, true, testAddr7),
     ];
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -1107,7 +1108,6 @@ describe('address tests', () => {
       tx_index: 5,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1143,9 +1143,9 @@ describe('address tests', () => {
       abi: JSON.stringify(contractJsonAbi),
     };
 
-    const dataStoreTxs = txs.map(dbTx => {
+    const dataStoreTxs = txs.map(DbTxRaw => {
       return {
-        tx: dbTx,
+        tx: DbTxRaw,
         stxLockEvents: [],
         stxEvents: [],
         ftEvents: [],
@@ -1168,7 +1168,7 @@ describe('address tests', () => {
       namespaces: [],
     });
     dataStoreTxs.push({
-      tx: contractCall,
+      tx: { ...contractCall, raw_tx: '0x' },
       stxLockEvents: [],
       stxEvents: [
         {
@@ -1964,7 +1964,7 @@ describe('address tests', () => {
 
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
     expect(blockTxsRows.found).toBe(true);
-    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
+    const blockTxsRowsResult = blockTxsRows.result as DbTxRaw[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);
     expect({
       ...contractCallResult1,
@@ -2034,7 +2034,7 @@ describe('address tests', () => {
     });
     const serialized = sponsoredTx.serialize();
     const tx = decodeTransaction(serialized);
-    const dbTx = createDbTxFromCoreMsg({
+    const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
         status: 'success',
@@ -2084,7 +2084,7 @@ describe('address tests', () => {
       non_fungible_tokens: [],
     };
     const smartContract: DbSmartContract = {
-      tx_id: dbTx.tx_id,
+      tx_id: DbTxRaw.tx_id,
       canonical: true,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
@@ -2097,7 +2097,7 @@ describe('address tests', () => {
       minerRewards: [],
       txs: [
         {
-          tx: dbTx,
+          tx: DbTxRaw,
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2141,7 +2141,7 @@ describe('address tests', () => {
     expect(sponsor_nonces.type).toBe('application/json');
     expect(JSON.parse(sponsor_nonces.text)).toEqual(expectedResp2);
 
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 1,
@@ -2193,7 +2193,7 @@ describe('address tests', () => {
      * Sponsor detected missing nonce
      */
 
-    const mempoolTx1: DbMempoolTx = {
+    const mempoolTx1: DbMempoolTxRaw = {
       tx_id: '0x52123456',
       anchor_mode: 3,
       nonce: 1,
@@ -2280,7 +2280,7 @@ describe('address tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const stxTx: DbTx = {
+    const stxTx: DbTxRaw = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -2388,7 +2388,7 @@ describe('address tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const stxTx1: DbTx = {
+    const stxTx1: DbTxRaw = {
       tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
       tx_index: 0,
       anchor_mode: 3,
