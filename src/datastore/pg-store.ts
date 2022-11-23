@@ -2236,10 +2236,6 @@ export class PgStore {
     if (pox2EventQuery.length > 0) {
       const pox2Event = parseDbPox2Event(pox2EventQuery[0]);
       if (pox2Event.name === Pox2EventName.HandleUnlock) {
-        // sanity check, this should never happen
-        if (pox2Event.locked !== 0n) {
-          logger.error(`Pox2 handle-unlock event has a non-zero locked value: ${pox2Event.locked}`);
-        }
         // on a handle-unlock, set all of the locked stx related property to empty/default
         lockTxId = '';
         locked = 0n;
