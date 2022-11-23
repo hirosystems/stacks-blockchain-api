@@ -144,7 +144,6 @@ export interface DbTx extends BaseTx {
   burn_block_time: number;
   parent_burn_block_time: number;
 
-  raw_tx: string;
   tx_index: number;
 
   /** Hex encoded Clarity values. */
@@ -182,6 +181,10 @@ export interface DbTx extends BaseTx {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
+}
+
+export interface DbTxRaw extends DbTx {
+  raw_tx: string;
 }
 
 export interface DbTxGlobalStatus {
@@ -223,7 +226,6 @@ export interface DbMempoolStats {
 
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
-  raw_tx: string;
 
   receipt_time: number;
 
@@ -241,6 +243,10 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: string;
+}
+
+export interface DbMempoolTxRaw extends DbMempoolTx {
+  raw_tx: string;
 }
 
 export interface DbSmartContract {
@@ -408,7 +414,7 @@ export interface DataStoreMicroblockUpdateData {
 }
 
 export interface DataStoreTxEventData {
-  tx: DbTx;
+  tx: DbTxRaw;
   stxEvents: DbStxEvent[];
   stxLockEvents: DbStxLockEvent[];
   ftEvents: DbFtEvent[];
@@ -686,7 +692,6 @@ export interface MempoolTxQueryResult {
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
-  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
@@ -741,7 +746,6 @@ export interface TxQueryResult {
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
-  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;

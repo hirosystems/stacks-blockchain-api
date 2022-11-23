@@ -57,6 +57,8 @@ import {
   DataStoreAttachmentData,
   DataStoreAttachmentSubdomainData,
   DataStoreBnsBlockData,
+  DbTxRaw,
+  DbMempoolTxRaw,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -591,8 +593,9 @@ export class PgWriteStore extends PgStore {
       });
 
       for (const entry of data.txs) {
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
-        const dbTx: DbTx = {
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor
+        // block with that data doesn't yet exist.
+        const dbTx: DbTxRaw = {
           ...entry.tx,
           parent_block_hash: chainTip.blockHash,
           block_height: blockHeight,
@@ -1234,7 +1237,7 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1287,7 +1290,7 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
+  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
