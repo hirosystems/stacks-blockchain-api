@@ -438,11 +438,24 @@ describe('PoX transition tests', () => {
         });
         expect(BigInt(addrBalance.locked)).toBe(BigInt(accountInfo.locked));
         if (BigInt(accountInfo.locked) === 0n) {
+          // Funds were unlocked!
+          // We're in period 2b, where pox-2 is now active
+          expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
+          expect(poxInfo.contract_id).toBe(poxInfo.contract_versions![1].contract_id);
+          expect(poxInfo.current_burnchain_block_height).toBe(137);
           expect(poxInfo.current_burnchain_block_height).toBe(status.pox_v1_unlock_height! + 1);
           expect(poxInfo.current_burnchain_block_height).toBe(
             poxInfo.contract_versions![1].activation_burnchain_block_height + 1
           );
           break;
+        } else {
+          expect(poxInfo.current_burnchain_block_height).toBeLessThanOrEqual(136);
+          expect(poxInfo.current_burnchain_block_height).toBeLessThan(
+            poxInfo.contract_versions![1].activation_burnchain_block_height + 1
+          );
+          // If we're NOT in 2b yet (and are still locked), we should still be seeing pox-1
+          expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox');
+          expect(poxInfo.contract_id).toBe(poxInfo.contract_versions![0].contract_id);
         }
         await standByUntilBlock(info.stacks_tip_height + 1);
       }
