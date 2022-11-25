@@ -48,7 +48,7 @@ import {
 } from '@stacks/transactions';
 import * as poxHelpers from '../../../pox-helpers';
 import * as express from 'express';
-import { StacksCoreRpcClient } from '../../../core-rpc/client';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
@@ -75,6 +75,16 @@ import {
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
+import { poxAddressToTuple, PoxInfo, StackingClient } from '@stacks/stacking';
+import { StacksTestnet } from '@stacks/network';
+import { Configuration } from '@stacks/blockchain-api-client';
+
+// todo: is there a reason not to define this here? and rather re-create multiple times?
+// todo: is there a reason not to use the Stacks.js StackingClient?
+const stackingRpc = new StackingClient(
+  '', // anonymous
+  new StacksTestnet({ url: `http://${getCoreNodeEndpoint()}` })
+);
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -195,7 +205,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             // placeholder public key
             publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             network: getStacksNetwork(),
-            // We don't know the non yet but need a placeholder
+            // We don't know the nonce yet but need a placeholder
             nonce: 0,
             memo: req.body.metadata?.memo,
             anchorMode: AnchorMode.Any,
@@ -358,24 +368,25 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           }
           break;
         case RosettaOperationType.StackStx: {
-          // Getting stacking info
-          const poxInfo = await new StacksCoreRpcClient().getPox();
+          // Getting PoX info
+          const poxInfo = await stackingRpc.getPoxInfo();
+          const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
+          const contract = await stackingRpc.getStackingContract(poxOperationInfo);
+          const contractInfo = contract.split('.');
+
           let burnBlockHeight = poxInfo.current_burnchain_block_height;
-          // In Stacks 2.1, the burn block height is inlcuded in `/v2/pox` so we can skip the extra network request
-          if (burnBlockHeight === undefined) {
-            const coreInfo = await new StacksCoreRpcClient().getInfo();
-            burnBlockHeight = coreInfo.burn_block_height;
-          }
-          const contractInfo = poxInfo.contract_id.split('.');
+          // In Stacks 2.1, the burn block height is included in `/v2/pox` so we can skip the extra network request
+          burnBlockHeight ??= (await new StacksCoreRpcClient().getInfo()).burn_block_height;
+
           options.contract_address = contractInfo[0];
           options.contract_name = contractInfo[1];
           options.burn_block_height = burnBlockHeight;
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          // delegate stacking
-          const poxInfo = await new StacksCoreRpcClient().getPox();
-          const contractInfo = poxInfo.contract_id.split('.');
+          // Delegate stacking
+          const contract = await stackingRpc.getStackingContract();
+          const contractInfo = contract.split('.');
           options.contract_address = contractInfo[0];
           options.contract_name = contractInfo[1];
           break;
@@ -682,10 +693,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             hashbytes,
             version: hashModeBuffer,
           });
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
+
           if (!req.body.metadata.contract_address) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractAddress]);
             return;
@@ -702,6 +710,15 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
+
+          const poxInfo = await stackingRpc.getPoxInfo();
+          const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
+
+          if (!options.number_of_cycles) {
+            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+            return;
+          }
+
           const stackingTx: UnsignedContractCallOptions = {
             contractAddress: req.body.metadata.contract_address,
             contractName: req.body.metadata.contract_name,
@@ -737,10 +754,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               })
             );
           }
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
+
           if (!req.body.metadata.contract_address) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractAddress]);
             return;

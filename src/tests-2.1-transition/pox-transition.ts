@@ -1,44 +1,8 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { TestEnvContext } from './env-setup';
-import { ApiServer } from '../api/init';
-import * as supertest from 'supertest';
-import { DbBlock, DbEventTypeId, DbStxLockEvent, DbTx, DbTxStatus } from '../datastore/common';
-import {
-  getAddressFromPrivateKey,
-  makeSTXTokenTransfer,
-  AnchorMode,
-  bufferCV,
-  makeContractCall,
-  noneCV,
-  someCV,
-  standardPrincipalCV,
-  TransactionVersion,
-  TupleCV,
-  tupleCV,
-  uintCV,
-  ClarityValue,
-  ChainID,
-  deserializeTransaction,
-  TransactionSigner,
-  createStacksPrivateKey,
-} from '@stacks/transactions';
-import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
-import { testnetKeys } from '../api/routes/debug';
-import * as poxHelpers from '../pox-helpers';
-import { coerceToBuffer, hexToBuffer, stxToMicroStx, timeout } from '../helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
-import {
-  ECPair,
-  getBitcoinAddressFromKey,
-  privateToPublicKey,
-  VerboseKeyOutput,
-} from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
-  BurnchainRewardSlotHolderListResponse,
-  BurnchainRewardsTotal,
   NetworkIdentifier,
   RosettaAccountBalanceRequest,
   RosettaAccountBalanceResponse,
@@ -55,19 +19,45 @@ import {
   RosettaOperation,
   ServerStatusResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { RPCClient } from 'rpc-bitcoin';
+import {
+  AnchorMode,
+  bufferCV,
+  ChainID,
+  ClarityValue,
+  createStacksPrivateKey,
+  deserializeTransaction,
+  getAddressFromPrivateKey,
+  makeContractCall,
+  makeSTXTokenTransfer,
+  TransactionSigner,
+  TransactionVersion,
+  TupleCV,
+  tupleCV,
+  uintCV,
+} from '@stacks/transactions';
 import bignumber from 'bignumber.js';
+import { RPCClient } from 'rpc-bitcoin';
 import {
   ClarityTypeID,
   ClarityValue as NativeClarityValue,
-  ClarityValueBoolTrue,
-  ClarityValuePrincipalStandard,
-  ClarityValueResponseOk,
-  ClarityValueTuple,
-  ClarityValueUInt,
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
+import * as supertest from 'supertest';
+import { ApiServer } from '../api/init';
 import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
+import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
+import { DbBlock, DbEventTypeId, DbStxLockEvent, DbTx, DbTxStatus } from '../datastore/common';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import {
+  ECPair,
+  getBitcoinAddressFromKey,
+  privateToPublicKey,
+  VerboseKeyOutput,
+} from '../ec-helpers';
+import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
+import * as poxHelpers from '../pox-helpers';
+import type { TestEnvContext } from './env-setup';
 
 type Account = {
   secretKey: string;
@@ -1115,6 +1105,136 @@ describe('PoX-2 tests', () => {
           .filter(op => op.type === 'stx_unlock');
         expect(unlockOps).toHaveLength(0);
       }
+    });
+
+    test('stack-stx in pox-v2', async () => {
+      const cycleCount = 1;
+
+      poxInfo = await client.getPox();
+      ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+
+      const rosettaStackStx = await stackStxWithRosetta({
+        btcAddr: account.btcAddr,
+        stacksAddress: account.stxAddr,
+        pubKey: account.pubKey,
+        privateKey: account.secretKey,
+        cycleCount,
+        ustxAmount,
+      });
+
+      expect(rosettaStackStx.resultMetadata.metadata.contract_name).toBe('pox-2');
+      expect(rosettaStackStx.resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+      expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
+      expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
+        'ST000000000000000000002AMW42H.pox-2'
+      );
+      await standByUntilBlock(rosettaStackStx.tx.block_height);
+    });
+  });
+
+  describe('Rosetta - Stacks 2.1 transition period 2 tests', () => {
+    const seedAccount = testnetKeys[0];
+    let poxInfo: CoreRpcPoxInfo;
+    let ustxAmount: bigint;
+    const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
+    let account: Account;
+    let testAccountBalance: bigint;
+    let poxV1UnlockHeight: number;
+
+    beforeAll(() => {
+      const testEnv: TestEnvContext = (global as any).testEnv;
+      ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+
+      account = accountFromKey(accountKey);
+    });
+
+    test('Fund new account for testing', async () => {
+      await bitcoinRpcClient.importaddress({
+        address: account.btcAddr,
+        label: account.btcAddr,
+        rescan: false,
+      });
+
+      // transfer pox "min_amount_ustx" from seed to test account
+      const poxInfo = await client.getPox();
+      testAccountBalance = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
+      const stxXfer1 = await makeSTXTokenTransfer({
+        senderKey: seedAccount.secretKey,
+        recipient: account.stxAddr,
+        amount: testAccountBalance,
+        network: stacksNetwork,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 200,
+      });
+      const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
+
+      const stxXferTx1 = await standByForTxSuccess(stxXferId1);
+      expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
+    });
+
+    test('Verify expected amount of STX are funded', async () => {
+      // test stacks-node account RPC balance
+      const coreNodeBalance = await client.getAccount(account.stxAddr);
+      expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
+      expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+
+      // test API address endpoint balance
+      const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${account.stxAddr}/stx`
+      );
+      expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
+      expect(BigInt(apiBalance.locked)).toBe(0n);
+
+      // test Rosetta address endpoint balance
+      const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+      expect(BigInt(rosettaBalance.account.balances[0].value)).toBe(testAccountBalance);
+      expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
+    });
+
+    test('Stand-by for period 2a', async () => {
+      poxInfo = await client.getPox();
+      ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+      poxV1UnlockHeight = poxInfo.contract_versions![1].activation_burnchain_block_height;
+
+      // Assuming the following ENV from `zone117x/stacks-api-e2e:stacks2.1-transition-feat-segwit-events-8fb6fad`
+      // STACKS_21_HEIGHT=120
+      // STACKS_POX2_HEIGHT = 136;
+
+      await standByUntilBurnBlock(120);
+      // 120 is the first block of the 2.1 fork
+      // We are in Period 2a
+      poxInfo = await client.getPox();
+      expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox'); // pox-1 is still "active"
+    });
+
+    test('stack-stx in period 2a uses pox-2', async () => {
+      // todo:
+      // Here we have to essentially choose what to rosetta should do:
+      // - Stack to PoX-2 (in practice this will be smartest, since it's too late to stack to PoX-1)
+      //   - During testing it's possible to get multuple cycles in, but not intended on mainnet
+      // - Manually take contract_id to Stack to
+
+      const cycleCount = 1;
+
+      poxInfo = await client.getPox();
+      ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+
+      const rosettaStackStx = await stackStxWithRosetta({
+        btcAddr: account.btcAddr,
+        stacksAddress: account.stxAddr,
+        pubKey: account.pubKey,
+        privateKey: account.secretKey,
+        cycleCount,
+        ustxAmount,
+      });
+
+      expect(rosettaStackStx.resultMetadata.metadata.contract_name).toBe('pox-2');
+      expect(rosettaStackStx.resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+      expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
+      expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
+        'ST000000000000000000002AMW42H.pox-2'
+      );
+      await standByUntilBlock(rosettaStackStx.tx.block_height);
     });
   });
 });

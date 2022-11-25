@@ -44,6 +44,7 @@ export enum RosettaOperationType {
   StackStx = 'stack_stx',
   DelegateStx = 'delegate_stx',
   RevokeDelegateStx = 'revoke_delegate_stx',
+  // todo: add new pox-2 methods
 }
 
 type RosettaOperationTypeUnion = `${RosettaOperationType}`;
