@@ -1,9 +1,11 @@
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ApiServer } from '../api/init';
-import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
+import { AnchorMode, makeContractCall, uintCV } from '@stacks/transactions';
+import { AddressStxBalanceResponse } from 'docs/generated';
 import { RPCClient } from 'rpc-bitcoin';
+import { ApiServer } from '../api/init';
 import { testnetKeys } from '../api/routes/debug';
+import { StacksCoreRpcClient } from '../core-rpc/client';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   Account,
   accountFromKey,
@@ -13,9 +15,6 @@ import {
   standByForTxSuccess,
   TestEnvContext,
 } from '../test-utils/test-helpers';
-
-import { AnchorMode, makeContractCall, uintCV } from '@stacks/transactions';
-import { AddressStxBalanceResponse } from 'docs/generated';
 
 describe('PoX-2 - Auto unlock', () => {
   let db: PgWriteStore;

@@ -4,36 +4,18 @@ import { StacksNetwork } from '@stacks/network';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
-  NetworkIdentifier,
-  RosettaAccountBalanceRequest,
-  RosettaAccountBalanceResponse,
-  RosettaBlockRequest,
-  RosettaBlockResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionMetadataResponse,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionPayloadsRequest,
-  RosettaConstructionPreprocessRequest,
-  RosettaConstructionPreprocessResponse,
-  RosettaConstructionSubmitRequest,
-  RosettaConstructionSubmitResponse,
-  RosettaOperation,
+  BurnchainRewardSlotHolderListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
-  ChainID,
-  createStacksPrivateKey,
-  deserializeTransaction,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
-  TransactionSigner,
   TransactionVersion,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { RPCClient } from 'rpc-bitcoin';
-import * as supertest from 'supertest';
+import { DbTxStatus } from '../../src/datastore/common';
 import { ApiServer } from '../api/init';
-import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -41,9 +23,11 @@ import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
+  getRosettaAccountBalance,
+  getRosettaBlockByBurnBlockHeight,
+  stackStxWithRosetta,
   standByForAccountUnlock,
   standByForTxSuccess,
-  standByUntilBlock,
   standByUntilBurnBlock,
   testEnv,
   TestEnvContext,

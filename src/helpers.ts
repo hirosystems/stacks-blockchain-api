@@ -1090,3 +1090,12 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
     }
   });
 }
+
+export function doesThrow(fn: () => void) {
+  try {
+    fn();
+    return false;
+  } catch {
+    return true;
+  }
+}

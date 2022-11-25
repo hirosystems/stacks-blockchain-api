@@ -33,6 +33,7 @@ import {
   tupleCV,
 } from '@stacks/transactions';
 import { RPCClient } from 'rpc-bitcoin';
+import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
 
 import {
   ClarityTypeID,
@@ -41,7 +42,6 @@ import {
 } from 'stacks-encoding-native-js';
 import * as supertest from 'supertest';
 import { ApiServer } from '../api/init';
-import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
@@ -211,7 +211,8 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
   return dbBlock;
 }
 
-export async function standByForTx(expectedTxId: string): Promise<DbTx> {
+// todo: add `export` to this and remove other implementations of this
+async function standByForTx(expectedTxId: string): Promise<DbTx> {
   const tx = await new Promise<DbTx>(async resolve => {
     const listener: (txId: string) => void = async txId => {
       if (txId !== expectedTxId) {
@@ -262,7 +263,8 @@ export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
   return tx;
 }
 
-export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+// todo: add `export` to this and remove other implementations of this
+async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
       const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
@@ -371,7 +373,8 @@ export async function readOnlyFnCall<T extends NativeClarityValue>(
   return decodedVal;
 }
 
-export async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
+// todo: add `export` to this and remove other implementations of this
+async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
   const result = await supertest(testEnv.api.server)
     .post(endpoint)
     .send(body as any);

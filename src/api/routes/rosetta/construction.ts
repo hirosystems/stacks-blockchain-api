@@ -52,7 +52,13 @@ import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
-import { FoundOrNot, has0xPrefix, hexToBuffer, isValidC32Address } from '../../../helpers';
+import {
+  doesThrow,
+  FoundOrNot,
+  has0xPrefix,
+  hexToBuffer,
+  isValidC32Address,
+} from '../../../helpers';
 import { asyncHandler } from '../../async-handler';
 import {
   RosettaConstants,
@@ -836,16 +842,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   });
 
   return router;
-}
-
-// todo: where do you prefer your helper methods?
-function doesThrow(fn: () => void) {
-  try {
-    fn();
-    return false;
-  } catch {
-    return true;
-  }
 }
 
 // Middleware ==================================================================

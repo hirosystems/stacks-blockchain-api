@@ -29,7 +29,7 @@ import {
   getRosettaBlockByBurnBlockHeight,
   stackStxWithRosetta,
   standByForAccountUnlock,
-} from 'src/test-utils/test-helpers';
+} from '../test-utils/test-helpers';
 import { decodeClarityValue } from 'stacks-encoding-native-js';
 import { ApiServer } from '../api/init';
 import { testnetKeys } from '../api/routes/debug';
