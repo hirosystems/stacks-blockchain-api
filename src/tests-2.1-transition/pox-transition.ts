@@ -29,6 +29,7 @@ import {
   getRosettaBlockByBurnBlockHeight,
   stackStxWithRosetta,
   standByForAccountUnlock,
+  standByUntilBlock,
 } from '../test-utils/test-helpers';
 import { decodeClarityValue } from 'stacks-encoding-native-js';
 import { ApiServer } from '../api/init';
@@ -110,43 +111,6 @@ describe('PoX transition tests', () => {
       throw new Error(`Tx failed with status ${tx.status}, result: ${resultRepr}`);
     }
     return tx;
-  }
-
-  async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
-    const dbBlock = await new Promise<DbBlock>(async resolve => {
-      const listener: (blockHash: string) => void = async blockHash => {
-        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-        if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlockQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('blockUpdate', listener);
-
-      // Check if block height already reached
-      const curHeight = await api.datastore.getCurrentBlockHeight();
-      if (curHeight.found && curHeight.result >= blockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlock.result);
-        return;
-      }
-    });
-
-    // Ensure stacks-node is caught up with processing this block
-    while (true) {
-      const nodeInfo = await client.getInfo();
-      if (nodeInfo.stacks_tip_height >= blockHeight) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-    return dbBlock;
   }
 
   async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {

@@ -263,8 +263,7 @@ export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
   return tx;
 }
 
-// todo: add `export` to this and remove other implementations of this
-async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
       const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
