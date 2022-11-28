@@ -86,8 +86,8 @@ jobs:
       - name: Build schema & docs
         run: npm run build
 
-      - name: Validate generated types
-        run: tsc index.d.ts
+      # - name: Validate generated types
+      #   run: npm run validate:types
 
       - name: Lint JSON
         run: npm run lint:json
