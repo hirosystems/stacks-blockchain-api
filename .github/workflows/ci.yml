@@ -349,6 +349,7 @@ jobs:
     strategy:
       matrix:
         suite: [
+          faucet-stx,
           pox-2-auto-unlock,
           pox-2-btc-address-formats,
           pox-2-delegate-aggregation,

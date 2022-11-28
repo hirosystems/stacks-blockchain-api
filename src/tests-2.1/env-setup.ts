@@ -27,7 +27,7 @@ beforeAll(async () => {
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
   const db = await PgWriteStore.connect({ usageName: 'tests' });
-  const api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  const api = await startApiServer({ datastore: db, writeDatastore: db, chainId: ChainID.Testnet });
   const client = new StacksCoreRpcClient();
   const stacksNetwork = new StacksTestnet({ url: `http://${client.endpoint}` });
 
