@@ -11,8 +11,9 @@ import {
   standByForAccountUnlock,
   standByForNextPoxCycle,
   standByForTxSuccess,
-} from './test-helpers';
-import { TestEnvContext } from './env-setup';
+  TestEnvContext,
+} from '../test-utils/test-helpers';
+
 import { AnchorMode, makeContractCall, uintCV } from '@stacks/transactions';
 import { AddressStxBalanceResponse } from 'docs/generated';
 
@@ -66,7 +67,7 @@ describe('PoX-2 - Auto unlock', () => {
       fee: 10000,
       validateWithAbi: false,
     });
-    const sendResult1 = await client.sendTransaction(tx1.serialize());
+    const sendResult1 = await client.sendTransaction(Buffer.from(tx1.serialize()));
     const txStandby1 = await standByForTxSuccess(sendResult1.txId);
 
     // validate stacks-node balance state
@@ -173,7 +174,7 @@ describe('PoX-2 - Auto unlock', () => {
       fee: 10000,
       validateWithAbi: false,
     });
-    const sendResult1 = await client.sendTransaction(tx1.serialize());
+    const sendResult1 = await client.sendTransaction(Buffer.from(tx1.serialize()));
     const txStandby1 = await standByForTxSuccess(sendResult1.txId);
 
     // validate stacks-node balance state

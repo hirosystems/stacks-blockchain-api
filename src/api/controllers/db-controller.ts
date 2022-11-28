@@ -64,7 +64,7 @@ import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } fr
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
-import { Pox2EventName } from 'src/pox-helpers';
+import { Pox2EventName } from '../../pox-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {

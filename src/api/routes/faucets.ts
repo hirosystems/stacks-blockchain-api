@@ -242,7 +242,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         let lastSendError: Error | undefined;
         do {
           const tx = await generateTx(networks[0], nextNonce, fee);
-          const rawTx = tx.serialize();
+          const rawTx = Buffer.from(tx.serialize());
           for (const network of networks) {
             const rpcClient = clientFromNetwork(network);
             try {

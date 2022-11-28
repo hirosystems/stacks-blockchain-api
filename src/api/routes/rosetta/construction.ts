@@ -27,7 +27,6 @@ import {
   isSingleSig,
   makeSigHashPreSign,
   MessageSignature,
-  BufferReader,
   deserializeTransaction,
   StacksTransaction,
   UnsignedTokenTransferOptions,
@@ -45,6 +44,7 @@ import {
   OptionalCV,
   someCV,
   AnchorMode,
+  BytesReader,
 } from '@stacks/transactions';
 import * as poxHelpers from '../../../pox-helpers';
 import * as express from 'express';
@@ -75,9 +75,8 @@ import {
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
-import { poxAddressToTuple, PoxInfo, StackingClient } from '@stacks/stacking';
+import { decodeBtcAddress, poxAddressToTuple, PoxInfo, StackingClient } from '@stacks/stacking';
 import { StacksTestnet } from '@stacks/network';
-import { Configuration } from '@stacks/blockchain-api-client';
 
 // todo: is there a reason not to define this here? and rather re-create multiple times?
 // todo: is there a reason not to use the Stacks.js StackingClient?
@@ -225,7 +224,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           }
           // dummy transaction to calculate size
           const poxAddress = options.pox_addr;
-          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxAddress);
+          const { version: hashMode, data } = decodeBtcAddress(poxAddress);
           const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
@@ -270,7 +269,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           let optionalPoxAddressCV: OptionalCV = noneCV();
           if (options.pox_addr) {
             const dummyPoxAddress = options.pox_addr;
-            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(dummyPoxAddress);
+            const { version: hashMode, data } = decodeBtcAddress(dummyPoxAddress);
             const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             optionalPoxAddressCV = someCV(
@@ -472,7 +471,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         return;
       }
 
-      const transaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+      const transaction = deserializeTransaction(new BytesReader(buffer));
       const hash = transaction.txid();
 
       if (!transaction.auth.spendingCondition) {
@@ -686,7 +685,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
           const poxBTCAddress = options.pox_addr;
-          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+          const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
           const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
@@ -706,15 +705,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          if (!options.number_of_cycles) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
-
-          const poxInfo = await stackingRpc.getPoxInfo();
-          const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
-
-          if (!options.number_of_cycles) {
+          if (!options.number_of_cycles || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -744,7 +735,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           if (options.pox_addr) {
             const poxBTCAddress = options.pox_addr;
-            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+            const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
             const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             poxAddressCV = someCV(
@@ -770,7 +761,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             if (typeof burn_block_height !== 'number' || typeof burn_block_height !== 'string')
               expire_burn_block_heightCV = someCV(uintCV(burn_block_height));
           }
-          if (!options.delegate_to) {
+          if (!options.delegate_to || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -799,7 +790,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           return;
       }
 
-      const unsignedTransaction = transaction.serialize();
+      const unsignedTransaction = Buffer.from(transaction.serialize());
 
       const signer = new TransactionSigner(transaction);
 
@@ -848,7 +839,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       try {
         unsigned_transaction_buffer = hexToBuffer(combineRequest.unsigned_transaction);
-        transaction = deserializeTransaction(BufferReader.fromBuffer(unsigned_transaction_buffer));
+        transaction = deserializeTransaction(new BytesReader(unsigned_transaction_buffer));
       } catch (e) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
         return;
@@ -906,7 +897,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         //support multi-sig
       }
 
-      const serializedTx = transaction.serialize().toString('hex');
+      const serializedTx = Buffer.from(transaction.serialize()).toString('hex');
 
       const combineResponse: RosettaConstructionCombineResponse = {
         signed_transaction: '0x' + serializedTx,

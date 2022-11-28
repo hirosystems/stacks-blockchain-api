@@ -765,7 +765,7 @@ describe('tx tests', () => {
       fee: 300,
       sponsorNonce: 2,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -973,7 +973,7 @@ describe('tx tests', () => {
       fee: 300,
       sponsorNonce: 3,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -1319,7 +1319,7 @@ describe('tx tests', () => {
 
     const pc1 = createNonFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      NonFungibleConditionCode.Owns,
+      NonFungibleConditionCode.DoesNotSend,
       'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello::asset-name',
       bufferCVFromString('asset-value')
     );
@@ -1348,7 +1348,7 @@ describe('tx tests', () => {
       nonce: 0,
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -1568,7 +1568,7 @@ describe('tx tests', () => {
       postConditions: [],
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -1711,7 +1711,7 @@ describe('tx tests', () => {
       nonce: 0,
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {

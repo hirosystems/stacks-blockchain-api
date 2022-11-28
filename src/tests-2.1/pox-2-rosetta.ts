@@ -1,93 +1,53 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { TestEnvContext } from './env-setup';
-import { ApiServer, startApiServer } from '../api/init';
-import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import { DbBlock, DbEventTypeId, DbTx, DbTxStatus } from '../datastore/common';
+
+import { StacksNetwork } from '@stacks/network';
+import {
+  AddressStxBalanceResponse,
+  BurnchainRewardListResponse,
+  NetworkIdentifier,
+  RosettaAccountBalanceRequest,
+  RosettaAccountBalanceResponse,
+  RosettaBlockRequest,
+  RosettaBlockResponse,
+  RosettaConstructionMetadataRequest,
+  RosettaConstructionMetadataResponse,
+  RosettaConstructionPayloadResponse,
+  RosettaConstructionPayloadsRequest,
+  RosettaConstructionPreprocessRequest,
+  RosettaConstructionPreprocessResponse,
+  RosettaConstructionSubmitRequest,
+  RosettaConstructionSubmitResponse,
+  RosettaOperation,
+} from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
-  AuthType,
-  bufferCV,
   ChainID,
   createStacksPrivateKey,
   deserializeTransaction,
   getAddressFromPrivateKey,
-  getPublicKey,
   makeSTXTokenTransfer,
-  makeUnsignedContractCall,
-  makeUnsignedSTXTokenTransfer,
-  noneCV,
-  pubKeyfromPrivKey,
-  publicKeyToString,
-  SignedTokenTransferOptions,
-  someCV,
-  standardPrincipalCV,
   TransactionSigner,
   TransactionVersion,
-  tupleCV,
-  uintCV,
-  UnsignedContractCallOptions,
-  UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, FoundOrNot, hexToBuffer, timeout } from '../helpers';
-import {
-  RosettaConstructionCombineRequest,
-  RosettaConstructionCombineResponse,
-  RosettaAccountIdentifier,
-  RosettaConstructionDeriveRequest,
-  RosettaConstructionDeriveResponse,
-  RosettaConstructionHashRequest,
-  RosettaConstructionHashResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionParseRequest,
-  RosettaConstructionParseResponse,
-  RosettaConstructionPayloadsRequest,
-  RosettaConstructionPreprocessRequest,
-  RosettaConstructionPreprocessResponse,
-  RosettaConstructionMetadataResponse,
-  NetworkIdentifier,
-  RosettaOperation,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionSubmitRequest,
-  RosettaConstructionSubmitResponse,
-  BurnchainRewardListResponse,
-  RosettaBlockResponse,
-  RosettaBlockRequest,
-  RosettaAccountBalanceRequest,
-  RosettaAccountBalanceResponse,
-  AddressStxBalanceResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import {
-  getRosettaNetworkName,
-  RosettaConstants,
-  RosettaErrors,
-  RosettaErrorsTypes,
-  RosettaOperationStatuses,
-  RosettaOperationTypes,
-} from '../api/rosetta-constants';
-import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksNetwork } from '../rosetta-helpers';
-import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
-import * as poxHelpers from '../pox-helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { RPCClient } from 'rpc-bitcoin';
 import bignumber from 'bignumber.js';
+import { RPCClient } from 'rpc-bitcoin';
+import * as supertest from 'supertest';
+import { ApiServer } from '../api/init';
+import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constants';
+import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { StacksNetwork } from '@stacks/network';
-import { decodeClarityValue } from 'stacks-encoding-native-js';
+import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
   standByForAccountUnlock,
-  standByForPoxCycleEnd,
-  standByForTx,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
   testEnv,
-} from './test-helpers';
+  TestEnvContext,
+} from '../test-utils/test-helpers';
 
 describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   let db: PgWriteStore;
@@ -261,7 +221,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
     const signer = new TransactionSigner(stacksTx);
     signer.signOrigin(createStacksPrivateKey(opts.privateKey));
-    const signedSerializedTx = stacksTx.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(stacksTx.serialize()).toString('hex');
     const expectedTxId = '0x' + stacksTx.txid();
 
     // submit
@@ -297,7 +257,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
+    const { txId: stxXferId1 } = await client.sendTransaction(Buffer.from(stxXfer1.serialize()));
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);

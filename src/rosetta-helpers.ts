@@ -9,14 +9,13 @@ import {
 import {
   addressToString,
   AuthType,
-  BufferReader,
+  BytesReader,
   ChainID,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
   makeSigHashPreSign,
   MessageSignature,
-  parseRecoverableSignature,
   PayloadType,
   StacksTransaction,
 } from '@stacks/transactions';
@@ -76,6 +75,8 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
+import { poxAddressToBtcAddress } from '@stacks/stacking';
+import { parseRecoverableSignatureVrs } from '@stacks/common';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -928,7 +929,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
         version: ClarityValueBuffer;
         hashbytes: ClarityValueBuffer;
       }>;
-      args.pox_addr = poxHelpers.poxAddressToBtcAddress(
+      args.pox_addr = poxAddressToBtcAddress(
         hexToBuffer(addressCV.data.version.buffer)[0],
         hexToBuffer(addressCV.data.hashbytes.buffer),
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
@@ -973,7 +974,7 @@ function getStxCurrencyMetadata(): RosettaCurrency {
 
 export function rawTxToStacksTransaction(raw_tx: string): StacksTransaction {
   const buffer = hexToBuffer(raw_tx);
-  const transaction: StacksTransaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+  const transaction: StacksTransaction = deserializeTransaction(new BytesReader(buffer));
   return transaction;
 }
 
@@ -1155,7 +1156,7 @@ export function verifySignature(
   publicAddress: string,
   signature: MessageSignature
 ): boolean {
-  const { r, s } = parseRecoverableSignature(signature.data);
+  const { r, s } = parseRecoverableSignatureVrs(signature.data);
 
   try {
     const ec = new EC('secp256k1');

@@ -6,6 +6,7 @@ import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
 import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
+import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 
 test('get git tag', () => {
   const tag = getCurrentGitTag();
@@ -184,8 +185,8 @@ test('PoX bitcoin address encoding', () => {
 
   for (const v of vectors) {
     const addr = v[0];
-    const decoded = poxHelpers.decodeBtcAddress(addr);
-    const encoded = poxHelpers.poxAddressToBtcAddress(decoded.version, decoded.data, v[1]);
+    const decoded = decodeBtcAddress(addr);
+    const encoded = poxAddressToBtcAddress(decoded.version, decoded.data, v[1]);
     expect(encoded).toBe(addr);
   }
 });

@@ -54,6 +54,7 @@ import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../ro
 import * as nock from 'nock';
 import * as poxHelpers from '../pox-helpers';
 import { PgStore } from '../datastore/pg-store';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 describe('Rosetta offline API', () => {
   let db: PgStore;
@@ -516,7 +517,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -563,7 +564,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -677,7 +678,7 @@ describe('Rosetta offline API', () => {
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
 
     const signer = new TransactionSigner(transaction);
 
@@ -866,16 +867,16 @@ describe('Rosetta offline API', () => {
             },
           },
           metadata: {
-            number_of_cycles: number_of_cycles, 
+            number_of_cycles: number_of_cycles,
             pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
           }
         },
       ],
       metadata: {
         account_sequence: 0,
-        contract_address: contract_address, 
+        contract_address: contract_address,
         contract_name: contract_name,
-        burn_block_height: burn_block_height, 
+        burn_block_height: burn_block_height,
       },
       public_keys: [
         {
@@ -887,7 +888,7 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -914,7 +915,7 @@ describe('Rosetta offline API', () => {
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
@@ -1038,7 +1039,7 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -1065,7 +1066,7 @@ describe('Rosetta offline API', () => {
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
 
     const signer = new TransactionSigner(transaction);
 
@@ -1112,14 +1113,14 @@ describe('Rosetta offline API', () => {
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+    const unsignedSerializedTx = Buffer.from(unsignedTransaction.serialize()).toString('hex');
 
     const signer = new TransactionSigner(unsignedTransaction);
 
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, 200, 0);
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(signer.transaction.serialize()).toString('hex');
 
     const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
 

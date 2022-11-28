@@ -1,18 +1,11 @@
-import { loadDotEnv } from '../helpers';
+import { StacksTestnet } from '@stacks/network';
+import { ChainID } from '@stacks/transactions';
+import { RPCClient } from 'rpc-bitcoin';
+import { startApiServer } from '../api/init';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { ApiServer, startApiServer } from '../api/init';
-import { ChainID } from '@stacks/transactions';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
-import { RPCClient } from 'rpc-bitcoin';
-
-export interface TestEnvContext {
-  db: PgWriteStore;
-  api: ApiServer;
-  client: StacksCoreRpcClient;
-  stacksNetwork: StacksNetwork;
-  bitcoinRpcClient: RPCClient;
-}
+import { loadDotEnv } from '../helpers';
+import { TestEnvContext } from '../test-utils/test-helpers';
 
 let testEnv: TestEnvContext;
 
