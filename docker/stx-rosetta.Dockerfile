@@ -1,8 +1,8 @@
-ARG STACKS_API_VERSION=v0.71.2
+ARG STACKS_API_VERSION
 ARG STACKS_NODE_VERSION=2.05.0.4.0
-ARG STACKS_API_REPO=blockstack/stacks-blockchain-api
-ARG STACKS_NODE_REPO=blockstack/stacks-blockchain
-ARG PG_VERSION=12
+ARG STACKS_API_REPO=hirosystems/stacks-blockchain-api
+ARG STACKS_NODE_REPO=stacks-network/stacks-blockchain
+ARG PG_VERSION=14
 ARG STACKS_NETWORK=mainnet
 ARG STACKS_LOG_DIR=/var/log/stacks-node
 ARG STACKS_SVC_DIR=/etc/service
@@ -30,7 +30,7 @@ RUN apt-get update -y \
         jq \
         openjdk-11-jre-headless \
         cmake \
-    && git clone -b ${STACKS_API_VERSION} --depth 1 https://github.com/${STACKS_API_REPO} . \
+    && git clone -b ${STACKS_API_VERSION} https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
     && npm config set unsafe-perm true \
     && npm ci \

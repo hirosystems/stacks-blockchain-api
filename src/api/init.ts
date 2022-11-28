@@ -223,7 +223,7 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
-      if (writeDatastore) {
+      if (chainId !== ChainID.Mainnet && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
       return router;
