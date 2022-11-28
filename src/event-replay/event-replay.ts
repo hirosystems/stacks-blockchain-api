@@ -189,9 +189,9 @@ export async function importEventsFromTsv(
   if (process.env.BNS_IMPORT_DIR) {
     logger.level = defaultLogLevel;
     await importV1BnsSubdomains(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
-    process.env.TSV_IMPORT_IN_PROCESS = 'false';
   }
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+  process.env.TSV_IMPORT_IN_PROCESS = 'false';
 }
