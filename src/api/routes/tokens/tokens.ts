@@ -12,10 +12,10 @@ import {
   NonFungibleTokenMintList,
   NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from './../../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../../pagination';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
 import { has0xPrefix, isValidPrincipal } from '../../../helpers';
-import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
+import { booleanValueForParam, isUnanchoredRequest } from '../../query-helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';

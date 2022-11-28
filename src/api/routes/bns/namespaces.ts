@@ -1,14 +1,14 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
-import { parsePagingQueryInput } from '../../../api/pagination';
+import { parsePagingQueryInput } from '../../pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetAllNamespacesResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
+} from '../../controllers/cache-controller';
 
 export function createBnsNamespacesRouter(db: PgStore): express.Router {
   const router = express.Router();

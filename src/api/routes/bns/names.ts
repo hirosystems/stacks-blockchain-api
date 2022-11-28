@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
-import { parsePagingQueryInput } from '../../../api/pagination';
+import { parsePagingQueryInput } from '../../pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
@@ -9,7 +9,7 @@ import { ChainID } from '@stacks/transactions';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
+} from '../../controllers/cache-controller';
 
 export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

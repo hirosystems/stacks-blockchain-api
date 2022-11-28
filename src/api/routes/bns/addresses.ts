@@ -6,7 +6,7 @@ import { ChainID } from '@stacks/transactions';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
+} from '../../controllers/cache-controller';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 

@@ -73,8 +73,8 @@ import {
   makePresignHash,
   verifySignature,
   parseTransactionMemo,
-} from './../../../rosetta-helpers';
-import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
+} from '../../../rosetta-helpers';
+import { makeRosettaError, rosettaValidateRequest, ValidSchema } from '../../rosetta-validate';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {

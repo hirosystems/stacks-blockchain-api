@@ -5,7 +5,7 @@ import {
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
   NftTransferEvent,
-} from '../../event-stream/core-node-message';
+} from '../core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { URIType } from 'zone-file/dist/zoneFile';

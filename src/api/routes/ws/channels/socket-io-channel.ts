@@ -8,7 +8,7 @@ import {
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
-import { isValidTxId } from '../../../../api/query-helpers';
+import { isValidTxId } from '../../../query-helpers';
 import { isProdEnv, isValidPrincipal, logger } from '../../../../helpers';
 import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {

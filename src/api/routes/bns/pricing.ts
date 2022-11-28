@@ -14,7 +14,7 @@ import {
   BnsGetNamePriceResponse,
   BnsGetNamespacePriceResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { isValidPrincipal, logger } from './../../../helpers';
+import { isValidPrincipal, logger } from '../../../helpers';
 import { PgStore } from '../../../datastore/pg-store';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
 
