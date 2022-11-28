@@ -4,7 +4,12 @@ import { asyncHandler } from '../async-handler';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
 import { BigNumber } from 'bignumber.js';
-import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
+import {
+  AnchorMode,
+  makeSTXTokenTransfer,
+  SignedTokenTransferOptions,
+  StacksTransaction,
+} from '@stacks/transactions';
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
@@ -183,7 +188,11 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         }
         const stxAmount = intMax(stxAmounts);
 
-        const generateTx = async (network: StacksNetwork, nonce?: bigint, fee?: bigint) => {
+        const generateTx = async (
+          network: StacksNetwork,
+          nonce?: bigint,
+          fee?: bigint
+        ): Promise<StacksTransaction> => {
           const txOpts: SignedTokenTransferOptions = {
             recipient: address,
             amount: stxAmount,
@@ -198,7 +207,15 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           if (nonce !== undefined) {
             txOpts.nonce = nonce;
           }
-          return await makeSTXTokenTransfer(txOpts);
+          try {
+            return await makeSTXTokenTransfer(txOpts);
+          } catch (error: any) {
+            if (fee === undefined && (error as Error).message?.includes('NoEstimateAvailable')) {
+              const defaultFee = 200n;
+              return await generateTx(network, nonce, defaultFee);
+            }
+            throw error;
+          }
         };
 
         const nonces: bigint[] = [];
