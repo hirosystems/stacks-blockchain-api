@@ -211,8 +211,7 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
   return dbBlock;
 }
 
-// todo: add `export` to this and remove other implementations of this
-async function standByForTx(expectedTxId: string): Promise<DbTx> {
+export async function standByForTx(expectedTxId: string): Promise<DbTx> {
   const tx = await new Promise<DbTx>(async resolve => {
     const listener: (txId: string) => void = async txId => {
       if (txId !== expectedTxId) {
@@ -372,7 +371,6 @@ export async function readOnlyFnCall<T extends NativeClarityValue>(
   return decodedVal;
 }
 
-// todo: add `export` to this and remove other implementations of this
 async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
   const result = await supertest(testEnv.api.server)
     .post(endpoint)

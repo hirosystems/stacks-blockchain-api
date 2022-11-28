@@ -17,16 +17,10 @@
       "command": "npm run devenv:deploy",
       "isBackground": true,
       "problemMatcher": {
-        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
         "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "dedicated",
-        "clear": false
-      }
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
     },
     {
       "label": "deploy:krypton",
@@ -37,13 +31,7 @@
         "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
         "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "dedicated",
-        "clear": false
-      }
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
     },
     {
       "label": "stop:krypton",
@@ -66,13 +54,7 @@
         "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
         "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
       },
-      "presentation": {
-        "echo": true,
-        "reveal": "always",
-        "focus": false,
-        "panel": "dedicated",
-        "clear": false
-      }
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
     },
     {
       "label": "stop:krypton-2.1-transition",
@@ -93,13 +75,13 @@
       "isBackground": true,
       "problemMatcher": [
         {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3 }],
+          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
           "background": {
             "activeOnStart": true,
             "beginsPattern": ".",
-            "endsPattern": "."
+            "endsPattern": ".",
           }
-        }
+        },
       ]
     },
     {
@@ -119,6 +101,6 @@
       "label": "stacks-node:build-dev",
       "type": "shell",
       "command": "npm run devenv:build && npm run devenv:deploy"
-    }
+    },
   ]
 }

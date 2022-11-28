@@ -22,6 +22,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { hexToBuffer } from '../helpers';
 import {
+  accountFromKey,
   fetchGet,
   getRosettaAccountBalance,
   getRosettaBlockByBurnBlockHeight,
@@ -355,122 +356,29 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       expect(unlockOps2).toHaveLength(0);
     }
   });
-
-  describe('Rosetta - Stack with supported BTC address formats', () => {
-    let poxInfo;
-
-    const BTC_ADDRESS_CASES = [
-      { addressFormat: 'p2pkh' },
-      { addressFormat: 'p2sh' },
-      { addressFormat: 'p2sh-p2wpkh' },
-      { addressFormat: 'p2sh-p2wsh' },
-      { addressFormat: 'p2wpkh' },
-      { addressFormat: 'p2wsh' },
-      { addressFormat: 'p2tr' },
-    ] as const;
-
-    test.each(BTC_ADDRESS_CASES)(
-      'Rosetta stack-stx with format $format',
-      async ({ addressFormat }) => {
-        const bitcoinAddress = getBitcoinAddressFromKey({
-          privateKey: account.secretKey,
-          network: 'testnet',
-          addressFormat,
-        });
-
-        poxInfo = await client.getPox();
-        await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
-        // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
-
-        poxInfo = await client.getPox();
-        expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
-
-        poxInfo = await client.getPox();
-        const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
-        const cycleCount = 1;
-
-        const rosettaStackStx = await stackStxWithRosetta({
-          btcAddr: bitcoinAddress,
-          stacksAddress: account.stxAddr,
-          pubKey: account.pubKey,
-          privateKey: account.secretKey,
-          cycleCount,
-          ustxAmount,
-        });
-        expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
-        expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
-
-        poxInfo = await client.getPox();
-        // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-        await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
-
-        poxInfo = await client.getPox();
-        const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
-          `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
-        );
-        expect(rewardSlotHolders.total).toBe(1);
-        expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
-        expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-          poxInfo.current_burnchain_block_height
-        );
-        expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-          poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
-        );
-      }
-    );
-  });
 });
 
-describe('PoX-2 - Rosetta Stack on any phase of cycle', () => {
+describe('PoX-2 - Rosetta - Stack on any phase of cycle', () => {
   let db: PgWriteStore;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
   let stacksNetwork: StacksNetwork;
   let bitcoinRpcClient: RPCClient;
-  let btcAddr: string;
-  let btcAddrTestnet: string;
-  const accountKey = 'f4c5f7b724799370bea997b36ec922f1817e40637cb91d03ea14c8172b4ad9af01';
-  let account: {
-    stxAddr: string;
-    secretKey: string;
-    pubKey: string;
-  };
-  let ustxAmount: bigint;
+
+  const account = testnetKeys[1];
 
   beforeAll(() => {
     const testEnv: TestEnvContext = (global as any).testEnv;
     ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
-
-    const ecPair = ECPair.fromPrivateKey(Buffer.from(accountKey, 'hex').slice(0, 32), {
-      compressed: true,
-    });
-    account = {
-      stxAddr: getAddressFromPrivateKey(accountKey, TransactionVersion.Testnet),
-      secretKey: accountKey,
-      pubKey: ecPair.publicKey.toString('hex'),
-    };
-
-    btcAddr = getBitcoinAddressFromKey({
-      privateKey: account.secretKey,
-      network: 'regtest',
-      addressFormat: 'p2wpkh',
-    });
-    btcAddrTestnet = getBitcoinAddressFromKey({
-      privateKey: account.secretKey,
-      network: 'testnet',
-      addressFormat: 'p2wpkh',
-    });
   });
 
-  const REWARD_CYCLE_LENGTH = 5;
-  for (let shift = 0; shift < REWARD_CYCLE_LENGTH * 2; shift++) {
+  const REWARD_CYCLE_LENGTH = 5; // assuming regtest
+  for (let shift = 0; shift < REWARD_CYCLE_LENGTH; shift++) {
     test('Rosetta - stack-stx tx', async () => {
-      console.log('start height shift:', shift);
-
       let poxInfo = await client.getPox();
+
       const blocksUntilNextCycle =
         poxInfo.next_cycle.blocks_until_reward_phase % poxInfo.reward_cycle_length;
-
       const startHeight =
         (poxInfo.current_burnchain_block_height as number) + blocksUntilNextCycle + shift;
 
@@ -480,24 +388,101 @@ describe('PoX-2 - Rosetta Stack on any phase of cycle', () => {
       }
 
       poxInfo = await client.getPox();
-      ustxAmount = BigInt(poxInfo.current_cycle.min_threshold_ustx * 1.2);
+      const ustxAmount = BigInt(poxInfo.current_cycle.min_threshold_ustx * 1.2);
       expect((poxInfo.current_burnchain_block_height as number) % poxInfo.reward_cycle_length).toBe(
         shift
       );
 
       await stackStxWithRosetta({
-        stacksAddress: account.stxAddr,
+        btcAddr: accountFromKey(account.secretKey).btcAddr,
+        stacksAddress: account.stacksAddress,
         privateKey: account.secretKey,
         pubKey: account.pubKey,
-        btcAddr: btcAddr,
         cycleCount: 1,
         ustxAmount,
       });
 
-      const coreBalance = await client.getAccount(account.stxAddr);
+      const coreBalance = await client.getAccount(account.stacksAddress);
       expect(coreBalance.unlock_height).toBeGreaterThan(0);
 
       await standByUntilBurnBlock(coreBalance.unlock_height + 1);
     });
   }
+});
+
+describe('PoX-2 - Rosetta - Stack with supported BTC address formats', () => {
+  let db: PgWriteStore;
+  let api: ApiServer;
+  let client: StacksCoreRpcClient;
+  let stacksNetwork: StacksNetwork;
+  let bitcoinRpcClient: RPCClient;
+
+  const account = testnetKeys[1];
+
+  beforeAll(() => {
+    const testEnv: TestEnvContext = (global as any).testEnv;
+    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+  });
+
+  let poxInfo;
+
+  const BTC_ADDRESS_CASES = [
+    { addressFormat: 'p2pkh' },
+    { addressFormat: 'p2sh' },
+    { addressFormat: 'p2sh-p2wpkh' },
+    { addressFormat: 'p2sh-p2wsh' },
+    { addressFormat: 'p2wpkh' },
+    { addressFormat: 'p2wsh' },
+    { addressFormat: 'p2tr' },
+  ] as const;
+
+  test.each(BTC_ADDRESS_CASES)(
+    'Rosetta stack-stx with BTC address format $addressFormat',
+    async ({ addressFormat }) => {
+      const bitcoinAddress = getBitcoinAddressFromKey({
+        privateKey: account.secretKey,
+        network: 'testnet',
+        addressFormat,
+      });
+
+      poxInfo = await client.getPox();
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
+      // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
+
+      poxInfo = await client.getPox();
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
+
+      poxInfo = await client.getPox();
+      const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+      const cycleCount = 1;
+
+      const rosettaStackStx = await stackStxWithRosetta({
+        btcAddr: bitcoinAddress,
+        stacksAddress: account.stacksAddress,
+        pubKey: account.pubKey,
+        privateKey: account.secretKey,
+        cycleCount,
+        ustxAmount,
+      });
+      expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
+      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
+
+      poxInfo = await client.getPox();
+      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
+
+      poxInfo = await client.getPox();
+      const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
+        `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
+      );
+      expect(rewardSlotHolders.total).toBe(1);
+      expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBe(
+        poxInfo.current_burnchain_block_height
+      );
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
+        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
+      );
+    }
+  );
 });

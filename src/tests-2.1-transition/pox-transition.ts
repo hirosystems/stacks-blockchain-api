@@ -29,7 +29,9 @@ import {
   getRosettaBlockByBurnBlockHeight,
   stackStxWithRosetta,
   standByForAccountUnlock,
+  standByForTxSuccess,
   standByUntilBlock,
+  standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
 import { decodeClarityValue } from 'stacks-encoding-native-js';
 import { ApiServer } from '../api/init';
@@ -64,90 +66,6 @@ describe('PoX transition tests', () => {
     ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
     await Promise.resolve();
   });
-
-  async function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const tx = await new Promise<DbTx>(async resolve => {
-      const listener: (txId: string) => void = async txId => {
-        if (txId !== expectedTxId) {
-          return;
-        }
-        const dbTxQuery = await api.datastore.getTx({
-          txId: expectedTxId,
-          includeUnanchored: false,
-        });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('txUpdate', listener);
-        resolve(dbTxQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-
-      // Check if tx is already received
-      const dbTxQuery = await api.datastore.getTx({ txId: expectedTxId, includeUnanchored: false });
-      if (dbTxQuery.found) {
-        api.datastore.eventEmitter.removeListener('txUpdate', listener);
-        resolve(dbTxQuery.result);
-      }
-    });
-
-    // Ensure stacks-node is caught up with processing the block for this tx
-    while (true) {
-      const nodeInfo = await client.getInfo();
-      if (nodeInfo.stacks_tip_height >= tx.block_height) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-    return tx;
-  }
-
-  async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
-    const tx = await standByForTx(expectedTxId);
-    if (tx.status !== DbTxStatus.Success) {
-      const txResult = decodeClarityValue(tx.raw_result);
-      const resultRepr = txResult.repr;
-      throw new Error(`Tx failed with status ${tx.status}, result: ${resultRepr}`);
-    }
-    return tx;
-  }
-
-  async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
-    const dbBlock = await new Promise<DbBlock>(async resolve => {
-      const listener: (blockHash: string) => void = async blockHash => {
-        const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
-        if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlockQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('blockUpdate', listener);
-
-      // Check if block height already reached
-      const curHeight = await api.datastore.getCurrentBlock();
-      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result.block_height });
-        if (!dbBlock.found) {
-          throw new Error('Unhandled missing block');
-        }
-        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-        resolve(dbBlock.result);
-      }
-    });
-
-    // Ensure stacks-node is caught up with processing this block
-    while (true) {
-      const nodeInfo = await client.getInfo();
-      if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-    return dbBlock;
-  }
 
   describe('Consistent API and RPC account balances through pox transitions', () => {
     const account = testnetKeys[1];
@@ -958,119 +876,6 @@ describe('PoX transition tests', () => {
         // We are now in Period 3
         expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox-2'); // pox-2 remains the pox-contract going forward
       });
-    });
-
-    describe('Rosetta - Stack with supported BTC address formats', () => {
-      // todo: add to CI suite
-      // todo: move to 2.1 rosetta test file
-      test('Fund new account for testing', async () => {
-        await bitcoinRpcClient.importaddress({
-          address: account.btcAddr,
-          label: account.btcAddr,
-          rescan: false,
-        });
-
-        // transfer pox "min_amount_ustx" from seed to test account
-        const poxInfo = await client.getPox();
-        testAccountBalance = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
-        const stxXfer1 = await makeSTXTokenTransfer({
-          senderKey: seedAccount.secretKey,
-          recipient: account.stxAddr,
-          amount: testAccountBalance,
-          network: stacksNetwork,
-          anchorMode: AnchorMode.OnChainOnly,
-          fee: 200,
-        });
-        const { txId: stxXferId1 } = await client.sendTransaction(
-          Buffer.from(stxXfer1.serialize())
-        );
-
-        const stxXferTx1 = await standByForTxSuccess(stxXferId1);
-        expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
-
-        const coreNodeBalance = await client.getAccount(account.stxAddr);
-        expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
-        expect(BigInt(coreNodeBalance.locked)).toBe(0n);
-
-        // test API address endpoint balance
-        const apiBalance = await fetchGet<AddressStxBalanceResponse>(
-          `/extended/v1/address/${account.stxAddr}/stx`
-        );
-        expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
-        expect(BigInt(apiBalance.locked)).toBe(0n);
-
-        // test Rosetta address endpoint balance
-        const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
-        expect(BigInt(rosettaBalance.account.balances[0].value)).toBe(testAccountBalance);
-        expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
-      });
-
-      test('Wait for pox-v2 fork (aka Period 3)', async () => {
-        // await standByUntilBurnBlock(137); // todo: currently using incorrect launchtask
-
-        poxInfo = await client.getPox();
-        expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
-      });
-
-      const BTC_ADDRESS_CASES = [
-        { addressFormat: 'p2pkh' },
-        { addressFormat: 'p2sh' },
-        { addressFormat: 'p2sh-p2wpkh' },
-        { addressFormat: 'p2sh-p2wsh' },
-        { addressFormat: 'p2wpkh' },
-        { addressFormat: 'p2wsh' },
-        { addressFormat: 'p2tr' },
-      ] as const;
-
-      test.each(BTC_ADDRESS_CASES)(
-        'Rosetta stack-stx with format $format',
-        async ({ addressFormat }) => {
-          const bitcoinAddress = getBitcoinAddressFromKey({
-            privateKey: account.secretKey,
-            network: 'testnet',
-            addressFormat,
-          });
-
-          poxInfo = await client.getPox();
-          await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
-          // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
-
-          poxInfo = await client.getPox();
-          expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
-
-          poxInfo = await client.getPox();
-          const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
-          const cycleCount = 1;
-
-          const rosettaStackStx = await stackStxWithRosetta({
-            btcAddr: bitcoinAddress,
-            stacksAddress: account.stxAddr,
-            pubKey: account.pubKey,
-            privateKey: account.secretKey,
-            cycleCount,
-            ustxAmount,
-          });
-          expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
-          expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
-
-          poxInfo = await client.getPox();
-          // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-          await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
-
-          poxInfo = await client.getPox();
-          const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
-            `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
-          );
-          expect(rewardSlotHolders.total).toBe(1);
-          expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
-          expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-            poxInfo.current_burnchain_block_height
-          );
-          expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-            poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
-          );
-        }
-      );
     });
   });
 });

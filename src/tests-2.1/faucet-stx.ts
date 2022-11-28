@@ -1,8 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { Account, accountFromKey, fetchGet, standByForTxSuccess, testEnv } from './test-helpers';
+import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
 import { AddressStxBalanceResponse } from 'docs/generated';
 import * as supertest from 'supertest';
-import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
+import {
+  Account,
+  accountFromKey,
+  fetchGet,
+  standByForTxSuccess,
+  testEnv,
+} from '../test-utils/test-helpers';
 
 describe('STX Faucet', () => {
   const reqAccountKey = 'b1ee37d996b1cf95ff67996a38426cff398d3adfeccf8ae8b3651a530837dd5801';
