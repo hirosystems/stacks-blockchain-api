@@ -1,5 +1,33 @@
 import * as btc from 'bitcoinjs-lib';
 import { bech32, bech32m } from '@scure/base';
+import {
+  decodeClarityValue,
+  ClarityValueBuffer,
+  ClarityValueStringAscii,
+  ClarityValueTuple,
+  ClarityValue,
+  ClarityValueUInt,
+  ClarityValuePrincipalStandard,
+  ClarityValuePrincipalContract,
+  ClarityTypeID,
+  ClarityValueResponse,
+  ClarityValueAbstract,
+} from 'stacks-encoding-native-js';
+import { bufferToHexPrefixString, coerceToBuffer, logger } from './helpers';
+import {
+  DbPox2BaseEventData,
+  DbPox2DelegateStackExtendEvent,
+  DbPox2DelegateStackIncreaseEvent,
+  DbPox2DelegateStackStxEvent,
+  DbPox2EventData,
+  DbPox2HandleUnlockEvent,
+  DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
+  DbPox2StackExtendEvent,
+  DbPox2StackIncreaseEvent,
+  DbPox2StackStxEvent,
+} from './datastore/common';
 
 // TODO: switch to using @stacks/stacking lib once available
 //   currently borrowing its WIP code from:
@@ -221,31 +249,67 @@ function networkToHrp(network: 'mainnet' | 'testnet' | 'regtest'): string {
 }
 
 export function poxAddressToBtcAddress(
-  version: number,
-  hashBytes: Uint8Array,
+  version: number | string | Uint8Array,
+  hashBytes: string | Uint8Array,
   network: 'mainnet' | 'testnet' | 'regtest'
 ): string {
-  switch (version) {
+  let versionByte: number;
+  if (typeof version === 'number') {
+    versionByte = version;
+  } else {
+    const versionBuffer = coerceToBuffer(version);
+    if (versionBuffer.byteLength !== 1) {
+      throw new Error(`Expected single byte version, got ${version}`);
+    }
+    versionByte = versionBuffer[0];
+  }
+  let hashBytesBuffer: Buffer;
+  if (typeof hashBytes === 'string') {
+    hashBytesBuffer = coerceToBuffer(hashBytes);
+  } else if (Buffer.isBuffer(hashBytes)) {
+    hashBytesBuffer = hashBytes;
+  } else {
+    hashBytesBuffer = Buffer.from(hashBytes.buffer, hashBytes.byteOffset, hashBytes.byteLength);
+  }
+  switch (versionByte) {
     case PoXAddressVersion.P2PKH:
     case PoXAddressVersion.P2SH:
     case PoXAddressVersion.P2SHP2WPKH:
     case PoXAddressVersion.P2SHP2WSH: {
-      const btcAddrVersion = legacyHashModeToBtcAddressVersion(version, network);
-      return btc.address.toBase58Check(Buffer.from(hashBytes), btcAddrVersion);
+      const btcAddrVersion = legacyHashModeToBtcAddressVersion(versionByte, network);
+      return btc.address.toBase58Check(hashBytesBuffer, btcAddrVersion);
     }
     case PoXAddressVersion.P2WPKH:
     case PoXAddressVersion.P2WSH: {
       const prefix = networkToHrp(network);
-      const words = bech32.toWords(hashBytes);
+      const words = bech32.toWords(hashBytesBuffer);
       const btcAddress = bech32.encode(prefix, [SEGWIT_V0, ...words]);
       return btcAddress;
     }
     case PoXAddressVersion.P2TR: {
       const prefix = networkToHrp(network);
-      const words = bech32m.toWords(hashBytes);
+      const words = bech32m.toWords(hashBytesBuffer);
       const btcAddress = bech32m.encode(prefix, [SEGWIT_V1, ...words]);
       return btcAddress;
     }
   }
   throw new Error(`Unexpected address version: ${version}`);
+}
+
+export const enum Pox2EventName {
+  HandleUnlock = 'handle-unlock',
+  StackStx = 'stack-stx',
+  StackIncrease = 'stack-increase',
+  StackExtend = 'stack-extend',
+  DelegateStackStx = 'delegate-stack-stx',
+  DelegateStackIncrease = 'delegate-stack-increase',
+  DelegateStackExtend = 'delegate-stack-extend',
+  StackAggregationCommit = 'stack-aggregation-commit',
+  StackAggregationCommitIndexed = 'stack-aggregation-commit-indexed',
+  StackAggregationIncrease = 'stack-aggregation-increase',
+}
+
+export const enum Pox2ContractIdentifer {
+  mainnet = 'SP000000000000000000002Q6VF78.pox-2',
+  testnet = 'ST000000000000000000002AMW42H.pox-2',
 }

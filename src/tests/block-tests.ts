@@ -473,6 +473,7 @@ describe('block tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: dbTx2,
@@ -484,6 +485,7 @@ describe('block tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     };

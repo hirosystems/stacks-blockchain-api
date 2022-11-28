@@ -75,6 +75,8 @@ export interface StxLockEvent extends CoreNodeEventBase {
     unlock_height: string;
     /** STX principal associated with the locked tokens. */
     locked_address: string;
+    /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.pox" or "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.pox-2" */
+    contract_identifier?: string;
   };
 }
 
@@ -227,6 +229,7 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     tx_fees_streamed_produced: string;
   }[];
+  pox_v1_unlock_height?: number;
 }
 
 export interface CoreNodeParsedTxMessage {

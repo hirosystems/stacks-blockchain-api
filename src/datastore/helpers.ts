@@ -1,9 +1,10 @@
-import { hexToBuffer, logError, parseEnum } from '../helpers';
+import { hexToBuffer, logError, parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
   DbBlock,
   DbEvent,
+  DbEventBase,
   DbEventTypeId,
   DbFaucetRequest,
   DbFaucetRequestCurrency,
@@ -12,6 +13,18 @@ import {
   DbMempoolTx,
   DbMicroblock,
   DbNftEvent,
+  DbPox2BaseEventData,
+  DbPox2DelegateStackExtendEvent,
+  DbPox2DelegateStackIncreaseEvent,
+  DbPox2DelegateStackStxEvent,
+  DbPox2Event,
+  DbPox2HandleUnlockEvent,
+  DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
+  DbPox2StackExtendEvent,
+  DbPox2StackIncreaseEvent,
+  DbPox2StackStxEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
@@ -23,6 +36,7 @@ import {
   FaucetRequestQueryResult,
   MempoolTxQueryResult,
   MicroblockQueryResult,
+  Pox2EventQueryResult,
   TxQueryResult,
 } from './common';
 import {
@@ -44,6 +58,7 @@ import { PgSqlClient } from './connection';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
+import { Pox2EventName } from '../pox-helpers';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -167,6 +182,7 @@ export const TX_METADATA_TABLES = [
   'stx_events',
   'ft_events',
   'nft_events',
+  'pox2_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',
@@ -174,6 +190,38 @@ export const TX_METADATA_TABLES = [
   'namespaces',
   'subdomains',
 ] as const;
+
+export const POX2_EVENT_COLUMNS = [
+  'event_index',
+  'tx_id',
+  'tx_index',
+  'block_height',
+  'index_block_hash',
+  'parent_index_block_hash',
+  'microblock_hash',
+  'microblock_sequence',
+  'canonical',
+  'microblock_canonical',
+  'stacker',
+  'locked',
+  'balance',
+  'burnchain_unlock_height',
+  'name',
+  'pox_addr',
+  'pox_addr_raw',
+  'first_cycle_locked',
+  'first_unlocked_cycle',
+  'lock_period',
+  'lock_amount',
+  'start_burn_height',
+  'unlock_burn_height',
+  'delegator',
+  'increase_by',
+  'total_locked',
+  'extend_count',
+  'reward_cycle',
+  'amount_ustx',
+];
 
 /**
  * Adds a table name prefix to an array of column names.
@@ -387,6 +435,7 @@ export function parseDbEvents(
     locked_amount: string;
     unlock_height: string;
     locked_address: string;
+    contract_name: string;
   }[],
   stxResults: {
     event_index: number;
@@ -454,6 +503,7 @@ export function parseDbEvents(
       locked_amount: BigInt(result.locked_amount),
       unlock_height: Number(result.unlock_height),
       locked_address: result.locked_address,
+      contract_name: result.contract_name,
     };
     events[rowIndex++] = event;
   }
@@ -523,6 +573,177 @@ export function parseDbEvents(
   }
   events.sort((a, b) => a.event_index - b.event_index);
   return events;
+}
+
+export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
+  const baseEvent: DbEventBase = {
+    event_index: row.event_index,
+    tx_id: row.tx_id,
+    tx_index: row.tx_index,
+    block_height: row.block_height,
+    canonical: row.canonical,
+  };
+  const basePox2Event: DbPox2BaseEventData = {
+    stacker: row.stacker,
+    locked: BigInt(row.locked ?? 0),
+    balance: BigInt(row.balance),
+    burnchain_unlock_height: BigInt(row.burnchain_unlock_height),
+    pox_addr: row.pox_addr ?? null,
+    pox_addr_raw: row.pox_addr_raw ?? null,
+  };
+  const rowName = row.name as Pox2EventName;
+  switch (rowName) {
+    case Pox2EventName.HandleUnlock: {
+      const eventData: DbPox2HandleUnlockEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          first_cycle_locked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+          first_unlocked_cycle: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackStx: {
+      const eventData: DbPox2StackStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackIncrease: {
+      const eventData: DbPox2StackIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackExtend: {
+      const eventData: DbPox2StackExtendEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackStx: {
+      const eventData: DbPox2DelegateStackStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackIncrease: {
+      const eventData: DbPox2DelegateStackIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackExtend: {
+      const eventData: DbPox2DelegateStackExtendEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationCommit: {
+      const eventData: DbPox2StackAggregationCommitEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      const eventData: DbPox2StackAggregationCommitIndexedEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      const eventData: DbPox2StackAggregationIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    default: {
+      throw new Error(`Unexpected event name ${rowName}`);
+    }
+  }
 }
 
 export function parseQueryResultToSmartContract(row: {

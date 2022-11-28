@@ -1,15 +1,15 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "zone117x/stacks-api-e2e:stacks2.1-transition-a7d904e"
+    image: "zone117x/stacks-api-e2e:stacks2.1-transition-feat-segwit-events-8fb6fad"
     ports:
       - "18443:18443" # bitcoin regtest JSON-RPC interface
       - "18444:18444" # bitcoin regtest p2p
       - "20443:20443" # stacks-node RPC interface
       - "20444:20444" # stacks-node p2p
     environment:
-      MINE_INTERVAL: 2s
-      REWARD_RECIPIENT: STQM73RQC4EX0A07KWG1J5ECZJYBZS4SJ4ERC6WN
+      MINE_INTERVAL: 0.1s
+      # REWARD_RECIPIENT: STQM73RQC4EX0A07KWG1J5ECZJYBZS4SJ4ERC6WN
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
       # STACKS_LOG_TRACE: 1
       # STACKS_LOG_DEBUG: 1

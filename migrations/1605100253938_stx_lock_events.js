@@ -57,6 +57,10 @@ exports.up = pgm => {
       type: 'string',
       notNull: true,
     },
+    contract_name: {
+      type: 'string',
+      notNull: true,
+    }
   });
 
   pgm.createIndex('stx_lock_events', [
@@ -71,4 +75,5 @@ exports.up = pgm => {
   pgm.createIndex('stx_lock_events', 'locked_address', { method: 'hash' });
   pgm.createIndex('stx_lock_events', [{ name: 'block_height', sort: 'DESC' }]);
   pgm.createIndex('stx_lock_events', [{ name: 'unlock_height', sort: 'DESC' }]);
+  pgm.createIndex('stx_lock_events', 'contract_name');
 }

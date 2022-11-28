@@ -396,6 +396,7 @@ describe('postgres datastore', () => {
         locked_amount: amount,
         unlock_height: unlockHeight ?? tx.block_height + 200,
         locked_address: sender,
+        contract_name: 'pox',
       };
       return stxEvent;
     };
@@ -586,6 +587,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -751,6 +753,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -963,6 +966,7 @@ describe('postgres datastore', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -1158,6 +1162,7 @@ describe('postgres datastore', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -1433,6 +1438,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -1444,6 +1450,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
         {
           tx: tx3,
@@ -1455,6 +1462,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2206,6 +2214,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2288,6 +2297,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2378,6 +2388,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [contract],
+          pox2Events: [],
         },
       ],
     });
@@ -2471,6 +2482,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [contract],
+          pox2Events: [],
         },
       ],
     });
@@ -2553,6 +2565,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2634,6 +2647,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2714,6 +2728,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2956,6 +2971,7 @@ describe('postgres datastore', () => {
           smartContracts: [smartContract1],
           names: [name1],
           namespaces: [namespace1],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -2967,6 +2983,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3380,6 +3397,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3442,6 +3460,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3631,6 +3650,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: 20,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     // inserts blocks directly -- just runs sql insert without any reorg handling
@@ -3684,6 +3704,7 @@ describe('postgres datastore', () => {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3699,6 +3720,7 @@ describe('postgres datastore', () => {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3858,6 +3880,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: block1.block_height + 100000,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     const stxLockEvent2: DbStxLockEvent = {
@@ -3867,6 +3890,7 @@ describe('postgres datastore', () => {
       locked_amount: 45n,
       unlock_height: block2.block_height + 100000,
       locked_address: 'locked-addr2',
+      contract_name: 'pox',
     };
 
     await db.update({
@@ -3884,6 +3908,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3947,6 +3972,7 @@ describe('postgres datastore', () => {
               tx_index: tx2.tx_index,
             },
           ],
+          pox2Events: [],
         },
       ],
     });
@@ -4142,6 +4168,7 @@ describe('postgres datastore', () => {
               tx_index: tx3.tx_index,
             },
           ],
+          pox2Events: [],
         },
       ],
     });
@@ -4177,7 +4204,12 @@ describe('postgres datastore', () => {
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
-    expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    expect(chainTip1).toEqual({
+      blockHash: '0x33',
+      blockHeight: 3,
+      indexBlockHash: '0xcc',
+      burnBlockHeight: 123,
+    });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(1);
     const names = await db.getNamespaceNamesList({
@@ -4229,7 +4261,12 @@ describe('postgres datastore', () => {
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
     const chainTip2 = await db.getChainTip(client);
-    expect(chainTip2).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    expect(chainTip2).toEqual({
+      blockHash: '0x33',
+      blockHeight: 3,
+      indexBlockHash: '0xcc',
+      burnBlockHeight: 123,
+    });
 
     const block4b: DbBlock = {
       block_hash: '0x44bb',
@@ -4269,7 +4306,12 @@ describe('postgres datastore', () => {
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
     const chainTip3 = await db.getChainTip(client);
-    expect(chainTip3).toEqual({ blockHash: '0x44bb', blockHeight: 4, indexBlockHash: '0xddbb' });
+    expect(chainTip3).toEqual({
+      blockHash: '0x44bb',
+      blockHeight: 4,
+      indexBlockHash: '0xddbb',
+      burnBlockHeight: 123,
+    });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });
     const b2 = await db.getBlock({ hash: block2.block_hash });
@@ -4387,6 +4429,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -4466,6 +4509,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -4599,6 +4643,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -4610,6 +4655,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });

@@ -255,6 +255,12 @@ export function isValidBitcoinAddress(address: string): boolean {
   } catch (e) {
     // ignore
   }
+  try {
+    btc.address.toOutputScript(address, btc.networks.regtest);
+    return true;
+  } catch (e) {
+    // ignore
+  }
   return false;
 }
 
@@ -567,14 +573,55 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
-export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+export function unwrapOptional<T>(
+  val: T | null,
+  onNullish?: () => string
+): Exclude<T, undefined | null> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
   }
   if (val === null) {
     throw new Error(onNullish?.() ?? 'value is null');
   }
-  return val as Exclude<T, undefined>;
+  return val as Exclude<T, undefined | null>;
+}
+
+/**
+ * Provide an object and the key of a nullable / possibly-undefined property.
+ * The function will throw if the property value is null or undefined, otherwise
+ * the non-null / defined value is returned. Similar to {@link unwrapOptional}
+ * but with automatic useful error messages indicating the property key name.
+ * ```ts
+ * const myObj: {
+ *   thing1: string | null;
+ *   thing2: string | undefined;
+ *   thing3?: string;
+ * } = {
+ *   thing1: 'a',
+ *   thing2: 'b',
+ *   thing3: 'c',
+ * };
+ *
+ * // Unwrap type `string | null` to `string`
+ * const unwrapped1 = unwrapOptionalProp(myObj, 'thing1');
+ * // Unwrap type `string | undefined` to `string`
+ * const unwrapped2 = unwrapOptionalProp(myObj, 'thing2');
+ * // Unwrap type `string?` to `string`
+ * const unwrapped3 = unwrapOptionalProp(myObj, 'thing3');
+ * ```
+ */
+export function unwrapOptionalProp<TObj, TKey extends keyof TObj>(
+  obj: TObj,
+  key: TKey
+): Exclude<TObj[TKey], undefined | null> {
+  const val = obj[key];
+  if (val === undefined) {
+    throw new Error(`Value for property ${String(key)} is undefined`);
+  }
+  if (val === null) {
+    throw new Error(`Value for property ${String(key)} is null`);
+  }
+  return val as Exclude<TObj[TKey], undefined | null>;
 }
 
 export function assertNotNullish<T>(

@@ -241,6 +241,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     smartContracts: [],
     names: [],
     namespaces: [],
+    pox2Events: [],
   };
   return data;
 }
@@ -449,6 +450,7 @@ function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
     locked_amount: BigInt(args?.locked_amount ?? 500),
     unlock_height: args?.unlock_height ?? 1,
     locked_address: args?.locked_address ?? 'lock-addr',
+    contract_name: 'pox',
   };
 }
 

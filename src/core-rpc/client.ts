@@ -58,11 +58,18 @@ export interface CoreRpcPoxInfo {
     blocks_until_reward_phase: number;
     ustx_until_pox_rejection: number;
   };
+
+  /** @deprecated included for backwards-compatibility */
   min_amount_ustx: number;
+  /** @deprecated included for backwards-compatibility */
   prepare_cycle_length: number;
+  /** @deprecated included for backwards-compatibility */
   reward_cycle_id: number;
+  /** @deprecated included for backwards-compatibility */
   reward_cycle_length: number;
+  /** @deprecated included for backwards-compatibility */
   rejection_votes_left_required: number;
+  /** @deprecated included for backwards-compatibility */
   next_reward_cycle_in: number;
 
   // Available in Stacks 2.1:

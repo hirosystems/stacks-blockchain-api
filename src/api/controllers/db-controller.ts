@@ -58,11 +58,13 @@ import {
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
+  DbPox2Event,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { Pox2EventName } from 'src/pox-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -196,6 +198,123 @@ export function getAssetEventTypeString(
       return 'burn';
     default:
       throw new Error(`Unexpected DbAssetEventTypeId: ${assetEventTypeId}`);
+  }
+}
+
+export function parsePox2Event(poxEvent: DbPox2Event) {
+  const baseInfo = {
+    block_height: poxEvent.block_height,
+    tx_id: poxEvent.tx_id,
+    tx_index: poxEvent.tx_index,
+    event_index: poxEvent.event_index,
+    stacker: poxEvent.stacker,
+    locked: poxEvent.locked.toString(),
+    balance: poxEvent.balance.toString(),
+    burnchain_unlock_height: poxEvent.burnchain_unlock_height.toString(),
+    pox_addr: poxEvent.pox_addr,
+    pox_addr_raw: poxEvent.pox_addr_raw,
+    name: poxEvent.name,
+  };
+  switch (poxEvent.name) {
+    case Pox2EventName.HandleUnlock: {
+      return {
+        ...baseInfo,
+        data: {
+          first_cycle_locked: poxEvent.data.first_cycle_locked.toString(),
+          first_unlocked_cycle: poxEvent.data.first_unlocked_cycle.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackStx: {
+      return {
+        ...baseInfo,
+        data: {
+          lock_amount: poxEvent.data.lock_amount.toString(),
+          lock_period: poxEvent.data.lock_period.toString(),
+          start_burn_height: poxEvent.data.start_burn_height.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          increase_by: poxEvent.data.increase_by.toString(),
+          total_locked: poxEvent.data.total_locked.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackExtend: {
+      return {
+        ...baseInfo,
+        data: {
+          extend_count: poxEvent.data.extend_count.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackStx: {
+      return {
+        ...baseInfo,
+        data: {
+          lock_amount: poxEvent.data.lock_amount.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          start_burn_height: poxEvent.data.start_burn_height.toString(),
+          lock_period: poxEvent.data.lock_period.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          increase_by: poxEvent.data.increase_by.toString(),
+          total_locked: poxEvent.data.total_locked.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackExtend: {
+      return {
+        ...baseInfo,
+        data: {
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          extend_count: poxEvent.data.extend_count.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationCommit: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    default:
+      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
   }
 }
 

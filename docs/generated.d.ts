@@ -1609,6 +1609,7 @@ export interface ServerStatusResponse {
    * the current server status
    */
   status: string;
+  pox_v1_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**
@@ -1635,6 +1636,10 @@ export interface ChainTip {
    * the current microblock sequence number
    */
   microblock_sequence?: number;
+  /**
+   * the current burn chain block height
+   */
+  burn_block_height: number;
 }
 /**
  * GET request that returns network target block times

@@ -15,6 +15,12 @@ export function createStatusRouter(db: PgStore): express.Router {
         server_version: `stacks-blockchain-api ${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`,
         status: 'ready',
       };
+      const pox1UnlockHeight = await db.getPox1UnlockHeight();
+      if (pox1UnlockHeight.found) {
+        response.pox_v1_unlock_height = pox1UnlockHeight.result;
+      } else {
+        response.pox_v1_unlock_height = null as any;
+      }
       const chainTip = await db.getUnanchoredChainTip();
       if (chainTip.found) {
         response.chain_tip = {
@@ -23,6 +29,7 @@ export function createStatusRouter(db: PgStore): express.Router {
           index_block_hash: chainTip.result.indexBlockHash,
           microblock_hash: chainTip.result.microblockHash,
           microblock_sequence: chainTip.result.microblockSequence,
+          burn_block_height: chainTip.result.burnBlockHeight,
         };
       }
       setETagCacheHeaders(res);

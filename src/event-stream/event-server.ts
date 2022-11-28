@@ -17,6 +17,7 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
+  CoreNodeTxMessage,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -38,6 +39,8 @@ import {
   DataStoreMicroblockUpdateData,
   DataStoreTxEventData,
   DbMicroblock,
+  DbPox2Event,
+  DbTxStatus,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -76,6 +79,8 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
+import { Pox2ContractIdentifer } from '../pox-helpers';
+import { decodePox2PrintEvent } from './pox2-event-parsing';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -210,7 +215,7 @@ async function handleMicroblockMessage(
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, {
+    txs: parseDataStoreTxEventData(chainId, parsedTxs, msg.events, {
       block_height: -1, // TODO: fill during initial db insert
       index_block_hash: '',
     }),
@@ -312,13 +317,15 @@ async function handleBlockMessage(
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg),
+    txs: parseDataStoreTxEventData(chainId, parsedTxs, msg.events, msg),
+    pox_v1_unlock_height: msg.pox_v1_unlock_height,
   };
 
   await db.update(dbData);
 }
 
 function parseDataStoreTxEventData(
+  chainId: ChainID,
   parsedTxs: CoreNodeParsedTxMessage[],
   events: CoreNodeEvent[],
   blockData: {
@@ -337,6 +344,7 @@ function parseDataStoreTxEventData(
       smartContracts: [],
       names: [],
       namespaces: [],
+      pox2Events: [],
     };
     if (
       tx.parsed_tx.payload.type_id === TxPayloadTypeID.SmartContract ||
@@ -370,6 +378,25 @@ function parseDataStoreTxEventData(
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);
     }
 
+    if (dbTx.tx.status !== DbTxStatus.Success) {
+      if (event.type === CoreNodeEventType.ContractEvent) {
+        let reprStr = '?';
+        try {
+          reprStr = decodeClarityValue(event.contract_event.raw_value).repr;
+        } catch (e) {
+          logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
+        }
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}, repr: ${reprStr}`
+        );
+      } else {
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}`
+        );
+      }
+      continue;
+    }
+
     const dbEvent: DbEventBase = {
       event_index: event.event_index,
       tx_id: event.txid,
@@ -389,6 +416,21 @@ function parseDataStoreTxEventData(
         };
         dbTx.contractLogEvents.push(entry);
         if (
+          event.contract_event.topic === printTopic &&
+          (event.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
+            event.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
+        ) {
+          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
+          if (poxEventData !== null) {
+            logger.debug(`Pox2 event data:`, poxEventData);
+            const dbPoxEvent: DbPox2Event = {
+              ...dbEvent,
+              ...poxEventData,
+            };
+            dbTx.pox2Events.push(dbPoxEvent);
+          }
+        } else if (
           event.contract_event.topic === printTopic &&
           (event.contract_event.contract_identifier === BnsContractIdentifier.mainnet ||
             event.contract_event.contract_identifier === BnsContractIdentifier.testnet)
@@ -443,6 +485,8 @@ function parseDataStoreTxEventData(
           locked_amount: BigInt(event.stx_lock_event.locked_amount),
           unlock_height: Number(event.stx_lock_event.unlock_height),
           locked_address: event.stx_lock_event.locked_address,
+          // if not available, then we can correctly assume pox-v1
+          contract_name: event.stx_lock_event.contract_identifier?.split('.')[1] ?? 'pox',
         };
         dbTx.stxLockEvents.push(entry);
         break;
@@ -570,6 +614,7 @@ function parseDataStoreTxEventData(
       tx.nftEvents,
       tx.stxEvents,
       tx.stxLockEvents,
+      tx.pox2Events,
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);

@@ -529,6 +529,7 @@ describe('mempool tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     };
