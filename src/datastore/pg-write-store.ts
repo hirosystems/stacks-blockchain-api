@@ -1973,7 +1973,7 @@ export class PgWriteStore extends PgStore {
       RETURNING tx_id
     `;
 
-    const restoredTxs = updatedRows.map(r => r.tx_id);
+    let restoredTxs = updatedRows.map(r => r.tx_id);
 
     // txs that didnt exist in the mempool need to be inserted into the mempool
     if (updatedRows.length < txIds.length) {
@@ -1981,15 +1981,17 @@ export class PgWriteStore extends PgStore {
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
 
       const txs: TxQueryResult[] = await sql`
-        SELECT ${sql(TX_COLUMNS)} FROM txs
+        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
+        FROM txs
         WHERE tx_id IN ${sql(txsRequiringInsertion)}
+        ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
       `;
 
       const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
 
       await this.updateMempoolTxs({ mempoolTxs });
 
-      restoredTxs.concat(txsRequiringInsertion);
+      restoredTxs = restoredTxs.concat(txsRequiringInsertion);
     }
 
     return { restoredTxs: restoredTxs };
