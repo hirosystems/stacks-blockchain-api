@@ -1,25 +1,25 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
-import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { testnetKeys } from '../api/routes/debug';
-import { hexToBuffer } from '../helpers';
-import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
+import { decodeBtcAddress } from '@stacks/stacking';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
+import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
+import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo } from '../core-rpc/client';
+import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
+import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
+import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
   standByForPoxCycle,
   standByForTxSuccess,
   standByUntilBurnBlock,
   testEnv,
-} from './test-helpers';
-import { decodeBtcAddress } from '../pox-helpers';
+} from '../test-utils/test-helpers';
 
 describe('PoX-2 - Stack using supported bitcoin address formats', () => {
   describe('PoX-2 - Stacking operations P2SH-P2WPKH', () => {
@@ -27,7 +27,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     let btcAddr: string;
     let btcRegtestAccount: VerboseKeyOutput;
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Buffer };
+    let decodedBtcAddr: { version: number; data: Uint8Array };
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
     let cycleBlockLength: number;
@@ -49,7 +49,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
 
       decodedBtcAddr = decodeBtcAddress(btcAddr);
       expect({
-        data: decodedBtcAddr.data.toString('hex'),
+        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
         version: decodedBtcAddr.version,
       }).toEqual({ data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 });
 
@@ -104,7 +104,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const sendResult1 = await testEnv.client.sendTransaction(tx1.serialize());
+      const sendResult1 = await testEnv.client.sendTransaction(Buffer.from(tx1.serialize()));
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
@@ -276,7 +276,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     let btcAddr: string;
     let btcRegtestAddr: string;
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Buffer };
+    let decodedBtcAddr: { version: number; data: Uint8Array };
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
     let cycleBlockLength: number;
@@ -298,7 +298,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
 
       decodedBtcAddr = decodeBtcAddress(btcAddr);
       expect({
-        data: decodedBtcAddr.data.toString('hex'),
+        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
         version: decodedBtcAddr.version,
       }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
 
@@ -351,7 +351,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const sendResult1 = await testEnv.client.sendTransaction(tx1.serialize());
+      const sendResult1 = await testEnv.client.sendTransaction(Buffer.from(tx1.serialize()));
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
@@ -524,7 +524,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     let btcAddr: string;
     let btcRegtestAddr: string;
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Buffer };
+    let decodedBtcAddr: { version: number; data: Uint8Array };
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
     let cycleBlockLength: number;
@@ -546,7 +546,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
 
       decodedBtcAddr = decodeBtcAddress(btcAddr);
       expect({
-        data: decodedBtcAddr.data.toString('hex'),
+        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
         version: decodedBtcAddr.version,
       }).toEqual({
         data: 'a802f89df647a9803154b5443e3ba7f3b29709fcca59e3cb36ea36a91e9a38dc',
@@ -604,7 +604,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const sendResult1 = await testEnv.client.sendTransaction(tx1.serialize());
+      const sendResult1 = await testEnv.client.sendTransaction(Buffer.from(tx1.serialize()));
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx
@@ -776,7 +776,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     let btcAddr: string;
     let btcRegtestAddr: string;
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Buffer };
+    let decodedBtcAddr: { version: number; data: Uint8Array };
     let poxInfo: CoreRpcPoxInfo;
     let burnBlockHeight: number;
     let cycleBlockLength: number;
@@ -798,7 +798,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
 
       decodedBtcAddr = decodeBtcAddress(btcAddr);
       expect({
-        data: decodedBtcAddr.data.toString('hex'),
+        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
         version: decodedBtcAddr.version,
       }).toEqual({
         data: 'cafd90c7026f0b6ab98df89490d02732881f2f4b5900856358dddff4679c2ffb',
@@ -856,7 +856,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
         validateWithAbi: false,
       });
       const expectedTxId1 = '0x' + tx1.txid();
-      const sendResult1 = await testEnv.client.sendTransaction(tx1.serialize());
+      const sendResult1 = await testEnv.client.sendTransaction(Buffer.from(tx1.serialize()));
       expect(sendResult1.txId).toBe(expectedTxId1);
 
       // Wait for API to receive and ingest tx

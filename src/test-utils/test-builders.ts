@@ -359,7 +359,9 @@ function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
     sender: args?.sender, // No default as this can be undefined.
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
-    value: args?.value ?? bufferToHexPrefixString(serializeCV(bufferCV(Buffer.from([2051])))),
+    value:
+      args?.value ??
+      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCV(Buffer.from([2051]))))),
   };
 }
 
@@ -420,7 +422,7 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: 'some-topic',
-    value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+    value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
   };
 }
 

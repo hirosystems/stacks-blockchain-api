@@ -107,7 +107,7 @@ async function transferStx(
     anchorMode: AnchorMode.Any,
     fee: 100000,
   });
-  const serialized: Buffer = transferTx.serialize();
+  const serialized: Buffer = Buffer.from(transferTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
   await standByForTx(txId, api);

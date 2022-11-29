@@ -1,9 +1,11 @@
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ApiServer } from '../api/init';
-import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksNetwork } from '@stacks/network';
+import { AnchorMode, makeContractCall, uintCV } from '@stacks/transactions';
+import { AddressStxBalanceResponse } from 'docs/generated';
 import { RPCClient } from 'rpc-bitcoin';
+import { ApiServer } from '../api/init';
 import { testnetKeys } from '../api/routes/debug';
+import { StacksCoreRpcClient } from '../core-rpc/client';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import {
   Account,
   accountFromKey,
@@ -11,10 +13,8 @@ import {
   standByForAccountUnlock,
   standByForNextPoxCycle,
   standByForTxSuccess,
-} from './test-helpers';
-import { TestEnvContext } from './env-setup';
-import { AnchorMode, makeContractCall, uintCV } from '@stacks/transactions';
-import { AddressStxBalanceResponse } from 'docs/generated';
+  TestEnvContext,
+} from '../test-utils/test-helpers';
 
 describe('PoX-2 - Auto unlock', () => {
   let db: PgWriteStore;
@@ -66,7 +66,7 @@ describe('PoX-2 - Auto unlock', () => {
       fee: 10000,
       validateWithAbi: false,
     });
-    const sendResult1 = await client.sendTransaction(tx1.serialize());
+    const sendResult1 = await client.sendTransaction(Buffer.from(tx1.serialize()));
     const txStandby1 = await standByForTxSuccess(sendResult1.txId);
 
     // validate stacks-node balance state
@@ -173,7 +173,7 @@ describe('PoX-2 - Auto unlock', () => {
       fee: 10000,
       validateWithAbi: false,
     });
-    const sendResult1 = await client.sendTransaction(tx1.serialize());
+    const sendResult1 = await client.sendTransaction(Buffer.from(tx1.serialize()));
     const txStandby1 = await standByForTxSuccess(sendResult1.txId);
 
     // validate stacks-node balance state

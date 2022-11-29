@@ -228,7 +228,7 @@ async function callContractFunction(
   // const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
   // contractCallTx.setFee(fee);
 
-  const serialized: Buffer = contractCallTx.serialize();
+  const serialized: Buffer = Buffer.from(contractCallTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'call-contract-func');
 }
@@ -255,11 +255,15 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
 
   // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
   // const feeRateResult = await feeRateReq.text();
-  // const txBytes = BigInt(contractDeployTx.serialize().byteLength);
+  // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
   // const feeRate = BigInt(feeRateResult);
   // const fee = feeRate * txBytes;
   // contractDeployTx.setFee(fee);
-  const { txId } = await sendCoreTx(contractDeployTx.serialize(), api, 'deploy-contract');
+  const { txId } = await sendCoreTx(
+    Buffer.from(contractDeployTx.serialize()),
+    api,
+    'deploy-contract'
+  );
 
   return { txId, contractId };
 }
@@ -280,7 +284,7 @@ async function transferStx(
     anchorMode: AnchorMode.Any,
     fee: 100000,
   });
-  const serialized: Buffer = transferTx.serialize();
+  const serialized: Buffer = Buffer.from(transferTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
 

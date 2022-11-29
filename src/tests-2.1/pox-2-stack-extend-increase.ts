@@ -1,31 +1,32 @@
-import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
-import { decodeBtcAddress } from '../pox-helpers';
-import {
-  fetchGet,
-  standByForPoxCycle,
-  standByForTxSuccess,
-  standByUntilBurnBlock,
-  testEnv,
-} from './test-helpers';
-import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
-import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
+
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
-import { hexToBuffer } from '../helpers';
+import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
+import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
+import { hexToBuffer } from '../helpers';
+import {
+  fetchGet,
+  standByForPoxCycle,
+  standByForTxSuccess,
+  standByUntilBurnBlock,
+  testEnv,
+} from '../test-utils/test-helpers';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 describe('PoX-2 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
   let btcAddr: string;
   let btcRegtestAccount: VerboseKeyOutput;
   let btcPubKey: string;
-  let decodedBtcAddr: { version: number; data: Buffer };
+  let decodedBtcAddr: { version: number; data: Uint8Array };
   let poxInfo: CoreRpcPoxInfo;
   let burnBlockHeight: number;
   let cycleBlockLength: number;
@@ -47,7 +48,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
 
     decodedBtcAddr = decodeBtcAddress(btcAddr);
     expect({
-      data: decodedBtcAddr.data.toString('hex'),
+      data: Buffer.from(decodedBtcAddr.data).toString('hex'),
       version: decodedBtcAddr.version,
     }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 });
 
@@ -130,7 +131,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackStxTx.txid();
-    const sendTxResult = await testEnv.client.sendTransaction(stackStxTx.serialize());
+    const sendTxResult = await testEnv.client.sendTransaction(Buffer.from(stackStxTx.serialize()));
     expect(sendTxResult.txId).toBe(expectedTxId);
 
     // Wait for API to receive and ingest tx
@@ -221,7 +222,9 @@ describe('PoX-2 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackIncreaseTx.txid();
-    const sendTxResult = await testEnv.client.sendTransaction(stackIncreaseTx.serialize());
+    const sendTxResult = await testEnv.client.sendTransaction(
+      Buffer.from(stackIncreaseTx.serialize())
+    );
     expect(sendTxResult.txId).toBe(expectedTxId);
 
     const dbTx = await standByForTxSuccess(sendTxResult.txId);
@@ -319,7 +322,9 @@ describe('PoX-2 - Stack extend and increase operations', () => {
       validateWithAbi: false,
     });
     const expectedTxId = '0x' + stackExtendTx.txid();
-    const sendTxResult = await testEnv.client.sendTransaction(stackExtendTx.serialize());
+    const sendTxResult = await testEnv.client.sendTransaction(
+      Buffer.from(stackExtendTx.serialize())
+    );
     expect(sendTxResult.txId).toBe(expectedTxId);
 
     const dbTx = await standByForTxSuccess(expectedTxId);

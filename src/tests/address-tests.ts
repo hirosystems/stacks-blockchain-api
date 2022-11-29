@@ -174,7 +174,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHexPrefixString(serializeCV(uintCV(amount))),
+          value: bufferToHexPrefixString(Buffer.from(serializeCV(uintCV(amount)))),
           recipient,
           sender,
         };
@@ -2037,7 +2037,7 @@ describe('address tests', () => {
       fee: 300,
       sponsorNonce: 2,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {

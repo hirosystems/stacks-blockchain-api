@@ -61,6 +61,7 @@ import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
@@ -626,7 +627,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -671,7 +672,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -702,7 +703,7 @@ describe('Rosetta Construction', () => {
     };
 
     const transaction = await makeSTXTokenTransfer(txOptions);
-    const serializedTx = transaction.serialize().toString('hex');
+    const serializedTx = Buffer.from(transaction.serialize()).toString('hex');
 
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
@@ -732,7 +733,7 @@ describe('Rosetta Construction', () => {
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const serializedTx = transaction.serialize().toString('hex');
+    const serializedTx = Buffer.from(transaction.serialize()).toString('hex');
 
     const request: RosettaConstructionHashRequest = {
       network_identifier: {
@@ -848,7 +849,7 @@ describe('Rosetta Construction', () => {
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
@@ -1049,10 +1050,10 @@ describe('Rosetta Construction', () => {
       ],
       metadata: {
         account_sequence: 0,
-        number_of_cycles: number_of_cycles, 
-        contract_address: contract_address, 
+        number_of_cycles: number_of_cycles,
+        contract_address: contract_address,
         contract_name: contract_name,
-        burn_block_height: burn_block_height, 
+        burn_block_height: burn_block_height,
 
       },
       public_keys: [
@@ -1065,7 +1066,7 @@ describe('Rosetta Construction', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -1086,13 +1087,13 @@ describe('Rosetta Construction', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: 0, 
+      nonce: 0,
       fee: fee,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
@@ -1317,14 +1318,14 @@ describe('Rosetta Construction', () => {
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+    const unsignedSerializedTx = Buffer.from(unsignedTransaction.serialize()).toString('hex');
 
     const signer = new TransactionSigner(unsignedTransaction);
 
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, 200, 0);
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(signer.transaction.serialize()).toString('hex');
 
     const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
 
@@ -1504,7 +1505,7 @@ describe('Rosetta Construction', () => {
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+    const unsignedSerializedTx = Buffer.from(unsignedTransaction.serialize()).toString('hex');
 
     const signer = new TransactionSigner(unsignedTransaction);
     signer.signOrigin(createStacksPrivateKey(testnetKeys[1].secretKey)); // use different secret key to sign
@@ -1728,7 +1729,7 @@ describe('Rosetta Construction', () => {
 
     //preprocess
     const fee = '260';
-    const stacking_amount = '1250180000000000';//minimum stacking 
+    const stacking_amount = '1250180000000000';//minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const number_of_cycles = 3;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
@@ -1827,13 +1828,13 @@ describe('Rosetta Construction', () => {
     };
     expect(preprocessResult.body).toEqual(expectResponse);
 
-    //metadata 
+    //metadata
     const metadataRequest: RosettaConstructionMetadataRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
         network: getRosettaNetworkName(ChainID.Testnet),
       },
-      options: preprocessResult.body.options, //using options returned from preprocess 
+      options: preprocessResult.body.options, //using options returned from preprocess
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
     const resultMetadata = await supertest(api.server)
@@ -1867,7 +1868,7 @@ describe('Rosetta Construction', () => {
         },
       ],
     };
-    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(pox_addr);
+    const { version: hashMode, data } = decodeBtcAddress(pox_addr);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -1886,13 +1887,13 @@ describe('Rosetta Construction', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: nonce, 
+      nonce: nonce,
       fee: fee,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     const signer = new TransactionSigner(transaction);
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, nonce);
     const payloadsResult = await supertest(api.server)
@@ -1918,7 +1919,7 @@ describe('Rosetta Construction', () => {
 
     //combine
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(signer.transaction.serialize()).toString('hex');
     const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
     const combineRequest: RosettaConstructionCombineRequest = {
       network_identifier: {
@@ -2005,7 +2006,7 @@ describe('Rosetta Construction', () => {
       });
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
-    
+
     let stxUnlockHeight = Number.parseInt(blockStxOpsQuery.body.block.transactions[1].operations[1].metadata.unlock_burn_height);
     expect(stxUnlockHeight).toBeTruthy();
 
@@ -2145,7 +2146,7 @@ describe('Rosetta Construction', () => {
 
     //preprocess
     const fee = '260';
-    const stacking_amount = '1250180000000000';//minimum stacking 
+    const stacking_amount = '1250180000000000';//minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
     const clarityPoxAddr = '0x0c000000020968617368627974657302000000141320e6542e2146ea486700f4091aa793e73607880776657273696f6e020000000101';
@@ -2236,7 +2237,7 @@ describe('Rosetta Construction', () => {
         decimals: 6,
         max_fee: max_fee,
         size: size,
-        pox_addr: pox_addr, 
+        pox_addr: pox_addr,
         delegate_to: testnetKeys[2].stacksAddress
       },
       required_public_keys: [
@@ -2247,7 +2248,7 @@ describe('Rosetta Construction', () => {
     };
     expect(preprocessResult.body).toEqual(expectResponse);
 
-    // //metadata 
+    // //metadata
 
     const contract_address = 'ST000000000000000000002AMW42H';
     const contract_name = 'pox';
@@ -2257,7 +2258,7 @@ describe('Rosetta Construction', () => {
         blockchain: RosettaConstants.blockchain,
         network: getRosettaNetworkName(ChainID.Testnet),
       },
-      options: preprocessResult.body.options, //using options returned from preprocess 
+      options: preprocessResult.body.options, //using options returned from preprocess
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
@@ -2321,7 +2322,7 @@ describe('Rosetta Construction', () => {
         },
       ],
     };
-    const { version: hashMode, data } = poxHelpers.decodeBtcAddress(pox_addr);
+    const { version: hashMode, data } = decodeBtcAddress(pox_addr);
     const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
@@ -2348,7 +2349,7 @@ describe('Rosetta Construction', () => {
     };
 
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     const signer = new TransactionSigner(transaction);
     const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, nonce);
     const payloadsResult = await supertest(api.server)
@@ -2374,7 +2375,7 @@ describe('Rosetta Construction', () => {
 
     //combine
     signer.signOrigin(createStacksPrivateKey(testnetKeys[1].secretKey));
-    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(signer.transaction.serialize()).toString('hex');
     const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
     const combineRequest: RosettaConstructionCombineRequest = {
       network_identifier: {
@@ -2513,7 +2514,7 @@ describe('Rosetta Construction', () => {
         },
       });
     });
-  
+
     test('network/options - bad request', async () => {
       const query1 = await supertest(api.server).post(`/rosetta/v1/network/options`).send({});
       expect(query1.status).toBe(400);

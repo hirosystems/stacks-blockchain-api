@@ -10,7 +10,7 @@ import {
   standByForPoxCycleEnd,
   standByForTxSuccess,
   testEnv,
-} from './test-helpers';
+} from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
@@ -82,7 +82,9 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await testEnv.client.sendTransaction(stxXfer1.serialize());
+    const { txId: stxXferId1 } = await testEnv.client.sendTransaction(
+      Buffer.from(stxXfer1.serialize())
+    );
 
     // transfer pox "min_amount_ustx" from seed to delegatee account
     const stackingAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
@@ -95,7 +97,9 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       fee: 200,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
     });
-    const { txId: stxXferId2 } = await testEnv.client.sendTransaction(stxXfer2.serialize());
+    const { txId: stxXferId2 } = await testEnv.client.sendTransaction(
+      Buffer.from(stxXfer2.serialize())
+    );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(delegatorAccount.stxAddr);
@@ -145,7 +149,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       validateWithAbi: false,
     });
     const { txId: delegateStxTxId } = await testEnv.client.sendTransaction(
-      delegateStxTx.serialize()
+      Buffer.from(delegateStxTx.serialize())
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
@@ -192,7 +196,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       validateWithAbi: false,
     });
     const { txId: delegateStackStxTxId } = await testEnv.client.sendTransaction(
-      delegateStackStxTx.serialize()
+      Buffer.from(delegateStackStxTx.serialize())
     );
     const delegateStackStxDbTx = await standByForTxSuccess(delegateStackStxTxId);
 
@@ -248,7 +252,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       validateWithAbi: false,
     });
     const { txId: stackAggrCommitTxId } = await testEnv.client.sendTransaction(
-      stackAggrCommitTx.serialize()
+      Buffer.from(stackAggrCommitTx.serialize())
     );
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId);
 
@@ -295,7 +299,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       validateWithAbi: false,
     });
     const { txId: revokeDelegateStxTxId } = await testEnv.client.sendTransaction(
-      revokeDelegateStxTx.serialize()
+      Buffer.from(revokeDelegateStxTx.serialize())
     );
 
     const delegateAmount = balanceLocked + stxToDelegateIncrease;
@@ -317,7 +321,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       nonce: revokeDelegateStxTx.auth.spendingCondition.nonce + 1n,
     });
     const { txId: delegateStxTxId } = await testEnv.client.sendTransaction(
-      delegateStxTx.serialize()
+      Buffer.from(delegateStxTx.serialize())
     );
 
     const revokeDelegateStxTxDbTx = await standByForTxSuccess(revokeDelegateStxTxId);
@@ -349,7 +353,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       validateWithAbi: false,
     });
     const { txId: delegateStackIncreaseTxId } = await testEnv.client.sendTransaction(
-      delegateStackIncreaseTx.serialize()
+      Buffer.from(delegateStackIncreaseTx.serialize())
     );
 
     // then commit to increased amount with call to `stack-aggregation-increase`
@@ -372,7 +376,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
       nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
     });
     const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
-      stackAggrIncreaseTx.serialize()
+      Buffer.from(stackAggrIncreaseTx.serialize())
     );
 
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId);

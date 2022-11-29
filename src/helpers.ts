@@ -1022,7 +1022,9 @@ export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
   const name = tuple.data.name as BufferCV;
   const namespace = tuple.data.namespace as BufferCV;
-  return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
+  return `${Buffer.from(name.buffer).toString('utf8')}.${Buffer.from(namespace.buffer).toString(
+    'utf8'
+  )}`;
 }
 
 export function getBnsSmartContractId(chainId: ChainID): string {
@@ -1087,4 +1089,13 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
         throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
     }
   });
+}
+
+export function doesThrow(fn: () => void) {
+  try {
+    fn();
+    return false;
+  } catch {
+    return true;
+  }
 }

@@ -12,8 +12,8 @@ import {
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
 } from '../datastore/common';
-import { bufferToHexPrefixString, coerceToBuffer, logger } from '../helpers';
-import { Pox2EventName, poxAddressToBtcAddress } from '../pox-helpers';
+import { bufferToHexPrefixString, coerceToBuffer, has0xPrefix, logger } from '../helpers';
+
 import {
   ClarityTypeID,
   ClarityValue,
@@ -27,6 +27,8 @@ import {
   ClarityValueUInt,
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
+import { poxAddressToBtcAddress } from '@stacks/stacking';
+import { Pox2EventName } from '../pox-helpers';
 
 function tryClarityPoxAddressToBtcAddress(
   poxAddr: Pox2Addr,
@@ -35,8 +37,8 @@ function tryClarityPoxAddressToBtcAddress(
   let btcAddr: string | null = null;
   try {
     btcAddr = poxAddressToBtcAddress(
-      poxAddr.data.version.buffer,
-      poxAddr.data.hashbytes.buffer,
+      coerceToBuffer(poxAddr.data.version.buffer)[0],
+      coerceToBuffer(poxAddr.data.hashbytes.buffer),
       network
     );
   } catch (e) {

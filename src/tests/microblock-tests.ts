@@ -353,7 +353,7 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+          value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,

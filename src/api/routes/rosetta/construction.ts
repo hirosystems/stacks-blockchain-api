@@ -1,57 +1,65 @@
-import { asyncHandler } from '../../async-handler';
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
+import { decodeBtcAddress, poxAddressToTuple, StackingClient } from '@stacks/stacking';
 import {
   NetworkIdentifier,
   RosettaAccountIdentifier,
+  RosettaAmount,
+  RosettaConstructionCombineRequest,
+  RosettaConstructionCombineResponse,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
   RosettaConstructionHashResponse,
+  RosettaConstructionMetadataRequest,
   RosettaConstructionMetadataResponse,
+  RosettaConstructionParseResponse,
+  RosettaConstructionPayloadResponse,
   RosettaConstructionPreprocessResponse,
+  RosettaConstructionSubmitResponse,
+  RosettaCurrency,
+  RosettaError,
   RosettaMaxFeeAmount,
   RosettaOperation,
   RosettaOptions,
   RosettaPublicKey,
-  RosettaConstructionSubmitResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionCombineRequest,
-  RosettaConstructionCombineResponse,
-  RosettaAmount,
-  RosettaCurrency,
-  RosettaError,
-  RosettaConstructionParseResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
+  AnchorMode,
+  AuthType,
+  bufferCV,
+  BytesReader,
+  ChainID,
   createMessageSignature,
+  deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
   makeSigHashPreSign,
-  MessageSignature,
-  BufferReader,
-  deserializeTransaction,
-  StacksTransaction,
-  UnsignedTokenTransferOptions,
-  makeUnsignedSTXTokenTransfer,
-  TransactionSigner,
-  AuthType,
-  ChainID,
   makeUnsignedContractCall,
-  UnsignedContractCallOptions,
-  uintCV,
-  tupleCV,
-  bufferCV,
-  standardPrincipalCV,
+  makeUnsignedSTXTokenTransfer,
+  MessageSignature,
   noneCV,
   OptionalCV,
   someCV,
-  AnchorMode,
+  StacksTransaction,
+  standardPrincipalCV,
+  TransactionSigner,
+  tupleCV,
+  uintCV,
+  UnsignedContractCallOptions,
+  UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import * as poxHelpers from '../../../pox-helpers';
 import * as express from 'express';
-import { StacksCoreRpcClient } from '../../../core-rpc/client';
+import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
+import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
-import { FoundOrNot, hexToBuffer, isValidC32Address, has0xPrefix } from '../../../helpers';
+import {
+  doesThrow,
+  FoundOrNot,
+  has0xPrefix,
+  hexToBuffer,
+  isValidC32Address,
+} from '../../../helpers';
+import { asyncHandler } from '../../async-handler';
 import {
   RosettaConstants,
   RosettaErrors,
@@ -62,23 +70,28 @@ import {
   getOperations,
   getOptionsFromOperations,
   getSigners,
+  getStacksNetwork,
   isDecimalsSupported,
   isSignedTransaction,
   isSymbolSupported,
+  makePresignHash,
+  parseTransactionMemo,
   publicKeyToBitcoinAddress,
   rawTxToBaseTx,
   rawTxToStacksTransaction,
-  getStacksNetwork,
-  makePresignHash,
   verifySignature,
-  parseTransactionMemo,
 } from './../../../rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
-import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   router.use(express.json());
+
+  const stackingOpts = { url: `http://${getCoreNodeEndpoint()}` };
+  const stackingRpc = new StackingClient(
+    '', // anonymous
+    chainId == ChainID.Mainnet ? new StacksMainnet(stackingOpts) : new StacksTestnet(stackingOpts)
+  );
 
   //construction/derive endpoint
   router.post(
@@ -89,6 +102,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         //TODO have to fix this and make error generic
         if (valid.error?.includes('should be equal to one of the allowed values')) {
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
+          return;
         }
         res.status(400).json(makeRosettaError(valid));
         return;
@@ -125,13 +139,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   //construction/preprocess endpoint
   router.post(
     '/preprocess',
+    makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
-
       const operations: RosettaOperation[] = req.body.operations;
 
       // Max operations should be 3 for one transaction
@@ -140,17 +149,17 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         return;
       }
 
-      if (!isSymbolSupported(req.body.operations)) {
+      if (!isSymbolSupported(operations)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
         return;
       }
 
-      if (!isDecimalsSupported(req.body.operations)) {
+      if (!isDecimalsSupported(operations)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
         return;
       }
 
-      const options = getOptionsFromOperations(req.body.operations);
+      const options = getOptionsFromOperations(operations);
       if (options == null) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
         return;
@@ -166,6 +175,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         }
 
         if (req.body.suggested_fee_multiplier) {
+          // todo: should this only be done if we have `metadata`?
           options.suggested_fee_multiplier = req.body.suggested_fee_multiplier;
         }
       }
@@ -190,13 +200,10 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
             recipient: options.token_transfer_recipient_address as string,
             amount: BigInt(options.amount as string),
-            // We don't know the fee yet but need a placeholder
-            fee: 0,
-            // placeholder public key
-            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+            fee: 0, // placeholder
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000', // placeholder
             network: getStacksNetwork(),
-            // We don't know the non yet but need a placeholder
-            nonce: 0,
+            nonce: 0, // placeholder
             memo: req.body.metadata?.memo,
             anchorMode: AnchorMode.Any,
           };
@@ -204,36 +211,31 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
           break;
         case RosettaOperationType.StackStx: {
-          if (!options.number_of_cycles) {
+          const poxAddr = options.pox_addr;
+          if (!options.number_of_cycles || !poxAddr) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
 
-          if (!options.pox_addr) {
+          if (doesThrow(() => decodeBtcAddress(poxAddr))) {
+            // todo: add error type specifically for this?
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          // dummy transaction to calculate size
-          const poxAddress = options.pox_addr;
-          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxAddress);
-          const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-          const hashbytes = bufferCV(data);
-          const poxAddressCV = tupleCV({
-            hashbytes,
-            version: hashModeBuffer,
-          });
+
           if (!options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
+          // dummy transaction to calculate size
           const dummyStackingTx: UnsignedContractCallOptions = {
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             contractAddress: 'ST000000000000000000002AMW42H',
             contractName: 'pox',
             functionName: 'stack-stx',
-            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             functionArgs: [
               uintCV(options.amount),
-              poxAddressCV,
+              poxAddressToTuple(poxAddr),
               uintCV(0),
               uintCV(options.number_of_cycles),
             ],
@@ -247,7 +249,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          // dummy transaction to calculate size
           if (!options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
@@ -257,30 +258,21 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
 
-          let optionalPoxAddressCV: OptionalCV = noneCV();
-          if (options.pox_addr) {
-            const dummyPoxAddress = options.pox_addr;
-            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(dummyPoxAddress);
-            const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-            const hashbytes = bufferCV(data);
-            optionalPoxAddressCV = someCV(
-              tupleCV({
-                hashbytes,
-                version: hashModeBuffer,
-              })
-            );
-          }
+          const poxAddrOptionalCV = options.pox_addr
+            ? someCV(poxAddressToTuple(options.pox_addr))
+            : noneCV();
 
-          const dummyStackingTx: UnsignedContractCallOptions = {
+          // dummy transaction to calculate size
+          const dummyDelegateStxTx: UnsignedContractCallOptions = {
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             contractAddress: 'ST000000000000000000002AMW42H',
             contractName: 'pox',
             functionName: 'delegate-stx',
-            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
             functionArgs: [
               uintCV(options.amount),
               standardPrincipalCV(options.delegate_to),
               noneCV(),
-              optionalPoxAddressCV,
+              poxAddrOptionalCV,
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -288,7 +280,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             nonce: 0,
             anchorMode: AnchorMode.Any,
           };
-          transaction = await makeUnsignedContractCall(dummyStackingTx);
+          transaction = await makeUnsignedContractCall(dummyDelegateStxTx);
           break;
         }
         default:
@@ -296,21 +288,12 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           return;
       }
 
-      const unsignedTransaction = transaction.serialize();
-
-      options.size = unsignedTransaction.length;
-
-      if (req.body.metadata?.memo) {
-        options.memo = req.body.metadata?.memo;
-      }
+      options.size = transaction.serialize().byteLength;
+      options.memo = req.body.metadata?.memo;
 
       const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
         options,
-        required_public_keys: [
-          {
-            address: options.sender_address as string,
-          },
-        ],
+        required_public_keys: [{ address: options.sender_address as string }],
       };
       res.json(rosettaPreprocessResponse);
     })
@@ -319,13 +302,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   //construction/metadata endpoint
   router.post(
     '/metadata',
+    makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
-
       const request: RosettaConstructionMetadataRequest = req.body;
       const options: RosettaOptions = request.options;
 
@@ -358,26 +336,27 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           }
           break;
         case RosettaOperationType.StackStx: {
-          // Getting stacking info
-          const poxInfo = await new StacksCoreRpcClient().getPox();
+          // Getting PoX info
+          const poxInfo = await stackingRpc.getPoxInfo();
+          const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
+          const contract = await stackingRpc.getStackingContract(poxOperationInfo);
+          const [contractAddress, contractName] = contract.split('.');
+
           let burnBlockHeight = poxInfo.current_burnchain_block_height;
-          // In Stacks 2.1, the burn block height is inlcuded in `/v2/pox` so we can skip the extra network request
-          if (burnBlockHeight === undefined) {
-            const coreInfo = await new StacksCoreRpcClient().getInfo();
-            burnBlockHeight = coreInfo.burn_block_height;
-          }
-          const contractInfo = poxInfo.contract_id.split('.');
-          options.contract_address = contractInfo[0];
-          options.contract_name = contractInfo[1];
+          // In Stacks 2.1, the burn block height is included in `/v2/pox` so we can skip the extra network request
+          burnBlockHeight ??= (await new StacksCoreRpcClient().getInfo()).burn_block_height;
+
+          options.contract_address = contractAddress;
+          options.contract_name = contractName;
           options.burn_block_height = burnBlockHeight;
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          // delegate stacking
-          const poxInfo = await new StacksCoreRpcClient().getPox();
-          const contractInfo = poxInfo.contract_id.split('.');
-          options.contract_address = contractInfo[0];
-          options.contract_name = contractInfo[1];
+          // Delegate stacking
+          const contract = await stackingRpc.getStackingContract();
+          const [contractAddress, contractName] = contract.split('.');
+          options.contract_address = contractAddress;
+          options.contract_name = contractName;
           break;
         }
         default:
@@ -393,7 +372,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       // Getting nonce info
       const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
-      const nonce = accountInfo.nonce;
 
       let recentBlockHash = undefined;
       const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
@@ -403,8 +381,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       response = {
         metadata: {
-          ...req.body.options,
-          account_sequence: nonce,
+          ...options,
+          account_sequence: accountInfo.nonce,
           recent_block_hash: recentBlockHash,
         },
       };
@@ -438,71 +416,58 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   );
 
   //construction/hash endpoint
-  router.post(
-    '/hash',
-    asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
+  router.post('/hash', makeValidationMiddleware(chainId), (req, res) => {
+    const request: RosettaConstructionHashRequest = req.body;
 
-      const request: RosettaConstructionHashRequest = req.body;
+    if (!has0xPrefix(request.signed_transaction)) {
+      request.signed_transaction = '0x' + request.signed_transaction;
+    }
 
-      if (!has0xPrefix(request.signed_transaction)) {
-        request.signed_transaction = '0x' + request.signed_transaction;
-      }
+    let buffer: Buffer;
+    try {
+      buffer = hexToBuffer(request.signed_transaction);
+    } catch (error) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
+      return;
+    }
 
-      let buffer: Buffer;
-      try {
-        buffer = hexToBuffer(request.signed_transaction);
-      } catch (error) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
-        return;
-      }
+    const transaction = deserializeTransaction(new BytesReader(buffer));
+    const hash = transaction.txid();
 
-      const transaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
-      const hash = transaction.txid();
-
-      if (!transaction.auth.spendingCondition) {
+    if (!transaction.auth.spendingCondition) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
+      return;
+    }
+    if (isSingleSig(transaction.auth.spendingCondition)) {
+      /**Single signature Transaction has an empty signature, so the transaction is not signed */
+      if (
+        !transaction.auth.spendingCondition.signature.data ||
+        emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
+      ) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
         return;
       }
-      if (isSingleSig(transaction.auth.spendingCondition)) {
-        /**Single signature Transaction has an empty signature, so the transaction is not signed */
-        if (
-          !transaction.auth.spendingCondition.signature.data ||
-          emptyMessageSignature().data === transaction.auth.spendingCondition.signature.data
-        ) {
-          res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
-          return;
-        }
-      } else {
-        /**Multi-signature transaction does not have signature fields thus the transaction not signed */
-        if (transaction.auth.spendingCondition.fields.length === 0) {
-          res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
-          return;
-        }
+    } else {
+      /**Multi-signature transaction does not have signature fields thus the transaction not signed */
+      if (transaction.auth.spendingCondition.fields.length === 0) {
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.transactionNotSigned]);
+        return;
       }
+    }
 
-      const hashResponse: RosettaConstructionHashResponse = {
-        transaction_identifier: {
-          hash: '0x' + hash,
-        },
-      };
-      res.status(200).json(hashResponse);
-    })
-  );
+    const hashResponse: RosettaConstructionHashResponse = {
+      transaction_identifier: {
+        hash: '0x' + hash,
+      },
+    };
+    res.status(200).json(hashResponse);
+  });
 
   //construction/parse endpoint
   router.post(
     '/parse',
+    makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
       let inputTx = req.body.transaction;
       const signed = req.body.signed;
 
@@ -546,12 +511,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   //construction/submit endpoint
   router.post(
     '/submit',
+    makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
       let transaction = req.body.signed_transaction;
       let buffer: Buffer;
 
@@ -586,21 +547,15 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   //construction/payloads endpoint
   router.post(
     '/payloads',
+    makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
-
       const options = getOptionsFromOperations(req.body.operations);
       if (options == null) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
         return;
       }
 
-      const amount = options.amount;
-      if (!amount) {
+      if (!options.amount) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidAmount]);
         return;
       }
@@ -656,7 +611,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // signel signature
           const tokenTransferOptions: UnsignedTokenTransferOptions = {
             recipient: recipientAddress,
-            amount: BigInt(amount),
+            amount: BigInt(options.amount),
             fee: BigInt(fee),
             publicKey: publicKeys[0].hex_bytes,
             network: getStacksNetwork(),
@@ -675,17 +630,14 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
           const poxBTCAddress = options.pox_addr;
-          const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+          const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
           const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
           const hashbytes = bufferCV(data);
           const poxAddressCV = tupleCV({
             hashbytes,
             version: hashModeBuffer,
           });
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
+
           if (!req.body.metadata.contract_address) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractAddress]);
             return;
@@ -698,10 +650,11 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          if (!options.number_of_cycles) {
+          if (!options.number_of_cycles || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
+
           const stackingTx: UnsignedContractCallOptions = {
             contractAddress: req.body.metadata.contract_address,
             contractName: req.body.metadata.contract_name,
@@ -727,7 +680,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           if (options.pox_addr) {
             const poxBTCAddress = options.pox_addr;
-            const { version: hashMode, data } = poxHelpers.decodeBtcAddress(poxBTCAddress);
+            const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
             const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
             const hashbytes = bufferCV(data);
             poxAddressCV = someCV(
@@ -737,10 +690,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               })
             );
           }
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
+
           if (!req.body.metadata.contract_address) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractAddress]);
             return;
@@ -756,7 +706,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             if (typeof burn_block_height !== 'number' || typeof burn_block_height !== 'string')
               expire_burn_block_heightCV = someCV(uintCV(burn_block_height));
           }
-          if (!options.delegate_to) {
+          if (!options.delegate_to || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -785,7 +735,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           return;
       }
 
-      const unsignedTransaction = transaction.serialize();
+      const unsignedTransaction = Buffer.from(transaction.serialize());
 
       const signer = new TransactionSigner(transaction);
 
@@ -809,98 +759,102 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   );
 
   //construction/combine endpoint
-  router.post(
-    '/combine',
-    asyncHandler(async (req, res) => {
-      const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
-      if (!valid.valid) {
-        res.status(400).json(makeRosettaError(valid));
-        return;
-      }
-      const combineRequest: RosettaConstructionCombineRequest = req.body;
-      const signatures = combineRequest.signatures;
+  router.post('/combine', makeValidationMiddleware(chainId), (req, res) => {
+    const combineRequest: RosettaConstructionCombineRequest = req.body;
+    const signatures = combineRequest.signatures;
 
-      if (!has0xPrefix(combineRequest.unsigned_transaction)) {
-        combineRequest.unsigned_transaction = '0x' + combineRequest.unsigned_transaction;
-      }
+    if (!has0xPrefix(combineRequest.unsigned_transaction)) {
+      combineRequest.unsigned_transaction = '0x' + combineRequest.unsigned_transaction;
+    }
 
-      if (signatures.length === 0) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.noSignatures]);
-        return;
-      }
+    if (signatures.length === 0) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.noSignatures]);
+      return;
+    }
 
-      let unsigned_transaction_buffer: Buffer;
-      let transaction: StacksTransaction;
+    let unsigned_transaction_buffer: Buffer;
+    let transaction: StacksTransaction;
 
-      try {
-        unsigned_transaction_buffer = hexToBuffer(combineRequest.unsigned_transaction);
-        transaction = deserializeTransaction(BufferReader.fromBuffer(unsigned_transaction_buffer));
-      } catch (e) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
-        return;
-      }
+    try {
+      unsigned_transaction_buffer = hexToBuffer(combineRequest.unsigned_transaction);
+      transaction = deserializeTransaction(new BytesReader(unsigned_transaction_buffer));
+    } catch (e) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
+      return;
+    }
 
-      if (signatures.length !== 1) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature]);
-        return;
-      }
+    if (signatures.length !== 1) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature]);
+      return;
+    }
 
-      if (signatures[0].public_key.curve_type !== 'secp256k1') {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
-        return;
-      }
-      const preSignHash = makePresignHash(transaction);
-      if (!preSignHash) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
-        return;
-      }
+    if (signatures[0].public_key.curve_type !== 'secp256k1') {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
+      return;
+    }
+    const preSignHash = makePresignHash(transaction);
+    if (!preSignHash) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidTransactionString]);
+      return;
+    }
 
-      let newSignature: MessageSignature;
+    let newSignature: MessageSignature;
 
-      try {
-        /**
-         * the elliptic library produces signatures that aren't in an "allowed" format
-         * it preapend v (i.e 01) while it should append it at the end, to incorporate that rotate
-         * the signature to match the elipcitc library
-         * Discussion here: https://github.com/coinbase/rosetta-sdk-go/issues/201
-         */
-        const hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
-        newSignature = createMessageSignature(hash);
-      } catch (error) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSignature]);
-        return;
-      }
+    try {
+      /**
+       * the elliptic library produces signatures that aren't in an "allowed" format
+       * it preapend v (i.e 01) while it should append it at the end, to incorporate that rotate
+       * the signature to match the elipcitc library
+       * Discussion here: https://github.com/coinbase/rosetta-sdk-go/issues/201
+       */
+      const hash = signatures[0].hex_bytes.slice(128) + signatures[0].hex_bytes.slice(0, -2);
+      newSignature = createMessageSignature(hash);
+    } catch (error) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSignature]);
+      return;
+    }
 
-      if (has0xPrefix(signatures[0].public_key.hex_bytes)) {
-        signatures[0].public_key.hex_bytes = signatures[0].public_key.hex_bytes.slice(2);
-      }
+    if (has0xPrefix(signatures[0].public_key.hex_bytes)) {
+      signatures[0].public_key.hex_bytes = signatures[0].public_key.hex_bytes.slice(2);
+    }
 
-      if (
-        !verifySignature(
-          signatures[0].signing_payload.hex_bytes,
-          signatures[0].public_key.hex_bytes,
-          newSignature
-        )
-      ) {
-        res.status(400).json(RosettaErrors[RosettaErrorsTypes.signatureNotVerified]);
-        return;
-      }
+    if (
+      !verifySignature(
+        signatures[0].signing_payload.hex_bytes,
+        signatures[0].public_key.hex_bytes,
+        newSignature
+      )
+    ) {
+      res.status(400).json(RosettaErrors[RosettaErrorsTypes.signatureNotVerified]);
+      return;
+    }
 
-      if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
-        transaction.auth.spendingCondition.signature = newSignature;
-      } else {
-        //support multi-sig
-      }
+    if (transaction.auth.spendingCondition && isSingleSig(transaction.auth.spendingCondition)) {
+      transaction.auth.spendingCondition.signature = newSignature;
+    } else {
+      //support multi-sig
+    }
 
-      const serializedTx = transaction.serialize().toString('hex');
+    const serializedTx = Buffer.from(transaction.serialize()).toString('hex');
 
-      const combineResponse: RosettaConstructionCombineResponse = {
-        signed_transaction: '0x' + serializedTx,
-      };
+    const combineResponse: RosettaConstructionCombineResponse = {
+      signed_transaction: '0x' + serializedTx,
+    };
 
-      res.status(200).json(combineResponse);
-    })
-  );
+    res.status(200).json(combineResponse);
+  });
 
   return router;
+}
+
+// Middleware ==================================================================
+function makeValidationMiddleware(chainId: ChainID) {
+  return asyncHandler(async function validationMiddleware(req, res, next) {
+    const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
+    if (!valid.valid) {
+      res.status(400).json(makeRosettaError(valid));
+      return;
+    }
+    next();
+  });
 }

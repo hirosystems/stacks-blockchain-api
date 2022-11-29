@@ -104,11 +104,11 @@ describe('api tests', () => {
 
     // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
     // const feeRateResult = await feeRateReq.text();
-    // const txBytes = BigInt(contractDeployTx.serialize().byteLength);
+    // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
     // const feeRate = BigInt(feeRateResult);
     // const fee = feeRate * txBytes;
     // contractDeployTx.setFee(fee);
-    const { txId } = await sendCoreTx(contractDeployTx.serialize());
+    const { txId } = await sendCoreTx(Buffer.from(contractDeployTx.serialize()));
     return { txId, contractId };
   }
 

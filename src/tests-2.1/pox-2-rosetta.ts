@@ -1,93 +1,39 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import type { TestEnvContext } from './env-setup';
-import { ApiServer, startApiServer } from '../api/init';
-import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import { DbBlock, DbEventTypeId, DbTx, DbTxStatus } from '../datastore/common';
+
+import { StacksNetwork } from '@stacks/network';
 import {
-  AnchorMode,
-  AuthType,
-  bufferCV,
-  ChainID,
-  createStacksPrivateKey,
-  deserializeTransaction,
-  getAddressFromPrivateKey,
-  getPublicKey,
-  makeSTXTokenTransfer,
-  makeUnsignedContractCall,
-  makeUnsignedSTXTokenTransfer,
-  noneCV,
-  pubKeyfromPrivKey,
-  publicKeyToString,
-  SignedTokenTransferOptions,
-  someCV,
-  standardPrincipalCV,
-  TransactionSigner,
-  TransactionVersion,
-  tupleCV,
-  uintCV,
-  UnsignedContractCallOptions,
-  UnsignedTokenTransferOptions,
-} from '@stacks/transactions';
-import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, FoundOrNot, hexToBuffer, timeout } from '../helpers';
-import {
-  RosettaConstructionCombineRequest,
-  RosettaConstructionCombineResponse,
-  RosettaAccountIdentifier,
-  RosettaConstructionDeriveRequest,
-  RosettaConstructionDeriveResponse,
-  RosettaConstructionHashRequest,
-  RosettaConstructionHashResponse,
-  RosettaConstructionMetadataRequest,
-  RosettaConstructionParseRequest,
-  RosettaConstructionParseResponse,
-  RosettaConstructionPayloadsRequest,
-  RosettaConstructionPreprocessRequest,
-  RosettaConstructionPreprocessResponse,
-  RosettaConstructionMetadataResponse,
-  NetworkIdentifier,
-  RosettaOperation,
-  RosettaConstructionPayloadResponse,
-  RosettaConstructionSubmitRequest,
-  RosettaConstructionSubmitResponse,
-  BurnchainRewardListResponse,
-  RosettaBlockResponse,
-  RosettaBlockRequest,
-  RosettaAccountBalanceRequest,
-  RosettaAccountBalanceResponse,
   AddressStxBalanceResponse,
+  BurnchainRewardListResponse,
+  BurnchainRewardSlotHolderListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
-  getRosettaNetworkName,
-  RosettaConstants,
-  RosettaErrors,
-  RosettaErrorsTypes,
-  RosettaOperationStatuses,
-  RosettaOperationTypes,
-} from '../api/rosetta-constants';
-import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksNetwork } from '../rosetta-helpers';
-import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
-import * as poxHelpers from '../pox-helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { RPCClient } from 'rpc-bitcoin';
+  AnchorMode,
+  getAddressFromPrivateKey,
+  makeSTXTokenTransfer,
+  TransactionVersion,
+} from '@stacks/transactions';
 import bignumber from 'bignumber.js';
+import { RPCClient } from 'rpc-bitcoin';
+import { DbTxStatus } from '../../src/datastore/common';
+import { ApiServer } from '../api/init';
+import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { StacksNetwork } from '@stacks/network';
-import { decodeClarityValue } from 'stacks-encoding-native-js';
+import { hexToBuffer } from '../helpers';
 import {
+  accountFromKey,
   fetchGet,
+  getRosettaAccountBalance,
+  getRosettaBlockByBurnBlockHeight,
+  stackStxWithRosetta,
   standByForAccountUnlock,
-  standByForPoxCycleEnd,
-  standByForTx,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
   testEnv,
-} from './test-helpers';
+  TestEnvContext,
+} from '../test-utils/test-helpers';
 
 describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   let db: PgWriteStore;
@@ -133,156 +79,6 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     });
   });
 
-  const rosettaNetwork: NetworkIdentifier = {
-    blockchain: RosettaConstants.blockchain,
-    network: getRosettaNetworkName(ChainID.Testnet),
-  };
-
-  async function fetchRosetta<TPostBody, TRes>(endpoint: string, body: TPostBody) {
-    const result = await supertest(api.server)
-      .post(endpoint)
-      .send(body as any);
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    return result.body as TRes;
-  }
-
-  async function getRosettaBlockByHeight(blockHeight: number) {
-    const dbBlockQuery = await api.datastore.getBlock({ height: blockHeight });
-    if (!dbBlockQuery.found) {
-      throw new Error(`block ${blockHeight} not found`);
-    }
-    return fetchRosetta<RosettaBlockRequest, RosettaBlockResponse>('/rosetta/v1/block', {
-      network_identifier: { blockchain: 'stacks', network: 'testnet' },
-      block_identifier: { hash: dbBlockQuery.result.block_hash },
-    });
-  }
-
-  async function getRosettaBlockByBurnBlockHeight(burnBlockHeight: number) {
-    const unlockDbBlock = await api.datastore.getBlockByBurnBlockHeight(burnBlockHeight);
-    expect(unlockDbBlock.found).toBeTruthy();
-    return fetchRosetta<RosettaBlockRequest, RosettaBlockResponse>('/rosetta/v1/block', {
-      network_identifier: { blockchain: 'stacks', network: 'testnet' },
-      block_identifier: { hash: unlockDbBlock.result!.block_hash },
-    });
-  }
-
-  async function getRosettaAccountBalance(stacksAddress: string, atBlockHeight?: number) {
-    const req: RosettaAccountBalanceRequest = {
-      network_identifier: { blockchain: 'stacks', network: 'testnet' },
-      account_identifier: { address: stacksAddress },
-    };
-    if (atBlockHeight) {
-      req.block_identifier = { index: atBlockHeight };
-    }
-    const account = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
-      '/rosetta/v1/account/balance',
-      req
-    );
-    // Also query for locked balance, requires specifying a special constant sub_account
-    req.account_identifier.sub_account = { address: RosettaConstants.StackedBalance };
-    const locked = await fetchRosetta<RosettaAccountBalanceRequest, RosettaAccountBalanceResponse>(
-      '/rosetta/v1/account/balance',
-      req
-    );
-    return {
-      account,
-      locked,
-    };
-  }
-
-  async function stackStxWithRosetta(opts: {
-    btcAddr: string;
-    stacksAddress: string;
-    pubKey: string;
-    privateKey: string;
-    cycleCount: number;
-    ustxAmount: bigint;
-  }) {
-    const stackingOperations: RosettaOperation[] = [
-      {
-        operation_identifier: { index: 0, network_index: 0 },
-        related_operations: [],
-        type: 'stack_stx',
-        account: { address: opts.stacksAddress, metadata: {} },
-        amount: {
-          value: '-' + opts.ustxAmount.toString(),
-          currency: { symbol: 'STX', decimals: 6 },
-          metadata: {},
-        },
-        metadata: {
-          number_of_cycles: opts.cycleCount,
-          pox_addr: opts.btcAddr,
-        },
-      },
-      {
-        operation_identifier: { index: 1, network_index: 0 },
-        related_operations: [],
-        type: 'fee',
-        account: { address: opts.stacksAddress, metadata: {} },
-        amount: { value: '10000', currency: { symbol: 'STX', decimals: 6 } },
-      },
-    ];
-
-    // preprocess
-    const preprocessResult = await fetchRosetta<
-      RosettaConstructionPreprocessRequest,
-      RosettaConstructionPreprocessResponse
-    >('/rosetta/v1/construction/preprocess', {
-      network_identifier: rosettaNetwork,
-      operations: stackingOperations,
-      metadata: {},
-      max_fee: [{ value: '12380898', currency: { symbol: 'STX', decimals: 6 }, metadata: {} }],
-      suggested_fee_multiplier: 1,
-    });
-
-    // metadata
-    const metadataResult = await fetchRosetta<
-      RosettaConstructionMetadataRequest,
-      RosettaConstructionMetadataResponse
-    >('/rosetta/v1/construction/metadata', {
-      network_identifier: rosettaNetwork,
-      options: preprocessResult.options!, // using options returned from preprocess
-      public_keys: [{ hex_bytes: opts.pubKey, curve_type: 'secp256k1' }],
-    });
-
-    // payload
-    const payloadsResult = await fetchRosetta<
-      RosettaConstructionPayloadsRequest,
-      RosettaConstructionPayloadResponse
-    >('/rosetta/v1/construction/payloads', {
-      network_identifier: rosettaNetwork,
-      operations: stackingOperations, // using same operations as preprocess request
-      metadata: metadataResult.metadata, // using metadata from metadata response
-      public_keys: [{ hex_bytes: opts.pubKey, curve_type: 'secp256k1' }],
-    });
-
-    // sign tx
-    const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
-    const signer = new TransactionSigner(stacksTx);
-    signer.signOrigin(createStacksPrivateKey(opts.privateKey));
-    const signedSerializedTx = stacksTx.serialize().toString('hex');
-    const expectedTxId = '0x' + stacksTx.txid();
-
-    // submit
-    const submitResult = await fetchRosetta<
-      RosettaConstructionSubmitRequest,
-      RosettaConstructionSubmitResponse
-    >('/rosetta/v1/construction/submit', {
-      network_identifier: rosettaNetwork,
-      signed_transaction: '0x' + signedSerializedTx,
-    });
-
-    const txStandby = await standByForTxSuccess(expectedTxId);
-
-    return {
-      txId: expectedTxId,
-      tx: txStandby,
-      submitResult,
-      resultMetadata: metadataResult,
-    };
-  }
-
   test('Fund new account for testing', async () => {
     await bitcoinRpcClient.importaddress({ address: btcAddr, label: btcAddr, rescan: false });
 
@@ -297,7 +93,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await client.sendTransaction(stxXfer1.serialize());
+    const { txId: stxXferId1 } = await client.sendTransaction(Buffer.from(stxXfer1.serialize()));
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
@@ -339,8 +135,8 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       ustxAmount: ustxAmount,
     });
 
-    expect(stackingResult.resultMetadata.metadata.contract_name).toBe('pox-2');
-    expect(stackingResult.resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+    expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-2');
+    expect(stackingResult.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(stackingResult.submitResult.transaction_identifier.hash).toBe(stackingResult.txId);
     expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-2');
   });
@@ -457,8 +253,8 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       ustxAmount,
     });
 
-    expect(rosettaStackStx.resultMetadata.metadata.contract_name).toBe('pox-2');
-    expect(rosettaStackStx.resultMetadata.metadata.burn_block_height as number).toBeTruthy();
+    expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
+    expect(rosettaStackStx.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
     expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
       'ST000000000000000000002AMW42H.pox-2'
@@ -560,4 +356,133 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       expect(unlockOps2).toHaveLength(0);
     }
   });
+});
+
+describe('PoX-2 - Rosetta - Stack on any phase of cycle', () => {
+  let db: PgWriteStore;
+  let api: ApiServer;
+  let client: StacksCoreRpcClient;
+  let stacksNetwork: StacksNetwork;
+  let bitcoinRpcClient: RPCClient;
+
+  const account = testnetKeys[1];
+  const btcAddr = '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o';
+
+  beforeAll(() => {
+    const testEnv: TestEnvContext = (global as any).testEnv;
+    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+  });
+
+  const REWARD_CYCLE_LENGTH = 5; // assuming regtest
+  for (let shift = 0; shift < REWARD_CYCLE_LENGTH; shift++) {
+    test('Rosetta - stack-stx tx', async () => {
+      let poxInfo = await client.getPox();
+
+      const blocksUntilNextCycle =
+        poxInfo.next_cycle.blocks_until_reward_phase % poxInfo.reward_cycle_length;
+      const startHeight =
+        (poxInfo.current_burnchain_block_height as number) + blocksUntilNextCycle + shift;
+
+      if (startHeight !== poxInfo.current_burnchain_block_height) {
+        // only stand-by if we're not there yet
+        await standByUntilBurnBlock(startHeight);
+      }
+
+      poxInfo = await client.getPox();
+      const ustxAmount = BigInt(poxInfo.current_cycle.min_threshold_ustx * 1.2);
+      expect((poxInfo.current_burnchain_block_height as number) % poxInfo.reward_cycle_length).toBe(
+        shift
+      );
+
+      await stackStxWithRosetta({
+        stacksAddress: account.stacksAddress,
+        privateKey: account.secretKey,
+        pubKey: account.pubKey,
+        cycleCount: 1,
+        ustxAmount,
+        btcAddr,
+      });
+
+      const coreBalance = await client.getAccount(account.stacksAddress);
+      expect(coreBalance.unlock_height).toBeGreaterThan(0);
+
+      await standByUntilBurnBlock(coreBalance.unlock_height + 1);
+    });
+  }
+});
+
+describe('PoX-2 - Rosetta - Stack with supported BTC address formats', () => {
+  let db: PgWriteStore;
+  let api: ApiServer;
+  let client: StacksCoreRpcClient;
+  let stacksNetwork: StacksNetwork;
+  let bitcoinRpcClient: RPCClient;
+
+  let poxInfo;
+  const account = testnetKeys[1];
+
+  beforeAll(() => {
+    const testEnv: TestEnvContext = (global as any).testEnv;
+    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
+  });
+
+  const BTC_ADDRESS_CASES = [
+    { addressFormat: 'p2pkh' },
+    { addressFormat: 'p2sh' },
+    { addressFormat: 'p2sh-p2wpkh' },
+    { addressFormat: 'p2sh-p2wsh' },
+    { addressFormat: 'p2wpkh' },
+    { addressFormat: 'p2wsh' },
+    { addressFormat: 'p2tr' },
+  ] as const;
+
+  test.each(BTC_ADDRESS_CASES)(
+    'Rosetta stack-stx with BTC address format $addressFormat',
+    async ({ addressFormat }) => {
+      const bitcoinAddress = getBitcoinAddressFromKey({
+        privateKey: account.secretKey,
+        network: 'testnet',
+        addressFormat,
+      });
+
+      poxInfo = await client.getPox();
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
+      // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
+
+      poxInfo = await client.getPox();
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
+
+      poxInfo = await client.getPox();
+      const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+      const cycleCount = 1;
+
+      const rosettaStackStx = await stackStxWithRosetta({
+        btcAddr: bitcoinAddress,
+        stacksAddress: account.stacksAddress,
+        pubKey: account.pubKey,
+        privateKey: account.secretKey,
+        cycleCount,
+        ustxAmount,
+      });
+      expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
+      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
+
+      poxInfo = await client.getPox();
+      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
+
+      poxInfo = await client.getPox();
+      const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
+        `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
+      );
+      expect(rewardSlotHolders.total).toBe(1);
+      expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBe(
+        poxInfo.current_burnchain_block_height
+      );
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
+        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
+      );
+    }
+  );
 });

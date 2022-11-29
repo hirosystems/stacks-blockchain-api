@@ -418,11 +418,14 @@ jobs:
   test-2_1-transition:
     strategy:
       matrix:
-        suite: [
-          Stacking on pox-2 after pox-1 force unlock,
-          Consistent API and RPC account balances through pox transitions,
-          Rosetta - Stacks 2.1 transition tests,
-        ]
+        suite:
+          [
+            Stacking on pox-2 after pox-1 force unlock,
+            Consistent API and RPC account balances through pox transitions,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Transistion periods use correct contracts,
+            PoX Transition - Double stacking,
+          ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2

@@ -55,6 +55,7 @@ import {
   RosettaOperation,
 } from '@stacks/stacks-blockchain-api-types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 const testnetAccounts = [
   {
@@ -266,10 +267,10 @@ export function createDebugRouter(db: PgStore): express.Router {
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
         });
-        serialized = sponsoredTx.serialize();
+        serialized = Buffer.from(sponsoredTx.serialize());
         expectedTxId = sponsoredTx.txid();
       } else {
-        serialized = transferTx.serialize();
+        serialized = Buffer.from(transferTx.serialize());
         expectedTxId = transferTx.txid();
       }
 
@@ -388,10 +389,10 @@ export function createDebugRouter(db: PgStore): express.Router {
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
         });
-        serialized = sponsoredTx.serialize();
+        serialized = Buffer.from(sponsoredTx.serialize());
         expectedTxId = sponsoredTx.txid();
       } else {
-        serialized = transferTx.serialize();
+        serialized = Buffer.from(transferTx.serialize());
         expectedTxId = transferTx.txid();
       }
 
@@ -503,10 +504,10 @@ export function createDebugRouter(db: PgStore): express.Router {
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
         });
-        serialized = sponsoredTx.serialize();
+        serialized = Buffer.from(sponsoredTx.serialize());
         expectedTxId = sponsoredTx.txid();
       } else {
-        serialized = transferTx.serialize();
+        serialized = Buffer.from(transferTx.serialize());
         expectedTxId = transferTx.txid();
       }
 
@@ -672,7 +673,7 @@ export function createDebugRouter(db: PgStore): express.Router {
     const stacksTx = deserializeTransaction(payloadsResult.unsigned_transaction);
     const signer = new TransactionSigner(stacksTx);
     signer.signOrigin(createStacksPrivateKey(account.secretKey));
-    const signedSerializedTx = stacksTx.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(stacksTx.serialize()).toString('hex');
 
     // submit
     const submitResult = await fetchRosetta<
@@ -725,7 +726,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         ));
       } else {
         const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-        const decodedBtcAddr = poxHelpers.decodeBtcAddress(recipient_address);
+        const decodedBtcAddr = decodeBtcAddress(recipient_address);
         burnBlockHeight = poxInfo.current_burnchain_block_height as number;
         const txOptions: SignedContractCallOptions = {
           senderKey: sender.secretKey,
@@ -748,7 +749,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         };
         const tx = await makeContractCall(txOptions);
         const expectedTxId = tx.txid();
-        const serializedTx = tx.serialize();
+        const serializedTx = Buffer.from(tx.serialize());
         const sendResult = await sendCoreTx(serializedTx);
         txId = sendResult.txId;
         if (txId !== '0x' + expectedTxId) {
@@ -879,10 +880,10 @@ export function createDebugRouter(db: PgStore): express.Router {
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
         });
-        serializedTx = sponsoredTx.serialize();
+        serializedTx = Buffer.from(sponsoredTx.serialize());
         expectedTxId = sponsoredTx.txid();
       } else {
-        serializedTx = contractDeployTx.serialize();
+        serializedTx = Buffer.from(contractDeployTx.serialize());
         expectedTxId = contractDeployTx.txid();
       }
 
@@ -1050,10 +1051,10 @@ export function createDebugRouter(db: PgStore): express.Router {
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
         });
-        serialized = sponsoredTx.serialize();
+        serialized = Buffer.from(sponsoredTx.serialize());
         expectedTxId = sponsoredTx.txid();
       } else {
-        serialized = contractCallTx.serialize();
+        serialized = Buffer.from(contractCallTx.serialize());
         expectedTxId = contractCallTx.txid();
       }
 
