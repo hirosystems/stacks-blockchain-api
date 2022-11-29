@@ -1,3 +1,16 @@
+# [7.0.0-stacks-2.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.1...v7.0.0-stacks-2.1.1) (2022-11-29)
+
+
+### Bug Fixes
+
+* add automatic pox switching to rosetta ([#1454](https://github.com/hirosystems/stacks-blockchain-api/issues/1454)) ([ad7e492](https://github.com/hirosystems/stacks-blockchain-api/commit/ad7e49216bad0b0c36670b31adb78ac4dc9c5cb0))
+* add default stx faucet tx fee if estimate not available ([#1456](https://github.com/hirosystems/stacks-blockchain-api/issues/1456)) ([eeeffd0](https://github.com/hirosystems/stacks-blockchain-api/commit/eeeffd0244471662710bc335790694d87a2e594c))
+
+
+### Features
+
+* ingestion and querying for new PoX-2 events ([#1403](https://github.com/hirosystems/stacks-blockchain-api/issues/1403)) ([1936ba6](https://github.com/hirosystems/stacks-blockchain-api/commit/1936ba65196506746d50ab1ab201ff38ce2011b1))
+
 ## [6.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0...v6.2.1) (2022-11-18)
 
 
