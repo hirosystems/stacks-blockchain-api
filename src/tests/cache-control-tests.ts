@@ -1,7 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
-import { DbBlock, DbMicroblockPartial, DbTx, DbTxStatus, DbTxTypeId } from '../datastore/common';
+import { DbBlock, DbMicroblockPartial, DbTxRaw, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
@@ -92,7 +92,7 @@ describe('cache-control tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       anchor_mode: 3,
       tx_index: 4,
@@ -232,7 +232,7 @@ describe('cache-control tests', () => {
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
     };
-    const mbTx1: DbTx = {
+    const mbTx1: DbTxRaw = {
       tx_id: '0x02',
       tx_index: 0,
       anchor_mode: 3,

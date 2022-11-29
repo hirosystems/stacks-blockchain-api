@@ -6,9 +6,9 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
-  DbMempoolTx,
+  DbMempoolTxRaw,
   DbTxStatus,
   DataStoreBlockUpdateData,
 } from '../datastore/common';
@@ -140,7 +140,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -184,7 +184,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - sponsored', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -229,7 +229,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - dropped', async () => {
     const block = new TestBlockBuilder({ index_block_hash: '0x5678' }).addTx().build();
     await db.update(block);
-    const mempoolTx1: DbMempoolTx = {
+    const mempoolTx1: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -246,22 +246,22 @@ describe('mempool tests', () => {
       sponsor_address: 'sponsor-addr',
       origin_hash_mode: 1,
     };
-    const mempoolTx2: DbMempoolTx = {
+    const mempoolTx2: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
       receipt_time: 1594307702,
     };
-    const mempoolTx3: DbMempoolTx = {
+    const mempoolTx3: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
       receipt_time: 1594307703,
     };
-    const mempoolTx4: DbMempoolTx = {
+    const mempoolTx4: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
       receipt_time: 1594307704,
     };
-    const mempoolTx5: DbMempoolTx = {
+    const mempoolTx5: DbMempoolTxRaw = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       receipt_time: 1594307705,
@@ -444,7 +444,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const dbTx1: DbTx = {
+    const dbTx1: DbTxRaw = {
       ...mempoolTx1,
       ...dbBlock1,
       parent_burn_block_time: 1626122935,
@@ -517,7 +517,7 @@ describe('mempool tests', () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
     for (let i = 0; i < 10; i++) {
-      const mempoolTx: DbMempoolTx = {
+      const mempoolTx: DbMempoolTxRaw = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
@@ -656,7 +656,7 @@ describe('mempool tests', () => {
     let index = 0;
     for (const xfer of stxTransfers) {
       const paddedIndex = ('00' + index).slice(-2);
-      const mempoolTx: DbMempoolTx = {
+      const mempoolTx: DbMempoolTxRaw = {
         pruned: false,
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
@@ -1080,7 +1080,7 @@ describe('mempool tests', () => {
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
@@ -1107,7 +1107,7 @@ describe('mempool tests', () => {
 
   test('get mempool transactions: address not valid', async () => {
     const senderAddress = 'test-sender-address';
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
@@ -1152,7 +1152,7 @@ describe('mempool tests', () => {
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,

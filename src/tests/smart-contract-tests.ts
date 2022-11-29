@@ -2,7 +2,7 @@ import * as supertest from 'supertest';
 import { bufferCVFromString, ChainID, serializeCV } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbEventTypeId,
   DbSmartContract,
@@ -51,7 +51,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
@@ -85,7 +85,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       ...tx1,
       tx_id: '0x012345',
       tx_index: 1,
@@ -191,7 +191,7 @@ describe('smart contract tests', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: txId1,
       tx_index: 0,
       anchor_mode: 3,
@@ -279,7 +279,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421235',
       tx_index: 0,
       anchor_mode: 3,
@@ -313,7 +313,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       ...tx1,
       tx_id: '0x012345',
       tx_index: 1,

@@ -1,6 +1,6 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
-import { DbMempoolTx, DbTxStatus, DbTxTypeId, DbTxAnchorMode } from '../datastore/common';
+import { DbMempoolTxRaw, DbTxStatus, DbTxTypeId, DbTxAnchorMode } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -449,9 +449,9 @@ describe('Rosetta API', () => {
   });
 
   test('rosetta/mempool list', async () => {
-    const mempoolTxs: DbMempoolTx[] = [];
+    const mempoolTxs: DbMempoolTxRaw[] = [];
     for (let i = 0; i < 10; i++) {
-      const mempoolTx: DbMempoolTx = {
+      const mempoolTx: DbMempoolTxRaw = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
@@ -507,7 +507,7 @@ describe('Rosetta API', () => {
   });
 
   test('rosetta/mempool/transaction', async () => {
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,

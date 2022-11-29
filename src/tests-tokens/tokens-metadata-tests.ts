@@ -8,10 +8,11 @@ import {
 } from '@stacks/transactions';
 import * as BN from 'bn.js';
 import {
-  DbTx,
+  DbTxRaw,
   DbTxStatus,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
+  DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import * as fs from 'fs';
