@@ -426,7 +426,9 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: args?.topic ?? 'some-topic',
-    value: args?.value ?? bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+    value:
+      args?.value ??
+      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
   };
 }
 

@@ -201,4 +201,3 @@ export function getPostgres({
   }
   return sql;
 }
-

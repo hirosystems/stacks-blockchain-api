@@ -651,7 +651,7 @@ async function parseRosettaTxDetail(opts: {
       events,
       opts.unlockingEvents
     );
-  const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
+    const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
     const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: opts.tx.tx_id },
       operations: operations,
