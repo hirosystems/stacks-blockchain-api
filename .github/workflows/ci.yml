@@ -87,7 +87,7 @@ jobs:
         run: npm run build
 
       - name: Validate generated types
-        run: npm run validate:types
+        run: tsc index.d.ts
 
       - name: Lint JSON
         run: npm run lint:json
