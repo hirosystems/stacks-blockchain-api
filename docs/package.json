@@ -38,6 +38,7 @@
     "@apidevtools/json-schema-ref-parser": "9.0.7",
     "@apidevtools/swagger-cli": "4.0.4",
     "@types/json-schema-merge-allof": "0.6.0",
+    "@types/node": "16.18.3",
     "ajv": "6.12.6",
     "chalk": "4.1.1",
     "del": "5.1.0",
