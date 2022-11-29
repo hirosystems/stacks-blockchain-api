@@ -550,6 +550,31 @@ export interface DataStoreTxEventData {
   pox2Events: DbPox2Event[];
 }
 
+export interface DataStoreAttachmentData {
+  op: string;
+  name: string;
+  namespace: string;
+  zonefile: string;
+  zonefileHash: string;
+  txId: string;
+  indexBlockHash: string;
+  blockHeight: number;
+}
+
+export interface DataStoreBnsBlockData {
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+}
+
+export interface DataStoreAttachmentSubdomainData {
+  attachment?: DataStoreAttachmentData;
+  blockData?: DataStoreBnsBlockData;
+  subdomains?: DbBnsSubdomain[];
+}
+
 export interface DbSearchResult {
   entity_type: 'standard_address' | 'contract_address' | 'block_hash' | 'tx_id' | 'mempool_tx_id';
   entity_id: string;
@@ -594,6 +619,7 @@ export interface DbInboundStxTransfer {
 export interface DbBnsZoneFile {
   zonefile: string;
 }
+
 export interface DbBnsNamespace {
   id?: number;
   namespace_id: string;
@@ -602,8 +628,8 @@ export interface DbBnsNamespace {
   reveal_block: number;
   ready_block: number;
   buckets: string;
-  base: number;
-  coeff: number;
+  base: bigint;
+  coeff: bigint;
   nonalpha_discount: number;
   no_vowel_discount: number;
   lifetime: number;
@@ -622,11 +648,12 @@ export interface DbBnsName {
   expire_block: number;
   grace_period?: number;
   renewal_deadline?: number;
-  resolver?: string | undefined;
+  resolver?: string;
   zonefile: string;
   zonefile_hash: string;
   tx_id: string;
   tx_index: number;
+  event_index?: number;
   status?: string;
   canonical: boolean;
 }
@@ -1344,6 +1371,7 @@ export interface BnsNameInsertValues {
   namespace_id: string;
   tx_index: number;
   tx_id: PgBytea;
+  event_index: number | null;
   status: string | null;
   canonical: boolean;
   index_block_hash: PgBytea;
@@ -1381,8 +1409,8 @@ export interface BnsNamespaceInsertValues {
   reveal_block: number;
   ready_block: number;
   buckets: string;
-  base: number;
-  coeff: number;
+  base: PgNumeric;
+  coeff: PgNumeric;
   nonalpha_discount: number;
   no_vowel_discount: number;
   lifetime: number;
@@ -1398,8 +1426,11 @@ export interface BnsNamespaceInsertValues {
 }
 
 export interface BnsZonefileInsertValues {
+  name: string;
   zonefile: string;
   zonefile_hash: string;
+  tx_id: PgBytea;
+  index_block_hash: PgBytea;
 }
 
 export interface FaucetRequestInsertValues {

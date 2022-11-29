@@ -22,5 +22,6 @@ exports.up = pgm => {
   `);
 
   pgm.createIndex('nft_custody', ['recipient', 'asset_identifier']);
-  pgm.createIndex('nft_custody', 'asset_identifier');
+  pgm.createIndex('nft_custody', ['asset_identifier', 'value'], { unique: true });
+  pgm.createIndex('nft_custody', 'value');
 }

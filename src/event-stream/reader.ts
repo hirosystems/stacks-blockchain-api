@@ -332,6 +332,12 @@ export function parseMessageTransaction(
         );
         break;
       }
+      case TxPayloadTypeID.PoisonMicroblock: {
+        logger.verbose(
+          `Poison microblock: header1 ${payload.microblock_header_1}), header2: ${payload.microblock_header_2}`
+        );
+        break;
+      }
       case TxPayloadTypeID.VersionedSmartContract: {
         logger.verbose(
           `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`

@@ -28,9 +28,12 @@ exports.up = async pgm => {
     // extension which might not be possible for some users.
     pgm.createMaterializedView('mempool_digest', {}, `SELECT NULL AS digest`);
   }
+
+  pgm.createIndex('mempool_digest', 'digest', { unique: true });
 }
 
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.down = pgm => {
+  pgm.dropIndex('mempool_digest', 'digest', { unique: true, ifExists: true });
   pgm.dropMaterializedView('mempool_digest');
 }

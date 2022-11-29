@@ -68,14 +68,24 @@
   },
   "engineStrict": true,
   "release": {
-      "branches": [
-        "master",
-        {"name": "beta", "channel": "beta", "prerelease": true},
-        {"name": "stacks-2.1", "channel": "stacks-2.1", "prerelease": true}
+    "branches": [
+      "master",
+      {"name": "beta", "channel": "beta", "prerelease": true},
+      {"name": "stacks-2.1", "channel": "stacks-2.1", "prerelease": true}
+    ],
+    "plugins": [
+      [
+        "@semantic-release/commit-analyzer",
+        {
+          "preset": "conventionalcommits"
+        }
       ],
-        "plugins": [
-      "@semantic-release/commit-analyzer",
-      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/release-notes-generator",
+        {
+          "preset": "conventionalcommits"
+        }
+      ],
       [
         "@semantic-release/exec",
         {
@@ -154,7 +164,7 @@
     "pg": "8.7.1",
     "pg-copy-streams": "5.1.1",
     "pg-cursor": "2.7.1",
-    "postgres": "3.2.4",
+    "postgres": "3.3.1",
     "prom-client": "14.0.1",
     "rpc-bitcoin": "2.0.0",
     "socket.io": "4.5.4",

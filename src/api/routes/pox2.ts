@@ -10,17 +10,10 @@ import {
 
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
 import { parsePox2Event } from '../controllers/db-controller';
 import { validatePrincipal, validateRequestHexInput } from '../query-helpers';
-
-const MAX_EVENTS_PER_REQUEST = 250;
-
-const parseQueryLimit = parseLimitQuery({
-  maxItems: MAX_EVENTS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
-});
 
 export function createPox2EventsRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -28,7 +21,7 @@ export function createPox2EventsRouter(db: PgStore): express.Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const limit = parseQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Pox2Event, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const queryResults = await db.getPox2Events({ offset, limit });

@@ -483,7 +483,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
       try {
         const baseTx = rawTxToBaseTx(inputTx);
-        const operations = await getOperations(baseTx, db);
+        const operations = await getOperations(baseTx, db, chainId);
         const txMemo = parseTransactionMemo(baseTx.token_transfer_memo);
         let response: RosettaConstructionParseResponse;
         if (signed) {
@@ -504,6 +504,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.json(response);
       } catch (error) {
         console.error(error);
+        res.status(400).json(RosettaErrors[RosettaErrorsTypes.unknownError]);
       }
     })
   );

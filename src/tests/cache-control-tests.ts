@@ -344,7 +344,7 @@ describe('cache-control tests', () => {
       block_height: 1,
       index_block_hash: '0x01',
     })
-      .addTx()
+      .addTx({ tx_id: '0x0001' })
       .build();
     await db.update(block1);
 
@@ -385,41 +385,67 @@ describe('cache-control tests', () => {
     expect(request4.headers['etag'] !== etag1).toEqual(true);
     const etag2 = request4.headers['etag'];
 
-    // Restore dropped tx.
-    await db.restoreMempoolTxs(client, ['0x1101']);
-
-    // Cache with new ETag now a miss, new ETag is the same as the original.
-    const request5 = await supertest(api.server)
-      .get('/extended/v1/tx/mempool')
-      .set('If-None-Match', etag2);
-    expect(request5.status).toBe(200);
-    expect(request5.type).toBe('application/json');
-    expect(request5.headers['etag']).toEqual(etag1);
-
-    // Prune same tx.
-    await db.pruneMempoolTxs(client, ['0x1101']);
-
-    // ETag is now the same as when dropped.
-    const request6 = await supertest(api.server)
-      .get('/extended/v1/tx/mempool')
-      .set('If-None-Match', etag1);
-    expect(request6.status).toBe(200);
-    expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).toEqual(etag2);
-
-    // Garbage collect all txs.
-    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
+    // Prune the other tx from the mempool by confirming it into a block.
     const block2 = new TestBlockBuilder({
       block_height: 2,
       index_block_hash: '0x02',
       parent_index_block_hash: '0x01',
     })
-      .addTx()
+      .addTx({ tx_id: '0x1102' })
       .build();
     await db.update(block2);
 
+    // Cache is now a miss and ETag is zero because mempool is empty.
+    const request5 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag2);
+    expect(request5.status).toBe(200);
+    expect(request5.type).toBe('application/json');
+    expect(request5.headers['etag']).toEqual('"0"');
+    const etag3 = request5.headers['etag'];
+
+    // Restore a tx back into the mempool by making its anchor block non-canonical.
+    const block2b = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02bb',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({ tx_id: '0x0002' })
+      .build();
+    await db.update(block2b);
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02bb',
+    })
+      .addTx({ tx_id: '0x0003' })
+      .build();
+    await db.update(block3);
+
+    // Cache is now a miss and ETag is non-zero because mempool is not empty.
+    const request6 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag3);
+    expect(request6.status).toBe(200);
+    expect(request6.type).toBe('application/json');
+    expect(request6.headers['etag']).toEqual(etag2);
+    const etag4 = request6.headers['etag'];
+
+    // Garbage collect all txs.
+    process.env.STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD = '0';
+    const block4 = new TestBlockBuilder({
+      block_height: 4,
+      index_block_hash: '0x04',
+      parent_index_block_hash: '0x03',
+    })
+      .addTx({ tx_id: '0x0004' })
+      .build();
+    await db.update(block4);
+
     // ETag zero once again.
-    const request7 = await supertest(api.server).get('/extended/v1/tx/mempool');
+    const request7 = await supertest(api.server)
+      .get('/extended/v1/tx/mempool')
+      .set('If-None-Match', etag4);
     expect(request7.status).toBe(200);
     expect(request7.type).toBe('application/json');
     expect(request7.headers['etag']).toEqual('"0"');

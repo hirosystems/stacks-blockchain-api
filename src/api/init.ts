@@ -5,8 +5,6 @@ import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
-import * as WebSocket from 'ws';
-import * as SocketIO from 'socket.io';
 
 import { createTxRouter } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
@@ -48,6 +46,7 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
+import { isPgConnectionError } from '../datastore/helpers';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -226,7 +225,7 @@ export async function startApiServer(opts: {
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
-      if (writeDatastore) {
+      if (chainId !== ChainID.Mainnet && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
       return router;
@@ -302,6 +301,8 @@ export async function startApiServer(opts: {
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
         res.status(error.status).json({ error: error.message }).end();
+      } else if (isPgConnectionError(error)) {
+        res.status(503).json({ error: `The database service is unavailable` }).end();
       } else {
         res.status(500);
         const errorTag = uuid();

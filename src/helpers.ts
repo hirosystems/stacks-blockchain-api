@@ -157,7 +157,7 @@ type DisabledLogLevels = Exclude<
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
 const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-const defaultLogLevel: LogLevel = (() => {
+export const defaultLogLevel: LogLevel = (() => {
   const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
   const logLevelEnvVar = process.env[
     STACKS_API_LOG_LEVEL_ENV_VAR
@@ -774,10 +774,11 @@ export async function resolveOrTimeout(
 ) {
   let timer: NodeJS.Timeout;
   const result = await Promise.race([
-    new Promise(async (resolve, _) => {
-      await promise;
-      clearTimeout(timer);
-      resolve(true);
+    new Promise((resolve, reject) => {
+      promise
+        .then(() => resolve(true))
+        .catch(error => reject(error))
+        .finally(() => clearTimeout(timer));
     }),
     new Promise((resolve, _) => {
       timer = setInterval(() => {

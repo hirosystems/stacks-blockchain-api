@@ -43,6 +43,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { PgSqlClient } from '../datastore/connection';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -292,7 +293,7 @@ describe('tx tests', () => {
     const block = new TestBlockBuilder().build();
     await db.update(block);
     const expectedResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       results: [],
       total: 0,
@@ -1528,7 +1529,7 @@ describe('tx tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
 
     const expectedListResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [expectedResp],
@@ -2035,7 +2036,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?address=${address}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -2106,7 +2107,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?address=${address}`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [],
     };
@@ -2134,7 +2135,7 @@ describe('tx tests', () => {
     );
 
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -2314,7 +2315,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?tx_id=${txId}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -2396,7 +2397,7 @@ describe('tx tests', () => {
     await db.update(block);
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -2465,7 +2466,7 @@ describe('tx tests', () => {
     const txId = '0x1234';
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [],
     };
@@ -3304,7 +3305,7 @@ describe('tx tests', () => {
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
-    expect(result1.body.limit).toBe(96);
+    expect(result1.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
     expect(result1.body.offset).toBe(0);
     expect(result1.body.total).toBe(1);
     expect(result1.body.results.length).toBe(1);
@@ -3322,7 +3323,7 @@ describe('tx tests', () => {
     );
     expect(result3.status).toBe(200);
     expect(result3.type).toBe('application/json');
-    expect(result3.body.limit).toBe(96);
+    expect(result3.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
     expect(result3.body.offset).toBe(0);
     expect(result3.body.total).toBe(1);
     expect(result3.body.results.length).toBe(1);

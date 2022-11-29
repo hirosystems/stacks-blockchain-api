@@ -36,5 +36,8 @@ exports.up = pgm => {
     LEFT JOIN microblock_count ON TRUE
     LEFT JOIN tx_count ON TRUE
     LEFT JOIN tx_count_unanchored ON TRUE
+    LIMIT 1
   `);
+
+  pgm.createIndex('chain_tip', 'block_height', { unique: true });
 }

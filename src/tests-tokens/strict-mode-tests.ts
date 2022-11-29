@@ -12,6 +12,7 @@ import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
 import { getTokenMetadataFetchTimeoutMs } from '../token-metadata/helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 
 const NFT_CONTRACT_ABI: ClarityAbi = {
   maps: [],
@@ -187,6 +188,33 @@ describe('token metadata strict mode', () => {
     const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
+  });
+
+  test('db errors are handled gracefully in contract handler', async () => {
+    process.env['STACKS_CORE_RPC_PORT'] = '11111'; // Make node unreachable
+    process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'] = '1';
+    process.env['STACKS_API_TOKEN_METADATA_MAX_RETRIES'] = '0';
+    const handler = new TokensContractHandler({
+      contractId: contractId,
+      smartContractAbi: NFT_CONTRACT_ABI,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: contractTxId,
+      dbQueueId: 1,
+    });
+    await db.close(); // End connection to trigger postgres error
+    await expect(handler.start()).resolves.not.toThrow();
+  });
+
+  test('db errors are handled gracefully in queue', async () => {
+    const queue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await db.close(); // End connection to trigger postgres error
+    await expect(queue.checkDbQueue()).resolves.not.toThrow();
+    await expect(queue.drainDbQueue()).resolves.not.toThrow();
+    await expect(queue.queueNotificationHandler(1)).resolves.not.toThrow();
+    await expect(
+      queue.queueHandler({ queueId: 1, txId: '0x11', contractId: 'test' })
+    ).resolves.not.toThrow();
   });
 
   test('node runtime errors get retried', async () => {
