@@ -1977,7 +1977,7 @@ export class PgStore {
     limit: number;
     offset: number;
   }): Promise<DbPox2Event[]> {
-    return await this.sql.begin(async sql => {
+    return await this.sqlTransaction(async sql => {
       const queryResults = await sql<Pox2EventQueryResult[]>`
         SELECT ${sql(POX2_EVENT_COLUMNS)}
         FROM pox2_events
@@ -1992,12 +1992,11 @@ export class PgStore {
   }
 
   async getPox2EventsForTx({ txId }: { txId: string }): Promise<FoundOrNot<DbPox2Event[]>> {
-    // TODO: this query should be performed in the same sql tx as the next
-    const dbTx = await this.getTx({ txId, includeUnanchored: true });
-    if (!dbTx.found) {
-      return { found: false };
-    }
-    return await this.sql.begin(async sql => {
+    return await this.sqlTransaction(async sql => {
+      const dbTx = await this.getTx({ txId, includeUnanchored: true });
+      if (!dbTx.found) {
+        return { found: false };
+      }
       const queryResults = await sql<Pox2EventQueryResult[]>`
         SELECT ${sql(POX2_EVENT_COLUMNS)}
         FROM pox2_events
@@ -2014,7 +2013,7 @@ export class PgStore {
   }: {
     principal: string;
   }): Promise<FoundOrNot<DbPox2Event[]>> {
-    return await this.sql.begin(async sql => {
+    return await this.sqlTransaction(async sql => {
       const queryResults = await sql<Pox2EventQueryResult[]>`
         SELECT ${sql(POX2_EVENT_COLUMNS)}
         FROM pox2_events
