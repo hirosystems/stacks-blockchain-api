@@ -366,6 +366,7 @@ describe('PoX-2 - Rosetta - Stack on any phase of cycle', () => {
   let bitcoinRpcClient: RPCClient;
 
   const account = testnetKeys[1];
+  const btcAddr = '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o';
 
   beforeAll(() => {
     const testEnv: TestEnvContext = (global as any).testEnv;
@@ -394,12 +395,12 @@ describe('PoX-2 - Rosetta - Stack on any phase of cycle', () => {
       );
 
       await stackStxWithRosetta({
-        btcAddr: accountFromKey(account.secretKey).btcAddr,
         stacksAddress: account.stacksAddress,
         privateKey: account.secretKey,
         pubKey: account.pubKey,
         cycleCount: 1,
         ustxAmount,
+        btcAddr,
       });
 
       const coreBalance = await client.getAccount(account.stacksAddress);
@@ -417,14 +418,13 @@ describe('PoX-2 - Rosetta - Stack with supported BTC address formats', () => {
   let stacksNetwork: StacksNetwork;
   let bitcoinRpcClient: RPCClient;
 
+  let poxInfo;
   const account = testnetKeys[1];
 
   beforeAll(() => {
     const testEnv: TestEnvContext = (global as any).testEnv;
     ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
   });
-
-  let poxInfo;
 
   const BTC_ADDRESS_CASES = [
     { addressFormat: 'p2pkh' },
