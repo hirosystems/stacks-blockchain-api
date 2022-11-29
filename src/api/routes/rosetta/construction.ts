@@ -102,6 +102,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         //TODO have to fix this and make error generic
         if (valid.error?.includes('should be equal to one of the allowed values')) {
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
+          return;
         }
         res.status(400).json(makeRosettaError(valid));
         return;
@@ -224,19 +225,16 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
 
-          const contract = await stackingRpc.getStackingContract();
-          const [contractAddress, contractName] = contract.split('.');
-
           if (!options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
           // dummy transaction to calculate size
           const dummyStackingTx: UnsignedContractCallOptions = {
-            contractAddress,
-            contractName,
-            functionName: 'stack-stx',
             publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+            contractAddress: 'ST000000000000000000002AMW42H',
+            contractName: 'pox',
+            functionName: 'stack-stx',
             functionArgs: [
               uintCV(options.amount),
               poxAddressToTuple(poxAddr),
