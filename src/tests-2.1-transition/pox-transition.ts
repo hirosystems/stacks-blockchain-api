@@ -779,8 +779,37 @@ describe('PoX transition tests', () => {
         expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
       });
 
-      test('Stand-by for period 2a', async () => {
-        // Assuming the following ENV from `zone117x/stacks-api-e2e:stacks2.1-transition-feat-segwit-events-8fb6fad`
+      test('Rosetta stack-stx in Period 1 uses pox-1', async () => {
+        // Assuming the following ENV:
+        // STACKS_21_HEIGHT=120
+        // STACKS_POX2_HEIGHT = 136
+
+        poxInfo = await client.getPox();
+        expect(poxInfo.current_burnchain_block_height).toBeLessThan(120); // Period 1
+
+        ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+
+        const rosettaStackStx = await stackStxWithRosetta({
+          cycleCount: 1,
+          btcAddr: account.btcAddr,
+          stacksAddress: account.stxAddr,
+          pubKey: account.pubKey,
+          privateKey: account.secretKey,
+          ustxAmount,
+        });
+
+        expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox');
+        expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
+          'ST000000000000000000002AMW42H.pox'
+        );
+        expect(
+          rosettaStackStx.constructionMetadata.metadata.burn_block_height as number
+        ).toBeTruthy();
+        expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
+      });
+
+      test('Stand-by for Period 2a', async () => {
+        // Assuming the following ENV:
         // STACKS_21_HEIGHT=120
         // STACKS_POX2_HEIGHT = 136
 
@@ -795,7 +824,7 @@ describe('PoX transition tests', () => {
         expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox'); // pox-1 is still "active"
       });
 
-      test('Rosetta stack-stx in period 2a uses pox-2', async () => {
+      test('Rosetta stack-stx in Period 2a uses pox-2', async () => {
         poxInfo = await client.getPox();
         ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
@@ -818,7 +847,7 @@ describe('PoX transition tests', () => {
         expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
       });
 
-      test('Stand-by for POX2_ACTIVATION (aka the last block of period 2a)', async () => {
+      test('Stand-by for POX2_ACTIVATION (aka the last block of Period 2a)', async () => {
         // POX2_ACTIVATION == poxV1UnlockHeight == v1_unlock_height
         poxInfo = await client.getPox();
         poxV1UnlockHeight = poxInfo.contract_versions![1].activation_burnchain_block_height;
@@ -836,7 +865,7 @@ describe('PoX transition tests', () => {
         // expect(poxInfo.contract_id).toBe('ST000000000000000000002AMW42H.pox'); // pox-1 is still "active"
       });
 
-      test('Stand-by for POX2_ACTIVATION+1 (aka first block of period 2b)', async () => {
+      test('Stand-by for POX2_ACTIVATION+1 (aka first block of Period 2b)', async () => {
         await standByUntilBurnBlock(poxV1UnlockHeight + 1);
 
         poxInfo = await client.getPox();
@@ -855,7 +884,7 @@ describe('PoX transition tests', () => {
         expect(calculatedRewardCycle + 1).toBe(poxInfo.contract_versions![1].first_reward_cycle_id);
       });
 
-      test('Stand-by for cycle N+1 (aka period 3)', async () => {
+      test('Stand-by for cycle N+1 (aka Period 3)', async () => {
         const calculatedBurnHeight = rewardCycleToBurnHeight({
           poxInfo: poxInfo as any,
           rewardCycle: poxInfo.contract_versions![1].first_reward_cycle_id,
