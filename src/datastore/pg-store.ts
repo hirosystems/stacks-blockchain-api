@@ -454,7 +454,7 @@ export class PgStore {
     const result = await sql<BlockQueryResult[]>`
       SELECT ${sql(BLOCK_COLUMNS)}
       FROM blocks b
-      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height)
+      INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height, burn_block_height)
       LIMIT 1
     `;
     if (result.length === 0) {
