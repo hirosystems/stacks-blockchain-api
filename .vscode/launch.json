@@ -321,6 +321,27 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest: rosetta",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.rosetta.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev",
+      "env": {
+        "NODE_ENV": "development",
+        "STACKS_CHAIN_ID": "0x80000000"
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest: rosetta-cli-data",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [

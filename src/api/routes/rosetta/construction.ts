@@ -148,27 +148,36 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         return;
       }
 
-      if (!isSymbolSupported(req.body.operations)) {
+      if (!isSymbolSupported(operations)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencySymbol]);
         return;
       }
 
-      if (!isDecimalsSupported(req.body.operations)) {
+      if (!isDecimalsSupported(operations)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurrencyDecimals]);
         return;
       }
 
-      const options = getOptionsFromOperations(req.body.operations);
+      const options = getOptionsFromOperations(operations);
       if (options == null) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
         return;
       }
 
-      const meta = req.body?.metadata;
-      options.gas_limit = meta?.gas_limit ?? options.gas_limit;
-      options.gas_price = meta?.gas_price ?? options.gas_price;
-      options.suggested_fee_multiplier =
-        meta?.suggested_fee_multiplier ?? options.suggested_fee_multiplier;
+      if (req.body.metadata) {
+        if (req.body.metadata.gas_limit) {
+          options.gas_limit = req.body.metadata.gas_limit;
+        }
+
+        if (req.body.metadata.gas_price) {
+          options.gas_price = req.body.metadata.gas_price;
+        }
+
+        if (req.body.suggested_fee_multiplier) {
+          // todo: should this only be done if we have `metadata`?
+          options.suggested_fee_multiplier = req.body.suggested_fee_multiplier;
+        }
+      }
 
       if (req.body.max_fee) {
         const max_fee: RosettaMaxFeeAmount = req.body.max_fee[0];
@@ -194,7 +203,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             publicKey: '000000000000000000000000000000000000000000000000000000000000000000', // placeholder
             network: getStacksNetwork(),
             nonce: 0, // placeholder
-            memo: meta?.memo,
+            memo: req.body.metadata?.memo,
             anchorMode: AnchorMode.Any,
           };
 
@@ -284,7 +293,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
 
       options.size = transaction.serialize().byteLength;
-      options.memo = meta?.memo;
+      options.memo = req.body.metadata?.memo;
 
       const rosettaPreprocessResponse: RosettaConstructionPreprocessResponse = {
         options,
