@@ -794,12 +794,6 @@ describe('PoX transition tests', () => {
       });
 
       test('Rosetta stack-stx in period 2a uses pox-2', async () => {
-        // todo:
-        // Here we have to essentially choose what to rosetta should do:
-        // - Manually take contract_id to Stack to
-        // - Stack to PoX-2 (in practice this will be smartest, since it's too late to stack to PoX-1)
-        //   - In theory / during testing it's possible to get multiple cycles in, but this is not intended on mainnet
-
         poxInfo = await client.getPox();
         ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 

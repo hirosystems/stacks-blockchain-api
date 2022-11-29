@@ -217,8 +217,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
 
-          // todo: detect overlap into period3, IF we allow custom contract specifying
-
           if (doesThrow(() => decodeBtcAddress(poxAddr))) {
             // todo: add error type specifically for this?
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
