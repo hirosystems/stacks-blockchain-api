@@ -192,6 +192,8 @@ export function isPgConnectionError(error: any): string | false {
     return 'Postgres connection CONNECTION_DESTROYED';
   } else if (error.code === 'CONNECTION_CONNECT_TIMEOUT') {
     return 'Postgres connection CONNECTION_CONNECT_TIMEOUT';
+  } else if (error.code === 'CONNECT_TIMEOUT') {
+    return 'Postgres connection CONNECT_TIMEOUT';
   } else if (error.message) {
     const msg = (error as Error).message.toLowerCase();
     if (msg.includes('database system is starting up')) {
@@ -206,6 +208,8 @@ export function isPgConnectionError(error: any): string | false {
       return 'Postgres client has encountered a connection error and is not queryable';
     } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
       return 'Postgres connection terminating due to unexpected postmaster exit';
+    } else if (msg.includes('getaddrinfo eai_again')) {
+      return 'Postgres connection failed due to a DNS lookup error';
     }
   }
   return false;

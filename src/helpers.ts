@@ -705,10 +705,11 @@ export async function resolveOrTimeout(
 ) {
   let timer: NodeJS.Timeout;
   const result = await Promise.race([
-    new Promise(async (resolve, _) => {
-      await promise;
-      clearTimeout(timer);
-      resolve(true);
+    new Promise((resolve, reject) => {
+      promise
+        .then(() => resolve(true))
+        .catch(error => reject(error))
+        .finally(() => clearTimeout(timer));
     }),
     new Promise((resolve, _) => {
       timer = setInterval(() => {

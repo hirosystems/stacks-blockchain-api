@@ -19,7 +19,7 @@ async function startShutdown() {
     return;
   }
   isShuttingDown = true;
-  const timeoutMs = 5000;
+  const timeoutMs = parseInt(process.env['STACKS_SHUTDOWN_FORCE_KILL_TIMEOUT'] ?? '60') * 1000;
   let errorEncountered = false;
   for (const config of shutdownConfigs) {
     try {
