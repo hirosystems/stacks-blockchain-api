@@ -25,6 +25,7 @@
     "build:tests": "tsc -p tsconfig.json",
     "build:docs": "npm ci --prefix docs && npm run build --prefix docs && npm ci --prefix client && npm run generate:docs --prefix client",
     "start": "node ./lib/index.js",
+    "lint-docs": "tsc docs/index.d.ts",
     "lint": "npm run lint:eslint && npm run lint:prettier",
     "lint:unused-exports": "ts-unused-exports tsconfig.json --ignoreFiles=src/migrations/*",
     "lint:eslint": "eslint . --ext .js,.jsx,.ts,.tsx -f unix",
