@@ -16,7 +16,8 @@
     "paths": {
       "@stacks/stacks-blockchain-api-types": ["docs"],
       "@stacks/blockchain-api-client": ["client/src"]
-    }
+    },
+    "noUnusedLocals": true
   },
   "include": ["src/**/*"],
   "exclude": ["lib", "node_modules"]

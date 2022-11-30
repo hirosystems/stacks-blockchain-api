@@ -671,7 +671,7 @@ export async function getOrAddAsync<K, V>(
   return val;
 }
 
-export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
+export type FoundOrNot<T> = { found: true | false; result: T };
 
 export function timeout(ms: number, abortController?: AbortController): Promise<void> {
   return new Promise((resolve, reject) => {

@@ -1,6 +1,6 @@
-import * as c32check from 'c32check';
-import * as btc from 'bitcoinjs-lib';
 import BigNumber from 'bignumber.js';
+import * as btc from 'bitcoinjs-lib';
+import * as c32check from 'c32check';
 
 const defaultFetchTimeout = 15_000; // 15 seconds
 
