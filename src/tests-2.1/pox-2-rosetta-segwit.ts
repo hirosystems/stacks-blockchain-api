@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-
-import { StacksNetwork } from '@stacks/network';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
-  BurnchainRewardSlotHolderListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
@@ -13,16 +10,11 @@ import {
   TransactionVersion,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
-import { RPCClient } from 'rpc-bitcoin';
-import { DbTxStatus } from '../../src/datastore/common';
-import { ApiServer } from '../api/init';
 import { testnetKeys } from '../api/routes/debug';
-import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { hexToBuffer } from '../helpers';
 import {
-  accountFromKey,
   fetchGet,
   getRosettaAccountBalance,
   getRosettaBlockByBurnBlockHeight,
@@ -32,15 +24,9 @@ import {
   standByUntilBlock,
   standByUntilBurnBlock,
   testEnv,
-  TestEnvContext,
 } from '../test-utils/test-helpers';
 
 describe('PoX-2 - Rosetta - Stacking with segwit', () => {
-  let db: PgWriteStore;
-  let api: ApiServer;
-  let client: StacksCoreRpcClient;
-  let stacksNetwork: StacksNetwork;
-  let bitcoinRpcClient: RPCClient;
   let btcAddr: string;
   let btcAddrTestnet: string;
   const seedAccount = testnetKeys[0];
@@ -55,9 +41,6 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   let ustxAmount: bigint;
 
   beforeAll(() => {
-    const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
-
     const ecPair = ECPair.fromPrivateKey(Buffer.from(accountKey, 'hex').slice(0, 32), {
       compressed: true,
     });
@@ -80,20 +63,26 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   });
 
   test('Fund new account for testing', async () => {
-    await bitcoinRpcClient.importaddress({ address: btcAddr, label: btcAddr, rescan: false });
+    await testEnv.bitcoinRpcClient.importaddress({
+      address: btcAddr,
+      label: btcAddr,
+      rescan: false,
+    });
 
     // transfer pox "min_amount_ustx" from seed to test account
-    const poxInfo = await client.getPox();
+    const poxInfo = await testEnv.client.getPox();
     testAccountBalance = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
     const stxXfer1 = await makeSTXTokenTransfer({
       senderKey: seedAccount.secretKey,
       recipient: account.stxAddr,
       amount: testAccountBalance,
-      network: stacksNetwork,
+      network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: 200,
     });
-    const { txId: stxXferId1 } = await client.sendTransaction(Buffer.from(stxXfer1.serialize()));
+    const { txId: stxXferId1 } = await testEnv.client.sendTransaction(
+      Buffer.from(stxXfer1.serialize())
+    );
 
     const stxXferTx1 = await standByForTxSuccess(stxXferId1);
     expect(stxXferTx1.token_transfer_recipient_address).toBe(account.stxAddr);
@@ -102,7 +91,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
 
   test('Validate test account balance', async () => {
     // test stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
     expect(BigInt(coreNodeBalance.balance)).toBe(testAccountBalance);
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
@@ -122,7 +111,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   test('Rosetta - stack-stx', async () => {
     const cycleCount = 1;
 
-    const poxInfo = await client.getPox();
+    const poxInfo = await testEnv.client.getPox();
     lastPoxInfo = poxInfo;
     ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
@@ -143,7 +132,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
 
   test('Verify expected amount of STX are locked', async () => {
     // test stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
     expect(BigInt(coreNodeBalance.balance)).toBeLessThan(testAccountBalance);
     expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
 
@@ -183,7 +172,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       blockheight: number;
       txid: string;
       confirmations: number;
-    }[] = await bitcoinRpcClient.listtransactions({
+    }[] = await testEnv.bitcoinRpcClient.listtransactions({
       label: btcAddr,
       include_watchonly: true,
     });
@@ -197,7 +186,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
 
   test('Rosetta unlock events', async () => {
     // unlock_height: 115
-    const rpcAccountInfo1 = await client.getAccount(account.stxAddr);
+    const rpcAccountInfo1 = await testEnv.client.getAccount(account.stxAddr);
     const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
     const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
 
@@ -206,7 +195,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
 
     // verify STX unlocked - stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
     expect(coreNodeBalance.unlock_height).toBe(0);
 
@@ -241,7 +230,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
   test('Stack below threshold to trigger early auto-unlock', async () => {
     const cycleCount = 5;
 
-    const poxInfo = await client.getPox();
+    const poxInfo = await testEnv.client.getPox();
     ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 0.5).toString());
 
     const rosettaStackStx = await stackStxWithRosetta({
@@ -261,7 +250,7 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
     );
 
     // ensure locked reported by stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
     expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
     expect(coreNodeBalance.unlock_height).toBeGreaterThan(0);
 
@@ -278,17 +267,17 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
 
   let earlyUnlockBurnHeight: number;
   test('Ensure account unlocks early', async () => {
-    const initialAccountInfo = await client.getAccount(account.stxAddr);
+    const initialAccountInfo = await testEnv.client.getAccount(account.stxAddr);
     await standByForAccountUnlock(account.stxAddr);
 
-    const poxInfo = await client.getPox();
+    const poxInfo = await testEnv.client.getPox();
     earlyUnlockBurnHeight = poxInfo.current_burnchain_block_height!;
 
     // ensure account unlocked early, before the typically expected unlock height
     expect(earlyUnlockBurnHeight).toBeLessThan(initialAccountInfo.unlock_height);
 
     // ensure zero locked reported by stacks-node account RPC balance
-    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
     // ensure zero locked reported by API address endpoint balance
@@ -356,133 +345,4 @@ describe('PoX-2 - Rosetta - Stacking with segwit', () => {
       expect(unlockOps2).toHaveLength(0);
     }
   });
-});
-
-describe('PoX-2 - Rosetta - Stack on any phase of cycle', () => {
-  let db: PgWriteStore;
-  let api: ApiServer;
-  let client: StacksCoreRpcClient;
-  let stacksNetwork: StacksNetwork;
-  let bitcoinRpcClient: RPCClient;
-
-  const account = testnetKeys[1];
-  const btcAddr = '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o';
-
-  beforeAll(() => {
-    const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
-  });
-
-  const REWARD_CYCLE_LENGTH = 5; // assuming regtest
-  for (let shift = 0; shift < REWARD_CYCLE_LENGTH; shift++) {
-    test('Rosetta - stack-stx tx', async () => {
-      let poxInfo = await client.getPox();
-
-      const blocksUntilNextCycle =
-        poxInfo.next_cycle.blocks_until_reward_phase % poxInfo.reward_cycle_length;
-      const startHeight =
-        (poxInfo.current_burnchain_block_height as number) + blocksUntilNextCycle + shift;
-
-      if (startHeight !== poxInfo.current_burnchain_block_height) {
-        // only stand-by if we're not there yet
-        await standByUntilBurnBlock(startHeight);
-      }
-
-      poxInfo = await client.getPox();
-      const ustxAmount = BigInt(poxInfo.current_cycle.min_threshold_ustx * 1.2);
-      expect((poxInfo.current_burnchain_block_height as number) % poxInfo.reward_cycle_length).toBe(
-        shift
-      );
-
-      await stackStxWithRosetta({
-        stacksAddress: account.stacksAddress,
-        privateKey: account.secretKey,
-        pubKey: account.pubKey,
-        cycleCount: 1,
-        ustxAmount,
-        btcAddr,
-      });
-
-      const coreBalance = await client.getAccount(account.stacksAddress);
-      expect(coreBalance.unlock_height).toBeGreaterThan(0);
-
-      await standByUntilBurnBlock(coreBalance.unlock_height + 1);
-    });
-  }
-});
-
-describe('PoX-2 - Rosetta - Stack with supported BTC address formats', () => {
-  let db: PgWriteStore;
-  let api: ApiServer;
-  let client: StacksCoreRpcClient;
-  let stacksNetwork: StacksNetwork;
-  let bitcoinRpcClient: RPCClient;
-
-  let poxInfo;
-  const account = testnetKeys[1];
-
-  beforeAll(() => {
-    const testEnv: TestEnvContext = (global as any).testEnv;
-    ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
-  });
-
-  const BTC_ADDRESS_CASES = [
-    { addressFormat: 'p2pkh' },
-    { addressFormat: 'p2sh' },
-    { addressFormat: 'p2sh-p2wpkh' },
-    { addressFormat: 'p2sh-p2wsh' },
-    { addressFormat: 'p2wpkh' },
-    { addressFormat: 'p2wsh' },
-    { addressFormat: 'p2tr' },
-  ] as const;
-
-  test.each(BTC_ADDRESS_CASES)(
-    'Rosetta stack-stx with BTC address format $addressFormat',
-    async ({ addressFormat }) => {
-      const bitcoinAddress = getBitcoinAddressFromKey({
-        privateKey: account.secretKey,
-        network: 'testnet',
-        addressFormat,
-      });
-
-      poxInfo = await client.getPox();
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
-      // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
-
-      poxInfo = await client.getPox();
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
-
-      poxInfo = await client.getPox();
-      const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
-      const cycleCount = 1;
-
-      const rosettaStackStx = await stackStxWithRosetta({
-        btcAddr: bitcoinAddress,
-        stacksAddress: account.stacksAddress,
-        pubKey: account.pubKey,
-        privateKey: account.secretKey,
-        cycleCount,
-        ustxAmount,
-      });
-      expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
-      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
-
-      poxInfo = await client.getPox();
-      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
-
-      poxInfo = await client.getPox();
-      const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
-        `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
-      );
-      expect(rewardSlotHolders.total).toBe(1);
-      expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-        poxInfo.current_burnchain_block_height
-      );
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
-      );
-    }
-  );
 });
