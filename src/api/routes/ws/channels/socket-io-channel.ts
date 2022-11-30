@@ -243,6 +243,26 @@ export class SocketIOChannel extends WebSocketChannel {
         );
         break;
       }
+      case 'smartContract': {
+        const [contract] = args as ListenerType<WebSocketPayload['smartContract']>;
+        this.prometheus?.sendEvent('smart-contract');
+        void this.getTopicSockets(`smart-contract`).then(sockets =>
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('smart-contract', contract, _ => socket.disconnect(true))
+          )
+        );
+        break;
+      }
+      case 'smartContractLog': {
+        const [event] = args as ListenerType<WebSocketPayload['smartContractLog']>;
+        this.prometheus?.sendEvent('smart-contract-log');
+        void this.getTopicSockets(`smart-contract-log`).then(sockets =>
+          sockets?.forEach(socket =>
+            socket.timeout(timeout).emit('smart-contract-log', event, _ => socket.disconnect(true))
+          )
+        );
+        break;
+      }
       case 'nftAssetEvent': {
         const [assetIdentifier, value, event] = args as ListenerType<
           WebSocketPayload['nftAssetEvent']

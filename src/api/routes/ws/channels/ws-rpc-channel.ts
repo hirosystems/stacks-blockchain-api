@@ -169,6 +169,8 @@ export class WsRpcChannel extends WebSocketChannel {
     this.subscriptions.set('nftEvent', new SubscriptionManager());
     this.subscriptions.set('nftAssetEvent', new SubscriptionManager());
     this.subscriptions.set('nftCollectionEvent', new SubscriptionManager());
+    this.subscriptions.set('smartContract', new SubscriptionManager());
+    this.subscriptions.set('smartContractLog', new SubscriptionManager());
 
     wsServer.on('connection', (clientSocket, req) => {
       if (req.headers['x-forwarded-for']) {
