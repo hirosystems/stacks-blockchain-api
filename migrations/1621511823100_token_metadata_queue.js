@@ -24,6 +24,11 @@ exports.up = pgm => {
     processed: {
       type: 'boolean',
       notNull: true,
+    },
+    retry_count: {
+      type: 'integer',
+      notNull: true,
+      default: 0,
     }
   });
 

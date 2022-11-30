@@ -86,8 +86,8 @@ jobs:
       - name: Build schema & docs
         run: npm run build
 
-      # - name: Validate generated types
-      #   run: npm run validate:types
+      - name: Validate generated types
+        run: tsc index.d.ts
 
       - name: Lint JSON
         run: npm run lint:json
@@ -147,6 +147,62 @@ jobs:
 
       - name: Run tests
         run: npm run test
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-event-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          docker compose -f docker/docker-compose.dev.postgres.yml up -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run RPC tests
+        run: npm run test:event-replay
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -774,6 +830,7 @@ jobs:
             @semantic-release/changelog
             @semantic-release/git
             @semantic-release/exec
+            conventional-changelog-conventionalcommits
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -790,6 +847,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Docker Standalone Meta
         id: meta_standalone
@@ -803,6 +861,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Login to DockerHub
         uses: docker/login-action@v1
@@ -823,11 +882,11 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
+          build-args: |
+            STACKS_API_VERSION=${{ github.head_ref || github.ref_name }}
           file: docker/stx-rosetta.Dockerfile
           tags: ${{ steps.meta_standalone.outputs.tags }}
           labels: ${{ steps.meta_standalone.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
           push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
 

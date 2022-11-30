@@ -274,7 +274,9 @@ export function createSearchRouter(db: PgStore): express.Router {
       const { term: rawTerm } = req.params;
       const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
       const term = rawTerm.trim();
-      const searchResult = await performSearch(term, includeMetadata);
+      const searchResult = await db.sqlTransaction(async sql => {
+        return await performSearch(term, includeMetadata);
+      });
       if (!searchResult.found) {
         res.status(404);
       }

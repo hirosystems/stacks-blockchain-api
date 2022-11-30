@@ -11,35 +11,367 @@
 
 * ingestion and querying for new PoX-2 events ([#1403](https://github.com/hirosystems/stacks-blockchain-api/issues/1403)) ([1936ba6](https://github.com/hirosystems/stacks-blockchain-api/commit/1936ba65196506746d50ab1ab201ff38ce2011b1))
 
-# [4.2.0-stacks-2.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.1...v4.2.0-stacks-2.1.1) (2022-11-22)
+## [6.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0...v6.2.1) (2022-11-18)
 
 
 ### Bug Fixes
 
+* get rosetta latest block from chain_tip view ([#1445](https://github.com/hirosystems/stacks-blockchain-api/issues/1445)) ([ad386d3](https://github.com/hirosystems/stacks-blockchain-api/commit/ad386d30d18afcf22aba51f0c898f306eaaf5fdf))
+* handle postgres dns lookup error ([#1433](https://github.com/hirosystems/stacks-blockchain-api/issues/1433)) ([e00efd4](https://github.com/hirosystems/stacks-blockchain-api/commit/e00efd4e64a3f0072ffa103e9ec011e5a080e7ed))
+* handle websocket messages with a priority queue ([#1427](https://github.com/hirosystems/stacks-blockchain-api/issues/1427)) ([f0cb01c](https://github.com/hirosystems/stacks-blockchain-api/commit/f0cb01c0541496959b924b29b5962caf63099432))
+* revert to 404 error code on bns name errors ([#1440](https://github.com/hirosystems/stacks-blockchain-api/issues/1440)) ([cdc039c](https://github.com/hirosystems/stacks-blockchain-api/commit/cdc039cea88749103a48cfc66d55d3ba14b3c2a3))
+
+## [6.2.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.5...v6.2.0-beta.6) (2022-11-18)
+
+
+### Bug Fixes
+
+* get rosetta latest block from chain_tip view ([#1445](https://github.com/hirosystems/stacks-blockchain-api/issues/1445)) ([ad386d3](https://github.com/hirosystems/stacks-blockchain-api/commit/ad386d30d18afcf22aba51f0c898f306eaaf5fdf))
+
+## [6.2.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.4...v6.2.0-beta.5) (2022-11-15)
+
+
+### Bug Fixes
+
+* handle postgres dns lookup error ([#1433](https://github.com/hirosystems/stacks-blockchain-api/issues/1433)) ([e00efd4](https://github.com/hirosystems/stacks-blockchain-api/commit/e00efd4e64a3f0072ffa103e9ec011e5a080e7ed))
+* handle websocket messages with a priority queue ([#1427](https://github.com/hirosystems/stacks-blockchain-api/issues/1427)) ([f0cb01c](https://github.com/hirosystems/stacks-blockchain-api/commit/f0cb01c0541496959b924b29b5962caf63099432))
+* revert to 404 error code on bns name errors ([#1440](https://github.com/hirosystems/stacks-blockchain-api/issues/1440)) ([cdc039c](https://github.com/hirosystems/stacks-blockchain-api/commit/cdc039cea88749103a48cfc66d55d3ba14b3c2a3))
+
+## [6.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.1.1...v6.2.0) (2022-11-15)
+
+
+### Features
+
+* add ENV configs for DB close and API shutdown timeouts ([#1366](https://github.com/hirosystems/stacks-blockchain-api/issues/1366)) ([444f008](https://github.com/hirosystems/stacks-blockchain-api/commit/444f008fe2f188148ce14c519373a053a3fc8c89))
+* add memos to send-many-memo rosetta STX transfer operations ([#1389](https://github.com/hirosystems/stacks-blockchain-api/issues/1389)) ([0a552b8](https://github.com/hirosystems/stacks-blockchain-api/commit/0a552b8d8c193f64199e63b0956b1c070ce2c530))
+* catch cache controller db errors ([#1368](https://github.com/hirosystems/stacks-blockchain-api/issues/1368)) ([f15df41](https://github.com/hirosystems/stacks-blockchain-api/commit/f15df41fa98a171b5e20289240c391a847fd1460))
+* disable faucet endpoints on mainnet ([#1425](https://github.com/hirosystems/stacks-blockchain-api/issues/1425)) ([b79b9b4](https://github.com/hirosystems/stacks-blockchain-api/commit/b79b9b43d5bce5d65f5bc322589704e40de1ad55))
+* handle postgres.js connection timeouts ([#1424](https://github.com/hirosystems/stacks-blockchain-api/issues/1424)) ([4a2a342](https://github.com/hirosystems/stacks-blockchain-api/commit/4a2a342b56c24e9b27b37116960555a425a0eb42))
+* remove duplicate tx socket updates inside db transactions ([#1360](https://github.com/hirosystems/stacks-blockchain-api/issues/1360)) ([60c185d](https://github.com/hirosystems/stacks-blockchain-api/commit/60c185d83970fe7cf590075029cd5fd878da96fa))
+* sql transaction consistency ([#1410](https://github.com/hirosystems/stacks-blockchain-api/issues/1410)) ([01e26d9](https://github.com/hirosystems/stacks-blockchain-api/commit/01e26d9c89472c8e07ee9d44372d3de86ee0fdb0))
+* update testnet send-many-memo contract id ENV ([#1420](https://github.com/hirosystems/stacks-blockchain-api/issues/1420)) ([45ea24d](https://github.com/hirosystems/stacks-blockchain-api/commit/45ea24d9a2df96d582aaae70e433b0717a0e47cf))
+
+
+## [6.2.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.3...v6.2.0-beta.4) (2022-11-08)
+
+
+### Bug Fixes
+
+* disable faucet endpoints on mainnet ([#1425](https://github.com/hirosystems/stacks-blockchain-api/issues/1425)) ([b79b9b4](https://github.com/hirosystems/stacks-blockchain-api/commit/b79b9b43d5bce5d65f5bc322589704e40de1ad55))
+* handle postgres.js connection timeouts ([#1424](https://github.com/hirosystems/stacks-blockchain-api/issues/1424)) ([4a2a342](https://github.com/hirosystems/stacks-blockchain-api/commit/4a2a342b56c24e9b27b37116960555a425a0eb42))
+
+## [6.2.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.2...v6.2.0-beta.3) (2022-11-07)
+
+
+### Bug Fixes
+
+* update testnet send-many-memo contract id ENV ([#1420](https://github.com/hirosystems/stacks-blockchain-api/issues/1420)) ([45ea24d](https://github.com/hirosystems/stacks-blockchain-api/commit/45ea24d9a2df96d582aaae70e433b0717a0e47cf))
+
+## [6.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0-beta.1...v6.2.0-beta.2) (2022-11-04)
+
+
+### Bug Fixes
+
+* log PoisonMicroblock tx instead rather than throwing ([#1379](https://github.com/hirosystems/stacks-blockchain-api/issues/1379)) ([cee6352](https://github.com/hirosystems/stacks-blockchain-api/commit/cee63529b4785d9bedc8fcfd568a27aedef0914d))
+
+## [6.2.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.1.0...v6.2.0-beta.1) (2022-11-03)
+
+
+### Features
+
+* add ENV configs for DB close and API shutdown timeouts ([#1366](https://github.com/hirosystems/stacks-blockchain-api/issues/1366)) ([444f008](https://github.com/hirosystems/stacks-blockchain-api/commit/444f008fe2f188148ce14c519373a053a3fc8c89))
+
+### Bug Fixes
+
+* add memos to send-many-memo rosetta STX transfer operations ([#1389](https://github.com/hirosystems/stacks-blockchain-api/issues/1389)) ([0a552b8](https://github.com/hirosystems/stacks-blockchain-api/commit/0a552b8d8c193f64199e63b0956b1c070ce2c530))
+* catch cache controller db errors ([#1368](https://github.com/hirosystems/stacks-blockchain-api/issues/1368)) ([f15df41](https://github.com/hirosystems/stacks-blockchain-api/commit/f15df41fa98a171b5e20289240c391a847fd1460))
+* remove duplicate tx socket updates inside db transactions ([#1360](https://github.com/hirosystems/stacks-blockchain-api/issues/1360)) ([60c185d](https://github.com/hirosystems/stacks-blockchain-api/commit/60c185d83970fe7cf590075029cd5fd878da96fa))
+* sql transaction consistency ([#1410](https://github.com/hirosystems/stacks-blockchain-api/issues/1410)) ([01e26d9](https://github.com/hirosystems/stacks-blockchain-api/commit/01e26d9c89472c8e07ee9d44372d3de86ee0fdb0))
+
+
+
+## [6.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.1.0...v6.1.1) (2022-10-24)
+
+
+### Bug Fixes
+
+* log PoisonMicroblock tx instead rather than throwing ([#1379](https://github.com/hirosystems/stacks-blockchain-api/issues/1379)) ([cee6352](https://github.com/hirosystems/stacks-blockchain-api/commit/cee63529b4785d9bedc8fcfd568a27aedef0914d))
+
+
+## [6.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.4...v6.1.0) (2022-10-13)
+
+
+### Features
+
+* configurable pg connection lifetime and idle timeouts ([#1355](https://github.com/hirosystems/stacks-blockchain-api/issues/1355)) ([46ccf06](https://github.com/hirosystems/stacks-blockchain-api/commit/46ccf0640de0c42e5fd71795521992fdfdc8d293))
+
+
+### Bug Fixes
+
+* refresh materialized views in their own pg connection ([#1356](https://github.com/hirosystems/stacks-blockchain-api/issues/1356)) ([9433d3c](https://github.com/hirosystems/stacks-blockchain-api/commit/9433d3c9c2d46eeff143a6c04438a94505549f3f))
+
+## [6.0.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.3...v6.0.4) (2022-10-12)
+
+
+### Bug Fixes
+
+* handle pg exceptions on web socket transmitter ([#1353](https://github.com/hirosystems/stacks-blockchain-api/issues/1353)) ([2e6448d](https://github.com/hirosystems/stacks-blockchain-api/commit/2e6448d7afc7bb35d5bcd3da88105f0552a13764))
+
+## [6.0.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.2...v6.0.3) (2022-10-12)
+
+
+### Bug Fixes
+
+* skip migrations on read-only start ([#1351](https://github.com/hirosystems/stacks-blockchain-api/issues/1351)) ([1d32261](https://github.com/hirosystems/stacks-blockchain-api/commit/1d322614e70e125b924c7d0a8b9f536ca81eb48f))
+
+## [6.0.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.1...v6.0.2) (2022-10-12)
+
+
+### Bug Fixes
+
+* catch pg exceptions on queries outside of express ([#1348](https://github.com/hirosystems/stacks-blockchain-api/issues/1348)) ([1f07b85](https://github.com/hirosystems/stacks-blockchain-api/commit/1f07b8587ccf0206e085d272e6cb5ee62f816fd9))
+
+## [6.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0...v6.0.1) (2022-10-06)
+
+
+### Bug Fixes
+
+* guard against empty lists before querying postgres ([#1345](https://github.com/hirosystems/stacks-blockchain-api/issues/1345)) ([6c88a16](https://github.com/hirosystems/stacks-blockchain-api/commit/6c88a166c8742c869222f7f754838af386e2cd16))
+
+## [6.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.1...v6.0.0) (2022-10-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated `/nft_events` endpoint (#1329)
+* mark breaking change
+
+### Features
+
+* add `transaction_count` for `microblocks_accepted` in block ([#1162](https://github.com/hirosystems/stacks-blockchain-api/issues/1162)) ([78d7d9c](https://github.com/hirosystems/stacks-blockchain-api/commit/78d7d9c9f72db8ce6c59e0ea59a2579aceec014e))
+* add API version in response header ([#1216](https://github.com/hirosystems/stacks-blockchain-api/issues/1216)) ([1e998db](https://github.com/hirosystems/stacks-blockchain-api/commit/1e998db7d1c87c064376cb950d05b073d9d3f076))
+* add owner index to subdomains table ([#1331](https://github.com/hirosystems/stacks-blockchain-api/issues/1331)) ([a6c5e12](https://github.com/hirosystems/stacks-blockchain-api/commit/a6c5e12faa256633a7c9ae4c7cf8524013d187d6))
+* add token_type metadata for rosetta ft operations ([#1332](https://github.com/hirosystems/stacks-blockchain-api/issues/1332)) ([09af27b](https://github.com/hirosystems/stacks-blockchain-api/commit/09af27b24be8e30a840707707b79d65cd45f2351))
+* mark breaking change ([669fd0d](https://github.com/hirosystems/stacks-blockchain-api/commit/669fd0d8c00b8ca9224c9b5411a070b32c3b0529))
+* mempool stats endpoint and prometheus metrics ([#1241](https://github.com/hirosystems/stacks-blockchain-api/issues/1241)) ([9482238](https://github.com/hirosystems/stacks-blockchain-api/commit/9482238599549fd651c8c87b545c175d8a219521))
+* refactor pg classes, switch to postgres.js ([#1148](https://github.com/hirosystems/stacks-blockchain-api/issues/1148)) ([3ff4177](https://github.com/hirosystems/stacks-blockchain-api/commit/3ff41779f844c611fbd95429aeefbdb085a59026)), closes [#1168](https://github.com/hirosystems/stacks-blockchain-api/issues/1168)
+* send nft updates through websocket channels ([#1218](https://github.com/hirosystems/stacks-blockchain-api/issues/1218)) ([920a7b8](https://github.com/hirosystems/stacks-blockchain-api/commit/920a7b892a39f0f1e76363211573d935ae2c75da))
+
+
+### Bug Fixes
+
+* consolidate db migrations ([#1314](https://github.com/hirosystems/stacks-blockchain-api/issues/1314)) ([d6bdf9f](https://github.com/hirosystems/stacks-blockchain-api/commit/d6bdf9faff905d5e208e61b04c34321e954a2fb1))
+* event_observer_requests json writes ([#1334](https://github.com/hirosystems/stacks-blockchain-api/issues/1334)) ([465aa0b](https://github.com/hirosystems/stacks-blockchain-api/commit/465aa0b42ca3dda57d06f6c0756b03d591e7f027))
+* included query params in redirecting to prefix 0x in tx endpoint ([#1205](https://github.com/hirosystems/stacks-blockchain-api/issues/1205)) ([664cce7](https://github.com/hirosystems/stacks-blockchain-api/commit/664cce744d1aecc0b3226ae07ac81e5d0cd13871))
+* incorrect websocket/socket.io transaction updates ([#1197](https://github.com/hirosystems/stacks-blockchain-api/issues/1197)) ([8ee1da8](https://github.com/hirosystems/stacks-blockchain-api/commit/8ee1da840bfa3fcecac79e09e375b720cd0ccc04))
+* mobx breakage by locking package dependencies ([#1206](https://github.com/hirosystems/stacks-blockchain-api/issues/1206)) ([5f8bc9f](https://github.com/hirosystems/stacks-blockchain-api/commit/5f8bc9fd4f45877eedbfbce29c7feb5905ba8836))
+* optimize `getMicroblocks` query ([#1179](https://github.com/hirosystems/stacks-blockchain-api/issues/1179)) ([7691109](https://github.com/hirosystems/stacks-blockchain-api/commit/769110926eb7b7c9a4d2754af8ce6f1213e2c56f))
+* optimize block endpoint ([#1190](https://github.com/hirosystems/stacks-blockchain-api/issues/1190)) ([943e2d1](https://github.com/hirosystems/stacks-blockchain-api/commit/943e2d1c555473f7f0fb61959ed89185e89ed062))
+* refresh materialized views concurrently in new pg format ([#1324](https://github.com/hirosystems/stacks-blockchain-api/issues/1324)) ([20b284f](https://github.com/hirosystems/stacks-blockchain-api/commit/20b284fa381041fb842bf61d8a184be6ea84810f))
+* remove duplicate txs in microblock responses ([#1167](https://github.com/hirosystems/stacks-blockchain-api/issues/1167)) ([15c0c11](https://github.com/hirosystems/stacks-blockchain-api/commit/15c0c1124a2c91756389274c8a6ebfa8aa44228b))
+* remove live tsv append ([#1315](https://github.com/hirosystems/stacks-blockchain-api/issues/1315)) ([e2a1247](https://github.com/hirosystems/stacks-blockchain-api/commit/e2a124710f955d9d32ff5a928af7da08823689d4))
+* retry pg connection on new library code ([#1326](https://github.com/hirosystems/stacks-blockchain-api/issues/1326)) ([35db939](https://github.com/hirosystems/stacks-blockchain-api/commit/35db939199a2d826e7ee4dbe31af48cc42364ea2))
+* support multiple BNS name events in the same transaction ([#1337](https://github.com/hirosystems/stacks-blockchain-api/issues/1337)) ([1edb256](https://github.com/hirosystems/stacks-blockchain-api/commit/1edb25697df689dbf1da5d412f5d40e4aac024f3))
+* tests ([1c1fd16](https://github.com/hirosystems/stacks-blockchain-api/commit/1c1fd1619c8ea97c2636082203fb678f06493786))
+* upgrade stacks node versions to 2.05.0.3.0 ([#1328](https://github.com/hirosystems/stacks-blockchain-api/issues/1328)) ([e30636e](https://github.com/hirosystems/stacks-blockchain-api/commit/e30636e30f716a7335792914a142fa54f423dc9a))
+* upsert nft and ft metadata ([#1193](https://github.com/hirosystems/stacks-blockchain-api/issues/1193)) ([c4eec5d](https://github.com/hirosystems/stacks-blockchain-api/commit/c4eec5d060666b660c48d326e74b4f989b9ee21d))
+
+
+### Reverts
+
+* Revert "chore!: remove deprecated `/nft_events` endpoint (#1329)" (#1343) ([c537ee4](https://github.com/hirosystems/stacks-blockchain-api/commit/c537ee4c6f333c0a43c9e9e1ca1e073f03c58fc5)), closes [#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329) [#1343](https://github.com/hirosystems/stacks-blockchain-api/issues/1343)
+
+
+### Miscellaneous Chores
+
+* remove deprecated `/nft_events` endpoint ([#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329)) ([65bb4e5](https://github.com/hirosystems/stacks-blockchain-api/commit/65bb4e55fabf21a70183d2b16c8bc1f6f742d04e))
+
+## [6.0.0-beta.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.9...v6.0.0-beta.10) (2022-10-06)
+
+
+### Reverts
+
+* Revert "chore!: remove deprecated `/nft_events` endpoint (#1329)" (#1343) ([c537ee4](https://github.com/hirosystems/stacks-blockchain-api/commit/c537ee4c6f333c0a43c9e9e1ca1e073f03c58fc5)), closes [#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329) [#1343](https://github.com/hirosystems/stacks-blockchain-api/issues/1343)
+
+## [6.0.0-beta.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.8...v6.0.0-beta.9) (2022-09-30)
+
+
+### Bug Fixes
+
+* support multiple BNS name events in the same transaction ([#1337](https://github.com/hirosystems/stacks-blockchain-api/issues/1337)) ([1edb256](https://github.com/hirosystems/stacks-blockchain-api/commit/1edb25697df689dbf1da5d412f5d40e4aac024f3))
+
+## [6.0.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.7...v6.0.0-beta.8) (2022-09-29)
+
+
+### Bug Fixes
+
+* add owner index on subdomains table ([#1323](https://github.com/hirosystems/stacks-blockchain-api/issues/1323)) ([c9c6d05](https://github.com/hirosystems/stacks-blockchain-api/commit/c9c6d053fd8896187a26a788aaaa56fb48285e61))
+
+## [6.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.6...v6.0.0-beta.7) (2022-09-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove deprecated `/nft_events` endpoint (#1329)
+
+### Bug Fixes
+
+* event_observer_requests json writes ([#1334](https://github.com/hirosystems/stacks-blockchain-api/issues/1334)) ([465aa0b](https://github.com/hirosystems/stacks-blockchain-api/commit/465aa0b42ca3dda57d06f6c0756b03d591e7f027))
+
+
+### Miscellaneous Chores
+
+* remove deprecated `/nft_events` endpoint ([#1329](https://github.com/hirosystems/stacks-blockchain-api/issues/1329)) ([65bb4e5](https://github.com/hirosystems/stacks-blockchain-api/commit/65bb4e55fabf21a70183d2b16c8bc1f6f742d04e))
+
+## [6.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.5...v6.0.0-beta.6) (2022-09-23)
+
+
+### Features
+
+* add token_type metadata for rosetta ft operations ([#1332](https://github.com/hirosystems/stacks-blockchain-api/issues/1332)) ([09af27b](https://github.com/hirosystems/stacks-blockchain-api/commit/09af27b24be8e30a840707707b79d65cd45f2351))
+
+## [6.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.4...v6.0.0-beta.5) (2022-09-22)
+
+
+### Features
+
+* add owner index to subdomains table ([#1331](https://github.com/hirosystems/stacks-blockchain-api/issues/1331)) ([a6c5e12](https://github.com/hirosystems/stacks-blockchain-api/commit/a6c5e12faa256633a7c9ae4c7cf8524013d187d6))
+
+## [6.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.3...v6.0.0-beta.4) (2022-09-22)
+
+
+### Bug Fixes
+
+* upgrade stacks node versions to 2.05.0.3.0 ([#1328](https://github.com/hirosystems/stacks-blockchain-api/issues/1328)) ([e30636e](https://github.com/hirosystems/stacks-blockchain-api/commit/e30636e30f716a7335792914a142fa54f423dc9a))
+
+## [6.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.2...v6.0.0-beta.3) (2022-09-21)
+
+
+### Bug Fixes
+
+* refresh materialized views concurrently in new pg format ([#1324](https://github.com/hirosystems/stacks-blockchain-api/issues/1324)) ([20b284f](https://github.com/hirosystems/stacks-blockchain-api/commit/20b284fa381041fb842bf61d8a184be6ea84810f))
+* retry pg connection on new library code ([#1326](https://github.com/hirosystems/stacks-blockchain-api/issues/1326)) ([35db939](https://github.com/hirosystems/stacks-blockchain-api/commit/35db939199a2d826e7ee4dbe31af48cc42364ea2))
+
+## [6.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.0.0-beta.1...v6.0.0-beta.2) (2022-09-13)
+
+
+### Bug Fixes
+
+* remove live tsv append ([#1315](https://github.com/hirosystems/stacks-blockchain-api/issues/1315)) ([e2a1247](https://github.com/hirosystems/stacks-blockchain-api/commit/e2a124710f955d9d32ff5a928af7da08823689d4))
+
+## [6.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v6.0.0-beta.1) (2022-09-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* mark breaking change
+
+### Features
+
+* add `transaction_count` for `microblocks_accepted` in block ([#1162](https://github.com/hirosystems/stacks-blockchain-api/issues/1162)) ([78d7d9c](https://github.com/hirosystems/stacks-blockchain-api/commit/78d7d9c9f72db8ce6c59e0ea59a2579aceec014e))
+* add API version in response header ([#1216](https://github.com/hirosystems/stacks-blockchain-api/issues/1216)) ([1e998db](https://github.com/hirosystems/stacks-blockchain-api/commit/1e998db7d1c87c064376cb950d05b073d9d3f076))
+* mark breaking change ([669fd0d](https://github.com/hirosystems/stacks-blockchain-api/commit/669fd0d8c00b8ca9224c9b5411a070b32c3b0529))
+* mempool stats endpoint and prometheus metrics ([#1241](https://github.com/hirosystems/stacks-blockchain-api/issues/1241)) ([9482238](https://github.com/hirosystems/stacks-blockchain-api/commit/9482238599549fd651c8c87b545c175d8a219521))
+* refactor pg classes, switch to postgres.js ([#1148](https://github.com/hirosystems/stacks-blockchain-api/issues/1148)) ([3ff4177](https://github.com/hirosystems/stacks-blockchain-api/commit/3ff41779f844c611fbd95429aeefbdb085a59026)), closes [#1168](https://github.com/hirosystems/stacks-blockchain-api/issues/1168)
+* send nft updates through websocket channels ([#1218](https://github.com/hirosystems/stacks-blockchain-api/issues/1218)) ([920a7b8](https://github.com/hirosystems/stacks-blockchain-api/commit/920a7b892a39f0f1e76363211573d935ae2c75da))
+
+### Bug Fixes
+
+* consolidate db migrations ([#1314](https://github.com/hirosystems/stacks-blockchain-api/issues/1314)) ([d6bdf9f](https://github.com/hirosystems/stacks-blockchain-api/commit/d6bdf9faff905d5e208e61b04c34321e954a2fb1))
 * included query params in redirecting to prefix 0x in tx endpoint ([#1205](https://github.com/hirosystems/stacks-blockchain-api/issues/1205)) ([664cce7](https://github.com/hirosystems/stacks-blockchain-api/commit/664cce744d1aecc0b3226ae07ac81e5d0cd13871))
 * incorrect websocket/socket.io transaction updates ([#1197](https://github.com/hirosystems/stacks-blockchain-api/issues/1197)) ([8ee1da8](https://github.com/hirosystems/stacks-blockchain-api/commit/8ee1da840bfa3fcecac79e09e375b720cd0ccc04))
 * mobx breakage by locking package dependencies ([#1206](https://github.com/hirosystems/stacks-blockchain-api/issues/1206)) ([5f8bc9f](https://github.com/hirosystems/stacks-blockchain-api/commit/5f8bc9fd4f45877eedbfbce29c7feb5905ba8836))
 * optimize `getMicroblocks` query ([#1179](https://github.com/hirosystems/stacks-blockchain-api/issues/1179)) ([7691109](https://github.com/hirosystems/stacks-blockchain-api/commit/769110926eb7b7c9a4d2754af8ce6f1213e2c56f))
 * optimize block endpoint ([#1190](https://github.com/hirosystems/stacks-blockchain-api/issues/1190)) ([943e2d1](https://github.com/hirosystems/stacks-blockchain-api/commit/943e2d1c555473f7f0fb61959ed89185e89ed062))
 * remove duplicate txs in microblock responses ([#1167](https://github.com/hirosystems/stacks-blockchain-api/issues/1167)) ([15c0c11](https://github.com/hirosystems/stacks-blockchain-api/commit/15c0c1124a2c91756389274c8a6ebfa8aa44228b))
-* report locked STX balance correctly when multiple event entries exist from stack-increase and stack-extend operations ([#1363](https://github.com/hirosystems/stacks-blockchain-api/issues/1363)) ([d06beb3](https://github.com/hirosystems/stacks-blockchain-api/commit/d06beb32f12639d119b8fd9d7d864e3e987cc764))
+* tests ([1c1fd16](https://github.com/hirosystems/stacks-blockchain-api/commit/1c1fd1619c8ea97c2636082203fb678f06493786))
 * upsert nft and ft metadata ([#1193](https://github.com/hirosystems/stacks-blockchain-api/issues/1193)) ([c4eec5d](https://github.com/hirosystems/stacks-blockchain-api/commit/c4eec5d060666b660c48d326e74b4f989b9ee21d))
+
+## [5.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0...v5.0.1) (2022-09-20)
+
+
+* add owner index on subdomains table ([#1323](https://github.com/hirosystems/stacks-blockchain-api/issues/1323)) ([c9c6d05](https://github.com/hirosystems/stacks-blockchain-api/commit/c9c6d053fd8896187a26a788aaaa56fb48285e61))
+
+## [5.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0) (2022-09-07)
+
+
+### ⚠ BREAKING CHANGES
+
+* optimize tables and improve canonical treatment of BNS data (#1287)
+
+### Features
+
+* add indexes for index_block_hash on BNS tables ([#1304](https://github.com/hirosystems/stacks-blockchain-api/issues/1304)) ([bbf4b2d](https://github.com/hirosystems/stacks-blockchain-api/commit/bbf4b2d2b8c7f6ed30bfda6eaa430d5c2e84cdf5))
+* optimize tables and improve canonical treatment of BNS data ([#1287](https://github.com/hirosystems/stacks-blockchain-api/issues/1287)) ([1f64818](https://github.com/hirosystems/stacks-blockchain-api/commit/1f648187b8c701e802a06bac52b077fd10571ff7))
+
+
+### Bug Fixes
+
+* add postgres connection error checking for ECONNRESET code ([03a1896](https://github.com/hirosystems/stacks-blockchain-api/commit/03a1896cff8937a5f39a8b75e5adf51a6344592c))
+* bump version ([3863cce](https://github.com/hirosystems/stacks-blockchain-api/commit/3863cce1a64cf7a4c6cffd4f888c049cfd3ada65))
+* detect name transfers and renewals in special circumstances ([#1303](https://github.com/hirosystems/stacks-blockchain-api/issues/1303)) ([cd381a9](https://github.com/hirosystems/stacks-blockchain-api/commit/cd381a95b4d0d3f4bb08e447500153c3f652eff6))
+* filter BNS processing for successful txs only ([#1309](https://github.com/hirosystems/stacks-blockchain-api/issues/1309)) ([6a12936](https://github.com/hirosystems/stacks-blockchain-api/commit/6a129369c6d9fcdc79b5a7ad288d37784cbe77cc))
+* import BNS v1 data during event replay ([#1301](https://github.com/hirosystems/stacks-blockchain-api/issues/1301)) ([bc59817](https://github.com/hirosystems/stacks-blockchain-api/commit/bc59817aa98dd3a978a27b73d14738b64eb823f9))
+
+## [5.0.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.6...v5.0.0-beta.7) (2022-09-07)
+
+
+### Bug Fixes
+
+* filter BNS processing for successful txs only ([#1309](https://github.com/hirosystems/stacks-blockchain-api/issues/1309)) ([6a12936](https://github.com/hirosystems/stacks-blockchain-api/commit/6a129369c6d9fcdc79b5a7ad288d37784cbe77cc))
+
+## [5.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.5...v5.0.0-beta.6) (2022-09-01)
 
 
 ### Features
 
-* add `transaction_count` for `microblocks_accepted` in block ([#1162](https://github.com/hirosystems/stacks-blockchain-api/issues/1162)) ([78d7d9c](https://github.com/hirosystems/stacks-blockchain-api/commit/78d7d9c9f72db8ce6c59e0ea59a2579aceec014e))
-* add API version in response header ([#1216](https://github.com/hirosystems/stacks-blockchain-api/issues/1216)) ([1e998db](https://github.com/hirosystems/stacks-blockchain-api/commit/1e998db7d1c87c064376cb950d05b073d9d3f076))
-* include `stx-transfer-memo` results in `/address/<recipient>/stx_inbound` endpoint ([#1289](https://github.com/hirosystems/stacks-blockchain-api/issues/1289)) ([cb5ca93](https://github.com/hirosystems/stacks-blockchain-api/commit/cb5ca933fe77fa724b6c08ea9b36973415504744))
-* include Stacks 2.1 `stx-transfer-memo` in Rosetta token transfer operations ([#1290](https://github.com/hirosystems/stacks-blockchain-api/issues/1290)) ([c7cc900](https://github.com/hirosystems/stacks-blockchain-api/commit/c7cc900edfa7a7c169a50ecd265110f78cc95ab6))
-* mempool stats endpoint and prometheus metrics ([#1241](https://github.com/hirosystems/stacks-blockchain-api/issues/1241)) ([9482238](https://github.com/hirosystems/stacks-blockchain-api/commit/9482238599549fd651c8c87b545c175d8a219521))
-* refactor pg classes, switch to postgres.js ([#1148](https://github.com/hirosystems/stacks-blockchain-api/issues/1148)) ([3ff4177](https://github.com/hirosystems/stacks-blockchain-api/commit/3ff41779f844c611fbd95429aeefbdb085a59026)), closes [#1168](https://github.com/hirosystems/stacks-blockchain-api/issues/1168)
-* send nft updates through websocket channels ([#1218](https://github.com/hirosystems/stacks-blockchain-api/issues/1218)) ([920a7b8](https://github.com/hirosystems/stacks-blockchain-api/commit/920a7b892a39f0f1e76363211573d935ae2c75da))
-* Stacks 2.1 PoX-2 support in Rosetta ([#1339](https://github.com/hirosystems/stacks-blockchain-api/issues/1339)) ([e04bf64](https://github.com/hirosystems/stacks-blockchain-api/commit/e04bf64e6f66a29127126d12426ff5bebcf6cf45))
-* store Stacks block miner address value from new rewards payload introduced in https://github.com/stacks-network/stacks-blockchain/pull/3373 ([#1413](https://github.com/hirosystems/stacks-blockchain-api/issues/1413)) ([e34fab5](https://github.com/hirosystems/stacks-blockchain-api/commit/e34fab5e5d92222433b19021c584da903b64f27a))
-* support for Stacks 2.1 `coinbase-pay-to-alt-recipient` txs ([#1283](https://github.com/hirosystems/stacks-blockchain-api/issues/1283)) ([7e5752a](https://github.com/hirosystems/stacks-blockchain-api/commit/7e5752a7e6ed1441fb8459c4a0ee30332d23555d))
-* support for Stacks 2.1 `versioned-smart-contract` transactions ([#1279](https://github.com/hirosystems/stacks-blockchain-api/issues/1279)) ([4ff1a91](https://github.com/hirosystems/stacks-blockchain-api/commit/4ff1a913ed978fcdf3ab219325ff0965f5496154)), closes [#1280](https://github.com/hirosystems/stacks-blockchain-api/issues/1280)
-* support for Stacks 2.1 stx-transfer event memo field ([#1285](https://github.com/hirosystems/stacks-blockchain-api/issues/1285)) ([67332ce](https://github.com/hirosystems/stacks-blockchain-api/commit/67332ce6991b4bc64f8fcd322920db5ed5c944a2))
+* add indexes for index_block_hash on BNS tables ([#1304](https://github.com/hirosystems/stacks-blockchain-api/issues/1304)) ([bbf4b2d](https://github.com/hirosystems/stacks-blockchain-api/commit/bbf4b2d2b8c7f6ed30bfda6eaa430d5c2e84cdf5))
+
+## [5.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.4...v5.0.0-beta.5) (2022-08-31)
+
+
+### Bug Fixes
+
+* detect name transfers and renewals in special circumstances ([#1303](https://github.com/hirosystems/stacks-blockchain-api/issues/1303)) ([cd381a9](https://github.com/hirosystems/stacks-blockchain-api/commit/cd381a95b4d0d3f4bb08e447500153c3f652eff6))
+
+## [5.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.3...v5.0.0-beta.4) (2022-08-31)
+
+
+### Bug Fixes
+
+* add postgres connection error checking for ECONNRESET code ([03a1896](https://github.com/hirosystems/stacks-blockchain-api/commit/03a1896cff8937a5f39a8b75e5adf51a6344592c))
+
+## [5.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.2...v5.0.0-beta.3) (2022-08-31)
+
+
+### Bug Fixes
+
+* import BNS v1 data during event replay ([#1301](https://github.com/hirosystems/stacks-blockchain-api/issues/1301)) ([bc59817](https://github.com/hirosystems/stacks-blockchain-api/commit/bc59817aa98dd3a978a27b73d14738b64eb823f9))
+
+## [5.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v5.0.0-beta.1...v5.0.0-beta.2) (2022-08-26)
+
+
+### Bug Fixes
+
+* bump version ([3863cce](https://github.com/hirosystems/stacks-blockchain-api/commit/3863cce1a64cf7a4c6cffd4f888c049cfd3ada65))
+
+## [5.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.2...v5.0.0-beta.1) (2022-08-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* optimize tables and improve canonical treatment of BNS data (#1287)
+
+### Features
+
+* optimize tables and improve canonical treatment of BNS data ([#1287](https://github.com/hirosystems/stacks-blockchain-api/issues/1287)) ([1f64818](https://github.com/hirosystems/stacks-blockchain-api/commit/1f648187b8c701e802a06bac52b077fd10571ff7))
+
+## [4.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.1...v4.1.2) (2022-08-18)
+
+
+### Bug Fixes
+
+* refresh materialized views concurrently ([#1270](https://github.com/hirosystems/stacks-blockchain-api/issues/1270)) ([057c541](https://github.com/hirosystems/stacks-blockchain-api/commit/057c541b8c31402b6ff823cce0e3ed435ebe74a8))
 
 ## [4.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v4.1.0...v4.1.1) (2022-08-03)
 

@@ -18,7 +18,13 @@ import {
   RosettaOperation,
   RosettaTransaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { RosettaConstants, RosettaOperationType } from '../api/rosetta-constants';
+import {
+  RosettaErrors,
+  RosettaOperationType,
+  RosettaOperationTypes,
+  RosettaOperationStatuses,
+  RosettaConstants,
+} from '../api/rosetta-constants';
 import {
   TestBlockArgs,
   TestBlockBuilder,
@@ -30,6 +36,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 import { bufferToHexPrefixString } from '../helpers';
+import * as nock from 'nock';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
@@ -43,6 +50,147 @@ describe('Rosetta API', () => {
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  test('network/list', async () => {
+    const query1 = await supertest(api.server).post(`/rosetta/v1/network/list`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      network_identifiers: [{ blockchain: 'stacks', network: 'testnet' }],
+    });
+  });
+
+  test('network/options', async () => {
+    const nodeVersion = process.version;
+    const middlewareVersion = require('../../package.json').version;
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/network/options`)
+      .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      version: {
+        rosetta_version: '1.4.6',
+        node_version: nodeVersion,
+        middleware_version: middlewareVersion,
+      },
+      allow: {
+        operation_statuses: RosettaOperationStatuses,
+        operation_types: RosettaOperationTypes,
+        errors: Object.values(RosettaErrors),
+        historical_balance_lookup: true,
+      },
+    });
+  });
+
+  test('network/options - bad request', async () => {
+    const query1 = await supertest(api.server).post(`/rosetta/v1/network/options`).send({});
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      code: 613,
+      message: 'Network identifier object is null.',
+      retriable: false,
+      details: { message: "should have required property 'network_identifier'" },
+    });
+  });
+
+  test('network/status - invalid blockchain', async () => {
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/network/status`)
+      .send({ network_identifier: { blockchain: 'bitcoin', network: 'testnet' } });
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      code: 611,
+      message: 'Invalid blockchain.',
+      retriable: false,
+    });
+  });
+
+  test('network/status - invalid network', async () => {
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/network/status`)
+      .send({ network_identifier: { blockchain: 'stacks', network: 'mainnet' } });
+    expect(query1.status).toBe(400);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text)).toEqual({
+      code: 610,
+      message: 'Invalid network.',
+      retriable: false,
+    });
+  });
+
+  test('network/status', async () => {
+    // skip first a block (so we are at least N+1 blocks)
+    const genesisData = new TestBlockBuilder().build();
+    const blockBuilderData = {
+      parent_block_hash: genesisData.block.block_hash,
+      parent_index_block_hash: genesisData.block.index_block_hash,
+      block_height: 2,
+      index_block_hash: '0x12345678'
+    } 
+    const blockData = new TestBlockBuilder(blockBuilderData).build();
+
+    await db.update(genesisData);
+    await db.update(blockData);
+
+    const block = blockData.block, genesisBlock = genesisData.block;
+
+    nock('http://127.0.0.1:20443')
+      .get('/v2/neighbors')
+      .reply(200, {
+        sample: [],
+        inbound: [],
+        outbound: []
+      });
+    nock('http://127.0.0.1:20443')
+      .get('/v2/info')
+      .reply(200, {
+        burn_block_height: block.burn_block_height,
+        burn_consensus: block.burn_block_hash,
+        exit_at_block_height: null,
+        network_id: 1,
+        parent_network_id: 1,
+        peer_version: 1,
+        server_version: 1,
+        stable_burn_block_height: block.burn_block_height,
+        stable_burn_consensus: block.burn_block_hash,
+        stacks_tip: block.block_hash,
+        stacks_tip_burn_block: block.burn_block_height,
+        stacks_tip_height: block.block_height,
+        unanchored_tip: ''
+      });
+    const query1 = await supertest(api.address)
+      .post(`/rosetta/v1/network/status`)
+      .send({ network_identifier: { blockchain: 'stacks', network: 'testnet' } });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+
+    const expectResponse = {
+      current_block_identifier: {
+        index: block.block_height,
+        hash: block.block_hash,
+      },
+      current_block_timestamp: block.burn_block_time * 1000,
+      genesis_block_identifier: {
+        index: genesisBlock.block_height,
+        hash: genesisBlock.block_hash,
+      },
+      peers: [],
+    };
+
+    expect(JSON.parse(query1.text)).toHaveProperty('sync_status');
+    expect(JSON.parse(query1.text).current_block_identifier).toEqual(
+      expectResponse.current_block_identifier
+    );
+    expect(JSON.parse(query1.text).current_block_timestamp).toEqual(
+      expectResponse.current_block_timestamp
+    );
+    expect(JSON.parse(query1.text).genesis_block_identifier).toEqual(
+      expectResponse.genesis_block_identifier
+    );
   });
 
   test('block - by index', async () => {
@@ -1214,7 +1362,7 @@ describe('Rosetta API', () => {
       },
     };
     const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(500);
+    expect(result.status).toBe(400);
     expect(result.type).toBe('application/json');
 
     const expectResponse = { 

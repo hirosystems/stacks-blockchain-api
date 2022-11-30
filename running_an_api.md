@@ -78,32 +78,12 @@ Since we'll need to create some files/dirs for persistent data we'll first creat
 We'll be using:
 
 ```bash
-$ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,bns,config}
+$ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,config}
 $ docker pull blockstack/stacks-blockchain-api \
     && docker pull blockstack/stacks-blockchain \
     && docker pull postgres:14-alpine
 $ docker network create stacks-blockchain > /dev/null 2>&1
 $ cd ./stacks-node
-```
-
-**Optional but recommended**: If you need the v1 BNS data, there are going to be a few extra steps.
-
-1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
-2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.  
-
-To Verify, run a script like the following to check the sha256sum:
-
-```bash
-for file in `ls ./bns/* | grep -v sha256 | grep -v .tar.gz`; do
-    if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
-        echo "sha256 Matched $file"
-    else
-        echo "sha256 Mismatch $file"
-    fi
-done
 ```
 
 ## Postgres
@@ -161,15 +141,8 @@ STACKS_BLOCKCHAIN_API_PORT=3999
 STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 STACKS_CORE_RPC_HOST=stacks-blockchain
 STACKS_CORE_RPC_PORT=20443
-BNS_IMPORT_DIR=/bns-data
 API_DOCS_URL=https://docs.hiro.so/api
 ```
-
-**Note** that here we are importing the bns data with the env var `BNS_IMPORT`.  
-
-To Disable this import, simply comment the line: `#BNS_IMPORT_DIR=/bns-data`  
-
-***If you leave this enabled***: please allow several minutes for the one-time import to complete before continuing.
 
 The other Environment Variables to pay attention to:
 
@@ -184,7 +157,6 @@ docker run -d --rm \
     --name stacks-blockchain-api \
     --net=stacks-blockchain \
     --env-file $(pwd)/.env \
-    -v $(pwd)/bns:/bns-data \
     -p 3700:3700 \
     -p 3999:3999 \
     blockstack/stacks-blockchain-api
@@ -295,7 +267,8 @@ To verfiy the database is ready:
     - *this will require a locally installed postgresql client*
     - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
 2. List current databases: `\l`
-3. Disconnect from the DB : `\q`
+3. Verify data is being written to the database: `select * from blocks limit 1;`
+4. Disconnect from the DB : `\q`
 
 ### stacks-blockchain testing
 

@@ -11,16 +11,9 @@ import {
   getUnanchoredTxsFromDataStore,
 } from '../controllers/db-controller';
 import { has0xPrefix } from '../../helpers';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validateRequestHexInput } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
-
-const MAX_MICROBLOCKS_PER_REQUEST = 200;
-
-const parseMicroblockQueryLimit = parseLimitQuery({
-  maxItems: MAX_MICROBLOCKS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_MICROBLOCKS_PER_REQUEST,
-});
 
 export function createMicroblockRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -28,7 +21,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const limit = parseMicroblockQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit(ResourceType.Microblock, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const query = await getMicroblocksFromDataStore({ db, offset, limit });
       const response: MicroblockListResponse = {

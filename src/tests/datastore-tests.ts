@@ -21,13 +21,15 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
 } from '../datastore/common';
-import { parseDbEvent } from '../api/controllers/db-controller';
+import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPostgres, PgSqlClient } from '../datastore/connection';
+import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
-import { ChainID, intCV, serializeCV } from '@stacks/transactions';
+import { ChainID } from '@stacks/transactions';
+import { TestBlockBuilder } from '../test-utils/test-builders';
+import { sqlTransactionContext } from '../datastore/pg-store';
 
 function testEnvVars(
   envVars: Record<string, string | undefined>,
@@ -195,6 +197,8 @@ describe('postgres datastore', () => {
         PG_SSL: 'true',
         PG_SCHEMA: 'pg_schema_schema1',
         PG_APPLICATION_NAME: 'test-env-vars',
+        PG_MAX_LIFETIME: '5',
+        PG_IDLE_TIMEOUT: '1',
       },
       () => {
         const sql = getPostgres({ usageName: 'tests' });
@@ -204,6 +208,47 @@ describe('postgres datastore', () => {
         expect(sql.options.host).toStrictEqual(['pg_host_host1']);
         expect(sql.options.port).toStrictEqual([9876]);
         expect(sql.options.ssl).toBe(true);
+        expect(sql.options.max_lifetime).toBe(5);
+        expect(sql.options.idle_timeout).toBe(1);
+        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
+        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
+      }
+    );
+  });
+
+  test('postgres primary env var config fallback', () => {
+    testEnvVars(
+      {
+        PG_CONNECTION_URI: undefined,
+        PG_DATABASE: 'pg_db_db1',
+        PG_USER: 'pg_user_user1',
+        PG_PASSWORD: 'pg_password_password1',
+        PG_HOST: 'pg_host_host1',
+        PG_PORT: '9876',
+        PG_SSL: 'true',
+        PG_SCHEMA: 'pg_schema_schema1',
+        PG_APPLICATION_NAME: 'test-env-vars',
+        PG_MAX_LIFETIME: '5',
+        PG_IDLE_TIMEOUT: '1',
+        // Primary values:
+        PG_PRIMARY_DATABASE: 'primary_db',
+        PG_PRIMARY_USER: 'primary_user',
+        PG_PRIMARY_PASSWORD: 'primary_password',
+        PG_PRIMARY_HOST: 'primary_host',
+        PG_PRIMARY_PORT: '9999',
+      },
+      () => {
+        const sql = getPostgres({ usageName: 'tests', pgServer: PgServer.primary });
+        // Primary values take precedence.
+        expect(sql.options.database).toBe('primary_db');
+        expect(sql.options.user).toBe('primary_user');
+        expect(sql.options.pass).toBe('primary_password');
+        expect(sql.options.host).toStrictEqual(['primary_host']);
+        expect(sql.options.port).toStrictEqual([9999]);
+        // Other values come from defaults.
+        expect(sql.options.ssl).toBe(true);
+        expect(sql.options.max_lifetime).toBe(5);
+        expect(sql.options.idle_timeout).toBe(1);
         expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
         expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
       }
@@ -252,11 +297,39 @@ describe('postgres datastore', () => {
     );
   });
 
+  test('postgres transaction connection integrity', async () => {
+    const usageName = 'stacks-blockchain-api:tests;datastore-crud';
+    const obj = db.sql;
+
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
+    await db.sqlTransaction(async sql => {
+      // Transaction flag is open.
+      expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
+      // New connection object.
+      const newObj = sql;
+      expect(obj).not.toEqual(newObj);
+      expect(sqlTransactionContext.getStore()?.sql).toEqual(newObj);
+
+      // Nested tx uses the same connection object.
+      await db.sqlTransaction(sql => {
+        expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
+        expect(newObj).toEqual(sql);
+      });
+
+      // Getter returns the same connection object too.
+      expect(db.sql).toEqual(newObj);
+    });
+
+    // Back to normal.
+    expect(sqlTransactionContext.getStore()).toBeUndefined();
+    expect(db.sql).toEqual(obj);
+  });
+
   test('pg address STX balances', async () => {
-    const dbBlock: DbBlock = {
+    const block = new TestBlockBuilder({
       block_hash: '0x9876',
       index_block_hash: '0x5432',
-      block_height: 68456,
+      block_height: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
@@ -266,13 +339,8 @@ describe('postgres datastore', () => {
       miner_txid: '0x4321',
       canonical: true,
       parent_microblock_sequence: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    await db.updateBlock(client, dbBlock);
+    }).build();
+    await db.update(block);
 
     const createMinerReward = (
       recipient: string,
@@ -286,7 +354,7 @@ describe('postgres datastore', () => {
         block_hash: '0x9876',
         index_block_hash: '0x5432',
         from_index_block_hash: '0x6789',
-        mature_block_height: 68456,
+        mature_block_height: 1,
         canonical: canonical,
         recipient: recipient,
         miner_address: recipient,
@@ -316,7 +384,7 @@ describe('postgres datastore', () => {
       raw_tx: '0x',
       index_block_hash: '0x5432',
       block_hash: '0x9876',
-      block_height: 68456,
+      block_height: 1,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -423,8 +491,8 @@ describe('postgres datastore', () => {
       totalFeesSent: 1334n,
       totalMinerRewardsReceived: 100010n,
       burnchainLockHeight: 123,
-      burnchainUnlockHeight: 68656,
-      lockHeight: 68456,
+      burnchainUnlockHeight: 201,
+      lockHeight: 1,
       lockTxId: '0x1234',
       locked: 400n,
     });
@@ -2944,8 +3012,8 @@ describe('postgres datastore', () => {
       tx_index: 0,
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: 14,
       lifetime: 1,
       no_vowel_discount: 1,
@@ -3957,8 +4025,8 @@ describe('postgres datastore', () => {
             {
               namespace_id: 'abc',
               address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-              base: 1,
-              coeff: 1,
+              base: 1n,
+              coeff: 1n,
               launched_at: 14,
               lifetime: 1,
               no_vowel_discount: 1,
@@ -4153,8 +4221,8 @@ describe('postgres datastore', () => {
             {
               namespace_id: 'abc',
               address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-              base: 1,
-              coeff: 1,
+              base: 1n,
+              coeff: 1n,
               launched_at: 14,
               lifetime: 1,
               no_vowel_discount: 1,
@@ -4695,8 +4763,8 @@ describe('postgres datastore', () => {
     const namespace: DbBnsNamespace = {
       namespace_id: 'abc',
       address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
-      base: 1,
-      coeff: 1,
+      base: 1n,
+      coeff: 1n,
       launched_at: dbBlock.block_height,
       lifetime: 1,
       no_vowel_discount: 1,
@@ -4829,8 +4897,7 @@ describe('postgres datastore', () => {
 
     const subdomains: DbBnsSubdomain[] = [];
     subdomains.push(subdomain);
-    await db.updateBatchSubdomains(
-      client,
+    await db.resolveBnsSubdomains(
       {
         index_block_hash: dbBlock.index_block_hash,
         parent_index_block_hash: dbBlock.parent_index_block_hash,
@@ -5105,6 +5172,31 @@ describe('postgres datastore', () => {
     const query = await db.getFtMetadata(ftMetadata.contract_id);
     expect(query.found).toBe(true);
     if (query.found) expect(query.result).toStrictEqual(ftMetadata);
+  });
+
+  test('empty parameter lists are handled correctly', async () => {
+    const block = new TestBlockBuilder({ block_height: 1 }).addTx().build();
+    await db.update(block);
+
+    // Blocks with limit=0
+    await expect(getBlocksWithMetadata({ limit: 0, offset: 0, db: db })).resolves.not.toThrow();
+    // Mempool search with empty txIds
+    await expect(db.getMempoolTxs({ txIds: [], includeUnanchored: true })).resolves.not.toThrow();
+    // NFT holdings with empty asset identifier list
+    await expect(
+      db.getNftHoldings({
+        principal: 'S',
+        assetIdentifiers: [],
+        limit: 10,
+        offset: 0,
+        includeTxMetadata: false,
+        includeUnanchored: true,
+      })
+    ).resolves.not.toThrow();
+    // Tx list details with empty txIds
+    await expect(
+      db.getTxListDetails({ txIds: [], includeUnanchored: true })
+    ).resolves.not.toThrow();
   });
 
   afterEach(async () => {

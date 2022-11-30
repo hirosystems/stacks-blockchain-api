@@ -16,7 +16,7 @@ const config = {
   globalSetup: '<rootDir>/tests-2.1/global-setup.ts',
   globalTeardown: '<rootDir>/tests-2.1/global-teardown.ts',
   setupFilesAfterEnv: ['<rootDir>/tests-2.1/env-setup.ts'],
-  testTimeout: 120000,
+  testTimeout: 200_000,
   verbose: true,
   bail: true,
 };

@@ -16,6 +16,7 @@ import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -241,7 +242,9 @@ describe('other tests', () => {
     };
     const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
     const principal_error = { error: 'invalid STX address "S.hello-world"' };
-    const pagination_error = { error: '`limit` must be equal to or less than 200' };
+    const pagination_error = {
+      error: `'limit' must be equal to or less than ${getPagingQueryLimit(ResourceType.Tx, 50)}`,
+    };
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);
@@ -293,6 +296,13 @@ describe('other tests', () => {
   test('active status', async () => {
     const result = await supertest(api.server).get(`/extended/v1/status/`);
     expect(result.body.status).toBe('ready');
+  });
+
+  test('database unavailable responses', async () => {
+    // Close connection so we get an error.
+    await db.close();
+    const result = await supertest(api.server).get(`/extended/v1/block/`);
+    expect(result.body.error).toBe('The database service is unavailable');
   });
 
   afterEach(async () => {
