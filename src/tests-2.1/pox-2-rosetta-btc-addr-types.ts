@@ -61,20 +61,31 @@ describe.each(BTC_ADDRESS_CASES)(
     });
 
     test('Validate reward set received', async () => {
-      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
+      // Checks which rewards have been paid out; Pay-out to our registered
+      // address happens for the 1st block of the reward cycle.
+      // Due to timing issues, this test waits for an extra block until it
+      // queries the reward set pay-outs. But, it still verifies the correct
+      // pay-out block height.
 
       poxInfo = await testEnv.client.getPox();
+      const thirdBlockOfNextRewardCycle = poxInfo.next_cycle.reward_phase_start_block_height + 2;
+
+      await standByUntilBurnBlock(thirdBlockOfNextRewardCycle);
+
+      poxInfo = await testEnv.client.getPox();
+
+      // Verify we're at least on the 3rd block of the cycle
+      expect(poxInfo.current_burnchain_block_height).toBeGreaterThanOrEqual(
+        thirdBlockOfNextRewardCycle
+      );
+
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
       expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-        poxInfo.current_burnchain_block_height
-      );
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
+        thirdBlockOfNextRewardCycle - 1 // expecting the event to come in on second burn block of cycle
       );
     });
   }
