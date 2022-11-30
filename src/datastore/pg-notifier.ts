@@ -2,46 +2,46 @@ import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
-export type PgTxNotificationPayload = {
+type PgTxNotificationPayload = {
   txId: string;
 };
 
-export type PgBlockNotificationPayload = {
+type PgBlockNotificationPayload = {
   blockHash: string;
 };
 
-export type PgMicroblockNotificationPayload = {
+type PgMicroblockNotificationPayload = {
   microblockHash: string;
 };
 
-export type PgNftEventNotificationPayload = {
+type PgNftEventNotificationPayload = {
   txId: string;
   eventIndex: number;
 };
 
-export type PgAddressNotificationPayload = {
+type PgAddressNotificationPayload = {
   address: string;
   blockHeight: number;
 };
 
-export type PgTokenMetadataNotificationPayload = {
+type PgTokenMetadataNotificationPayload = {
   queueId: number;
 };
 
-export type PgNameNotificationPayload = {
+type PgNameNotificationPayload = {
   nameInfo: string;
 };
 
-export type PgSmartContractNotificationPayload = {
+type PgSmartContractNotificationPayload = {
   contractId: string;
 };
 
-export type PgSmartContractLogNotificationPayload = {
+type PgSmartContractLogNotificationPayload = {
   txId: string;
   eventIndex: number;
 };
 
-export type PgTokensNotificationPayload = {
+type PgTokensNotificationPayload = {
   contractID: string;
 };
 

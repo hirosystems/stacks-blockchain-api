@@ -88,18 +88,7 @@ import {
   unsafeCols,
   validateZonefileHash,
 } from './helpers';
-import {
-  PgAddressNotificationPayload,
-  PgBlockNotificationPayload,
-  PgMicroblockNotificationPayload,
-  PgNameNotificationPayload,
-  PgNftEventNotificationPayload,
-  PgNotifier,
-  PgSmartContractNotificationPayload,
-  PgTokenMetadataNotificationPayload,
-  PgTokensNotificationPayload,
-  PgTxNotificationPayload,
-} from './pg-notifier';
+import { PgNotifier } from './pg-notifier';
 import { AsyncLocalStorage } from 'async_hooks';
 
 export type UnwrapPromiseArray<T> = T extends any[]
