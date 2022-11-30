@@ -1983,12 +1983,20 @@ export class PgWriteStore extends PgStore {
       RETURNING tx_id
     `;
 
+    const updatedTxs = updatedRows.map(r => r.tx_id);
+    for (const tx of updatedTxs) {
+      logger.verbose(`Updated mempool tx: ${tx}`);
+    }
+
     let restoredTxs = updatedRows.map(r => r.tx_id);
 
     // txs that didnt exist in the mempool need to be inserted into the mempool
     if (updatedRows.length < txIds.length) {
-      const updatedTxs = updatedRows.map(r => r.tx_id);
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
+
+      logger.verbose(
+        `To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`
+      );
 
       const txs: TxQueryResult[] = await sql`
         SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
@@ -1997,11 +2005,19 @@ export class PgWriteStore extends PgStore {
         ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
       `;
 
+      if (txs.length !== txsRequiringInsertion.length) {
+        logger.error(`Not all txs requiring insertion were found`);
+      }
+
       const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
 
       await this.updateMempoolTxs({ mempoolTxs });
 
-      restoredTxs = restoredTxs.concat(txsRequiringInsertion);
+      restoredTxs = [...restoredTxs, ...txsRequiringInsertion];
+
+      for (const tx of mempoolTxs) {
+        logger.verbose(`Inserted mempool tx: ${tx.tx_id}`);
+      }
     }
 
     return { restoredTxs: restoredTxs };
