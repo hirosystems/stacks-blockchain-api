@@ -435,7 +435,6 @@ export class PgWriteStore extends PgStore {
       for (const smartContract of deployedSmartContracts) {
         await this.notifier.sendSmartContract({
           contractId: smartContract.contract_id,
-          txId: smartContract.tx_id,
         });
       }
       for (const logEvent of contractLogEvents) {
@@ -707,7 +706,6 @@ export class PgWriteStore extends PgStore {
       for (const smartContract of deployedSmartContracts) {
         await this.notifier.sendSmartContract({
           contractId: smartContract.contract_id,
-          txId: smartContract.tx_id,
         });
       }
       for (const logEvent of contractLogEvents) {

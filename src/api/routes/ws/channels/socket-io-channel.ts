@@ -159,6 +159,10 @@ export class SocketIOChannel extends WebSocketChannel {
         const [principal] = args as ListenerType<WebSocketTopics['principalStxBalance']>;
         return this.adapter.rooms.has(`address-stx-balance:${principal}`);
       }
+      case 'smartContract':
+        return this.adapter.rooms.has('smart-contract');
+      case 'smartContractLog':
+        return this.adapter.rooms.has('smart-contract-log');
     }
     return false;
   }
@@ -328,6 +332,8 @@ export class SocketIOChannel extends WebSocketChannel {
         case 'mempool':
         case 'microblock':
         case 'nft-event':
+        case 'smart-contract':
+        case 'smart-contract-log':
           return undefined;
         default:
           return sub;

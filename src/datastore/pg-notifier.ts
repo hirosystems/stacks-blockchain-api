@@ -34,7 +34,6 @@ export type PgNameNotificationPayload = {
 
 export type PgSmartContractNotificationPayload = {
   contractId: string;
-  txId: string;
 };
 
 export type PgSmartContractLogNotificationPayload = {
