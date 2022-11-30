@@ -412,7 +412,11 @@ jobs:
           pox-2-delegate-stacking,
           pox-2-stack-extend-increase,
           pox-2-rosetta-btc-addr-types,
-          pox-2-rosetta-cycle-phases,
+          pox-2-rosetta-cycle-offset-0,
+          pox-2-rosetta-cycle-offset-1,
+          pox-2-rosetta-cycle-offset-2,
+          pox-2-rosetta-cycle-offset-3,
+          pox-2-rosetta-cycle-offset-4,
           pox-2-rosetta-segwit,
         ]
     runs-on: ubuntu-latest
