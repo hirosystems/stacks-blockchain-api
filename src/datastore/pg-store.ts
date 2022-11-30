@@ -1963,37 +1963,6 @@ export class PgStore {
     return { found: true, result };
   }
 
-  async getSmartContractEvent(args: {
-    txId: string;
-    eventIndex: number;
-  }): Promise<FoundOrNot<DbSmartContractEvent>> {
-    const result = await this.sql<DbSmartContractEvent[]>`
-      SELECT event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
-      FROM contract_logs
-      WHERE canonical = TRUE
-        AND microblock_canonical = true
-        AND tx_id = ${args.txId}
-        AND event_index = ${args.eventIndex}
-      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-      LIMIT 1
-    `;
-    if (result.count > 0) {
-      const event: DbSmartContractEvent = {
-        event_index: result[0].event_index,
-        tx_id: result[0].tx_id,
-        tx_index: result[0].tx_index,
-        block_height: result[0].block_height,
-        canonical: true,
-        event_type: DbEventTypeId.SmartContractLog,
-        contract_identifier: result[0].contract_identifier,
-        topic: result[0].topic,
-        value: result[0].value,
-      };
-      return { found: true, result: event };
-    }
-    return { found: false } as const;
-  }
-
   async getSmartContractByTrait(args: {
     trait: ClarityAbi;
     limit: number;
