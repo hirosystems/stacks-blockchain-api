@@ -5,9 +5,7 @@ import type {
   Microblock,
   Transaction,
   MempoolTransaction,
-  NftEvent,
-  SmartContract,
-  TransactionEventSmartContractLog
+  NftEvent
 } from '..';
 
 export type AddressTransactionTopic = `address-transaction:${string}`;
@@ -20,8 +18,6 @@ export type Topic =
   | 'microblock'
   | 'mempool'
   | 'nft-event'
-  | 'smart-contract'
-  | 'smart-contract-log'
   | AddressTransactionTopic
   | AddressStxBalanceTopic
   | TransactionTopic
@@ -42,8 +38,9 @@ export interface ServerToClientMessages<isSender extends boolean = false> {
   microblock: (microblock: Microblock, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
   mempool: (transaction: MempoolTransaction, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
   transaction: (transaction: Transaction | MempoolTransaction, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
-  'smart-contract': (smartContract: SmartContract, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
-  'smart-contract-log': (event: TransactionEventSmartContractLog, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
+
+  // @ts-ignore scheduled for support in TS v4.3 https://github.com/microsoft/TypeScript/pull/26797
+  [key: 'nft-event']: (event: NftEvent, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
   'nft-event': (event: NftEvent, callback: (...args: WithTimeoutAck<isSender, [string]>) => void) => void;
 
   // @ts-ignore scheduled for support in TS v4.3 https://github.com/microsoft/TypeScript/pull/26797

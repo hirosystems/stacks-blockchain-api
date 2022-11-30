@@ -159,10 +159,6 @@ export class SocketIOChannel extends WebSocketChannel {
         const [principal] = args as ListenerType<WebSocketTopics['principalStxBalance']>;
         return this.adapter.rooms.has(`address-stx-balance:${principal}`);
       }
-      case 'smartContract':
-        return this.adapter.rooms.has('smart-contract');
-      case 'smartContractLog':
-        return this.adapter.rooms.has('smart-contract-log');
     }
     return false;
   }
@@ -239,26 +235,6 @@ export class SocketIOChannel extends WebSocketChannel {
         void this.getTopicSockets(`nft-event`).then(sockets =>
           sockets?.forEach(socket =>
             socket.timeout(timeout).emit('nft-event', event, _ => socket.disconnect(true))
-          )
-        );
-        break;
-      }
-      case 'smartContract': {
-        const [contract] = args as ListenerType<WebSocketPayload['smartContract']>;
-        this.prometheus?.sendEvent('smart-contract');
-        void this.getTopicSockets(`smart-contract`).then(sockets =>
-          sockets?.forEach(socket =>
-            socket.timeout(timeout).emit('smart-contract', contract, _ => socket.disconnect(true))
-          )
-        );
-        break;
-      }
-      case 'smartContractLog': {
-        const [event] = args as ListenerType<WebSocketPayload['smartContractLog']>;
-        this.prometheus?.sendEvent('smart-contract-log');
-        void this.getTopicSockets(`smart-contract-log`).then(sockets =>
-          sockets?.forEach(socket =>
-            socket.timeout(timeout).emit('smart-contract-log', event, _ => socket.disconnect(true))
           )
         );
         break;
@@ -352,8 +328,6 @@ export class SocketIOChannel extends WebSocketChannel {
         case 'mempool':
         case 'microblock':
         case 'nft-event':
-        case 'smart-contract':
-        case 'smart-contract-log':
           return undefined;
         default:
           return sub;

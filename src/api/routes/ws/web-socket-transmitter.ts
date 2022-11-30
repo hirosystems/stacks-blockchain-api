@@ -1,11 +1,6 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import {
-  AddressStxBalanceResponse,
-  AddressTransactionWithTransfers,
-  SmartContract,
-  TransactionEventSmartContractLog,
-} from 'docs/generated';
+import { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'docs/generated';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
@@ -19,7 +14,6 @@ import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
 import { logger } from '../../../helpers';
-import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 
 export function getWsPingIntervalMs(): number {
   return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;
@@ -85,16 +79,6 @@ export class WebSocketTransmitter {
       this.queue
         .add(() => this.addressUpdate(address, blockHeight))
         .catch(error => logger.error(`WebSocketTransmitter addressUpdate error: ${error}`))
-    );
-    this.db.eventEmitter.addListener('smartContractUpdate', contractId =>
-      this.queue
-        .add(() => this.smartContractUpdate(contractId))
-        .catch(error => logger.error(`WebSocketTransmitter smartContractUpdate error: ${error}`))
-    );
-    this.db.eventEmitter.addListener('smartContractLogUpdate', (txId, eventIndex) =>
-      this.queue
-        .add(() => this.smartContractLogUpdate(txId, eventIndex))
-        .catch(error => logger.error(`WebSocketTransmitter smartContractLogUpdate error: ${error}`))
     );
 
     this.channels.push(new SocketIOChannel(this.server));
@@ -287,49 +271,6 @@ export class WebSocketTransmitter {
           return balance;
         });
         await this.send('principalStxBalance', address, balance);
-      } catch (error) {
-        logger.error(error);
-      }
-    }
-  }
-
-  private async smartContractUpdate(smartContractId: string) {
-    if (this.channels.find(c => c.hasListeners('smartContract'))) {
-      try {
-        const dbContract = await this.db.getSmartContract(smartContractId);
-        if (dbContract.found) {
-          const contract: SmartContract = {
-            ...dbContract.result,
-            abi: dbContract.result.abi ?? '',
-          };
-          await this.send('smartContract', contract);
-        }
-      } catch (error) {
-        logger.error(error);
-      }
-    }
-  }
-
-  private async smartContractLogUpdate(txId: string, eventIndex: number) {
-    if (this.channels.find(c => c.hasListeners('smartContractLog'))) {
-      try {
-        const event = await this.db.getSmartContractEvent({ txId, eventIndex });
-        if (event.found) {
-          const result: TransactionEventSmartContractLog = {
-            event_type: 'smart_contract_log',
-            tx_id: event.result.tx_id,
-            event_index: event.result.event_index,
-            contract_log: {
-              contract_id: event.result.contract_identifier,
-              topic: event.result.topic,
-              value: {
-                hex: event.result.value,
-                repr: decodeClarityValueToRepr(event.result.value),
-              },
-            },
-          };
-          await this.send('smartContractLog', result);
-        }
       } catch (error) {
         logger.error(error);
       }

@@ -6,9 +6,7 @@ import {
   MempoolTransaction,
   Microblock,
   NftEvent,
-  SmartContract,
   Transaction,
-  TransactionEventSmartContractLog,
 } from 'docs/generated';
 import { WebSocketPrometheus } from './web-socket-prometheus';
 
@@ -26,8 +24,6 @@ export type WebSocketTopics = {
   nftEvent: () => void;
   nftAssetEvent: (assetIdentifier: string, value: string) => void;
   nftCollectionEvent: (assetIdentifier: string) => void;
-  smartContract: () => void;
-  smartContractLog: () => void;
 };
 
 /**
@@ -45,8 +41,6 @@ export type WebSocketPayload = {
   nftEvent: (event: NftEvent) => void;
   nftAssetEvent: (assetIdentifier: string, value: string, event: NftEvent) => void;
   nftCollectionEvent: (assetIdentifier: string, event: NftEvent) => void;
-  smartContract: (smartContract: SmartContract) => void;
-  smartContractLog: (logEvent: TransactionEventSmartContractLog) => void;
 };
 
 /**
