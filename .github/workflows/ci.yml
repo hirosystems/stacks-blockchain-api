@@ -156,17 +156,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-event-replay:
     runs-on: ubuntu-latest
@@ -212,17 +212,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-rpc:
     runs-on: ubuntu-latest
@@ -271,17 +271,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-btc-faucet:
     runs-on: ubuntu-latest
@@ -330,17 +330,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-bns:
     runs-on: ubuntu-latest
@@ -389,17 +389,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-2_1-transition:
     strategy:
@@ -465,17 +465,17 @@ jobs:
         run: npm run devenv:stop:2.1-transition
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-rosetta:
     runs-on: ubuntu-latest
@@ -524,17 +524,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-rosetta-cli-data:
     runs-on: ubuntu-latest
@@ -591,17 +591,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-rosetta-cli-construction:
     runs-on: ubuntu-latest
@@ -658,17 +658,17 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
   test-tokens:
     runs-on: ubuntu-latest
@@ -703,35 +703,35 @@ jobs:
         run: npm run devenv:stop
         if: always()
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v2
+      #   if: always()
 
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
+      # - name: Upload coverage to Coveralls
+      #   uses: coverallsapp/github-action@master
+      #   if: always()
+      #   with:
+      #     github-token: ${{ secrets.github_token }}
+      #     flag-name: run-${{ github.job }}
+      #     parallel: true
 
-  upload-coveralls:
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - test-2_1
-      - test-2_1-transition
-      - test-bns
-      - test-rosetta
-      - test-rosetta-cli-construction
-      - test-rosetta-cli-data
-      - test-tokens
-    steps:
-      - name: Coveralls Finished
-        uses: coverallsapp/github-action@master
-        with:
-          github-token: ${{ secrets.github_token }}
-          parallel-finished: true
+  # upload-coveralls:
+  #   runs-on: ubuntu-latest
+  #   needs:
+  #     - test
+  #     - test-2_1
+  #     - test-2_1-transition
+  #     - test-bns
+  #     - test-rosetta
+  #     - test-rosetta-cli-construction
+  #     - test-rosetta-cli-data
+  #     - test-tokens
+  #   steps:
+  #     - name: Coveralls Finished
+  #       uses: coverallsapp/github-action@master
+  #       with:
+  #         github-token: ${{ secrets.github_token }}
+  #         parallel-finished: true
 
   # build-publish:
   #   runs-on: ubuntu-latest
