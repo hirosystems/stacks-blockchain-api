@@ -508,6 +508,12 @@ describe('PoX-2 - Stack extend and increase operations', () => {
   });
 
   test('stx unlocked - API balance endpoint', async () => {
+    // todo: testing - sleep could maybe be re-used as a test-helper
+    const poxInfo1 = await testEnv.client.getPox();
+    await sleep(25); // give the api some time to catch-up, but stay in the same block
+    const poxInfo2 = await testEnv.client.getPox();
+    expect(poxInfo2.current_burnchain_block_height).toBe(poxInfo1.current_burnchain_block_height);
+
     // Check that STX are no longer reported as locked by the API endpoints:
     const addrBalance = await fetchGet<AddressStxBalanceResponse>(
       `/extended/v1/address/${account.stacksAddress}/stx`
@@ -526,3 +532,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
     expect(received).toBeGreaterThan(0);
   });
 });
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
