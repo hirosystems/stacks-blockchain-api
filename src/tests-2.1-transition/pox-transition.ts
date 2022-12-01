@@ -532,6 +532,31 @@ describe('PoX transition tests', () => {
         expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
       });
 
+      test('REPEAT - Verify expected amount of STX are locked', async () => {
+        // Repeat to see if this would fail a second time... After waiting a bit
+        await sleep(50);
+
+        // test stacks-node account RPC balance
+        const coreNodeBalance = await client.getAccount(account.stxAddr);
+
+        // todo: FLAKY
+        // full `testAccountBalance` still returned by coreNodeBalance, even though stacking tx was successful
+        expect(BigInt(coreNodeBalance.balance)).toBeLessThan(testAccountBalance);
+        expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
+
+        // test API address endpoint balance
+        const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+          `/extended/v1/address/${account.stxAddr}/stx`
+        );
+        expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);
+        expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
+
+        // test Rosetta address endpoint balance
+        const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+        expect(BigInt(rosettaBalance.account.balances[0].value)).toBeLessThan(testAccountBalance);
+        expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
+      });
+
       test('Verify PoX rewards - Bitcoin RPC', async () => {
         // Wait until end of reward phase
         const rewardPhaseEndBurnBlock =
@@ -916,3 +941,7 @@ describe('PoX transition tests', () => {
     });
   });
 });
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
