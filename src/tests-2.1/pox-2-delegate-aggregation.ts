@@ -30,6 +30,7 @@ import {
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
+import { PoxInfo, rewardCycleToBurnHeight } from '@stacks/stacking';
 
 describe('PoX-2 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -48,6 +49,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
   let contractName: string;
 
   let poxCycleAddressIndex: bigint;
+  let expectedUnlockHeight: number;
 
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
@@ -403,7 +405,13 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
     expect(BigInt(coreBalanceInfo.balance)).toBe(
       BigInt(coreBalanceInfoPreIncrease.balance) - stxToDelegateIncrease
     );
+
+    expectedUnlockHeight = rewardCycleToBurnHeight({
+      poxInfo: poxInfo as any,
+      rewardCycle: Number(rewardCycle + 1n),
+    });
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
+    expect(coreBalanceInfo.unlock_height).toBe(expectedUnlockHeight);
 
     // validate delegate-stack-stx pox2 event for this tx
     const delegateStackIncreasePoxEvents: any = await fetchGet(
