@@ -43,9 +43,8 @@ export function testRosettaStackWithOffset({
   });
 
   test('Verify stacked', async () => {
+    // Ensure node has had time to process
     const poxInfo = await testEnv.client.getPox();
-
-    // Ensure api has time to process
     await standByUntilBurnBlock((poxInfo.current_burnchain_block_height as number) + 1);
 
     const coreBalance = await testEnv.client.getAccount(account.stxAddr);

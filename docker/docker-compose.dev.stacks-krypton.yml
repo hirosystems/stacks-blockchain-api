@@ -8,7 +8,7 @@ services:
       - "20443:20443" # stacks-node RPC interface
       - "20444:20444" # stacks-node p2p
     environment:
-      MINE_INTERVAL: 0.1s
+      MINE_INTERVAL: 0.5s
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
       # STACKS_LOG_TRACE: 1
       # STACKS_LOG_DEBUG: 1
