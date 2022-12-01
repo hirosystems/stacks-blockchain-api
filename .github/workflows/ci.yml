@@ -483,11 +483,18 @@ jobs:
       matrix:
         suite:
           [
-            Stacking on pox-2 after pox-1 force unlock,
-            Consistent API and RPC account balances through pox transitions,
             Rosetta - Stacked STX unlock during transition,
-            Rosetta - Transistion periods use correct contracts,
-            PoX Transition - Double stacking,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Stacked STX unlock during transition,
           ]
     runs-on: ubuntu-latest
     steps:

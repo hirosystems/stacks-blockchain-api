@@ -513,6 +513,9 @@ describe('PoX transition tests', () => {
       test('Verify expected amount of STX are locked', async () => {
         // test stacks-node account RPC balance
         const coreNodeBalance = await client.getAccount(account.stxAddr);
+
+        // todo: FLAKY
+        // full `testAccountBalance` still returned by coreNodeBalance, even though stacking tx was successful
         expect(BigInt(coreNodeBalance.balance)).toBeLessThan(testAccountBalance);
         expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
 
