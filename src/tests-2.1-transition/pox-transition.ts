@@ -706,6 +706,14 @@ describe('PoX transition tests', () => {
         }
       });
 
+      test('Ensure we are not in the last block of a cycle', async () => {
+        poxInfo = await client.getPox();
+
+        if (poxInfo.next_cycle.blocks_until_reward_phase === 1) {
+          await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height);
+        }
+      });
+
       test('stack-stx in pox-v2', async () => {
         const cycleCount = 1;
 
