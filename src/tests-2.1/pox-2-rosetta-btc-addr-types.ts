@@ -35,15 +35,19 @@ describe.each(BTC_ADDRESS_CASES)(
       });
     });
 
-    test('Standby for next cycle', async () => {
+    test('Standby until unlocked', async () => {
       poxInfo = await testEnv.client.getPox();
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
+      const coreBalance = await testEnv.client.getAccount(account.stacksAddress);
+
+      // Wait until unlocked or start of new cycle
+      if (coreBalance.unlock_height > 0) {
+        await standByUntilBurnBlock(coreBalance.unlock_height + 1);
+      } else if (poxInfo.next_cycle.blocks_until_reward_phase == 1) {
+        await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height);
+      }
     });
 
     test('Perform stack-stx using Rosetta', async () => {
-      poxInfo = await testEnv.client.getPox();
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
-
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       const cycleCount = 1;
 
