@@ -38,7 +38,6 @@ describe.each(BTC_ADDRESS_CASES)(
     test('Standby for next cycle', async () => {
       poxInfo = await testEnv.client.getPox();
       await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
-      // await standByForPoxCycle(); DON'T USE THIS!!! <cycle>.id is lying to you!
     });
 
     test('Perform stack-stx using Rosetta', async () => {

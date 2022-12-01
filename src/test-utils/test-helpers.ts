@@ -421,6 +421,7 @@ export async function stackStxWithRosetta(opts: {
   cycleCount: number;
   ustxAmount: bigint;
 }) {
+  console.time('stackStxWithRosetta.submit');
   const rosettaNetwork: NetworkIdentifier = {
     blockchain: RosettaConstants.blockchain,
     network: getRosettaNetworkName(ChainID.Testnet),
@@ -499,6 +500,7 @@ export async function stackStxWithRosetta(opts: {
     network_identifier: rosettaNetwork,
     signed_transaction: '0x' + signedSerializedTx,
   });
+  console.timeEnd('stackStxWithRosetta.submit');
 
   const txStandby = await standByForTxSuccess(expectedTxId);
 
