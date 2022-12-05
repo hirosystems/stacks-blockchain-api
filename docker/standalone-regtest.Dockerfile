@@ -107,10 +107,16 @@ ENV STACKS_LOG_DEBUG=0
 ARG MINE_INTERVAL=0.5s
 ENV MINE_INTERVAL=$MINE_INTERVAL
 
-ARG STACKS_21_HEIGHT=103
+ARG STACKS_20_HEIGHT=100
+ENV STACKS_20_HEIGHT=$STACKS_20_HEIGHT
+
+ARG STACKS_2_05_HEIGHT=101
+ENV STACKS_2_05_HEIGHT=$STACKS_2_05_HEIGHT
+
+ARG STACKS_21_HEIGHT=102
 ENV STACKS_21_HEIGHT=$STACKS_21_HEIGHT
 
-ARG STACKS_POX2_HEIGHT=104
+ARG STACKS_POX2_HEIGHT=102
 ENV STACKS_POX2_HEIGHT=$STACKS_POX2_HEIGHT
 
 # priv: 6ad9cadb42d4edbfbe0c5bfb3b8a4125ddced021c4174f829b714ccbf527f02001
@@ -183,10 +189,10 @@ epoch_name = "1.0"
 start_height = 0
 [[burnchain.epochs]]
 epoch_name = "2.0"
-start_height = 1
+start_height = $STACKS_20_HEIGHT
 [[burnchain.epochs]]
 epoch_name = "2.05"
-start_height = 2
+start_height = $STACKS_2_05_HEIGHT
 [[burnchain.epochs]]
 epoch_name = "2.1"
 start_height = $STACKS_21_HEIGHT
@@ -229,7 +235,7 @@ RUN <<EOF
   bitcoin-cli -rpcwait getmininginfo
   bitcoin-cli createwallet ""
   bitcoin-cli importaddress $BTC_ADDR "" false
-  bitcoin-cli generatetoaddress 101 $BTC_ADDR
+  bitcoin-cli generatetoaddress 99 $BTC_ADDR
 
   mkdir -p /chainstate/stacks-blockchain-data
   envsubst < config.toml.in > config.toml
@@ -238,8 +244,8 @@ RUN <<EOF
 
   while true; do
     HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
-    if [ "$HEIGHT" = "101" ]; then
-      echo "Stacks node caught up to block 101"
+    if [ "$HEIGHT" = "99" ]; then
+      echo "Stacks node caught up to block 99"
       break
     fi
     sleep 0.5s
@@ -264,6 +270,7 @@ cat > run.sh <<'EOM'
   BTCD_PID=$!
 
   bitcoin-cli -rpcwait getmininginfo
+  bitcoin-cli generatetoaddress 2 $BTC_ADDR
 
   export STACKS_EVENT_OBSERVER="127.0.0.1:3700"
   envsubst < config.toml.in > config.toml
@@ -278,7 +285,6 @@ cat > run.sh <<'EOM'
   popd
 
   function start_miner() {
-    bitcoin-cli -rpcwait generatetoaddress 1 $BTC_ADDR
     while true; do
       TX=$(bitcoin-cli listtransactions '*' 1 0 true)
       CONFS=$(echo "$TX" | jq '.[].confirmations')
