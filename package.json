@@ -123,7 +123,7 @@
     }
   },
   "dependencies": {
-    "@apidevtools/json-schema-ref-parser": "9.0.9",
+    "@apidevtools/json-schema-ref-parser": "9.1.0",
     "@promster/express": "6.0.0",
     "@promster/server": "6.0.6",
     "@promster/types": "3.2.3",
@@ -135,7 +135,7 @@
     "@types/express-list-endpoints": "4.0.1",
     "@types/lru-cache": "5.1.1",
     "@types/ws": "7.4.7",
-    "ajv": "6.12.6",
+    "ajv": "8.11.2",
     "bignumber.js": "9.0.2",
     "bitcoinjs-lib": "6.0.2",
     "bluebird": "3.7.2",

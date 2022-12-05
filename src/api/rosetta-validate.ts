@@ -1,5 +1,4 @@
-import * as Ajv from 'ajv';
-import { hexToBuffer, logger, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
+import { hexToBuffer, logger, has0xPrefix, isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
   RosettaErrors,
@@ -10,7 +9,7 @@ import {
   RosettaErrorsTypes,
 } from './rosetta-constants';
 import * as T from '@stacks/stacks-blockchain-api-types';
-import { dereferenceSchema, getDocSchemaFile } from './validate';
+import { compileSchema, dereferenceSchema, getDocSchemaFile } from './validate';
 import { ChainID } from '@stacks/transactions';
 
 export interface ValidSchema {
@@ -22,11 +21,13 @@ export interface ValidSchema {
 export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
   const resolvedFilePath = getDocSchemaFile(schemaFilePath);
   const schemaDef = await dereferenceSchema(resolvedFilePath);
-  const ajv = new Ajv({ schemaId: 'auto' });
-  const valid = await ajv.validate(schemaDef, data);
+
+  const validate = compileSchema(schemaFilePath, schemaDef);
+  const valid = validate(data);
+
   if (!valid) {
-    logger.error(`Schema validation:\n\n ${JSON.stringify(ajv.errors, null, 2)}`);
-    const errors = ajv.errors || [{ message: 'error' }];
+    logger.error(`Schema validation:\n\n ${JSON.stringify(validate.errors, null, 2)}`);
+    const errors = validate.errors || [{ message: 'error' }];
     return { valid: false, error: errors[0].message };
   }
 

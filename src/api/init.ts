@@ -47,6 +47,8 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
 import { isPgConnectionError } from '../datastore/helpers';
+import { RosettaSchemas } from './rosetta-constants';
+import { compileSchema, dereferenceSchema, getDocSchemaFile } from './validate';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -245,6 +247,14 @@ export async function startApiServer(opts: {
       return router;
     })()
   );
+
+  // Rosetta API -- Pre-compile schemas for Rosetta
+  // todo: similarly this could also be added on api startup for all schemas/routes
+  for (const schema of Object.values(RosettaSchemas).flatMap(r => [r.request, r.response])) {
+    const resolvedFilePath = getDocSchemaFile(schema);
+    const schemaDef = await dereferenceSchema(resolvedFilePath);
+    compileSchema(schema, schemaDef); // adds compiled schemas to cache
+  }
 
   // Rosetta API -- https://www.rosetta-api.org
   app.use(
