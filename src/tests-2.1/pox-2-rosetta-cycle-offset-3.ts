@@ -1,6 +1,6 @@
 import { testnetKeys } from '../api/routes/debug';
 import { accountFromKey } from '../test-utils/test-helpers';
-import { testRosettaStackWithOffset } from './test-helper';
+import { testRosettaStackWithOffset } from './reusable-tests';
 
 // Assuming a reward cycle length of 5
 describe('PoX-2 - Rosetta - Stack in cycle, offset by 3', () => {
