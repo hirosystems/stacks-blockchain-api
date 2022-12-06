@@ -2,7 +2,7 @@ import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
@@ -55,7 +55,7 @@ describe('other tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,

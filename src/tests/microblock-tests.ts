@@ -8,12 +8,12 @@ import {
 } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
   DbAssetEventTypeId,
-  DbMempoolTx,
+  DbMempoolTxRaw,
   DbMicroblockPartial,
   DbSmartContractEvent,
   DbSmartContract,
@@ -286,7 +286,7 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
         };
 
-        const tx1: DbTx = {
+        const tx1: DbTxRaw = {
           tx_id: '0x01',
           tx_index: 0,
           anchor_mode: 3,
@@ -401,7 +401,7 @@ describe('microblock tests', () => {
           parent_burn_block_time: 1626122935,
         };
 
-        const mbTx1: DbTx = {
+        const mbTx1: DbTxRaw = {
           tx_id: '0x02',
           tx_index: 0,
           anchor_mode: 3,
@@ -441,7 +441,7 @@ describe('microblock tests', () => {
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
         };
-        const mbTx2: DbTx = {
+        const mbTx2: DbTxRaw = {
           tx_id: '0x03',
           tx_index: 1,
           anchor_mode: 3,
@@ -488,12 +488,12 @@ describe('microblock tests', () => {
           block_height: -1,
         };
 
-        const mempoolTx1: DbMempoolTx = {
+        const mempoolTx1: DbMempoolTxRaw = {
           ...mbTx1,
           pruned: false,
           receipt_time: 123456789,
         };
-        const mempoolTx2: DbMempoolTx = {
+        const mempoolTx2: DbMempoolTxRaw = {
           ...mbTx2,
           pruned: false,
           receipt_time: 123456789,
