@@ -9,7 +9,7 @@ import {
   DbSmartContractEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX, waiter } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
@@ -24,7 +24,7 @@ describe('smart contract tests', () => {
     await cycleMigrations();
     db = await PgWriteStore.connect({
       usageName: 'tests',
-      withNotifier: false,
+      withNotifier: true,
       skipMigrations: true,
     });
     client = db.sql;
@@ -32,6 +32,11 @@ describe('smart contract tests', () => {
   });
 
   test('list contract log events', async () => {
+    const logEventWaiter = waiter<{ txId: string; eventIndex: number }>();
+    const handler = (txId: string, eventIndex: number) =>
+      logEventWaiter.finish({ txId, eventIndex });
+    db.eventEmitter.addListener('smartContractLogUpdate', handler);
+
     const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -139,6 +144,10 @@ describe('smart contract tests', () => {
       ],
     });
 
+    const logEvent = await logEventWaiter;
+    expect(logEvent.txId).toBe('0x421234');
+    expect(logEvent.eventIndex).toBe(4);
+
     const fetchTx = await supertest(api.server).get(
       '/extended/v1/contract/some-contract-id/events'
     );
@@ -160,9 +169,15 @@ describe('smart contract tests', () => {
         },
       ],
     });
+
+    db.eventEmitter.removeListener('smartContractLogUpdate', handler);
   });
 
   test('get contract by ID', async () => {
+    const contractWaiter = waiter<string>();
+    const handler = (contractId: string) => contractWaiter.finish(contractId);
+    db.eventEmitter.addListener('smartContractUpdate', handler);
+
     const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -246,6 +261,9 @@ describe('smart contract tests', () => {
       ],
     });
 
+    const reportedId = await contractWaiter;
+    expect(reportedId).toBe('some-contract-id');
+
     const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id');
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
@@ -257,6 +275,8 @@ describe('smart contract tests', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     });
+
+    db.eventEmitter.removeListener('smartContractUpdate', handler);
   });
 
   test('list contract with given trait', async () => {

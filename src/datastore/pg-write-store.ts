@@ -204,6 +204,8 @@ export class PgWriteStore extends PgStore {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
@@ -355,6 +357,7 @@ export class PgWriteStore extends PgStore {
           await this.updateTx(sql, entry.tx);
           await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+          contractLogEvents.push(...entry.contractLogEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
@@ -365,6 +368,7 @@ export class PgWriteStore extends PgStore {
           for (const nftEvent of entry.nftEvents) {
             await this.updateNftEvent(sql, entry.tx, nftEvent);
           }
+          deployedSmartContracts.push(...entry.smartContracts);
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(sql, entry.tx, smartContract);
           }
@@ -426,7 +430,18 @@ export class PgWriteStore extends PgStore {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
       for (const txId of garbageCollectedMempoolTxs) {
-        await this.notifier?.sendTx({ txId: txId });
+        await this.notifier.sendTx({ txId: txId });
+      }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
@@ -550,6 +565,8 @@ export class PgWriteStore extends PgStore {
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
     const txData: DataStoreTxEventData[] = [];
     let dbMicroblocks: DbMicroblock[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -617,6 +634,8 @@ export class PgWriteStore extends PgStore {
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
         });
+        deployedSmartContracts.push(...entry.smartContracts);
+        contractLogEvents.push(...entry.contractLogEvents);
       }
 
       await this.insertMicroblockData(sql, dbMicroblocks, txData);
@@ -683,6 +702,17 @@ export class PgWriteStore extends PgStore {
       }
       for (const tx of txData) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
+      }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
       }
       await this.emitAddressTxUpdates(txData);
     }
