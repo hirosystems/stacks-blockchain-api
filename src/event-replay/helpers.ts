@@ -5,7 +5,6 @@ import { decodeTransaction, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { DataStoreBnsBlockData } from '../datastore/common';
 import { ReverseFileStream } from './reverse-file-stream';
 import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
-import { rawListeners } from 'process';
 
 export type BnsGenesisBlock = DataStoreBnsBlockData & {
   tx_id: string;

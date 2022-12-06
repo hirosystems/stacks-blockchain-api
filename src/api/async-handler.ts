@@ -13,6 +13,14 @@
 import * as express from 'express';
 import * as core from 'express-serve-static-core';
 
+type asycHandlerParams = {
+  P: core.ParamsDictionary;
+  ResBody: any;
+  ReqBody: any;
+  ReqQuery: core.Query;
+  Locals: Record<string, any>;
+};
+
 export function asyncHandler<
   P = core.ParamsDictionary,
   ResBody = any,

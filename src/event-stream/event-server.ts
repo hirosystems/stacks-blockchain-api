@@ -52,7 +52,7 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, nextSignature } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -680,6 +680,34 @@ export type EventStreamServer = net.Server & {
   closeAsync: () => Promise<void>;
 };
 
+export const bnsImportMiddleware = (db: PgWriteStore) => {
+  let bns_names_onchain_imported: boolean = false;
+  let bns_subdomains_imported: boolean = false;
+  return asyncHandler(async (req, res, next) => {
+    const blockMessage: CoreNodeBlockMessage = req.body;
+    const bnsDir = process.env.BNS_IMPORT_DIR;
+    if (!bns_names_onchain_imported || !bns_subdomains_imported) {
+      const configState = await db.getConfigState();
+      bns_names_onchain_imported = configState.bns_names_onchain_imported;
+      bns_subdomains_imported = configState.bns_subdomains_imported;
+    }
+    if (
+      blockMessage.block_height === 1 &&
+      bnsDir &&
+      (!bns_names_onchain_imported || !bns_subdomains_imported)
+    ) {
+      const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
+      if (!bns_names_onchain_imported || !bns_subdomains_imported) {
+        logger.verbose('Starting V1 BNS names import');
+        await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
+        logger.verbose('Starting V1 BNS subdomains import');
+        await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
+      }
+    }
+    next();
+  });
+};
+
 export async function startEventServer(opts: {
   datastore: PgWriteStore;
   chainId: ChainID;
@@ -745,27 +773,12 @@ export async function startEventServer(opts: {
     }
   });
 
-  const handleBnsImport = async (blockMessage: CoreNodeBlockMessage) => {
-    const bnsDir = process.env.BNS_IMPORT_DIR;
-    if (blockMessage.block_height === 1 && bnsDir && process.env.TSV_IMPORT_IN_PROCESS !== 'true') {
-      const configState = await db.getConfigState();
-      if (!configState.bns_names_onchain_imported && !configState.bns_subdomains_imported) {
-        const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
-        logger.verbose('Starting V1 BNS names import');
-        await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
-        logger.verbose('Starting V1 BNS subdomains import');
-        await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
-      }
-    }
-  };
-
   app.post(
     '/new_block',
     asyncHandler(async (req, res, next) => {
       try {
         const blockMessage: CoreNodeBlockMessage = req.body;
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
-        await handleBnsImport(blockMessage);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
@@ -773,6 +786,7 @@ export async function startEventServer(opts: {
         res.status(500).json({ error: error });
       }
     }),
+    bnsImportMiddleware(db),
     handleRawEventRequest
   );
 
