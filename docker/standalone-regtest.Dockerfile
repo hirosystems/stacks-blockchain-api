@@ -128,6 +128,8 @@ ENV REWARD_RECIPIENT=$REWARD_RECIPIENT
 
 ARG BOOTSTRAP_CHAINSTATE=1
 
+ENV BOOTSTRAP_EVENTS_FILE=/event-log.ndjson
+
 COPY <<EOF /root/.bitcoin/bitcoin.conf
 regtest=1 #chain=regtest
 [regtest]
@@ -227,7 +229,7 @@ RUN <<EOF
 cat > /root/event-observer.js <<'EOM'
 const http = require('http');
 const fs = require('fs');
-const fd = fs.openSync('/event-log.ndjson', 'a');
+const fd = fs.openSync(process.env.BOOTSTRAP_EVENTS_FILE, 'a');
 const server = http.createServer((req, res) => {
   fs.appendFileSync(fd, req.url + '\n');
   req
@@ -307,11 +309,13 @@ cat > run.sh <<'EOM'
   API_PID=$!
   popd
 
-  while read -r event_path; do
-    read -r event_payload
-    echo "$event_payload" | curl -s --retry 5 --retry-delay 1 --retry-all-errors -H 'Content-Type: application/json' -d @- "http://127.0.0.1:3700$event_path" 
-  done < "/event-log.ndjson"
-  rm "/event-log.ndjson"
+  if [ -f "$BOOTSTRAP_EVENTS_FILE" ]; then
+    while read -r event_path; do
+      read -r event_payload
+      echo "$event_payload" | curl -s --retry 5 --retry-delay 1 --retry-all-errors -H 'Content-Type: application/json' -d @- "http://127.0.0.1:3700$event_path" 
+    done < "$BOOTSTRAP_EVENTS_FILE"
+    rm "$BOOTSTRAP_EVENTS_FILE"
+  fi
 
   if [[ ! -z "${REWARD_RECIPIENT}" ]]; then
     export REWARD_RECIPIENT_CONF="block_reward_recipient = \"$REWARD_RECIPIENT\""
