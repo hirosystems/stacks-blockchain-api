@@ -1,3 +1,11 @@
+## [6.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2) (2022-12-06)
+
+
+### Bug Fixes
+
+* avoid selecting `raw_tx` column on read queries ([#1453](https://github.com/hirosystems/stacks-blockchain-api/issues/1453)) ([5acfc96](https://github.com/hirosystems/stacks-blockchain-api/commit/5acfc9688af6ba7a6a4ca83bdaf8e5aee9df633e))
+* lint docs ci dependencies ([#1458](https://github.com/hirosystems/stacks-blockchain-api/issues/1458)) ([19c3a0d](https://github.com/hirosystems/stacks-blockchain-api/commit/19c3a0d0acae6aeb890afcfff167312149994ec8))
+
 ## [6.2.2-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2-beta.1) (2022-11-29)
 
 
