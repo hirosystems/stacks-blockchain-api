@@ -94,6 +94,7 @@ ENV PG_USER=postgres
 ENV PG_PASSWORD=postgres
 
 ENV BTC_ADDR=miEJtNKa3ASpA19v5ZhvbKTEieYjLpzCYT
+ENV BTC_INIT_BLOCKS=100
 ENV MINER_SEED=9e446f6b0c6a96cf2190e54bcd5a8569c3e386f091605499464389b8d4e0bfc201
 ENV BITCOIN_PEER_HOST=localhost
 ENV BITCOIN_PEER_PORT=18444
@@ -110,19 +111,21 @@ ENV MINE_INTERVAL=$MINE_INTERVAL
 ARG STACKS_20_HEIGHT=100
 ENV STACKS_20_HEIGHT=$STACKS_20_HEIGHT
 
-ARG STACKS_2_05_HEIGHT=101
+ARG STACKS_2_05_HEIGHT=102
 ENV STACKS_2_05_HEIGHT=$STACKS_2_05_HEIGHT
 
-ARG STACKS_21_HEIGHT=102
+ARG STACKS_21_HEIGHT=103
 ENV STACKS_21_HEIGHT=$STACKS_21_HEIGHT
 
-ARG STACKS_POX2_HEIGHT=102
+ARG STACKS_POX2_HEIGHT=104
 ENV STACKS_POX2_HEIGHT=$STACKS_POX2_HEIGHT
 
 # priv: 6ad9cadb42d4edbfbe0c5bfb3b8a4125ddced021c4174f829b714ccbf527f02001
 # ARG REWARD_RECIPIENT=STQM73RQC4EX0A07KWG1J5ECZJYBZS4SJ4ERC6WN
 ARG REWARD_RECIPIENT
 ENV REWARD_RECIPIENT=$REWARD_RECIPIENT
+
+ARG BOOTSTRAP_CHAINSTATE=0
 
 COPY <<EOF /root/.bitcoin/bitcoin.conf
 regtest=1 #chain=regtest
@@ -230,29 +233,37 @@ EOF
 SHELL ["/bin/bash", "-ce"]
 RUN <<EOF
   mkdir -p /chainstate/bitcoin-data
+  mkdir -p /chainstate/stacks-blockchain-data
+
   bitcoind &
   BTCD_PID=$!
   bitcoin-cli -rpcwait getmininginfo
   bitcoin-cli createwallet ""
   bitcoin-cli importaddress $BTC_ADDR "" false
-  bitcoin-cli generatetoaddress 99 $BTC_ADDR
 
-  mkdir -p /chainstate/stacks-blockchain-data
-  envsubst < config.toml.in > config.toml
-  stacks-node start --config=config.toml &
-  STACKS_PID=$!
+  if [ "$BOOTSTRAP_CHAINSTATE" = "1" ]; then
+    echo "BOOTSTRAP_CHAINSTATE enabled, bootstrapping.."
 
-  while true; do
-    HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
-    if [ "$HEIGHT" = "99" ]; then
-      echo "Stacks node caught up to block 99"
-      break
-    fi
-    sleep 0.5s
-  done
+    bitcoin-cli generatetoaddress $BTC_INIT_BLOCKS $BTC_ADDR
 
-  kill $STACKS_PID
-  wait $STACKS_PID
+    envsubst < config.toml.in > config.toml
+    stacks-node start --config=config.toml &
+    STACKS_PID=$!
+
+    while true; do
+      HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
+      if [ "$HEIGHT" = "$BTC_INIT_BLOCKS" ]; then
+        echo "Stacks node caught up to block $BTC_INIT_BLOCKS"
+        break
+      fi
+      sleep 0.5s
+    done
+
+    kill $STACKS_PID
+    wait $STACKS_PID
+  else
+    echo "BOOTSTRAP_CHAINSTATE not enabled, skipping bootstrap step.."
+  fi
 
   bitcoin-cli stop
   wait $BTCD_PID
@@ -269,8 +280,16 @@ cat > run.sh <<'EOM'
   bitcoind &
   BTCD_PID=$!
 
-  bitcoin-cli -rpcwait getmininginfo
-  bitcoin-cli generatetoaddress 2 $BTC_ADDR
+  BTC_START_HEIGHT=$(bitcoin-cli -rpcwait getblockchaininfo | jq .blocks)
+
+  if [ "$BTC_START_HEIGHT" = "0" ]; then
+    echo "Mining initial $BTC_INIT_BLOCKS Bitcoin blocks.."
+    bitcoin-cli generatetoaddress $BTC_INIT_BLOCKS $BTC_ADDR
+  else
+    echo "Initial $BTC_START_HEIGHT Bitcoin blocks already mined"
+  fi
+
+  bitcoin-cli generatetoaddress 1 $BTC_ADDR
 
   export STACKS_EVENT_OBSERVER="127.0.0.1:3700"
   envsubst < config.toml.in > config.toml
@@ -284,7 +303,19 @@ cat > run.sh <<'EOM'
   API_PID=$!
   popd
 
+  while true; do
+    HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
+    if [ "$HEIGHT" = "$BTC_INIT_BLOCKS" ]; then
+      echo "Stacks node caught up to block $BTC_INIT_BLOCKS"
+      break
+    else
+      echo "Stacks node synced btc block $HEIGHT / $BTC_INIT_BLOCKS"
+    fi
+    sleep 0.5s
+  done
+
   function start_miner() {
+    bitcoin-cli generatetoaddress 1 $BTC_ADDR
     while true; do
       TX=$(bitcoin-cli listtransactions '*' 1 0 true)
       CONFS=$(echo "$TX" | jq '.[].confirmations')
