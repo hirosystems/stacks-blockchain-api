@@ -223,19 +223,21 @@ EOF
 WORKDIR /root
 
 # Setup event observer script
-COPY <<EOF /root/event-observer.js
+RUN <<EOF
+cat > /root/event-observer.js <<'EOM'
 const http = require('http');
 const fs = require('fs');
 const fd = fs.openSync('/event-log.ndjson', 'a');
 const server = http.createServer((req, res) => {
-  fs.appendFileSync(fd, req.url + '\\n');
+  fs.appendFileSync(fd, req.url + '\n');
   req
     .on('data', chunk => fs.appendFileSync(fd, chunk))
     .on('end', () => {
-      fs.appendFileSync(fd, '\\n');
+      fs.appendFileSync(fd, '\n');
       res.writeHead(200).end();
     });
 }).listen(3998, '0.0.0.0');
+EOM
 EOF
 
 # Setup postgres
@@ -244,6 +246,7 @@ RUN <<EOF
   mkdir -p "$PGDATA"
   chown -R postgres:postgres "$PGDATA"
   gosu postgres /usr/lib/postgresql/14/bin/pg_ctl init -D "$PGDATA"
+  echo "host all all all trust" >> "$PGDATA/pg_hba.conf"
 EOF
 
 # Bootstrap chainstates
@@ -297,7 +300,7 @@ RUN <<EOF
 cat > run.sh <<'EOM'
 #!/bin/bash -e
 
-  gosu postgres /usr/lib/postgresql/14/bin/pg_ctl start -W -D "$PGDATA"
+  gosu postgres /usr/lib/postgresql/14/bin/pg_ctl start -W -D "$PGDATA" -o "-c listen_addresses='*'"
 
   pushd /api
   node ./lib/index.js &
