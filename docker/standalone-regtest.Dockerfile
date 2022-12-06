@@ -30,7 +30,7 @@ RUN rm ".env" && \
 
 FROM rust:bullseye as blockchain-builder
 
-ARG BLOCKCHAIN_GIT_COMMIT=748eff4a8ad01aa63611f530813f1f19fbbb25e5
+ARG BLOCKCHAIN_GIT_COMMIT=b16e121d94306887f21c3d3ed7da1d980c5f3454
 ENV DEBIAN_FRONTEND noninteractive
 
 WORKDIR /stacks
@@ -126,7 +126,7 @@ ENV STACKS_POX2_HEIGHT=$STACKS_POX2_HEIGHT
 ARG REWARD_RECIPIENT
 ENV REWARD_RECIPIENT=$REWARD_RECIPIENT
 
-ARG BOOTSTRAP_CHAINSTATE=0
+ARG BOOTSTRAP_CHAINSTATE=1
 
 COPY <<EOF /root/.bitcoin/bitcoin.conf
 regtest=1 #chain=regtest
@@ -222,6 +222,22 @@ EOF
 
 WORKDIR /root
 
+# Setup event observer script
+COPY <<EOF /root/event-observer.js
+const http = require('http');
+const fs = require('fs');
+const fd = fs.openSync('/event-log.ndjson', 'a');
+const server = http.createServer((req, res) => {
+  fs.appendFileSync(fd, req.url + '\\n');
+  req
+    .on('data', chunk => fs.appendFileSync(fd, chunk))
+    .on('end', () => {
+      fs.appendFileSync(fd, '\\n');
+      res.writeHead(200).end();
+    });
+}).listen(3998, '0.0.0.0');
+EOF
+
 # Setup postgres
 SHELL ["/bin/bash", "-ce"]
 RUN <<EOF
@@ -247,6 +263,10 @@ RUN <<EOF
 
     bitcoin-cli generatetoaddress $BTC_INIT_BLOCKS $BTC_ADDR
 
+    node event-observer.js &
+    EVENT_OBSERVER_PID=$!
+
+    export STACKS_EVENT_OBSERVER="127.0.0.1:3998"
     envsubst < config.toml.in > config.toml
     stacks-node start --config=config.toml &
     STACKS_PID=$!
@@ -262,6 +282,8 @@ RUN <<EOF
 
     kill $STACKS_PID
     wait $STACKS_PID
+
+    kill $EVENT_OBSERVER_PID
   else
     echo "BOOTSTRAP_CHAINSTATE not enabled, skipping bootstrap step.."
   fi
@@ -274,6 +296,20 @@ EOF
 RUN <<EOF
 cat > run.sh <<'EOM'
 #!/bin/bash -e
+
+  gosu postgres /usr/lib/postgresql/14/bin/pg_ctl start -W -D "$PGDATA"
+
+  pushd /api
+  node ./lib/index.js &
+  API_PID=$!
+  popd
+
+  while read -r event_path; do
+    read -r event_payload
+    echo "$event_payload" | curl -s --retry 5 --retry-delay 1 --retry-all-errors -H 'Content-Type: application/json' -d @- "http://127.0.0.1:3700$event_path" 
+  done < "/event-log.ndjson"
+  rm "/event-log.ndjson"
+
   if [[ ! -z "${REWARD_RECIPIENT}" ]]; then
     export REWARD_RECIPIENT_CONF="block_reward_recipient = \"$REWARD_RECIPIENT\""
   fi
@@ -296,13 +332,6 @@ cat > run.sh <<'EOM'
   envsubst < config.toml.in > config.toml
   stacks-node start --config=config.toml &
   STACKS_PID=$!
-
-  gosu postgres /usr/lib/postgresql/14/bin/pg_ctl start -W -D "$PGDATA"
-
-  pushd /api
-  node ./lib/index.js &
-  API_PID=$!
-  popd
 
   while true; do
     HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
