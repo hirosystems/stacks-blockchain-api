@@ -1,3 +1,10 @@
+## [6.3.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.2...v6.3.0-beta.1) (2022-12-06)
+
+
+### Features
+
+* add `smartContractUpdate` and `smartContractLogUpdate` to `PgWriteStore` event emitter ([#1462](https://github.com/hirosystems/stacks-blockchain-api/issues/1462)) ([bce0ef9](https://github.com/hirosystems/stacks-blockchain-api/commit/bce0ef9b09d944d3f7b8f6299b9375b59f17322d))
+
 ## [6.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2) (2022-12-06)
 
 
