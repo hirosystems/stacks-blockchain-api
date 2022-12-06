@@ -115,7 +115,7 @@ ENV STACKS_20_HEIGHT=$STACKS_20_HEIGHT
 ARG STACKS_2_05_HEIGHT=104
 ENV STACKS_2_05_HEIGHT=$STACKS_2_05_HEIGHT
 
-ARG STACKS_21_HEIGHT=105
+ARG STACKS_21_HEIGHT=106
 ENV STACKS_21_HEIGHT=$STACKS_21_HEIGHT
 
 ARG STACKS_POX2_HEIGHT=107
@@ -306,7 +306,7 @@ cat > run.sh <<'EOM'
 
   while true; do
     HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
-    if [ "$HEIGHT" -ge "$BTC_INIT_BLOCKS" ]; then
+    if [ -n "$HEIGHT" ] && [ "$HEIGHT" -ge "$BTC_INIT_BLOCKS" ]; then
       echo "Stacks node caught up to block $BTC_INIT_BLOCKS"
       break
     else
