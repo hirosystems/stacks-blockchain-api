@@ -1,9 +1,10 @@
 import * as fs from 'fs';
-import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { dangerousDropAllTables, runMigrations } from '../datastore/migrations';
-import { databaseHasData } from '../datastore/event-requests';
+
 import { getPgClientConfig } from '../datastore/connection-legacy';
+import { databaseHasData } from '../datastore/event-requests';
+import { dangerousDropAllTables, runMigrations } from '../datastore/migrations';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
