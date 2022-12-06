@@ -305,7 +305,7 @@ cat > run.sh <<'EOM'
 
   while true; do
     HEIGHT=$(curl -s localhost:20443/v2/info | jq '.burn_block_height')
-    if [ "$HEIGHT" = "$BTC_INIT_BLOCKS" ]; then
+    if [ "$HEIGHT" -ge "$BTC_INIT_BLOCKS" ]; then
       echo "Stacks node caught up to block $BTC_INIT_BLOCKS"
       break
     else
@@ -315,7 +315,6 @@ cat > run.sh <<'EOM'
   done
 
   function start_miner() {
-    bitcoin-cli generatetoaddress 1 $BTC_ADDR
     while true; do
       TX=$(bitcoin-cli listtransactions '*' 1 0 true)
       CONFS=$(echo "$TX" | jq '.[].confirmations')
