@@ -9,4 +9,5 @@ module.exports = {
     globalSetup: '<rootDir>/tests-tokens/setup.ts',
     globalTeardown: '<rootDir>/tests-tokens/teardown.ts',
     testTimeout: 60000,
+    verbose: true,
   }

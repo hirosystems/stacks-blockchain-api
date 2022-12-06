@@ -73,10 +73,7 @@ describe('api tests', () => {
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     try {
-      const submitResult = await new StacksCoreRpcClient({
-        host: HOST,
-        port: PORT,
-      }).sendTransaction(serializedTx);
+      const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
       logger.error('error: ', error);
@@ -119,6 +116,7 @@ describe('api tests', () => {
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await new StacksCoreRpcClient().waitForConnection(60000);
   });
 
   beforeEach(() => {
