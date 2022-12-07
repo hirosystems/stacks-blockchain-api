@@ -405,6 +405,7 @@ jobs:
     strategy:
       matrix:
         suite: [
+          block-zero-handling,
           faucet-stx,
           pox-2-auto-unlock,
           pox-2-btc-address-formats,
