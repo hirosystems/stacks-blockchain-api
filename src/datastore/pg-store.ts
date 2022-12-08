@@ -4,16 +4,16 @@ import {
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
+
 import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
-  assertNotNullish,
   FoundOrNot,
-  unwrapOptional,
+  assertNotNullish,
   bnsHexValueToName,
   bnsNameCV,
   getBnsSmartContractId,
+  unwrapOptional,
 } from '../helpers';
-import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
@@ -69,12 +69,13 @@ import {
   StxUnlockEvent,
   TransferQueryResult,
 } from './common';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { PgServer, PgSqlClient, connectPostgres } from './connection';
 import {
-  abiColumn,
   BLOCK_COLUMNS,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
+  TX_COLUMNS,
+  abiColumn,
   parseBlockQueryResult,
   parseDbEvents,
   parseFaucetRequestQueryResult,
@@ -84,7 +85,6 @@ import {
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
   prefixedCols,
-  TX_COLUMNS,
   unsafeCols,
   validateZonefileHash,
 } from './helpers';
@@ -99,6 +99,7 @@ import {
   PgTokensNotificationPayload,
   PgTxNotificationPayload,
 } from './pg-notifier';
+import { PgStoreEventEmitter } from './pg-store-event-emitter';
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that

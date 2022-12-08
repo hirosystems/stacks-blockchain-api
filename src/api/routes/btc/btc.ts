@@ -1,9 +1,11 @@
+import * as stackApiTypes from '@stacks/stacks-blockchain-api-types';
 import BigNumber from 'bignumber.js';
 import { b58ToC32 } from 'c32check';
 import * as express from 'express';
 import fetch from 'node-fetch';
 
 import * as stacksApiClient from '@stacks/blockchain-api-client';
+import { FoundOrNot } from 'src/helpers';
 
 import { PgStore } from '../../../datastore/pg-store';
 import { asyncHandler } from '../../async-handler';
@@ -81,27 +83,17 @@ export function createBtcRouter(db: PgStore): express.Router {
     '/miner-participants/:block',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      const stxApiConfig = new stacksApiClient.Configuration();
-      const stxBlockApi = new stacksApiClient.BlocksApi(stxApiConfig);
-      let stxBlockData: stacksApiClient.Block;
+      let stxBlockData: FoundOrNot<Block>;
       let stxBlockHash: string;
       let stxBlockHeight: number;
+
       if (typeof req.params.block === 'string') {
+        // TODO: all params are strings
         stxBlockHash = req.params.block.toLowerCase();
         if (!stxBlockHash.startsWith('0x')) {
           stxBlockHash + '0x' + stxBlockHash;
         }
-        stxBlockData = await stxBlockApi.getBlockByHash({
-          // TODO: This will eventually be separate infra, but to test try using api functions here vs client
-          hash: stxBlockHash,
-        });
-        stxBlockHeight = stxBlockData.height;
-      } else {
-        stxBlockHeight = req.params.block;
-        stxBlockData = (await stxBlockApi.getBlockByHeight({
-          // TODO: This will eventually be separate infra, but to test try using api functions here vs client
-          height: stxBlockHeight,
-        })) as stacksApiClient.Block;
+
         stxBlockData = await getBlockFromDataStore({
           blockIdentifer: { hash: stxBlockHash },
           db,
@@ -110,11 +102,30 @@ export function createBtcRouter(db: PgStore): express.Router {
           res.status(404).json({ error: `cannot find block by hash ${stxBlockHash}` });
           return;
         }
-        stxBlockHash = stxBlockData.hash;
+        // stxBlockData = await stxBlockApi.getBlockByHash({
+        //   // TODO: This will eventually be separate infra, but to test try using api functions here vs client
+        //   hash: stxBlockHash,
+        // });
+        stxBlockHeight = stxBlockData.result.height;
+      } else {
+        stxBlockHeight = req.params.block;
+        // stxBlockData = (await stxBlockApi.getBlockByHeight({
+        //   height: stxBlockHeight,
+        // })) as stacksApiClient.Block;
+
+        stxBlockData = await getBlockFromDataStore({
+          blockIdentifer: { height: stxBlockHeight },
+          db,
+        });
+        if (!stxBlockData.found) {
+          res.status(404).json({ error: `cannot find block by height ${stxBlockHeight}` });
+          return;
+        }
+        stxBlockHash = stxBlockData.result.hash;
       }
 
       const btcBlockDataUrl = new URL(
-        `/rawblock/${stxBlockData.burn_block_height}`,
+        `/rawblock/${stxBlockData.result.burn_block_height}`,
         BLOCKCHAIN_INFO_API_ENDPOINT
       );
       const btcBlockData = await fetchJson<{
@@ -160,7 +171,9 @@ export function createBtcRouter(db: PgStore): express.Router {
         })
         .filter(r => r !== null);
 
-      const winner = leaderBlockCommits.find(tx => tx?.txid === stxBlockData.miner_txid.slice(2));
+      const winner = leaderBlockCommits.find(
+        tx => tx?.txid === stxBlockData.result.miner_txid.slice(2)
+      );
       const participants = leaderBlockCommits.map(tx => {
         return {
           btcTx: tx?.txid,
@@ -298,23 +311,23 @@ export function createBtcRouter(db: PgStore): express.Router {
       if (!txid.startsWith('0x')) {
         txid + '0x' + txid;
       }
-      const stxApiConfig = new stacksApiClient.Configuration(); // TODO: This will eventually be separate infra, but to test try using api functions here vs client
-      // const stxTxApi = new stacksApiClient.TransactionsApi(stxApiConfig); // TODO: This will eventually be separate infra, but to test try using api functions here vs client
-      // const stxBlockApi = new stacksApiClient.BlocksApi(stxApiConfig); // TODO: This will eventually be separate infra, but to test try using api functions here vs client
+      // const stxApiConfig = new stacksApiClient.Configuration();
+      // const stxTxApi = new stacksApiClient.TransactionsApi(stxApiConfig);
+      // const stxBlockApi = new stacksApiClient.BlocksApi(stxApiConfig);
 
-      // const stxTxData = (await stxTxApi.getTransactionById({ // TODO: This will eventually be separate infra, but to test try using api functions here vs client
+      // const stxTxData = (await stxTxApi.getTransactionById({
       //   txId: txid,
       // })) as stackApiTypes.Transaction;
       // const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit']);
       // const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
-      const stxTxData = await searchTx(db, {
+      const stxTxData = ((await searchTx(db, {
         txId: txid,
         eventLimit: 0,
         eventOffset: 0,
         includeUnanchored: false,
-      });
+      })) as unknown) as FoundOrNot<stackApiTypes.Transaction>; // TODO: this might not be safe
 
-      const stxBlockHash = stxTxData.result?.block_hash;
+      const stxBlockHash = stxTxData.result?.block_hash; // TODO: assert this property exists on result
       if (!stxBlockHash) {
         res.status(404).json({ error: `could not find transaction by ID ${txid}` }); // TODO: improve wording
       }

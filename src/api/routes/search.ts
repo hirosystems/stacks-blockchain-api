@@ -1,24 +1,26 @@
+import {
+  AddressSearchResult,
+  AddressStxBalanceResponse,
+  Block,
+  BlockSearchResult,
+  ContractSearchResult,
+  MempoolTxSearchResult,
+  SearchErrorResult,
+  SearchResult,
+  TxSearchResult,
+} from '@stacks/stacks-blockchain-api-types';
 import * as express from 'express';
-import { asyncHandler } from '../async-handler';
+
 import {
   DbBlock,
-  DbTx,
   DbMempoolTx,
   DbSearchResult,
   DbSearchResultWithMetadata,
+  DbTx,
 } from '../../datastore/common';
-import { isValidPrincipal, has0xPrefix, FoundOrNot } from '../../helpers';
-import {
-  Block,
-  SearchResult,
-  BlockSearchResult,
-  TxSearchResult,
-  MempoolTxSearchResult,
-  ContractSearchResult,
-  AddressSearchResult,
-  SearchErrorResult,
-  AddressStxBalanceResponse,
-} from '@stacks/stacks-blockchain-api-types';
+import { PgStore } from '../../datastore/pg-store';
+import { FoundOrNot, has0xPrefix, isValidPrincipal } from '../../helpers';
+import { asyncHandler } from '../async-handler';
 import {
   getTxTypeString,
   parseDbMempoolTx,
@@ -26,7 +28,6 @@ import {
   searchHashWithMetadata,
 } from '../controllers/db-controller';
 import { booleanValueForParam } from '../query-helpers';
-import { PgStore } from '../../datastore/pg-store';
 
 const enum SearchResultType {
   TxId = 'tx_id',
@@ -53,8 +54,11 @@ export function createSearchRouter(db: PgStore): express.Router {
     }
     if (hashBuffer !== undefined && hashBuffer.length === 32) {
       const hash = '0x' + hashBuffer.toString('hex');
-      let queryResult: FoundOrNot<DbSearchResult> | FoundOrNot<DbSearchResultWithMetadata> = {
+      let queryResult:
+        | FoundOrNot<DbSearchResult | undefined>
+        | FoundOrNot<DbSearchResultWithMetadata | undefined> = {
         found: false,
+        result: undefined,
       };
       if (!includeMetadata) {
         queryResult = await db.searchHash({ hash });
@@ -62,7 +66,7 @@ export function createSearchRouter(db: PgStore): express.Router {
         queryResult = await searchHashWithMetadata(hash, db);
       }
       if (queryResult.found) {
-        if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
+        if (queryResult.result?.entity_type === 'block_hash' && queryResult.result.entity_data) {
           if (includeMetadata) {
             const blockData = queryResult.result.entity_data as Block;
             const blockResult: BlockSearchResult = {
@@ -98,7 +102,7 @@ export function createSearchRouter(db: PgStore): express.Router {
             },
           };
           return blockResult;
-        } else if (queryResult.result.entity_type === 'tx_id') {
+        } else if (queryResult.result?.entity_type === 'tx_id') {
           const txData = queryResult.result.entity_data as DbTx;
           const txResult: TxSearchResult = {
             found: true,
@@ -118,7 +122,7 @@ export function createSearchRouter(db: PgStore): express.Router {
             txResult.result.metadata = parseDbTx(txData);
           }
           return txResult;
-        } else if (queryResult.result.entity_type === 'mempool_tx_id') {
+        } else if (queryResult.result?.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
           const txResult: MempoolTxSearchResult = {
             found: true,
@@ -136,7 +140,7 @@ export function createSearchRouter(db: PgStore): express.Router {
           return txResult;
         } else {
           throw new Error(
-            `Unexpected entity_type from db search result: ${queryResult.result.entity_type}`
+            `Unexpected entity_type from db search result: ${queryResult.result?.entity_type}`
           );
         }
       } else {

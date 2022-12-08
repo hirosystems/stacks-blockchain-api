@@ -1,17 +1,4 @@
 import {
-  abiFunctionToString,
-  ClarityAbi,
-  ClarityAbiFunction,
-  getTypeString,
-} from '@stacks/transactions';
-import {
-  decodeClarityValueList,
-  decodeClarityValueToRepr,
-  decodeClarityValueToTypeName,
-  decodePostConditions,
-} from 'stacks-encoding-native-js';
-
-import {
   AbstractMempoolTransaction,
   AbstractTransaction,
   BaseTransaction,
@@ -42,8 +29,21 @@ import {
   TransactionStatus,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
+import {
+  ClarityAbi,
+  ClarityAbiFunction,
+  abiFunctionToString,
+  getTypeString,
+} from '@stacks/transactions';
+import {
+  decodeClarityValueList,
+  decodeClarityValueToRepr,
+  decodeClarityValueToTypeName,
+  decodePostConditions,
+} from 'stacks-encoding-native-js';
 
 import {
+  BaseTx,
   BlockIdentifier,
   DbAssetEventTypeId,
   DbBlock,
@@ -51,18 +51,17 @@ import {
   DbEventTypeId,
   DbMempoolTx,
   DbMicroblock,
+  DbMinerReward,
+  DbSearchResultWithMetadata,
   DbTx,
   DbTxStatus,
   DbTxTypeId,
-  DbSearchResultWithMetadata,
-  BaseTx,
-  DbMinerReward,
   StxUnlockEvent,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
-import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { EMPTY_HASH_256, FoundOrNot, logger, unixEpochToIso, unwrapOptional } from '../../helpers';
+import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
+import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {

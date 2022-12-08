@@ -1,3 +1,5 @@
+import { StacksMainnet, StacksTestnet } from '@stacks/network';
+import { poxAddressToBtcAddress } from '@stacks/stacking';
 import {
   ContractCallTransaction,
   FungibleTokenMetadata,
@@ -7,22 +9,36 @@ import {
   RosettaOptions,
 } from '@stacks/stacks-blockchain-api-types';
 import {
-  addressToString,
   AuthType,
   BufferReader,
   ChainID,
+  MessageSignature,
+  PayloadType,
+  StacksTransaction,
+  addressToString,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
   makeSigHashPreSign,
-  MessageSignature,
   parseRecoverableSignature,
-  PayloadType,
-  StacksTransaction,
 } from '@stacks/transactions';
-import { StacksMainnet, StacksTestnet } from '@stacks/network';
-import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
+import { ec as EC } from 'elliptic';
+import {
+  ClarityTypeID,
+  ClarityValueBuffer,
+  ClarityValueOptional,
+  ClarityValueOptionalBool,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponse,
+  ClarityValueTuple,
+  ClarityValueUInt,
+  PrincipalTypeID,
+  TxPayloadTypeID,
+  decodeClarityValue,
+  decodeTransaction,
+} from 'stacks-encoding-native-js';
+
 import {
   getAssetEventTypeString,
   getEventTypeString,
@@ -37,6 +53,7 @@ import {
   RosettaNetworks,
   RosettaOperationType,
 } from './api/rosetta-constants';
+import { getCoreNodeEndpoint } from './core-rpc/client';
 import {
   BaseTx,
   DbAssetEventTypeId,
@@ -53,29 +70,11 @@ import {
   DbTxTypeId,
   StxUnlockEvent,
 } from './datastore/common';
-import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, bufferToHexPrefixString, hexToBuffer, logger } from './helpers';
-
-import { getCoreNodeEndpoint } from './core-rpc/client';
-import { getBTCAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
-import {
-  ClarityTypeID,
-  decodeClarityValue,
-  decodeTransaction,
-  ClarityValueBuffer,
-  ClarityValueOptional,
-  ClarityValueOptionalBool,
-  ClarityValuePrincipalStandard,
-  ClarityValueResponse,
-  ClarityValueTuple,
-  ClarityValueUInt,
-  PrincipalTypeID,
-  TxPayloadTokenTransfer,
-  TxPayloadTypeID,
-} from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
+import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
+import { hexToBuffer, logger, unwrapOptional } from './helpers';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
+import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
