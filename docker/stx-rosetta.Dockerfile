@@ -1,4 +1,4 @@
-ARG STACKS_API_VERSION
+ARG STACKS_API_VERSION=6.2.2
 ARG STACKS_NODE_VERSION=2.05.0.4.0
 ARG STACKS_API_REPO=hirosystems/stacks-blockchain-api
 ARG STACKS_NODE_REPO=stacks-network/stacks-blockchain
