@@ -121,7 +121,7 @@ RUN mkdir -p \
     && rm -rf /var/cache/apt/* /var/lib/apt/lists/* /tmp/* ${STACKS_SVC_DIR}/getty*
 COPY --from=stacks-blockchain-build /out ${STACKS_BLOCKCHAIN_DIR}
 COPY --from=stacks-blockchain-api-build /app ${STACKS_BLOCKCHAIN_API_DIR}
-COPY --from=stacks-blockchain-build /testnet/stacks-node/conf/*follower-conf.toml ${STACKS_BLOCKCHAIN_DIR}/
+COPY --from=stacks-blockchain-build /src/testnet/stacks-node/conf/*follower-conf.toml ${STACKS_BLOCKCHAIN_DIR}/
 
 ###################################
 ##  runit service files
