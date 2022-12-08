@@ -2,7 +2,9 @@
 
 FROM node:16-bullseye as api-builder
 
-ARG API_GIT_COMMIT=b28c74490e923a0e80f865ccfd6c16ac6f2e2dd8
+ARG API_GIT_COMMIT
+ARG STACKS_API_VERSION
+
 ENV DEBIAN_FRONTEND noninteractive
 
 WORKDIR /api
@@ -20,7 +22,7 @@ EOF
 
 # Build API
 RUN rm ".env" && \
-    git describe --tags --abbrev=0 || git -c user.name='user' -c user.email='email' tag vNext && \
+    git describe --tags --abbrev=0 || git -c user.name='user' -c user.email='email' tag "${STACKS_API_VERSION:-vNext}" && \
     echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env && \
     npm config set update-notifier false && \
     npm config set unsafe-perm true && \
@@ -30,13 +32,28 @@ RUN rm ".env" && \
 
 FROM rust:bullseye as blockchain-builder
 
-ARG BLOCKCHAIN_GIT_COMMIT=b16e121d94306887f21c3d3ed7da1d980c5f3454
+ARG BLOCKCHAIN_GIT_COMMIT
 ENV DEBIAN_FRONTEND noninteractive
+ARG TARGETPLATFORM
 
 WORKDIR /stacks
 
+# Use pre-build binaries from context directory, if available
+COPY *stacks-blockchain-binaries /stacks-blockchain-binaries
+
 SHELL ["/bin/bash", "-ce"]
 RUN <<EOF
+  STACKS_NODE_BIN_ARM64=/stacks-blockchain-binaries/aarch64-unknown-linux-gnu/stacks-node
+  STACKS_NODE_BIN_AMD64=/stacks-blockchain-binaries/x86_64-unknown-linux-gnu/stacks-node
+  if [ "$TARGETPLATFORM" = "linux/arm64" ] && [ -f "$STACKS_NODE_BIN_ARM64" ]; then
+    echo "Using existing stacks-node binary: $STACKS_NODE_BIN_ARM64"
+    mkdir -p target/release && mv "$STACKS_NODE_BIN_ARM64" target/release/stacks-node
+    exit 0
+  elif [ "$TARGETPLATFORM" = "linux/amd64" ] && [ -f "$STACKS_NODE_BIN_AMD64" ]; then
+    echo "Using existing stacks-node binary: $STACKS_NODE_BIN_AMD64"
+    mkdir -p target/release && mv "$STACKS_NODE_BIN_AMD64" target/release/stacks-node
+    exit 0
+  fi
   echo "Building stacks-node from commit: https://github.com/stacks-network/stacks-blockchain/commit/$BLOCKCHAIN_GIT_COMMIT"
   git init
   git remote add origin https://github.com/stacks-network/stacks-blockchain.git
