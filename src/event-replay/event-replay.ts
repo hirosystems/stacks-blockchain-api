@@ -121,8 +121,6 @@ export async function importEventsFromTsv(
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
     process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
-  // Look for the TSV's genesis block information for BNS import.
-  const tsvGenesisBlockData = await findBnsGenesisBlockData(resolvedFilePath);
 
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
@@ -139,15 +137,6 @@ export async function importEventsFromTsv(
   });
 
   await importV1TokenOfferingData(db);
-
-  // Import V1 BNS names first. Subdomains will be imported after TSV replay is finished in order to
-  // keep the size of the `subdomains` table small.
-  if (process.env.BNS_IMPORT_DIR) {
-    logger.info(`Using BNS export data from: ${process.env.BNS_IMPORT_DIR}`);
-    await importV1BnsNames(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
-  } else {
-    logger.warn(`Notice: full BNS functionality requires 'BNS_IMPORT_DIR' to be set.`);
-  }
 
   // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
@@ -185,10 +174,6 @@ export async function importEventsFromTsv(
     }
   }
   await db.finishEventReplay();
-  if (process.env.BNS_IMPORT_DIR) {
-    logger.level = defaultLogLevel;
-    await importV1BnsSubdomains(db, process.env.BNS_IMPORT_DIR, tsvGenesisBlockData);
-  }
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
