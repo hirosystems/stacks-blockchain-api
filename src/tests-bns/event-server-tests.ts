@@ -1067,12 +1067,5 @@ describe('BNS event server tests', () => {
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(false)
     expect(configState.bns_subdomains_imported).toBe(false)
-
-    await new Promise(resolve => setTimeout(async() => {
-      const configState = await db.getConfigState();
-      expect(configState.bns_names_onchain_imported).toBe(true)
-      expect(configState.bns_subdomains_imported).toBe(true)
-      resolve(undefined)
-    }, 2000))
   })
 })
