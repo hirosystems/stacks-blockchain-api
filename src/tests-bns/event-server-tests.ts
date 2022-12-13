@@ -10,6 +10,7 @@ import { getGenesisBlockData } from '../event-replay/helpers';
 import { NextFunction } from 'express';
 
 describe('BNS event server tests', () => {
+  jest.setTimeout(300000)
   let db: PgWriteStore;
   let client: PgSqlClient;
   let eventServer: EventStreamServer;
