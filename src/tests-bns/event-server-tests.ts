@@ -6,11 +6,8 @@ import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
-<<<<<<< HEAD
 import { getGenesisBlockData } from '../event-replay/helpers';
 import { NextFunction } from 'express';
-=======
->>>>>>> 407831cb (fix(duplicate-events): addressed pr feedback)
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
