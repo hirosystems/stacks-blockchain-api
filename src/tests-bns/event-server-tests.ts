@@ -1052,7 +1052,6 @@ describe('BNS event server tests', () => {
   })
 
   test('BNS middleware is async. /new_block posts return before importing BNS finishes', async () => {
-    jest.useRealTimers();
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
 
@@ -1069,15 +1068,13 @@ describe('BNS event server tests', () => {
     expect(configState.bns_names_onchain_imported).toBe(false)
     expect(configState.bns_subdomains_imported).toBe(false)
 
-    const timeoutId: NodeJS.Timeout = await new Promise(resolve => {
-      const timeoutId = setTimeout(async() => {
+    await new Promise(resolve => {
+      setTimeout(async() => {
         const configState = await db.getConfigState();
         expect(configState.bns_names_onchain_imported).toBe(true)
         expect(configState.bns_subdomains_imported).toBe(true)
-        resolve(timeoutId)
+        resolve(undefined)
       }, 2000)
     })
-
-    clearTimeout(timeoutId);  
   })
 })
