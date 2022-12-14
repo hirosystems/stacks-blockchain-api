@@ -558,6 +558,7 @@ describe('microblock tests', () => {
         const { body: txListBody2 }: { body: TransactionResults } = txListResult2;
         expect(txListBody2.results).toHaveLength(3);
         expect(txListBody2.results[0].tx_id).toBe(mbTx2.tx_id);
+        expect(txListBody2.results[0].is_unanchored).toBe(true);
 
         const txListResult3 = await supertest(api.server).get(
           `/extended/v1/microblock/unanchored/txs`
@@ -617,6 +618,7 @@ describe('microblock tests', () => {
         expect(txBody2.microblock_hash).toBe(mb1.microblock_hash);
         expect(txBody2.microblock_sequence).toBe(mb1.microblock_sequence);
         expect(txBody2.block_hash).toBe('0x');
+        expect(txBody2.is_unanchored).toBe(true);
 
         const mbListResult1 = await supertest(api.server).get(`/extended/v1/microblock`);
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;
