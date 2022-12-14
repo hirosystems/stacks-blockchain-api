@@ -1,3 +1,10 @@
+## [6.2.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.2...v6.2.3) (2022-12-14)
+
+
+### Bug Fixes
+
+* is_unanchored property on /extended/v1/tx/:tx_id ([#1487](https://github.com/hirosystems/stacks-blockchain-api/issues/1487)) ([4b85058](https://github.com/hirosystems/stacks-blockchain-api/commit/4b850580be5b5520dcf63e41acdfb602ed6d256a))
+
 ## [6.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2) (2022-12-06)
 
 
