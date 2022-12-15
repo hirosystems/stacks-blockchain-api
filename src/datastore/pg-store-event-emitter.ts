@@ -14,7 +14,7 @@ type DataStoreEventEmitter = StrictEventEmitter<
     tokensUpdate: (contractID: string) => void;
     tokenMetadataUpdateQueued: (queueId: number) => void;
     mempoolStatsUpdate: (mempoolStats: DbMempoolStats) => void;
-    bnsImportUpdate: () => void;
+    bnsImportUpdate: (bnsNamesOnchainImported: boolean, bnsSubdomainsImported: boolean) => void;
   }
 >;
 

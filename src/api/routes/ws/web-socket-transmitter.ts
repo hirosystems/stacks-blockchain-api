@@ -80,10 +80,12 @@ export class WebSocketTransmitter {
         .add(() => this.addressUpdate(address, blockHeight))
         .catch(error => logger.error(`WebSocketTransmitter addressUpdate error: ${error}`))
     );
-    this.db.eventEmitter.addListener('bnsImportUpdate', () =>
-      this.queue
-        .add(() => this.bnsImportUpdate())
-        .catch(error => logger.error(`WebSocketTransmitter bnsImportUpdate error: ${error}`))
+    this.db.eventEmitter.addListener(
+      'bnsImportUpdate',
+      (bnsNamesOnchainImported, bnsSubdomainsImported) =>
+        this.queue
+          .add(() => this.bnsImportUpdate(bnsNamesOnchainImported, bnsSubdomainsImported))
+          .catch(error => logger.error(`WebSocketTransmitter bnsImportUpdate error: ${error}`))
     );
 
     this.channels.push(new SocketIOChannel(this.server));
@@ -135,7 +137,7 @@ export class WebSocketTransmitter {
     }
   }
 
-  private async bnsImportUpdate() {
+  private async bnsImportUpdate(bnsNamesOnchainImported: boolean, bnsSubdomainsImported: boolean) {
     if (this.channels.find(c => c.hasListeners('bnsImport'))) {
       try {
         const {

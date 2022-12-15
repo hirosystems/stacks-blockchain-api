@@ -35,7 +35,7 @@ export type PgAddressNotificationPayload = {
   blockHeight: number;
 };
 
-export type PgBnsImportPayload = {
+export type PgBnsImportNotificationPayload = {
   bnsNamesOnchainImported: boolean;
   bnsSubdomainsImported: boolean;
 };
@@ -61,7 +61,7 @@ type PgNotificationPayload =
   | PgTokenMetadataNotificationPayload
   | PgTokensNotificationPayload
   | PgTxNotificationPayload
-  | PgBnsImportPayload;
+  | PgBnsImportNotificationPayload;
 
 type PgNotification = {
   type: PgNotificationType;
@@ -134,7 +134,7 @@ export class PgNotifier {
     await this.notify({ type: 'tokensUpdate', payload: payload });
   }
 
-  public async sendBnsImport(payload: PgBnsImportPayload) {
+  public async sendBnsImport(payload: PgBnsImportNotificationPayload) {
     await this.notify({ type: 'bnsImportUpdate', payload });
   }
 
