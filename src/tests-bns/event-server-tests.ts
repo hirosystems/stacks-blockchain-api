@@ -8,16 +8,19 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 import { getGenesisBlockData } from '../event-replay/helpers';
 import { NextFunction } from 'express';
+import { WebSocketTransmitter } from 'src/api/routes/ws/web-socket-transmitter';
+import { createServer } from 'http';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let eventServer: EventStreamServer;
+  let transmitter: WebSocketTransmitter;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: true });
     client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
@@ -1069,12 +1072,13 @@ describe('BNS event server tests', () => {
     expect(configState.bns_subdomains_imported).toBe(false)
 
     await new Promise(resolve => {
-      setTimeout(async() => {
-        const configState = await db.getConfigState();
-        expect(configState.bns_names_onchain_imported).toBe(true)
-        expect(configState.bns_subdomains_imported).toBe(true)
-        resolve(undefined)
-      }, 2000)
+      db.eventEmitter.on('bnsImportUpdate', (bnsNamesOnchainImported, bnsSubdomainsImported) => {
+        if (bnsNamesOnchainImported && bnsSubdomainsImported) {
+          expect(bnsNamesOnchainImported).toBe(true)
+          expect(bnsSubdomainsImported).toBe(true);
+          resolve(undefined);
+        }
+      })
     })
   })
 })
