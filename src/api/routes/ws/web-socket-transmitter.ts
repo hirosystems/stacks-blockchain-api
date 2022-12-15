@@ -139,15 +139,7 @@ export class WebSocketTransmitter {
 
   private async bnsImportUpdate(bnsNamesOnchainImported: boolean, bnsSubdomainsImported: boolean) {
     if (this.channels.find(c => c.hasListeners('bnsImport'))) {
-      try {
-        const {
-          bns_names_onchain_imported,
-          bns_subdomains_imported,
-        } = await this.db.getConfigState();
-        await this.send('bnsImport', bns_names_onchain_imported, bns_subdomains_imported);
-      } catch (error) {
-        logger.error(error);
-      }
+      await this.send('bnsImport', bnsNamesOnchainImported, bnsSubdomainsImported);
     }
   }
 

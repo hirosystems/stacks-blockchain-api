@@ -58,7 +58,7 @@ import {
   DataStoreAttachmentSubdomainData,
   DataStoreBnsBlockData,
 } from './common';
-import { ClarityAbi, cvToJSON } from '@stacks/transactions';
+import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
   MEMPOOL_TX_COLUMNS,
