@@ -8,14 +8,11 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
 import { getGenesisBlockData } from '../event-replay/helpers';
 import { NextFunction } from 'express';
-import { WebSocketTransmitter } from 'src/api/routes/ws/web-socket-transmitter';
-import { createServer } from 'http';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let eventServer: EventStreamServer;
-  let transmitter: WebSocketTransmitter;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
