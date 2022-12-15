@@ -3860,9 +3860,4 @@ export class PgStore {
       return { results: parsed, total: totalQuery[0].count };
     });
   }
-
-  async getConfigState(): Promise<DbConfigState> {
-    const queryResult = await this.sql<DbConfigState[]>`SELECT * FROM config_state`;
-    return queryResult[0];
-  }
 }

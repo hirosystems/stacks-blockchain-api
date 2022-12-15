@@ -1671,6 +1671,11 @@ export class PgWriteStore extends PgStore {
     }
   }
 
+  async getConfigState(): Promise<DbConfigState> {
+    const queryResult = await this.sql<DbConfigState[]>`SELECT * FROM config_state`;
+    return queryResult[0];
+  }
+
   async updateConfigState(configState: DbConfigState, sql?: PgSqlClient): Promise<void> {
     const queryResult = await (sql ?? this.sql)`
       UPDATE config_state SET
