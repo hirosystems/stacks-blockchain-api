@@ -16,6 +16,7 @@ import { WebSocketPrometheus } from './web-socket-prometheus';
  */
 export type WebSocketTopics = {
   block: () => void;
+  bnsImport: () => void;
   microblock: () => void;
   mempool: () => void;
   transaction: (txId: string) => void;
@@ -33,6 +34,7 @@ export type WebSocketTopics = {
  */
 export type WebSocketPayload = {
   block: (block: Block) => void;
+  bnsImport: (bns_names_onchain_imported: boolean, bns_subdomains_imported: boolean) => void;
   microblock: (microblock: Microblock) => void;
   mempoolTransaction: (transaction: MempoolTransaction) => void;
   transaction: (transaction: Transaction | MempoolTransaction) => void;

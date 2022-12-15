@@ -50,6 +50,7 @@ describe('ws transmitter', () => {
     await expect(transmitter['txUpdate']('0xff')).resolves.not.toThrow();
     await expect(transmitter['nftEventUpdate']('0xff', 0)).resolves.not.toThrow();
     await expect(transmitter['addressUpdate']('0xff', 1)).resolves.not.toThrow();
+    await expect(transmitter['bnsImportUpdate']()).resolves.not.toThrow();
   });
 
   afterEach(async () => {

@@ -10,7 +10,8 @@ type PgNotificationType =
   | 'addressUpdate'
   | 'nameUpdate'
   | 'tokenMetadataUpdateQueued'
-  | 'tokensUpdate';
+  | 'tokensUpdate'
+  | 'bnsImportUpdate';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -34,6 +35,11 @@ export type PgAddressNotificationPayload = {
   blockHeight: number;
 };
 
+export type PgBnsImportPayload = {
+  bnsNamesOnchainImported: boolean;
+  bnsSubdomainsImported: boolean;
+};
+
 export type PgTokenMetadataNotificationPayload = {
   queueId: number;
 };
@@ -54,7 +60,8 @@ type PgNotificationPayload =
   | PgNftEventNotificationPayload
   | PgTokenMetadataNotificationPayload
   | PgTokensNotificationPayload
-  | PgTxNotificationPayload;
+  | PgTxNotificationPayload
+  | PgBnsImportPayload;
 
 type PgNotification = {
   type: PgNotificationType;
@@ -125,6 +132,10 @@ export class PgNotifier {
 
   public async sendTokens(payload: PgTokensNotificationPayload) {
     await this.notify({ type: 'tokensUpdate', payload: payload });
+  }
+
+  public async sendBnsImport(payload: PgBnsImportPayload) {
+    await this.notify({ type: 'bnsImportUpdate', payload });
   }
 
   public async close() {

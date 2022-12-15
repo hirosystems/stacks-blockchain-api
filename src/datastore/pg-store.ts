@@ -28,6 +28,7 @@ import {
   DbBnsZoneFile,
   DbBurnchainReward,
   DbChainTip,
+  DbConfigState,
   DbEvent,
   DbEventTypeId,
   DbFtBalance,
@@ -238,6 +239,10 @@ export class PgStore {
         case 'nftEventUpdate':
           const nftEvent = notification.payload as PgNftEventNotificationPayload;
           this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
+          break;
+        case 'bnsImportUpdate':
+          const bnsImportUpdate = notification.payload as PgNftEventNotificationPayload;
+          this.eventEmitter.emit('bnsImportUpdate', bnsImportUpdate.txId, bnsImportUpdate.eventIndex);
           break;
       }
     });
@@ -3850,5 +3855,10 @@ export class PgStore {
       });
       return { results: parsed, total: totalQuery[0].count };
     });
+  }
+
+  async getConfigState(): Promise<DbConfigState> {
+    const queryResult = await this.sql<DbConfigState[]>`SELECT * FROM config_state`;
+    return queryResult[0];
   }
 }

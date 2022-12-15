@@ -58,7 +58,7 @@ import {
   DataStoreAttachmentSubdomainData,
   DataStoreBnsBlockData,
 } from './common';
-import { ClarityAbi } from '@stacks/transactions';
+import { ClarityAbi, cvToJSON } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
   MEMPOOL_TX_COLUMNS,
@@ -1671,11 +1671,6 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async getConfigState(): Promise<DbConfigState> {
-    const queryResult = await this.sql<DbConfigState[]>`SELECT * FROM config_state`;
-    return queryResult[0];
-  }
-
   async updateConfigState(configState: DbConfigState, sql?: PgSqlClient): Promise<void> {
     const queryResult = await (sql ?? this.sql)`
       UPDATE config_state SET
@@ -1683,6 +1678,10 @@ export class PgWriteStore extends PgStore {
         bns_subdomains_imported = ${configState.bns_subdomains_imported},
         token_offering_imported = ${configState.token_offering_imported}
     `;
+    await this.notifier?.sendBnsImport({
+      bnsNamesOnchainImported: configState.bns_names_onchain_imported,
+      bnsSubdomainsImported: configState.bns_subdomains_imported,
+    });
     if (queryResult.count !== 1) {
       throw new Error(`Unexpected config update row count: ${queryResult.count}`);
     }
