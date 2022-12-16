@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import StrictEventEmitter from 'strict-event-emitter-types';
-import { DbMempoolStats } from './common';
+import { DbConfigState, DbMempoolStats } from './common';
 
 type DataStoreEventEmitter = StrictEventEmitter<
   EventEmitter,
@@ -14,6 +14,7 @@ type DataStoreEventEmitter = StrictEventEmitter<
     tokensUpdate: (contractID: string) => void;
     tokenMetadataUpdateQueued: (queueId: number) => void;
     mempoolStatsUpdate: (mempoolStats: DbMempoolStats) => void;
+    configStateUpdate: (configState: DbConfigState) => void;
   }
 >;
 

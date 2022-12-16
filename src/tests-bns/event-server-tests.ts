@@ -17,7 +17,7 @@ describe('BNS event server tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: true });
     client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
@@ -1069,12 +1069,14 @@ describe('BNS event server tests', () => {
     expect(configState.bns_subdomains_imported).toBe(false)
 
     await new Promise(resolve => {
-      setTimeout(async() => {
-        const configState = await db.getConfigState();
-        expect(configState.bns_names_onchain_imported).toBe(true)
-        expect(configState.bns_subdomains_imported).toBe(true)
-        resolve(undefined)
-      }, 2000)
+      db.eventEmitter.on('configStateUpdate', (configState) => {
+        if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
+          expect(configState.bns_names_onchain_imported).toBe(true)
+          expect(configState.bns_subdomains_imported).toBe(true);
+          resolve(undefined);
+        }
+      })
     })
+    db.eventEmitter.removeAllListeners('configStateUpdate');
   })
 })

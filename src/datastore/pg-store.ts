@@ -28,6 +28,7 @@ import {
   DbBnsZoneFile,
   DbBurnchainReward,
   DbChainTip,
+  DbConfigState,
   DbEvent,
   DbEventTypeId,
   DbFtBalance,
@@ -91,6 +92,7 @@ import {
 import {
   PgAddressNotificationPayload,
   PgBlockNotificationPayload,
+  PgConfigStateNotificationPayload,
   PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
   PgNftEventNotificationPayload,
@@ -238,6 +240,12 @@ export class PgStore {
         case 'nftEventUpdate':
           const nftEvent = notification.payload as PgNftEventNotificationPayload;
           this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
+          break;
+        case 'configStateUpdate':
+          this.eventEmitter.emit(
+            'configStateUpdate',
+            notification.payload as PgConfigStateNotificationPayload
+          );
           break;
       }
     });

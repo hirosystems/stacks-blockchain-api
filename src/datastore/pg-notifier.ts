@@ -1,5 +1,6 @@
 import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
+import { DbConfigState } from './common';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
 type PgNotificationType =
@@ -10,7 +11,8 @@ type PgNotificationType =
   | 'addressUpdate'
   | 'nameUpdate'
   | 'tokenMetadataUpdateQueued'
-  | 'tokensUpdate';
+  | 'tokensUpdate'
+  | 'configStateUpdate';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -34,6 +36,8 @@ export type PgAddressNotificationPayload = {
   blockHeight: number;
 };
 
+export type PgConfigStateNotificationPayload = DbConfigState;
+
 export type PgTokenMetadataNotificationPayload = {
   queueId: number;
 };
@@ -54,7 +58,8 @@ type PgNotificationPayload =
   | PgNftEventNotificationPayload
   | PgTokenMetadataNotificationPayload
   | PgTokensNotificationPayload
-  | PgTxNotificationPayload;
+  | PgTxNotificationPayload
+  | PgConfigStateNotificationPayload;
 
 type PgNotification = {
   type: PgNotificationType;
@@ -125,6 +130,10 @@ export class PgNotifier {
 
   public async sendTokens(payload: PgTokensNotificationPayload) {
     await this.notify({ type: 'tokensUpdate', payload: payload });
+  }
+
+  public async sendConfigState(payload: PgConfigStateNotificationPayload) {
+    await this.notify({ type: 'configStateUpdate', payload });
   }
 
   public async close() {
