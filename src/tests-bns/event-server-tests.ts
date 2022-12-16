@@ -1077,5 +1077,6 @@ describe('BNS event server tests', () => {
         }
       })
     })
+    db.eventEmitter.removeAllListeners('bnsImportUpdate');
   })
 })
