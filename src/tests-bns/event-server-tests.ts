@@ -17,7 +17,7 @@ describe('BNS event server tests', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: true });
     client = db.sql;
     eventServer = await startEventServer({
       datastore: db,
@@ -1052,7 +1052,6 @@ describe('BNS event server tests', () => {
   })
 
   test('BNS middleware is async. /new_block posts return before importing BNS finishes', async () => {
-    jest.useRealTimers();
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
 
@@ -1069,15 +1068,15 @@ describe('BNS event server tests', () => {
     expect(configState.bns_names_onchain_imported).toBe(false)
     expect(configState.bns_subdomains_imported).toBe(false)
 
-    const timeoutId: NodeJS.Timeout = await new Promise(resolve => {
-      const timeoutId = setTimeout(async() => {
-        const configState = await db.getConfigState();
-        expect(configState.bns_names_onchain_imported).toBe(true)
-        expect(configState.bns_subdomains_imported).toBe(true)
-        resolve(timeoutId)
-      }, 2000)
+    await new Promise(resolve => {
+      db.eventEmitter.on('configStateUpdate', (configState) => {
+        if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
+          expect(configState.bns_names_onchain_imported).toBe(true)
+          expect(configState.bns_subdomains_imported).toBe(true);
+          resolve(undefined);
+        }
+      })
     })
-
-    clearTimeout(timeoutId);  
+    db.eventEmitter.removeAllListeners('configStateUpdate');
   })
 })
