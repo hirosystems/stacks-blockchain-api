@@ -92,7 +92,7 @@ import {
 import {
   PgAddressNotificationPayload,
   PgBlockNotificationPayload,
-  PgBnsImportNotificationPayload,
+  PgConfigStateNotificationPayload,
   PgMicroblockNotificationPayload,
   PgNameNotificationPayload,
   PgNftEventNotificationPayload,
@@ -241,12 +241,11 @@ export class PgStore {
           const nftEvent = notification.payload as PgNftEventNotificationPayload;
           this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
           break;
-        case 'bnsImportUpdate':
-          const {
-            bnsNamesOnchainImported,
-            bnsSubdomainsImported,
-          } = notification.payload as PgBnsImportNotificationPayload;
-          this.eventEmitter.emit('bnsImportUpdate', bnsNamesOnchainImported, bnsSubdomainsImported);
+        case 'configStateUpdate':
+          this.eventEmitter.emit(
+            'configStateUpdate',
+            notification.payload as PgConfigStateNotificationPayload
+          );
           break;
       }
     });

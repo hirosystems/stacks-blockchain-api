@@ -1,5 +1,6 @@
 import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
+import { DbConfigState } from './common';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
 type PgNotificationType =
@@ -11,7 +12,7 @@ type PgNotificationType =
   | 'nameUpdate'
   | 'tokenMetadataUpdateQueued'
   | 'tokensUpdate'
-  | 'bnsImportUpdate';
+  | 'configStateUpdate';
 
 export type PgTxNotificationPayload = {
   txId: string;
@@ -35,10 +36,7 @@ export type PgAddressNotificationPayload = {
   blockHeight: number;
 };
 
-export type PgBnsImportNotificationPayload = {
-  bnsNamesOnchainImported: boolean;
-  bnsSubdomainsImported: boolean;
-};
+export type PgConfigStateNotificationPayload = DbConfigState;
 
 export type PgTokenMetadataNotificationPayload = {
   queueId: number;
@@ -61,7 +59,7 @@ type PgNotificationPayload =
   | PgTokenMetadataNotificationPayload
   | PgTokensNotificationPayload
   | PgTxNotificationPayload
-  | PgBnsImportNotificationPayload;
+  | PgConfigStateNotificationPayload;
 
 type PgNotification = {
   type: PgNotificationType;
@@ -134,8 +132,8 @@ export class PgNotifier {
     await this.notify({ type: 'tokensUpdate', payload: payload });
   }
 
-  public async sendBnsImport(payload: PgBnsImportNotificationPayload) {
-    await this.notify({ type: 'bnsImportUpdate', payload });
+  public async sendConfigState(payload: PgConfigStateNotificationPayload) {
+    await this.notify({ type: 'configStateUpdate', payload });
   }
 
   public async close() {
