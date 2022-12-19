@@ -101,7 +101,7 @@ docker run -d --rm \
 /bin/stacks-node start --config /src/stacks-node/Config.toml
 ```
 
-You can verify the running `stacks-blockchain-api` container with the command:
+You can verify the running `stacks-blockchain` container with the command:
 
 ```sh
 docker ps --filter name=stacks-blockchain
