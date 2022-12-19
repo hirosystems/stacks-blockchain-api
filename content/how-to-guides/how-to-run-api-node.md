@@ -262,7 +262,7 @@ If the instance is running you should receive terminal output similar to the fol
 }
 ```
 
-Verify the `stacks-blockchain-api` is receiving data from the `stacks-blockchain-api` with the following command:
+Verify the `stacks-blockchain-api` is receiving data from the `stacks-blockchain` with the following command:
 
 ```sh
 curl -sL localhost:3999/v2/info | jq
