@@ -88,7 +88,7 @@ read_only_call_limit_read_count = 30
 read_only_call_limit_runtime = 1000000000
 ```
 
-Start the `stacks-blockchain-api` container with the following command:
+Start the `stacks-blockchain` container with the following command:
 
 ```sh
 docker run -d --rm \
