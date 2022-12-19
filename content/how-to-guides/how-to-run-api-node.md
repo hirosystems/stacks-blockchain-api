@@ -57,7 +57,7 @@ Egress:
 - `8333`
 - `20443-20444`
 
-These egress ports are for syncing the `stacks-blockchain` and Bitcoin headers. If they're not open, the sync will fail.
+These egress ports are for syncing the `stacks-blockchain-api` and Bitcoin headers. If they're not open, the sync will fail.
 
 ## Step 1: Initial setup
 
@@ -155,7 +155,7 @@ docker ps --filter name=stacks-blockchain-api
 
 A usable API instance needs to have data from a running [stacks-blockchain](https://github.com/stacks-network/stacks-blockchain) instance.
 
-Because we're focusing on running the API with Docker, it also makes things easier if we run the stacks-blockchain instance similarly.
+Because we're focusing on running the API with Docker, it also makes things easier if we run the stacks-blockchain-api instance similarly.
 
 With that in mind, you will need to have the following in your Config.toml - this config block will send blockchain events to the API instance that was started earlier:
 
@@ -215,7 +215,7 @@ docker run -d --rm \
 /bin/stacks-node start --config /src/stacks-node/Config.toml
 ```
 
-You can verify the stacks-blockchain instance running on the ports 20443-20444:
+You can verify the stacks-blockchain-api instance running on the ports 20443-20444:
 
 ```sh
 $ docker ps --filter name=stacks-blockchain$
