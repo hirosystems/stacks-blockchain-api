@@ -129,7 +129,7 @@ INFO [1626290748.103291] [src/burnchains/bitcoin/spv.rs:926] [main] Syncing Bitc
 INFO [1626290776.956535] [src/burnchains/bitcoin/spv.rs:926] [main] Syncing Bitcoin headers: 1.7% (12000 out of 691034)
 ```
 
-To verify the `stacks-blockchain-api` tip height is progressing use the following command:
+To verify the `stacks-blockchain` tip height is progressing use the following command:
 
 ```sh
 curl -sL localhost:20443/v2/info | jq
