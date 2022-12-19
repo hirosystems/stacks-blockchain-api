@@ -114,6 +114,7 @@ describe('Rosetta Construction', () => {
     db = await PgWriteStore.connect({ usageName: 'tests' });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    await new StacksCoreRpcClient().waitForConnection(60000);
   });
 
   /* rosetta construction api tests below */

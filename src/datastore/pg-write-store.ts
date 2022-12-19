@@ -360,6 +360,16 @@ export class PgWriteStore extends PgStore {
         `;
       }
 
+      // When receiving first block, check if "block 0" boot data was received,
+      // if so, update their properties to correspond to "block 1", since we treat
+      // the "block 0" concept as an internal implementation detail.
+      if (data.block.block_height === 1) {
+        const blockZero = await this.getBlockInternal(sql, { height: 0 });
+        if (blockZero.found) {
+          await this.fixBlockZeroData(sql, data.block);
+        }
+      }
+
       // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
 
       // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below
@@ -713,6 +723,45 @@ export class PgWriteStore extends PgStore {
       }
       await this.emitAddressTxUpdates(txData);
     }
+  }
+
+  async fixBlockZeroData(sql: PgSqlClient, blockOne: DbBlock): Promise<void> {
+    const tablesUpdates: Record<string, number> = {};
+    const txsResult = await sql<TxQueryResult[]>`
+      UPDATE txs
+      SET 
+        canonical = true,
+        block_height = 1,
+        tx_index = tx_index + 1,
+        block_hash = ${blockOne.block_hash},
+        index_block_hash = ${blockOne.index_block_hash},
+        burn_block_time = ${blockOne.burn_block_time},
+        parent_block_hash = ${blockOne.parent_block_hash}
+      WHERE block_height = 0
+    `;
+    tablesUpdates['txs'] = txsResult.count;
+    for (const table of TX_METADATA_TABLES) {
+      // a couple tables have a different name for the 'block_height' column
+      const heightCol =
+        table === 'names'
+          ? sql('registered_at')
+          : table === 'namespaces'
+          ? sql('ready_block')
+          : sql('block_height');
+      // The smart_contracts table does not have a tx_index column
+      const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
+      const metadataResult = await sql`
+        UPDATE ${sql(table)}
+        SET 
+          canonical = true,
+          ${heightCol} = 1,
+          ${txIndexBump}
+          index_block_hash = ${blockOne.index_block_hash}
+        WHERE ${heightCol} = 0
+      `;
+      tablesUpdates[table] = metadataResult.count;
+    }
+    logger.info('Updated block zero boot data', tablesUpdates);
   }
 
   async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPox2Event) {

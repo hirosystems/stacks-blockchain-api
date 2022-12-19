@@ -14,12 +14,12 @@ import {
   standByForAccountUnlock,
   standByForTx,
   standByForTxSuccess,
+  standByUntilBlock,
   standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
 import type { TestEnvContext } from './env-setup';
 
-// todo: unskip - currently fails due to a node issue (see inner comments)
-describe.skip('PoX Transition - Double stacking', () => {
+describe('PoX Transition - Double stacking', () => {
   let db: PgWriteStore;
   let api: ApiServer;
   let client: StacksCoreRpcClient;
@@ -127,14 +127,9 @@ describe.skip('PoX Transition - Double stacking', () => {
       ) as DbStxLockEvent;
       expect(lockEventTx2).toBeUndefined();
 
-      const expectedUnlockHeight =
-        poxInfo.next_cycle.reward_phase_start_block_height + cycles * poxInfo.reward_cycle_length;
-      expect(lockEventTx1.unlock_height).toBe(expectedUnlockHeight);
-
       await standByForAccountUnlock(account.stacksAddress);
 
       poxInfo = await client.getPox();
-      expect(poxInfo.current_burnchain_block_height).toBe(expectedUnlockHeight + 1);
     });
   });
 
@@ -218,7 +213,6 @@ describe.skip('PoX Transition - Double stacking', () => {
       expect(poxInfo.current_burnchain_block_height).toBe(expectedUnlockHeight + 1); // todo: is it intended that unlocks are 1 block late?
     });
 
-    // todo: skipped due to issue with node (see inner comments)
     test('Stack to both PoXs in Period 2a', async () => {
       // Assuming the following ENV from `zone117x/stacks-api-e2e:stacks2.1-transition-feat-segwit-events-8fb6fad`
       // STACKS_21_HEIGHT=120
@@ -278,26 +272,45 @@ describe.skip('PoX Transition - Double stacking', () => {
       const txResultPox2 = await client.sendTransaction(Buffer.from(txToPox2.serialize()));
       expect(txResultPox2.txId).toBe('0x' + txToPox2.txid());
 
-      // todo: WARN: this will never finish, since the tx panics the node
-      // await standByForTxSuccess(txResultPox2.txId);
+      const txPox2Db = await standByForTx(txResultPox2.txId);
+      expect(txPox2Db.status).toBe(DbTxStatus.AbortByResponse);
+      expect(decodeClarityValue(txPox2Db.raw_result).repr).toBe('(err none)'); // ALREADY_STACKED
 
-      // todo: check balance
-      // const balanceLocked = await stackingClient.getAccountBalanceLocked();
-      // expect(balanceLocked).toBe(ustxAmount * 2n); // lock should include both pox-contracts
+      // check balance
+      const balanceLocked = await stackingClient.getAccountBalanceLocked();
+      expect(balanceLocked).toBe(ustxAmount); // lock should include both pox-contracts
 
-      // todo: make sure event data matches
+      const tx1Events = await api.datastore.getTxEvents({
+        txId: txResultPox1.txId,
+        indexBlockHash: dbTxPox1.index_block_hash,
+        limit: 99999,
+        offset: 0,
+      });
+      expect(tx1Events.results).toBeTruthy();
+      const lockEventTx1 = tx1Events.results.find(
+        r => r.event_type === DbEventTypeId.StxLock
+      ) as DbStxLockEvent;
+      expect(lockEventTx1).toBeDefined();
+      expect(lockEventTx1.locked_address).toBe(account.stacksAddress);
+      expect(lockEventTx1.locked_amount).toBe(ustxAmount);
+
+      const tx2Events = await api.datastore.getTxEvents({
+        txId: txResultPox2.txId,
+        indexBlockHash: txPox2Db.index_block_hash,
+        limit: 99999,
+        offset: 0,
+      });
+      expect(tx2Events.results).toBeTruthy();
+      const lockEventTx2 = tx2Events.results.find(
+        r => r.event_type === DbEventTypeId.StxLock
+      ) as DbStxLockEvent;
+      expect(lockEventTx2).toBeUndefined();
     });
 
     test('Check that node is still running', async () => {
-      while (true) {
-        // todo: WARN: currently results in socket hang up after 1-2 tries, since the node panics
-        await expect(client.getPox()).resolves.not.toThrow();
-        await sleep(200);
-      }
+      // wait a couple blocks to ensure node doesn't panic
+      const info = await client.getInfo();
+      await standByUntilBlock(info.stacks_tip_height + 2);
     });
   });
 });
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
