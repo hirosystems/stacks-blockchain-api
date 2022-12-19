@@ -57,7 +57,7 @@ Egress:
 - `8333`
 - `20443-20444`
 
-These egress ports are for syncing `stacks-blockchain-api` and Bitcoin headers. If they're not open, the sync will fail.
+These egress ports are for syncing the `stacks-blockchain` and Bitcoin headers. If they're not open, the sync will fail.
 
 ## Step 1: Initial setup
 
