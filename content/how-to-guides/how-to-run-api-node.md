@@ -215,7 +215,7 @@ docker run -d --rm \
 /bin/stacks-node start --config /src/stacks-node/Config.toml
 ```
 
-You can verify the stacks-blockchain-api instance running on the ports 20443-20444:
+You can verify the stacks-blockchain instance running on the ports 20443-20444:
 
 ```sh
 $ docker ps --filter name=stacks-blockchain$
