@@ -57,7 +57,7 @@ Egress:
 - `8333`
 - `20443-20444`
 
-These egress ports are for syncing [`stacks-blockchain`][] and Bitcoin headers. If they're not open, the sync will fail.
+These egress ports are for syncing the `stacks-blockchain` and Bitcoin headers. If they're not open, the sync will fail.
 
 ## Step 1: Initial setup
 
@@ -153,9 +153,20 @@ docker ps --filter name=stacks-blockchain-api
 
 ## Step 4: Running Stacks blockchain
 
-In order for the API to be functional, the [`stacks-blockchain-api`][] container must have data from a running
-[`stacks-blockchain`][] instance. First create the `./config/Config.toml` file and add the following content to the
-file using a text editor:
+A usable API instance needs to have data from a running [stacks-blockchain](https://github.com/stacks-network/stacks-blockchain) instance.
+
+Because we're focusing on running the API with Docker, it also makes things easier if we run the stacks-blockchain-api instance similarly.
+
+With that in mind, you will need to have the following in your Config.toml - this config block will send blockchain events to the API instance that was started earlier:
+
+```toml
+[[events_observer]]
+endpoint = "<fqdn>:3700"
+retry_count = 255
+events_keys = ["*"]
+```
+
+Here is an example `Config.toml` that you can use. Create this file as ./config/Config.toml:
 
 ```toml
 [node]
@@ -190,7 +201,7 @@ read_only_call_limit_runtime = 1000000000
 The `[[events_observer]]` block configures the instance to send blockchain events to the API container that you
 started previously.
 
-Start the [`stacks-blockchain`][] container with the following command:
+Start the `stacks-blockchain` container with the following command:
 
 ```sh
 docker run -d --rm \
@@ -204,10 +215,12 @@ docker run -d --rm \
 /bin/stacks-node start --config /src/stacks-node/Config.toml
 ```
 
-You can verify the running [`stacks-blockchain`][] container with the command:
+You can verify the stacks-blockchain instance running on the ports 20443-20444:
 
 ```sh
-docker ps --filter name=stacks-blockchain
+$ docker ps --filter name=stacks-blockchain$
+CONTAINER ID   IMAGE                          COMMAND                  CREATED          STATUS          PORTS                                                                   NAMES
+199e37a324f1   blockstack/stacks-blockchain   "/bin/stacks-node st…"   1 minute ago   Up 1 minute   0.0.0.0:20443-20444->20443-20444/tcp, :::20443-20444->20443-20444/tcp   stacks-blockchain
 ```
 
 ## Step 5: Verifying the services
@@ -221,7 +234,7 @@ To verify the database is ready:
 2. List current databases with the command `\l`
 3. Disconnect from the database with the command `\q`
 
-To verify the [`stacks-blockchain`][] tip height is progressing use the following command:
+To verify the `stacks-blockchain` tip height is progressing use the following command:
 
 ```sh
 curl -sL localhost:20443/v2/info | jq
@@ -249,7 +262,7 @@ If the instance is running you should receive terminal output similar to the fol
 }
 ```
 
-Verify the [`stacks-blockchain-api`][] is receiving data from the [`stacks-blockchain`][] with the following command:
+Verify the `stacks-blockchain-api` is receiving data from the `stacks-blockchain` with the following command:
 
 ```sh
 curl -sL localhost:3999/v2/info | jq
