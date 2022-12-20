@@ -86,7 +86,7 @@ The initial header sync can take several minutes, until this is done the followi
 
 :::
 
-To verify the `stacks-blockchain-api` burn chain header sync progress:
+To verify the `stacks-blockchain` burn chain header sync progress:
 
 ```sh
 docker logs stacks-blockchain
