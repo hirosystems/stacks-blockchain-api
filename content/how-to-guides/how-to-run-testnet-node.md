@@ -72,7 +72,7 @@ docker run -d --rm \
 /bin/stacks-node xenon
 ```
 
-You can verify that the container `stacks-blockchain-api` is running with the command:
+You can verify that the container `stacks-blockchain` is running with the command:
 
 ```sh
 docker ps --filter name=stacks-blockchain
