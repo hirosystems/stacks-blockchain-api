@@ -60,7 +60,7 @@ mkdir -p ./stacks-node/persistent-data/stacks-blockchain/testnet && cd stacks-no
 
 ## Step 2: Running Stacks blockchain
 
-Start the `stacks-blockchain-api` container with the following command:
+Start the `stacks-blockchain` container with the following command:
 
 ```sh
 docker run -d --rm \
