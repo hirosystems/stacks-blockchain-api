@@ -72,16 +72,8 @@
   "release": {
     "branches": [
       "master",
-      {
-        "name": "beta",
-        "channel": "beta",
-        "prerelease": true
-      },
-      {
-        "name": "stacks-2.1",
-        "channel": "stacks-2.1",
-        "prerelease": true
-      }
+      {"name": "beta", "channel": "beta", "prerelease": true},
+      {"name": "stacks-2.1", "channel": "stacks-2.1", "prerelease": true}
     ],
     "plugins": [
       [
