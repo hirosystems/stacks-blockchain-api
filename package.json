@@ -72,8 +72,16 @@
   "release": {
     "branches": [
       "master",
-      {"name": "beta", "channel": "beta", "prerelease": true},
-      {"name": "stacks-2.1", "channel": "stacks-2.1", "prerelease": true}
+      {
+        "name": "beta",
+        "channel": "beta",
+        "prerelease": true
+      },
+      {
+        "name": "stacks-2.1",
+        "channel": "stacks-2.1",
+        "prerelease": true
+      }
     ],
     "plugins": [
       [
@@ -172,7 +180,7 @@
     "socket.io": "4.5.4",
     "source-map-support": "0.5.21",
     "split2": "3.2.2",
-    "stacks-encoding-native-js": "0.2.0-alpha.0",
+    "stacks-encoding-native-js": "0.2.0-beta.2",
     "strict-event-emitter-types": "2.0.0",
     "tiny-secp256k1": "2.2.1",
     "ts-unused-exports": "7.0.3",
