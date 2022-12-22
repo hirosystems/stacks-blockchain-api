@@ -1870,6 +1870,7 @@ export class PgWriteStore extends PgStore {
         bns_subdomains_imported = ${configState.bns_subdomains_imported},
         token_offering_imported = ${configState.token_offering_imported}
     `;
+    await this.notifier?.sendConfigState(configState);
     if (queryResult.count !== 1) {
       throw new Error(`Unexpected config update row count: ${queryResult.count}`);
     }
