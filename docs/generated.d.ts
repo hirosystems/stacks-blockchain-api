@@ -747,6 +747,7 @@ export interface TransactionEventAsset {
   recipient?: string;
   amount?: string;
   value?: string;
+  memo?: string;
 }
 /**
  * GET request that returns address balances
@@ -887,7 +888,7 @@ export interface InboundStxTransfer {
   /**
    * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
    */
-  transfer_type: "bulk-send" | "stx-transfer";
+  transfer_type: "bulk-send" | "stx-transfer" | "stx-transfer-memo";
   /**
    * Index of the transaction within a block
    */
@@ -1023,6 +1024,10 @@ export interface SmartContractTransactionMetadata {
   tx_type: "smart_contract";
   smart_contract: {
     /**
+     * The Clarity version of the contract, only specified for versioned contract transactions, otherwise null
+     */
+    clarity_version?: number;
+    /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
      */
     contract_id: string;
@@ -1087,6 +1092,10 @@ export interface CoinbaseTransactionMetadata {
      * Hex encoded 32-byte scratch space for block leader's use
      */
     data: string;
+    /**
+     * A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
+     */
+    alt_recipient?: string;
   };
 }
 /**
@@ -1600,6 +1609,7 @@ export interface ServerStatusResponse {
    * the current server status
    */
   status: string;
+  pox_v1_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**
@@ -1626,6 +1636,10 @@ export interface ChainTip {
    * the current microblock sequence number
    */
   microblock_sequence?: number;
+  /**
+   * the current burn chain block height
+   */
+  burn_block_height: number;
 }
 /**
  * GET request that returns network target block times

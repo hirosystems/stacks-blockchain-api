@@ -99,12 +99,13 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
       canonical: true,
       block_height: block1.block_height,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -124,6 +125,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -135,6 +137,7 @@ describe('smart contract tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -187,6 +190,7 @@ describe('smart contract tests', () => {
       tx_id: txId1,
       canonical: true,
       block_height: block1.block_height,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -242,6 +246,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -252,7 +257,111 @@ describe('smart contract tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual({
       tx_id: '0x421234',
       canonical: true,
+      clarity_version: null,
       contract_id: 'some-contract-id',
+      block_height: 1,
+      source_code: '(some-contract-src)',
+      abi: '{"some-abi":1}',
+    });
+  });
+
+  test('get versioned-contract by ID', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647996,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const txId1 = '0x421234';
+    const smartContract1: DbSmartContract = {
+      tx_id: txId1,
+      canonical: true,
+      block_height: block1.block_height,
+      clarity_version: 2,
+      contract_id: 'some-versioned-contract-id',
+      source_code: '(some-contract-src)',
+      abi: '{"some-abi":1}',
+    };
+    const tx1: DbTx = {
+      tx_id: txId1,
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '',
+      index_block_hash: '0x1234',
+      block_hash: '0x5678',
+      block_height: block1.block_height,
+      burn_block_time: 1594647995,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      parent_block_hash: '',
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      smart_contract_clarity_version: smartContract1.clarity_version ?? undefined,
+      smart_contract_contract_id: smartContract1.contract_id,
+      smart_contract_source_code: smartContract1.source_code,
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    await db.update({
+      block: block1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [smartContract1],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+        },
+      ],
+    });
+
+    const fetchTx = await supertest(api.server).get(
+      '/extended/v1/contract/some-versioned-contract-id'
+    );
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual({
+      tx_id: '0x421234',
+      canonical: true,
+      clarity_version: 2,
+      contract_id: 'some-versioned-contract-id',
       block_height: 1,
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -327,7 +436,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const contractJsonAbi = {
       maps: [],
@@ -1400,6 +1509,7 @@ describe('smart contract tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block1.block_height,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: JSON.stringify(contractJsonAbi),
@@ -1419,6 +1529,7 @@ describe('smart contract tests', () => {
           smartContracts: [smartContract1],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -1430,6 +1541,7 @@ describe('smart contract tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });

@@ -333,6 +333,7 @@ describe('search tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     };
@@ -446,6 +447,7 @@ describe('search tests', () => {
           anchor_mode: 'any',
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
           fee_rate: '1234',
           nonce: 0,
@@ -548,6 +550,7 @@ describe('search tests', () => {
           tx_type: 'coinbase',
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
         },
       },
@@ -1221,6 +1224,7 @@ describe('search tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block.block_height,
+      clarity_version: null,
       contract_id: contractAddr1,
       source_code: '(some-src)',
       abi: '{"some-abi":1}',
@@ -1241,6 +1245,7 @@ describe('search tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: stxTx2,
@@ -1252,6 +1257,7 @@ describe('search tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: smartContractTx,
@@ -1263,6 +1269,7 @@ describe('search tests', () => {
           smartContracts: [smartContract],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     };
@@ -1498,6 +1505,7 @@ describe('search tests', () => {
           post_conditions: [],
           sender_address: 'none',
           smart_contract: {
+            clarity_version: null,
             contract_id: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
             source_code: '(some-src)',
           },
@@ -1560,6 +1568,7 @@ describe('search tests', () => {
           receipt_time_iso: '1970-01-02T10:17:36.000Z',
           sender_address: 'none',
           smart_contract: {
+            clarity_version: null,
             contract_id: 'STSPS4JYDEYCPPCSHE3MM2NCEGR07KPBETNEZCBQ.contract-name',
             source_code: '(some-src)',
           },

@@ -27,7 +27,7 @@
     },
     "transfer_type": {
       "type": "string",
-      "enum": ["bulk-send", "stx-transfer"],
+      "enum": ["bulk-send", "stx-transfer", "stx-transfer-memo"],
       "description": "Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction"
     },
     "tx_index": {

@@ -3,6 +3,7 @@ import * as btc from 'bitcoinjs-lib';
 import * as Bluebird from 'bluebird';
 import { parsePort, time, logger, logError } from './helpers';
 import * as coinselect from 'coinselect';
+import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -12,15 +13,13 @@ function getFaucetPk(): string {
   return BTC_FAUCET_PK;
 }
 
-export function getFaucetAccount(
-  network: btc.Network
-): { key: btc.ECPairInterface; address: string } {
+export function getFaucetAccount(network: btc.Network): { key: ECPairInterface; address: string } {
   const pkBuffer = Buffer.from(getFaucetPk(), 'hex');
-  const key = btc.ECPair.fromPrivateKey(pkBuffer, { network: network });
+  const key = ECPair.fromPrivateKey(pkBuffer, { network: network });
   return { key, address: getKeyAddress(key) };
 }
 
-export function getKeyAddress(key: btc.ECPairInterface): string {
+export function getKeyAddress(key: ECPairInterface): string {
   const { address } = btc.payments.p2pkh({
     pubkey: key.publicKey,
     network: key.network,
@@ -212,7 +211,7 @@ export async function makeBtcFaucetPayment(
   });
 
   psbt.signAllInputs(faucetWallet.key);
-  if (!psbt.validateSignaturesOfAllInputs()) {
+  if (!psbt.validateSignaturesOfAllInputs(validateSigFunction)) {
     throw new Error('invalid psbt signature');
   }
   psbt.finalizeAllInputs();

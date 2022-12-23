@@ -141,6 +141,7 @@ describe('cache-control tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -286,6 +287,7 @@ describe('cache-control tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });

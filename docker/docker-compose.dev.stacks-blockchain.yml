@@ -15,3 +15,5 @@ services:
     volumes:
       - ../stacks-blockchain/:/app/config
       - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts

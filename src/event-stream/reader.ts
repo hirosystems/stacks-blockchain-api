@@ -298,6 +298,18 @@ export function parseMessageTransaction(
       case TxPayloadTypeID.Coinbase: {
         break;
       }
+      case TxPayloadTypeID.CoinbaseToAltRecipient: {
+        if (payload.recipient.type_id === PrincipalTypeID.Standard) {
+          logger.verbose(
+            `Coinbase to alt recipient, standard principal: ${payload.recipient.address}`
+          );
+        } else {
+          logger.verbose(
+            `Coinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}`
+          );
+        }
+        break;
+      }
       case TxPayloadTypeID.SmartContract: {
         logger.verbose(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
@@ -323,6 +335,12 @@ export function parseMessageTransaction(
       case TxPayloadTypeID.PoisonMicroblock: {
         logger.verbose(
           `Poison microblock: header1 ${payload.microblock_header_1}), header2: ${payload.microblock_header_2}`
+        );
+        break;
+      }
+      case TxPayloadTypeID.VersionedSmartContract: {
+        logger.verbose(
+          `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`
         );
         break;
       }

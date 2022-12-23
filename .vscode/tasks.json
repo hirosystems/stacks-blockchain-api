@@ -14,18 +14,59 @@
     {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
-      "command": "npm run devenv:deploy -- -d",
+      "command": "npm run devenv:deploy",
       "isBackground": true,
-      "problemMatcher": [
-        {
-          "pattern": [{ "regexp": ".", "file": 1, "location": 2, "message": 3, }],
-          "background": {
-            "activeOnStart": true,
-            "beginsPattern": ".",
-            "endsPattern": ".",
-          }
-        },
-      ]
+      "problemMatcher": {
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3, },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "deploy:krypton",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "stop:krypton",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml down -v -t 0",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      }
+    },
+    {
+      "label": "deploy:krypton-2.1-transition",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml up",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "stop:krypton-2.1-transition",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton-2.1-transition.yml down -v -t 0",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      }
     },
     {
       "label": "stacks-node:deploy-follower",

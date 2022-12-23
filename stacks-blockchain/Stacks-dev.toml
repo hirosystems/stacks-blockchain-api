@@ -37,3 +37,19 @@ amount = 10000000000000000
 address = "ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS"
 amount = 10000000000000000
 # secretKey = "08c14a1eada0dd42b667b40f59f7c8dedb12113613448dc04980aea20b268ddb01"
+
+[[burnchain.epochs]]
+epoch_name = "1.0"
+start_height = 0
+
+[[burnchain.epochs]]
+epoch_name = "2.0"
+start_height = 1
+
+[[burnchain.epochs]]
+epoch_name = "2.05"
+start_height = 2
+
+[[burnchain.epochs]]
+epoch_name = "2.1"
+start_height = 10000
