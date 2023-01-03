@@ -63,6 +63,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
+  convertTxQueryResultToDbMempoolTx,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -2165,13 +2166,51 @@ export class PgWriteStore extends PgStore {
     for (const txId of txIds) {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
-    const updateResults = await sql<{ tx_id: string }[]>`
+
+    const updatedRows = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = false
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
-    const restoredTxs = updateResults.map(r => r.tx_id);
+
+    const updatedTxs = updatedRows.map(r => r.tx_id);
+    for (const tx of updatedTxs) {
+      logger.verbose(`Updated mempool tx: ${tx}`);
+    }
+
+    let restoredTxs = updatedRows.map(r => r.tx_id);
+
+    // txs that didnt exist in the mempool need to be inserted into the mempool
+    if (updatedRows.length < txIds.length) {
+      const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
+
+      logger.verbose(
+        `To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`
+      );
+
+      const txs: TxQueryResult[] = await sql`
+        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
+        FROM txs
+        WHERE tx_id IN ${sql(txsRequiringInsertion)}
+        ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
+      `;
+
+      if (txs.length !== txsRequiringInsertion.length) {
+        logger.error(`Not all txs requiring insertion were found`);
+      }
+
+      const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
+
+      await this.updateMempoolTxs({ mempoolTxs });
+
+      restoredTxs = [...restoredTxs, ...txsRequiringInsertion];
+
+      for (const tx of mempoolTxs) {
+        logger.verbose(`Inserted mempool tx: ${tx.tx_id}`);
+      }
+    }
+
     return { restoredTxs: restoredTxs };
   }
 

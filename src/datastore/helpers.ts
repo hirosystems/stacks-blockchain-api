@@ -1159,3 +1159,21 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
     });
   });
 }
+
+export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTx[] {
+  const dbMempoolTxs: DbMempoolTx[] = [];
+  for (const tx of txs) {
+    const dbMempoolTx: DbMempoolTx = Object.assign(tx, {
+      pruned: false,
+      receipt_time: tx.burn_block_time,
+      fee_rate: BigInt(tx.fee_rate),
+      token_transfer_amount:
+        tx.token_transfer_amount != null
+          ? BigInt(tx.token_transfer_amount)
+          : tx.token_transfer_amount,
+      sponsor_address: tx.sponsor_address ?? undefined,
+    });
+    dbMempoolTxs.push(dbMempoolTx);
+  }
+  return dbMempoolTxs;
+}
