@@ -8,7 +8,6 @@ import * as http from 'http';
 import * as winston from 'winston';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as btc from 'bitcoinjs-lib';
-import * as BN from 'bn.js';
 import {
   BufferCV,
   bufferCV,
@@ -26,6 +25,7 @@ import {
 } from 'winston/lib/winston/config';
 import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
+import { isArrayBufferView } from 'node:util/types';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -133,7 +133,7 @@ export function loadDotEnv(): void {
   if (didLoadDotEnv) {
     return;
   }
-  const dotenvConfig = dotenv.config();
+  const dotenvConfig = dotenv.config({ silent: true });
   if (dotenvConfig.error) {
     logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
     throw dotenvConfig.error;
@@ -251,6 +251,12 @@ export function isValidBitcoinAddress(address: string): boolean {
   }
   try {
     btc.address.toOutputScript(address, btc.networks.testnet);
+    return true;
+  } catch (e) {
+    // ignore
+  }
+  try {
+    btc.address.toOutputScript(address, btc.networks.regtest);
     return true;
   } catch (e) {
     // ignore
@@ -526,6 +532,31 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+/**
+ * Decodes a hex string to a Buffer, trims the 0x-prefix if exists.
+ * If already a buffer, returns the input immediately.
+ */
+export function coerceToBuffer(hex: string | Buffer | ArrayBufferView): Buffer {
+  if (typeof hex === 'string') {
+    if (hex.startsWith('0x')) {
+      hex = hex.substring(2);
+    }
+    if (hex.length % 2 !== 0) {
+      throw new Error(`Hex string is an odd number of characters: ${hex}`);
+    }
+    if (!/^[0-9a-fA-F]*$/.test(hex)) {
+      throw new Error(`Hex string contains non-hexadecimal characters: ${hex}`);
+    }
+    return Buffer.from(hex, 'hex');
+  } else if (Buffer.isBuffer(hex)) {
+    return hex;
+  } else if (isArrayBufferView(hex)) {
+    return Buffer.from(hex.buffer, hex.byteOffset, hex.byteLength);
+  } else {
+    throw new Error(`Cannot convert to Buffer, unexpected type: ${hex.constructor.name}`);
+  }
+}
+
 export function hexToUtf8String(hex: string): string {
   const buffer = hexToBuffer(hex);
   return buffer.toString('utf8');
@@ -542,14 +573,55 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
-export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+export function unwrapOptional<T>(
+  val: T | null,
+  onNullish?: () => string
+): Exclude<T, undefined | null> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
   }
   if (val === null) {
     throw new Error(onNullish?.() ?? 'value is null');
   }
-  return val as Exclude<T, undefined>;
+  return val as Exclude<T, undefined | null>;
+}
+
+/**
+ * Provide an object and the key of a nullable / possibly-undefined property.
+ * The function will throw if the property value is null or undefined, otherwise
+ * the non-null / defined value is returned. Similar to {@link unwrapOptional}
+ * but with automatic useful error messages indicating the property key name.
+ * ```ts
+ * const myObj: {
+ *   thing1: string | null;
+ *   thing2: string | undefined;
+ *   thing3?: string;
+ * } = {
+ *   thing1: 'a',
+ *   thing2: 'b',
+ *   thing3: 'c',
+ * };
+ *
+ * // Unwrap type `string | null` to `string`
+ * const unwrapped1 = unwrapOptionalProp(myObj, 'thing1');
+ * // Unwrap type `string | undefined` to `string`
+ * const unwrapped2 = unwrapOptionalProp(myObj, 'thing2');
+ * // Unwrap type `string?` to `string`
+ * const unwrapped3 = unwrapOptionalProp(myObj, 'thing3');
+ * ```
+ */
+export function unwrapOptionalProp<TObj, TKey extends keyof TObj>(
+  obj: TObj,
+  key: TKey
+): Exclude<TObj[TKey], undefined | null> {
+  const val = obj[key];
+  if (val === undefined) {
+    throw new Error(`Value for property ${String(key)} is undefined`);
+  }
+  if (val === null) {
+    throw new Error(`Value for property ${String(key)} is null`);
+  }
+  return val as Exclude<TObj[TKey], undefined | null>;
 }
 
 export function assertNotNullish<T>(
@@ -632,16 +704,13 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
 
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
-function intMax(args: BN[]): BN;
-function intMax(args: bigint[] | number[] | BN[]): any {
+function intMax(args: bigint[] | number[]): any {
   if (args.length === 0) {
     throw new Error(`empty array not supported in intMax`);
   } else if (typeof args[0] === 'bigint') {
     return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
   } else if (typeof args[0] === 'number') {
     return Math.max(...(args as number[]));
-  } else if (BN.isBN(args[0])) {
-    return (args as BN[]).reduce((m, e) => (e.gt(m) ? e : m));
   } else {
     // eslint-disable-next-line @typescript-eslint/ban-types
     throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
@@ -954,7 +1023,9 @@ export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
   const name = tuple.data.name as BufferCV;
   const namespace = tuple.data.namespace as BufferCV;
-  return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
+  return `${Buffer.from(name.buffer).toString('utf8')}.${Buffer.from(namespace.buffer).toString(
+    'utf8'
+  )}`;
 }
 
 export function getBnsSmartContractId(chainId: ChainID): string {
@@ -1019,4 +1090,13 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
         throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
     }
   });
+}
+
+export function doesThrow(fn: () => void) {
+  try {
+    fn();
+    return false;
+  } catch {
+    return true;
+  }
 }

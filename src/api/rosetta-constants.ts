@@ -44,24 +44,32 @@ export enum RosettaOperationType {
   StackStx = 'stack_stx',
   DelegateStx = 'delegate_stx',
   RevokeDelegateStx = 'revoke_delegate_stx',
+  // todo: add new pox-2 methods
 }
 
-export const RosettaOperationTypes = [
-  RosettaOperationType.TokenTransfer,
-  RosettaOperationType.ContractCall,
-  RosettaOperationType.SmartContract,
-  RosettaOperationType.Coinbase,
-  RosettaOperationType.PoisonMicroblock,
-  RosettaOperationType.Fee,
-  RosettaOperationType.Mint,
-  RosettaOperationType.Burn,
-  RosettaOperationType.MinerReward,
-  RosettaOperationType.StxLock, // stx event
-  RosettaOperationType.StxUnlock, // forged event
-  RosettaOperationType.StackStx, // PoX contract function
-  RosettaOperationType.DelegateStx, // PoX contract function
-  RosettaOperationType.RevokeDelegateStx, // PoX contract function
-];
+type RosettaOperationTypeUnion = `${RosettaOperationType}`;
+
+// Function that leverages typescript to ensure a given array contains all values from a type union
+const arrayOfAllOpTypes = <T extends RosettaOperationTypeUnion[]>(
+  array: T & ([RosettaOperationTypeUnion] extends [T[number]] ? unknown : 'Invalid')
+) => array;
+
+export const RosettaOperationTypes = arrayOfAllOpTypes([
+  'token_transfer',
+  'contract_call',
+  'smart_contract',
+  'coinbase',
+  'poison_microblock',
+  'fee',
+  'mint',
+  'burn',
+  'miner_reward',
+  'stx_lock',
+  'stx_unlock',
+  'stack_stx',
+  'delegate_stx',
+  'revoke_delegate_stx',
+]) as RosettaOperationType[];
 
 export const RosettaOperationStatuses = [
   {
@@ -469,7 +477,13 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
   },
 };
 
-export const enum PoxContractIdentifier {
-  mainnet = 'SP000000000000000000002Q6VF78.pox',
-  testnet = 'ST000000000000000000002AMW42H.pox',
-}
+export const PoxContractIdentifier = {
+  pox1: {
+    mainnet: 'SP000000000000000000002Q6VF78.pox',
+    testnet: 'ST000000000000000000002AMW42H.pox',
+  },
+  pox2: {
+    mainnet: 'SP000000000000000000002Q6VF78.pox-2',
+    testnet: 'ST000000000000000000002AMW42H.pox-2',
+  },
+} as const;

@@ -120,6 +120,7 @@ describe('other tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -169,6 +170,7 @@ describe('other tests', () => {
       mature_block_height: dbBlock1.block_height,
       canonical: true,
       recipient: testAddr1,
+      miner_address: testAddr1,
       coinbase_amount: 15_000_000_000_000n,
       tx_fees_anchored: 1_000_000_000_000n,
       tx_fees_streamed_confirmed: 2_000_000_000_000n,
