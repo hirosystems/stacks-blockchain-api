@@ -198,7 +198,7 @@ export function createTxRouter(db: PgStore): express.Router {
     '/events',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit']);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 200);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
 
       const principalOrTxId = parseAddressOrTxId(req, res, next);
