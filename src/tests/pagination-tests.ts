@@ -25,4 +25,7 @@ describe('getPagingQueryLimit()', () => {
   test('Error is thrown when value is larger than input', () => {
     expect(() => getPagingQueryLimit(ResourceType.Block, 31)).toThrowError();
   });
+  test('Error is NOT thrown when value is larger than input but a maxLimitOverride has been provided', () => {
+    expect(() => getPagingQueryLimit(ResourceType.Tx, 100, 200)).not.toThrowError();
+  });
 });
