@@ -442,7 +442,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
           }
 
-          const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit, 500);
+          const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
           const offset = parsePagingQueryInput(req.query.offset ?? 0);
           const { results, total } = await db.getInboundTransfers({
             stxAddress,
