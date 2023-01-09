@@ -3290,7 +3290,7 @@ export class PgStore {
           n.event_index DESC
         LIMIT 1
       `;
-      if (nameZonefile.length === 0) {
+      if (nameZonefile.length === 0 || nameZonefile[0].status === 'name-revoke') {
         return;
       }
       return nameZonefile[0];

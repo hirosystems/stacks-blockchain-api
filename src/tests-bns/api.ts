@@ -724,6 +724,23 @@ describe('BNS API tests', () => {
     const query1 = await supertest(api.server).get(`/v1/names/xyz.abc`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: 'xyz.abc',
+        status: 'name-revoke',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+      })
+      .build();
+    await db.update(block2);
+
+    const query2 = await supertest(api.server).get(`/v1/names/xyz.abc`);
+    expect(query2.status).toBe(404);
   });
 
   test('Validate: name info response schema', async () => {
