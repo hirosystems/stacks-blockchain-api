@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
@@ -8,7 +7,6 @@ import {
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
 import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
-import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
@@ -27,9 +25,8 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { RPCClient } from 'rpc-bitcoin';
-import * as bitcore from 'bitcore-lib';
 import * as btc from 'bitcoinjs-lib';
+import { c32ToB58 } from 'c32check';
 
 // MINER_SEED 9e446f6b0c6a96cf2190e54bcd5a8569c3e386f091605499464389b8d4e0bfc201
 // stx: STEW4ZNT093ZHK4NEQKX8QJGM2Y7WWJ2FQQS5C19
@@ -114,16 +111,6 @@ function decodeLeaderBlockCommit(txOutScript: string) {
   };
 }
 
-function testDecode() {
-  const hex =
-    '6a4c5069645b80d4f52de24e3995661a8f6baa4b6e5430702d560857874c2090385284d1d3c78d900ab62946b447f9d938ee240f49c35029065d933d03976dd2e53d317ce78200000070000100000066000133';
-  // const script = bitcoinjs.script.decompile(Buffer.from(hex, 'hex'));
-  // const opCodes = bitcoinjs.opcodes;
-  const decoded = decodeLeaderBlockCommit(hex);
-  console.log(decoded);
-}
-testDecode();
-
 async function disableAutoBtcMining() {
   const HALT_MINING_COMMENT = 'HALT_MINING';
   const altBtcAcc = generateBitcoinAccount({ network: 'regtest', addressFormat: 'p2pkh' });
@@ -181,98 +168,84 @@ async function startBtcMiningController() {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;
-type TxInput = ArgumentTypes<InstanceType<typeof btc.Psbt>['addInput']>[0];
-
-const validator = (pubkey: Buffer, msghash: Buffer, signature: Buffer) =>
-  ECPair.fromPublicKey(pubkey).verify(msghash, signature);
-
 async function createPox2StackStx() {
-  const btcOpCodes = btc.opcodes;
-  console.log(btcOpCodes);
-  const unspent: any[] = await testEnv.bitcoinRpcClient.listunspent({});
-  const unspent1 = unspent[0];
-  const unspent1Raw = await testEnv.bitcoinRpcClient.getrawtransaction({ txid: unspent1.txid });
+  const poxInfo = await testEnv.client.getPox();
+  const stxAmount = BigInt(poxInfo.min_amount_ustx * 1.2);
+  const stxCycleCount = 1;
+  const stackerAddr = 'STEW4ZNT093ZHK4NEQKX8QJGM2Y7WWJ2FQQS5C19';
+
+  const utxos: any[] = await testEnv.bitcoinRpcClient.listunspent({});
+  const utxo = utxos[0];
+  const utxoRawTx = await testEnv.bitcoinRpcClient.getrawtransaction({ txid: utxo.txid });
   const btcAccount = ECPair.fromWIF(BTC_MINER_WIF, btc.networks.regtest);
-  const preOpTxInput: TxInput = {
-    hash: unspent1.txid,
-    index: unspent1.vout,
-    // witnessUtxo: {
-    //   script: Buffer.from(unspent1.scriptPubKey, 'hex'),
-    //   value: unspent1.amount * 100000000,
-    // },
-    nonWitnessUtxo: Buffer.from(unspent1Raw, 'hex'),
-  };
-  const magic = Buffer.from('id');
-  const preStxOpCode = Buffer.from('p');
-  const preOpTxOut1 = btc.payments.embed({ data: [Buffer.concat([magic, preStxOpCode])] }).output!;
-  // const preOpTxOut1 = btc.script.compile([
-  //   btc.opcodes.OP_RETURN,
-  //   btc.opcodes.OP_PUSHDATA1,
-  //   Buffer.concat([magic, preStxOpCode]),
-  // ]);
-  const preOpTxOut2 = btc.payments.p2pkh({
-    address: BTC_MINER_ADDR,
-    network: btc.networks.regtest,
-  });
-  const testASM = btc.script.toASM(preOpTxOut2.output!);
-  console.log(testASM);
   const feeAmount = 0.0001;
   const sats = 100000000;
-  const preOpTxPsbt = new btc.Psbt({ network: btc.networks.regtest })
+
+  // PreStxOp: this operation prepares the Stacks blockchain node to validate the subsequent StackStxOp or TransferStxOp.
+  // 0      2  3
+  // |------|--|
+  //  magic  op
+  const preStxOpPayload = Buffer.concat([
+    Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
+    Buffer.from('p'), // op: 'p' ascii encoded
+  ]);
+  const outAmount1 = Math.round((utxo.amount - feeAmount) * sats);
+  const preStxOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
-    .addInput(preOpTxInput)
+    .addInput({
+      hash: utxo.txid,
+      index: utxo.vout,
+      nonWitnessUtxo: Buffer.from(utxoRawTx, 'hex'),
+    })
     .addOutput({
-      script: preOpTxOut1,
+      script: btc.payments.embed({ data: [preStxOpPayload] }).output!,
       value: 0,
     })
+    // Then, the second Bitcoin output must be Stacker address that will be used in a StackStxOp.
+    // This address must be a standard address type parseable by the stacks-blockchain node.
     .addOutput({
-      script: preOpTxOut2.output!,
-      value: Math.round((unspent1.amount - feeAmount) * sats),
+      address: BTC_MINER_ADDR,
+      value: outAmount1,
     })
     .signInput(0, btcAccount)
-    .finalizeAllInputs();
-  const preOpTx = preOpTxPsbt.extractTransaction(false);
-  const preOpTxHex = preOpTx.toHex();
+    .finalizeAllInputs()
+    .extractTransaction(false)
+    .toHex();
   const preOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
-    hexstring: preOpTxHex,
+    hexstring: preStxOpTxHex,
   });
-  console.log(`_________PRE-OP-TX: `, preOpTxId);
 
-  const poxInfo = await testEnv.client.getPox();
-  const minStx = BigInt(poxInfo.min_amount_ustx * 1.2);
-  const stackStxOpCode = Buffer.from('x');
-  const stxAmountBytes = Buffer.from(minStx.toString(16).padStart(32, '0'), 'hex');
-  const stxCycleCount = Buffer.from([1]);
-  const stackOpTxOut1 = btc.payments.embed({
-    data: [Buffer.concat([magic, stackStxOpCode, stxAmountBytes, stxCycleCount])],
-  }).output!;
-  // const stackOpTxOut1 = btc.script.compile([
-  //   btc.opcodes.OP_RETURN,
-  //   btc.opcodes.OP_PUSHDATA1,
-  //   Buffer.concat([magic, stackStxOpCode, stxAmountBytes, stxCycleCount]),
-  // ]);
-  const stackOpTxOut2 = btc.payments.p2pkh({
-    address: BTC_MINER_ADDR,
-    network: btc.networks.regtest,
-  }).output!;
-  const stackOpTxPsbt = new btc.Psbt({ network: btc.networks.regtest })
+  // StackStxOp: this operation executes the stack-stx operation.
+  // 0      2  3                             19        20
+  // |------|--|-----------------------------|---------|
+  //  magic  op         uSTX to lock (u128)     cycles (u8)
+  const stackOpTxPayload = Buffer.concat([
+    Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
+    Buffer.from('x'), // op: 'x' ascii encoded,
+    Buffer.from(stxAmount.toString(16).padStart(32, '0'), 'hex'), // uSTX to lock (u128)
+    Buffer.from([stxCycleCount]), // cycles (u8)
+  ]);
+  const stackOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
-    .addInput({ hash: preOpTx.getId(), index: 1, nonWitnessUtxo: Buffer.from(preOpTxHex, 'hex') })
-    .addOutput({ script: stackOpTxOut1, value: 0 })
+    .addInput({ hash: preOpTxId, index: 1, nonWitnessUtxo: Buffer.from(preStxOpTxHex, 'hex') })
+    // The first input to the Bitcoin operation must consume a UTXO that is the second output of a PreStxOp.
+    // This validates that the StackStxOp was signed by the appropriate Stacker address.
     .addOutput({
-      script: stackOpTxOut2,
-      value: Math.round(preOpTx.outs[1].value - feeAmount * sats),
+      script: btc.payments.embed({ data: [stackOpTxPayload] }).output!,
+      value: 0,
+    })
+    // The second Bitcoin output will be used as the reward address for any stacking rewards.
+    .addOutput({
+      address: c32ToB58(stackerAddr),
+      value: Math.round(outAmount1 - feeAmount * sats),
     })
     .signInput(0, btcAccount)
-    .finalizeAllInputs();
-  const stackOpTx = stackOpTxPsbt.extractTransaction(false);
-  const stackOpTxHex = stackOpTx.toHex();
+    .finalizeAllInputs()
+    .extractTransaction(false)
+    .toHex();
   const stackOpTxId: string = await testEnv.bitcoinRpcClient.sendrawtransaction({
     hexstring: stackOpTxHex,
   });
-  console.log(`_________STACK-STX-TX: `, stackOpTxId);
 
   while (true) {
     const preOpTxResult = await testEnv.bitcoinRpcClient.gettransaction({
