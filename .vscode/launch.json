@@ -239,13 +239,11 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.2.1.js",
-        "--testPathPattern",
-        "pox-2-btc-pox2-ops"
+        "${workspaceRoot}/tests/jest.config.2.1.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      // "preLaunchTask": "deploy:krypton",
+      "preLaunchTask": "deploy:krypton",
       "postDebugTask": "stop:krypton",
       "smartStep": false,
       "sourceMaps": true,
