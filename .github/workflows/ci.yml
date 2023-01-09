@@ -415,6 +415,7 @@ jobs:
           pox-2-rosetta-btc-addr-types,
           pox-2-rosetta-cycle-phases,
           pox-2-rosetta-segwit,
+          pox-2-btc-pox2-ops,
         ]
     runs-on: ubuntu-latest
     steps:
