@@ -225,7 +225,7 @@ export interface VerboseKeyOutput {
   publicKey: Buffer;
 }
 
-export type BitcoinAddressFormat =
+type BitcoinAddressFormat =
   | 'p2pkh'
   | 'p2sh'
   | 'p2sh-p2wpkh'
@@ -276,21 +276,4 @@ export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
 export function privateToPublicKey(privateKey: string | Buffer): Buffer {
   const ecPair = ecPairFromKeyInputArgs({ privateKey, network: 'mainnet' });
   return ecPair.publicKey;
-}
-
-export function generateBitcoinAccount({
-  network,
-  addressFormat,
-}: {
-  network: keyof typeof BITCOIN_NETWORKS;
-  addressFormat: BitcoinAddressFormat;
-}): VerboseKeyOutput {
-  const ec = ECPair.makeRandom({ compressed: true, network: BITCOIN_NETWORKS[network] });
-  const privateKey = ec.privateKey as Buffer;
-  return getBitcoinAddressFromKey({
-    network,
-    privateKey,
-    addressFormat,
-    verbose: true,
-  });
 }
