@@ -509,6 +509,7 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
           SEMANTIC_RELEASE_PACKAGE: ${{ github.event.repository.name }}
         with:
+          semantic_version: 19
           extra_plugins: |
             @semantic-release/changelog
             @semantic-release/git
