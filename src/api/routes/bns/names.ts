@@ -33,6 +33,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
         name: name,
         zoneFileHash: zoneFileHash,
         includeUnanchored,
+        chainId,
       });
       if (zonefile.found) {
         setETagCacheHeaders(res);

@@ -3312,6 +3312,7 @@ export class PgStore {
     name: string;
     zoneFileHash: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, {
@@ -3323,6 +3324,14 @@ export class PgStore {
       // were imported from Stacks v1 and they don't have an associated tx.
       const isSubdomain = args.name.split('.').length > 2;
       if (isSubdomain) {
+        const parentNameStatus = await this.getName({
+          name: args.name.split('.').slice(-2).join('.'),
+          includeUnanchored: args.includeUnanchored,
+          chainId: args.chainId,
+        });
+        if (!parentNameStatus.found) {
+          return [] as { zonefile: string }[];
+        }
         return sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
@@ -3339,6 +3348,14 @@ export class PgStore {
           LIMIT 1
         `;
       } else {
+        const nameStatus = await this.getName({
+          name: args.name,
+          includeUnanchored: args.includeUnanchored,
+          chainId: args.chainId,
+        });
+        if (!nameStatus.found) {
+          return [] as { zonefile: string }[];
+        }
         return sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
@@ -3384,9 +3401,9 @@ export class PgStore {
           chainId,
         });
         if (!parentNameStatus.found) {
-          return;
+          return [] as { zonefile: string }[];
         }
-        const result = await sql<{ zonefile: string }[]>`
+        return sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
           INNER JOIN subdomains AS s ON
@@ -3400,16 +3417,12 @@ export class PgStore {
           ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
           LIMIT 1
         `;
-        if (result.length === 0) {
-          return;
-        }
-        return result[0];
       } else {
         const nameStatus = await this.getName({ name, includeUnanchored, chainId });
         if (!nameStatus.found) {
-          return;
+          return [] as { zonefile: string }[];
         }
-        const result = await sql<{ zonefile: string }[]>`
+        return sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
           INNER JOIN names AS n USING (name, tx_id, index_block_hash)
@@ -3420,16 +3433,12 @@ export class PgStore {
           ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
           LIMIT 1
         `;
-        if (result.length === 0) {
-          return;
-        }
-        return result[0];
       }
     });
-    if (queryResult) {
+    if (queryResult.length > 0) {
       return {
         found: true,
-        result: queryResult,
+        result: queryResult[0],
       };
     }
     return { found: false } as const;

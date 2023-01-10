@@ -355,6 +355,32 @@ describe('BNS API tests', () => {
     expect(query2.status).toBe(200);
     expect(query2.body.zonefile).toBe(subdomain.zonefile);
     expect(query2.type).toBe('application/json');
+
+    // Revoke name
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: 'test.btc',
+        status: 'name-revoke',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+      })
+      .addTxBnsName({
+        name: 'id.blockstack',
+        status: 'name-revoke',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+      })
+      .build();
+    await db.update(block3);
+    const query3 = await supertest(api.server).get(
+      `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile/${subdomain.zonefile_hash}`
+    );
+    expect(query3.status).toBe(404);
+    const query4 = await supertest(api.server).get(`/v1/names/${name}/zonefile/${zonefileHash}`);
+    expect(query4.status).toBe(404);
   });
 
   test('Fail zonefile by name - Invalid name', async () => {
