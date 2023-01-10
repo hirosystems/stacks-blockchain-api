@@ -49,7 +49,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored, chainId });
       setETagCacheHeaders(res);
       res.json(subdomainsList.results);
     })

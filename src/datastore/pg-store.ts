@@ -3524,12 +3524,18 @@ export class PgStore {
   async getSubdomainsListInName({
     name,
     includeUnanchored,
+    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<{ results: string[] }> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const status = await this.getName({ name, includeUnanchored, chainId });
+      if (!status.found) {
+        return [] as { fully_qualified_subdomain: string }[];
+      }
       return await sql<{ fully_qualified_subdomain: string }[]>`
         SELECT DISTINCT ON (fully_qualified_subdomain) fully_qualified_subdomain
         FROM subdomains

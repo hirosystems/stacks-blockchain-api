@@ -86,6 +86,21 @@ describe('BNS API tests', () => {
           '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
         zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
       })
+      .addTxNftEvent({
+        asset_event_type_id: DbAssetEventTypeId.Mint,
+        value: bnsNameCV('id.blockstack'),
+        asset_identifier: 'ST000000000000000000002AMW42H.bns::names',
+        recipient: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+      })
+      .addTxBnsName({
+        name: 'id.blockstack',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
+        namespace_id: 'blockstack',
+        expire_block: 14,
+        zonefile:
+          '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
+        zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
+      })
       .build();
     dbBlock = block.block;
     await db.update(block);
@@ -117,6 +132,34 @@ describe('BNS API tests', () => {
         microblock_canonical: true,
       },
       namespace
+    );
+    const namespace2: DbBnsNamespace = {
+      namespace_id: 'blockstack',
+      address: 'ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH',
+      base: 1n,
+      coeff: 1n,
+      launched_at: 14,
+      lifetime: 1,
+      no_vowel_discount: 1,
+      nonalpha_discount: 1,
+      ready_block: dbBlock.block_height,
+      reveal_block: 6,
+      status: 'ready',
+      buckets: '1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1',
+      canonical: true,
+      tx_id: '',
+      tx_index: 0,
+    };
+    await db.updateNamespaces(
+      client,
+      {
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        microblock_hash: '',
+        microblock_sequence: I32_MAX,
+        microblock_canonical: true,
+      },
+      namespace2
     );
   });
 
@@ -897,11 +940,28 @@ describe('BNS API tests', () => {
       },
       [subdomain]
     );
-    const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains/`);
+    const query = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains`);
     const expectedResult =  [
       'zone_test.id.blockstack',
     ];
     expect(query.body).toEqual(expectedResult);
+
+    // Revoke name
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: 'id.blockstack',
+        status: 'name-revoke',
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP'
+      })
+      .build();
+    await db.update(block2);
+    const query2 = await supertest(api.server).get(`/v1/names/id.blockstack/subdomains`);
+    expect(query2.body).toEqual([]);
   });
 
   test('name is returned correctly after a micro re-orgd transfer', async () => {
