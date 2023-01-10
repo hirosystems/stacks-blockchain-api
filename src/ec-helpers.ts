@@ -225,9 +225,18 @@ export interface VerboseKeyOutput {
   publicKey: Buffer;
 }
 
+type BitcoinAddressFormat =
+  | 'p2pkh'
+  | 'p2sh'
+  | 'p2sh-p2wpkh'
+  | 'p2sh-p2wsh'
+  | 'p2wpkh'
+  | 'p2wsh'
+  | 'p2tr';
+
 export function getBitcoinAddressFromKey<TVerbose extends boolean = false>(
   args: KeyInputArgs & {
-    addressFormat: 'p2pkh' | 'p2sh' | 'p2sh-p2wpkh' | 'p2sh-p2wsh' | 'p2wpkh' | 'p2wsh' | 'p2tr';
+    addressFormat: BitcoinAddressFormat;
     verbose?: TVerbose;
   }
 ): TVerbose extends true ? VerboseKeyOutput : string {

@@ -46,6 +46,8 @@ import {
   bufferCV,
   serializeCV,
 } from '@stacks/transactions';
+import { poxAddressToTuple } from '@stacks/stacking';
+import { c32ToB58 } from 'c32check';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -92,12 +94,11 @@ function createTransactionFromCoreBtcStxLockEvent(
     chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
   const poxAddress = decodeStacksAddress(poxAddressString);
 
+  const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
+
   const legacyClarityVals = [
-    uintCV(lockAmount.value),
-    tupleCV({
-      hashbytes: bufferCV(hexToBuffer(stacker.address_hash_bytes)),
-      version: bufferCV(Buffer.from([stacker.address_version])),
-    }),
+    uintCV(lockAmount.value), // amount-ustx
+    poxAddressToTuple(c32ToB58(stacker.address)), // pox-addr
     uintCV(burnBlockHeight), // start-burn-height
     uintCV(lockPeriod), // lock-period
   ];
@@ -137,7 +138,7 @@ function createTransactionFromCoreBtcStxLockEvent(
       address: poxAddressString,
       address_version: poxAddress[0],
       address_hash_bytes: poxAddress[1],
-      contract_name: 'pox',
+      contract_name: contractName,
       function_name: 'stack-stx',
       function_args: clarityFnArgs,
       function_args_buffer: rawFnArgs,
@@ -245,23 +246,29 @@ export function parseMessageTransaction(
     let txSender: string;
     let sponsorAddress: string | undefined = undefined;
     if (coreTx.raw_tx === '0x00') {
-      const event = allEvents.find(event => event.txid === coreTx.txid);
-      if (!event) {
+      const events = allEvents.filter(event => event.txid === coreTx.txid);
+      if (events.length === 0) {
         logger.warn(`Could not find event for process BTC tx: ${JSON.stringify(coreTx)}`);
         return null;
       }
-      if (event.type === CoreNodeEventType.StxTransferEvent) {
-        rawTx = createTransactionFromCoreBtcTxEvent(chainId, event, coreTx.txid);
-        txSender = event.stx_transfer_event.sender;
-      } else if (event.type === CoreNodeEventType.StxLockEvent) {
+      const stxTransferEvent = events.find(
+        (e): e is StxTransferEvent => e.type === CoreNodeEventType.StxTransferEvent
+      );
+      const stxLockEvent = events.find(
+        (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
+      );
+      if (stxTransferEvent) {
+        rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
+        txSender = stxTransferEvent.stx_transfer_event.sender;
+      } else if (stxLockEvent) {
         rawTx = createTransactionFromCoreBtcStxLockEvent(
           chainId,
-          event,
+          stxLockEvent,
           blockData.burn_block_height,
           coreTx.raw_result,
           coreTx.txid
         );
-        txSender = event.stx_lock_event.locked_address;
+        txSender = stxLockEvent.stx_lock_event.locked_address;
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
