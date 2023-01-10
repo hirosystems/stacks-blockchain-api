@@ -88,17 +88,7 @@ import {
   unsafeCols,
   validateZonefileHash,
 } from './helpers';
-import {
-  PgAddressNotificationPayload,
-  PgBlockNotificationPayload,
-  PgMicroblockNotificationPayload,
-  PgNameNotificationPayload,
-  PgNftEventNotificationPayload,
-  PgNotifier,
-  PgTokenMetadataNotificationPayload,
-  PgTokensNotificationPayload,
-  PgTxNotificationPayload,
-} from './pg-notifier';
+import { PgNotifier } from './pg-notifier';
 import { AsyncLocalStorage } from 'async_hooks';
 
 export type UnwrapPromiseArray<T> = T extends any[]
@@ -208,36 +198,46 @@ export class PgStore {
     await this.notifier?.connect(notification => {
       switch (notification.type) {
         case 'blockUpdate':
-          const block = notification.payload as PgBlockNotificationPayload;
-          this.eventEmitter.emit('blockUpdate', block.blockHash);
+          this.eventEmitter.emit('blockUpdate', notification.payload.blockHash);
           break;
         case 'microblockUpdate':
-          const microblock = notification.payload as PgMicroblockNotificationPayload;
-          this.eventEmitter.emit('microblockUpdate', microblock.microblockHash);
+          this.eventEmitter.emit('microblockUpdate', notification.payload.microblockHash);
           break;
         case 'txUpdate':
-          const tx = notification.payload as PgTxNotificationPayload;
-          this.eventEmitter.emit('txUpdate', tx.txId);
+          this.eventEmitter.emit('txUpdate', notification.payload.txId);
           break;
         case 'addressUpdate':
-          const address = notification.payload as PgAddressNotificationPayload;
-          this.eventEmitter.emit('addressUpdate', address.address, address.blockHeight);
+          this.eventEmitter.emit(
+            'addressUpdate',
+            notification.payload.address,
+            notification.payload.blockHeight
+          );
           break;
         case 'tokensUpdate':
-          const tokens = notification.payload as PgTokensNotificationPayload;
-          this.eventEmitter.emit('tokensUpdate', tokens.contractID);
+          this.eventEmitter.emit('tokensUpdate', notification.payload.contractID);
           break;
         case 'nameUpdate':
-          const name = notification.payload as PgNameNotificationPayload;
-          this.eventEmitter.emit('nameUpdate', name.nameInfo);
+          this.eventEmitter.emit('nameUpdate', notification.payload.nameInfo);
           break;
         case 'tokenMetadataUpdateQueued':
-          const metadata = notification.payload as PgTokenMetadataNotificationPayload;
-          this.eventEmitter.emit('tokenMetadataUpdateQueued', metadata.queueId);
+          this.eventEmitter.emit('tokenMetadataUpdateQueued', notification.payload.queueId);
           break;
         case 'nftEventUpdate':
-          const nftEvent = notification.payload as PgNftEventNotificationPayload;
-          this.eventEmitter.emit('nftEventUpdate', nftEvent.txId, nftEvent.eventIndex);
+          this.eventEmitter.emit(
+            'nftEventUpdate',
+            notification.payload.txId,
+            notification.payload.eventIndex
+          );
+          break;
+        case 'smartContractUpdate':
+          this.eventEmitter.emit('smartContractUpdate', notification.payload.contractId);
+          break;
+        case 'smartContractLogUpdate':
+          this.eventEmitter.emit(
+            'smartContractLogUpdate',
+            notification.payload.txId,
+            notification.payload.eventIndex
+          );
           break;
       }
     });

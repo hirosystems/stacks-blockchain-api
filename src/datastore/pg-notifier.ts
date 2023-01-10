@@ -2,64 +2,63 @@ import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
-type PgNotificationType =
-  | 'blockUpdate'
-  | 'microblockUpdate'
-  | 'txUpdate'
-  | 'nftEventUpdate'
-  | 'addressUpdate'
-  | 'nameUpdate'
-  | 'tokenMetadataUpdateQueued'
-  | 'tokensUpdate';
-
-export type PgTxNotificationPayload = {
+type PgTxNotificationPayload = {
   txId: string;
 };
 
-export type PgBlockNotificationPayload = {
+type PgBlockNotificationPayload = {
   blockHash: string;
 };
 
-export type PgMicroblockNotificationPayload = {
+type PgMicroblockNotificationPayload = {
   microblockHash: string;
 };
 
-export type PgNftEventNotificationPayload = {
+type PgNftEventNotificationPayload = {
   txId: string;
   eventIndex: number;
 };
 
-export type PgAddressNotificationPayload = {
+type PgAddressNotificationPayload = {
   address: string;
   blockHeight: number;
 };
 
-export type PgTokenMetadataNotificationPayload = {
+type PgTokenMetadataNotificationPayload = {
   queueId: number;
 };
 
-export type PgNameNotificationPayload = {
+type PgNameNotificationPayload = {
   nameInfo: string;
 };
 
-export type PgTokensNotificationPayload = {
+type PgSmartContractNotificationPayload = {
+  contractId: string;
+};
+
+type PgSmartContractLogNotificationPayload = {
+  txId: string;
+  eventIndex: number;
+};
+
+type PgTokensNotificationPayload = {
   contractID: string;
 };
 
-type PgNotificationPayload =
-  | PgAddressNotificationPayload
-  | PgBlockNotificationPayload
-  | PgMicroblockNotificationPayload
-  | PgNameNotificationPayload
-  | PgNftEventNotificationPayload
-  | PgTokenMetadataNotificationPayload
-  | PgTokensNotificationPayload
-  | PgTxNotificationPayload;
-
-type PgNotification = {
-  type: PgNotificationType;
-  payload: PgNotificationPayload;
-};
+/**
+ * API notifications to be sent via Postgres `NOTIFY` queries.
+ */
+type PgNotification =
+  | { type: 'blockUpdate'; payload: PgBlockNotificationPayload }
+  | { type: 'microblockUpdate'; payload: PgMicroblockNotificationPayload }
+  | { type: 'txUpdate'; payload: PgTxNotificationPayload }
+  | { type: 'nftEventUpdate'; payload: PgNftEventNotificationPayload }
+  | { type: 'addressUpdate'; payload: PgAddressNotificationPayload }
+  | { type: 'nameUpdate'; payload: PgNameNotificationPayload }
+  | { type: 'tokenMetadataUpdateQueued'; payload: PgTokenMetadataNotificationPayload }
+  | { type: 'tokensUpdate'; payload: PgTokensNotificationPayload }
+  | { type: 'smartContractUpdate'; payload: PgSmartContractNotificationPayload }
+  | { type: 'smartContractLogUpdate'; payload: PgSmartContractLogNotificationPayload };
 
 type PgNotificationCallback = (notification: PgNotification) => void;
 
@@ -117,6 +116,14 @@ export class PgNotifier {
 
   public async sendName(payload: PgNameNotificationPayload) {
     await this.notify({ type: 'nameUpdate', payload: payload });
+  }
+
+  public async sendSmartContract(payload: PgSmartContractNotificationPayload) {
+    await this.notify({ type: 'smartContractUpdate', payload: payload });
+  }
+
+  public async sendSmartContractLog(payload: PgSmartContractLogNotificationPayload) {
+    await this.notify({ type: 'smartContractLogUpdate', payload: payload });
   }
 
   public async sendTokenMetadata(payload: PgTokenMetadataNotificationPayload) {
