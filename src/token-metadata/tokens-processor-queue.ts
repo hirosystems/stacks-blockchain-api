@@ -109,8 +109,7 @@ export class TokensProcessorQueue {
   }
 
   async blockNotificationHandler(_: string) {
-    // Every block, check if we have entries we still need to process.
-    await this.drainDbQueue();
+    await this.checkDbQueue();
   }
 
   async queueHandler(queueEntry: TokenMetadataUpdateInfo) {
