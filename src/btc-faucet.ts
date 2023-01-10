@@ -1,5 +1,6 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
+import * as ecc from 'tiny-secp256k1';
 import * as Bluebird from 'bluebird';
 import { parsePort, time, logger, logError } from './helpers';
 import * as coinselect from 'coinselect';
@@ -70,6 +71,7 @@ const MIN_TX_CONFIRMATIONS = 1;
 
 function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
+    btc.initEccLib(ecc);
     btc.address.toOutputScript(address, network);
     return true;
   } catch (error) {
