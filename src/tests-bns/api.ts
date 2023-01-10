@@ -642,7 +642,7 @@ describe('BNS API tests', () => {
         zonefile: zonefile,
         zonefile_hash: 'zonefileHash',
         canonical: true,
-        status: 'name_register',
+        status: 'name-register',
       })
       .addTxNftEvent({
         asset_event_type_id: DbAssetEventTypeId.Mint,
@@ -659,9 +659,9 @@ describe('BNS API tests', () => {
     expect(query1.type).toBe('application/json');
 
     const subdomain: DbBnsSubdomain = {
-      namespace_id: 'blockstack',
-      name: 'id.blockstack',
-      fully_qualified_subdomain: 'zonefile_test.id.blockstack',
+      namespace_id: 'btc',
+      name: 'zonefile-test-name.btc',
+      fully_qualified_subdomain: 'zonefile_test.zonefile-test-name.btc',
       resolver: 'https://registrar.blockstack.org',
       owner: address,
       zonefile: 'test-zone-file',
@@ -691,6 +691,31 @@ describe('BNS API tests', () => {
     expect(query2.status).toBe(200);
     expect(query2.body.zonefile).toBe(subdomain.zonefile);
     expect(query2.type).toBe('application/json');
+
+    // Revoke name
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: name,
+        status: 'name-revoke',
+        address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP'
+      })
+      .build();
+    await db.update(block3);
+
+    const query3 = await supertest(api.server).get(
+      `/v1/names/${name}/zonefile`
+    );
+    expect(query3.status).toBe(404);
+
+    const query4 = await supertest(api.server).get(
+      `/v1/names/${subdomain.fully_qualified_subdomain}/zonefile`
+    );
+    expect(query4.status).toBe(404);
   });
 
   test('Fail get zonefile by name - invalid name', async () => {

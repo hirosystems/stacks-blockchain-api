@@ -3365,9 +3365,11 @@ export class PgStore {
   async getLatestZoneFile({
     name,
     includeUnanchored,
+    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
+    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
@@ -3376,7 +3378,15 @@ export class PgStore {
       // were imported from Stacks v1 and they don't have an associated tx.
       const isSubdomain = name.split('.').length > 2;
       if (isSubdomain) {
-        return sql<{ zonefile: string }[]>`
+        const parentNameStatus = await this.getName({
+          name: name.split('.').slice(-2).join('.'),
+          includeUnanchored,
+          chainId,
+        });
+        if (!parentNameStatus.found) {
+          return;
+        }
+        const result = await sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
           INNER JOIN subdomains AS s ON
@@ -3390,8 +3400,16 @@ export class PgStore {
           ORDER BY s.block_height DESC, s.microblock_sequence DESC, s.tx_index DESC
           LIMIT 1
         `;
+        if (result.length === 0) {
+          return;
+        }
+        return result[0];
       } else {
-        return sql<{ zonefile: string }[]>`
+        const nameStatus = await this.getName({ name, includeUnanchored, chainId });
+        if (!nameStatus.found) {
+          return;
+        }
+        const result = await sql<{ zonefile: string }[]>`
           SELECT zonefile
           FROM zonefiles AS z
           INNER JOIN names AS n USING (name, tx_id, index_block_hash)
@@ -3402,12 +3420,16 @@ export class PgStore {
           ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
           LIMIT 1
         `;
+        if (result.length === 0) {
+          return;
+        }
+        return result[0];
       }
     });
-    if (queryResult.length > 0) {
+    if (queryResult) {
       return {
         found: true,
-        result: queryResult[0],
+        result: queryResult,
       };
     }
     return { found: false } as const;
