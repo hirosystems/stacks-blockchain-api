@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { bytesToHex } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
   AddressStxBalanceResponse,
   NetworkIdentifier,
@@ -38,6 +38,8 @@ import { getRosettaNetworkName, RosettaConstants } from '../api/rosetta-constant
 import {
   ClarityTypeID,
   ClarityValue as NativeClarityValue,
+  ClarityValueBuffer,
+  ClarityValueTuple,
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 import * as supertest from 'supertest';
@@ -47,7 +49,8 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { coerceToBuffer, timeout } from '../helpers';
+import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
+import { b58ToC32 } from 'c32check';
 
 export interface TestEnvContext {
   db: PgWriteStore;
@@ -509,4 +512,26 @@ export async function stackStxWithRosetta(opts: {
     constructionPreprocess: preprocessResult,
     constructionMetadata: metadataResult,
   };
+}
+
+export function decodePoxAddrArg(
+  argHex: string
+): {
+  btcAddr: string;
+  stxAddr: string;
+  hash160: string;
+} {
+  const pox_address_cv = decodeClarityValue(argHex);
+  expect(pox_address_cv.type_id).toBe(ClarityTypeID.Tuple);
+  const addressCV = pox_address_cv as ClarityValueTuple<{
+    version: ClarityValueBuffer;
+    hashbytes: ClarityValueBuffer;
+  }>;
+  const btcAddr = poxAddressToBtcAddress(
+    hexToBuffer(addressCV.data.version.buffer)[0],
+    hexToBuffer(addressCV.data.hashbytes.buffer),
+    'regtest'
+  );
+  const stxAddr = b58ToC32(btcAddr);
+  return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };
 }

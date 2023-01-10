@@ -46,6 +46,8 @@ import {
   bufferCV,
   serializeCV,
 } from '@stacks/transactions';
+import { poxAddressToTuple } from '@stacks/stacking';
+import { c32ToB58 } from 'c32check';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -95,11 +97,8 @@ function createTransactionFromCoreBtcStxLockEvent(
   const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
   const legacyClarityVals = [
-    uintCV(lockAmount.value),
-    tupleCV({
-      hashbytes: bufferCV(hexToBuffer(stacker.address_hash_bytes)),
-      version: bufferCV(Buffer.from([stacker.address_version])),
-    }),
+    uintCV(lockAmount.value), // amount-ustx
+    poxAddressToTuple(c32ToB58(stacker.address)), // pox-addr
     uintCV(burnBlockHeight), // start-burn-height
     uintCV(lockPeriod), // lock-period
   ];

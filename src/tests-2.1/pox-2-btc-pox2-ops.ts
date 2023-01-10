@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
+import {
+  AddressStxBalanceResponse,
+  ContractCallTransaction,
+  TransactionEventsResponse,
+  TransactionEventStxLock,
+} from '@stacks/stacks-blockchain-api-types';
 import { AnchorMode, makeSTXTokenTransfer } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
@@ -8,6 +13,7 @@ import { timeout } from '../helpers';
 import {
   Account,
   accountFromKey,
+  decodePoxAddrArg,
   fetchGet,
   getRosettaAccountBalance,
   standByForTxSuccess,
@@ -19,10 +25,15 @@ import {
 import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { ApiServer } from 'src/api/init';
+import { ApiServer } from '../api/init';
 import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
+import * as supertest from 'supertest';
+import { Pox2ContractIdentifer } from '../pox-helpers';
+import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 
+// Perform Stack-STX operation on Bitcoin.
+// See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
 async function createPox2StackStx(args: {
   stxAmount: bigint;
   cycleCount: number;
@@ -257,9 +268,41 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     }
   });
 
-  test.skip('Wait for 1 Stacks block', async () => {
+  test('Wait for 1 Stacks block', async () => {
     const curInfo = await client.getInfo();
     await standByUntilBlock(curInfo.stacks_tip_height + 1);
+  });
+
+  test('Test synthetic STX tx', async () => {
+    const coreNodeBalance = await client.getAccount(account.stxAddr);
+    const addressEventsResp = await supertest(api.server)
+      .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
+      .expect(200);
+    const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['results'];
+    const event1 = addressEvents[0] as TransactionEventStxLock;
+    expect(event1.event_type).toBe('stx_lock');
+    expect(event1.stx_lock_event.locked_address).toBe(account.stxAddr);
+    expect(event1.stx_lock_event.unlock_height).toBeGreaterThan(0);
+    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(testStackAmount);
+    expect(BigInt(event1.stx_lock_event.locked_amount)).toBe(BigInt(coreNodeBalance.locked));
+
+    const txResp = await supertest(api.server).get(`/extended/v1/tx/${event1.tx_id}`).expect(200);
+    const txObj = txResp.body as ContractCallTransaction;
+    expect(txObj.tx_type).toBe('contract_call');
+    expect(txObj.tx_status).toBe('success');
+    expect(txObj.sender_address).toBe(account.stxAddr);
+    expect(txObj.contract_call.contract_id).toBe(Pox2ContractIdentifer.testnet);
+    expect(txObj.contract_call.function_name).toBe('stack-stx');
+
+    const callArg1 = txObj.contract_call.function_args![0];
+    expect(callArg1.name).toBe('amount-ustx');
+    expect(BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value)).toBe(testStackAmount);
+
+    const callArg2 = txObj.contract_call.function_args![1];
+    expect(callArg2.name).toBe('pox-addr');
+    const callArg2Addr = decodePoxAddrArg(callArg2.hex);
+    expect(callArg2Addr.stxAddr).toBe(account.stxAddr);
+    expect(callArg2Addr.btcAddr).toBe(account.btcAddr);
   });
 
   // TODO: this is very flaky
