@@ -510,11 +510,10 @@ describe('BNS integration tests', () => {
     await namespaceReady(namespace, testnetKey.pkey);
 
     // testing name revoke
-    const transaction = await nameRevoke(namespace, name, testnetKey.pkey);
+    await nameRevoke(namespace, name, testnetKey.pkey);
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-    expect(query1.status).toBe(200);
+    expect(query1.status).toBe(404);
     expect(query1.type).toBe('application/json');
-    expect(query1.body.status).toBe('name-revoke');
   });
 
   test('name-import/name-renewal contract call', async () => {
