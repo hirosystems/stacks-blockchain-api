@@ -114,6 +114,17 @@ test('bitcoin<->stacks address', () => {
       'tb1qwvwagx5f24farha0fzfmxr48lgr7sly7t5tsyh',
       'tb1qqruv3zxqtmaxqa8uxaychtm0szfazeay63j9yu',
     ],
+    // bech32m / segwit_V1 / p2tr / taproot
+    p2tr_mainnet: [
+      'bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297',
+      'bc1p2wsldez5mud2yam29q22wgfh9439spgduvct83k3pm50fcxa5dps59h4z5',
+      'bc1pmfr3p9j00pfxjh0zmgp99y8zftmd3s5pmedqhyptwy6lm87hf5sspknck9',
+    ],
+    // bech32m / segwit_V1 / p2tr / taproot
+    p2tr_testnet: [
+      'tb1p6h5fuzmnvpdthf5shf0qqjzwy7wsqc5rhmgq2ks9xrak4ry6mtrscsqvzp',
+      'tb1p8dlmzllfah294ntwatr8j5uuvcj7yg0dete94ck2krrk0ka2c9qqex96hv',
+    ],
     bip141_p2wpkh_mainnet: [
       'bc1q86agjesjeu33mq7uwxsfgdxpe5uxwd0z9ttke9',
       'bc1qlq3xlzgun9x92hd4hrfqkqs6uh78tjleqsc2u2',

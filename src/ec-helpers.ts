@@ -198,24 +198,15 @@ function p2wshAddressFromKey(args: KeyInputArgs): KeyOutput {
 function p2trAddressFromKey(args: KeyInputArgs): KeyOutput {
   const network = BITCOIN_NETWORKS[args.network];
   const ecPair = ecPairFromKeyInputArgs(args, true);
-
-  // x-only pubkey (remove 1 byte y parity)
-  const myXOnlyPubkey = ecPair.publicKey.slice(1, 33);
-  const commitHash = bitcoin.crypto.taggedHash('TapTweak', myXOnlyPubkey);
-  const tweakResult = ecc.xOnlyPointAddTweak(myXOnlyPubkey, commitHash);
-  if (tweakResult === null) {
-    throw new Error('Invalid Tweak');
+  bitcoin.initEccLib(ecc);
+  const pmnt = bitcoin.payments.p2tr({
+    internalPubkey: ecPair.publicKey.slice(1, 33),
+    network: network,
+  });
+  if (!pmnt.address) {
+    throw new Error(`Could not create p2tr address from key`);
   }
-  const { xOnlyPubkey: tweaked } = tweakResult;
-  const scriptPubkey = Buffer.concat([
-    // witness v1, PUSH_DATA 32 bytes
-    Buffer.from([0x51, 0x20]),
-    // x-only tweaked pubkey
-    tweaked,
-  ]);
-
-  const address = bitcoin.address.fromOutputScript(scriptPubkey, network);
-  return { ecPair, address };
+  return { ecPair, address: pmnt.address };
 }
 
 export interface VerboseKeyOutput {

@@ -7,6 +7,7 @@ import * as stream from 'stream';
 import * as http from 'http';
 import * as winston from 'winston';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import * as ecc from 'tiny-secp256k1';
 import * as btc from 'bitcoinjs-lib';
 import {
   BufferCV,
@@ -243,6 +244,7 @@ export function microStxToStx(microStx: bigint | BigNumber): string {
  * @param address - A bitcoin address.
  */
 export function isValidBitcoinAddress(address: string): boolean {
+  btc.initEccLib(ecc);
   try {
     btc.address.toOutputScript(address, btc.networks.bitcoin);
     return true;
