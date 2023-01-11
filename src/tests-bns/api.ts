@@ -195,6 +195,27 @@ describe('BNS API tests', () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces/abc/names`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    expect(query1.body.length).toBe(1);
+
+    // Revoke name
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: 'xyz.abc',
+        namespace_id: 'abc',
+        status: 'name-revoke',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+      })
+      .build();
+    await db.update(block2);
+    const query2 = await supertest(api.server).get(`/v1/namespaces/abc/names`);
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body.length).toBe(0);
   });
 
   test('Namespace not found', async () => {
