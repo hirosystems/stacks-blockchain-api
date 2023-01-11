@@ -3954,7 +3954,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    let subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    let subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4161,7 +4165,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);

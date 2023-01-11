@@ -167,7 +167,7 @@ describe('BNS API tests', () => {
     const query1 = await supertest(api.server).get(`/v1/namespaces`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(query1.body.namespaces.length).toBe(1);
+    expect(query1.body.namespaces.length).toBe(2);
   });
 
   test('Validate: namespace response schema', async () => {
@@ -182,7 +182,7 @@ describe('BNS API tests', () => {
   test('Validate: namespaces returned length', async () => {
     const query1 = await supertest(api.server).get('/v1/namespaces');
     const result = JSON.parse(query1.text);
-    expect(result.namespaces.length).toBe(1);
+    expect(result.namespaces.length).toBe(2);
   });
 
   test('Validate: namespace id returned correct', async () => {
@@ -613,6 +613,34 @@ describe('BNS API tests', () => {
     expect(query6.body.names).toStrictEqual([
       'imported.btc'
     ]);
+
+    // Revoked name stops resolving.
+    const block5 = new TestBlockBuilder({
+      block_height: 5,
+      index_block_hash: '0x05',
+      parent_index_block_hash: '0x04'
+    })
+      .addTx({ tx_id: '0xf3f5' })
+      .addTxBnsName({
+        name: 'imported.btc',
+        status: 'name-revoke',
+        address: address3
+      })
+      .addTxBnsName({
+        name: 'id.blockstack',
+        status: 'name-revoke',
+        address: address3
+      })
+      .build();
+    await db.update(block5);
+    const query7 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address3}`);
+    expect(query7.status).toBe(200);
+    expect(query7.type).toBe('application/json');
+    expect(query7.body.names).toStrictEqual([]);
+    const query8 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
+    expect(query8.status).toBe(200);
+    expect(query8.type).toBe('application/json');
+    expect(query8.body.names).toStrictEqual([]);
   });
 
   test('name-transfer zonefile change is reflected', async () => {
@@ -798,6 +826,27 @@ describe('BNS API tests', () => {
     const query1 = await supertest(api.server).get(`/v1/names`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
+    expect(query1.body.length).toBe(2);
+
+    // Revoke one name
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x1234'
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxBnsName({
+        name: 'xyz.abc',
+        status: 'name-revoke',
+        address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA'
+      })
+      .build();
+    await db.update(block2);
+
+    const query2 = await supertest(api.server).get(`/v1/names`);
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(query2.body.length).toBe(1);
   });
 
   test('Validate: names response schema', async () => {

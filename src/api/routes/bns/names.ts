@@ -103,6 +103,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
             const subdomainQuery = await db.getSubdomain({
               subdomain: name,
               includeUnanchored,
+              chainId,
             });
             if (!subdomainQuery.found) {
               const namePart = name.split('.').slice(1).join('.');

@@ -390,7 +390,7 @@ describe('BNS integration tests', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false, chainId: ChainID.Testnet });
       expect(query2.found).toBe(true);
       if(query2.result)
         expect(query2.result.resolver).toBe('');
