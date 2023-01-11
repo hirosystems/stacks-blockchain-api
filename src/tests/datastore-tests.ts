@@ -3881,6 +3881,7 @@ describe('postgres datastore', () => {
               namespace_id: 'abc',
               registered_at: 2,
               expire_block: 14,
+              status: 'name-register',
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
@@ -4077,6 +4078,7 @@ describe('postgres datastore', () => {
               name: 'xyz.abc',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
+              status: 'name-register',
               registered_at: block2b.block_height,
               expire_block: 14,
               zonefile:
@@ -4679,6 +4681,7 @@ describe('postgres datastore', () => {
       namespace_id: 'abc',
       registered_at: dbBlock.block_height,
       expire_block: 14,
+      status: 'name-register',
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
