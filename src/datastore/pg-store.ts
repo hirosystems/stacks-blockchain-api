@@ -351,7 +351,7 @@ export class PgStore {
   }
 
   async getPox1UnlockHeightInternal(sql: PgSqlClient): Promise<FoundOrNot<number>> {
-    const query = await sql<{ pox_v1_unlock_height: number }[]>`
+    const query = await sql<{ pox_v1_unlock_height: string }[]>`
       SELECT pox_v1_unlock_height
       FROM pox_state
       LIMIt 1
@@ -359,7 +359,7 @@ export class PgStore {
     if (query.length === 0) {
       return { found: false };
     }
-    const unlockHeight = query[0].pox_v1_unlock_height;
+    const unlockHeight = parseInt(query[0].pox_v1_unlock_height);
     if (unlockHeight === 0) {
       return { found: false };
     }
