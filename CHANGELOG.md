@@ -1,3 +1,10 @@
+## [6.3.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.0...v6.3.1) (2023-01-13)
+
+
+### Bug Fixes
+
+* stop resolving revoked BNS names ([#1519](https://github.com/hirosystems/stacks-blockchain-api/issues/1519)) ([095c4fc](https://github.com/hirosystems/stacks-blockchain-api/commit/095c4fc6c1da53bafe2f2db055bafc856548b1e6))
+
 ## [6.3.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.3...v6.3.0) (2023-01-10)
 
 
