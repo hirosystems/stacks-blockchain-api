@@ -1,3 +1,10 @@
+## [7.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.2...v7.0.0-beta.3) (2023-01-13)
+
+
+### Bug Fixes
+
+* use pg bigint for `pox_v1_unlock_height` column ([#1521](https://github.com/hirosystems/stacks-blockchain-api/issues/1521)) ([d3fd685](https://github.com/hirosystems/stacks-blockchain-api/commit/d3fd6856590f2e2ab4a41d2ca79a607e9ef32493))
+
 ## [7.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.1...v7.0.0-beta.2) (2023-01-13)
 
 
