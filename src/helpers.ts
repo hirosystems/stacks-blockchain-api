@@ -957,6 +957,15 @@ export function bnsHexValueToName(hex: string): string {
   return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
 }
 
+/**
+ * Returns the parent BNS name from a subdomain.
+ * @param subdomain - Fully qualified subdomain
+ * @returns BNS name
+ */
+export function bnsNameFromSubdomain(subdomain: string): string {
+  return subdomain.split('.').slice(-2).join('.');
+}
+
 export function getBnsSmartContractId(chainId: ChainID): string {
   return chainId === ChainID.Mainnet
     ? 'SP000000000000000000002Q6VF78.bns::names'

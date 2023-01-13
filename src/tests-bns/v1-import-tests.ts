@@ -97,7 +97,7 @@ describe('BNS V1 import', () => {
     expect(query5.status).toBe(200);
     expect(query5.type).toBe('application/json');
     expect(query5.body.sort()).toStrictEqual([
-      "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
+      "id.blockstack", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id",
     ].sort());
 
@@ -113,7 +113,7 @@ describe('BNS V1 import', () => {
     expect(query7.status).toBe(200);
     expect(query7.type).toBe('application/json');
     expect(query7.body.sort()).toStrictEqual([
-      "0.id", "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
+      "1.id", "10.id", "10x.id", "111111111.id", "123.id", "zinai.id", "zlh.id",
       "zone117x.id", "zumminer_crux.id", "zumminer_dev_crux.id", "zumrai.id"
     ].sort());
 
@@ -122,7 +122,7 @@ describe('BNS V1 import', () => {
     expect(query8.status).toBe(200);
     expect(query8.type).toBe('application/json');
     expect(query8.body).toEqual({
-      names: ["0.id"]
+      names: ["id.blockstack"]
     });
 
     // Subdomains
@@ -156,7 +156,7 @@ describe('BNS V1 import', () => {
         '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
     });
 
-    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
+    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false, chainId: ChainID.Testnet });
     assert(dbquery.found)
     if (dbquery.result){
     expect(dbquery.result.name).toBe('id.blockstack');}

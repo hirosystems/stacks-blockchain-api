@@ -3881,6 +3881,7 @@ describe('postgres datastore', () => {
               namespace_id: 'abc',
               registered_at: 2,
               expire_block: 14,
+              status: 'name-register',
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
@@ -3954,7 +3955,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    let subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    let subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4073,6 +4078,7 @@ describe('postgres datastore', () => {
               name: 'xyz.abc',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
+              status: 'name-register',
               registered_at: block2b.block_height,
               expire_block: 14,
               zonefile:
@@ -4161,7 +4167,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4671,6 +4681,7 @@ describe('postgres datastore', () => {
       namespace_id: 'abc',
       registered_at: dbBlock.block_height,
       expire_block: 14,
+      status: 'name-register',
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',

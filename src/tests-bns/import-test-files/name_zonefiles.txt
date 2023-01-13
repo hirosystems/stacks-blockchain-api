@@ -1,5 +1,5 @@
 c5f5b4197c94d4561f6332160f624d728b0da8bf
-$ORIGIN 0.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1A4aeTdM35rYtUoiCiV81jKwKyi1Egzb32/profile.json"\n\n
+$ORIGIN id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1A4aeTdM35rYtUoiCiV81jKwKyi1Egzb32/profile.json"\n\n
 8961c32ad98df87af12b186c3d0be6ca22105936
 $ORIGIN 1.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/19i6q73cKHLFfZ12JmHqB6HaXZNWos2MeE/profile.json"\n\n
 8ae7173b9a2f96521ba077bbcbe9b56b1cf2449f
