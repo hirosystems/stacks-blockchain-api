@@ -1,3 +1,10 @@
+## [7.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.1...v7.0.0-beta.2) (2023-01-13)
+
+
+### Bug Fixes
+
+* prevent token metadata processor from blocking api launch ([#1514](https://github.com/hirosystems/stacks-blockchain-api/issues/1514)) ([63da7e1](https://github.com/hirosystems/stacks-blockchain-api/commit/63da7e140b8d436125947b21bf9067e71cb26229))
+
 ## [7.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v7.0.0-beta.1) (2023-01-10)
 
 
