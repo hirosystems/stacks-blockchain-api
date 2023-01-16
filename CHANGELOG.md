@@ -1,3 +1,10 @@
+## [6.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.1...v6.3.2) (2023-01-16)
+
+
+### Bug Fixes
+
+* add contract_identifier index on contract_logs table ([#1523](https://github.com/hirosystems/stacks-blockchain-api/issues/1523)) ([1f16513](https://github.com/hirosystems/stacks-blockchain-api/commit/1f16513c0f3c040874aae3b95f8a00e4332aab75))
+
 ## [6.3.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.0...v6.3.1) (2023-01-13)
 
 
