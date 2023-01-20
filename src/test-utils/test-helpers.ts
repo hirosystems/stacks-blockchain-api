@@ -48,7 +48,7 @@ import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
+import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
 import { b58ToC32 } from 'c32check';
 
@@ -92,7 +92,10 @@ export const testEnv = {
   },
 };
 
-export function accountFromKey(privateKey: string): Account {
+export function accountFromKey(
+  privateKey: string,
+  addressFormat: BitcoinAddressFormat = 'p2pkh'
+): Account {
   const privKeyBuff = coerceToBuffer(privateKey);
   if (privKeyBuff.byteLength !== 33) {
     throw new Error('Only compressed private keys supported');
@@ -107,7 +110,7 @@ export function accountFromKey(privateKey: string): Account {
   const btcAccount = getBitcoinAddressFromKey({
     privateKey: ecPair.privateKey!,
     network: 'regtest',
-    addressFormat: 'p2pkh',
+    addressFormat,
     verbose: true,
   });
   const btcAddr = btcAccount.address;
@@ -120,7 +123,7 @@ export function accountFromKey(privateKey: string): Account {
   const btcTestnetAddr = getBitcoinAddressFromKey({
     privateKey: ecPair.privateKey!,
     network: 'testnet',
-    addressFormat: 'p2pkh',
+    addressFormat,
   });
   return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, btcTestnetAddr, wif };
 }

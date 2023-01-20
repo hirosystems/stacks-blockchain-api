@@ -21,6 +21,7 @@ import {
   ClarityValueAbstract,
   ClarityValueBuffer,
   ClarityValueOptionalNone,
+  ClarityValueOptionalSome,
   ClarityValuePrincipalContract,
   ClarityValuePrincipalStandard,
   ClarityValueResponse,
@@ -33,7 +34,7 @@ import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { Pox2EventName } from '../pox-helpers';
 
 function tryClarityPoxAddressToBtcAddress(
-  poxAddr: Pox2Addr | ClarityValueOptionalNone,
+  poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
   network: 'mainnet' | 'testnet' | 'regtest'
 ): { btcAddr: string | null; raw: Buffer } {
   let btcAddr: string | null = null;
@@ -42,6 +43,9 @@ function tryClarityPoxAddressToBtcAddress(
       btcAddr,
       raw: Buffer.alloc(0),
     };
+  }
+  if (poxAddr.type_id === ClarityTypeID.OptionalSome) {
+    poxAddr = poxAddr.value;
   }
   try {
     btcAddr = poxAddressToBtcAddress(
@@ -205,7 +209,10 @@ export function decodePox2PrintEvent(
   }
 
   if ('pox-addr' in eventData) {
-    const eventPoxAddr = eventData['pox-addr'] as Pox2Addr | ClarityValueOptionalNone;
+    const eventPoxAddr = eventData['pox-addr'] as
+      | Pox2Addr
+      | ClarityValueOptionalSome<Pox2Addr>
+      | ClarityValueOptionalNone;
     const encodedArr = tryClarityPoxAddressToBtcAddress(eventPoxAddr, network);
     baseEventData.pox_addr = encodedArr.btcAddr;
     baseEventData.pox_addr_raw = bufferToHexPrefixString(encodedArr.raw);
