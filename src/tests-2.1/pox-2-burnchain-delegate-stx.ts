@@ -305,6 +305,47 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     await standByUntilBlock(curInfo.stacks_tip_height + 1);
   });
 
+  test('Ensure delegate-stx BitcoinOp parsed', async () => {
+    const pox2Txs = await supertest(api.server)
+      .get(`/extended/v1/address/${Pox2ContractIdentifer.testnet}/transactions`)
+      .expect(200);
+    const delegateStxTxResp = await supertest(api.server)
+      .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)
+      .expect(200);
+    const delegateStxTx = delegateStxTxResp.body as ContractCallTransaction;
+    expect(delegateStxTx.tx_status).toBe('success');
+    expect(delegateStxTx.tx_type).toBe('contract_call');
+    expect(delegateStxTx.sender_address).toBe(account.stxAddr);
+    expect(delegateStxTx.tx_result).toEqual({ hex: '0x0703', repr: '(ok true)' });
+    expect(delegateStxTx.contract_call).toEqual({
+      contract_id: 'ST000000000000000000002AMW42H.pox-2',
+      function_name: 'delegate-stx',
+      function_signature:
+        '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
+      function_args: [
+        {
+          hex: '0x0100000000000000000007fe8f3d591000',
+          repr: 'u2250216000000000',
+          name: 'amount-ustx',
+          type: 'uint',
+        },
+        {
+          hex: '0x051a43596b5386f466863e25658ddf94bd0fadab0048',
+          repr: `'${delegatorAccount.stxAddr}`,
+          name: 'delegate-to',
+          type: 'principal',
+        },
+        { hex: '0x09', repr: 'none', name: 'until-burn-ht', type: '(optional uint)' },
+        {
+          hex: '0x09',
+          repr: 'none',
+          name: 'pox-addr',
+          type: '(optional (tuple (hashbytes (buff 32)) (version (buff 1))))',
+        },
+      ],
+    });
+  });
+
   test('Perform delegate-stack-stx', async () => {
     const poxInfo = await testEnv.client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
