@@ -106,7 +106,7 @@ interface Pox2PrintEventTypes {
   [Pox2EventName.DelegateStx]: {
     'amount-ustx': ClarityValueUInt;
     'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
-    'unlock-burn-height': ClarityValueUInt | ClarityValueOptionalNone;
+    'unlock-burn-height': ClarityValueOptionalSome<ClarityValueUInt> | ClarityValueOptionalNone;
     'pox-addr': Pox2Addr | ClarityValueOptionalNone;
   };
   [Pox2EventName.DelegateStackStx]: {
@@ -294,8 +294,8 @@ export function decodePox2PrintEvent(
           amount_ustx: BigInt(d['amount-ustx'].value),
           delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
           unlock_burn_height:
-            d['unlock-burn-height'].type_id === ClarityTypeID.UInt
-              ? BigInt(d['unlock-burn-height'].value)
+            d['unlock-burn-height'].type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['unlock-burn-height'].value.value)
               : null,
         },
       };

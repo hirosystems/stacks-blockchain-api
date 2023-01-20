@@ -46,6 +46,7 @@ async function createPox2DelegateStx(args: {
   cycleCount: number;
   stackerAddress: string;
   delegatorStacksAddress: string;
+  untilBurnHt: number;
   poxAddrPayout: string;
   bitcoinWif: string;
 }) {
@@ -125,12 +126,15 @@ async function createPox2DelegateStx(args: {
   //    * If Byte 24 is set to 0x01, then this field is the 128-bit big-endian integer that encodes the burnchain block height at which this
   //      delegation expires. This value corresponds to the until-burn-ht argument in delegate-stx.
 
+  const untilBurnHt = Buffer.alloc(8);
+  untilBurnHt.writeBigUInt64BE(BigInt(args.untilBurnHt));
+
   const delegateStxOpTxPayload = Buffer.concat([
     Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
     Buffer.from('#'), // op: '#' ascii encoded,
     Buffer.from(args.stxAmount.toString(16).padStart(32, '0'), 'hex'), // uSTX to lock (u128)
     Buffer.from('0100000001', 'hex'), // specify the `pox-addr` arg to the second output address
-    Buffer.from('00'.repeat(8), 'hex'), // corresponds to passing none to the until-burn-ht argument in delegate-stx (u64)
+    Buffer.from(`01${untilBurnHt.toString('hex')}`, 'hex'), // corresponds to passing none to the until-burn-ht argument in delegate-stx (u64)
   ]);
   const delegateStxOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
@@ -193,6 +197,8 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
   let testAccountBalance: bigint;
   const testAccountBtcBalance = 5;
   let testStackAmount: bigint;
+
+  const untilBurnHeight = 200;
 
   let stxOpBtcTxs: {
     preStxOpTxId: string;
@@ -295,6 +301,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
       stackerAddress: account.stxAddr,
       delegatorStacksAddress: delegatorAccount.stxAddr,
       poxAddrPayout: poxAddrPayoutAccount.btcAddr,
+      untilBurnHt: untilBurnHeight,
       stxAmount: testStackAmount,
       cycleCount: 6,
     });
@@ -360,7 +367,12 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
           name: 'delegate-to',
           type: 'principal',
         },
-        { hex: '0x09', repr: 'none', name: 'until-burn-ht', type: '(optional uint)' },
+        {
+          hex: '0x0a01000000000000000000000000000000c8',
+          repr: `(some u${untilBurnHeight})`,
+          name: 'until-burn-ht',
+          type: '(optional uint)',
+        },
         {
           hex:
             '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
