@@ -17,6 +17,7 @@ import {
   DbPox2DelegateStackExtendEvent,
   DbPox2DelegateStackIncreaseEvent,
   DbPox2DelegateStackStxEvent,
+  DbPox2DelegateStxEvent,
   DbPox2Event,
   DbPox2HandleUnlockEvent,
   DbPox2StackAggregationCommitEvent,
@@ -216,6 +217,7 @@ export const POX2_EVENT_COLUMNS = [
   'start_burn_height',
   'unlock_burn_height',
   'delegator',
+  'delegate_to',
   'increase_by',
   'total_locked',
   'extend_count',
@@ -688,6 +690,23 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         data: {
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStx: {
+      const eventData: DbPox2DelegateStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          delegate_to: unwrapOptionalProp(row, 'delegate_to'),
+          unlock_burn_height: row.unlock_burn_height
+            ? BigInt(unwrapOptionalProp(row, 'unlock_burn_height'))
+            : null,
         },
       };
       return {

@@ -153,6 +153,18 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
+    // validate delegate-stx pox2 event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStxDbTx.tx_id}`);
+    expect(res).toBeDefined();
+    expect(res.results).toHaveLength(1);
+    expect(res.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'stack-aggregation-commit-indexed',
+        pox_addr: delegateeAccount.btcTestnetAddr,
+        stacker: delegatorAccount.stxAddr,
+      })
+    );
+
     // check delegatee locked amount is still zero
     const balanceInfo2 = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(balanceInfo2.locked)).toBe(0n);
