@@ -342,6 +342,15 @@ export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
   };
 }
 
+export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStx;
+  data: {
+    amount_ustx: bigint;
+    delegate_to: string;
+    unlock_burn_height: bigint | null;
+  };
+}
+
 export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
   name: Pox2EventName.DelegateStackStx;
   data: {
@@ -400,6 +409,7 @@ export type DbPox2EventData =
   | DbPox2StackStxEvent
   | DbPox2StackIncreaseEvent
   | DbPox2StackExtendEvent
+  | DbPox2DelegateStxEvent
   | DbPox2DelegateStackStxEvent
   | DbPox2DelegateStackIncreaseEvent
   | DbPox2DelegateStackExtendEvent
@@ -1270,6 +1280,9 @@ export interface Pox2EventInsertValues {
   // unique to handle-unlock
   first_unlocked_cycle: PgNumeric | null;
 
+  // unique to delegate-stx
+  delegate_to: string | null;
+
   // unique to stack-stx, delegate-stack-stx
   lock_period: PgNumeric | null;
 
@@ -1296,7 +1309,7 @@ export interface Pox2EventInsertValues {
   // unique to stack-aggregation-commit
   reward_cycle: PgNumeric | null;
 
-  // unique to stack-aggregation-commit
+  // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: PgNumeric | null;
 }
 

@@ -255,6 +255,16 @@ export function parsePox2Event(poxEvent: DbPox2Event) {
         },
       };
     }
+    case Pox2EventName.DelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
+          unlock_burn_height: poxEvent.data.unlock_burn_height?.toString(),
+        },
+      };
+    }
     case Pox2EventName.DelegateStackStx: {
       return {
         ...baseInfo,

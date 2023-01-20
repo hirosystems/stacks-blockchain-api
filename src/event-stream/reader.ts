@@ -6,6 +6,7 @@ import {
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   isTxWithMicroblockInfo,
+  SmartContractEvent,
   StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
@@ -28,7 +29,7 @@ import {
   TxSpendingConditionSingleSigHashMode,
   decodeClarityValueList,
 } from 'stacks-encoding-native-js';
-import { DbMicroblockPartial } from '../datastore/common';
+import { DbMicroblockPartial, DbPox2EventData } from '../datastore/common';
 import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
@@ -48,6 +49,8 @@ import {
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
+import { decodePox2PrintEvent } from './pox2-event-parsing';
+import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -257,6 +260,20 @@ export function parseMessageTransaction(
       const stxLockEvent = events.find(
         (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
       );
+
+      const pox2Event = events.map(e => {
+        if (
+          e.type === CoreNodeEventType.ContractEvent &&
+          e.contract_event.topic === 'print' &&
+          (e.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
+            e.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
+        ) {
+          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          return decodePox2PrintEvent(e.contract_event.raw_value, network);
+        }
+        return null;
+      })[0];
+
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
         txSender = stxTransferEvent.stx_transfer_event.sender;
@@ -269,6 +286,8 @@ export function parseMessageTransaction(
           coreTx.txid
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
+      } else if (pox2Event && pox2Event.name === Pox2EventName.DelegateStx) {
+        throw new Error('TODO');
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(

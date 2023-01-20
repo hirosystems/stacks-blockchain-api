@@ -3,6 +3,7 @@ export const enum Pox2EventName {
   StackStx = 'stack-stx',
   StackIncrease = 'stack-increase',
   StackExtend = 'stack-extend',
+  DelegateStx = 'delegate-stx',
   DelegateStackStx = 'delegate-stack-stx',
   DelegateStackIncrease = 'delegate-stack-increase',
   DelegateStackExtend = 'delegate-stack-extend',
