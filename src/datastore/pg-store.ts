@@ -319,7 +319,7 @@ export class PgStore {
           WHERE parent_index_block_hash
             IN ${sql([block.result.index_block_hash, block.result.parent_index_block_hash])}
           AND microblock_canonical = true
-          ORDER BY microblock_sequence DESC
+          ORDER BY microblock_sequence ASC
         `;
         for (const mb of microblocksQuery) {
           const parsedMicroblock = parseMicroblockQueryResult(mb);
