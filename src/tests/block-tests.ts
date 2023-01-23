@@ -312,8 +312,8 @@ describe('block tests', () => {
       height: 1,
       microblocks_accepted: [],
       microblocks_streamed: [
-        microblock2.microblocks[0].microblock_hash,
         microblock1.microblocks[0].microblock_hash,
+        microblock2.microblocks[0].microblock_hash,
       ],
       miner_txid: '0x4321',
       parent_block_hash: '0x',
