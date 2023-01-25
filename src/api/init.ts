@@ -85,6 +85,7 @@ export async function startApiServer(opts: {
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+  const { BTC_RPC_PORT, BTC_RPC_HOST } = process.env;
 
   if (!apiHost) {
     throw new Error(
@@ -225,7 +226,7 @@ export async function startApiServer(opts: {
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
-      if (chainId !== ChainID.Mainnet && writeDatastore) {
+      if (chainId !== ChainID.Mainnet && writeDatastore && BTC_RPC_PORT && BTC_RPC_HOST) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
       return router;
