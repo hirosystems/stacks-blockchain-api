@@ -31,6 +31,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
@@ -39,6 +40,7 @@ async function createPox2StackStx(args: {
   cycleCount: number;
   stackerAddress: string;
   bitcoinWif: string;
+  poxAddrPayout: string;
 }) {
   const btcAccount = ECPair.fromWIF(args.bitcoinWif, btc.networks.regtest);
   const feeAmount = 0.0001;
@@ -116,7 +118,7 @@ async function createPox2StackStx(args: {
     })
     // The second Bitcoin output will be used as the reward address for any stacking rewards.
     .addOutput({
-      address: c32ToB58(args.stackerAddress),
+      address: args.poxAddrPayout,
       value: Math.round(outAmount1 - feeAmount * sats),
     })
     .signInput(0, btcAccount)
@@ -145,6 +147,11 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
   const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   let account: Account;
 
+  // testnet btc addr: tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453
+  // regtest btc addr: bcrt1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfs4w3npt
+  const poxAddrPayoutKey = 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01';
+  let poxAddrPayoutAccount: Account;
+
   let testAccountBalance: bigint;
   const testAccountBtcBalance = 5;
   let testStackAmount: bigint;
@@ -159,6 +166,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     ({ db, api, client, stacksNetwork, bitcoinRpcClient } = testEnv);
 
     account = accountFromKey(accountKey);
+    poxAddrPayoutAccount = accountFromKey(poxAddrPayoutKey, 'p2tr');
 
     const poxInfo = await client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
@@ -246,6 +254,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     stxOpBtcTxs = await createPox2StackStx({
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
+      poxAddrPayout: poxAddrPayoutAccount.btcAddr,
       stxAmount: testStackAmount,
       cycleCount: 6,
     });
@@ -298,11 +307,16 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     expect(callArg1.name).toBe('amount-ustx');
     expect(BigInt(decodeClarityValue<ClarityValueUInt>(callArg1.hex).value)).toBe(testStackAmount);
 
+    const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
+    const expectedPoxPayoutAddrRepr = `(tuple (hashbytes 0x${Buffer.from(
+      expectedPoxPayoutAddr.data
+    ).toString('hex')}) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
+      'hex'
+    )}))`;
     const callArg2 = txObj.contract_call.function_args![1];
     expect(callArg2.name).toBe('pox-addr');
-    const callArg2Addr = decodePoxAddrArg(callArg2.hex);
-    expect(callArg2Addr.stxAddr).toBe(account.stxAddr);
-    expect(callArg2Addr.btcAddr).toBe(account.btcAddr);
+    expect(callArg2.type).toBe('(tuple (hashbytes (buff 32)) (version (buff 1)))');
+    expect(callArg2.repr).toBe(expectedPoxPayoutAddrRepr);
   });
 
   // TODO: this is very flaky
