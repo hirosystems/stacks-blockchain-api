@@ -217,9 +217,18 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   return obj;
 }
 
-export const TOTAL_STACKS = new BigNumber(1320000000)
-  .plus(322146 * 100 + 5 * 50000) // air drop
-  .toString();
+// Note: this is the legacy amount defined in the Stacks 1.0 codebase:
+// export const TOTAL_STACKS /* 1352464600000000 */ = new BigNumber(1320000000)
+//   .plus(322146 * 100 + 5 * 50000) // air drop
+//   .toString();
+
+// See the Stacks 2.0 whitepaper: https://cloudflare-ipfs.com/ipfs/QmaGgiVHymeDjAc3aF1AwyhiFFwN97pme5m536cHT4FsAW
+//   > The Stacks cryptocurrency has a predefined future supply that reaches approx 1,818M STX by year 2050
+//   > Block reward: 1000 STX/block for first 4 yrs;
+//   > 500 STX/block for following 4 yrs;
+//   > 250 for the 4 yrs after that; and then 125 STX/block in perpetuity after that.
+// We are going to use the year 2050 projected supply because "125 STX/block in perpetuity" means the total supply is infinite.
+export const TOTAL_STACKS = new BigNumber(1_818_000_000n.toString());
 
 const MICROSTACKS_IN_STACKS = 1_000_000n;
 export const STACKS_DECIMAL_PLACES = 6;
