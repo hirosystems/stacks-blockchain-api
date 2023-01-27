@@ -1,3 +1,10 @@
+## [6.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.2...v6.3.3) (2023-01-27)
+
+
+### Bug Fixes
+
+* update total STX supply to the year 2050 projected amount ([#1531](https://github.com/hirosystems/stacks-blockchain-api/issues/1531)) ([0689f60](https://github.com/hirosystems/stacks-blockchain-api/commit/0689f60121e921229a5b7da87fc63e1e1a97d029))
+
 ## [6.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.1...v6.3.2) (2023-01-16)
 
 
