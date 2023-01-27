@@ -8,5 +8,5 @@ module.exports = {
     coverageDirectory: '../coverage',
     globalSetup: '<rootDir>/tests-bns/setup.ts',
     globalTeardown: '<rootDir>/tests-bns/teardown.ts',
-    testTimeout: 300000,
+    testTimeout: 60000,
   }
