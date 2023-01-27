@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v6.3.2
+  version: v6.3.3
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
@@ -5845,9 +5845,12 @@ paths:
         - Info
       operationId: get_stx_supply
       summary: Get total and unlocked STX supply
-      description: Retrieves the total and unlocked STX supply. More information on
+      description: >
+        Retrieves the total and unlocked STX supply. More information on
         Stacking can be found [here]
         (https://docs.stacks.co/understand-stacks/stacking).
+
+        **Note:** this uses the estimated future total supply for the year 2050.
       parameters:
         - in: query
           name: height
@@ -5899,7 +5902,9 @@ paths:
         - Info
       operationId: get_stx_supply_total_supply_plain
       summary: Get total STX supply in plain text format
-      description: Retrieves the total supply for STX tokens as plain text.
+      description: |
+        Retrieves the total supply for STX tokens as plain text.
+        **Note:** this uses the estimated future total supply for the year 2050.
       responses:
         "200":
           description: success
@@ -5935,8 +5940,11 @@ paths:
       operationId: get_total_stx_supply_legacy_format
       summary: Get total and unlocked STX supply (results formatted the same as the
         legacy 1.0 API)
-      description: Retrieves total supply of STX tokens including those currently in
+      description: >
+        Retrieves total supply of STX tokens including those currently in
         circulation that have been unlocked.
+
+        **Note:** this uses the estimated future total supply for the year 2050.
       parameters:
         - in: query
           name: height
