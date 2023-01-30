@@ -1,3 +1,10 @@
+## [6.3.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.3...v6.3.4) (2023-01-30)
+
+
+### Bug Fixes
+
+* add block_height index to contract_logs ([#1534](https://github.com/hirosystems/stacks-blockchain-api/issues/1534)) ([dc53af2](https://github.com/hirosystems/stacks-blockchain-api/commit/dc53af261370582898bdf6779fd7ffc97502112a))
+
 ## [6.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.2...v6.3.3) (2023-01-27)
 
 
