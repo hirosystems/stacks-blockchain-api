@@ -139,7 +139,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts"
+          example: '2N4M94S1ZPt8HfxydXzL2P7qyzgVq7MHWts'
     post:
       summary: Add testnet BTC tokens to address
       description: |
@@ -172,6 +172,20 @@ paths:
                 $ref: ./api/faucet/run-faucet.schema.json
               example:
                 $ref: ./api/faucet/run-faucet.example.json
+        403:
+          description: BTC Faucet not fully configured.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  success:
+                    type: boolean
+              example:
+                error: BTC Faucet not fully configured.
+                success: false
         500:
           description: Faucet call failed
 
@@ -239,9 +253,9 @@ paths:
         - Transactions
       operationId: get_mempool_transaction_list
       description: |
-          Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
+        Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 
-          If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: sender_address
           in: query
@@ -249,7 +263,7 @@ paths:
           required: false
           schema:
             type: string
-            example: "SP1GPBP8NBRXDRJBFQBV7KMAZX1Z7W2RFWJEH0V10"
+            example: 'SP1GPBP8NBRXDRJBFQBV7KMAZX1Z7W2RFWJEH0V10'
         - name: recipient_address
           in: query
           description: Filter to only return transactions with this recipient address (only applicable for STX transfer tx types).
@@ -362,7 +376,7 @@ paths:
         required: true
         schema:
           type: array
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: '0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0'
           items:
             type: string
       - name: event_offset
@@ -416,7 +430,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: '0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0'
       - name: event_offset
         in: query
         schema:
@@ -466,7 +480,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: '0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0'
     get:
       summary: Get Raw Transaction
       tags:
@@ -507,7 +521,7 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: "e161978626f216b2141b156ade10501207ae535fa365a13ef5d7a7c9310a09f2"
+                example: 'e161978626f216b2141b156ade10501207ae535fa365a13ef5d7a7c9310a09f2'
         400:
           description: Rejections result in a 400 error
           content:
@@ -524,9 +538,9 @@ paths:
         - Microblocks
       operationId: get_microblock_list
       description: |
-          Retrieves a list of microblocks.
+        Retrieves a list of microblocks.
 
-          If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        If you need to actively monitor new microblocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       parameters:
         - name: limit
           in: query
@@ -560,7 +574,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "0x3bfcdf84b3012adb544cf0f6df4835f93418c2269a3881885e27b3d58eb82d47"
+          example: '0x3bfcdf84b3012adb544cf0f6df4835f93418c2269a3881885e27b3d58eb82d47'
 
     get:
       summary: Get microblock
@@ -601,9 +615,9 @@ paths:
     get:
       summary: Get recent blocks
       description: |
-          Retrieves a list of recently mined blocks
+        Retrieves a list of recently mined blocks
 
-          If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Blocks
       operationId: get_block_list
@@ -640,7 +654,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+          example: '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79'
     get:
       summary: Get block by hash
       description: Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
@@ -700,7 +714,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "0x00000000000000000002bba732926cf68b6eda3e2cdbc2a85af79f10efeeeb10"
+          example: '0x00000000000000000002bba732926cf68b6eda3e2cdbc2a85af79f10efeeeb10'
     get:
       summary: Get block by burnchain block hash
       description: Retrieves block details of a specific block for a given burnchain block hash
@@ -801,7 +815,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "36hQtSEXBMevo5chpxhfAGiCTSC34QKgda"
+            example: '36hQtSEXBMevo5chpxhfAGiCTSC34QKgda'
         - name: limit
           in: query
           description: max number of items to fetch
@@ -871,7 +885,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "36hQtSEXBMevo5chpxhfAGiCTSC34QKgda"
+            example: '36hQtSEXBMevo5chpxhfAGiCTSC34QKgda'
         - name: limit
           in: query
           description: max number of rewards to fetch
@@ -908,7 +922,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "36hQtSEXBMevo5chpxhfAGiCTSC34QKgda"
+            example: '36hQtSEXBMevo5chpxhfAGiCTSC34QKgda'
       responses:
         200:
           description: List of burnchain reward recipients and amounts
@@ -944,7 +958,7 @@ paths:
         required: true
         schema:
           type: string
-          example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles"
+          example: 'SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles'
       - name: unanchored
         in: query
         description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1005,7 +1019,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles"
+            example: 'SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles'
         - name: limit
           in: query
           description: max number of contract events to fetch
@@ -1067,7 +1081,7 @@ paths:
         description: Contract name
         schema:
           type: string
-          example: "satoshibles"
+          example: 'satoshibles'
       - name: tip
         in: query
         schema:
@@ -1104,7 +1118,7 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11"
+            example: 'SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11'
         - name: contract_name
           in: path
           required: true
@@ -1137,7 +1151,7 @@ paths:
           application/json:
             schema:
               type: string
-            example: 
+            example:
               $ref: ./entities/contracts/get-specific-data-map-inside-contract.example.json
 
   /v2/contracts/source/{contract_address}/{contract_name}:
@@ -1163,7 +1177,7 @@ paths:
         description: Stacks address
         schema:
           type: string
-          example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C"
+          example: 'SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C'
       - name: contract_name
         in: path
         required: true
@@ -1214,7 +1228,7 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: "SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7"
+            example: 'SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7'
         - name: contract_name
           in: path
           required: true
@@ -1259,7 +1273,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -1299,7 +1313,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks.
@@ -1329,9 +1343,9 @@ paths:
     get:
       summary: Get account transactions
       description: |
-          Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+        Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
 
-          If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       tags:
         - Accounts
       operationId: get_account_transactions
@@ -1342,7 +1356,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -1403,14 +1417,14 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE"
+            example: 'SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE'
         - name: tx_id
           in: path
           description: Transaction id
           required: true
           schema:
             type: string
-            example: "0x34d79c7cfc2fe525438736733e501a4bf0308a5556e3e080d1e2c0858aad7448"
+            example: '0x34d79c7cfc2fe525438736733e501a4bf0308a5556e3e080d1e2c0858aad7448'
       responses:
         200:
           description: Success
@@ -1441,7 +1455,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: limit
           in: query
           description: max number of account transactions to fetch
@@ -1502,7 +1516,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: block_height
           in: query
           description: Optionally get the nonce at a given block height.
@@ -1516,7 +1530,7 @@ paths:
           required: false
           schema:
             type: string
-            example: "0x72d53f3cba39e149dcd42708e535bdae03d73e60d2fe853aaf61c0b392f521e9"
+            example: '0x72d53f3cba39e149dcd42708e535bdae03d73e60d2fe853aaf61c0b392f521e9'
 
       responses:
         200:
@@ -1542,7 +1556,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: limit
           in: query
           description: max number of account assets to fetch
@@ -1598,7 +1612,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: limit
           in: query
           description: number of items to return
@@ -1661,7 +1675,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: limit
           in: query
           description: number of items to return
@@ -1719,7 +1733,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+            example: 'SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'
         - name: proof
           in: query
           description: Returns object without the proof field if set to 0
@@ -1946,7 +1960,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d"
+            example: '0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d'
           description: The hex hash string for a block or transaction, account address, or contract address
         - in: query
           name: include_metadata
@@ -2020,7 +2034,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-options-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/network/status:
@@ -2051,7 +2065,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-network-status-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/account/balance:
@@ -2082,7 +2096,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-account-balance-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-account-balance-request-body.example.json
 
   /rosetta/v1/block:
@@ -2111,7 +2125,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-block-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-block-request-body.example.json
 
   /rosetta/v1/block/transaction:
@@ -2140,7 +2154,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-block-transaction-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-block-transaction-request-body.example.json
 
   /rosetta/v1/mempool:
@@ -2169,7 +2183,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-mempool-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-account-network-options-request-body.example.json
 
   /rosetta/v1/mempool/transaction:
@@ -2225,7 +2239,7 @@ paths:
           application/json:
             schema:
               $ref: ./api/rosetta/rosetta-construction-derive-request.schema.json
-            example: 
+            example:
               $ref: ./api/rosetta/rosetta-account-identifier-publickey-request-body.example.json
 
   /rosetta/v1/construction/hash:
@@ -2638,7 +2652,6 @@ paths:
               example:
                 $ref: ./api/bns/subdomains/subdomains-list.example.json
 
-
   /v1/names/{name}/zonefile:
     get:
       summary: Get Zone File
@@ -2701,7 +2714,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "b100a68235244b012854a95f9114695679002af9"
+            example: 'b100a68235244b012854a95f9114695679002af9'
       responses:
         200:
           description: Success
@@ -2749,7 +2762,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "1QJQxDas5JhdiXhEbNS14iNjr8auFT96GP"
+            example: '1QJQxDas5JhdiXhEbNS14iNjr8auFT96GP'
       responses:
         200:
           description: Success
@@ -2768,71 +2781,71 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
-#  /v1/subdomains:
-#    get:
-#      summary: Get All Subdomains
-#      description: Retrieves a list of all subdomains known to the node.
-#      tags:
-#        - Names
-#      operationId: get_all_subdomains
-#      parameters:
-#        - name: page
-#          in: query
-#          description: names are returned in pages of size 100, so specify the page number.
-#          required: true
-#          example: 3
-#          schema:
-#            type: integer
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-page.example.json
-#
-#  /v1/subdomains/{txid}:
-#    get:
-#      summary: Get Subdomain at Transaction
-#      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
-#      tags:
-#        - Names
-#      operationId: get_subdomain_at_transaction
-#      parameters:
-#        - name: txid
-#          in: path
-#          description: transaction id
-#          required: true
-#          schema:
-#            type: string
-#            example: "d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe"
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
+  #  /v1/subdomains:
+  #    get:
+  #      summary: Get All Subdomains
+  #      description: Retrieves a list of all subdomains known to the node.
+  #      tags:
+  #        - Names
+  #      operationId: get_all_subdomains
+  #      parameters:
+  #        - name: page
+  #          in: query
+  #          description: names are returned in pages of size 100, so specify the page number.
+  #          required: true
+  #          example: 3
+  #          schema:
+  #            type: integer
+  #      responses:
+  #        200:
+  #          description: Success
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
+  #              example:
+  #                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
+  #        400:
+  #          description: Error
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: ./api/bns/errors/bns-error.schema.json
+  #              example:
+  #                $ref: ./api/bns/errors/bns-invalid-page.example.json
+  #
+  #  /v1/subdomains/{txid}:
+  #    get:
+  #      summary: Get Subdomain at Transaction
+  #      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
+  #      tags:
+  #        - Names
+  #      operationId: get_subdomain_at_transaction
+  #      parameters:
+  #        - name: txid
+  #          in: path
+  #          description: transaction id
+  #          required: true
+  #          schema:
+  #            type: string
+  #            example: "d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe"
+  #      responses:
+  #        200:
+  #          description: Success
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
+  #              example:
+  #                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
+  #        400:
+  #          description: Error
+  #          content:
+  #            application/json:
+  #              schema:
+  #                $ref: ./api/bns/errors/bns-error.schema.json
+  #              example:
+  #                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
 
   /extended/v1/tx/block/{block_hash}:
     get:
@@ -2848,7 +2861,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "0x0a83d82a65460a9e711f85a44616350280040b75317dbe486a923c1131b5ff99"
+            example: '0x0a83d82a65460a9e711f85a44616350280040b75317dbe486a923c1131b5ff99'
         - name: limit
           in: query
           description: max number of transactions to fetch
@@ -2934,7 +2947,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP197DVH8KTJGX4STM61QN0WJV8Y9QJWXV83ZGNR9"
+            example: 'SP197DVH8KTJGX4STM61QN0WJV8Y9QJWXV83ZGNR9'
         - name: limit
           in: query
           description: max number of transactions to fetch
@@ -3018,14 +3031,14 @@ paths:
           required: true
           schema:
             type: string
-            example: "SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3"
+            example: 'SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3'
         - name: asset_identifiers
           in: query
           description: identifiers of the token asset classes to filter for
           required: false
           schema:
             type: array
-            example: "SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy"
+            example: 'SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy'
             items:
               type: string
         - name: limit
@@ -3090,14 +3103,14 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild"
+            example: 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild'
         - name: value
           in: query
           description: hex representation of the token's unique value
           required: true
           schema:
             type: string
-            example: "0x0100000000000000000000000000000803"
+            example: '0x0100000000000000000000000000000803'
         - name: limit
           in: query
           description: max number of events to fetch
@@ -3160,7 +3173,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild"
+            example: 'SP2X0TZ59D5SZ8ACQ6YMCHHNR2ZN51Z32E2CJ173.the-explorer-guild::The-Explorer-Guild'
         - name: limit
           in: query
           description: max number of events to fetch
@@ -3277,7 +3290,7 @@ paths:
           required: true
           schema:
             type: string
-            example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2"
+            example: 'SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2'
       responses:
         200:
           description: Fungible tokens metadata for contract id
@@ -3400,7 +3413,8 @@ paths:
   /extended/v1/tx/events:
     get:
       summary: Transaction Events
-      description: Retrieves the list of events filtered by principal (STX address or Smart Contract ID), transaction id or event types.
+      description:
+        Retrieves the list of events filtered by principal (STX address or Smart Contract ID), transaction id or event types.
         The list of event types is ('smart_contract_log', 'stx_lock', 'stx_asset', 'fungible_token_asset', 'non_fungible_token_asset').
       tags:
         - Transactions
@@ -3410,7 +3424,7 @@ paths:
           in: query
           description: Hash of transaction
           required: false
-          example: "0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5"
+          example: '0x29e25515652dad41ef675bd0670964e3d537b80ec19cf6ca6f1dd65d5bc642c5'
           schema:
             type: string
         - name: address
@@ -3419,7 +3433,7 @@ paths:
           required: false
           schema:
             type: string
-            example: "ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4"
+            example: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4'
         - name: limit
           in: query
           description: number of items to return
@@ -3443,7 +3457,14 @@ paths:
             example: stx_lock
             items:
               type: string
-              enum: [smart_contract_log, stx_lock, stx_asset, fungible_token_asset, non_fungible_token_asset]
+              enum:
+                [
+                  smart_contract_log,
+                  stx_lock,
+                  stx_asset,
+                  fungible_token_asset,
+                  non_fungible_token_asset,
+                ]
       responses:
         200:
           description: Success
