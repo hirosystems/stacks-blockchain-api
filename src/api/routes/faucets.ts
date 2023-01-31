@@ -69,62 +69,70 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
   const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(express.json());
-  const { BTC_RPC_PORT, BTC_RPC_HOST } = process.env;
+  const missingBtcConfigMiddleware = (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) =>
+    err.message === 'BTC Faucet not fully configured.'
+      ? res.status(403).json({ error: err.message, success: false })
+      : next(err);
 
-  if (BTC_RPC_PORT && BTC_RPC_HOST) {
-    const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
+  const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
-    router.post(
-      '/btc',
-      asyncHandler(async (req, res) => {
-        await btcFaucetRequestQueue.add(async () => {
-          const address: string = req.query.address || req.body.address;
-          const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  router.post(
+    '/btc',
+    asyncHandler(async (req, res) => {
+      await btcFaucetRequestQueue.add(async () => {
+        const address: string = req.query.address || req.body.address;
+        const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
 
-          // Guard condition: requests are limited to 5 times per 5 minutes.
-          // Only based on address for now, but we're keeping the IP in case
-          // we want to escalate and implement a per IP policy
-          const lastRequests = await db.getBTCFaucetRequests(address);
-          const now = Date.now();
-          const window = 5 * 60 * 1000; // 5 minutes
-          const requestsInWindow = lastRequests.results
-            .map(r => now - r.occurred_at)
-            .filter(r => r <= window);
-          if (requestsInWindow.length >= 5) {
-            logger.warn(`BTC faucet rate limit hit for address ${address}`);
-            res.status(429).json({
-              error: 'Too many requests',
-              success: false,
-            });
-            return;
-          }
-
-          const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
-          await db.insertFaucetRequest({
-            ip: `${ip}`,
-            address: address,
-            currency: DbFaucetRequestCurrency.BTC,
-            occurred_at: now,
+        // Guard condition: requests are limited to 5 times per 5 minutes.
+        // Only based on address for now, but we're keeping the IP in case
+        // we want to escalate and implement a per IP policy
+        const lastRequests = await db.getBTCFaucetRequests(address);
+        const now = Date.now();
+        const window = 5 * 60 * 1000; // 5 minutes
+        const requestsInWindow = lastRequests.results
+          .map(r => now - r.occurred_at)
+          .filter(r => r <= window);
+        if (requestsInWindow.length >= 5) {
+          logger.warn(`BTC faucet rate limit hit for address ${address}`);
+          res.status(429).json({
+            error: 'Too many requests',
+            success: false,
           });
+          return;
+        }
 
-          res.json({
-            txid: tx.txId,
-            raw_tx: tx.rawTx,
-            success: true,
-          });
+        const tx = await makeBtcFaucetPayment(btc.networks.regtest, address, 0.5);
+        await db.insertFaucetRequest({
+          ip: `${ip}`,
+          address: address,
+          currency: DbFaucetRequestCurrency.BTC,
+          occurred_at: now,
         });
-      })
-    );
 
-    router.get(
-      '/btc/:address',
-      asyncHandler(async (req, res) => {
-        const { address } = req.params;
-        const balance = await getBtcBalance(btc.networks.regtest, address);
-        res.json({ balance });
-      })
-    );
-  }
+        res.json({
+          txid: tx.txId,
+          raw_tx: tx.rawTx,
+          success: true,
+        });
+      });
+    }),
+    missingBtcConfigMiddleware
+  );
+
+  router.get(
+    '/btc/:address',
+    asyncHandler(async (req, res) => {
+      const { address } = req.params;
+      const balance = await getBtcBalance(btc.networks.regtest, address);
+      res.json({ balance });
+    }),
+    missingBtcConfigMiddleware
+  );
 
   const stxFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
