@@ -2554,7 +2554,45 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    // Expect tx without raw data.
+    const txRes: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 4,
+      anchor_mode: 3,
+      nonce: 0,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      abi: undefined,
+      smart_contract_clarity_version: 2,
+      smart_contract_contract_id: 'my-contract',
+      smart_contract_source_code: '(src)',
+      sponsor_nonce: undefined,
+    };
+    expect(txQuery.result).toEqual(txRes);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
