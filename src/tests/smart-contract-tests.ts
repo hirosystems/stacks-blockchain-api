@@ -2,14 +2,14 @@ import * as supertest from 'supertest';
 import { bufferCVFromString, ChainID, serializeCV } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbEventTypeId,
   DbSmartContract,
   DbSmartContractEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { bufferToHexPrefixString, I32_MAX, waiter } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
@@ -24,7 +24,7 @@ describe('smart contract tests', () => {
     await cycleMigrations();
     db = await PgWriteStore.connect({
       usageName: 'tests',
-      withNotifier: false,
+      withNotifier: true,
       skipMigrations: true,
     });
     client = db.sql;
@@ -32,6 +32,11 @@ describe('smart contract tests', () => {
   });
 
   test('list contract log events', async () => {
+    const logEventWaiter = waiter<{ txId: string; eventIndex: number }>();
+    const handler = (txId: string, eventIndex: number) =>
+      logEventWaiter.finish({ txId, eventIndex });
+    db.eventEmitter.addListener('smartContractLogUpdate', handler);
+
     const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -51,7 +56,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
@@ -85,7 +90,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       ...tx1,
       tx_id: '0x012345',
       tx_index: 1,
@@ -142,6 +147,10 @@ describe('smart contract tests', () => {
       ],
     });
 
+    const logEvent = await logEventWaiter;
+    expect(logEvent.txId).toBe('0x421234');
+    expect(logEvent.eventIndex).toBe(4);
+
     const fetchTx = await supertest(api.server).get(
       '/extended/v1/contract/some-contract-id/events'
     );
@@ -163,9 +172,15 @@ describe('smart contract tests', () => {
         },
       ],
     });
+
+    db.eventEmitter.removeListener('smartContractLogUpdate', handler);
   });
 
   test('get contract by ID', async () => {
+    const contractWaiter = waiter<string>();
+    const handler = (contractId: string) => contractWaiter.finish(contractId);
+    db.eventEmitter.addListener('smartContractUpdate', handler);
+
     const block1: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',
@@ -195,7 +210,7 @@ describe('smart contract tests', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: txId1,
       tx_index: 0,
       anchor_mode: 3,
@@ -251,6 +266,9 @@ describe('smart contract tests', () => {
       ],
     });
 
+    const reportedId = await contractWaiter;
+    expect(reportedId).toBe('some-contract-id');
+
     const fetchTx = await supertest(api.server).get('/extended/v1/contract/some-contract-id');
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
@@ -263,6 +281,8 @@ describe('smart contract tests', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     });
+
+    db.eventEmitter.removeListener('smartContractUpdate', handler);
   });
 
   test('get versioned-contract by ID', async () => {
@@ -388,7 +408,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421235',
       tx_index: 0,
       anchor_mode: 3,
@@ -422,7 +442,7 @@ describe('smart contract tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       ...tx1,
       tx_id: '0x012345',
       tx_index: 1,

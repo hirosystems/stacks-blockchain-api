@@ -2,7 +2,7 @@ import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
@@ -56,7 +56,7 @@ describe('other tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -130,8 +130,8 @@ describe('other tests', () => {
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
     const expectedResp1 = {
-      unlocked_percent: '17.38',
-      total_stx: '1352464600.000000',
+      unlocked_percent: '12.93',
+      total_stx: '1818000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx1),
       block_height: dbBlock1.block_height,
     };
@@ -155,8 +155,8 @@ describe('other tests', () => {
     expect(result2.status).toBe(200);
     expect(result2.type).toBe('application/json');
     const expectedResp2 = {
-      unlocked_percent: '16.64',
-      total_stx: '1352464600.000000',
+      unlocked_percent: '12.38',
+      total_stx: '1818000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx2),
       block_height: dbBlock1.block_height,
     };
@@ -186,8 +186,8 @@ describe('other tests', () => {
     expect(result3.status).toBe(200);
     expect(result3.type).toBe('application/json');
     const expectedResp3 = {
-      unlocked_percent: '17.75',
-      total_stx: '1352464600.000000',
+      unlocked_percent: '13.20',
+      total_stx: '1818000000.000000',
       unlocked_stx: microStxToStx(expectedTotalStx3),
       block_height: dbBlock1.block_height,
     };
@@ -196,7 +196,7 @@ describe('other tests', () => {
     const result4 = await supertest(api.server).get(`/extended/v1/stx_supply/total/plain`);
     expect(result4.status).toBe(200);
     expect(result4.type).toBe('text/plain');
-    expect(result4.text).toEqual('1352464600.000000');
+    expect(result4.text).toEqual('1818000000.000000');
 
     const result5 = await supertest(api.server).get(`/extended/v1/stx_supply/circulating/plain`);
     expect(result5.status).toBe(200);
@@ -208,9 +208,9 @@ describe('other tests', () => {
     expect(result6.status).toBe(200);
     expect(result6.type).toBe('application/json');
     const expectedResp6 = {
-      unlockedPercent: '17.75',
-      totalStacks: '1352464600.000000',
-      totalStacksFormatted: '1,352,464,600.000000',
+      unlockedPercent: '13.20',
+      totalStacks: '1818000000.000000',
+      totalStacksFormatted: '1,818,000,000.000000',
       unlockedSupply: microStxToStx(expectedTotalStx3),
       unlockedSupplyFormatted: new Intl.NumberFormat('en', {
         minimumFractionDigits: STACKS_DECIMAL_PLACES,

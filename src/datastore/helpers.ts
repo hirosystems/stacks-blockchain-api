@@ -11,6 +11,7 @@ import {
   DbFtEvent,
   DbMempoolStats,
   DbMempoolTx,
+  DbMempoolTxRaw,
   DbMicroblock,
   DbNftEvent,
   DbPox2BaseEventData,
@@ -31,6 +32,7 @@ import {
   DbStxLockEvent,
   DbTx,
   DbTxAnchorMode,
+  DbTxRaw,
   DbTxStatus,
   DbTxTypeId,
   FaucetRequestQueryResult,
@@ -62,7 +64,6 @@ import { Pox2EventName } from '../pox-helpers';
 
 export const TX_COLUMNS = [
   'tx_id',
-  'raw_tx',
   'tx_index',
   'index_block_hash',
   'parent_index_block_hash',
@@ -111,7 +112,6 @@ export const TX_COLUMNS = [
 export const MEMPOOL_TX_COLUMNS = [
   'pruned',
   'tx_id',
-  'raw_tx',
   'type_id',
   'anchor_mode',
   'status',
@@ -312,7 +312,6 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
     tx_id: result.tx_id,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
-    raw_tx: result.raw_tx,
     type_id: result.type_id as DbTxTypeId,
     anchor_mode: result.anchor_mode as DbTxAnchorMode,
     status: result.status,
@@ -349,7 +348,6 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     tx_index: result.tx_index,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
-    raw_tx: result.raw_tx,
     index_block_hash: result.index_block_hash,
     parent_index_block_hash: result.parent_index_block_hash,
     block_hash: result.block_hash,
@@ -1029,8 +1027,8 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   sponsorAddress: string | undefined;
   rawTx: string;
   receiptDate: number;
-}): DbMempoolTx {
-  const dbTx: DbMempoolTx = {
+}): DbMempoolTxRaw {
+  const dbTx: DbMempoolTxRaw = {
     pruned: false,
     nonce: Number(msg.txData.auth.origin_condition.nonce),
     sponsor_nonce:
@@ -1057,10 +1055,10 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   return dbTx;
 }
 
-export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
+export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
   const coreTx = msg.core_tx;
   const parsedTx = msg.parsed_tx;
-  const dbTx: DbTx = {
+  const dbTx: DbTxRaw = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
     nonce: Number(parsedTx.auth.origin_condition.nonce),
@@ -1160,13 +1158,14 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
   });
 }
 
-export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTx[] {
-  const dbMempoolTxs: DbMempoolTx[] = [];
+export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTxRaw[] {
+  const dbMempoolTxs: DbMempoolTxRaw[] = [];
   for (const tx of txs) {
-    const dbMempoolTx: DbMempoolTx = Object.assign(tx, {
+    const dbMempoolTx: DbMempoolTxRaw = Object.assign(tx, {
       pruned: false,
       receipt_time: tx.burn_block_time,
       fee_rate: BigInt(tx.fee_rate),
+      raw_tx: tx.raw_result,
       token_transfer_amount:
         tx.token_transfer_amount != null
           ? BigInt(tx.token_transfer_amount)
