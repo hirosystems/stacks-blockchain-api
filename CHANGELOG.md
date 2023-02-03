@@ -122,6 +122,80 @@
 
 * ingestion and querying for new PoX-2 events ([#1403](https://github.com/hirosystems/stacks-blockchain-api/issues/1403)) ([1936ba6](https://github.com/hirosystems/stacks-blockchain-api/commit/1936ba65196506746d50ab1ab201ff38ce2011b1))
 
+## [6.3.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.3...v6.3.4) (2023-01-30)
+
+
+### Bug Fixes
+
+* add block_height index to contract_logs ([#1534](https://github.com/hirosystems/stacks-blockchain-api/issues/1534)) ([dc53af2](https://github.com/hirosystems/stacks-blockchain-api/commit/dc53af261370582898bdf6779fd7ffc97502112a))
+
+## [6.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.2...v6.3.3) (2023-01-27)
+
+
+### Bug Fixes
+
+* update total STX supply to the year 2050 projected amount ([#1531](https://github.com/hirosystems/stacks-blockchain-api/issues/1531)) ([0689f60](https://github.com/hirosystems/stacks-blockchain-api/commit/0689f60121e921229a5b7da87fc63e1e1a97d029))
+
+## [6.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.1...v6.3.2) (2023-01-16)
+
+
+### Bug Fixes
+
+* add contract_identifier index on contract_logs table ([#1523](https://github.com/hirosystems/stacks-blockchain-api/issues/1523)) ([1f16513](https://github.com/hirosystems/stacks-blockchain-api/commit/1f16513c0f3c040874aae3b95f8a00e4332aab75))
+
+## [6.3.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.0...v6.3.1) (2023-01-13)
+
+
+### Bug Fixes
+
+* stop resolving revoked BNS names ([#1519](https://github.com/hirosystems/stacks-blockchain-api/issues/1519)) ([095c4fc](https://github.com/hirosystems/stacks-blockchain-api/commit/095c4fc6c1da53bafe2f2db055bafc856548b1e6))
+
+## [6.3.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.3...v6.3.0) (2023-01-10)
+
+
+### Features
+
+* add `smartContractUpdate` and `smartContractLogUpdate` to `PgWriteStore` event emitter ([#1462](https://github.com/hirosystems/stacks-blockchain-api/issues/1462)) ([bce0ef9](https://github.com/hirosystems/stacks-blockchain-api/commit/bce0ef9b09d944d3f7b8f6299b9375b59f17322d))
+
+## [6.3.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.0-beta.1...v6.3.0-beta.2) (2023-01-06)
+
+
+### Bug Fixes
+
+* is_unanchored property on /extended/v1/tx/:tx_id ([#1487](https://github.com/hirosystems/stacks-blockchain-api/issues/1487)) ([4b85058](https://github.com/hirosystems/stacks-blockchain-api/commit/4b850580be5b5520dcf63e41acdfb602ed6d256a))
+
+## [6.3.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.2...v6.3.0-beta.1) (2022-12-06)
+
+
+### Features
+
+* add `smartContractUpdate` and `smartContractLogUpdate` to `PgWriteStore` event emitter ([#1462](https://github.com/hirosystems/stacks-blockchain-api/issues/1462)) ([bce0ef9](https://github.com/hirosystems/stacks-blockchain-api/commit/bce0ef9b09d944d3f7b8f6299b9375b59f17322d))
+
+
+## [6.2.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.2...v6.2.3) (2022-12-14)
+
+
+### Bug Fixes
+
+* is_unanchored property on /extended/v1/tx/:tx_id ([#1487](https://github.com/hirosystems/stacks-blockchain-api/issues/1487)) ([4b85058](https://github.com/hirosystems/stacks-blockchain-api/commit/4b850580be5b5520dcf63e41acdfb602ed6d256a))
+
+
+## [6.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2) (2022-12-06)
+
+
+### Bug Fixes
+
+* avoid selecting `raw_tx` column on read queries ([#1453](https://github.com/hirosystems/stacks-blockchain-api/issues/1453)) ([5acfc96](https://github.com/hirosystems/stacks-blockchain-api/commit/5acfc9688af6ba7a6a4ca83bdaf8e5aee9df633e))
+* lint docs ci dependencies ([#1458](https://github.com/hirosystems/stacks-blockchain-api/issues/1458)) ([19c3a0d](https://github.com/hirosystems/stacks-blockchain-api/commit/19c3a0d0acae6aeb890afcfff167312149994ec8))
+
+## [6.2.2-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.1...v6.2.2-beta.1) (2022-11-29)
+
+
+### Bug Fixes
+
+* avoid selecting `raw_tx` column on read queries ([#1453](https://github.com/hirosystems/stacks-blockchain-api/issues/1453)) ([5acfc96](https://github.com/hirosystems/stacks-blockchain-api/commit/5acfc9688af6ba7a6a4ca83bdaf8e5aee9df633e))
+* lint docs ci dependencies ([#1458](https://github.com/hirosystems/stacks-blockchain-api/issues/1458)) ([19c3a0d](https://github.com/hirosystems/stacks-blockchain-api/commit/19c3a0d0acae6aeb890afcfff167312149994ec8))
+
 ## [6.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.2.0...v6.2.1) (2022-11-18)
 
 
