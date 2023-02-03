@@ -18,6 +18,7 @@ import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
 import { PgWriteStore } from '../../datastore/pg-write-store';
+import { BtcFaucetConfigError } from '../../errors';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -74,10 +75,13 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
     req: express.Request,
     res: express.Response,
     next: express.NextFunction
-  ) =>
-    err.message === 'BTC Faucet not fully configured.'
-      ? res.status(403).json({ error: err.message, success: false })
-      : next(err);
+  ) => {
+    if (err instanceof BtcFaucetConfigError) {
+      res.status(403).json({ error: err.message, success: false });
+    } else {
+      next(err);
+    }
+  };
 
   const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
