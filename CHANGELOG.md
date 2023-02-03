@@ -1,3 +1,24 @@
+## [7.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.3...v7.0.0-beta.4) (2023-02-03)
+
+
+### Features
+
+* add `smartContractUpdate` and `smartContractLogUpdate` to `PgWriteStore` event emitter ([#1462](https://github.com/hirosystems/stacks-blockchain-api/issues/1462)) ([bce0ef9](https://github.com/hirosystems/stacks-blockchain-api/commit/bce0ef9b09d944d3f7b8f6299b9375b59f17322d))
+
+
+### Bug Fixes
+
+* add block_height index to contract_logs ([#1534](https://github.com/hirosystems/stacks-blockchain-api/issues/1534)) ([dc53af2](https://github.com/hirosystems/stacks-blockchain-api/commit/dc53af261370582898bdf6779fd7ffc97502112a))
+* add contract_identifier index on contract_logs table ([#1523](https://github.com/hirosystems/stacks-blockchain-api/issues/1523)) ([1f16513](https://github.com/hirosystems/stacks-blockchain-api/commit/1f16513c0f3c040874aae3b95f8a00e4332aab75))
+* avoid selecting `raw_tx` column on read queries ([#1453](https://github.com/hirosystems/stacks-blockchain-api/issues/1453)) ([5acfc96](https://github.com/hirosystems/stacks-blockchain-api/commit/5acfc9688af6ba7a6a4ca83bdaf8e5aee9df633e))
+* build rosetta with node 16 ([654b64f](https://github.com/hirosystems/stacks-blockchain-api/commit/654b64f60fe4f8cccfc95db9dcef1d57fae9c88b))
+* datastore tests ([bb96507](https://github.com/hirosystems/stacks-blockchain-api/commit/bb96507296a251da94b7a3b64b341192503c654e))
+* is_unanchored property on /extended/v1/tx/:tx_id ([#1487](https://github.com/hirosystems/stacks-blockchain-api/issues/1487)) ([4b85058](https://github.com/hirosystems/stacks-blockchain-api/commit/4b850580be5b5520dcf63e41acdfb602ed6d256a))
+* lint docs ci dependencies ([#1458](https://github.com/hirosystems/stacks-blockchain-api/issues/1458)) ([19c3a0d](https://github.com/hirosystems/stacks-blockchain-api/commit/19c3a0d0acae6aeb890afcfff167312149994ec8))
+* stop resolving revoked BNS names ([#1519](https://github.com/hirosystems/stacks-blockchain-api/issues/1519)) ([095c4fc](https://github.com/hirosystems/stacks-blockchain-api/commit/095c4fc6c1da53bafe2f2db055bafc856548b1e6))
+* test tx types ([11b9013](https://github.com/hirosystems/stacks-blockchain-api/commit/11b901343516ceb58e006a17d7ca72049aa036de))
+* update total STX supply to the year 2050 projected amount ([#1531](https://github.com/hirosystems/stacks-blockchain-api/issues/1531)) ([0689f60](https://github.com/hirosystems/stacks-blockchain-api/commit/0689f60121e921229a5b7da87fc63e1e1a97d029))
+
 ## [7.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.2...v7.0.0-beta.3) (2023-01-13)
 
 
