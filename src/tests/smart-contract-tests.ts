@@ -315,7 +315,7 @@ describe('smart contract tests', () => {
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: txId1,
       tx_index: 0,
       anchor_mode: 3,

@@ -191,7 +191,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - versioned smart contract', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,

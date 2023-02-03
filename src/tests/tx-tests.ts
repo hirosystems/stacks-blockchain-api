@@ -191,7 +191,7 @@ describe('tx tests', () => {
       source_code: '(some-versioned-contract-src)',
       abi: '{"some-abi":1}',
     };
-    const dbTx3: DbTx = {
+    const dbTx3: DbTxRaw = {
       tx_id: versionedSmartContract1.tx_id,
       anchor_mode: 3,
       nonce: 1000,
@@ -1121,7 +1121,7 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const dbTx: DbTx = {
+    const dbTx: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
