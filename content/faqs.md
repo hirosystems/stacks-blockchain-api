@@ -32,3 +32,8 @@ You may also file an issue in the [Stacks Blockchain API GitHub repository](http
 #### **I am receiving the following message when attempting to process NFT metadata: "NFT metadata processing is not enabled on this server." Is this expected behavior on mainnet?**
 
 You received this error because the NFT metadata was not standardized at the time the API tried to implement support. If you receive this error, please see the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service) repository for instructions on how to implement NFT metadata processing. 
+
+
+#### **Is the `block_height` referred to Stacks or bitcoin block heights?**
+
+The stacks block height is referred to as `block_height` while the bitcoin block height is prefixed with the keyword `burnchain`.
