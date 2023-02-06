@@ -819,6 +819,7 @@ export class PgWriteStore extends PgStore {
       pox_addr_raw: event.pox_addr_raw,
       first_cycle_locked: null,
       first_unlocked_cycle: null,
+      delegate_to: null,
       lock_period: null,
       lock_amount: null,
       start_burn_height: null,
@@ -852,6 +853,12 @@ export class PgWriteStore extends PgStore {
       case Pox2EventName.StackExtend: {
         values.extend_count = event.data.extend_count.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        break;
+      }
+      case Pox2EventName.DelegateStx: {
+        values.amount_ustx = event.data.amount_ustx.toString();
+        values.delegate_to = event.data.delegate_to;
+        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
         break;
       }
       case Pox2EventName.DelegateStackStx: {

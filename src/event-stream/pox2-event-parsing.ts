@@ -3,6 +3,7 @@ import {
   DbPox2DelegateStackExtendEvent,
   DbPox2DelegateStackIncreaseEvent,
   DbPox2DelegateStackStxEvent,
+  DbPox2DelegateStxEvent,
   DbPox2EventData,
   DbPox2HandleUnlockEvent,
   DbPox2StackAggregationCommitEvent,
@@ -19,6 +20,8 @@ import {
   ClarityValue,
   ClarityValueAbstract,
   ClarityValueBuffer,
+  ClarityValueOptionalNone,
+  ClarityValueOptionalSome,
   ClarityValuePrincipalContract,
   ClarityValuePrincipalStandard,
   ClarityValueResponse,
@@ -31,10 +34,19 @@ import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { Pox2EventName } from '../pox-helpers';
 
 function tryClarityPoxAddressToBtcAddress(
-  poxAddr: Pox2Addr,
+  poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
   network: 'mainnet' | 'testnet' | 'regtest'
 ): { btcAddr: string | null; raw: Buffer } {
   let btcAddr: string | null = null;
+  if (poxAddr.type_id === ClarityTypeID.OptionalNone) {
+    return {
+      btcAddr,
+      raw: Buffer.alloc(0),
+    };
+  }
+  if (poxAddr.type_id === ClarityTypeID.OptionalSome) {
+    poxAddr = poxAddr.value;
+  }
   try {
     btcAddr = poxAddressToBtcAddress(
       coerceToBuffer(poxAddr.data.version.buffer)[0],
@@ -90,6 +102,12 @@ interface Pox2PrintEventTypes {
     'extend-count': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
     'pox-addr': Pox2Addr;
+  };
+  [Pox2EventName.DelegateStx]: {
+    'amount-ustx': ClarityValueUInt;
+    'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'unlock-burn-height': ClarityValueOptionalSome<ClarityValueUInt> | ClarityValueOptionalNone;
+    'pox-addr': Pox2Addr | ClarityValueOptionalNone;
   };
   [Pox2EventName.DelegateStackStx]: {
     'lock-amount': ClarityValueUInt;
@@ -191,7 +209,10 @@ export function decodePox2PrintEvent(
   }
 
   if ('pox-addr' in eventData) {
-    const eventPoxAddr = eventData['pox-addr'] as Pox2Addr;
+    const eventPoxAddr = eventData['pox-addr'] as
+      | Pox2Addr
+      | ClarityValueOptionalSome<Pox2Addr>
+      | ClarityValueOptionalNone;
     const encodedArr = tryClarityPoxAddressToBtcAddress(eventPoxAddr, network);
     baseEventData.pox_addr = encodedArr.btcAddr;
     baseEventData.pox_addr_raw = bufferToHexPrefixString(encodedArr.raw);
@@ -261,6 +282,27 @@ export function decodePox2PrintEvent(
       };
       if (PATCH_EVENT_BALANCES) {
         parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+      }
+      return parsedData;
+    }
+    case Pox2EventName.DelegateStx: {
+      const d = eventData as Pox2PrintEventTypes[typeof eventName];
+      const parsedData: DbPox2DelegateStxEvent = {
+        ...baseEventData,
+        name: eventName,
+        data: {
+          amount_ustx: BigInt(d['amount-ustx'].value),
+          delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
+          unlock_burn_height:
+            d['unlock-burn-height'].type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['unlock-burn-height'].value.value)
+              : null,
+        },
+      };
+      if (PATCH_EVENT_BALANCES) {
+        if (parsedData.data.unlock_burn_height) {
+          parsedData.burnchain_unlock_height = parsedData.data.unlock_burn_height;
+        }
       }
       return parsedData;
     }

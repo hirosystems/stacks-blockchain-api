@@ -216,7 +216,7 @@ export interface VerboseKeyOutput {
   publicKey: Buffer;
 }
 
-type BitcoinAddressFormat =
+export type BitcoinAddressFormat =
   | 'p2pkh'
   | 'p2sh'
   | 'p2sh-p2wpkh'
