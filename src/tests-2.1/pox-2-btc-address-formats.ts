@@ -23,11 +23,9 @@ import {
 } from '../test-utils/test-helpers';
 
 describe('PoX-2 - Stack using supported bitcoin address formats', () => {
-  test('Wait for next PoX cycle', async () => {
-    // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
-    const poxInfo = await standByForNextPoxCycle();
-    const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+  test('Standby for next cycle', async () => {
+    const poxInfo = await testEnv.client.getPox();
+    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
   });
 
   describe('PoX-2 - Stacking operations P2SH-P2WPKH', () => {
