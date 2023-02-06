@@ -15,6 +15,7 @@ import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '
 import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
+  standByForNextPoxCycle,
   standByForPoxCycle,
   standByForTxSuccess,
   standByUntilBurnBlock,
@@ -22,8 +23,14 @@ import {
 } from '../test-utils/test-helpers';
 
 describe('PoX-2 - Stack using supported bitcoin address formats', () => {
-  // TODO: running into an issue with this test on RC4, unclear yet the problem
-  describe.skip('PoX-2 - Stacking operations P2SH-P2WPKH', () => {
+  test('Wait for next PoX cycle', async () => {
+    // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
+    const poxInfo = await standByForNextPoxCycle();
+    const [contractAddress, contractName] = poxInfo.contract_id.split('.');
+    expect(contractName).toBe('pox-2');
+  });
+
+  describe('PoX-2 - Stacking operations P2SH-P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAccount: VerboseKeyOutput;
