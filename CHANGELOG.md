@@ -1,3 +1,15 @@
+## [7.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.4...v7.0.0-beta.5) (2023-02-06)
+
+
+### Features
+
+* [Stacks 2.1] `delegate-stx` Bitcoin-op parsing ([#1527](https://github.com/hirosystems/stacks-blockchain-api/issues/1527)) ([ea01587](https://github.com/hirosystems/stacks-blockchain-api/commit/ea0158700ef172abb8c54bbf78cfaba8154a009f))
+
+
+### Bug Fixes
+
+* use correct `pox-addr` arg while parsing `stack-stx` bitcoin-op [#415](https://github.com/hirosystems/stacks-blockchain-api/issues/415) ([#1533](https://github.com/hirosystems/stacks-blockchain-api/issues/1533)) ([ab14ad5](https://github.com/hirosystems/stacks-blockchain-api/commit/ab14ad52f0d38772096d5f82f69d85d976c58eb2))
+
 ## [7.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0-beta.3...v7.0.0-beta.4) (2023-02-03)
 
 
