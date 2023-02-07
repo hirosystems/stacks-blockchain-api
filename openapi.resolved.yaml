@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v6.3.4
+  version: v7.0.0-beta.5
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
@@ -1863,6 +1863,11 @@ paths:
                               - contract_id
                               - source_code
                             properties:
+                              clarity_version:
+                                type: number
+                                description: The Clarity version of the contract, only specified for versioned
+                                  contract transactions, otherwise null
+                                nullable: true
                               contract_id:
                                 type: string
                                 description: Contract identifier formatted as
@@ -1989,6 +1994,14 @@ paths:
                               data:
                                 type: string
                                 description: Hex encoded 32-byte scratch space for block leader's use
+                              alt_recipient:
+                                type: string
+                                nullable: true
+                                description: A principal that will receive the miner rewards for this coinbase
+                                  transaction. Can be either a standard
+                                  principal or contract principal. Only
+                                  specified for `coinbase-to-alt-recipient`
+                                  transaction types, otherwise null.
               example:
                 tx_id: "0x5e9f3933e358df6a73fec0d47ce3e1062c20812c129f5294e6f37a8d27c051d9"
                 tx_status: success
@@ -3730,6 +3743,8 @@ paths:
                                 type: string
                               value:
                                 type: string
+                              memo:
+                                type: string
                   - type: object
                     title: TransactionEventFungibleAsset
                     allOf:
@@ -5369,6 +5384,7 @@ paths:
                           enum:
                             - bulk-send
                             - stx-transfer
+                            - stx-transfer-memo
                           description: Indicates if the transfer is from a stx-transfer transaction or a
                             contract-call transaction
                         tx_index:
@@ -5733,6 +5749,9 @@ paths:
                   status:
                     type: string
                     description: the current server status
+                  pox_v1_unlock_height:
+                    type: integer
+                    nullable: true
                   chain_tip:
                     title: ChainTip
                     description: Current chain tip information
@@ -5742,6 +5761,7 @@ paths:
                       - block_height
                       - block_hash
                       - index_block_hash
+                      - burn_block_height
                     properties:
                       block_height:
                         type: integer
@@ -5758,6 +5778,9 @@ paths:
                       microblock_sequence:
                         type: integer
                         description: the current microblock sequence number
+                      burn_block_height:
+                        type: integer
+                        description: the current burn chain block height
               example:
                 server_version: stacks-blockchain-api v1.0.7 (master:77b25878)
                 status: ready
