@@ -1,4 +1,4 @@
-import { parsePagingQueryInput, parseLimitQuery } from '../api/pagination';
+import { parsePagingQueryInput, getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('parsePagingQueryInput()', () => {
   test('it returns same input when passed number', () => {
@@ -18,9 +18,14 @@ describe('parsePagingQueryInput()', () => {
   });
 });
 
-describe('parseLimitQuery()', () => {
-  test('error is thrown when value is larger than input', () => {
-    const parseFn = parseLimitQuery({ maxItems: 20, errorMsg: 'Oh no, that is too many items' });
-    expect(() => parseFn(21)).toThrowError();
+describe('getPagingQueryLimit()', () => {
+  test('If a limit is not provided, the default limit is used for the specified route', () => {
+    expect(getPagingQueryLimit(ResourceType.Block)).toBe(20);
+  });
+  test('Error is thrown when value is larger than input', () => {
+    expect(() => getPagingQueryLimit(ResourceType.Block, 31)).toThrowError();
+  });
+  test('Error is NOT thrown when value is larger than input but a maxLimitOverride has been provided', () => {
+    expect(() => getPagingQueryLimit(ResourceType.Tx, 100, 200)).not.toThrowError();
   });
 });

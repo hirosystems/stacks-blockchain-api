@@ -17,6 +17,7 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
+  CoreNodeTxMessage,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -36,6 +37,8 @@ import {
   DataStoreTxEventData,
   DbMicroblock,
   DataStoreAttachmentData,
+  DbPox2Event,
+  DbTxStatus,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -65,6 +68,10 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
+import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
+import { Pox2ContractIdentifer } from '../pox-helpers';
+import { decodePox2PrintEvent } from './pox2-event-parsing';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -259,6 +266,8 @@ async function handleBlockMessage(
       from_index_block_hash: minerReward.from_index_consensus_hash,
       mature_block_height: msg.block_height,
       recipient: minerReward.recipient,
+      // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+      miner_address: minerReward.miner_address ?? minerReward.recipient,
       coinbase_amount: BigInt(minerReward.coinbase_amount),
       tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
       tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
@@ -305,6 +314,7 @@ async function handleBlockMessage(
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
+    pox_v1_unlock_height: msg.pox_v1_unlock_height,
   };
 
   await db.update(dbData);
@@ -330,14 +340,21 @@ function parseDataStoreTxEventData(
       smartContracts: [],
       names: [],
       namespaces: [],
+      pox2Events: [],
     };
     switch (tx.parsed_tx.payload.type_id) {
+      case TxPayloadTypeID.VersionedSmartContract:
       case TxPayloadTypeID.SmartContract:
         const contractId = `${tx.sender_address}.${tx.parsed_tx.payload.contract_name}`;
+        const clarityVersion =
+          tx.parsed_tx.payload.type_id == TxPayloadTypeID.VersionedSmartContract
+            ? tx.parsed_tx.payload.clarity_version
+            : null;
         dbTx.smartContracts.push({
           tx_id: tx.core_tx.txid,
           contract_id: contractId,
           block_height: blockData.block_height,
+          clarity_version: clarityVersion,
           source_code: tx.parsed_tx.payload.code_body,
           abi: JSON.stringify(tx.core_tx.contract_abi),
           canonical: true,
@@ -368,6 +385,25 @@ function parseDataStoreTxEventData(
       throw new Error(`Unexpected missing tx during event parsing by tx_id ${event.txid}`);
     }
 
+    if (dbTx.tx.status !== DbTxStatus.Success) {
+      if (event.type === CoreNodeEventType.ContractEvent) {
+        let reprStr = '?';
+        try {
+          reprStr = decodeClarityValue(event.contract_event.raw_value).repr;
+        } catch (e) {
+          logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
+        }
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}, repr: ${reprStr}`
+        );
+      } else {
+        logger.verbose(
+          `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}`
+        );
+      }
+      continue;
+    }
+
     const dbEvent: DbEventBase = {
       event_index: event.event_index,
       tx_id: event.txid,
@@ -386,6 +422,22 @@ function parseDataStoreTxEventData(
           value: event.contract_event.raw_value,
         };
         dbTx.contractLogEvents.push(entry);
+        if (
+          event.contract_event.topic === 'print' &&
+          (event.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
+            event.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
+        ) {
+          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
+          if (poxEventData !== null) {
+            logger.debug(`Pox2 event data:`, poxEventData);
+            const dbPoxEvent: DbPox2Event = {
+              ...dbEvent,
+              ...poxEventData,
+            };
+            dbTx.pox2Events.push(dbPoxEvent);
+          }
+        }
         // Check if we have new BNS names or namespaces.
         const parsedTx = parsedTxs.find(entry => entry.core_tx.txid === event.txid);
         if (!parsedTx) {
@@ -414,6 +466,8 @@ function parseDataStoreTxEventData(
           locked_amount: BigInt(event.stx_lock_event.locked_amount),
           unlock_height: Number(event.stx_lock_event.unlock_height),
           locked_address: event.stx_lock_event.locked_address,
+          // if not available, then we can correctly assume pox-v1
+          contract_name: event.stx_lock_event.contract_identifier?.split('.')[1] ?? 'pox',
         };
         dbTx.stxLockEvents.push(entry);
         break;
@@ -426,6 +480,7 @@ function parseDataStoreTxEventData(
           sender: event.stx_transfer_event.sender,
           recipient: event.stx_transfer_event.recipient,
           amount: BigInt(event.stx_transfer_event.amount),
+          memo: event.stx_transfer_event.memo ? '0x' + event.stx_transfer_event.memo : undefined,
         };
         dbTx.stxEvents.push(entry);
         break;
@@ -540,6 +595,7 @@ function parseDataStoreTxEventData(
       tx.nftEvents,
       tx.stxEvents,
       tx.stxLockEvents,
+      tx.pox2Events,
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
@@ -606,6 +662,7 @@ interface EventMessageHandler {
 function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
+
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
@@ -677,6 +734,24 @@ export type EventStreamServer = net.Server & {
   closeAsync: () => Promise<void>;
 };
 
+export const bnsImportMiddleware = (db: PgWriteStore) => {
+  return asyncHandler(async (req, res, next) => {
+    const blockMessage: CoreNodeBlockMessage = req.body;
+    const bnsDir = process.env.BNS_IMPORT_DIR;
+    if (blockMessage.block_height === 1 && bnsDir) {
+      const configState = await db.getConfigState();
+      if (!configState.bns_names_onchain_imported || !configState.bns_subdomains_imported) {
+        const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
+        logger.verbose('Starting V1 BNS names import');
+        await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
+        logger.verbose('Starting V1 BNS subdomains import');
+        await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
+      }
+    }
+    next();
+  });
+};
+
 export async function startEventServer(opts: {
   datastore: PgWriteStore;
   chainId: ChainID;
@@ -728,105 +803,115 @@ export async function startEventServer(opts: {
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
-  app.post(
-    '*',
-    asyncHandler(async (req, res, next) => {
+  const handleRawEventRequest = asyncHandler(async req => {
+    await messageHandler.handleRawEventRequest(req.path, req.body, db);
+
+    if (logger.isDebugEnabled()) {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
-      await messageHandler.handleRawEventRequest(eventPath, req.body, db);
-      if (logger.isDebugEnabled()) {
-        // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-        if (payload.length > 10_000_000) {
-          payload = 'payload body too large for logging';
-        }
-        logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+      if (payload.length > 10_000_000) {
+        payload = 'payload body too large for logging';
       }
-      next();
-    })
-  );
+      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+    }
+  });
 
   app.post(
     '/new_block',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeBlockMessage = req.body;
-        await messageHandler.handleBlockMessage(opts.chainId, msg, db);
+        const blockMessage: CoreNodeBlockMessage = req.body;
+        await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_block: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    bnsImportMiddleware(db),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_burn_block',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeBurnBlockMessage = req.body;
         await messageHandler.handleBurnBlock(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_burn_block: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_mempool_tx',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const rawTxs: string[] = req.body;
         await messageHandler.handleMempoolTxs(rawTxs, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_mempool_tx: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/drop_mempool_tx',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/attachments/new',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeAttachmentMessage[] = req.body;
         await messageHandler.handleNewAttachment(msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /attachments/new: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post(
     '/new_microblocks',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       try {
         const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
         res.status(200).json({ result: 'ok' });
+        next();
       } catch (error) {
         logError(`error processing core-node /new_microblocks: ${error}`, error);
         res.status(500).json({ error: error });
       }
-    })
+    }),
+    handleRawEventRequest
   );
 
   app.post('*', (req, res, next) => {

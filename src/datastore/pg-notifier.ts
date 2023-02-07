@@ -1,5 +1,6 @@
 import * as postgres from 'postgres';
 import { logError, logger } from '../helpers';
+import { DbConfigState } from './common';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
 type PgTxNotificationPayload = {
@@ -45,6 +46,8 @@ type PgTokensNotificationPayload = {
   contractID: string;
 };
 
+export type PgConfigStateNotificationPayload = DbConfigState;
+
 /**
  * API notifications to be sent via Postgres `NOTIFY` queries.
  */
@@ -58,7 +61,8 @@ type PgNotification =
   | { type: 'tokenMetadataUpdateQueued'; payload: PgTokenMetadataNotificationPayload }
   | { type: 'tokensUpdate'; payload: PgTokensNotificationPayload }
   | { type: 'smartContractUpdate'; payload: PgSmartContractNotificationPayload }
-  | { type: 'smartContractLogUpdate'; payload: PgSmartContractLogNotificationPayload };
+  | { type: 'smartContractLogUpdate'; payload: PgSmartContractLogNotificationPayload }
+  | { type: 'configStateUpdate'; payload: PgConfigStateNotificationPayload };
 
 type PgNotificationCallback = (notification: PgNotification) => void;
 
@@ -132,6 +136,10 @@ export class PgNotifier {
 
   public async sendTokens(payload: PgTokensNotificationPayload) {
     await this.notify({ type: 'tokensUpdate', payload: payload });
+  }
+
+  public async sendConfigState(payload: PgConfigStateNotificationPayload) {
+    await this.notify({ type: 'configStateUpdate', payload });
   }
 
   public async close() {

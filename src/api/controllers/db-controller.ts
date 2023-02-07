@@ -59,11 +59,13 @@ import {
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
+  DbPox2Event,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { Pox2EventName } from '../../pox-helpers';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -85,12 +87,14 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
     case DbTxTypeId.TokenTransfer:
       return 'token_transfer';
     case DbTxTypeId.SmartContract:
+    case DbTxTypeId.VersionedSmartContract:
       return 'smart_contract';
     case DbTxTypeId.ContractCall:
       return 'contract_call';
     case DbTxTypeId.PoisonMicroblock:
       return 'poison_microblock';
     case DbTxTypeId.Coinbase:
+    case DbTxTypeId.CoinbaseToAltRecipient:
       return 'coinbase';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
@@ -110,18 +114,18 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   }
 }
 
-export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId {
+export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
   switch (typeString) {
     case 'token_transfer':
-      return DbTxTypeId.TokenTransfer;
+      return [DbTxTypeId.TokenTransfer];
     case 'smart_contract':
-      return DbTxTypeId.SmartContract;
+      return [DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract];
     case 'contract_call':
-      return DbTxTypeId.ContractCall;
+      return [DbTxTypeId.ContractCall];
     case 'poison_microblock':
-      return DbTxTypeId.PoisonMicroblock;
+      return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
-      return DbTxTypeId.Coinbase;
+      return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient];
     default:
       throw new Error(`Unexpected tx type string: ${typeString}`);
   }
@@ -198,6 +202,133 @@ export function getAssetEventTypeString(
   }
 }
 
+export function parsePox2Event(poxEvent: DbPox2Event) {
+  const baseInfo = {
+    block_height: poxEvent.block_height,
+    tx_id: poxEvent.tx_id,
+    tx_index: poxEvent.tx_index,
+    event_index: poxEvent.event_index,
+    stacker: poxEvent.stacker,
+    locked: poxEvent.locked.toString(),
+    balance: poxEvent.balance.toString(),
+    burnchain_unlock_height: poxEvent.burnchain_unlock_height.toString(),
+    pox_addr: poxEvent.pox_addr,
+    pox_addr_raw: poxEvent.pox_addr_raw,
+    name: poxEvent.name,
+  };
+  switch (poxEvent.name) {
+    case Pox2EventName.HandleUnlock: {
+      return {
+        ...baseInfo,
+        data: {
+          first_cycle_locked: poxEvent.data.first_cycle_locked.toString(),
+          first_unlocked_cycle: poxEvent.data.first_unlocked_cycle.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackStx: {
+      return {
+        ...baseInfo,
+        data: {
+          lock_amount: poxEvent.data.lock_amount.toString(),
+          lock_period: poxEvent.data.lock_period.toString(),
+          start_burn_height: poxEvent.data.start_burn_height.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          increase_by: poxEvent.data.increase_by.toString(),
+          total_locked: poxEvent.data.total_locked.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackExtend: {
+      return {
+        ...baseInfo,
+        data: {
+          extend_count: poxEvent.data.extend_count.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+        },
+      };
+    }
+    case Pox2EventName.DelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
+          unlock_burn_height: poxEvent.data.unlock_burn_height?.toString(),
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackStx: {
+      return {
+        ...baseInfo,
+        data: {
+          lock_amount: poxEvent.data.lock_amount.toString(),
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          start_burn_height: poxEvent.data.start_burn_height.toString(),
+          lock_period: poxEvent.data.lock_period.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          increase_by: poxEvent.data.increase_by.toString(),
+          total_locked: poxEvent.data.total_locked.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.DelegateStackExtend: {
+      return {
+        ...baseInfo,
+        data: {
+          unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          extend_count: poxEvent.data.extend_count.toString(),
+          delegator: poxEvent.data.delegator,
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationCommit: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      return {
+        ...baseInfo,
+        data: {
+          reward_cycle: poxEvent.data.reward_cycle.toString(),
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    default:
+      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
+  }
+}
+
 export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
@@ -242,6 +373,9 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           amount: dbEvent.amount.toString(10),
         },
       };
+      if (dbEvent.asset_event_type_id === DbAssetEventTypeId.Transfer && dbEvent.memo) {
+        event.asset.memo = dbEvent.memo;
+      }
       return event;
     }
     case DbEventTypeId.FungibleTokenAsset: {
@@ -527,7 +661,7 @@ async function parseRosettaTxDetail(opts: {
       events,
       opts.unlockingEvents
     );
-    const txMemo = parseTransactionMemo(opts.tx);
+    const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
     const rosettaTx: RosettaTransaction = {
       transaction_identifier: { hash: opts.tx.tx_id },
       operations: operations,
@@ -551,7 +685,10 @@ async function getRosettaBlockTxFromDataStore(opts: {
     let minerRewards: DbMinerReward[] = [],
       unlockingEvents: StxUnlockEvent[] = [];
 
-    if (opts.tx.type_id === DbTxTypeId.Coinbase) {
+    if (
+      opts.tx.type_id === DbTxTypeId.Coinbase ||
+      opts.tx.type_id === DbTxTypeId.CoinbaseToAltRecipient
+    ) {
       minerRewards = await opts.db.getMinersRewardsAtHeight({
         blockHeight: opts.block.block_height,
       });
@@ -718,6 +855,27 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: SmartContractTransactionMetadata = {
         tx_type: 'smart_contract',
         smart_contract: {
+          clarity_version: null as any,
+          contract_id: unwrapOptional(
+            dbTx.smart_contract_contract_id,
+            () => 'Unexpected nullish smart_contract_contract_id'
+          ),
+          source_code: unwrapOptional(
+            dbTx.smart_contract_source_code,
+            () => 'Unexpected nullish smart_contract_source_code'
+          ),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.VersionedSmartContract: {
+      const metadata: SmartContractTransactionMetadata = {
+        tx_type: 'smart_contract',
+        smart_contract: {
+          clarity_version: unwrapOptional(
+            dbTx.smart_contract_clarity_version,
+            () => 'Unexpected nullish smart_contract_clarity_version'
+          ),
           contract_id: unwrapOptional(
             dbTx.smart_contract_contract_id,
             () => 'Unexpected nullish smart_contract_contract_id'
@@ -748,6 +906,20 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
         tx_type: 'coinbase',
         coinbase_payload: {
           data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: null as any,
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.CoinbaseToAltRecipient: {
+      const metadata: CoinbaseTransactionMetadata = {
+        tx_type: 'coinbase',
+        coinbase_payload: {
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: unwrapOptional(
+            dbTx.coinbase_alt_recipient,
+            () => 'Unexpected nullish coinbase_alt_recipient'
+          ),
         },
       };
       return metadata;

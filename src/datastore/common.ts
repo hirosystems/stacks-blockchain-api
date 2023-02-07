@@ -1,6 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
 import { PgBytea, PgJsonb, PgNumeric } from './connection';
+import { Pox2EventName } from '../pox-helpers';
 
 export interface DbBlock {
   block_hash: string;
@@ -72,6 +73,8 @@ export interface DbMinerReward {
   canonical: boolean;
   /** STX principal */
   recipient: string;
+  /** STX principal */
+  miner_address: string | null;
   coinbase_amount: bigint;
   tx_fees_anchored: bigint;
   tx_fees_streamed_confirmed: bigint;
@@ -84,6 +87,8 @@ export enum DbTxTypeId {
   ContractCall = 0x02,
   PoisonMicroblock = 0x03,
   Coinbase = 0x04,
+  CoinbaseToAltRecipient = 0x05,
+  VersionedSmartContract = 0x06,
 }
 
 export enum DbTxStatus {
@@ -163,6 +168,9 @@ export interface DbTx extends BaseTx {
   /** u8 */
   origin_hash_mode: number;
 
+  /** Only valid for `versioned_smart_contract` tx types */
+  smart_contract_clarity_version?: number;
+
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -173,6 +181,9 @@ export interface DbTx extends BaseTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: string;
+
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
 
   event_count: number;
 
@@ -233,6 +244,9 @@ export interface DbMempoolTx extends BaseTx {
   /** u8 */
   origin_hash_mode: number;
 
+  /** Only valid for `versioned_smart_contract` tx types */
+  smart_contract_clarity_version?: number;
+
   /** Only valid for `smart_contract` tx types. */
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -243,6 +257,9 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase` tx types. Hex encoded 32-bytes. */
   coinbase_payload?: string;
+
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
 }
 
 export interface DbMempoolTxRaw extends DbMempoolTx {
@@ -254,6 +271,7 @@ export interface DbSmartContract {
   canonical: boolean;
   contract_id: string;
   block_height: number;
+  clarity_version: number | null;
   source_code: string;
   abi: string | null;
 }
@@ -287,6 +305,126 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
+export interface DbPox2BaseEventData {
+  stacker: string;
+  locked: bigint;
+  balance: bigint;
+  burnchain_unlock_height: bigint;
+  pox_addr: string | null;
+  pox_addr_raw: string | null;
+}
+
+export interface DbPox2HandleUnlockEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.HandleUnlock;
+  data: {
+    first_cycle_locked: bigint;
+    first_unlocked_cycle: bigint;
+  };
+}
+
+export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackStx;
+  data: {
+    lock_amount: bigint;
+    lock_period: bigint;
+    start_burn_height: bigint;
+    unlock_burn_height: bigint;
+  };
+}
+
+export interface DbPox2StackIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackIncrease;
+  data: {
+    increase_by: bigint;
+    total_locked: bigint;
+  };
+}
+
+export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackExtend;
+  data: {
+    extend_count: bigint;
+    unlock_burn_height: bigint;
+  };
+}
+
+export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStx;
+  data: {
+    amount_ustx: bigint;
+    delegate_to: string;
+    unlock_burn_height: bigint | null;
+  };
+}
+
+export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackStx;
+  data: {
+    lock_amount: bigint;
+    unlock_burn_height: bigint;
+    start_burn_height: bigint;
+    lock_period: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackIncrease;
+  data: {
+    increase_by: bigint;
+    total_locked: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.DelegateStackExtend;
+  data: {
+    unlock_burn_height: bigint;
+    extend_count: bigint;
+    delegator: string;
+  };
+}
+
+export interface DbPox2StackAggregationCommitEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationCommit;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
+export interface DbPox2StackAggregationCommitIndexedEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationCommitIndexed;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
+export interface DbPox2StackAggregationIncreaseEvent extends DbPox2BaseEventData {
+  name: Pox2EventName.StackAggregationIncrease;
+  data: {
+    reward_cycle: bigint;
+    amount_ustx: bigint;
+  };
+}
+
+export type DbPox2EventData =
+  | DbPox2HandleUnlockEvent
+  | DbPox2StackStxEvent
+  | DbPox2StackIncreaseEvent
+  | DbPox2StackExtendEvent
+  | DbPox2DelegateStxEvent
+  | DbPox2DelegateStackStxEvent
+  | DbPox2DelegateStackIncreaseEvent
+  | DbPox2DelegateStackExtendEvent
+  | DbPox2StackAggregationCommitEvent
+  | DbPox2StackAggregationCommitIndexedEvent
+  | DbPox2StackAggregationIncreaseEvent;
+
+export type DbPox2Event = DbEventBase & DbPox2EventData;
+
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
@@ -299,6 +437,7 @@ export interface DbStxLockEvent extends DbEventBase {
   locked_amount: bigint;
   unlock_height: number;
   locked_address: string;
+  contract_name: string;
 }
 
 export enum DbAssetEventTypeId {
@@ -316,6 +455,7 @@ interface DbAssetEvent extends DbEventBase {
 export interface DbStxEvent extends DbAssetEvent {
   event_type: DbEventTypeId.StxAsset;
   amount: bigint;
+  memo?: string;
 }
 
 interface DbContractAssetEvent extends DbAssetEvent {
@@ -335,7 +475,6 @@ export interface DbNftEvent extends DbContractAssetEvent {
 
 export interface StxUnlockEvent {
   tx_id: string;
-  unlock_height: string;
   stacker_address: string;
   unlocked_amount: string;
 }
@@ -406,6 +545,7 @@ export interface DataStoreBlockUpdateData {
   microblocks: DbMicroblock[];
   minerRewards: DbMinerReward[];
   txs: DataStoreTxEventData[];
+  pox_v1_unlock_height?: number;
 }
 
 export interface DataStoreMicroblockUpdateData {
@@ -423,6 +563,7 @@ export interface DataStoreTxEventData {
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
+  pox2Events: DbPox2Event[];
 }
 
 export interface DataStoreAttachmentData {
@@ -634,6 +775,7 @@ export interface DbChainTip {
   blockHash: string;
   microblockHash?: string;
   microblockSequence?: number;
+  burnBlockHeight: number;
 }
 
 export interface BlockQueryResult {
@@ -698,6 +840,9 @@ export interface MempoolTxQueryResult {
   token_transfer_amount?: string;
   token_transfer_memo?: string;
 
+  // `versioned_smart_contract` tx types
+  smart_contract_clarity_version?: number;
+
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -713,6 +858,9 @@ export interface MempoolTxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: string;
+
+  /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
+  coinbase_alt_recipient?: string;
 
   // sending abi in case tx is contract call
   abi: unknown | null;
@@ -752,6 +900,9 @@ export interface TxQueryResult {
   token_transfer_amount?: string;
   token_transfer_memo?: string;
 
+  // `versioned_smart_contract` tx types
+  smart_contract_clarity_version?: number;
+
   // `smart_contract` tx types
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
@@ -767,6 +918,9 @@ export interface TxQueryResult {
 
   // `coinbase` tx types
   coinbase_payload?: string;
+
+  // `coinbase-to-alt-recipient` tx types
+  coinbase_alt_recipient?: string;
 
   // events count
   event_count: number;
@@ -799,6 +953,7 @@ export interface UpdatedEntities {
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
+    pox2Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -814,6 +969,7 @@ export interface UpdatedEntities {
     stxEvents: number;
     ftEvents: number;
     nftEvents: number;
+    pox2Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -910,6 +1066,7 @@ export interface TxInsertValues {
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
   token_transfer_memo: PgBytea | null;
+  smart_contract_clarity_version: number | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
@@ -918,6 +1075,7 @@ export interface TxInsertValues {
   poison_microblock_header_1: PgBytea | null;
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
+  coinbase_alt_recipient: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -947,6 +1105,7 @@ export interface MempoolTxInsertValues {
   token_transfer_recipient_address: string | null;
   token_transfer_amount: bigint | null;
   token_transfer_memo: PgBytea | null;
+  smart_contract_clarity_version: number | null;
   smart_contract_contract_id: string | null;
   smart_contract_source_code: string | null;
   contract_call_contract_id: string | null;
@@ -955,6 +1114,7 @@ export interface MempoolTxInsertValues {
   poison_microblock_header_1: PgBytea | null;
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
+  coinbase_alt_recipient: string | null;
 }
 
 export interface BlockInsertValues {
@@ -1009,6 +1169,7 @@ export interface StxEventInsertValues {
   sender: string | null;
   recipient: string | null;
   amount: bigint;
+  memo: PgBytea | null;
 }
 
 export interface MinerRewardInsertValues {
@@ -1018,6 +1179,7 @@ export interface MinerRewardInsertValues {
   mature_block_height: number;
   canonical: boolean;
   recipient: string;
+  miner_address: string | null;
   coinbase_amount: PgNumeric;
   tx_fees_anchored: PgNumeric;
   tx_fees_streamed_confirmed: PgNumeric;
@@ -1038,6 +1200,124 @@ export interface StxLockEventInsertValues {
   locked_amount: PgNumeric;
   unlock_height: number;
   locked_address: string;
+  contract_name: string;
+}
+
+export interface Pox2EventQueryResult {
+  event_index: number;
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: string;
+  parent_index_block_hash: string;
+  microblock_hash: string;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  stacker: string;
+  locked: string;
+  balance: string;
+  burnchain_unlock_height: string;
+  name: string;
+  pox_addr: string | null;
+  pox_addr_raw: string | null;
+
+  // unique to handle-unlock
+  first_cycle_locked: string | null;
+
+  // unique to handle-unlock
+  first_unlocked_cycle: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_period: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_amount: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  start_burn_height: string | null;
+
+  // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend, delegate-stx
+  unlock_burn_height: string | null;
+
+  // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
+  delegator: string | null;
+
+  // unique to delegate-stx
+  delegate_to: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  increase_by: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  total_locked: string | null;
+
+  // unique to stack-extend, delegate-stack-extend
+  extend_count: string | null;
+
+  // unique to stack-aggregation-commit
+  reward_cycle: string | null;
+
+  // unique to stack-aggregation-commit, delegate-stx
+  amount_ustx: string | null;
+}
+
+export interface Pox2EventInsertValues {
+  event_index: number;
+  tx_id: PgBytea;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  microblock_canonical: boolean;
+  canonical: boolean;
+  stacker: string;
+  locked: PgNumeric;
+  balance: PgNumeric;
+  burnchain_unlock_height: PgNumeric;
+  name: string;
+  pox_addr: string | null;
+  pox_addr_raw: PgBytea | null;
+
+  // unique to handle-unlock
+  first_cycle_locked: PgNumeric | null;
+
+  // unique to handle-unlock
+  first_unlocked_cycle: PgNumeric | null;
+
+  // unique to delegate-stx
+  delegate_to: string | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_period: PgNumeric | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  lock_amount: PgNumeric | null;
+
+  // unique to stack-stx, delegate-stack-stx
+  start_burn_height: PgNumeric | null;
+
+  unlock_burn_height: PgNumeric | null;
+
+  // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
+  delegator: string | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  increase_by: PgNumeric | null;
+
+  // unique to stack-increase, delegate-stack-increase
+  total_locked: PgNumeric | null;
+
+  // unique to stack-extend, delegate-stack-extend
+  extend_count: PgNumeric | null;
+
+  // unique to stack-aggregation-commit
+  reward_cycle: PgNumeric | null;
+
+  // unique to stack-aggregation-commit, delegate-stx
+  amount_ustx: PgNumeric | null;
 }
 
 export interface NftEventInsertValues {
@@ -1238,6 +1518,7 @@ export interface SmartContractInsertValues {
   contract_id: string;
   block_height: number;
   index_block_hash: PgBytea;
+  clarity_version: number | null;
   source_code: string;
   abi: PgJsonb;
   parent_index_block_hash: PgBytea;

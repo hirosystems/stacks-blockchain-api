@@ -6,7 +6,6 @@ import {
   PostConditionMode,
   AnchorMode,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import {
   DbTxRaw,
   DbTxStatus,
@@ -25,6 +24,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -74,10 +74,7 @@ describe('api tests', () => {
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     try {
-      const submitResult = await new StacksCoreRpcClient({
-        host: HOST,
-        port: PORT,
-      }).sendTransaction(serializedTx);
+      const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
       logger.error('error: ', error);
@@ -98,17 +95,18 @@ describe('api tests', () => {
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
       anchorMode: AnchorMode.Any,
+      fee: 100000,
     });
 
     const contractId = senderAddress + '.' + contractName;
 
-    const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-    const feeRateResult = await feeRateReq.text();
-    const txBytes = new BN(contractDeployTx.serialize().byteLength);
-    const feeRate = new BN(feeRateResult);
-    const fee = feeRate.mul(txBytes);
-    contractDeployTx.setFee(fee);
-    const { txId } = await sendCoreTx(contractDeployTx.serialize());
+    // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+    // const feeRateResult = await feeRateReq.text();
+    // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
+    // const feeRate = BigInt(feeRateResult);
+    // const fee = feeRate * txBytes;
+    // contractDeployTx.setFee(fee);
+    const { txId } = await sendCoreTx(Buffer.from(contractDeployTx.serialize()));
     return { txId, contractId };
   }
 
@@ -119,6 +117,7 @@ describe('api tests', () => {
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await new StacksCoreRpcClient().waitForConnection(60000);
   });
 
   beforeEach(() => {
@@ -332,10 +331,10 @@ describe('api tests', () => {
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/ft/metadata?limit=20&offset=10`
@@ -365,10 +364,10 @@ describe('api tests', () => {
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/metadata?limit=20&offset=10`

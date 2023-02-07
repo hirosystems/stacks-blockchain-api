@@ -353,12 +353,13 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+          value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,
           canonical: true,
           block_height: block1.block_height,
+          clarity_version: null,
           contract_id: contractAddr,
           source_code: '(some-contract-src)',
           abi: JSON.stringify(contractJsonAbi),
@@ -379,6 +380,7 @@ describe('microblock tests', () => {
               smartContracts: [smartContract1],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
           ],
         });
@@ -526,6 +528,7 @@ describe('microblock tests', () => {
               smartContracts: [],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
             {
               tx: mbTx2,
@@ -537,6 +540,7 @@ describe('microblock tests', () => {
               smartContracts: [],
               names: [],
               namespaces: [],
+              pox2Events: [],
             },
           ],
         });

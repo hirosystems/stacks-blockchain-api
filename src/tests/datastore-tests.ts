@@ -358,6 +358,7 @@ describe('postgres datastore', () => {
         mature_block_height: 1,
         canonical: canonical,
         recipient: recipient,
+        miner_address: recipient,
         coinbase_amount: amount,
         tx_fees_anchored: txFeeAnchored,
         tx_fees_streamed_confirmed: txFeeConfirmed,
@@ -464,6 +465,7 @@ describe('postgres datastore', () => {
         locked_amount: amount,
         unlock_height: unlockHeight ?? tx.block_height + 200,
         locked_address: sender,
+        contract_name: 'pox',
       };
       return stxEvent;
     };
@@ -654,6 +656,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -819,6 +822,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -1031,6 +1035,7 @@ describe('postgres datastore', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -1226,6 +1231,7 @@ describe('postgres datastore', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -1501,6 +1507,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -1512,6 +1519,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
         {
           tx: tx3,
@@ -1523,6 +1531,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2273,6 +2282,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2354,6 +2364,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2423,6 +2434,7 @@ describe('postgres datastore', () => {
       tx_id: tx.tx_id,
       canonical: true,
       block_height: dbBlock.block_height,
+      clarity_version: null,
       contract_id: 'my-contract',
       source_code: '(src)',
       abi: '{"some":"abi"}',
@@ -2442,12 +2454,145 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [contract],
+          pox2Events: [],
         },
       ],
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
     expect(txQuery.result).toEqual(tx);
+  });
+
+  test('pg `versioned-smart-contract` tx type constraint', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '0x00',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const tx: DbTxRaw = {
+      tx_id: '0x421234',
+      tx_index: 4,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '0x',
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    await expect(db.updateTx(client, tx)).rejects.toEqual(
+      new Error(
+        'new row for relation "txs" violates check constraint "valid_versioned_smart_contract"'
+      )
+    );
+    tx.smart_contract_clarity_version = 2;
+    tx.smart_contract_contract_id = 'my-contract';
+    tx.smart_contract_source_code = '(src)';
+    const contract: DbSmartContract = {
+      tx_id: tx.tx_id,
+      canonical: true,
+      block_height: dbBlock.block_height,
+      clarity_version: 2,
+      contract_id: 'my-contract',
+      source_code: '(src)',
+      abi: '{"some":"abi"}',
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [contract],
+          pox2Events: [],
+        },
+      ],
+    });
+    const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
+    assert(txQuery.found);
+    // Expect tx without raw data.
+    const txRes: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 4,
+      anchor_mode: 3,
+      nonce: 0,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      abi: undefined,
+      smart_contract_clarity_version: 2,
+      smart_contract_contract_id: 'my-contract',
+      smart_contract_source_code: '(src)',
+      sponsor_nonce: undefined,
+    };
+    expect(txQuery.result).toEqual(txRes);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
@@ -2523,6 +2668,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2603,6 +2749,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2682,6 +2829,7 @@ describe('postgres datastore', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2873,6 +3021,7 @@ describe('postgres datastore', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block1.block_height,
+      clarity_version: null,
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
@@ -2922,6 +3071,7 @@ describe('postgres datastore', () => {
           smartContracts: [smartContract1],
           names: [name1],
           namespaces: [namespace1],
+          pox2Events: [],
         },
         {
           tx: { ...tx2, raw_tx: '0x' },
@@ -2933,6 +3083,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3345,6 +3496,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3406,6 +3558,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3511,6 +3664,7 @@ describe('postgres datastore', () => {
       from_index_block_hash: '0x33',
       mature_block_height: 3,
       recipient: 'miner-addr1',
+      miner_address: 'miner-addr1',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
@@ -3594,6 +3748,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: 20,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     // inserts blocks directly -- just runs sql insert without any reorg handling
@@ -3647,6 +3802,7 @@ describe('postgres datastore', () => {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3662,6 +3818,7 @@ describe('postgres datastore', () => {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3725,6 +3882,7 @@ describe('postgres datastore', () => {
       mature_block_height: 3,
       from_index_block_hash: '0x11',
       recipient: 'miner-addr1',
+      miner_address: 'miner-addr1',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
@@ -3736,6 +3894,7 @@ describe('postgres datastore', () => {
       mature_block_height: 4,
       from_index_block_hash: '0x22',
       recipient: 'miner-addr2',
+      miner_address: 'miner-addr2',
       coinbase_amount: 1000n,
       tx_fees_anchored: 2n,
       tx_fees_streamed_confirmed: 3n,
@@ -3819,6 +3978,7 @@ describe('postgres datastore', () => {
       locked_amount: 1234n,
       unlock_height: block1.block_height + 100000,
       locked_address: 'locked-addr1',
+      contract_name: 'pox',
     };
 
     const stxLockEvent2: DbStxLockEvent = {
@@ -3828,6 +3988,7 @@ describe('postgres datastore', () => {
       locked_amount: 45n,
       unlock_height: block2.block_height + 100000,
       locked_address: 'locked-addr2',
+      contract_name: 'pox',
     };
 
     await db.update({
@@ -3845,6 +4006,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -3909,6 +4071,7 @@ describe('postgres datastore', () => {
               tx_index: tx2.tx_index,
             },
           ],
+          pox2Events: [],
         },
       ],
     });
@@ -4041,6 +4204,7 @@ describe('postgres datastore', () => {
     const contract1: DbSmartContract = {
       tx_id: tx3.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'my-contract',
       block_height: tx3.block_height,
       source_code: '(my-src)',
@@ -4108,6 +4272,7 @@ describe('postgres datastore', () => {
               tx_index: tx3.tx_index,
             },
           ],
+          pox2Events: [],
         },
       ],
     });
@@ -4143,7 +4308,12 @@ describe('postgres datastore', () => {
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
     const chainTip1 = await db.getChainTip(client);
-    expect(chainTip1).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    expect(chainTip1).toEqual({
+      blockHash: '0x33',
+      blockHeight: 3,
+      indexBlockHash: '0xcc',
+      burnBlockHeight: 123,
+    });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(1);
     const names = await db.getNamespaceNamesList({
@@ -4199,7 +4369,12 @@ describe('postgres datastore', () => {
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
     const chainTip2 = await db.getChainTip(client);
-    expect(chainTip2).toEqual({ blockHash: '0x33', blockHeight: 3, indexBlockHash: '0xcc' });
+    expect(chainTip2).toEqual({
+      blockHash: '0x33',
+      blockHeight: 3,
+      indexBlockHash: '0xcc',
+      burnBlockHeight: 123,
+    });
 
     const block4b: DbBlock = {
       block_hash: '0x44bb',
@@ -4239,7 +4414,12 @@ describe('postgres datastore', () => {
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
     const chainTip3 = await db.getChainTip(client);
-    expect(chainTip3).toEqual({ blockHash: '0x44bb', blockHeight: 4, indexBlockHash: '0xddbb' });
+    expect(chainTip3).toEqual({
+      blockHash: '0x44bb',
+      blockHeight: 4,
+      indexBlockHash: '0xddbb',
+      burnBlockHeight: 123,
+    });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });
     const b2 = await db.getBlock({ hash: block2.block_hash });
@@ -4357,6 +4537,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -4436,6 +4617,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -4569,6 +4751,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -4580,6 +4763,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });

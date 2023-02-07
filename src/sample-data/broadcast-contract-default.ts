@@ -40,7 +40,9 @@ export const SampleContracts: readonly {
     (define-public (set-value (key (buff 32)) (value (buff 32)))
         (begin
             (map-set store { key: key } { value: value })
-            (ok u1)))`,
+            (ok u1)))
+
+    (stx-transfer-memo? u60 tx-sender 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5 0x74657374206d656d6f206669656c64)`,
   },
   {
     contractName: 'kv-store',

@@ -16,6 +16,7 @@ import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -119,6 +120,7 @@ describe('other tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -168,6 +170,7 @@ describe('other tests', () => {
       mature_block_height: dbBlock1.block_height,
       canonical: true,
       recipient: testAddr1,
+      miner_address: testAddr1,
       coinbase_amount: 15_000_000_000_000n,
       tx_fees_anchored: 1_000_000_000_000n,
       tx_fees_streamed_confirmed: 2_000_000_000_000n,
@@ -239,7 +242,9 @@ describe('other tests', () => {
     };
     const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
     const principal_error = { error: 'invalid STX address "S.hello-world"' };
-    const pagination_error = { error: '`limit` must be equal to or less than 200' };
+    const pagination_error = {
+      error: `'limit' must be equal to or less than ${getPagingQueryLimit(ResourceType.Tx, 50)}`,
+    };
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);

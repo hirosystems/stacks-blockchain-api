@@ -3,10 +3,14 @@ import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import * as btc from 'bitcoinjs-lib';
 import PQueue from 'p-queue';
-import * as BN from 'bn.js';
 import { BigNumber } from 'bignumber.js';
-import { AnchorMode, makeSTXTokenTransfer, SignedTokenTransferOptions } from '@stacks/transactions';
-import { StacksNetwork } from '@stacks/network';
+import {
+  AnchorMode,
+  makeSTXTokenTransfer,
+  SignedTokenTransferOptions,
+  StacksTransaction,
+} from '@stacks/transactions';
+import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
 import { intMax, logger, stxToMicroStx } from '../../helpers';
@@ -25,8 +29,9 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
       logger.error(error);
       throw new Error(error);
     }
-    const network = getStacksTestnetNetwork();
-    network.coreApiUrl = `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`;
+    const network = new StacksTestnet({
+      url: `http://${faucetNodeHostOverride}:${faucetNodePortOverride}`,
+    });
     networks.push(network);
   }
   return networks;
@@ -183,10 +188,14 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         }
         const stxAmount = intMax(stxAmounts);
 
-        const generateTx = async (network: StacksNetwork, nonce?: bigint, fee?: bigint) => {
+        const generateTx = async (
+          network: StacksNetwork,
+          nonce?: bigint,
+          fee?: bigint
+        ): Promise<StacksTransaction> => {
           const txOpts: SignedTokenTransferOptions = {
             recipient: address,
-            amount: new BN(stxAmount.toString()),
+            amount: stxAmount,
             senderKey: privateKey,
             network: network,
             memo: 'Faucet',
@@ -198,7 +207,15 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           if (nonce !== undefined) {
             txOpts.nonce = nonce;
           }
-          return await makeSTXTokenTransfer(txOpts);
+          try {
+            return await makeSTXTokenTransfer(txOpts);
+          } catch (error: any) {
+            if (fee === undefined && (error as Error).message?.includes('NoEstimateAvailable')) {
+              const defaultFee = 200n;
+              return await generateTx(network, nonce, defaultFee);
+            }
+            throw error;
+          }
         };
 
         const nonces: bigint[] = [];
@@ -208,7 +225,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           try {
             const tx = await generateTx(network);
             nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
-            fees.push(tx.auth.getFee());
+            fees.push(tx.auth.spendingCondition.fee);
           } catch (error: any) {
             txGenFetchError = error;
           }
@@ -225,7 +242,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         let lastSendError: Error | undefined;
         do {
           const tx = await generateTx(networks[0], nextNonce, fee);
-          const rawTx = tx.serialize();
+          const rawTx = Buffer.from(tx.serialize());
           for (const network of networks) {
             const rpcClient = clientFromNetwork(network);
             try {

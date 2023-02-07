@@ -18,7 +18,7 @@ ARG PG_PASSWORD=postgres
 
 #######################################################################
 ## Build the stacks-blockchain-api
-FROM node:lts-buster as stacks-blockchain-api-build
+FROM node:16-buster as stacks-blockchain-api-build
 ARG STACKS_API_REPO
 ARG STACKS_API_VERSION
 ENV STACKS_API_REPO=${STACKS_API_REPO}

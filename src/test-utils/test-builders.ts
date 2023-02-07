@@ -83,7 +83,7 @@ const ZONEFILE =
   '$ORIGIN test.btc\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/test.btc"\n';
 const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 
-interface TestBlockArgs {
+export interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
   index_block_hash?: string;
@@ -152,12 +152,13 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   };
 }
 
-interface TestTxArgs {
+export interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
   canonical?: boolean;
   microblock_canonical?: boolean;
+  coinbase_alt_recipient?: string;
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
   contract_call_function_args?: string;
@@ -169,6 +170,7 @@ interface TestTxArgs {
   parent_index_block_hash?: string;
   raw_result?: string;
   sender_address?: string;
+  smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   smart_contract_source_code?: string;
   status?: DbTxStatus;
@@ -187,7 +189,7 @@ interface TestTxArgs {
  * @returns `DataStoreTxEventData`
  */
 function testTx(args?: TestTxArgs): DataStoreTxEventData {
-  return {
+  const data: DataStoreTxEventData = {
     tx: {
       tx_id: args?.tx_id ?? TX_ID,
       tx_index: args?.tx_index ?? 0,
@@ -210,6 +212,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
       coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_alt_recipient: args?.coinbase_alt_recipient,
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
@@ -219,6 +222,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       token_transfer_amount: args?.token_transfer_amount ?? TOKEN_TRANSFER_AMOUNT,
       token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
       token_transfer_memo: args?.token_transfer_memo ?? '',
+      smart_contract_clarity_version: args?.smart_contract_clarity_version,
       smart_contract_contract_id: args?.smart_contract_contract_id,
       smart_contract_source_code: args?.smart_contract_source_code,
       execution_cost_read_count: 0,
@@ -239,7 +243,9 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     smartContracts: [],
     names: [],
     namespaces: [],
+    pox2Events: [],
   };
+  return data;
 }
 
 interface TestMempoolTxArgs {
@@ -248,6 +254,7 @@ interface TestMempoolTxArgs {
   contract_call_function_name?: string;
   pruned?: boolean;
   sender_address?: string;
+  smart_contract_clarity_version?: number;
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
   token_transfer_recipient_address?: string;
@@ -282,6 +289,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     token_transfer_amount: 1234n,
     token_transfer_memo: '',
     token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
+    smart_contract_clarity_version: args?.smart_contract_clarity_version,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,
     contract_call_contract_id: args?.contract_call_contract_id ?? CONTRACT_ID,
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
@@ -291,7 +299,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
   };
 }
 
-interface TestStxEventArgs {
+export interface TestStxEventArgs {
   amount?: bigint;
   block_height?: number;
   event_index?: number;
@@ -299,6 +307,7 @@ interface TestStxEventArgs {
   sender?: string;
   tx_id?: string;
   tx_index?: number;
+  memo?: string;
 }
 
 /**
@@ -318,6 +327,7 @@ function testStxEvent(args?: TestStxEventArgs): DbStxEvent {
     amount: args?.amount ?? TOKEN_TRANSFER_AMOUNT,
     recipient: args?.recipient ?? RECIPIENT_ADDRESS,
     sender: args?.sender ?? SENDER_ADDRESS,
+    memo: args?.memo,
   };
 }
 
@@ -351,7 +361,9 @@ function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
     sender: args?.sender, // No default as this can be undefined.
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
-    value: args?.value ?? bufferToHexPrefixString(serializeCV(bufferCV(Buffer.from([2051])))),
+    value:
+      args?.value ??
+      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCV(Buffer.from([2051]))))),
   };
 }
 
@@ -415,7 +427,9 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: args?.topic ?? 'some-topic',
-    value: args?.value ?? bufferToHexPrefixString(serializeCV(bufferCVFromString('some val'))),
+    value:
+      args?.value ??
+      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
   };
 }
 
@@ -445,12 +459,14 @@ function testStxLockEvent(args?: TestStxEventLockArgs): DbStxLockEvent {
     locked_amount: BigInt(args?.locked_amount ?? 500),
     unlock_height: args?.unlock_height ?? 1,
     locked_address: args?.locked_address ?? 'lock-addr',
+    contract_name: 'pox',
   };
 }
 
-interface TestSmartContractEventArgs {
+export interface TestSmartContractEventArgs {
   tx_id?: string;
   block_height?: number;
+  clarity_version?: number;
   contract_id?: string;
   contract_source?: string;
   abi?: string;
@@ -466,6 +482,7 @@ function testSmartContractEvent(args?: TestSmartContractEventArgs): DbSmartContr
     tx_id: args?.tx_id ?? TX_ID,
     canonical: true,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
+    clarity_version: args?.clarity_version ?? null,
     contract_id: args?.contract_id ?? CONTRACT_ID,
     source_code: args?.contract_source ?? CONTRACT_SOURCE,
     abi: args?.abi ?? JSON.stringify(CONTRACT_ABI),
@@ -498,6 +515,7 @@ function testMinerReward(args?: TestMinerRewardArgs): DbMinerReward {
     mature_block_height: args?.mature_block_height ?? BLOCK_HEIGHT,
     canonical: args?.canonical ?? true,
     recipient: args?.recipient ?? MINER_RECIPIENT,
+    miner_address: args?.recipient ?? MINER_RECIPIENT,
     coinbase_amount: args?.coinbase_amount ?? COINBASE_AMOUNT,
     tx_fees_anchored: args?.tx_fees_anchored ?? TX_FEES_ANCHORED,
     tx_fees_streamed_confirmed: args?.tx_fees_streamed_confirmed ?? TX_FEES_STREAMED_CONFIRMED,

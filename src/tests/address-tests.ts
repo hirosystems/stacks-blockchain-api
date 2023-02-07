@@ -11,7 +11,6 @@ import {
   stringAsciiCV,
   serializeCV,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction } from 'stacks-encoding-native-js';
 import {
@@ -176,7 +175,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHexPrefixString(serializeCV(uintCV(amount))),
+          value: bufferToHexPrefixString(Buffer.from(serializeCV(uintCV(amount)))),
           recipient,
           sender,
         };
@@ -206,6 +205,7 @@ describe('address tests', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -1099,6 +1099,7 @@ describe('address tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block.block_height,
+      clarity_version: null,
       contract_id: testContractAddr,
       source_code: '(some-contract-src)',
       abi: JSON.stringify(contractJsonAbi),
@@ -1154,6 +1155,7 @@ describe('address tests', () => {
         smartContracts: [],
         names: [],
         namespaces: [],
+        pox2Events: [],
       } as DataStoreTxEventData;
     });
     dataStoreTxs.push({
@@ -1166,6 +1168,7 @@ describe('address tests', () => {
       smartContracts: [smartContract1],
       names: [],
       namespaces: [],
+      pox2Events: [],
     });
     dataStoreTxs.push({
       tx: { ...contractCall, raw_tx: '0x' },
@@ -1190,6 +1193,7 @@ describe('address tests', () => {
       smartContracts: [],
       names: [],
       namespaces: [],
+      pox2Events: [],
     });
     await db.update({
       block: block,
@@ -1580,6 +1584,7 @@ describe('address tests', () => {
           tx_index: 4,
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
           event_count: 5,
           events: [],
@@ -2020,19 +2025,19 @@ describe('address tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(2),
+      fee: 300,
+      sponsorNonce: 2,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
@@ -2086,6 +2091,7 @@ describe('address tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: DbTxRaw.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -2106,6 +2112,7 @@ describe('address tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [smartContract],
+          pox2Events: [],
         },
       ],
     });
@@ -2348,6 +2355,7 @@ describe('address tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2452,6 +2460,7 @@ describe('address tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2579,6 +2588,7 @@ describe('address tests', () => {
         smartContracts: [],
         names: [],
         namespaces: [],
+        pox2Events: [],
       });
     }
     await db.updateMicroblocks(mbData);

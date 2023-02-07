@@ -168,6 +168,180 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
+  test-event-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          docker compose -f docker/docker-compose.dev.postgres.yml up -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run RPC tests
+        run: npm run test:event-replay
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-rpc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run RPC tests
+        run: npm run test:rpc
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-btc-faucet:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run btc faucet tests
+        run: npm run test:btc-faucet
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
   test-bns:
     runs-on: ubuntu-latest
     steps:
@@ -213,6 +387,152 @@ jobs:
 
       - name: Teardown integration environment
         run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-2_1:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [
+          block-zero-handling,
+          faucet-stx,
+          pox-2-auto-unlock,
+          pox-2-btc-address-formats,
+          pox-2-delegate-aggregation,
+          pox-2-delegate-stacking,
+          pox-2-stack-extend-increase,
+          pox-2-rosetta-btc-addr-types,
+          pox-2-rosetta-cycle-phases,
+          pox-2-rosetta-segwit,
+          pox-2-burnchain-stack-stx,
+          pox-2-burnchain-delegate-stx,
+        ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tests
+        run: npm run test:2.1 -- --testPathPattern "${{ matrix.suite }}"
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop:2.1
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-2_1-transition:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          [
+            Stacking on pox-2 after pox-1 force unlock,
+            Consistent API and RPC account balances through pox transitions,
+            Rosetta - Stacked STX unlock during transition,
+            Rosetta - Transistion periods use correct contracts,
+            PoX Transition - Double stacking,
+          ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy:2.1-transition -- -d
+          npm run devenv:logs:2.1-transition -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tests
+        run: npm run test:2.1-transition -- -t "${{ matrix.suite }}"
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop:2.1-transition
         if: always()
 
       - name: Upload coverage to Codecov
@@ -469,6 +789,8 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - test
+      - test-2_1
+      - test-2_1-transition
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction
@@ -487,6 +809,8 @@ jobs:
       - lint
       - lint-docs
       - test
+      - test-2_1
+      - test-2_1-transition
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction
@@ -531,6 +855,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Docker Standalone Meta
         id: meta_standalone
@@ -544,6 +869,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
             type=semver,pattern={{major}}.{{minor}},value=${{ steps.semantic.outputs.new_release_version }},enable=${{ steps.semantic.outputs.new_release_version != '' }}
+            type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Login to DockerHub
         uses: docker/login-action@v1

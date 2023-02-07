@@ -19,9 +19,8 @@ import {
   AddressVersion,
   bufferCV,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
-import { decodeTransaction } from 'stacks-encoding-native-js';
+import { decodeTransaction, TxPayloadVersionedSmartContract } from 'stacks-encoding-native-js';
 import { getTxFromDataStore } from '../api/controllers/db-controller';
 import {
   DbBlock,
@@ -35,6 +34,7 @@ import {
   DbTxStatus,
   DataStoreBlockUpdateData,
   DbTxAnchorMode,
+  DbStxEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
@@ -43,6 +43,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { PgSqlClient } from '../datastore/connection';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -118,9 +119,10 @@ describe('tx tests', () => {
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
     };
-    const contractCall: DbSmartContract = {
+    const smartContract1: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       block_height: 1,
       source_code,
@@ -179,6 +181,52 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
+
+    const versionedSmartContract1: DbSmartContract = {
+      tx_id: '0x268142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc82',
+      canonical: true,
+      clarity_version: 2,
+      contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.some-versioned-contract',
+      block_height: 1,
+      source_code: '(some-versioned-contract-src)',
+      abi: '{"some-abi":1}',
+    };
+    const dbTx3: DbTxRaw = {
+      tx_id: versionedSmartContract1.tx_id,
+      anchor_mode: 3,
+      nonce: 1000,
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      type_id: DbTxTypeId.VersionedSmartContract,
+      smart_contract_clarity_version: versionedSmartContract1.clarity_version ?? undefined,
+      smart_contract_contract_id: versionedSmartContract1.contract_id,
+      smart_contract_source_code: versionedSmartContract1.source_code,
+      post_conditions: '0x01f5',
+      fee_rate: 2345n,
+      sponsored: false,
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      origin_hash_mode: 1,
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_block_hash: '0x5678',
+      block_height: 0,
+      burn_block_time: 39486,
+      parent_burn_block_time: 1626122935,
+      tx_index: 5,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
     await db.update({
       block: dbBlock,
       microblocks: [],
@@ -193,7 +241,8 @@ describe('tx tests', () => {
           contractLogEvents: [],
           names: [],
           namespaces: [],
-          smartContracts: [contractCall],
+          smartContracts: [smartContract1],
+          pox2Events: [],
         },
         {
           tx: dbTx2,
@@ -205,12 +254,25 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
+        },
+        {
+          tx: dbTx3,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [versionedSmartContract1],
+          pox2Events: [],
         },
       ],
     });
     const notFoundTxId = '0x8914000000000000000000000000000000000000000000000000000000000000';
     const txsListDetail = await supertest(api.server).get(
-      `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${tx1.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}`
+      `/extended/v1/tx/multiple?tx_id=${mempoolTx.tx_id}&tx_id=${tx1.tx_id}&tx_id=${notFoundTxId}&tx_id=${dbTx2.tx_id}&tx_id=${dbTx3.tx_id}`
     );
     const jsonRes = txsListDetail.body;
     // tx comparison
@@ -220,13 +282,18 @@ describe('tx tests', () => {
     expect(jsonRes[notFoundTxId].result.tx_id).toEqual(notFoundTxId);
     // not found comparison
     expect(jsonRes[dbTx2.tx_id].result.tx_id).toEqual(dbTx2.tx_id);
+
+    // versioned smart contract comparison
+    expect(jsonRes[dbTx3.tx_id].result.tx_id).toEqual(dbTx3.tx_id);
+    expect(jsonRes[dbTx3.tx_id].result.tx_type).toEqual('smart_contract');
+    expect(jsonRes[dbTx3.tx_id].result.smart_contract.clarity_version).toEqual(2);
   });
 
   test('getTxList returns object', async () => {
     const block = new TestBlockBuilder().build();
     await db.update(block);
     const expectedResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       results: [],
       total: 0,
@@ -235,6 +302,431 @@ describe('tx tests', () => {
     expect(fetchTx.status).toBe(200);
     expect(fetchTx.type).toBe('application/json');
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+  });
+
+  test('tx - versioned smart contract', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // stacks.js does not have a versioned-smart-contract tx builder as of writing, so use a known good serialized tx
+    const versionedSmartContractTx = Buffer.from(
+      '80000000000400000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000030200000000060205706f782d320000003b3b3b20506f5820746573746e657420636f6e7374616e74730a3b3b204d696e2f6d6178206e756d626572206f6620726577617264206379636c6573',
+      'hex'
+    );
+    const abiSample = {
+      functions: [],
+      variables: [],
+      maps: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const txPayload = tx.payload as TxPayloadVersionedSmartContract;
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: tx.tx_id,
+        tx_index: 2,
+        contract_abi: abiSample,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      parsed_tx: tx,
+      sender_address: tx.auth.origin_condition.signer.address,
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    const smartContract: DbSmartContract = {
+      tx_id: dbTx.tx_id,
+      canonical: true,
+      clarity_version: txPayload.clarity_version,
+      contract_id: `${dbTx.sender_address}.${txPayload.contract_name}`,
+      block_height: dbBlock.block_height,
+      source_code: txPayload.code_body,
+      abi: JSON.stringify(abiSample),
+    };
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [smartContract],
+          pox2Events: [],
+        },
+      ],
+    });
+
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_id: '0x0c80debd01f7ca45e6126d9da7fd54f61d43a9e7cb41d975b30e17ab423f22e4',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'smart_contract',
+      fee_rate: '0',
+      is_unanchored: false,
+      nonce: 0,
+      anchor_mode: 'any',
+      sender_address: 'ST000000000000000000002AMW42H',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      smart_contract: {
+        clarity_version: 2,
+        contract_id: 'ST000000000000000000002AMW42H.pox-2',
+        source_code: txPayload.code_body,
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx - coinbase pay to alt recipient - standard principal', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
+    const versionedSmartContractTx = Buffer.from(
+      '80800000000400fd3cd910d78fe7c4cd697d5228e51a912ff2ba740000000000000004000000000000000001008d36064b250dba5d3221ac235a9320adb072cfc23cd63511e6d814f97f0302e66c2ece80d7512df1b3e90ca6dce18179cb67b447973c739825ce6c6756bc247d010200000000050000000000000000000000000000000000000000000000000000000000000000051aba27f99e007c7f605a8305e318c1abde3cd220ac',
+      'hex'
+    );
+
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: tx.tx_id,
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      parsed_tx: tx,
+      sender_address: tx.auth.origin_condition.signer.address,
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+          pox2Events: [],
+        },
+      ],
+    });
+
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_id: '0x449f5ea5c541bbbbbf7a1bff2434c449dca2ae3cdc52ba8d24b0bd0d3632d9bc',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'coinbase',
+      fee_rate: '0',
+      is_unanchored: false,
+      nonce: 4,
+      anchor_mode: 'on_chain_only',
+      sender_address: 'ST3YKSP8GTY7YFH6DD5YN4A753A8JZWNTEJFG78GN',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      coinbase_payload: {
+        data: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        alt_recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
+  });
+
+  test('tx - coinbase pay to alt recipient - contract principal', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0xff',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
+    const versionedSmartContractTx = Buffer.from(
+      '8080000000040055a0a92720d20398211cd4c7663d65d018efcc1f00000000000000030000000000000000010118da31f542913e8c56961b87ee4794924e655a28a2034e37ef4823eeddf074747285bd6efdfbd84eecdf62cffa7c1864e683c688f4c105f4db7429066735b4e2010200000000050000000000000000000000000000000000000000000000000000000000000000061aba27f99e007c7f605a8305e318c1abde3cd220ac0b68656c6c6f5f776f726c64',
+      'hex'
+    );
+
+    const tx = decodeTransaction(versionedSmartContractTx);
+    const dbTx = createDbTxFromCoreMsg({
+      core_tx: {
+        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        status: 'success',
+        raw_result: '0x0100000000000000000000000000000001', // u1
+        txid: tx.tx_id,
+        tx_index: 2,
+        contract_abi: null,
+        microblock_hash: null,
+        microblock_parent_hash: null,
+        microblock_sequence: null,
+        execution_cost: {
+          read_count: 0,
+          read_length: 0,
+          runtime: 0,
+          write_count: 0,
+          write_length: 0,
+        },
+      },
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      parsed_tx: tx,
+      sender_address: tx.auth.origin_condition.signer.address,
+      sponsor_address: undefined,
+      index_block_hash: dbBlock.index_block_hash,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_hash: '',
+      microblock_sequence: I32_MAX,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_hash: '0xaa',
+      parent_burn_block_time: 1626122935,
+    });
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          names: [],
+          namespaces: [],
+          smartContracts: [],
+          pox2Events: [],
+        },
+      ],
+    });
+
+    const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
+    expect(txQuery.found).toBe(true);
+    if (!txQuery.found) {
+      throw Error('not found');
+    }
+
+    const expectedResp = {
+      block_hash: '0xff',
+      block_height: 1,
+      burn_block_time: 1594647995,
+      burn_block_time_iso: '2020-07-13T13:46:35.000Z',
+      canonical: true,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: I32_MAX,
+      parent_block_hash: '0x5678',
+      parent_burn_block_time: 1626122935,
+      parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
+      tx_id: '0xbd1a9e1d60ca29fc630633170f396f5b6b85c9620bd16d63384ebc5a01a1829b',
+      tx_index: 2,
+      tx_status: 'success',
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001', // u1
+        repr: 'u1',
+      },
+      tx_type: 'coinbase',
+      fee_rate: '0',
+      is_unanchored: false,
+      nonce: 3,
+      anchor_mode: 'on_chain_only',
+      sender_address: 'ST1AT1A97439076113KACESHXCQ81HVYC3XWGT2F5',
+      sponsored: false,
+      post_condition_mode: 'deny',
+      post_conditions: [],
+      coinbase_payload: {
+        data: '0x0000000000000000000000000000000000000000000000000000000000000000',
+        alt_recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5.hello_world',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const fetchTx = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(fetchTx.status).toBe(200);
+    expect(fetchTx.type).toBe('application/json');
+    expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
+    expect(txQuery.result).toEqual(expectedResp);
   });
 
   test('tx - sponsored', async () => {
@@ -262,19 +754,19 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(2),
+      fee: 300,
+      sponsorNonce: 2,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -328,6 +820,7 @@ describe('tx tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -348,6 +841,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [smartContract],
+          pox2Events: [],
         },
       ],
     });
@@ -468,19 +962,19 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: '5e0f18e16a585a280b73198b271d558deaf7178be1b2e238b08d7aa175c697d6',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(3),
+      fee: 300,
+      sponsorNonce: 3,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -535,6 +1029,7 @@ describe('tx tests', () => {
     await db.updateSmartContract(client, dbTx, {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -606,6 +1101,202 @@ describe('tx tests', () => {
     expect(JSON.parse(sponsoredStxResAfter.text)).toEqual(expectedSponsoredRespAfter);
   });
 
+  test('tx with stx-transfer-memo', async () => {
+    const dbBlock: DbBlock = {
+      block_hash: '0x1234',
+      index_block_hash: '0xdeadbeef',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0xff0011',
+      parent_microblock_hash: '',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+    const dbTx: DbTxRaw = {
+      tx_id: '0x421234',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: 2837565,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const dbStxEvent: DbStxEvent = {
+      event_index: 0,
+      tx_id: dbTx.tx_id,
+      tx_index: dbTx.tx_index,
+      block_height: dbTx.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 60n,
+      memo: '0x74657374206d656d6f206669656c64',
+    };
+
+    await db.update({
+      block: dbBlock,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx,
+          stxLockEvents: [],
+          stxEvents: [dbStxEvent],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+        },
+      ],
+    });
+
+    const req1 = await supertest(api.server).get(`/extended/v1/tx/${dbTx.tx_id}`);
+    expect(req1.status).toBe(200);
+    expect(req1.type).toBe('application/json');
+    expect(req1.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req2 = await supertest(api.server).get(`/extended/v1/tx/multiple?tx_id=${dbTx.tx_id}`);
+    expect(req2.status).toBe(200);
+    expect(req2.type).toBe('application/json');
+    expect(req2.body[dbTx.tx_id].result.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req3 = await supertest(api.server).get(
+      `/extended/v1/tx/events?address=${dbStxEvent.sender}`
+    );
+    expect(req3.status).toBe(200);
+    expect(req3.type).toBe('application/json');
+    expect(req3.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req4 = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${dbTx.tx_id}`);
+    expect(req4.status).toBe(200);
+    expect(req4.type).toBe('application/json');
+    expect(req4.body.events[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req5 = await supertest(api.server).get(
+      `/extended/v1/address/${dbStxEvent.sender}/assets`
+    );
+    expect(req5.status).toBe(200);
+    expect(req5.type).toBe('application/json');
+    expect(req5.body.results[0]).toEqual({
+      event_index: 0,
+      event_type: 'stx_asset',
+      tx_id: '0x421234',
+      asset: {
+        asset_event_type: 'transfer',
+        sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        recipient: 'ST2X2FYCY01Y7YR2TGC2Y6661NFF3SMH0NGXPWTV5',
+        amount: '60',
+        memo: '0x74657374206d656d6f206669656c64',
+      },
+    });
+
+    const req6 = await supertest(api.server).get(
+      `/extended/v1/address/${dbStxEvent.recipient}/stx_inbound`
+    );
+    expect(req6.status).toBe(200);
+    expect(req6.type).toBe('application/json');
+    expect(req6.body).toEqual({
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          amount: '60',
+          block_height: 1,
+          memo: '0x74657374206d656d6f206669656c64',
+          sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          transfer_type: 'stx-transfer-memo',
+          tx_id: '0x421234',
+          tx_index: 0,
+        },
+      ],
+      total: 1,
+    });
+  });
+
   test('tx store and processing', async () => {
     const dbBlock: DbBlock = {
       block_hash: '0xff',
@@ -629,7 +1320,7 @@ describe('tx tests', () => {
 
     const pc1 = createNonFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
-      NonFungibleConditionCode.Owns,
+      NonFungibleConditionCode.DoesNotSend,
       'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello::asset-name',
       bufferCVFromString('asset-value')
     );
@@ -637,14 +1328,14 @@ describe('tx tests', () => {
     const pc2 = createFungiblePostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       FungibleConditionCode.GreaterEqual,
-      new BN(123456),
+      123456,
       'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.hello-ft::asset-name-ft'
     );
 
     const pc3 = createSTXPostCondition(
       'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       FungibleConditionCode.LessEqual,
-      new BN(36723458)
+      36723458
     );
 
     const txBuilder = await makeContractCall({
@@ -652,13 +1343,13 @@ describe('tx tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [pc1, pc2, pc3],
-      nonce: new BN(0),
+      nonce: 0,
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -712,6 +1403,7 @@ describe('tx tests', () => {
     const smartContract: DbSmartContract = {
       tx_id: dbTx.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: 123,
       source_code: '()',
@@ -732,6 +1424,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [smartContract],
+          pox2Events: [],
         },
       ],
     });
@@ -836,7 +1529,7 @@ describe('tx tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
 
     const expectedListResp = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       total: 1,
       results: [expectedResp],
@@ -870,13 +1563,13 @@ describe('tx tests', () => {
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
-      fee: new BN(200),
-      nonce: new BN(0),
+      fee: 200,
+      nonce: 0,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -928,6 +1621,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -969,6 +1663,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
+        clarity_version: null,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
@@ -1011,13 +1706,13 @@ describe('tx tests', () => {
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
       codeBody: '()',
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
       postConditions: [],
-      nonce: new BN(0),
+      nonce: 0,
       anchorMode: AnchorMode.Any,
     });
-    const serialized = txBuilder.serialize();
+    const serialized = Buffer.from(txBuilder.serialize());
     const tx = decodeTransaction(serialized);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
@@ -1069,6 +1764,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -1110,6 +1806,7 @@ describe('tx tests', () => {
       post_condition_mode: 'deny',
       post_conditions: [],
       smart_contract: {
+        clarity_version: null,
         contract_id: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0.hello-world',
         source_code: '()',
       },
@@ -1199,6 +1896,7 @@ describe('tx tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -1312,6 +2010,7 @@ describe('tx tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -1337,7 +2036,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?address=${address}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -1408,7 +2107,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?address=${address}`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [],
     };
@@ -1436,7 +2135,7 @@ describe('tx tests', () => {
     );
 
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -1616,7 +2315,7 @@ describe('tx tests', () => {
       `/extended/v1/tx/events?tx_id=${txId}&type=stx_asset&type=smart_contract_log&type=non_fungible_token_asset&type=fungible_token_asset&type=stx_lock`
     );
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -1698,7 +2397,7 @@ describe('tx tests', () => {
     await db.update(block);
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [
         {
@@ -1767,7 +2466,7 @@ describe('tx tests', () => {
     const txId = '0x1234';
     const events = await supertest(api.server).get(`/extended/v1/tx/events?tx_id=${txId}`);
     const expectedResponse = {
-      limit: 96,
+      limit: getPagingQueryLimit(ResourceType.Tx),
       offset: 0,
       events: [],
     };
@@ -1971,6 +2670,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2005,6 +2705,7 @@ describe('tx tests', () => {
       },
       coinbase_payload: {
         data: '0x636f696e62617365206869',
+        alt_recipient: null,
       },
       event_count: 1,
       events: [
@@ -2116,6 +2817,7 @@ describe('tx tests', () => {
     const contractCall: DbSmartContract = {
       tx_id: '0x668142abbcabb846e3f83183325325071a8b4882dcf5476a38148cb5b738fc83',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       block_height: 1,
       source_code,
@@ -2124,6 +2826,7 @@ describe('tx tests', () => {
     const contractCall2: DbSmartContract = {
       tx_id: '0xd8a9a4528ae833e1894eee676af8d218f8facbf95e166472df2c1a64219b5dfb',
       canonical: true,
+      clarity_version: null,
       contract_id: 'SP000000000000000000002Q6VF78.bns',
       block_height: 1,
       source_code,
@@ -2220,6 +2923,7 @@ describe('tx tests', () => {
           smartContracts: [{ ...contractCall }],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
         {
           tx: tx2,
@@ -2231,6 +2935,7 @@ describe('tx tests', () => {
           smartContracts: [{ ...contractCall2 }],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     };
@@ -2300,6 +3005,7 @@ describe('tx tests', () => {
       abi: null,
       block_height: 1,
       canonical: true,
+      clarity_version: null,
       contract_id: contractCall2.contract_id,
       source_code: contractCall2.source_code,
       tx_id: contractCall2.tx_id,
@@ -2314,6 +3020,7 @@ describe('tx tests', () => {
       abi: contractCall.abi,
       block_height: 1,
       canonical: true,
+      clarity_version: null,
       contract_id: contractCall.contract_id,
       source_code: contractCall.source_code,
       tx_id: contractCall.tx_id,
@@ -2518,6 +3225,7 @@ describe('tx tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2597,7 +3305,7 @@ describe('tx tests', () => {
     const result1 = await supertest(api.server).get(`/extended/v1/tx/block/${block.block_hash}`);
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
-    expect(result1.body.limit).toBe(96);
+    expect(result1.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
     expect(result1.body.offset).toBe(0);
     expect(result1.body.total).toBe(1);
     expect(result1.body.results.length).toBe(1);
@@ -2615,7 +3323,7 @@ describe('tx tests', () => {
     );
     expect(result3.status).toBe(200);
     expect(result3.type).toBe('application/json');
-    expect(result3.body.limit).toBe(96);
+    expect(result3.body.limit).toBe(getPagingQueryLimit(ResourceType.Tx));
     expect(result3.body.offset).toBe(0);
     expect(result3.body.total).toBe(1);
     expect(result3.body.results.length).toBe(1);

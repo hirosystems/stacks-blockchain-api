@@ -28,6 +28,13 @@ describe('BNS V1 import', () => {
     await db.update(block);
   });
 
+  afterEach(async () => {
+    await new Promise(resolve => eventServer.close(() => resolve(true)));
+    await api.terminate();
+    await db?.close();
+    await runMigrations(undefined, 'down');
+  });
+
   test('v1-import', async () => {
     const genesis: BnsGenesisBlock = {
       index_block_hash: block.block.index_block_hash,
@@ -160,12 +167,5 @@ describe('BNS V1 import', () => {
     assert(dbquery.found)
     if (dbquery.result){
     expect(dbquery.result.name).toBe('id.blockstack');}
-  });
-
-  afterEach(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve(true)));
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -1,11 +1,13 @@
 import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Client } from 'pg';
-import { APP_DIR, isDevEnv, isTestEnv, logError, logger } from '../helpers';
+import { APP_DIR, isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
 import { getPgClientConfig, PgClientConfig } from './connection-legacy';
+import { connectPostgres, PgServer } from './connection';
+import { databaseHasData } from './event-requests';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
-const MIGRATIONS_DIR = path.join(APP_DIR, 'migrations');
+const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
 export async function runMigrations(
   clientConfig: PgClientConfig = getPgClientConfig({ usageName: 'schema-migrations' }),
@@ -52,10 +54,14 @@ export async function runMigrations(
 export async function cycleMigrations(opts?: {
   // Bypass the NODE_ENV check when performing a "down" migration which irreversibly drops data.
   dangerousAllowDataLoss?: boolean;
+  checkForEmptyData?: boolean;
 }): Promise<void> {
   const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
 
   await runMigrations(clientConfig, 'down', opts);
+  if (opts?.checkForEmptyData && (await databaseHasData({ ignoreMigrationTables: true }))) {
+    throw new Error('Migration down process did not completely remove DB tables');
+  }
   await runMigrations(clientConfig, 'up', opts);
 }
 
@@ -65,30 +71,31 @@ export async function dangerousDropAllTables(opts?: {
   if (opts?.acknowledgePotentialCatastrophicConsequences !== 'yes') {
     throw new Error('Dangerous usage error.');
   }
-  const clientConfig = getPgClientConfig({ usageName: 'dangerous-drop-all-tables' });
-  const client = new Client(clientConfig);
+  const sql = await connectPostgres({
+    usageName: 'dangerous-drop-all-tables',
+    pgServer: PgServer.primary,
+  });
+  const schema = sql.options.connection.search_path;
   try {
-    await client.connect();
-    await client.query('BEGIN');
-    const getTablesQuery = await client.query<{ table_name: string }>(
-      `
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = $1
-      AND table_catalog = $2
-      AND table_type = 'BASE TABLE'
-      `,
-      [clientConfig.schema, clientConfig.database]
-    );
-    const tables = getTablesQuery.rows.map(r => r.table_name);
-    for (const table of tables) {
-      await client.query(`DROP TABLE IF EXISTS ${table} CASCADE`);
-    }
-    await client.query('COMMIT');
-  } catch (error) {
-    await client.query('ROLLBACK');
-    throw error;
+    await sql.begin(async sql => {
+      const relNamesQuery = async (kind: string) => sql<{ relname: string }[]>`
+        SELECT relname
+        FROM pg_class c
+        JOIN pg_namespace s ON s.oid = c.relnamespace
+        WHERE s.nspname = ${schema} AND c.relkind = ${kind}
+      `;
+      // Remove materialized views first and tables second.
+      // Using CASCADE in these DROP statements also removes associated indexes and constraints.
+      const views = await relNamesQuery('m');
+      for (const view of views) {
+        await sql`DROP MATERIALIZED VIEW IF EXISTS ${sql(view.relname)} CASCADE`;
+      }
+      const tables = await relNamesQuery('r');
+      for (const table of tables) {
+        await sql`DROP TABLE IF EXISTS ${sql(table.relname)} CASCADE`;
+      }
+    });
   } finally {
-    await client.end();
+    await sql.end();
   }
 }

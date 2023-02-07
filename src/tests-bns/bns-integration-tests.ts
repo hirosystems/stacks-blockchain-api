@@ -17,7 +17,6 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { TestBlockBuilder } from '../test-utils/test-builders';
@@ -87,7 +86,7 @@ describe('BNS integration tests', () => {
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeContractCall(txOptions);
     const body: {tx: string, attachment?: string} = {
-      tx: transaction.serialize().toString('hex'),
+      tx: Buffer.from(transaction.serialize()).toString('hex'),
     };
     if(zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
     const apiResult = await fetch(network.getBroadcastApiUrl(), {
@@ -110,9 +109,10 @@ describe('BNS integration tests', () => {
       functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
-      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1))],
+      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1)],
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -156,7 +156,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     const revealTransaction = await makeContractCall(revealTxOptions);
     await broadcastTransaction(revealTransaction, network);
@@ -184,7 +185,8 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     const transaction = await makeContractCall(txOptions);
     await broadcastTransaction(transaction, network);
@@ -206,7 +208,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
   }
@@ -223,14 +226,15 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     return await getContractTransaction(txOptions, zonefile);
   }
   async function namePreorder(namespace: string, saltName: string, testnetKey: TestnetKey, name: string) {
     const postConditions = [
-      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
     ];
     const fqn = `${name}.${namespace}${saltName}`;
     const nameSaltedHash = hash160(Buffer.from(fqn));
@@ -243,7 +247,8 @@ describe('BNS integration tests', () => {
       validateWithAbi: true,
       postConditions: postConditions,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
@@ -266,7 +271,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
   }
@@ -286,6 +292,7 @@ describe('BNS integration tests', () => {
       postConditionMode: PostConditionMode.Allow,
       anchorMode: AnchorMode.Any,
       network,
+      fee: 100000,
     };
 
     return await getContractTransaction(txOptions);
@@ -299,7 +306,8 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions);
   }
@@ -318,7 +326,8 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions);
   }
