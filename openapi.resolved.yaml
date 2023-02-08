@@ -5873,7 +5873,7 @@ paths:
         Stacking can be found [here]
         (https://docs.stacks.co/understand-stacks/stacking).
 
-        **Note:** this uses the estimated future total supply for the year 2050.
+        **Note:** This uses the estimated future total supply for the year 2050.
       parameters:
         - in: query
           name: height
@@ -5883,7 +5883,8 @@ paths:
             example: 200
           description: Supply details are queried from specified block height. If the
             block height is not specified, the latest block height is taken as
-            default value.
+            default value. Note that the `block height` is referred to the
+            stacks blockchain.
       responses:
         "200":
           description: Success
