@@ -7,6 +7,7 @@ import {
   accountFromKey,
   fetchGet,
   standByForTxSuccess,
+  standByUntilBlock,
   testEnv,
 } from '../test-utils/test-helpers';
 import * as fs from 'fs';
@@ -62,24 +63,36 @@ describe('Subnets NFT use-case', () => {
       await l1Client.sendTransaction(Buffer.from(tx.serialize()));
     }
 
-    while (true) {
-      try {
-        await l1Client.fetchJson(`v2/contracts/interface/${l1Account.stxAddr}/subnet?tip=latest`);
-        break;
-      } catch (error) {
-        console.log(`Error: ${error}`);
-        await timeout(200);
+    // Ensure each contract was deployed
+    for (const c of contracts) {
+      while (true) {
+        try {
+          await l1Client.fetchJson(
+            `v2/contracts/interface/${l1Account.stxAddr}/${c.name}?tip=latest`
+          );
+          break;
+        } catch (error) {
+          await timeout(200);
+        }
       }
     }
+  });
 
+  test('Ensure subnet RPC is responsive', async () => {
     while (true) {
       try {
         const accountInfo = await testEnv.client.getAccount(l1Account.stxAddr);
         console.log(accountInfo);
+        break;
       } catch (error) {
         console.log(`Error: ${error}`);
         await timeout(500);
       }
     }
+  });
+
+  test('Test first subnet block mined', async () => {
+    const block = await standByUntilBlock(1);
+    expect(block).toBeTruthy();
   });
 });
