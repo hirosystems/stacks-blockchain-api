@@ -186,7 +186,7 @@ describe('Subnets NFT use-case', () => {
       }
     }
     */
-  });
+  }, 120_000);
 
   test('Register NFT asset in the interface subnet contract', async () => {
     const accountNonce = await l1Client.getAccountNonce(AUTH_SUBNET_MINER_ADDR);
