@@ -232,6 +232,29 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Jest: Subnets",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.subnets.js"
+      ],
+      "env": {
+        "STACKS_CORE_RPC_PORT": "30443",
+        "STACKS_CORE_PROXY_PORT": "30443",
+      },
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "deploy:subnets",
+      "postDebugTask": "stop:subnets",
+      "smartStep": false,
+      "sourceMaps": true,
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Jest: 2.1",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [

@@ -1,0 +1,86 @@
+
+[node]
+# working_dir = "./devnet"
+rpc_bind = "0.0.0.0:30443"
+p2p_bind = "0.0.0.0:30444"
+miner = true
+seed = "6a1a754ba863d7bab14adbbc3f8ebb090af9e871ace621d3e5ab634e1422885e01"
+mining_key = "cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01"
+local_peer_seed = "6a1a754ba863d7bab14adbbc3f8ebb090af9e871ace621d3e5ab634e1422885e01"
+wait_time_for_microblocks = 50
+wait_before_first_anchored_block = 0
+
+[miner]
+first_attempt_time_ms = 500
+subsequent_attempt_time_ms = 1000
+# microblock_attempt_time_ms = 15_000
+
+[burnchain]
+chain = "stacks_layer_1"
+mode = "subnet"
+first_burn_header_height = 0
+peer_host = "host.docker.internal"
+rpc_port = 20443
+peer_port = 20444
+contract_identifier = "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.subnet"
+observer_port = 30445
+
+# Add orchestrator (docker-host) as an event observer
+# [[events_observer]]
+# endpoint = "host.docker.internal:20445"
+# retry_count = 255
+# include_data_events = true
+# events_keys = ["*"]
+
+[[ustx_balance]]
+address = "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6"
+amount = 10000000000000000
+# secretKey = "cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01"
+
+[[ustx_balance]]
+address = "ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST2NEB84ASENDXKYGJPQW86YXQCEFEX2ZQPG87ND"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST2REHHS5J3CERCRBEPMGH7921Q6PYKAADT7JP2VB"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST3AM1A56AK2C1XAFJ4115ZSV26EB49BVQ10MGCS0"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST3PF13W7Z0RRM42A8VZRVFQ75SV1K26RXEP8YGKJ"
+amount = 100000000000000
+
+[[ustx_balance]]
+address = "ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP"
+amount = 100000000000000
