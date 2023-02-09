@@ -33,6 +33,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
         name: name,
         zoneFileHash: zoneFileHash,
         includeUnanchored,
+        chainId,
       });
       if (zonefile.found) {
         setETagCacheHeaders(res);
@@ -49,7 +50,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored });
+      const subdomainsList = await db.getSubdomainsListInName({ name, includeUnanchored, chainId });
       setETagCacheHeaders(res);
       res.json(subdomainsList.results);
     })
@@ -61,7 +62,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
+      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored, chainId });
       if (zonefile.found) {
         setETagCacheHeaders(res);
         res.json(zonefile.result);
@@ -102,6 +103,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
             const subdomainQuery = await db.getSubdomain({
               subdomain: name,
               includeUnanchored,
+              chainId,
             });
             if (!subdomainQuery.found) {
               const namePart = name.split('.').slice(1).join('.');

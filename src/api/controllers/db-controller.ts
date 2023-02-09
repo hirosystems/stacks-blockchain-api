@@ -255,6 +255,16 @@ export function parsePox2Event(poxEvent: DbPox2Event) {
         },
       };
     }
+    case Pox2EventName.DelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
+          unlock_burn_height: poxEvent.data.unlock_burn_height?.toString(),
+        },
+      };
+    }
     case Pox2EventName.DelegateStackStx: {
       return {
         ...baseInfo,
@@ -970,7 +980,7 @@ export function parseContractCallMetadata(tx: BaseTx): ContractCallTransactionMe
 function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransaction {
   const abstractTx: AbstractTransaction = {
     ...baseTx,
-    is_unanchored: !dbTx.block_hash,
+    is_unanchored: dbTx.block_hash === '0x',
     block_hash: dbTx.block_hash,
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,

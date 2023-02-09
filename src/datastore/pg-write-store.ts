@@ -59,6 +59,8 @@ import {
   DataStoreBnsBlockData,
   DbPox2Event,
   Pox2EventInsertValues,
+  DbTxRaw,
+  DbMempoolTxRaw,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -213,6 +215,8 @@ export class PgWriteStore extends PgStore {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
@@ -384,6 +388,7 @@ export class PgWriteStore extends PgStore {
           await this.updateTx(sql, entry.tx);
           await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+          contractLogEvents.push(...entry.contractLogEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
           for (const pox2Event of entry.pox2Events) {
             await this.updatePox2Event(sql, entry.tx, pox2Event);
@@ -397,6 +402,7 @@ export class PgWriteStore extends PgStore {
           for (const nftEvent of entry.nftEvents) {
             await this.updateNftEvent(sql, entry.tx, nftEvent);
           }
+          deployedSmartContracts.push(...entry.smartContracts);
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(sql, entry.tx, smartContract);
           }
@@ -462,7 +468,18 @@ export class PgWriteStore extends PgStore {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
       for (const txId of garbageCollectedMempoolTxs) {
-        await this.notifier?.sendTx({ txId: txId });
+        await this.notifier.sendTx({ txId: txId });
+      }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
@@ -588,6 +605,8 @@ export class PgWriteStore extends PgStore {
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
     const txData: DataStoreTxEventData[] = [];
     let dbMicroblocks: DbMicroblock[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -631,8 +650,9 @@ export class PgWriteStore extends PgStore {
       });
 
       for (const entry of data.txs) {
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
-        const dbTx: DbTx = {
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor
+        // block with that data doesn't yet exist.
+        const dbTx: DbTxRaw = {
           ...entry.tx,
           parent_block_hash: chainTip.blockHash,
           block_height: blockHeight,
@@ -655,6 +675,8 @@ export class PgWriteStore extends PgStore {
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
           pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
         });
+        deployedSmartContracts.push(...entry.smartContracts);
+        contractLogEvents.push(...entry.contractLogEvents);
       }
 
       await this.insertMicroblockData(sql, dbMicroblocks, txData);
@@ -722,6 +744,17 @@ export class PgWriteStore extends PgStore {
       for (const tx of txData) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
+      }
       await this.emitAddressTxUpdates(txData);
     }
   }
@@ -786,6 +819,7 @@ export class PgWriteStore extends PgStore {
       pox_addr_raw: event.pox_addr_raw,
       first_cycle_locked: null,
       first_unlocked_cycle: null,
+      delegate_to: null,
       lock_period: null,
       lock_amount: null,
       start_burn_height: null,
@@ -819,6 +853,12 @@ export class PgWriteStore extends PgStore {
       case Pox2EventName.StackExtend: {
         values.extend_count = event.data.extend_count.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        break;
+      }
+      case Pox2EventName.DelegateStx: {
+        values.amount_ustx = event.data.amount_ustx.toString();
+        values.delegate_to = event.data.delegate_to;
+        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
         break;
       }
       case Pox2EventName.DelegateStackStx: {
@@ -1417,7 +1457,7 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1472,7 +1512,7 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
+  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxs: DbMempoolTx[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);

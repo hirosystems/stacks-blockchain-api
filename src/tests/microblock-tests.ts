@@ -8,12 +8,12 @@ import {
 } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
   DbAssetEventTypeId,
-  DbMempoolTx,
+  DbMempoolTxRaw,
   DbMicroblockPartial,
   DbSmartContractEvent,
   DbSmartContract,
@@ -286,7 +286,7 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
         };
 
-        const tx1: DbTx = {
+        const tx1: DbTxRaw = {
           tx_id: '0x01',
           tx_index: 0,
           anchor_mode: 3,
@@ -403,7 +403,7 @@ describe('microblock tests', () => {
           parent_burn_block_time: 1626122935,
         };
 
-        const mbTx1: DbTx = {
+        const mbTx1: DbTxRaw = {
           tx_id: '0x02',
           tx_index: 0,
           anchor_mode: 3,
@@ -443,7 +443,7 @@ describe('microblock tests', () => {
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
         };
-        const mbTx2: DbTx = {
+        const mbTx2: DbTxRaw = {
           tx_id: '0x03',
           tx_index: 1,
           anchor_mode: 3,
@@ -490,12 +490,12 @@ describe('microblock tests', () => {
           block_height: -1,
         };
 
-        const mempoolTx1: DbMempoolTx = {
+        const mempoolTx1: DbMempoolTxRaw = {
           ...mbTx1,
           pruned: false,
           receipt_time: 123456789,
         };
-        const mempoolTx2: DbMempoolTx = {
+        const mempoolTx2: DbMempoolTxRaw = {
           ...mbTx2,
           pruned: false,
           receipt_time: 123456789,
@@ -562,6 +562,7 @@ describe('microblock tests', () => {
         const { body: txListBody2 }: { body: TransactionResults } = txListResult2;
         expect(txListBody2.results).toHaveLength(3);
         expect(txListBody2.results[0].tx_id).toBe(mbTx2.tx_id);
+        expect(txListBody2.results[0].is_unanchored).toBe(true);
 
         const txListResult3 = await supertest(api.server).get(
           `/extended/v1/microblock/unanchored/txs`
@@ -621,6 +622,7 @@ describe('microblock tests', () => {
         expect(txBody2.microblock_hash).toBe(mb1.microblock_hash);
         expect(txBody2.microblock_sequence).toBe(mb1.microblock_sequence);
         expect(txBody2.block_hash).toBe('0x');
+        expect(txBody2.is_unanchored).toBe(true);
 
         const mbListResult1 = await supertest(api.server).get(`/extended/v1/microblock`);
         const { body: mbListBody1 }: { body: MicroblockListResponse } = mbListResult1;

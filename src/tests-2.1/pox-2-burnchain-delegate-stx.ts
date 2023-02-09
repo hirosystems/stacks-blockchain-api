@@ -14,7 +14,7 @@ import {
 } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ECPair } from '../ec-helpers';
+import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { timeout } from '../helpers';
 import {
   Account,
@@ -37,6 +37,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
+import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx
@@ -45,6 +46,8 @@ async function createPox2DelegateStx(args: {
   cycleCount: number;
   stackerAddress: string;
   delegatorStacksAddress: string;
+  untilBurnHt: number;
+  poxAddrPayout: string;
   bitcoinWif: string;
 }) {
   const btcAccount = ECPair.fromWIF(args.bitcoinWif, btc.networks.regtest);
@@ -76,6 +79,8 @@ async function createPox2DelegateStx(args: {
     Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
     Buffer.from('p'), // op: 'p' ascii encoded
   ]);
+
+  const dust = 10005;
   const outAmount1 = Math.round((utxo.amount - feeAmount) * sats);
   const preStxOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
@@ -121,12 +126,15 @@ async function createPox2DelegateStx(args: {
   //    * If Byte 24 is set to 0x01, then this field is the 128-bit big-endian integer that encodes the burnchain block height at which this
   //      delegation expires. This value corresponds to the until-burn-ht argument in delegate-stx.
 
+  const untilBurnHt = Buffer.alloc(8);
+  untilBurnHt.writeBigUInt64BE(BigInt(args.untilBurnHt));
+
   const delegateStxOpTxPayload = Buffer.concat([
     Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
     Buffer.from('#'), // op: '#' ascii encoded,
     Buffer.from(args.stxAmount.toString(16).padStart(32, '0'), 'hex'), // uSTX to lock (u128)
-    Buffer.from('00'.repeat(4), 'hex'), // corresponds to passing none to the pox-addr argument in delegate-stx (u32)
-    Buffer.from('00'.repeat(8), 'hex'), // corresponds to passing none to the until-burn-ht argument in delegate-stx (u64)
+    Buffer.from('0100000001', 'hex'), // specify the `pox-addr` arg to the second output address
+    Buffer.from(`01${untilBurnHt.toString('hex')}`, 'hex'), // corresponds to passing none to the until-burn-ht argument in delegate-stx (u64)
   ]);
   const delegateStxOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
@@ -142,7 +150,12 @@ async function createPox2DelegateStx(args: {
     // decode to a Stacks address. This field corresponds to the delegate-to argument in delegate-stx.
     .addOutput({
       address: c32ToB58(args.delegatorStacksAddress),
-      value: Math.round(outAmount1 - feeAmount * sats),
+      value: Math.round(outAmount1 - feeAmount * sats - dust),
+    })
+    // Add output for the `pox-addr`
+    .addOutput({
+      address: args.poxAddrPayout,
+      value: dust,
     })
     .signInput(0, btcAccount)
     .finalizeAllInputs()
@@ -171,13 +184,21 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
   const accountKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   let account: Account;
 
+  // mmf4gs6mwBYpudc2agd7MomJo8HJd6XksD
   // ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y
   const delegatorKey = '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601';
   let delegatorAccount: Account;
 
+  // testnet btc addr: tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453
+  // regtest btc addr: bcrt1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfs4w3npt
+  const poxAddrPayoutKey = 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01';
+  let poxAddrPayoutAccount: Account;
+
   let testAccountBalance: bigint;
   const testAccountBtcBalance = 5;
   let testStackAmount: bigint;
+
+  const untilBurnHeight = 200;
 
   let stxOpBtcTxs: {
     preStxOpTxId: string;
@@ -190,6 +211,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
 
     account = accountFromKey(accountKey);
     delegatorAccount = accountFromKey(delegatorKey);
+    poxAddrPayoutAccount = accountFromKey(poxAddrPayoutKey, 'p2tr');
 
     const poxInfo = await client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
@@ -278,6 +300,8 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
       delegatorStacksAddress: delegatorAccount.stxAddr,
+      poxAddrPayout: poxAddrPayoutAccount.btcAddr,
+      untilBurnHt: untilBurnHeight,
       stxAmount: testStackAmount,
       cycleCount: 6,
     });
@@ -305,6 +329,61 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     await standByUntilBlock(curInfo.stacks_tip_height + 1);
   });
 
+  test('Ensure delegate-stx BitcoinOp parsed', async () => {
+    const pox2Txs = await supertest(api.server)
+      .get(`/extended/v1/address/${Pox2ContractIdentifer.testnet}/transactions`)
+      .expect(200);
+    const delegateStxTxResp = await supertest(api.server)
+      .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)
+      .expect(200);
+    const delegateStxTx = delegateStxTxResp.body as ContractCallTransaction;
+    expect(delegateStxTx.tx_status).toBe('success');
+    expect(delegateStxTx.tx_type).toBe('contract_call');
+    expect(delegateStxTx.sender_address).toBe(account.stxAddr);
+    expect(delegateStxTx.tx_result).toEqual({ hex: '0x0703', repr: '(ok true)' });
+
+    const expectedPoxPayoutAddr = decodeBtcAddress(poxAddrPayoutAccount.btcTestnetAddr);
+    const expectedPoxPayoutAddrRepr = `(some (tuple (hashbytes 0x${Buffer.from(
+      expectedPoxPayoutAddr.data
+    ).toString('hex')}) (version 0x${Buffer.from([expectedPoxPayoutAddr.version]).toString(
+      'hex'
+    )})))`;
+
+    expect(delegateStxTx.contract_call).toEqual({
+      contract_id: 'ST000000000000000000002AMW42H.pox-2',
+      function_name: 'delegate-stx',
+      function_signature:
+        '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
+      function_args: [
+        {
+          hex: '0x0100000000000000000007fe8f3d591000',
+          repr: 'u2250216000000000',
+          name: 'amount-ustx',
+          type: 'uint',
+        },
+        {
+          hex: '0x051a43596b5386f466863e25658ddf94bd0fadab0048',
+          repr: `'${delegatorAccount.stxAddr}`,
+          name: 'delegate-to',
+          type: 'principal',
+        },
+        {
+          hex: '0x0a01000000000000000000000000000000c8',
+          repr: `(some u${untilBurnHeight})`,
+          name: 'until-burn-ht',
+          type: '(optional uint)',
+        },
+        {
+          hex:
+            '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
+          repr: expectedPoxPayoutAddrRepr,
+          name: 'pox-addr',
+          type: '(optional (tuple (hashbytes (buff 32)) (version (buff 1))))',
+        },
+      ],
+    });
+  });
+
   test('Perform delegate-stack-stx', async () => {
     const poxInfo = await testEnv.client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
@@ -319,7 +398,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
       functionArgs: [
         standardPrincipalCV(account.stxAddr), // stacker
         uintCV(testStackAmount), // amount-ustx
-        account.poxAddrClar, // pox-addr
+        poxAddrPayoutAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
       ],
@@ -345,7 +424,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     expect(res.results[0]).toEqual(
       expect.objectContaining({
         name: 'delegate-stack-stx',
-        pox_addr: account.btcTestnetAddr,
+        pox_addr: poxAddrPayoutAccount.btcTestnetAddr,
         stacker: account.stxAddr,
         balance: BigInt(coreBalanceInfo.balance).toString(),
         locked: testStackAmount.toString(),

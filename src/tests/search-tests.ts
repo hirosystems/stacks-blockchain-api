@@ -2,14 +2,14 @@ import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
-  DbMempoolTx,
+  DbMempoolTxRaw,
   DbSmartContract,
   DataStoreBlockUpdateData,
 } from '../datastore/common';
@@ -57,7 +57,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
     };
     await db.updateBlock(client, block);
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
       anchor_mode: 3,
@@ -93,7 +93,7 @@ describe('search tests', () => {
     };
     await db.updateTx(client, tx);
 
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -264,7 +264,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x4567000000000000000000000000000000000000000000000000000000000000',
       tx_index: 4,
       anchor_mode: 3,
@@ -299,7 +299,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -593,7 +593,7 @@ describe('search tests', () => {
     };
     await db.updateBlock(client, block);
 
-    const stxTx1: DbTx = {
+    const stxTx1: DbTxRaw = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -644,7 +644,7 @@ describe('search tests', () => {
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResp1);
 
-    const stxTx2: DbTx = {
+    const stxTx2: DbTxRaw = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -862,7 +862,7 @@ describe('search tests', () => {
     };
     expect(JSON.parse(searchResult8.text)).toEqual(expectedResp8);
 
-    const smartContract: DbTx = {
+    const smartContract: DbTxRaw = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -920,7 +920,7 @@ describe('search tests', () => {
     };
     expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
 
-    const smartContractMempoolTx: DbMempoolTx = {
+    const smartContractMempoolTx: DbMempoolTxRaw = {
       pruned: false,
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
@@ -1028,7 +1028,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const stxTx1: DbTx = {
+    const stxTx1: DbTxRaw = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -1065,7 +1065,7 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const stxTx2: DbTx = {
+    const stxTx2: DbTxRaw = {
       tx_id: '0x2222000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -1184,7 +1184,7 @@ describe('search tests', () => {
       sender: addr8,
     };
 
-    const smartContractTx: DbTx = {
+    const smartContractTx: DbTxRaw = {
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111880000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -1523,7 +1523,7 @@ describe('search tests', () => {
     };
     expect(JSON.parse(searchResult9.text)).toEqual(expectedResp9);
 
-    const smartContractMempoolTx: DbMempoolTx = {
+    const smartContractMempoolTx: DbMempoolTxRaw = {
       pruned: false,
       type_id: DbTxTypeId.SmartContract,
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
