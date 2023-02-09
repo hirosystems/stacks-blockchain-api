@@ -28,6 +28,6 @@ export class InvalidRequestError extends Error {
 export class BtcFaucetConfigError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'BtcFaucetConfigError';
+    this.name = this.constructor.name;
   }
 }
