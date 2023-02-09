@@ -6,6 +6,7 @@ import {
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   isTxWithMicroblockInfo,
+  SmartContractEvent,
   StxLockEvent,
   StxTransferEvent,
 } from './core-node-message';
@@ -28,7 +29,11 @@ import {
   TxSpendingConditionSingleSigHashMode,
   decodeClarityValueList,
 } from 'stacks-encoding-native-js';
-import { DbMicroblockPartial } from '../datastore/common';
+import {
+  DbMicroblockPartial,
+  DbPox2DelegateStxEvent,
+  DbPox2StackStxEvent,
+} from '../datastore/common';
 import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
@@ -45,9 +50,20 @@ import {
   tupleCV,
   bufferCV,
   serializeCV,
+  noneCV,
+  someCV,
+  OptionalCV,
+  TupleCV,
+  BufferCV,
+  SomeCV,
+  NoneCV,
+  UIntCV,
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
+import { decodePox2PrintEvent } from './pox2-event-parsing';
+import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
+import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -67,7 +83,8 @@ function createTransactionFromCoreBtcStxLockEvent(
   event: StxLockEvent,
   burnBlockHeight: number,
   txResult: string,
-  txId: string
+  txId: string,
+  stxStacksPox2Event: DbPox2StackStxEvent | undefined
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
     ClarityValueResponse<
@@ -96,9 +113,14 @@ function createTransactionFromCoreBtcStxLockEvent(
 
   const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
+  // If a pox-2 event is available then use its pox_addr, otherwise fallback to the stacker address
+  const poxAddrArg = stxStacksPox2Event?.pox_addr
+    ? poxAddressToTuple(stxStacksPox2Event.pox_addr)
+    : poxAddressToTuple(c32ToB58(stacker.address));
+
   const legacyClarityVals = [
     uintCV(lockAmount.value), // amount-ustx
-    poxAddressToTuple(c32ToB58(stacker.address)), // pox-addr
+    poxAddrArg, // pox-addr
     uintCV(burnBlockHeight), // start-burn-height
     uintCV(lockPeriod), // lock-period
   ];
@@ -140,6 +162,99 @@ function createTransactionFromCoreBtcStxLockEvent(
       address_hash_bytes: poxAddress[1],
       contract_name: contractName,
       function_name: 'stack-stx',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+/*
+;; Delegate to `delegate-to` the ability to stack from a given address.
+;;  This method _does not_ lock the funds, rather, it allows the delegate
+;;  to issue the stacking lock.
+;; The caller specifies:
+;;   * amount-ustx: the total amount of ustx the delegate may be allowed to lock
+;;   * until-burn-ht: an optional burn height at which this delegation expiration
+;;   * pox-addr: an optional address to which any rewards *must* be sent
+(define-public (delegate-stx (amount-ustx uint)
+                             (delegate-to principal)
+                             (until-burn-ht (optional uint))
+                             (pox-addr (optional { version: (buff 1),
+                                                   hashbytes: (buff 32) })))
+*/
+function createTransactionFromCoreBtcDelegateStxEvent(
+  chainId: ChainID,
+  contractEvent: SmartContractEvent,
+  decodedEvent: DbPox2DelegateStxEvent,
+  txResult: string,
+  txId: string
+): DecodedTxResult {
+  const resultCv = decodeClarityValue<ClarityValueResponse>(txResult);
+  if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
+    throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
+  }
+
+  const senderAddress = decodeStacksAddress(decodedEvent.stacker);
+  const poxContractAddressString =
+    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const poxContractAddress = decodeStacksAddress(poxContractAddressString);
+  const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
+
+  let poxAddr: NoneCV | OptionalCV<TupleCV> = noneCV();
+  if (decodedEvent.pox_addr) {
+    poxAddr = someCV(poxAddressToTuple(decodedEvent.pox_addr));
+  }
+
+  let untilBurnHeight: NoneCV | OptionalCV<UIntCV> = noneCV();
+  if (decodedEvent.data.unlock_burn_height) {
+    untilBurnHeight = someCV(uintCV(decodedEvent.data.unlock_burn_height));
+  }
+
+  const legacyClarityVals = [
+    uintCV(decodedEvent.data.amount_ustx), // amount-ustx
+    principalCV(decodedEvent.data.delegate_to), // delegate-to
+    untilBurnHeight, // until-burn-ht
+    poxAddr, // pox-addr
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: senderAddress[0],
+          address_hash_bytes: senderAddress[1],
+          address: decodedEvent.stacker,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address: poxContractAddressString,
+      address_version: poxContractAddress[0],
+      address_hash_bytes: poxContractAddress[1],
+      contract_name: contractName,
+      function_name: 'delegate-stx',
       function_args: clarityFnArgs,
       function_args_buffer: rawFnArgs,
     },
@@ -257,18 +372,53 @@ export function parseMessageTransaction(
       const stxLockEvent = events.find(
         (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
       );
+
+      const pox2Event = events
+        .filter(
+          (e): e is SmartContractEvent =>
+            e.type === CoreNodeEventType.ContractEvent &&
+            e.contract_event.topic === 'print' &&
+            (e.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
+              e.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
+        )
+        .map(e => {
+          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const decodedEvent = decodePox2PrintEvent(e.contract_event.raw_value, network);
+          if (decodedEvent) {
+            return {
+              contractEvent: e,
+              decodedEvent,
+            };
+          }
+        })
+        .find(e => !!e);
+
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
         txSender = stxTransferEvent.stx_transfer_event.sender;
       } else if (stxLockEvent) {
+        const stxStacksPox2Event =
+          pox2Event?.decodedEvent.name === Pox2EventName.StackStx
+            ? pox2Event.decodedEvent
+            : undefined;
         rawTx = createTransactionFromCoreBtcStxLockEvent(
           chainId,
           stxLockEvent,
           blockData.burn_block_height,
           coreTx.raw_result,
-          coreTx.txid
+          coreTx.txid,
+          stxStacksPox2Event
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
+      } else if (pox2Event && pox2Event.decodedEvent.name === Pox2EventName.DelegateStx) {
+        rawTx = createTransactionFromCoreBtcDelegateStxEvent(
+          chainId,
+          pox2Event.contractEvent,
+          pox2Event.decodedEvent,
+          coreTx.raw_result,
+          coreTx.txid
+        );
+        txSender = pox2Event.decodedEvent.stacker;
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(

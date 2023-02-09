@@ -1,6 +1,6 @@
 import {
   DbBlock,
-  DbTx,
+  DbTxRaw,
   DbTxTypeId,
   DbStxEvent,
   DbAssetEventTypeId,
@@ -9,7 +9,7 @@ import {
   DbNftEvent,
   DbSmartContractEvent,
   DbSmartContract,
-  DbMempoolTx,
+  DbMempoolTxRaw,
   DbTxStatus,
   DbMinerReward,
   DbStxLockEvent,
@@ -20,6 +20,7 @@ import {
   DbTokenOfferingLocked,
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
+  DbTx,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
@@ -376,7 +377,7 @@ describe('postgres datastore', () => {
       await db.updateMinerReward(client, reward);
     }
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -554,7 +555,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -715,7 +716,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -887,7 +888,7 @@ describe('postgres datastore', () => {
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -956,7 +957,7 @@ describe('postgres datastore', () => {
       dbBlock: DbBlock,
       canonical: boolean = true
     ) => {
-      const tx: DbTx = {
+      const tx: DbTxRaw = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
@@ -1274,7 +1275,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -1337,7 +1338,7 @@ describe('postgres datastore', () => {
       createStxEvent('addrA', 'addrC', 35),
     ];
 
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       tx_id: '0x2234',
       tx_index: 3,
       anchor_mode: 3,
@@ -1411,7 +1412,7 @@ describe('postgres datastore', () => {
       createFtEvent('addrA', 'none', 'tendies', 1_000_000),
     ];
 
-    const tx3: DbTx = {
+    const tx3: DbTxRaw = {
       tx_id: '0x3234',
       tx_index: 2,
       anchor_mode: 3,
@@ -2238,7 +2239,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2273,7 +2273,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2316,7 +2316,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2344,7 +2343,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
+    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_token_transfer"')
     );
     tx.token_transfer_amount = 34n;
@@ -2356,7 +2355,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2399,7 +2398,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2427,7 +2425,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
+    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_smart_contract"')
     );
     tx.smart_contract_contract_id = 'my-contract';
@@ -2447,7 +2445,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2485,7 +2483,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 4,
       anchor_mode: 3,
@@ -2556,7 +2554,45 @@ describe('postgres datastore', () => {
     });
     const txQuery = await db.getTx({ txId: tx.tx_id, includeUnanchored: false });
     assert(txQuery.found);
-    expect(txQuery.result).toEqual(tx);
+    // Expect tx without raw data.
+    const txRes: DbTx = {
+      tx_id: '0x421234',
+      tx_index: 4,
+      anchor_mode: 3,
+      nonce: 0,
+      index_block_hash: dbBlock.index_block_hash,
+      block_hash: dbBlock.block_hash,
+      block_height: dbBlock.block_height,
+      burn_block_time: dbBlock.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.VersionedSmartContract,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'sender-addr',
+      origin_hash_mode: 1,
+      event_count: 0,
+      parent_index_block_hash: dbBlock.parent_index_block_hash,
+      parent_block_hash: dbBlock.parent_block_hash,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      abi: undefined,
+      smart_contract_clarity_version: 2,
+      smart_contract_contract_id: 'my-contract',
+      smart_contract_source_code: '(src)',
+      sponsor_nonce: undefined,
+    };
+    expect(txQuery.result).toEqual(txRes);
   });
 
   test('pg `contract-call` tx type constraint', async () => {
@@ -2584,7 +2620,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2612,7 +2647,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
+    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_contract_call"')
     );
     tx.contract_call_contract_id = 'my-contract';
@@ -2624,7 +2659,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2667,7 +2702,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2695,7 +2729,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
+    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_poison_microblock"')
     );
     tx.poison_microblock_header_1 = '0x706f69736f6e2041';
@@ -2706,7 +2740,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2749,7 +2783,6 @@ describe('postgres datastore', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -2777,7 +2810,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    await expect(db.updateTx(client, tx)).rejects.toEqual(
+    await expect(db.updateTx(client, { ...tx, raw_tx: '0x' })).rejects.toEqual(
       new Error('new row for relation "txs" violates check constraint "valid_coinbase"')
     );
     tx.coinbase_payload = '0x636f696e62617365206869';
@@ -2787,7 +2820,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx,
+          tx: { ...tx, raw_tx: '0x' },
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2827,7 +2860,7 @@ describe('postgres datastore', () => {
     };
     await db.updateBlock(client, dbBlock);
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -2899,7 +2932,6 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       abi: undefined,
       index_block_hash: '0x1234',
       block_hash: '0x5678',
@@ -3030,7 +3062,7 @@ describe('postgres datastore', () => {
       minerRewards: [],
       txs: [
         {
-          tx: tx1,
+          tx: { ...tx1, raw_tx: '0x' },
           stxLockEvents: [],
           stxEvents: [stxEvent1],
           ftEvents: [ftEvent1],
@@ -3042,7 +3074,7 @@ describe('postgres datastore', () => {
           pox2Events: [],
         },
         {
-          tx: tx2,
+          tx: { ...tx2, raw_tx: '0x' },
           stxLockEvents: [],
           stxEvents: [],
           ftEvents: [],
@@ -3381,7 +3413,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
     };
 
-    const tx1Mempool: DbMempoolTx = {
+    const tx1Mempool: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x01',
       anchor_mode: 3,
@@ -3400,7 +3432,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       ...tx1Mempool,
       tx_index: 0,
       raw_tx: '0x746573742d7261772d7478',
@@ -3424,7 +3456,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1b: DbTx = {
+    const tx1b: DbTxRaw = {
       ...tx1,
       index_block_hash: block6.index_block_hash,
       block_hash: block6.block_hash,
@@ -3440,7 +3472,6 @@ describe('postgres datastore', () => {
     const txQuery1 = await db.getMempoolTx({ txId: tx1Mempool.tx_id, includeUnanchored: false });
     expect(txQuery1.found).toBe(true);
     expect(txQuery1?.result?.status).toBe(DbTxStatus.Pending);
-    expect(txQuery1?.result?.raw_tx).toBe('0x746573742d7261772d7478');
 
     for (const block of [block1, block2, block3]) {
       await db.update({
@@ -3489,7 +3520,6 @@ describe('postgres datastore', () => {
     expect(txQuery4.found).toBe(true);
     expect(txQuery4?.result?.status).toBe(DbTxStatus.Success);
     expect(txQuery4?.result?.canonical).toBe(true);
-    expect(txQuery4?.result?.raw_tx).toBe('0x746573742d7261772d7478');
 
     // reorg the chain to make the tx no longer canonical
     for (const block of [block4, block5]) {
@@ -3641,7 +3671,7 @@ describe('postgres datastore', () => {
       tx_fees_streamed_produced: 5n,
     };
 
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x01',
       tx_index: 0,
       anchor_mode: 3,
@@ -3676,7 +3706,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
     };
 
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       tx_id: '0x02',
       tx_index: 0,
       anchor_mode: 3,
@@ -3871,7 +3901,7 @@ describe('postgres datastore', () => {
       tx_fees_streamed_produced: 0n,
     };
 
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x01',
       tx_index: 0,
       anchor_mode: 3,
@@ -3906,7 +3936,7 @@ describe('postgres datastore', () => {
       execution_cost_write_length: 0,
     };
 
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       tx_id: '0x02',
       tx_index: 0,
       anchor_mode: 3,
@@ -4013,6 +4043,7 @@ describe('postgres datastore', () => {
               namespace_id: 'abc',
               registered_at: 2,
               expire_block: 14,
+              status: 'name-register',
               zonefile:
                 '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
               zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
@@ -4087,7 +4118,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    let subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    let subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4132,7 +4167,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx3: DbTx = {
+    const tx3: DbTxRaw = {
       tx_id: '0x03',
       tx_index: 0,
       anchor_mode: 3,
@@ -4207,6 +4242,7 @@ describe('postgres datastore', () => {
               name: 'xyz.abc',
               address: 'ST5RRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1ZA',
               namespace_id: 'abc',
+              status: 'name-register',
               registered_at: block2b.block_height,
               expire_block: 14,
               zonefile:
@@ -4301,7 +4337,11 @@ describe('postgres datastore', () => {
     expect(namespace.result.canonical).toBe(true);
     expect(namespace.result.index_block_hash).toBe(block2.index_block_hash);
 
-    subdomain = await db.getSubdomain({ subdomain: 'def.xyz.abc', includeUnanchored: false });
+    subdomain = await db.getSubdomain({
+      subdomain: 'def.xyz.abc',
+      includeUnanchored: false,
+      chainId: ChainID.Mainnet,
+    });
     assert(subdomain.found);
     expect(subdomain.result.canonical).toBe(true);
     expect(subdomain.result.index_block_hash).toBe(block2.index_block_hash);
@@ -4447,7 +4487,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
@@ -4527,7 +4567,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
@@ -4606,7 +4646,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx1: DbTx = {
+    const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
@@ -4640,7 +4680,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       ...tx1,
       event_count: 0,
       tx_id: '0x012345',
@@ -4825,6 +4865,7 @@ describe('postgres datastore', () => {
       namespace_id: 'abc',
       registered_at: dbBlock.block_height,
       expire_block: 14,
+      status: 'name-register',
       zonefile:
         '$ORIGIN muneeb.id\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/muneeb.id"\n',
       zonefile_hash: 'b100a68235244b012854a95f9114695679002af9',
@@ -4937,7 +4978,7 @@ describe('postgres datastore', () => {
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -4974,7 +5015,7 @@ describe('postgres datastore', () => {
     };
     await db.updateTx(client, tx);
 
-    const tx2: DbTx = {
+    const tx2: DbTxRaw = {
       tx_id: '0x123456',
       tx_index: 5,
       anchor_mode: 3,
@@ -5040,7 +5081,7 @@ describe('postgres datastore', () => {
     assert(blockQuery.found);
     expect(blockQuery.result).toEqual(block);
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,

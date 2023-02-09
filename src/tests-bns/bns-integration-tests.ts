@@ -3,7 +3,7 @@ import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { createHash } from 'crypto';
-import { DbTx, DbTxStatus } from '../datastore/common';
+import { DbTxRaw, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 import {
@@ -47,14 +47,14 @@ describe('BNS integration tests', () => {
   let eventServer: Server;
   let api: ApiServer;
 
-  function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>(resolve => {
+  function standByForTx(expectedTxId: string): Promise<DbTxRaw> {
+    const broadcastTx = new Promise<DbTxRaw>(resolve => {
       const listener: (txId: string) => void = async txId => {
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
           return;
         }
-        const dbTx = dbTxQuery.result as DbTx;
+        const dbTx = dbTxQuery.result as DbTxRaw;
         if (
           dbTx.tx_id === expectedTxId &&
           (dbTx.status === DbTxStatus.Success ||
@@ -399,7 +399,7 @@ describe('BNS integration tests', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false, chainId: ChainID.Testnet });
       expect(query2.found).toBe(true);
       if(query2.result)
         expect(query2.result.resolver).toBe('');
@@ -519,11 +519,10 @@ describe('BNS integration tests', () => {
     await namespaceReady(namespace, testnetKey.pkey);
 
     // testing name revoke
-    const transaction = await nameRevoke(namespace, name, testnetKey.pkey);
+    await nameRevoke(namespace, name, testnetKey.pkey);
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-    expect(query1.status).toBe(200);
+    expect(query1.status).toBe(404);
     expect(query1.type).toBe('application/json');
-    expect(query1.body.status).toBe('name-revoke');
   });
 
   test('name-import/name-renewal contract call', async () => {

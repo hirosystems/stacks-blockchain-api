@@ -96,6 +96,9 @@ exports.up = pgm => {
     first_unlocked_cycle: { // unique to handle-unlock
       type: 'numeric',
     },
+    delegate_to: { // unique to delegate-stx
+      type: 'string',
+    },
     lock_period: { // unique to stack-stx, delegate-stack-stx
       type: 'numeric'
     },
@@ -105,7 +108,7 @@ exports.up = pgm => {
     start_burn_height: { // unique to stack-stx, delegate-stack-stx
       type: 'numeric',
     },
-    unlock_burn_height: { // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend
+    unlock_burn_height: { // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend, delegate-stx
       type: 'numeric',
     },
     delegator: { // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
@@ -123,7 +126,7 @@ exports.up = pgm => {
     reward_cycle: { // unique to stack-aggregation-*
       type: 'numeric',
     },
-    amount_ustx: { // unique to stack-aggregation-*
+    amount_ustx: { // unique to stack-aggregation-*, delegate-stx
       type: 'numeric',
     },
   });
@@ -144,6 +147,9 @@ exports.up = pgm => {
       WHEN 'stack-extend' THEN
         extend_count IS NOT NULL AND 
         unlock_burn_height IS NOT NULL
+      WHEN 'delegate-stx' THEN
+        amount_ustx IS NOT NULL AND 
+        delegate_to IS NOT NULL
       WHEN 'delegate-stack-stx' THEN
         lock_period IS NOT NULL AND 
         lock_amount IS NOT NULL AND 

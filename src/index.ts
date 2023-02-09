@@ -163,8 +163,8 @@ async function init(): Promise<void> {
         handler: () => tokenMetadataProcessor.close(),
         forceKillable: true,
       });
-      // check if db has any non-processed token queues and await them all here
-      await tokenMetadataProcessor.drainDbQueue();
+      // Enqueue a batch of pending token metadata processors, if any.
+      await tokenMetadataProcessor.checkDbQueue();
     }
   }
 
