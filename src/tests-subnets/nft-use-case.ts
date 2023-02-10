@@ -87,6 +87,20 @@ describe('Subnets NFT use-case', () => {
     };
   });
 
+  test('Wait for L1 to be ready', async () => {
+    while (true) {
+      try {
+        const info = await l1Client.getInfo();
+        if (info.stacks_tip_height >= 2) {
+          break;
+        }
+        await timeout(200);
+      } catch (error) {
+        await timeout(200);
+      }
+    }
+  });
+
   test('Deploy L1 contract dependencies', async () => {
     const contracts: { name: string; clarityVersion: number }[] = [
       { name: 'nft-trait', clarityVersion: 1 },
@@ -179,8 +193,20 @@ describe('Subnets NFT use-case', () => {
   });
 
   test('Step 1b: Publish NFT contract to L2', async () => {
+    // Wait for L2 subnet contract to be available
+    while (true) {
+      try {
+        await l2Client.fetchJson(
+          `v2/contracts/interface/${l2SubnetContract.addr}/${l2SubnetContract.name}`
+        );
+        break;
+      } catch (error) {
+        await timeout(200);
+      }
+    }
+
     const curBlock = await l2Client.getInfo();
-    await standByUntilBlock(curBlock.stacks_tip_height + 4);
+    await standByUntilBlock(curBlock.stacks_tip_height + 1);
 
     const contractName = 'simple-nft-l2';
     const txFee = 100_000n;
