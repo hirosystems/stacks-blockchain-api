@@ -166,7 +166,7 @@ describe('Subnets tests', () => {
     expect(block).toBeTruthy();
   });
 
-  describe.skip('NFT use-case test', () => {
+  describe('NFT use-case test', () => {
     test('Step 1a: Publish NFT contract to L1', async () => {
       const contractName = 'simple-nft-l1';
       const txFee = 100_000n;
