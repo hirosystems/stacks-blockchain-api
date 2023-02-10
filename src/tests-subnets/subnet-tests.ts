@@ -702,4 +702,152 @@ describe('Subnets tests', () => {
       }
     });
   });
+
+  describe.skip('STX use-case test', () => {
+    test('Step 1: Publish STX contract to L2', async () => {
+      const curBlock = await l2Client.getInfo();
+      await standByUntilBlock(curBlock.stacks_tip_height + 1);
+
+      const contractName = 'simple-stx-l2';
+      const txFee = 100_000n;
+      const src = fs.readFileSync(path.resolve(__dirname, 'l2-contracts', `${contractName}.clar`), {
+        encoding: 'utf8',
+      });
+      const tx = await makeContractDeploy({
+        senderKey: accounts.USER.key,
+        // clarityVersion: 1,
+        contractName: contractName,
+        codeBody: src,
+        network: l2Network,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: txFee,
+      });
+      const { txId } = await l2Client.sendTransaction(Buffer.from(tx.serialize()));
+      const txResult = await standByForTxSuccess(txId);
+      console.log(txResult);
+    });
+
+    let initialL1StxBalance: bigint;
+    let initialL2StxBalance: bigint;
+    test('Step 2a: Deposit STX into subnet contract on L1', async () => {
+      initialL1StxBalance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
+      initialL2StxBalance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+      const tx = await makeContractCall({
+        contractAddress: l1SubnetContract.addr,
+        contractName: l1SubnetContract.name,
+        functionName: 'deposit-stx',
+        functionArgs: [
+          uintCV(12345678), // amount
+          standardPrincipalCV(accounts.ALT_USER.addr), // sender
+        ],
+        senderKey: accounts.ALT_USER.key,
+        validateWithAbi: false,
+        network: l1Network,
+        anchorMode: AnchorMode.OnChainOnly,
+        fee: 10000,
+      });
+      const { txId } = await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+      console.log(`[deposit-stx] tx: ${txId}`);
+
+      const curBlock = await l1Client.getInfo();
+      await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
+    });
+
+    let nextL1Balance: bigint;
+    let nextL2Balance: bigint;
+    test('Step 2b: Check that user owns additional STX on L2', async () => {
+      const curBlock = await l2Client.getInfo();
+      await standByUntilBlock(curBlock.stacks_tip_height + 1);
+      while (true) {
+        nextL1Balance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
+        nextL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+        if (nextL1Balance === initialL1StxBalance || nextL2Balance === initialL2StxBalance) {
+          console.log({
+            l1Balance: nextL1Balance,
+            l2Balance: nextL2Balance,
+          });
+          await timeout(200);
+          continue;
+        }
+        expect(initialL1StxBalance).toBeGreaterThan(nextL1Balance);
+        expect(initialL2StxBalance).toBeLessThan(nextL2Balance);
+        break;
+      }
+    });
+
+    let withdrawalBlockHeight: number;
+    let withdrawAmount: number;
+    test('Step 3: Withdraw STX from L2', async () => {
+      withdrawAmount = 1234567;
+      const tx = await makeContractCall({
+        contractAddress: accounts.USER.addr,
+        contractName: 'simple-stx-l2',
+        functionName: 'subnet-withdraw-stx',
+        functionArgs: [
+          uintCV(withdrawAmount), // amount
+          standardPrincipalCV(accounts.ALT_USER.addr), // sender
+        ],
+        senderKey: accounts.ALT_USER.key,
+        validateWithAbi: false,
+        network: l2Network,
+        anchorMode: AnchorMode.OnChainOnly,
+        postConditionMode: PostConditionMode.Allow,
+        fee: 10000,
+      });
+      const { txId } = await l2Client.sendTransaction(Buffer.from(tx.serialize()));
+
+      const txResult = await standByForTxSuccess(txId);
+      console.log(txResult);
+
+      withdrawalBlockHeight = txResult.block_height;
+      console.log(`Withdrawal height: ${withdrawalBlockHeight}`);
+    });
+
+    test('Step 4a: Complete the withdrawal on the L1 chain', async () => {
+      const withdrawalId = 0;
+      const json_merkle_entry = await l2Client.fetchJson<{
+        withdrawal_leaf_hash: string;
+        withdrawal_root: string;
+        sibling_hashes: string;
+      }>(
+        `v2/withdrawal/stx/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${withdrawAmount}`
+      );
+      console.log(json_merkle_entry);
+      const cv_merkle_entry = {
+        withdrawal_leaf_hash: deserializeCV(json_merkle_entry.withdrawal_leaf_hash),
+        withdrawal_root: deserializeCV(json_merkle_entry.withdrawal_root),
+        sibling_hashes: deserializeCV(json_merkle_entry.sibling_hashes),
+      };
+      console.log(cv_merkle_entry);
+
+      const tx = await makeContractCall({
+        senderKey: accounts.ALT_USER.key,
+        network: l1Network,
+        anchorMode: AnchorMode.OnChainOnly,
+        contractAddress: l1SubnetContract.addr,
+        contractName: l1SubnetContract.name,
+        functionName: 'withdraw-stx',
+        functionArgs: [
+          uintCV(withdrawAmount), // amount
+          standardPrincipalCV(accounts.ALT_USER.addr), // recipient
+          uintCV(withdrawalId), // withdrawal ID
+          uintCV(withdrawalBlockHeight), // withdrawal block height
+          cv_merkle_entry.withdrawal_root, // withdrawal root
+          cv_merkle_entry.withdrawal_leaf_hash, // withdrawal leaf hash
+          cv_merkle_entry.sibling_hashes,
+        ], // sibling hashes
+        fee: 10000,
+        postConditionMode: PostConditionMode.Allow,
+      });
+
+      await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+    });
+
+    test('Step 4b: Check that user owns additional STX on L1', async () => {
+      const finalL1Balance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
+      const finalL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+      expect(nextL1Balance).toBeLessThan(finalL1Balance);
+      expect(nextL2Balance).toBeGreaterThan(finalL2Balance);
+    });
+  });
 });
