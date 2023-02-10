@@ -126,7 +126,7 @@ describe('Subnets NFT use-case', () => {
     expect(block).toBeTruthy();
   });
 
-  test('Publish NFT contract to L1', async () => {
+  test('Step 1a: Publish NFT contract to L1', async () => {
     const contractName = 'simple-nft-l1';
     const txFee = 100_000n;
     const src = fs.readFileSync(path.resolve(__dirname, 'l1-contracts', `${contractName}.clar`), {
@@ -156,7 +156,7 @@ describe('Subnets NFT use-case', () => {
     }
   });
 
-  test('Publish NFT contract to L2', async () => {
+  test('Step 1b: Publish NFT contract to L2', async () => {
     const curBlock = await l2Client.getInfo();
     await standByUntilBlock(curBlock.stacks_tip_height + 1);
 
@@ -179,7 +179,7 @@ describe('Subnets NFT use-case', () => {
     console.log(txResult);
   });
 
-  test('Register NFT asset in the interface subnet contract', async () => {
+  test('Step 2: Register NFT asset in the interface subnet contract', async () => {
     const accountNonce = await l1Client.getAccountNonce(accounts.AUTH_SUBNET_MINER.addr);
     const tx = await makeContractCall({
       contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
@@ -227,7 +227,7 @@ describe('Subnets NFT use-case', () => {
     }
   });
 
-  test('Mint an NFT on the L1 chain', async () => {
+  test('Step 3: Mint an NFT on the L1 chain', async () => {
     const tx = await makeContractCall({
       contractAddress: accounts.USER.addr,
       contractName: 'simple-nft-l1',
@@ -245,7 +245,7 @@ describe('Subnets NFT use-case', () => {
     await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
   });
 
-  test('Deposit the NFT onto the subnet', async () => {
+  test('Step 4: Deposit the NFT onto the subnet', async () => {
     const tx = await makeContractCall({
       contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
       contractName: 'subnet',
@@ -268,7 +268,7 @@ describe('Subnets NFT use-case', () => {
     await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
   });
 
-  test('Transfer the NFT within the subnet', async () => {
+  test('Step 5: Transfer the NFT within the subnet', async () => {
     const tx = await makeContractCall({
       contractAddress: accounts.USER.addr,
       contractName: 'simple-nft-l2',
@@ -290,4 +290,37 @@ describe('Subnets NFT use-case', () => {
     const txResult = await standByForTxSuccess(txId);
     console.log(txResult);
   });
+
+  let WITHDRAWAL_BLOCK_HEIGHT: number;
+  test('Step 6a: Withdraw the NFT on the subnet', async () => {
+    const tx = await makeContractCall({
+      contractAddress: 'ST000000000000000000002AMW42H',
+      contractName: 'subnet',
+      functionName: 'nft-withdraw?',
+      functionArgs: [
+        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l2'),
+        uintCV(5), // ID
+        standardPrincipalCV(accounts.ALT_USER.addr), // recipient
+      ],
+      senderKey: accounts.ALT_USER.key,
+      validateWithAbi: false,
+      network: l2Network,
+      anchorMode: AnchorMode.Any,
+      postConditionMode: PostConditionMode.Allow,
+      fee: 10000,
+    });
+    const { txId } = await l2Client.sendTransaction(Buffer.from(tx.serialize()));
+
+    const txResult = await standByForTxSuccess(txId);
+    console.log(txResult);
+
+    WITHDRAWAL_BLOCK_HEIGHT = txResult.block_height;
+    console.log(`Withdrawal height: ${WITHDRAWAL_BLOCK_HEIGHT}`);
+  });
+
+  /*
+  test('Step 6b: Complete the withdrawal on the Stacks chain', async () => {
+
+  });
+  */
 });

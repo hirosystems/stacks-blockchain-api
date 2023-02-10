@@ -55,7 +55,7 @@ export default async (): Promise<void> => {
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
-  const db = await PgWriteStore.connect({ usageName: 'tests' });
+  const db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
   await cycleMigrations();
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 

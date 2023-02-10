@@ -50,6 +50,12 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  process.on('uncaughtException', (error, origin) => {
+    console.error(`____[env-setup] uncaughtException: ${error}, ${origin}`);
+  });
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error(`____[env-setup] unhandledRejection: ${reason}, ${promise}`);
+  });
   console.log('Jest - teardown..');
   await testEnv.api.terminate();
   await testEnv.db?.close();
