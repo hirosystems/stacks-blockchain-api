@@ -635,7 +635,7 @@ describe('Subnets tests', () => {
       await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
     });
 
-    test('Step 4: Deposit FT onto the subnet', async () => {
+    test('Step 4a: Deposit FT onto the subnet', async () => {
       while (true) {
         try {
           const tx = await makeContractCall({
@@ -668,6 +668,81 @@ describe('Subnets tests', () => {
 
       const curBlock = await l1Client.getInfo();
       await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
+    });
+
+    test('Step 4b: Verify deposit-ft-asset synthetic tx', async () => {
+      const expectedContractID = `${accounts.USER.addr}.simple-ft-l2`;
+      while (true) {
+        const resp = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx?limit=1&type=contract_call`)
+          .expect(200);
+        const txListResp = resp.body as TransactionResults;
+        const tx = txListResp.results[0] as ContractCallTransaction;
+        if (txListResp.total === 0 || tx.contract_call.contract_id !== expectedContractID) {
+          await timeout(200);
+          continue;
+        }
+        expect(tx).toEqual(
+          expect.objectContaining({
+            anchor_mode: 'any',
+            canonical: true,
+            contract_call: {
+              contract_id: expectedContractID,
+              function_args: [
+                {
+                  hex: '0x0100000000000000000000000000000001',
+                  name: 'amount',
+                  repr: 'u1',
+                  type: 'uint',
+                },
+                {
+                  hex: '0x051a43596b5386f466863e25658ddf94bd0fadab0048',
+                  name: 'recipient',
+                  repr: `'${accounts.USER.addr}`,
+                  type: 'principal',
+                },
+              ],
+              function_name: 'deposit-from-burnchain',
+              function_signature:
+                '(define-public (deposit-from-burnchain (amount uint) (recipient principal)))',
+            },
+            event_count: 1,
+            events: [],
+            fee_rate: '0',
+            post_condition_mode: 'allow',
+            post_conditions: [],
+            sender_address: accounts.USER.addr,
+            sponsored: false,
+            tx_index: 0,
+            tx_result: {
+              hex: '0x0703',
+              repr: '(ok true)',
+            },
+            tx_status: 'success',
+            tx_type: 'contract_call',
+          })
+        );
+
+        const respEvents = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
+          .expect(200);
+        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        expect(txEvents).toEqual([
+          {
+            asset: {
+              amount: '1',
+              asset_event_type: 'mint',
+              asset_id: `${accounts.USER.addr}.simple-ft-l2::ft-token`,
+              recipient: accounts.USER.addr,
+              sender: '',
+            },
+            event_index: 0,
+            event_type: 'fungible_token_asset',
+            tx_id: tx.tx_id,
+          },
+        ]);
+        break;
+      }
     });
 
     test('Step 5: Transfer FT within the subnet', async () => {
