@@ -158,7 +158,7 @@ describe('Subnets NFT use-case', () => {
 
   test('Step 1b: Publish NFT contract to L2', async () => {
     const curBlock = await l2Client.getInfo();
-    await standByUntilBlock(curBlock.stacks_tip_height + 1);
+    await standByUntilBlock(curBlock.stacks_tip_height + 2);
 
     const contractName = 'simple-nft-l2';
     const txFee = 100_000n;
