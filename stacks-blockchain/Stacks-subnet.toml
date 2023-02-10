@@ -22,7 +22,7 @@ first_burn_header_height = 0
 peer_host = "host.docker.internal"
 rpc_port = 20443
 peer_port = 20444
-contract_identifier = "STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.subnet"
+contract_identifier = "STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.subnet"
 observer_port = 30445
 
 

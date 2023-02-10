@@ -21,6 +21,7 @@
     "test:tokens": "cross-env NODE_ENV=development jest --config ./tests/jest.config.tokens.js --coverage --runInBand",
     "test:watch": "cross-env NODE_ENV=development jest --config ./tests/jest.config.js --watch",
     "test:integration": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml up --force-recreate -V\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.js --no-cache --runInBand; npm run devenv:stop:pg\"",
+    "test:integration:subnets": "concurrently --hide \"devenv:deploy:subnets\" \"npm:devenv:deploy:subnets\" \"cross-env NODE_ENV=development STACKS_CORE_RPC_PORT=30443 STACKS_CORE_PROXY_PORT=30443 jest --config ./tests/jest.config.subnets.js --no-cache --runInBand; npm run devenv:stop:subnets\"",
     "test:integration:2.1": "concurrently --hide \"devenv:deploy:2.1\" \"npm:devenv:deploy:2.1\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.2.1.js --no-cache --runInBand; npm run devenv:stop:2.1\"",
     "test:integration:2.1-transition": "concurrently --hide \"devenv:deploy:2.1-transition\" \"npm:devenv:deploy:2.1-transition\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.2.1-transition.js --no-cache --runInBand; npm run devenv:stop:2.1-transition\"",
     "test:integration:rosetta": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-blockchain.yml up --force-recreate -V\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.rosetta.js --no-cache --runInBand; npm run devenv:stop\"",

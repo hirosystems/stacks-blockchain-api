@@ -1,7 +1,7 @@
 import { loadDotEnv, timeout } from '../helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { cycleMigrations } from '../datastore/migrations';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
@@ -55,8 +55,8 @@ export default async (): Promise<void> => {
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
-  await cycleMigrations();
   const db = await PgWriteStore.connect({ usageName: 'tests' });
+  await cycleMigrations();
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 
   const subnetClient = new StacksCoreRpcClient();

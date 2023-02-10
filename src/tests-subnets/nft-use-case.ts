@@ -38,10 +38,24 @@ describe('Subnets NFT use-case', () => {
   let l2Client: StacksCoreRpcClient;
   let l2Network: StacksTestnet;
 
-  let l1Account: Account;
-
-  const subnetAccountKey = 'b1ee37d996b1cf95ff67996a38426cff398d3adfeccf8ae8b3651a530837dd5801';
-  let subnetAccount: Account;
+  const accounts = {
+    SUBNET_CONTRACT_DEPLOYER: {
+      addr: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+      key: 'e75dcb66f84287eaf347955e94fa04337298dbd95aa0dbb985771104ef1913db01',
+    },
+    AUTH_SUBNET_MINER: {
+      addr: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+      key: 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01',
+    },
+    USER: {
+      addr: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
+      key: '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601',
+    },
+    ALT_USER: {
+      addr: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
+      key: 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01',
+    },
+  };
 
   beforeAll(() => {
     l1Client = new StacksCoreRpcClient({ port: 20443 });
@@ -49,9 +63,6 @@ describe('Subnets NFT use-case', () => {
 
     l2Client = testEnv.client;
     l2Network = testEnv.stacksNetwork;
-
-    l1Account = accountFromKey(testnetKeys[0].secretKey);
-    subnetAccount = accountFromKey(subnetAccountKey);
   });
 
   test('Deploy L1 contract dependencies', async () => {
@@ -62,7 +73,7 @@ describe('Subnets NFT use-case', () => {
       { name: 'subnet', clarityVersion: 2 },
     ];
 
-    const accountInfo = await l1Client.getAccount(l1Account.stxAddr);
+    const accountInfo = await l1Client.getAccount(accounts.SUBNET_CONTRACT_DEPLOYER.addr);
     let accountNonce = accountInfo.nonce;
     const txFee = 100_000n;
     for (const c of contracts) {
@@ -70,7 +81,7 @@ describe('Subnets NFT use-case', () => {
         encoding: 'utf8',
       });
       const tx = await makeContractDeploy({
-        senderKey: l1Account.secretKey,
+        senderKey: accounts.SUBNET_CONTRACT_DEPLOYER.key,
         clarityVersion: c.clarityVersion,
         contractName: c.name,
         codeBody: src,
@@ -87,7 +98,7 @@ describe('Subnets NFT use-case', () => {
       while (true) {
         try {
           await l1Client.fetchJson(
-            `v2/contracts/interface/${l1Account.stxAddr}/${c.name}?tip=latest`
+            `v2/contracts/interface/${accounts.SUBNET_CONTRACT_DEPLOYER.addr}/${c.name}?tip=latest`
           );
           break;
         } catch (error) {
@@ -100,7 +111,7 @@ describe('Subnets NFT use-case', () => {
   test('Ensure subnet RPC is responsive', async () => {
     while (true) {
       try {
-        const accountInfo = await l2Client.getAccount(l1Account.stxAddr);
+        const accountInfo = await l2Client.getAccount(accounts.SUBNET_CONTRACT_DEPLOYER.addr);
         console.log(accountInfo);
         break;
       } catch (error) {
@@ -115,16 +126,6 @@ describe('Subnets NFT use-case', () => {
     expect(block).toBeTruthy();
   });
 
-  const AUTH_SUBNET_MINER_ADDR = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
-  const AUTH_SUBNET_MINER_KEY =
-    'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
-
-  const USER_ADDR = 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
-  const USER_KEY = '21d43d2ae0da1d9d04cfcaac7d397a33733881081f0b2cd038062cf0ccbb752601';
-
-  const ALT_USER_ADDR = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
-  const ALT_USER_KEY = 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01';
-
   test('Publish NFT contract to L1', async () => {
     const contractName = 'simple-nft-l1';
     const txFee = 100_000n;
@@ -132,7 +133,7 @@ describe('Subnets NFT use-case', () => {
       encoding: 'utf8',
     });
     const tx = await makeContractDeploy({
-      senderKey: USER_KEY,
+      senderKey: accounts.USER.key,
       clarityVersion: 1,
       contractName: contractName,
       codeBody: src,
@@ -147,7 +148,7 @@ describe('Subnets NFT use-case', () => {
 
     while (true) {
       try {
-        await l1Client.fetchJson(`v2/contracts/interface/${USER_ADDR}/${contractName}`);
+        await l1Client.fetchJson(`v2/contracts/interface/${accounts.USER.addr}/${contractName}`);
         break;
       } catch (error) {
         await timeout(200);
@@ -156,13 +157,16 @@ describe('Subnets NFT use-case', () => {
   });
 
   test('Publish NFT contract to L2', async () => {
+    const curBlock = await l2Client.getInfo();
+    await standByUntilBlock(curBlock.stacks_tip_height + 1);
+
     const contractName = 'simple-nft-l2';
     const txFee = 100_000n;
     const src = fs.readFileSync(path.resolve(__dirname, 'l2-contracts', `${contractName}.clar`), {
       encoding: 'utf8',
     });
     const tx = await makeContractDeploy({
-      senderKey: USER_KEY,
+      senderKey: accounts.USER.key,
       // clarityVersion: 1,
       contractName: contractName,
       codeBody: src,
@@ -171,34 +175,21 @@ describe('Subnets NFT use-case', () => {
       fee: txFee,
     });
     const { txId } = await l2Client.sendTransaction(Buffer.from(tx.serialize()));
-    await standByForTxSuccess(txId);
-
-    /*
-    const curBlock = await l2Client.getInfo();
-    await standByUntilBlock(curBlock.stacks_tip_height + 1);
-
-    while (true) {
-      try {
-        await l2Client.fetchJson(`v2/contracts/interface/${USER_ADDR}/${contractName}`);
-        break;
-      } catch (error) {
-        await timeout(200);
-      }
-    }
-    */
-  }, 120_000);
+    const txResult = await standByForTxSuccess(txId);
+    console.log(txResult);
+  });
 
   test('Register NFT asset in the interface subnet contract', async () => {
-    const accountNonce = await l1Client.getAccountNonce(AUTH_SUBNET_MINER_ADDR);
+    const accountNonce = await l1Client.getAccountNonce(accounts.AUTH_SUBNET_MINER.addr);
     const tx = await makeContractCall({
-      contractAddress: l1Account.stxAddr,
+      contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
       contractName: 'subnet',
       functionName: 'register-new-nft-contract',
       functionArgs: [
-        contractPrincipalCV(USER_ADDR, 'simple-nft-l1'),
-        contractPrincipalCV(USER_ADDR, 'simple-nft-l2'),
+        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'),
+        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l2'),
       ],
-      senderKey: AUTH_SUBNET_MINER_KEY,
+      senderKey: accounts.AUTH_SUBNET_MINER.key,
       validateWithAbi: false,
       network: l1Network,
       anchorMode: AnchorMode.Any,
@@ -213,11 +204,11 @@ describe('Subnets NFT use-case', () => {
     // (define-map allowed-contracts principal principal)
     // Verify `allowed-contracts` map in subnets contract was updated
     const principalArg = Buffer.from(
-      serializeCV(contractPrincipalCV(USER_ADDR, 'simple-nft-l1'))
+      serializeCV(contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'))
     ).toString('hex');
     while (true) {
       const mapLookupResult = await l1Client.fetchJson<{ data: string }>(
-        `v2/map_entry/${l1Account.stxAddr}/subnet/allowed-contracts`,
+        `v2/map_entry/${accounts.SUBNET_CONTRACT_DEPLOYER.addr}/subnet/allowed-contracts`,
         {
           method: 'POST',
           headers: {
@@ -238,11 +229,11 @@ describe('Subnets NFT use-case', () => {
 
   test('Mint an NFT on the L1 chain', async () => {
     const tx = await makeContractCall({
-      contractAddress: USER_ADDR,
+      contractAddress: accounts.USER.addr,
       contractName: 'simple-nft-l1',
       functionName: 'gift-nft',
-      functionArgs: [standardPrincipalCV(USER_ADDR), uintCV(5)],
-      senderKey: USER_KEY,
+      functionArgs: [standardPrincipalCV(accounts.USER.addr), uintCV(5)],
+      senderKey: accounts.USER.key,
       validateWithAbi: false,
       network: l1Network,
       anchorMode: AnchorMode.Any,
@@ -256,15 +247,15 @@ describe('Subnets NFT use-case', () => {
 
   test('Deposit the NFT onto the subnet', async () => {
     const tx = await makeContractCall({
-      contractAddress: l1Account.stxAddr,
+      contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
       contractName: 'subnet',
       functionName: 'deposit-nft-asset',
       functionArgs: [
-        contractPrincipalCV(USER_ADDR, 'simple-nft-l1'), // contract ID of nft contract on L1
+        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'), // contract ID of nft contract on L1
         uintCV(5), // ID
-        standardPrincipalCV(USER_ADDR), // sender
+        standardPrincipalCV(accounts.USER.addr), // sender
       ],
-      senderKey: USER_KEY,
+      senderKey: accounts.USER.key,
       validateWithAbi: false,
       network: l1Network,
       anchorMode: AnchorMode.Any,
@@ -279,15 +270,15 @@ describe('Subnets NFT use-case', () => {
 
   test('Transfer the NFT within the subnet', async () => {
     const tx = await makeContractCall({
-      contractAddress: USER_ADDR,
+      contractAddress: accounts.USER.addr,
       contractName: 'simple-nft-l2',
       functionName: 'transfer',
       functionArgs: [
         uintCV(5), // ID
-        standardPrincipalCV(USER_ADDR), // sender
-        standardPrincipalCV(ALT_USER_ADDR), // recipient
+        standardPrincipalCV(accounts.USER.addr), // sender
+        standardPrincipalCV(accounts.ALT_USER.addr), // recipient
       ],
-      senderKey: USER_KEY,
+      senderKey: accounts.USER.key,
       validateWithAbi: false,
       network: l2Network,
       anchorMode: AnchorMode.Any,

@@ -3,8 +3,8 @@
 
 (define-constant ERR_NOT_AUTHORIZED (err u1001))
 
-(impl-trait 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.nft-trait.nft-trait)
-(impl-trait 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.subnet-traits.mint-from-subnet-trait)
+(impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.nft-trait.nft-trait)
+(impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.subnet-traits.mint-from-subnet-trait)
 
 (define-data-var lastId uint u0)
 (define-map CFG_BASE_URI bool (string-ascii 256))

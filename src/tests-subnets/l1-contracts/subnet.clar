@@ -38,8 +38,8 @@
 (define-map allowed-contracts principal principal)
 
 ;; Use trait declarations
-(use-trait nft-trait 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.nft-trait.nft-trait)
-(use-trait ft-trait 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6.sip-010-trait-ft-standard.sip-010-trait)
+(use-trait nft-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.nft-trait.nft-trait)
+(use-trait ft-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.sip-010-trait-ft-standard.sip-010-trait)
 (use-trait mint-from-subnet-trait .subnet-traits.mint-from-subnet-trait)
 
 ;; Update the miner for this contract.
@@ -238,6 +238,7 @@
 ;; Returns response<bool, int>
 (define-public (inner-withdraw-nft-asset
         (nft-contract <nft-trait>)
+        (l2-contract principal)
         (id uint)
         (recipient principal)
         (withdrawal-id uint)
@@ -256,7 +257,7 @@
 
         ;; check that the withdrawal request data matches the supplied leaf hash
         (asserts! (is-eq withdrawal-leaf-hash
-                         (leaf-hash-withdraw-nft (contract-of nft-contract) id recipient withdrawal-id height))
+                         (leaf-hash-withdraw-nft l2-contract id recipient withdrawal-id height))
                   (err ERR_VALIDATION_LEAF_FAILED))
 
         (asserts!
@@ -300,13 +301,14 @@
             is-left-side: bool,
         }))
     )
-    (begin
-        ;; Check that the asset belongs to the allowed-contracts map
-        (unwrap! (map-get? allowed-contracts (contract-of nft-contract)) (err ERR_DISALLOWED_ASSET))
-
+    (let (
+            ;; Check that the asset belongs to the allowed-contracts map
+            (l2-contract (unwrap! (map-get? allowed-contracts (contract-of nft-contract)) (err ERR_DISALLOWED_ASSET)))
+        )
         (asserts!
             (try! (inner-withdraw-nft-asset
                 nft-contract
+                l2-contract
                 id
                 recipient
                 withdrawal-id
