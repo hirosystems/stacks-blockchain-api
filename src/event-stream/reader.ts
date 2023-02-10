@@ -10,6 +10,7 @@ import {
   NftMintEvent,
   SmartContractEvent,
   StxLockEvent,
+  StxMintEvent,
   StxTransferEvent,
 } from './core-node-message';
 import {
@@ -195,6 +196,54 @@ function createSubnetTransactionFromL1FtDeposit(
       function_name: 'deposit-from-burnchain',
       function_args: clarityFnArgs,
       function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createSubnetTransactionFromL1StxDeposit(
+  chainId: ChainID,
+  event: StxMintEvent,
+  txId: string
+): DecodedTxResult {
+  const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
+  const bootAddressString =
+    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const bootAddress = decodeStacksAddress(bootAddressString);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: bootAddress[0],
+          address_hash_bytes: bootAddress[1],
+          address: bootAddressString,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.TokenTransfer,
+      recipient: {
+        type_id: PrincipalTypeID.Standard,
+        address_version: recipientAddress[0],
+        address_hash_bytes: recipientAddress[1],
+        address: event.stx_mint_event.recipient,
+      },
+      amount: BigInt(event.stx_mint_event.amount).toString(),
+      memo_hex: '0x',
     },
   };
   return tx;
@@ -505,6 +554,11 @@ export function parseMessageTransaction(
         (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
       );
 
+      // {"committed":true,"event_index":0,"stx_mint_event":{"amount":"12345678","recipient":"ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"},"txid":"0xde4c90ed393e12e243fcf7573a214dc57b394d273659d3c5d8a8d5868b272bde","type":"stx_mint_event"}
+      const stxMintEvent = events.find(
+        (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
+      );
+
       const pox2Event = events
         .filter(
           (e): e is SmartContractEvent =>
@@ -557,6 +611,9 @@ export function parseMessageTransaction(
       } else if (ftMintEvent) {
         rawTx = createSubnetTransactionFromL1FtDeposit(chainId, ftMintEvent, coreTx.txid);
         txSender = ftMintEvent.ft_mint_event.recipient;
+      } else if (stxMintEvent) {
+        rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
+        txSender = stxMintEvent.stx_mint_event.recipient;
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(

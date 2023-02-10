@@ -48,7 +48,7 @@ export interface StxTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface StxMintEvent extends CoreNodeEventBase {
+export interface StxMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxMintEvent;
   stx_mint_event: {
     recipient: string;

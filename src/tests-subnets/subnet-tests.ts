@@ -729,6 +729,7 @@ describe('Subnets tests', () => {
 
     let initialL1StxBalance: bigint;
     let initialL2StxBalance: bigint;
+    let depositStxTxId: string;
     test('Step 2a: Deposit STX into subnet contract on L1', async () => {
       initialL1StxBalance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
       initialL2StxBalance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
@@ -744,10 +745,11 @@ describe('Subnets tests', () => {
         validateWithAbi: false,
         network: l1Network,
         anchorMode: AnchorMode.OnChainOnly,
+        postConditionMode: PostConditionMode.Allow,
         fee: 10000,
       });
-      const { txId } = await l1Client.sendTransaction(Buffer.from(tx.serialize()));
-      console.log(`[deposit-stx] tx: ${txId}`);
+      ({ txId: depositStxTxId } = await l1Client.sendTransaction(Buffer.from(tx.serialize())));
+      console.log(`[deposit-stx] tx: ${depositStxTxId}`);
 
       const curBlock = await l1Client.getInfo();
       await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
@@ -763,6 +765,7 @@ describe('Subnets tests', () => {
         nextL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
         if (nextL1Balance === initialL1StxBalance || nextL2Balance === initialL2StxBalance) {
           console.log({
+            txId: depositStxTxId,
             l1Balance: nextL1Balance,
             l2Balance: nextL2Balance,
           });
@@ -803,6 +806,7 @@ describe('Subnets tests', () => {
       console.log(`Withdrawal height: ${withdrawalBlockHeight}`);
     });
 
+    let withdrawStxTxId: string;
     test('Step 4a: Complete the withdrawal on the L1 chain', async () => {
       const withdrawalId = 0;
       const json_merkle_entry = await l2Client.fetchJson<{
@@ -840,14 +844,28 @@ describe('Subnets tests', () => {
         postConditionMode: PostConditionMode.Allow,
       });
 
-      await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+      ({ txId: withdrawStxTxId } = await l1Client.sendTransaction(Buffer.from(tx.serialize())));
     });
 
     test('Step 4b: Check that user owns additional STX on L1', async () => {
+      const curBlock = await l2Client.getInfo();
+      await standByUntilBlock(curBlock.stacks_tip_height + 1);
+      while (true) {
       const finalL1Balance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
       const finalL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+        if (finalL1Balance === nextL1Balance || finalL2Balance === nextL2Balance) {
+          console.log({
+            txId: withdrawStxTxId,
+            l1Balance: finalL1Balance,
+            l2Balance: finalL2Balance,
+          });
+          await timeout(200);
+          continue;
+        }
       expect(nextL1Balance).toBeLessThan(finalL1Balance);
       expect(nextL2Balance).toBeGreaterThan(finalL2Balance);
+        break;
+      }
     });
   });
 });
