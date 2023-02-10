@@ -26,6 +26,8 @@ import {
   PostConditionMode,
   deserializeCV,
   someCV,
+  callReadOnlyFunction,
+  cvToString,
 } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
@@ -417,5 +419,24 @@ describe('Subnets NFT use-case', () => {
     });
 
     await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+
+    while (true) {
+      const result = await callReadOnlyFunction({
+        contractAddress: accounts.USER.addr,
+        contractName: 'simple-nft-l1',
+        functionName: 'get-owner',
+        functionArgs: [uintCV(5)],
+        network: l1Network,
+        senderAddress: accounts.ALT_USER.addr,
+      });
+      const resultString = cvToString(result);
+      console.log(resultString);
+      if (!resultString.includes(accounts.ALT_USER.addr)) {
+        await timeout(500);
+        continue;
+      }
+      expect(resultString).toContain(accounts.ALT_USER.addr);
+      break;
+    }
   });
 });
