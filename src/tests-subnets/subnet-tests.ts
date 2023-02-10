@@ -1061,8 +1061,8 @@ describe('Subnets tests', () => {
       const curBlock = await l2Client.getInfo();
       await standByUntilBlock(curBlock.stacks_tip_height + 1);
       while (true) {
-      const finalL1Balance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
-      const finalL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+        const finalL1Balance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
+        const finalL2Balance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
         if (finalL1Balance === nextL1Balance || finalL2Balance === nextL2Balance) {
           console.log({
             txId: withdrawStxTxId,
@@ -1072,8 +1072,8 @@ describe('Subnets tests', () => {
           await timeout(200);
           continue;
         }
-      expect(nextL1Balance).toBeLessThan(finalL1Balance);
-      expect(nextL2Balance).toBeGreaterThan(finalL2Balance);
+        expect(nextL1Balance).toBeLessThan(finalL1Balance);
+        expect(nextL2Balance).toBeGreaterThan(finalL2Balance);
         break;
       }
     });
