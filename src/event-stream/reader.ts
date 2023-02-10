@@ -5,6 +5,7 @@ import {
   CoreNodeMicroblockTxMessage,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
+  FtMintEvent,
   isTxWithMicroblockInfo,
   NftMintEvent,
   SmartContractEvent,
@@ -115,6 +116,65 @@ function createSubnetTransactionFromL1NftDeposit(
           address_version: decRecipientAddress[0],
           address_hash_bytes: decRecipientAddress[1],
           address: event.nft_mint_event.recipient,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: 'deposit-from-burnchain',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createSubnetTransactionFromL1FtDeposit(
+  chainId: ChainID,
+  event: FtMintEvent,
+  txId: string
+): DecodedTxResult {
+  const decRecipientAddress = decodeStacksAddress(event.ft_mint_event.recipient);
+  const [contractAddress, contractName] = event.ft_mint_event.asset_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+  const legacyClarityVals = [
+    uintCV(event.ft_mint_event.amount),
+    principalCV(event.ft_mint_event.recipient),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decRecipientAddress[0],
+          address_hash_bytes: decRecipientAddress[1],
+          address: event.ft_mint_event.recipient,
         },
         nonce: '0',
         tx_fee: '0',
@@ -435,8 +495,14 @@ export function parseMessageTransaction(
         (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
       );
 
+      // {"committed":true,"event_index":0,"nft_mint_event":{"asset_identifier":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.simple-nft-l2::nft-token","raw_value":"0x0100000000000000000000000000000005","recipient":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y","value":{"UInt":5}},"txid":"0x0ee194ef16f1c208719c1959ec5c775f62564416584429097b89d0515fab09e9","type":"nft_mint_event"}
       const nftMintEvent = events.find(
         (e): e is NftMintEvent => e.type === CoreNodeEventType.NftMintEvent
+      );
+
+      // {"committed":true,"event_index":0,"ft_mint_event":{"amount":"1","asset_identifier":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.simple-ft-l2::ft-token","recipient":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y"},"txid":"0xb942a6452312c8388f775d84e80213e6db4e53214f700e3537ecb3d282ab2c79","type":"ft_mint_event"}
+      const ftMintEvent = events.find(
+        (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
       );
 
       const pox2Event = events
@@ -488,11 +554,14 @@ export function parseMessageTransaction(
       } else if (nftMintEvent) {
         rawTx = createSubnetTransactionFromL1NftDeposit(chainId, nftMintEvent, coreTx.txid);
         txSender = nftMintEvent.nft_mint_event.recipient;
+      } else if (ftMintEvent) {
+        rawTx = createSubnetTransactionFromL1FtDeposit(chainId, ftMintEvent, coreTx.txid);
+        txSender = ftMintEvent.ft_mint_event.recipient;
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
             coreTx
-          )}`
+          )}, event: ${JSON.stringify(events)}`
         );
         throw new Error('Unable to generate transaction from BTC tx');
       }

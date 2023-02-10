@@ -128,7 +128,7 @@ interface FtTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface FtMintEvent extends CoreNodeEventBase {
+export interface FtMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
