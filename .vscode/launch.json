@@ -241,10 +241,6 @@
         "--config",
         "${workspaceRoot}/tests/jest.config.subnets.js"
       ],
-      "env": {
-        "STACKS_CORE_RPC_PORT": "30443",
-        "STACKS_CORE_PROXY_PORT": "30443",
-      },
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:subnets",
