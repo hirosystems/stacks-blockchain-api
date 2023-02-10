@@ -613,7 +613,7 @@ export function parseMessageTransaction(
         txSender = ftMintEvent.ft_mint_event.recipient;
       } else if (stxMintEvent) {
         rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
-        txSender = stxMintEvent.stx_mint_event.recipient;
+        txSender = getTxSenderAddress(rawTx);
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(

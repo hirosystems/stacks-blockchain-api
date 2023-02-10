@@ -1,6 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
-import { AddressStxBalanceResponse } from 'docs/generated';
+import {
+  TransactionResults,
+  TokenTransferTransaction,
+  TransactionEventsResponse,
+} from '@stacks/stacks-blockchain-api-types';
 import * as supertest from 'supertest';
 import {
   Account,
@@ -730,15 +733,17 @@ describe('Subnets tests', () => {
     let initialL1StxBalance: bigint;
     let initialL2StxBalance: bigint;
     let depositStxTxId: string;
+    let depositStxAmount: number;
     test('Step 2a: Deposit STX into subnet contract on L1', async () => {
       initialL1StxBalance = await l1Client.getAccountBalance(accounts.ALT_USER.addr);
       initialL2StxBalance = await l2Client.getAccountBalance(accounts.ALT_USER.addr);
+      depositStxAmount = 12345678;
       const tx = await makeContractCall({
         contractAddress: l1SubnetContract.addr,
         contractName: l1SubnetContract.name,
         functionName: 'deposit-stx',
         functionArgs: [
-          uintCV(12345678), // amount
+          uintCV(depositStxAmount), // amount
           standardPrincipalCV(accounts.ALT_USER.addr), // sender
         ],
         senderKey: accounts.ALT_USER.key,
@@ -776,6 +781,57 @@ describe('Subnets tests', () => {
         expect(initialL2StxBalance).toBeLessThan(nextL2Balance);
         break;
       }
+    });
+
+    test('Step 2c: Verify deposit-stx synthetic tx', async () => {
+      const resp = await supertest(testEnv.api.server)
+        .get(`/extended/v1/tx?limit=1&type=token_transfer`)
+        .expect(200);
+      const txListResp = resp.body as TransactionResults;
+      const tx = txListResp.results[0] as TokenTransferTransaction;
+      expect(tx).toEqual(
+        expect.objectContaining({
+          anchor_mode: 'any',
+          canonical: true,
+          event_count: 1,
+          fee_rate: '0',
+          nonce: 0,
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'ST000000000000000000002AMW42H',
+          sponsored: false,
+          token_transfer: {
+            amount: depositStxAmount.toString(),
+            memo: '0x',
+            recipient_address: accounts.ALT_USER.addr,
+          },
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        })
+      );
+
+      const respEvents = await supertest(testEnv.api.server)
+        .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
+        .expect(200);
+      const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+      expect(txEvents).toEqual([
+        {
+          asset: {
+            amount: depositStxAmount.toString(),
+            asset_event_type: 'mint',
+            recipient: accounts.ALT_USER.addr,
+            sender: '',
+          },
+          event_index: 0,
+          event_type: 'stx_asset',
+          tx_id: tx.tx_id,
+        },
+      ]);
     });
 
     let withdrawalBlockHeight: number;
