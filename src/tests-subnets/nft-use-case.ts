@@ -24,6 +24,8 @@ import {
   standardPrincipalCV,
   uintCV,
   PostConditionMode,
+  deserializeCV,
+  someCV,
 } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
@@ -57,12 +59,32 @@ describe('Subnets NFT use-case', () => {
     },
   };
 
+  let l1SubnetContract: {
+    addr: string;
+    name: string;
+  };
+
+  let l2SubnetContract: {
+    addr: string;
+    name: string;
+  };
+
   beforeAll(() => {
     l1Client = new StacksCoreRpcClient({ port: 20443 });
     l1Network = new StacksTestnet({ url: `http://${l1Client.endpoint}` });
 
     l2Client = testEnv.client;
     l2Network = testEnv.stacksNetwork;
+
+    l1SubnetContract = {
+      addr: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
+      name: 'subnet',
+    };
+
+    l2SubnetContract = {
+      addr: 'ST000000000000000000002AMW42H',
+      name: 'subnet',
+    };
   });
 
   test('Deploy L1 contract dependencies', async () => {
@@ -98,7 +120,7 @@ describe('Subnets NFT use-case', () => {
       while (true) {
         try {
           await l1Client.fetchJson(
-            `v2/contracts/interface/${accounts.SUBNET_CONTRACT_DEPLOYER.addr}/${c.name}?tip=latest`
+            `v2/contracts/interface/${accounts.SUBNET_CONTRACT_DEPLOYER.addr}/${c.name}`
           );
           break;
         } catch (error) {
@@ -158,7 +180,7 @@ describe('Subnets NFT use-case', () => {
 
   test('Step 1b: Publish NFT contract to L2', async () => {
     const curBlock = await l2Client.getInfo();
-    await standByUntilBlock(curBlock.stacks_tip_height + 2);
+    await standByUntilBlock(curBlock.stacks_tip_height + 4);
 
     const contractName = 'simple-nft-l2';
     const txFee = 100_000n;
@@ -182,8 +204,8 @@ describe('Subnets NFT use-case', () => {
   test('Step 2: Register NFT asset in the interface subnet contract', async () => {
     const accountNonce = await l1Client.getAccountNonce(accounts.AUTH_SUBNET_MINER.addr);
     const tx = await makeContractCall({
-      contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
-      contractName: 'subnet',
+      contractAddress: l1SubnetContract.addr,
+      contractName: l1SubnetContract.name,
       functionName: 'register-new-nft-contract',
       functionArgs: [
         contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'),
@@ -246,23 +268,34 @@ describe('Subnets NFT use-case', () => {
   });
 
   test('Step 4: Deposit the NFT onto the subnet', async () => {
-    const tx = await makeContractCall({
-      contractAddress: accounts.SUBNET_CONTRACT_DEPLOYER.addr,
-      contractName: 'subnet',
-      functionName: 'deposit-nft-asset',
-      functionArgs: [
-        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'), // contract ID of nft contract on L1
-        uintCV(5), // ID
-        standardPrincipalCV(accounts.USER.addr), // sender
-      ],
-      senderKey: accounts.USER.key,
-      validateWithAbi: false,
-      network: l1Network,
-      anchorMode: AnchorMode.Any,
-      postConditionMode: PostConditionMode.Allow,
-      fee: 10000,
-    });
-    const { txId } = await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+    while (true) {
+      try {
+        const tx = await makeContractCall({
+          contractAddress: l1SubnetContract.addr,
+          contractName: l1SubnetContract.name,
+          functionName: 'deposit-nft-asset',
+          functionArgs: [
+            contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'), // contract ID of nft contract on L1
+            uintCV(5), // ID
+            standardPrincipalCV(accounts.USER.addr), // sender
+          ],
+          senderKey: accounts.USER.key,
+          validateWithAbi: false,
+          network: l1Network,
+          anchorMode: AnchorMode.Any,
+          postConditionMode: PostConditionMode.Allow,
+          fee: 10000,
+        });
+        const { txId } = await l1Client.sendTransaction(Buffer.from(tx.serialize()));
+        break;
+      } catch (error) {
+        if ((error as Error).toString().includes('ConflictingNonceInMempool')) {
+          await timeout(200);
+        } else {
+          throw error;
+        }
+      }
+    }
 
     const curBlock = await l1Client.getInfo();
     await standByUntilBurnBlock(curBlock.stacks_tip_height + 1);
@@ -291,11 +324,11 @@ describe('Subnets NFT use-case', () => {
     console.log(txResult);
   });
 
-  let WITHDRAWAL_BLOCK_HEIGHT: number;
+  let withdrawalBlockHeight: number;
   test('Step 6a: Withdraw the NFT on the subnet', async () => {
     const tx = await makeContractCall({
-      contractAddress: 'ST000000000000000000002AMW42H',
-      contractName: 'subnet',
+      contractAddress: l2SubnetContract.addr,
+      contractName: l2SubnetContract.name,
       functionName: 'nft-withdraw?',
       functionArgs: [
         contractPrincipalCV(accounts.USER.addr, 'simple-nft-l2'),
@@ -314,13 +347,49 @@ describe('Subnets NFT use-case', () => {
     const txResult = await standByForTxSuccess(txId);
     console.log(txResult);
 
-    WITHDRAWAL_BLOCK_HEIGHT = txResult.block_height;
-    console.log(`Withdrawal height: ${WITHDRAWAL_BLOCK_HEIGHT}`);
+    withdrawalBlockHeight = txResult.block_height;
+    console.log(`Withdrawal height: ${withdrawalBlockHeight}`);
   });
 
-  /*
   test('Step 6b: Complete the withdrawal on the Stacks chain', async () => {
+    const withdrawalId = 0;
+    const json_merkle_entry = await l2Client.fetchJson<{
+      withdrawal_leaf_hash: string;
+      withdrawal_root: string;
+      sibling_hashes: string;
+    }>(
+      `v2/withdrawal/nft/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${accounts.USER.addr}/simple-nft-l2/5`
+    );
+    console.log(json_merkle_entry);
+    const cv_merkle_entry = {
+      withdrawal_leaf_hash: deserializeCV(json_merkle_entry.withdrawal_leaf_hash),
+      withdrawal_root: deserializeCV(json_merkle_entry.withdrawal_root),
+      sibling_hashes: deserializeCV(json_merkle_entry.sibling_hashes),
+    };
+    console.log(cv_merkle_entry);
 
+    const tx = await makeContractCall({
+      senderKey: accounts.ALT_USER.key,
+      network: l1Network,
+      anchorMode: AnchorMode.Any,
+      contractAddress: l1SubnetContract.addr,
+      contractName: l1SubnetContract.name,
+      functionName: 'withdraw-nft-asset',
+      functionArgs: [
+        contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1'), // nft-contract
+        uintCV(5), // ID
+        standardPrincipalCV(accounts.ALT_USER.addr), // recipient
+        uintCV(withdrawalId), // withdrawal ID
+        uintCV(withdrawalBlockHeight), // withdrawal block height
+        someCV(contractPrincipalCV(accounts.USER.addr, 'simple-nft-l1')), // nft-mint-contract
+        cv_merkle_entry.withdrawal_root, // withdrawal root
+        cv_merkle_entry.withdrawal_leaf_hash, // withdrawal leaf hash
+        cv_merkle_entry.sibling_hashes,
+      ], // sibling hashes
+      fee: 10000,
+      postConditionMode: PostConditionMode.Allow,
+    });
+
+    await l1Client.sendTransaction(Buffer.from(tx.serialize()));
   });
-  */
 });
