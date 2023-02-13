@@ -268,6 +268,7 @@ paths:
           required: false
           schema:
             type: integer
+            default: 20
             maximum: 50
             example: 20
         - name: offset
