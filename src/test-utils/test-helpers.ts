@@ -180,6 +180,7 @@ export async function standByForPoxCycleEnd(): Promise<CoreRpcPoxInfo> {
 }
 
 export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
+  let blockFound = false;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
       const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
@@ -187,21 +188,27 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
         return;
       }
       testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      blockFound = true;
       resolve(dbBlockQuery.result);
     };
     testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlock();
-    if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({
-        height: curHeight.result.block_height,
-      });
-      if (!dbBlock.found) {
-        throw new Error('Unhandled missing block');
+    while (!blockFound) {
+      const curHeight = await testEnv.api.datastore.getCurrentBlock();
+      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
+        const dbBlock = await testEnv.api.datastore.getBlock({
+          height: curHeight.result.block_height,
+        });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        blockFound = true;
+        resolve(dbBlock.result);
+      } else {
+        await timeout(200);
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      resolve(dbBlock.result);
     }
   });
 
@@ -218,6 +225,7 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
 }
 
 export async function standByForTx(expectedTxId: string): Promise<DbTx> {
+  let txFound = false;
   const tx = await new Promise<DbTx>(async resolve => {
     const listener: (txId: string) => void = async txId => {
       if (txId !== expectedTxId) {
@@ -231,18 +239,24 @@ export async function standByForTx(expectedTxId: string): Promise<DbTx> {
         return;
       }
       testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
+      txFound = true;
       resolve(dbTxQuery.result);
     };
     testEnv.api.datastore.eventEmitter.addListener('txUpdate', listener);
 
-    // Check if tx is already received
-    const dbTxQuery = await testEnv.api.datastore.getTx({
-      txId: expectedTxId,
-      includeUnanchored: false,
-    });
-    if (dbTxQuery.found) {
-      testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(dbTxQuery.result);
+    while (!txFound) {
+      // Check if tx is already received
+      const dbTxQuery = await testEnv.api.datastore.getTx({
+        txId: expectedTxId,
+        includeUnanchored: false,
+      });
+      if (dbTxQuery.found) {
+        testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
+        txFound = true;
+        resolve(dbTxQuery.result);
+      } else {
+        await timeout(200);
+      }
     }
   });
 
@@ -269,6 +283,7 @@ export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
 }
 
 export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+  let blockFound = false;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
       const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
@@ -276,20 +291,26 @@ export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
         return;
       }
       testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      blockFound = true;
       resolve(dbBlockQuery.result);
     };
     testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlockHeight();
-    if (curHeight.found && curHeight.result >= blockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({ height: curHeight.result });
-      if (!dbBlock.found) {
-        throw new Error('Unhandled missing block');
+    while (!blockFound) {
+      const curHeight = await testEnv.api.datastore.getCurrentBlockHeight();
+      if (curHeight.found && curHeight.result >= blockHeight) {
+        const dbBlock = await testEnv.api.datastore.getBlock({ height: curHeight.result });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        blockFound = true;
+        resolve(dbBlock.result);
+        return;
+      } else {
+        await timeout(200);
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      resolve(dbBlock.result);
-      return;
     }
   });
 
