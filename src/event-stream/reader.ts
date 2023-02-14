@@ -543,18 +543,12 @@ export function parseMessageTransaction(
       const stxLockEvent = events.find(
         (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
       );
-
-      // {"committed":true,"event_index":0,"nft_mint_event":{"asset_identifier":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.simple-nft-l2::nft-token","raw_value":"0x0100000000000000000000000000000005","recipient":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y","value":{"UInt":5}},"txid":"0x0ee194ef16f1c208719c1959ec5c775f62564416584429097b89d0515fab09e9","type":"nft_mint_event"}
       const nftMintEvent = events.find(
         (e): e is NftMintEvent => e.type === CoreNodeEventType.NftMintEvent
       );
-
-      // {"committed":true,"event_index":0,"ft_mint_event":{"amount":"1","asset_identifier":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.simple-ft-l2::ft-token","recipient":"ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y"},"txid":"0xb942a6452312c8388f775d84e80213e6db4e53214f700e3537ecb3d282ab2c79","type":"ft_mint_event"}
       const ftMintEvent = events.find(
         (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
       );
-
-      // {"committed":true,"event_index":0,"stx_mint_event":{"amount":"12345678","recipient":"ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR"},"txid":"0xde4c90ed393e12e243fcf7573a214dc57b394d273659d3c5d8a8d5868b272bde","type":"stx_mint_event"}
       const stxMintEvent = events.find(
         (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
       );

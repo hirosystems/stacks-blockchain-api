@@ -17,8 +17,7 @@ async function standByForInfoToBeReady(client: StacksCoreRpcClient): Promise<voi
   while (true) {
     try {
       tries++;
-      const info = await client.getInfo();
-      // const account = await client.getAccount('ST12KYHMD4GJZJHAPM4VC0VZTB4FEWTQSY74YHEYN');
+      await client.getInfo();
       return;
       await timeout(500);
     } catch (error) {
