@@ -1,3 +1,16 @@
+## [7.1.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.1.0-beta.1) (2023-02-14)
+
+
+### Features
+
+* beta release with subnets support ([06164eb](https://github.com/hirosystems/stacks-blockchain-api/commit/06164eb1dd2b23d6fa192fefc6692b08108cc8be))
+* support for subnets ([#1549](https://github.com/hirosystems/stacks-blockchain-api/issues/1549)) ([5d7056c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d7056c1ba0aa0b202f341a83adf0f6bd2d13c71))
+
+
+### Bug Fixes
+
+* fixed the order of microblocks_streamed returned in reverse order in block endpoint ([#1528](https://github.com/hirosystems/stacks-blockchain-api/issues/1528)) ([764f64a](https://github.com/hirosystems/stacks-blockchain-api/commit/764f64a538c88a17c381eccb867ed3032e73bea1))
+
 ## [7.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.4...v7.0.0) (2023-02-07)
 
 
