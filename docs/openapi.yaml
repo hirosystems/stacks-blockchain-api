@@ -268,9 +268,9 @@ paths:
           required: false
           schema:
             type: integer
-            default: 96
-            maximum: 200
-            example: 100
+            default: 20
+            maximum: 50
+            example: 20
         - name: offset
           in: query
           description: index of first mempool transaction to fetch
