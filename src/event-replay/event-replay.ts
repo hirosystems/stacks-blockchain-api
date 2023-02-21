@@ -1,9 +1,9 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import { startEventServer } from '../event-stream/event-server';
-import { defaultLogLevel, getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
-import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
+import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { importV1TokenOfferingData } from '../import-v1';
 import {
   databaseHasData,
   exportRawEventRequests,

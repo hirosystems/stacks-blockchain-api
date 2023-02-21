@@ -738,7 +738,7 @@ export const bnsImportMiddleware = (db: PgWriteStore) => {
   return asyncHandler(async (req, res, next) => {
     const blockMessage: CoreNodeBlockMessage = req.body;
     const bnsDir = process.env.BNS_IMPORT_DIR;
-    if (blockMessage.block_height === 1 && bnsDir) {
+    if ((blockMessage.block_height === 0 || blockMessage.block_height === 1) && bnsDir) {
       const configState = await db.getConfigState();
       if (!configState.bns_names_onchain_imported || !configState.bns_subdomains_imported) {
         const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
