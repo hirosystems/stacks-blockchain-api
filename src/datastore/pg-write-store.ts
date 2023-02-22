@@ -451,6 +451,10 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+      }
+
+      if (!this.isEventReplay) {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -728,6 +732,10 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+      }
+
+      if (!this.isEventReplay) {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -756,6 +764,34 @@ export class PgWriteStore extends PgStore {
         });
       }
       await this.emitAddressTxUpdates(txData);
+    }
+  }
+
+  // Find any transactions that are erroneously still marked as both `pending` in the mempool table
+  // and also confirmed in the mined txs table. Mark these as pruned in the mempool and log warning.
+  // This must be called _after_ any writes to txs/mempool tables during block and microblock ingestion,
+  // but _before_ any reads or view refreshes that depend on the mempool table.
+  // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
+  async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
+    const txsResult = await sql<{ tx_id: string }[]>`
+      UPDATE mempool_txs
+      SET pruned = true
+      FROM txs
+      WHERE 
+        mempool_txs.tx_id = txs.tx_id AND
+        mempool_txs.pruned = false AND
+        txs.canonical = true AND
+        txs.microblock_canonical = true AND
+        txs.status IN ${sql([
+          DbTxStatus.Success,
+          DbTxStatus.AbortByResponse,
+          DbTxStatus.AbortByPostCondition,
+        ])}
+      RETURNING mempool_txs.tx_id
+    `;
+    if (txsResult.length > 0) {
+      const txs = txsResult.map(tx => tx.tx_id);
+      logger.warn(`Reconciled mempool txs as pruned for ${txsResult.length} txs`, { txs });
     }
   }
 
