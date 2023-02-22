@@ -36,18 +36,6 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
   return blockHeight;
 }
 
-/**
- * Traverse a TSV file to find the genesis block and extract its data so we can use it during V1 BNS
- * import.
- * @param filePath - TSV path
- * @returns Genesis block data
- */
-export async function findBnsGenesisBlockData(filePath: string): Promise<BnsGenesisBlock> {
-  const genesisBlockMessage = await getGenesisBlockData(filePath);
-  const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(genesisBlockMessage);
-  return bnsGenesisBlock;
-}
-
 export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlockMessage> {
   const rl = readline.createInterface({
     input: fs.createReadStream(filePath),
@@ -59,7 +47,7 @@ export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlo
       const eventName = columns[2];
       if (eventName === '/new_block') {
         const blockMessage = JSON.parse(columns[3]);
-        if (blockMessage.block_height === 1) {
+        if (blockMessage.block_height === 0 || blockMessage.block_height === 1) {
           return blockMessage as CoreNodeBlockMessage;
         }
       }
@@ -73,7 +61,7 @@ export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlo
 export function getBnsGenesisBlockFromBlockMessage(
   genesisBlockMessage: CoreNodeBlockMessage
 ): BnsGenesisBlock {
-  if (genesisBlockMessage.block_height !== 1) {
+  if (genesisBlockMessage.block_height !== 0 && genesisBlockMessage.block_height !== 1) {
     throw new Error(
       `This block message with height ${genesisBlockMessage.block_height} is not the genesis block message`
     );

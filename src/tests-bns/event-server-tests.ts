@@ -1035,7 +1035,7 @@ describe('BNS event server tests', () => {
     expect(namespaceList.results).toStrictEqual(['ape.mega']);
   });
 
-  test('BNS middleware imports bns when ir receives the genesis block', async () => {
+  test('BNS middleware imports bns when it receives the genesis block', async () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
     const bnsImportMiddlewareInitialized = bnsImportMiddleware(db);
@@ -1049,7 +1049,23 @@ describe('BNS event server tests', () => {
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true)
     expect(configState.bns_subdomains_imported).toBe(true)
-  })
+  });
+
+  test('BNS middleware imports bns when it receives the genesis block from block 0', async () => {
+    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
+    const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet-block0.tsv');
+    const bnsImportMiddlewareInitialized = bnsImportMiddleware(db);
+    let mockRequest = {
+      body: genesisBlock
+    } as unknown as Partial<Request>;
+    let mockResponse: Partial<Response> = {};
+    let nextFunction: NextFunction = jest.fn();
+    await bnsImportMiddlewareInitialized(mockRequest as any, mockResponse as any, nextFunction)
+
+    const configState = await db.getConfigState();
+    expect(configState.bns_names_onchain_imported).toBe(true)
+    expect(configState.bns_subdomains_imported).toBe(true)
+  });
 
   test('BNS middleware is async. /new_block posts return before importing BNS finishes', async () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';

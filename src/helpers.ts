@@ -158,7 +158,7 @@ type DisabledLogLevels = Exclude<
 type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
 
 const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-export const defaultLogLevel: LogLevel = (() => {
+const defaultLogLevel: LogLevel = (() => {
   const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
   const logLevelEnvVar = process.env[
     STACKS_API_LOG_LEVEL_ENV_VAR
