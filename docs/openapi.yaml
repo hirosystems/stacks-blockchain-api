@@ -2940,8 +2940,7 @@ paths:
     get:
       operationId: get_address_mempool_transactions
       summary: Transactions for address
-      description: Retrieves all transactions for a given address that are currently in mempool.
-
+      description: Retrieves all transactions for a given address that are currently in mempool
       **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       tags:
         - Transactions
