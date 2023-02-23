@@ -242,6 +242,8 @@ paths:
           Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
 
           If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+
+          **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       parameters:
         - name: sender_address
           in: query
@@ -309,6 +311,8 @@ paths:
          * they were stale and awaiting garbage collection or,
          * were expensive,  or
          * were replaced with a new fee
+
+         **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       parameters:
         - name: limit
           in: query
@@ -344,6 +348,8 @@ paths:
       description: |
         Queries for transactions counts, age (by block height), fees (simple average), and size.
         All results broken down by transaction type and percentiles (p25, p50, p75, p95).
+
+        **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       responses:
         200:
           description: Statistics for mempool transactions
@@ -2156,6 +2162,8 @@ paths:
       summary: Get All Mempool Transactions
       operationId: rosetta_mempool
       description: Retrieves a list of transactions currently in the mempool for a given network.
+
+      **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       responses:
         200:
           description: Success
@@ -2185,6 +2193,8 @@ paths:
       summary: Get a Mempool Transaction
       operationId: rosetta_mempool_transaction
       description: Retrieves transaction details from the mempool for a given transaction id from a given network.
+
+      **Note** The data from this endpoint is calculated on a best effort basis. When in conflict, the non-mempool endpoints should be treated as the source of truth.
       responses:
         200:
           description: Success
