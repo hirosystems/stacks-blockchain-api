@@ -1,3 +1,11 @@
+## [7.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.0.1) (2023-02-23)
+
+
+### Bug Fixes
+
+* ensure transactions are never reported as both pending and confirmed ([#1561](https://github.com/hirosystems/stacks-blockchain-api/issues/1561)) ([a5a398e](https://github.com/hirosystems/stacks-blockchain-api/commit/a5a398e0d665980fd42f27e86e068076beac16ea))
+* support genesis block 0 during BNS sync ([#1559](https://github.com/hirosystems/stacks-blockchain-api/issues/1559)) ([6750861](https://github.com/hirosystems/stacks-blockchain-api/commit/6750861e99c88a6a672f007c26ec36cfb0cce6b1))
+
 ## [7.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.4...v7.0.0) (2023-02-07)
 
 
