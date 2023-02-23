@@ -61,6 +61,7 @@ import {
   Pox2EventInsertValues,
   DbTxRaw,
   DbMempoolTxRaw,
+  DbChainTip,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -152,15 +153,7 @@ export class PgWriteStore extends PgStore {
     return super.sqlTransaction(callback, false);
   }
 
-  async getChainTip(
-    sql: PgSqlClient,
-    useMaterializedView = true
-  ): Promise<{
-    blockHeight: number;
-    blockHash: string;
-    indexBlockHash: string;
-    burnBlockHeight: number;
-  }> {
+  async getChainTip(sql: PgSqlClient, useMaterializedView = true): Promise<DbChainTip> {
     if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
@@ -451,6 +444,8 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -728,6 +723,8 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -756,6 +753,34 @@ export class PgWriteStore extends PgStore {
         });
       }
       await this.emitAddressTxUpdates(txData);
+    }
+  }
+
+  // Find any transactions that are erroneously still marked as both `pending` in the mempool table
+  // and also confirmed in the mined txs table. Mark these as pruned in the mempool and log warning.
+  // This must be called _after_ any writes to txs/mempool tables during block and microblock ingestion,
+  // but _before_ any reads or view refreshes that depend on the mempool table.
+  // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
+  async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
+    const txsResult = await sql<{ tx_id: string }[]>`
+      UPDATE mempool_txs
+      SET pruned = true
+      FROM txs
+      WHERE 
+        mempool_txs.tx_id = txs.tx_id AND
+        mempool_txs.pruned = false AND
+        txs.canonical = true AND
+        txs.microblock_canonical = true AND
+        txs.status IN ${sql([
+          DbTxStatus.Success,
+          DbTxStatus.AbortByResponse,
+          DbTxStatus.AbortByPostCondition,
+        ])}
+      RETURNING mempool_txs.tx_id
+    `;
+    if (txsResult.length > 0) {
+      const txs = txsResult.map(tx => tx.tx_id);
+      logger.warn(`Reconciled mempool txs as pruned for ${txsResult.length} txs`, { txs });
     }
   }
 
@@ -1512,61 +1537,75 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
+  async insertDbMempoolTx(
+    tx: DbMempoolTxRaw,
+    chainTip: DbChainTip,
+    sql: PgSqlClient
+  ): Promise<boolean> {
+    const values: MempoolTxInsertValues = {
+      pruned: tx.pruned,
+      tx_id: tx.tx_id,
+      raw_tx: tx.raw_tx,
+      type_id: tx.type_id,
+      anchor_mode: tx.anchor_mode,
+      status: tx.status,
+      receipt_time: tx.receipt_time,
+      receipt_block_height: chainTip.blockHeight,
+      post_conditions: tx.post_conditions,
+      nonce: tx.nonce,
+      fee_rate: tx.fee_rate,
+      sponsored: tx.sponsored,
+      sponsor_nonce: tx.sponsor_nonce ?? null,
+      sponsor_address: tx.sponsor_address ?? null,
+      sender_address: tx.sender_address,
+      origin_hash_mode: tx.origin_hash_mode,
+      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
+      token_transfer_amount: tx.token_transfer_amount ?? null,
+      token_transfer_memo: tx.token_transfer_memo ?? null,
+      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
+      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
+      smart_contract_source_code: tx.smart_contract_source_code ?? null,
+      contract_call_contract_id: tx.contract_call_contract_id ?? null,
+      contract_call_function_name: tx.contract_call_function_name ?? null,
+      contract_call_function_args: tx.contract_call_function_args ?? null,
+      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+      coinbase_payload: tx.coinbase_payload ?? null,
+      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
+    };
+    const result = await sql`
+      INSERT INTO mempool_txs ${sql(values)}
+      ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
+    `;
+    if (result.count !== 1) {
+      const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
+      logger.warn(errMsg);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
-    const updatedTxs: DbMempoolTx[] = [];
+    const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
-        const values: MempoolTxInsertValues = {
-          pruned: tx.pruned,
-          tx_id: tx.tx_id,
-          raw_tx: tx.raw_tx,
-          type_id: tx.type_id,
-          anchor_mode: tx.anchor_mode,
-          status: tx.status,
-          receipt_time: tx.receipt_time,
-          receipt_block_height: chainTip.blockHeight,
-          post_conditions: tx.post_conditions,
-          nonce: tx.nonce,
-          fee_rate: tx.fee_rate,
-          sponsored: tx.sponsored,
-          sponsor_nonce: tx.sponsor_nonce ?? null,
-          sponsor_address: tx.sponsor_address ?? null,
-          sender_address: tx.sender_address,
-          origin_hash_mode: tx.origin_hash_mode,
-          token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
-          token_transfer_amount: tx.token_transfer_amount ?? null,
-          token_transfer_memo: tx.token_transfer_memo ?? null,
-          smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
-          smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-          smart_contract_source_code: tx.smart_contract_source_code ?? null,
-          contract_call_contract_id: tx.contract_call_contract_id ?? null,
-          contract_call_function_name: tx.contract_call_function_name ?? null,
-          contract_call_function_args: tx.contract_call_function_args ?? null,
-          poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
-          poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
-          coinbase_payload: tx.coinbase_payload ?? null,
-          coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
-        };
-        const result = await sql`
-          INSERT INTO mempool_txs ${sql(values)}
-          ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
-        `;
-        if (result.count !== 1) {
-          const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
-          logger.warn(errMsg);
-        } else {
-          updatedTxs.push(tx);
+        const inserted = await this.insertDbMempoolTx(tx, chainTip, sql);
+        if (inserted) {
+          updatedTxIds.push(tx.tx_id);
         }
       }
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
     await this.refreshMaterializedView('mempool_digest');
-    for (const tx of updatedTxs) {
-      await this.notifier?.sendTx({ txId: tx.tx_id });
+    for (const txId of updatedTxIds) {
+      await this.notifier?.sendTx({ txId: txId });
     }
   }
 
