@@ -6,9 +6,9 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import {
   DbBlock,
-  DbTxRaw,
+  DbTx,
   DbTxTypeId,
-  DbMempoolTxRaw,
+  DbMempoolTx,
   DbTxStatus,
   DataStoreBlockUpdateData,
 } from '../datastore/common';
@@ -147,7 +147,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -191,7 +191,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - versioned smart contract', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -242,7 +242,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - sponsored', async () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -287,7 +287,7 @@ describe('mempool tests', () => {
   test('fetch mempool-tx - dropped', async () => {
     const block = new TestBlockBuilder({ index_block_hash: '0x5678' }).addTx().build();
     await db.update(block);
-    const mempoolTx1: DbMempoolTxRaw = {
+    const mempoolTx1: DbMempoolTx = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
@@ -304,22 +304,22 @@ describe('mempool tests', () => {
       sponsor_address: 'sponsor-addr',
       origin_hash_mode: 1,
     };
-    const mempoolTx2: DbMempoolTxRaw = {
+    const mempoolTx2: DbMempoolTx = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000001',
       receipt_time: 1594307702,
     };
-    const mempoolTx3: DbMempoolTxRaw = {
+    const mempoolTx3: DbMempoolTx = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000003',
       receipt_time: 1594307703,
     };
-    const mempoolTx4: DbMempoolTxRaw = {
+    const mempoolTx4: DbMempoolTx = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000004',
       receipt_time: 1594307704,
     };
-    const mempoolTx5: DbMempoolTxRaw = {
+    const mempoolTx5: DbMempoolTx = {
       ...mempoolTx1,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       receipt_time: 1594307705,
@@ -502,7 +502,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const dbTx1: DbTxRaw = {
+    const dbTx1: DbTx = {
       ...mempoolTx1,
       ...dbBlock1,
       parent_burn_block_time: 1626122935,
@@ -576,7 +576,7 @@ describe('mempool tests', () => {
     const block = new TestBlockBuilder().addTx().build();
     await db.update(block);
     for (let i = 0; i < 10; i++) {
-      const mempoolTx: DbMempoolTxRaw = {
+      const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
@@ -715,7 +715,7 @@ describe('mempool tests', () => {
     let index = 0;
     for (const xfer of stxTransfers) {
       const paddedIndex = ('00' + index).slice(-2);
-      const mempoolTx: DbMempoolTxRaw = {
+      const mempoolTx: DbMempoolTx = {
         pruned: false,
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
@@ -1140,7 +1140,7 @@ describe('mempool tests', () => {
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
@@ -1167,7 +1167,7 @@ describe('mempool tests', () => {
 
   test('get mempool transactions: address not valid', async () => {
     const senderAddress = 'test-sender-address';
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
@@ -1212,7 +1212,7 @@ describe('mempool tests', () => {
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
-    const mempoolTx: DbMempoolTxRaw = {
+    const mempoolTx: DbMempoolTx = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
@@ -1404,127 +1404,5 @@ describe('mempool tests', () => {
     const mempoolTxIdsAfterReOrg = mempoolTxsAfterReOrg.map(e => e.tx_id).sort();
     // txs 4 and 5 should be reorged from txs to mempool txs
     expect(mempoolTxIdsAfterReOrg).toEqual(['0x04bb', '0x05bb']);
-  });
-
-  test('Reconcile mempool pruned status', async () => {
-    const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
-    const txId = '0x521234';
-    const dbBlock1: DbBlock = {
-      block_hash: '0x0123',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const dbBlock2: DbBlock = {
-      block_hash: '0x2123',
-      index_block_hash: '0x2234',
-      parent_index_block_hash: dbBlock1.index_block_hash,
-      parent_block_hash: dbBlock1.block_hash,
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 2,
-      burn_block_time: 39486,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const mempoolTx: DbMempoolTxRaw = {
-      tx_id: txId,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
-      type_id: DbTxTypeId.Coinbase,
-      status: 1,
-      post_conditions: '0x01f5',
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: senderAddress,
-      origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
-      pruned: false,
-      receipt_time: 1616063078,
-    };
-    const dbTx1: DbTxRaw = {
-      ...mempoolTx,
-      ...dbBlock1,
-      parent_burn_block_time: 1626122935,
-      tx_index: 4,
-      status: DbTxStatus.Success,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: '',
-      event_count: 0,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-
-    // Simulate the bug with a txs being in the mempool at confirmed at the same time by
-    // directly inserting the mempool-tx and mined-tx, bypassing the normal update functions.
-    await db.updateBlock(db.sql, dbBlock1);
-    const chainTip = await db.getChainTip(db.sql);
-    await db.insertDbMempoolTx(mempoolTx, chainTip, db.sql);
-    await db.updateTx(db.sql, dbTx1);
-
-    // Verify tx shows up in mempool (non-pruned)
-    const mempoolResult1 = await supertest(api.server).get(
-      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
-    );
-    expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
-    const mempoolResult2 = await supertest(api.server).get(
-      `/extended/v1/tx/mempool?sender_address=${senderAddress}`
-    );
-    expect(mempoolResult2.body.results[0].tx_id).toBe(txId);
-
-    // Verify tx also shows up as confirmed
-    const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult1.body.tx_status).toBe('success');
-
-    // Insert next block using regular update function to trigger the mempool reconcile function
-    await db.update({
-      block: dbBlock2,
-      microblocks: [],
-      minerRewards: [],
-      txs: [],
-    });
-
-    // Verify tx pruned from mempool
-    const mempoolResult3 = await supertest(api.server).get(
-      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
-    );
-    expect(mempoolResult3.body.results).toHaveLength(0);
-    const mempoolResult4 = await supertest(api.server).get(
-      `/extended/v1/tx/mempool?sender_address=${senderAddress}`
-    );
-    expect(mempoolResult4.body.results).toHaveLength(0);
-
-    // Verify tx still shows up as confirmed
-    const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult2.body.tx_status).toBe('success');
   });
 });

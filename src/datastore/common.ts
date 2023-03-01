@@ -149,6 +149,7 @@ export interface DbTx extends BaseTx {
   burn_block_time: number;
   parent_burn_block_time: number;
 
+  raw_tx: string;
   tx_index: number;
 
   /** Hex encoded Clarity values. */
@@ -194,10 +195,6 @@ export interface DbTx extends BaseTx {
   execution_cost_write_length: number;
 }
 
-export interface DbTxRaw extends DbTx {
-  raw_tx: string;
-}
-
 export interface DbTxGlobalStatus {
   status: DbTxStatus;
   index_block_hash?: string;
@@ -237,6 +234,7 @@ export interface DbMempoolStats {
 
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
+  raw_tx: string;
 
   receipt_time: number;
 
@@ -260,10 +258,6 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
-}
-
-export interface DbMempoolTxRaw extends DbMempoolTx {
-  raw_tx: string;
 }
 
 export interface DbSmartContract {
@@ -348,15 +342,6 @@ export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStx;
-  data: {
-    amount_ustx: bigint;
-    delegate_to: string;
-    unlock_burn_height: bigint | null;
-  };
-}
-
 export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
   name: Pox2EventName.DelegateStackStx;
   data: {
@@ -415,7 +400,6 @@ export type DbPox2EventData =
   | DbPox2StackStxEvent
   | DbPox2StackIncreaseEvent
   | DbPox2StackExtendEvent
-  | DbPox2DelegateStxEvent
   | DbPox2DelegateStackStxEvent
   | DbPox2DelegateStackIncreaseEvent
   | DbPox2DelegateStackExtendEvent
@@ -554,7 +538,7 @@ export interface DataStoreMicroblockUpdateData {
 }
 
 export interface DataStoreTxEventData {
-  tx: DbTxRaw;
+  tx: DbTx;
   stxEvents: DbStxEvent[];
   stxLockEvents: DbStxLockEvent[];
   ftEvents: DbFtEvent[];
@@ -834,6 +818,7 @@ export interface MempoolTxQueryResult {
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
+  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
@@ -894,6 +879,7 @@ export interface TxQueryResult {
   sponsor_address: string | null;
   sender_address: string;
   origin_hash_mode: number;
+  raw_tx: string;
 
   // `token_transfer` tx types
   token_transfer_recipient_address?: string;
@@ -1237,14 +1223,11 @@ export interface Pox2EventQueryResult {
   // unique to stack-stx, delegate-stack-stx
   start_burn_height: string | null;
 
-  // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend, delegate-stx
+  // unique to stack-stx, stack-extend, delegate-stack-stx, delegate-stack-extend
   unlock_burn_height: string | null;
 
   // unique to delegate-stack-stx, delegate-stack-increase, delegate-stack-extend
   delegator: string | null;
-
-  // unique to delegate-stx
-  delegate_to: string | null;
 
   // unique to stack-increase, delegate-stack-increase
   increase_by: string | null;
@@ -1258,7 +1241,7 @@ export interface Pox2EventQueryResult {
   // unique to stack-aggregation-commit
   reward_cycle: string | null;
 
-  // unique to stack-aggregation-commit, delegate-stx
+  // unique to stack-aggregation-commit
   amount_ustx: string | null;
 }
 
@@ -1287,9 +1270,6 @@ export interface Pox2EventInsertValues {
   // unique to handle-unlock
   first_unlocked_cycle: PgNumeric | null;
 
-  // unique to delegate-stx
-  delegate_to: string | null;
-
   // unique to stack-stx, delegate-stack-stx
   lock_period: PgNumeric | null;
 
@@ -1316,7 +1296,7 @@ export interface Pox2EventInsertValues {
   // unique to stack-aggregation-commit
   reward_cycle: PgNumeric | null;
 
-  // unique to stack-aggregation-commit, delegate-stx
+  // unique to stack-aggregation-commit
   amount_ustx: PgNumeric | null;
 }
 
@@ -1525,11 +1505,4 @@ export interface SmartContractInsertValues {
   microblock_hash: PgBytea;
   microblock_sequence: number;
   microblock_canonical: boolean;
-}
-
-export interface DbChainTip {
-  blockHeight: number;
-  blockHash: string;
-  indexBlockHash: string;
-  burnBlockHeight: number;
 }

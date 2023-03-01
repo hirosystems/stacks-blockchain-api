@@ -59,9 +59,6 @@ import {
   DataStoreBnsBlockData,
   DbPox2Event,
   Pox2EventInsertValues,
-  DbTxRaw,
-  DbMempoolTxRaw,
-  DbChainTip,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -153,7 +150,15 @@ export class PgWriteStore extends PgStore {
     return super.sqlTransaction(callback, false);
   }
 
-  async getChainTip(sql: PgSqlClient, useMaterializedView = true): Promise<DbChainTip> {
+  async getChainTip(
+    sql: PgSqlClient,
+    useMaterializedView = true
+  ): Promise<{
+    blockHeight: number;
+    blockHash: string;
+    indexBlockHash: string;
+    burnBlockHeight: number;
+  }> {
     if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
@@ -207,8 +212,6 @@ export class PgWriteStore extends PgStore {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
-    const deployedSmartContracts: DbSmartContract[] = [];
-    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
@@ -380,7 +383,6 @@ export class PgWriteStore extends PgStore {
           await this.updateTx(sql, entry.tx);
           await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
-          contractLogEvents.push(...entry.contractLogEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
           for (const pox2Event of entry.pox2Events) {
             await this.updatePox2Event(sql, entry.tx, pox2Event);
@@ -394,7 +396,6 @@ export class PgWriteStore extends PgStore {
           for (const nftEvent of entry.nftEvents) {
             await this.updateNftEvent(sql, entry.tx, nftEvent);
           }
-          deployedSmartContracts.push(...entry.smartContracts);
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(sql, entry.tx, smartContract);
           }
@@ -443,8 +444,6 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -462,18 +461,7 @@ export class PgWriteStore extends PgStore {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
       for (const txId of garbageCollectedMempoolTxs) {
-        await this.notifier.sendTx({ txId: txId });
-      }
-      for (const smartContract of deployedSmartContracts) {
-        await this.notifier.sendSmartContract({
-          contractId: smartContract.contract_id,
-        });
-      }
-      for (const logEvent of contractLogEvents) {
-        await this.notifier.sendSmartContractLog({
-          txId: logEvent.tx_id,
-          eventIndex: logEvent.event_index,
-        });
+        await this.notifier?.sendTx({ txId: txId });
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
@@ -599,8 +587,6 @@ export class PgWriteStore extends PgStore {
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
     const txData: DataStoreTxEventData[] = [];
     let dbMicroblocks: DbMicroblock[] = [];
-    const deployedSmartContracts: DbSmartContract[] = [];
-    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -644,9 +630,8 @@ export class PgWriteStore extends PgStore {
       });
 
       for (const entry of data.txs) {
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor
-        // block with that data doesn't yet exist.
-        const dbTx: DbTxRaw = {
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
+        const dbTx: DbTx = {
           ...entry.tx,
           parent_block_hash: chainTip.blockHash,
           block_height: blockHeight,
@@ -669,8 +654,6 @@ export class PgWriteStore extends PgStore {
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
           pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
         });
-        deployedSmartContracts.push(...entry.smartContracts);
-        contractLogEvents.push(...entry.contractLogEvents);
       }
 
       await this.insertMicroblockData(sql, dbMicroblocks, txData);
@@ -722,8 +705,6 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -740,46 +721,7 @@ export class PgWriteStore extends PgStore {
       for (const tx of txData) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
-      for (const smartContract of deployedSmartContracts) {
-        await this.notifier.sendSmartContract({
-          contractId: smartContract.contract_id,
-        });
-      }
-      for (const logEvent of contractLogEvents) {
-        await this.notifier.sendSmartContractLog({
-          txId: logEvent.tx_id,
-          eventIndex: logEvent.event_index,
-        });
-      }
       await this.emitAddressTxUpdates(txData);
-    }
-  }
-
-  // Find any transactions that are erroneously still marked as both `pending` in the mempool table
-  // and also confirmed in the mined txs table. Mark these as pruned in the mempool and log warning.
-  // This must be called _after_ any writes to txs/mempool tables during block and microblock ingestion,
-  // but _before_ any reads or view refreshes that depend on the mempool table.
-  // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
-  async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
-    const txsResult = await sql<{ tx_id: string }[]>`
-      UPDATE mempool_txs
-      SET pruned = true
-      FROM txs
-      WHERE 
-        mempool_txs.tx_id = txs.tx_id AND
-        mempool_txs.pruned = false AND
-        txs.canonical = true AND
-        txs.microblock_canonical = true AND
-        txs.status IN ${sql([
-          DbTxStatus.Success,
-          DbTxStatus.AbortByResponse,
-          DbTxStatus.AbortByPostCondition,
-        ])}
-      RETURNING mempool_txs.tx_id
-    `;
-    if (txsResult.length > 0) {
-      const txs = txsResult.map(tx => tx.tx_id);
-      logger.warn(`Reconciled mempool txs as pruned for ${txsResult.length} txs`, { txs });
     }
   }
 
@@ -843,7 +785,6 @@ export class PgWriteStore extends PgStore {
       pox_addr_raw: event.pox_addr_raw,
       first_cycle_locked: null,
       first_unlocked_cycle: null,
-      delegate_to: null,
       lock_period: null,
       lock_amount: null,
       start_burn_height: null,
@@ -877,12 +818,6 @@ export class PgWriteStore extends PgStore {
       case Pox2EventName.StackExtend: {
         values.extend_count = event.data.extend_count.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.DelegateStx: {
-        values.amount_ustx = event.data.amount_ustx.toString();
-        values.delegate_to = event.data.delegate_to;
-        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
         break;
       }
       case Pox2EventName.DelegateStackStx: {
@@ -1481,7 +1416,7 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1536,75 +1471,61 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async insertDbMempoolTx(
-    tx: DbMempoolTxRaw,
-    chainTip: DbChainTip,
-    sql: PgSqlClient
-  ): Promise<boolean> {
-    const values: MempoolTxInsertValues = {
-      pruned: tx.pruned,
-      tx_id: tx.tx_id,
-      raw_tx: tx.raw_tx,
-      type_id: tx.type_id,
-      anchor_mode: tx.anchor_mode,
-      status: tx.status,
-      receipt_time: tx.receipt_time,
-      receipt_block_height: chainTip.blockHeight,
-      post_conditions: tx.post_conditions,
-      nonce: tx.nonce,
-      fee_rate: tx.fee_rate,
-      sponsored: tx.sponsored,
-      sponsor_nonce: tx.sponsor_nonce ?? null,
-      sponsor_address: tx.sponsor_address ?? null,
-      sender_address: tx.sender_address,
-      origin_hash_mode: tx.origin_hash_mode,
-      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
-      token_transfer_amount: tx.token_transfer_amount ?? null,
-      token_transfer_memo: tx.token_transfer_memo ?? null,
-      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
-      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-      smart_contract_source_code: tx.smart_contract_source_code ?? null,
-      contract_call_contract_id: tx.contract_call_contract_id ?? null,
-      contract_call_function_name: tx.contract_call_function_name ?? null,
-      contract_call_function_args: tx.contract_call_function_args ?? null,
-      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
-      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
-      coinbase_payload: tx.coinbase_payload ?? null,
-      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
-    };
-    const result = await sql`
-      INSERT INTO mempool_txs ${sql(values)}
-      ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
-    `;
-    if (result.count !== 1) {
-      const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
-      logger.warn(errMsg);
-      return false;
-    } else {
-      return true;
-    }
-  }
-
-  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
-    const updatedTxIds: string[] = [];
+  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
+    const updatedTxs: DbMempoolTx[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
-        const inserted = await this.insertDbMempoolTx(tx, chainTip, sql);
-        if (inserted) {
-          updatedTxIds.push(tx.tx_id);
+        const values: MempoolTxInsertValues = {
+          pruned: tx.pruned,
+          tx_id: tx.tx_id,
+          raw_tx: tx.raw_tx,
+          type_id: tx.type_id,
+          anchor_mode: tx.anchor_mode,
+          status: tx.status,
+          receipt_time: tx.receipt_time,
+          receipt_block_height: chainTip.blockHeight,
+          post_conditions: tx.post_conditions,
+          nonce: tx.nonce,
+          fee_rate: tx.fee_rate,
+          sponsored: tx.sponsored,
+          sponsor_nonce: tx.sponsor_nonce ?? null,
+          sponsor_address: tx.sponsor_address ?? null,
+          sender_address: tx.sender_address,
+          origin_hash_mode: tx.origin_hash_mode,
+          token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
+          token_transfer_amount: tx.token_transfer_amount ?? null,
+          token_transfer_memo: tx.token_transfer_memo ?? null,
+          smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
+          smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
+          smart_contract_source_code: tx.smart_contract_source_code ?? null,
+          contract_call_contract_id: tx.contract_call_contract_id ?? null,
+          contract_call_function_name: tx.contract_call_function_name ?? null,
+          contract_call_function_args: tx.contract_call_function_args ?? null,
+          poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+          poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+          coinbase_payload: tx.coinbase_payload ?? null,
+          coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
+        };
+        const result = await sql`
+          INSERT INTO mempool_txs ${sql(values)}
+          ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
+        `;
+        if (result.count !== 1) {
+          const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
+          logger.warn(errMsg);
+        } else {
+          updatedTxs.push(tx);
         }
       }
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
     await this.refreshMaterializedView('mempool_digest');
-    for (const txId of updatedTxIds) {
-      await this.notifier?.sendTx({ txId: txId });
+    for (const tx of updatedTxs) {
+      await this.notifier?.sendTx({ txId: tx.tx_id });
     }
   }
 
