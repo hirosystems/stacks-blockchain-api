@@ -6,12 +6,12 @@ import {
   PostConditionMode,
   AnchorMode,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import {
-  DbTx,
+  DbTxRaw,
   DbTxStatus,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
+  DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import * as fs from 'fs';
@@ -74,10 +74,7 @@ describe('api tests', () => {
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     try {
-      const submitResult = await new StacksCoreRpcClient({
-        host: HOST,
-        port: PORT,
-      }).sendTransaction(serializedTx);
+      const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
       logger.error('error: ', error);
@@ -98,17 +95,18 @@ describe('api tests', () => {
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
       anchorMode: AnchorMode.Any,
+      fee: 100000,
     });
 
     const contractId = senderAddress + '.' + contractName;
 
-    const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-    const feeRateResult = await feeRateReq.text();
-    const txBytes = new BN(contractDeployTx.serialize().byteLength);
-    const feeRate = new BN(feeRateResult);
-    const fee = feeRate.mul(txBytes);
-    contractDeployTx.setFee(fee);
-    const { txId } = await sendCoreTx(contractDeployTx.serialize());
+    // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+    // const feeRateResult = await feeRateReq.text();
+    // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
+    // const feeRate = BigInt(feeRateResult);
+    // const fee = feeRate * txBytes;
+    // contractDeployTx.setFee(fee);
+    const { txId } = await sendCoreTx(Buffer.from(contractDeployTx.serialize()));
     return { txId, contractId };
   }
 
@@ -119,6 +117,7 @@ describe('api tests', () => {
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await new StacksCoreRpcClient().waitForConnection(60000);
   });
 
   beforeEach(() => {

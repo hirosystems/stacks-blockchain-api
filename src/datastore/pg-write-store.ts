@@ -57,10 +57,16 @@ import {
   DataStoreAttachmentData,
   DataStoreAttachmentSubdomainData,
   DataStoreBnsBlockData,
+  DbPox2Event,
+  Pox2EventInsertValues,
+  DbTxRaw,
+  DbMempoolTxRaw,
+  DbChainTip,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
+  convertTxQueryResultToDbMempoolTx,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -85,6 +91,7 @@ import { getPgClientConfig } from './connection-legacy';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
+import { Pox2EventName } from '../pox-helpers';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -146,10 +153,7 @@ export class PgWriteStore extends PgStore {
     return super.sqlTransaction(callback, false);
   }
 
-  async getChainTip(
-    sql: PgSqlClient,
-    useMaterializedView = true
-  ): Promise<{ blockHeight: number; blockHash: string; indexBlockHash: string }> {
+  async getChainTip(sql: PgSqlClient, useMaterializedView = true): Promise<DbChainTip> {
     if (!this.isEventReplay && useMaterializedView) {
       return super.getChainTip(sql);
     }
@@ -161,9 +165,10 @@ export class PgWriteStore extends PgStore {
         block_height: number;
         block_hash: string;
         index_block_hash: string;
+        burn_block_height: number;
       }[]
     >`
-      SELECT block_height, block_hash, index_block_hash
+      SELECT block_height, block_hash, index_block_hash, burn_block_height
       FROM blocks
       WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
     `;
@@ -171,6 +176,7 @@ export class PgWriteStore extends PgStore {
       blockHeight: currentTipBlock[0]?.block_height ?? 0,
       blockHash: currentTipBlock[0]?.block_hash ?? '',
       indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
+      burnBlockHeight: currentTipBlock[0]?.burn_block_height ?? 0,
     };
   }
 
@@ -201,6 +207,8 @@ export class PgWriteStore extends PgStore {
     const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
@@ -220,6 +228,7 @@ export class PgWriteStore extends PgStore {
           smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
           names: tx.names.map(e => ({ ...e, canonical: false })),
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+          pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
         }));
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
@@ -339,6 +348,25 @@ export class PgWriteStore extends PgStore {
         });
       }
 
+      if (isCanonical && data.pox_v1_unlock_height !== undefined) {
+        // update the pox_state.pox_v1_unlock_height singleton
+        await sql`
+          UPDATE pox_state 
+          SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
+          WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
+        `;
+      }
+
+      // When receiving first block, check if "block 0" boot data was received,
+      // if so, update their properties to correspond to "block 1", since we treat
+      // the "block 0" concept as an internal implementation detail.
+      if (data.block.block_height === 1) {
+        const blockZero = await this.getBlockInternal(sql, { height: 0 });
+        if (blockZero.found) {
+          await this.fixBlockZeroData(sql, data.block);
+        }
+      }
+
       // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
 
       // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below
@@ -352,7 +380,11 @@ export class PgWriteStore extends PgStore {
           await this.updateTx(sql, entry.tx);
           await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+          contractLogEvents.push(...entry.contractLogEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+          for (const pox2Event of entry.pox2Events) {
+            await this.updatePox2Event(sql, entry.tx, pox2Event);
+          }
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
           }
@@ -362,6 +394,7 @@ export class PgWriteStore extends PgStore {
           for (const nftEvent of entry.nftEvents) {
             await this.updateNftEvent(sql, entry.tx, nftEvent);
           }
+          deployedSmartContracts.push(...entry.smartContracts);
           for (const smartContract of entry.smartContracts) {
             await this.updateSmartContract(sql, entry.tx, smartContract);
           }
@@ -381,7 +414,11 @@ export class PgWriteStore extends PgStore {
         garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
         const tokenContractDeployments = data.txs
-          .filter(entry => entry.tx.type_id === DbTxTypeId.SmartContract)
+          .filter(
+            entry =>
+              entry.tx.type_id === DbTxTypeId.SmartContract ||
+              entry.tx.type_id === DbTxTypeId.VersionedSmartContract
+          )
           .filter(entry => entry.tx.status === DbTxStatus.Success)
           .filter(entry => entry.smartContracts[0].abi && entry.smartContracts[0].abi !== 'null')
           .map(entry => {
@@ -406,6 +443,8 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -423,7 +462,18 @@ export class PgWriteStore extends PgStore {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
       for (const txId of garbageCollectedMempoolTxs) {
-        await this.notifier?.sendTx({ txId: txId });
+        await this.notifier.sendTx({ txId: txId });
+      }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
       }
       await this.emitAddressTxUpdates(data.txs);
       for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
@@ -446,6 +496,8 @@ export class PgWriteStore extends PgStore {
       mature_block_height: minerReward.mature_block_height,
       canonical: minerReward.canonical,
       recipient: minerReward.recipient,
+      // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+      miner_address: minerReward.miner_address ?? minerReward.recipient,
       coinbase_amount: minerReward.coinbase_amount.toString(),
       tx_fees_anchored: minerReward.tx_fees_anchored.toString(),
       tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed.toString(),
@@ -547,6 +599,8 @@ export class PgWriteStore extends PgStore {
   async updateMicroblocksInternal(data: DataStoreMicroblockUpdateData): Promise<void> {
     const txData: DataStoreTxEventData[] = [];
     let dbMicroblocks: DbMicroblock[] = [];
+    const deployedSmartContracts: DbSmartContract[] = [];
+    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
@@ -590,8 +644,9 @@ export class PgWriteStore extends PgStore {
       });
 
       for (const entry of data.txs) {
-        // Note: the properties block_hash and burn_block_time are empty here because the anchor block with that data doesn't yet exist.
-        const dbTx: DbTx = {
+        // Note: the properties block_hash and burn_block_time are empty here because the anchor
+        // block with that data doesn't yet exist.
+        const dbTx: DbTxRaw = {
           ...entry.tx,
           parent_block_hash: chainTip.blockHash,
           block_height: blockHeight,
@@ -612,7 +667,10 @@ export class PgWriteStore extends PgStore {
           smartContracts: entry.smartContracts.map(e => ({ ...e, block_height: blockHeight })),
           names: entry.names.map(e => ({ ...e, registered_at: blockHeight })),
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
+          pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
         });
+        deployedSmartContracts.push(...entry.smartContracts);
+        contractLogEvents.push(...entry.contractLogEvents);
       }
 
       await this.insertMicroblockData(sql, dbMicroblocks, txData);
@@ -664,6 +722,8 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
@@ -680,8 +740,193 @@ export class PgWriteStore extends PgStore {
       for (const tx of txData) {
         await this.notifier.sendTx({ txId: tx.tx.tx_id });
       }
+      for (const smartContract of deployedSmartContracts) {
+        await this.notifier.sendSmartContract({
+          contractId: smartContract.contract_id,
+        });
+      }
+      for (const logEvent of contractLogEvents) {
+        await this.notifier.sendSmartContractLog({
+          txId: logEvent.tx_id,
+          eventIndex: logEvent.event_index,
+        });
+      }
       await this.emitAddressTxUpdates(txData);
     }
+  }
+
+  // Find any transactions that are erroneously still marked as both `pending` in the mempool table
+  // and also confirmed in the mined txs table. Mark these as pruned in the mempool and log warning.
+  // This must be called _after_ any writes to txs/mempool tables during block and microblock ingestion,
+  // but _before_ any reads or view refreshes that depend on the mempool table.
+  // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
+  async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
+    const txsResult = await sql<{ tx_id: string }[]>`
+      UPDATE mempool_txs
+      SET pruned = true
+      FROM txs
+      WHERE 
+        mempool_txs.tx_id = txs.tx_id AND
+        mempool_txs.pruned = false AND
+        txs.canonical = true AND
+        txs.microblock_canonical = true AND
+        txs.status IN ${sql([
+          DbTxStatus.Success,
+          DbTxStatus.AbortByResponse,
+          DbTxStatus.AbortByPostCondition,
+        ])}
+      RETURNING mempool_txs.tx_id
+    `;
+    if (txsResult.length > 0) {
+      const txs = txsResult.map(tx => tx.tx_id);
+      logger.warn(`Reconciled mempool txs as pruned for ${txsResult.length} txs`, { txs });
+    }
+  }
+
+  async fixBlockZeroData(sql: PgSqlClient, blockOne: DbBlock): Promise<void> {
+    const tablesUpdates: Record<string, number> = {};
+    const txsResult = await sql<TxQueryResult[]>`
+      UPDATE txs
+      SET 
+        canonical = true,
+        block_height = 1,
+        tx_index = tx_index + 1,
+        block_hash = ${blockOne.block_hash},
+        index_block_hash = ${blockOne.index_block_hash},
+        burn_block_time = ${blockOne.burn_block_time},
+        parent_block_hash = ${blockOne.parent_block_hash}
+      WHERE block_height = 0
+    `;
+    tablesUpdates['txs'] = txsResult.count;
+    for (const table of TX_METADATA_TABLES) {
+      // a couple tables have a different name for the 'block_height' column
+      const heightCol =
+        table === 'names'
+          ? sql('registered_at')
+          : table === 'namespaces'
+          ? sql('ready_block')
+          : sql('block_height');
+      // The smart_contracts table does not have a tx_index column
+      const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
+      const metadataResult = await sql`
+        UPDATE ${sql(table)}
+        SET 
+          canonical = true,
+          ${heightCol} = 1,
+          ${txIndexBump}
+          index_block_hash = ${blockOne.index_block_hash}
+        WHERE ${heightCol} = 0
+      `;
+      tablesUpdates[table] = metadataResult.count;
+    }
+    logger.info('Updated block zero boot data', tablesUpdates);
+  }
+
+  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPox2Event) {
+    const values: Pox2EventInsertValues = {
+      event_index: event.event_index,
+      tx_id: event.tx_id,
+      tx_index: event.tx_index,
+      block_height: event.block_height,
+      index_block_hash: tx.index_block_hash,
+      parent_index_block_hash: tx.parent_index_block_hash,
+      microblock_hash: tx.microblock_hash,
+      microblock_sequence: tx.microblock_sequence,
+      microblock_canonical: tx.microblock_canonical,
+      canonical: event.canonical,
+      stacker: event.stacker,
+      locked: event.locked.toString(),
+      balance: event.balance.toString(),
+      burnchain_unlock_height: event.burnchain_unlock_height.toString(),
+      name: event.name,
+      pox_addr: event.pox_addr,
+      pox_addr_raw: event.pox_addr_raw,
+      first_cycle_locked: null,
+      first_unlocked_cycle: null,
+      delegate_to: null,
+      lock_period: null,
+      lock_amount: null,
+      start_burn_height: null,
+      unlock_burn_height: null,
+      delegator: null,
+      increase_by: null,
+      total_locked: null,
+      extend_count: null,
+      reward_cycle: null,
+      amount_ustx: null,
+    };
+    // Set event-specific columns
+    switch (event.name) {
+      case Pox2EventName.HandleUnlock: {
+        values.first_cycle_locked = event.data.first_cycle_locked.toString();
+        values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
+        break;
+      }
+      case Pox2EventName.StackStx: {
+        values.lock_period = event.data.lock_period.toString();
+        values.lock_amount = event.data.lock_amount.toString();
+        values.start_burn_height = event.data.start_burn_height.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        break;
+      }
+      case Pox2EventName.StackIncrease: {
+        values.increase_by = event.data.increase_by.toString();
+        values.total_locked = event.data.total_locked.toString();
+        break;
+      }
+      case Pox2EventName.StackExtend: {
+        values.extend_count = event.data.extend_count.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        break;
+      }
+      case Pox2EventName.DelegateStx: {
+        values.amount_ustx = event.data.amount_ustx.toString();
+        values.delegate_to = event.data.delegate_to;
+        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
+        break;
+      }
+      case Pox2EventName.DelegateStackStx: {
+        values.lock_period = event.data.lock_period.toString();
+        values.lock_amount = event.data.lock_amount.toString();
+        values.start_burn_height = event.data.start_burn_height.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case Pox2EventName.DelegateStackIncrease: {
+        values.increase_by = event.data.increase_by.toString();
+        values.total_locked = event.data.total_locked.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case Pox2EventName.DelegateStackExtend: {
+        values.extend_count = event.data.extend_count.toString();
+        values.unlock_burn_height = event.data.unlock_burn_height.toString();
+        values.delegator = event.data.delegator;
+        break;
+      }
+      case Pox2EventName.StackAggregationCommit: {
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
+        break;
+      }
+      case Pox2EventName.StackAggregationCommitIndexed: {
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
+        break;
+      }
+      case Pox2EventName.StackAggregationIncrease: {
+        values.reward_cycle = event.data.reward_cycle.toString();
+        values.amount_ustx = event.data.amount_ustx.toString();
+        break;
+      }
+      default: {
+        throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
+      }
+    }
+    await sql`
+      INSERT INTO pox2_events ${sql(values)}
+    `;
   }
 
   async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
@@ -699,6 +944,7 @@ export class PgWriteStore extends PgStore {
       locked_amount: event.locked_amount.toString(),
       unlock_height: event.unlock_height,
       locked_address: event.locked_address,
+      contract_name: event.contract_name,
     };
     await sql`
       INSERT INTO stx_lock_events ${sql(values)}
@@ -723,6 +969,7 @@ export class PgWriteStore extends PgStore {
         sender: event.sender ?? null,
         recipient: event.recipient ?? null,
         amount: event.amount,
+        memo: event.memo ?? null,
       }));
       const res = await sql`
         INSERT INTO stx_events ${sql(values)}
@@ -911,6 +1158,7 @@ export class PgWriteStore extends PgStore {
       sender: event.sender ?? null,
       recipient: event.recipient ?? null,
       amount: event.amount,
+      memo: event.memo ?? null,
     };
     await sql`
       INSERT INTO stx_events ${sql(values)}
@@ -1233,7 +1481,7 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTx): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1263,6 +1511,7 @@ export class PgWriteStore extends PgStore {
       token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
       token_transfer_amount: tx.token_transfer_amount ?? null,
       token_transfer_memo: tx.token_transfer_memo ?? null,
+      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
       smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
       smart_contract_source_code: tx.smart_contract_source_code ?? null,
       contract_call_contract_id: tx.contract_call_contract_id ?? null,
@@ -1271,6 +1520,7 @@ export class PgWriteStore extends PgStore {
       poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
       poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
       coinbase_payload: tx.coinbase_payload ?? null,
+      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
       raw_result: tx.raw_result,
       event_count: tx.event_count,
       execution_cost_read_count: tx.execution_cost_read_count,
@@ -1286,59 +1536,75 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTx[] }): Promise<void> {
-    const updatedTxs: DbMempoolTx[] = [];
+  async insertDbMempoolTx(
+    tx: DbMempoolTxRaw,
+    chainTip: DbChainTip,
+    sql: PgSqlClient
+  ): Promise<boolean> {
+    const values: MempoolTxInsertValues = {
+      pruned: tx.pruned,
+      tx_id: tx.tx_id,
+      raw_tx: tx.raw_tx,
+      type_id: tx.type_id,
+      anchor_mode: tx.anchor_mode,
+      status: tx.status,
+      receipt_time: tx.receipt_time,
+      receipt_block_height: chainTip.blockHeight,
+      post_conditions: tx.post_conditions,
+      nonce: tx.nonce,
+      fee_rate: tx.fee_rate,
+      sponsored: tx.sponsored,
+      sponsor_nonce: tx.sponsor_nonce ?? null,
+      sponsor_address: tx.sponsor_address ?? null,
+      sender_address: tx.sender_address,
+      origin_hash_mode: tx.origin_hash_mode,
+      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
+      token_transfer_amount: tx.token_transfer_amount ?? null,
+      token_transfer_memo: tx.token_transfer_memo ?? null,
+      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
+      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
+      smart_contract_source_code: tx.smart_contract_source_code ?? null,
+      contract_call_contract_id: tx.contract_call_contract_id ?? null,
+      contract_call_function_name: tx.contract_call_function_name ?? null,
+      contract_call_function_args: tx.contract_call_function_args ?? null,
+      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+      coinbase_payload: tx.coinbase_payload ?? null,
+      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
+    };
+    const result = await sql`
+      INSERT INTO mempool_txs ${sql(values)}
+      ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
+    `;
+    if (result.count !== 1) {
+      const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
+      logger.warn(errMsg);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
+    const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       for (const tx of txs) {
-        const values: MempoolTxInsertValues = {
-          pruned: tx.pruned,
-          tx_id: tx.tx_id,
-          raw_tx: tx.raw_tx,
-          type_id: tx.type_id,
-          anchor_mode: tx.anchor_mode,
-          status: tx.status,
-          receipt_time: tx.receipt_time,
-          receipt_block_height: chainTip.blockHeight,
-          post_conditions: tx.post_conditions,
-          nonce: tx.nonce,
-          fee_rate: tx.fee_rate,
-          sponsored: tx.sponsored,
-          sponsor_nonce: tx.sponsor_nonce ?? null,
-          sponsor_address: tx.sponsor_address ?? null,
-          sender_address: tx.sender_address,
-          origin_hash_mode: tx.origin_hash_mode,
-          token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
-          token_transfer_amount: tx.token_transfer_amount ?? null,
-          token_transfer_memo: tx.token_transfer_memo ?? null,
-          smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-          smart_contract_source_code: tx.smart_contract_source_code ?? null,
-          contract_call_contract_id: tx.contract_call_contract_id ?? null,
-          contract_call_function_name: tx.contract_call_function_name ?? null,
-          contract_call_function_args: tx.contract_call_function_args ?? null,
-          poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
-          poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
-          coinbase_payload: tx.coinbase_payload ?? null,
-        };
-        const result = await sql`
-          INSERT INTO mempool_txs ${sql(values)}
-          ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
-        `;
-        if (result.count !== 1) {
-          const errMsg = `A duplicate transaction was attempted to be inserted into the mempool_txs table: ${tx.tx_id}`;
-          logger.warn(errMsg);
-        } else {
-          updatedTxs.push(tx);
+        const inserted = await this.insertDbMempoolTx(tx, chainTip, sql);
+        if (inserted) {
+          updatedTxIds.push(tx.tx_id);
         }
       }
       if (!this.isEventReplay) {
+        await this.reconcileMempoolStatus(sql);
+
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
     await this.refreshMaterializedView('mempool_digest');
-    for (const tx of updatedTxs) {
-      await this.notifier?.sendTx({ txId: tx.tx_id });
+    for (const txId of updatedTxIds) {
+      await this.notifier?.sendTx({ txId: txId });
     }
   }
 
@@ -1382,6 +1648,7 @@ export class PgWriteStore extends PgStore {
     const values: SmartContractInsertValues = {
       tx_id: smartContract.tx_id,
       canonical: smartContract.canonical,
+      clarity_version: smartContract.clarity_version,
       contract_id: smartContract.contract_id,
       block_height: smartContract.block_height,
       index_block_hash: tx.index_block_hash,
@@ -1721,6 +1988,7 @@ export class PgWriteStore extends PgStore {
         case DbTxTypeId.ContractCall:
           addAddressTx(tx.contract_call_contract_id);
           break;
+        case DbTxTypeId.VersionedSmartContract:
         case DbTxTypeId.SmartContract:
           addAddressTx(tx.smart_contract_contract_id);
           break;
@@ -1800,6 +2068,9 @@ export class PgWriteStore extends PgStore {
       await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
       await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
       await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
+      for (const pox2Event of entry.pox2Events) {
+        await this.updatePox2Event(sql, entry.tx, pox2Event);
+      }
       for (const stxLockEvent of entry.stxLockEvents) {
         await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
       }
@@ -1973,13 +2244,51 @@ export class PgWriteStore extends PgStore {
     for (const txId of txIds) {
       logger.verbose(`Restoring mempool tx: ${txId}`);
     }
-    const updateResults = await sql<{ tx_id: string }[]>`
+
+    const updatedRows = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
       SET pruned = false
       WHERE tx_id IN ${sql(txIds)}
       RETURNING tx_id
     `;
-    const restoredTxs = updateResults.map(r => r.tx_id);
+
+    const updatedTxs = updatedRows.map(r => r.tx_id);
+    for (const tx of updatedTxs) {
+      logger.verbose(`Updated mempool tx: ${tx}`);
+    }
+
+    let restoredTxs = updatedRows.map(r => r.tx_id);
+
+    // txs that didnt exist in the mempool need to be inserted into the mempool
+    if (updatedRows.length < txIds.length) {
+      const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
+
+      logger.verbose(
+        `To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`
+      );
+
+      const txs: TxQueryResult[] = await sql`
+        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
+        FROM txs
+        WHERE tx_id IN ${sql(txsRequiringInsertion)}
+        ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
+      `;
+
+      if (txs.length !== txsRequiringInsertion.length) {
+        logger.error(`Not all txs requiring insertion were found`);
+      }
+
+      const mempoolTxs = convertTxQueryResultToDbMempoolTx(txs);
+
+      await this.updateMempoolTxs({ mempoolTxs });
+
+      restoredTxs = [...restoredTxs, ...txsRequiringInsertion];
+
+      for (const tx of mempoolTxs) {
+        logger.verbose(`Inserted mempool tx: ${tx.tx_id}`);
+      }
+    }
+
     return { restoredTxs: restoredTxs };
   }
 
@@ -2118,6 +2427,17 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedCanonical.nftEvents += nftResult.count;
     } else {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
+    }
+
+    const poxResult = await sql`
+      UPDATE pox2_events
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
+    if (canonical) {
+      updatedEntities.markedCanonical.pox2Events += poxResult.count;
+    } else {
+      updatedEntities.markedNonCanonical.pox2Events += poxResult.count;
     }
 
     const contractLogResult = await sql`
@@ -2322,6 +2642,7 @@ export class PgWriteStore extends PgStore {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -2337,6 +2658,7 @@ export class PgWriteStore extends PgStore {
         stxEvents: 0,
         ftEvents: 0,
         nftEvents: 0,
+        pox2Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,

@@ -13,6 +13,7 @@ interface CoreRpcAccountInfo {
   nonce: number;
   /** Hex-prefixed binary blob. */
   nonce_proof: string;
+  unlock_height: number;
 }
 
 interface CoreRpcInfo {
@@ -31,14 +32,53 @@ interface CoreRpcInfo {
   unanchored_tip: string;
 }
 
-interface CoreRpcPoxInfo {
+export interface CoreRpcPoxInfo {
   contract_id: string;
+  pox_activation_threshold_ustx: number;
   first_burnchain_block_height: number;
-  min_amount_ustx: number;
-  registration_window_length: number;
+  prepare_phase_block_length: number;
+  reward_phase_block_length: number;
+  reward_slots: number;
   rejection_fraction: number;
+  total_liquid_supply_ustx: number;
+  current_cycle: {
+    id: number;
+    min_threshold_ustx: number;
+    stacked_ustx: number;
+    is_pox_active: boolean;
+  };
+  next_cycle: {
+    id: number;
+    min_threshold_ustx: number;
+    min_increment_ustx: number;
+    stacked_ustx: number;
+    prepare_phase_start_block_height: number;
+    blocks_until_prepare_phase: number;
+    reward_phase_start_block_height: number;
+    blocks_until_reward_phase: number;
+    ustx_until_pox_rejection: number;
+  };
+
+  /** @deprecated included for backwards-compatibility */
+  min_amount_ustx: number;
+  /** @deprecated included for backwards-compatibility */
+  prepare_cycle_length: number;
+  /** @deprecated included for backwards-compatibility */
   reward_cycle_id: number;
+  /** @deprecated included for backwards-compatibility */
   reward_cycle_length: number;
+  /** @deprecated included for backwards-compatibility */
+  rejection_votes_left_required: number;
+  /** @deprecated included for backwards-compatibility */
+  next_reward_cycle_in: number;
+
+  // Available in Stacks 2.1:
+  current_burnchain_block_height?: number;
+  contract_versions?: {
+    contract_id: string;
+    activation_burnchain_block_height: number;
+    first_reward_cycle_id: number;
+  }[];
 }
 
 export interface Neighbor {
@@ -104,8 +144,8 @@ export class StacksCoreRpcClient {
    * Throws an error if connection cannot be established.
    * @param retryTimeout - milliseconds
    */
-  async waitForConnection(retryTimeout = 30000): Promise<void> {
-    const retryInterval = 1000; // 1 second
+  async waitForConnection(retryTimeout = 60000): Promise<void> {
+    const retryInterval = 2500; // 2.5 seconds
     const timer = stopwatch();
     let lastError: Error;
     do {
@@ -206,7 +246,7 @@ export class StacksCoreRpcClient {
     return nonce;
   }
 
-  async getAccountBalance(principal: string): Promise<BigInt> {
+  async getAccountBalance(principal: string): Promise<bigint> {
     const account = await this.getAccount(principal);
     const balance = BigInt(account.balance);
     return balance;

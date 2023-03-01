@@ -10,7 +10,7 @@ import {
   addressToString,
   AuthType,
   BufferCV,
-  BufferReader,
+  BytesReader,
   ChainID,
   deserializeTransaction,
   emptyMessageSignature,
@@ -18,7 +18,6 @@ import {
   isSingleSig,
   makeSigHashPreSign,
   MessageSignature,
-  parseRecoverableSignature,
   PayloadType,
   StacksTransaction,
 } from '@stacks/transactions';
@@ -59,7 +58,6 @@ import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
 import { unwrapOptional, hexToBuffer, logger, getSendManyContract } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
-import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
 import {
   ClarityTypeID,
@@ -80,6 +78,8 @@ import {
 } from 'stacks-encoding-native-js';
 import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
+import { poxAddressToBtcAddress } from '@stacks/stacking';
+import { parseRecoverableSignatureVrs } from '@stacks/common';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -107,8 +107,7 @@ type RosettaRevokeDelegateContractArgs = {
   result: string;
 };
 
-export function parseTransactionMemo(tx: BaseTx): string | null {
-  const memoHex = tx.token_transfer_memo;
+export function parseTransactionMemo(memoHex: string | undefined): string | null {
   if (memoHex) {
     // Memos are a fixed-length 34 byte array. Any memo representing a string that is
     // less than 34 bytes long will have right-side padded null-bytes.
@@ -151,22 +150,22 @@ async function getOperationsInternal(
   stxUnlockEvents?: StxUnlockEvent[]
 ): Promise<RosettaOperation[]> {
   const operations: RosettaOperation[] = [];
-  const txType = getTxTypeString(tx.type_id);
+  const txType = getTxTypeString(tx.type_id) as RosettaOperationType;
   switch (txType) {
-    case 'token_transfer':
+    case RosettaOperationType.TokenTransfer:
       operations.push(makeFeeOperation(tx));
-      operations.push(makeSenderOperation(tx, operations.length));
-      operations.push(makeReceiverOperation(tx, operations.length));
+      operations.push(makeSenderOperation(tx, operations.length, tx.token_transfer_memo));
+      operations.push(makeReceiverOperation(tx, operations.length, tx.token_transfer_memo));
       break;
-    case 'contract_call':
+    case RosettaOperationType.ContractCall:
       operations.push(makeFeeOperation(tx));
       operations.push(await makeCallContractOperation(tx, db, operations.length));
       break;
-    case 'smart_contract':
+    case RosettaOperationType.SmartContract:
       operations.push(makeFeeOperation(tx));
       operations.push(makeDeployContractOperation(tx, operations.length));
       break;
-    case 'coinbase':
+    case RosettaOperationType.Coinbase:
       operations.push(makeCoinbaseOperation(tx, 0));
       if (minerRewards !== undefined) {
         getMinerOperations(minerRewards, operations);
@@ -175,7 +174,7 @@ async function getOperationsInternal(
         processUnlockingEvents(stxUnlockEvents, operations);
       }
       break;
-    case 'poison_microblock':
+    case RosettaOperationType.PoisonMicroblock:
       operations.push(makePoisonMicroblockOperation(tx, 0));
       break;
     default:
@@ -211,7 +210,7 @@ function decodeSendManyContractCallMemos(tx: BaseTx, chainID: ChainID): string[]
   ) {
     const decodeMemo = (memo?: ClarityValue): string => {
       return memo && memo.type_id === ClarityTypeID.Buffer
-        ? (hexToCV(memo.hex) as BufferCV).buffer.toString('utf8')
+        ? Buffer.from((hexToCV(memo.hex) as BufferCV).buffer).toString('utf8')
         : '';
     };
     try {
@@ -270,8 +269,8 @@ async function processEvents(
               () => 'Unexpected nullish amount'
             );
             let index = operations.length;
-            const sender = makeSenderOperation(tx, index++);
-            const receiver = makeReceiverOperation(tx, index++);
+            const sender = makeSenderOperation(tx, index++, stxAssetEvent.memo);
+            const receiver = makeReceiverOperation(tx, index++, stxAssetEvent.memo);
             if (sendManyMemos) {
               sender.metadata = receiver.metadata = {
                 memo: sendManyMemos[sendManyStxTransferEventIndex++],
@@ -335,7 +334,7 @@ function makeStakeLockOperation(
   stake_metadata.unlock_height = tx.unlock_height.toString();
   const lock: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getEventTypeString(tx.event_type),
+    type: RosettaOperationType.StxLock,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(tx.locked_address, () => 'Unexpected nullish locked_address'),
@@ -418,7 +417,7 @@ function makeFeeOperation(tx: BaseTx): RosettaOperation {
 function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const burn: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(tx.asset_event_type_id),
+    type: RosettaOperationType.Burn,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(baseTx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -440,7 +439,7 @@ function makeFtBurnOperation(
 ): RosettaOperation {
   const burn: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    type: RosettaOperationType.Burn,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
@@ -463,7 +462,7 @@ function makeFtBurnOperation(
 function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(tx.asset_event_type_id),
+    type: RosettaOperationType.Mint,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(tx.recipient, () => 'Unexpected nullish sender_address'),
@@ -487,7 +486,7 @@ function makeFtMintOperation(
 ): RosettaOperation {
   const mint: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getAssetEventTypeString(ftEvent.asset_event_type_id),
+    type: RosettaOperationType.Mint,
     status: getTxStatus(baseTx.status),
     account: {
       address: unwrapOptional(ftEvent.recipient, () => 'Unexpected nullish sender_address'),
@@ -510,10 +509,14 @@ function makeFtMintOperation(
   return mint;
 }
 
-function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeSenderOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: 'token_transfer', //Sender operation should always be token_transfer,
+    type: RosettaOperationType.TokenTransfer, //Sender operation should always be token_transfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -531,6 +534,13 @@ function makeSenderOperation(tx: BaseTx, index: number): RosettaOperation {
     },
   };
 
+  if (memo) {
+    sender.metadata = {
+      ...sender.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
+
   return sender;
 }
 
@@ -542,7 +552,7 @@ function makeFtSenderOperation(
 ): RosettaOperation {
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: 'token_transfer',
+    type: RosettaOperationType.TokenTransfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(ftEvent.sender, () => 'Unexpected nullish sender_address'),
@@ -568,11 +578,15 @@ function makeFtSenderOperation(
   return sender;
 }
 
-function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
+function makeReceiverOperation(
+  tx: BaseTx,
+  index: number,
+  memo: string | undefined
+): RosettaOperation {
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
-    type: 'token_transfer', //Receiver operation should always be token_transfer
+    type: RosettaOperationType.TokenTransfer, //Receiver operation should always be token_transfer
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
@@ -593,6 +607,13 @@ function makeReceiverOperation(tx: BaseTx, index: number): RosettaOperation {
     },
   };
 
+  if (memo) {
+    receiver.metadata = {
+      ...receiver.metadata,
+      memo: parseTransactionMemo(memo),
+    };
+  }
+
   return receiver;
 }
 
@@ -605,7 +626,7 @@ function makeFtReceiverOperation(
   const receiver: RosettaOperation = {
     operation_identifier: { index: index },
     related_operations: [{ index: index - 1 }],
-    type: 'token_transfer',
+    type: RosettaOperationType.TokenTransfer,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(
@@ -638,7 +659,7 @@ function makeFtReceiverOperation(
 function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperation {
   const deployer: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.SmartContract,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -655,7 +676,7 @@ async function makeCallContractOperation(
 ): Promise<RosettaOperation> {
   const contractCallOp: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.ContractCall,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -673,8 +694,10 @@ async function makeCallContractOperation(
     case 'delegate-stx':
     case 'revoke-delegate-stx':
       if (
-        stackContractCall.contract_call.contract_id == PoxContractIdentifier.testnet ||
-        stackContractCall.contract_call.contract_id == PoxContractIdentifier.mainnet
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.testnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.mainnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.testnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet
       ) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {
@@ -691,7 +714,7 @@ function makeCoinbaseOperation(tx: BaseTx, index: number): RosettaOperation {
   // TODO : Add more mappings in operations for coinbase
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.Coinbase,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -705,7 +728,7 @@ function makePoisonMicroblockOperation(tx: BaseTx, index: number): RosettaOperat
   // TODO : add more mappings in operations for poison-microblock
   const sender: RosettaOperation = {
     operation_identifier: { index: index },
-    type: getTxTypeString(tx.type_id),
+    type: RosettaOperationType.PoisonMicroblock,
     status: getTxStatus(tx.status),
     account: {
       address: unwrapOptional(tx.sender_address, () => 'Unexpected nullish sender_address'),
@@ -738,7 +761,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
   const options: RosettaOptions = {};
 
   for (const operation of operations) {
-    switch (operation.type) {
+    switch (operation.type as RosettaOperationType) {
       case RosettaOperationType.Fee:
         options.fee = operation.amount?.value;
         break;
@@ -861,9 +884,16 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
     throw new Error(`Could not find field function_args in contract call`);
   }
 
+  // (define-public (delegate-stx
+  //   (amount-ustx uint)
+  //   (delegate-to principal)
+  //   (until-burn-ht (optional uint))
+  //   (pox-addr (optional { version: (buff 1),
+  //                         hashbytes: (buff 20) })))
+
   // Locked amount
   let argName = 'amount-ustx';
-  const amount_ustx = contract.contract_call.function_args?.find(a => a.name === argName);
+  const amount_ustx = contract.contract_call.function_args?.[0]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!amount_ustx) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -871,7 +901,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // Delegatee address
   argName = 'delegate-to';
-  const delegate_to = contract.contract_call.function_args?.find(a => a.name === argName);
+  const delegate_to = contract.contract_call.function_args?.[1]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!delegate_to) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -879,7 +909,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // Height on which the relation between delegator-delagatee will end  - OPTIONAL
   argName = 'until-burn-ht';
-  const until_burn = contract.contract_call.function_args.find(a => a.name === argName);
+  const until_burn = contract.contract_call.function_args?.[2]; // contract.contract_call.function_args.find(a => a.name === argName);
   if (!until_burn) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -888,7 +918,7 @@ function parseDelegateStxArgs(contract: ContractCallTransaction): RosettaDelegat
 
   // BTC reward address - OPTIONAL
   argName = 'pox-addr';
-  const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
+  const pox_address_raw = contract.contract_call.function_args?.[3]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (pox_address_raw == undefined || pox_address_raw.repr == 'none') {
     args.pox_addr = 'none';
   } else {
@@ -919,9 +949,15 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
     throw new Error(`Could not find field function_args in contract call`);
   }
 
+  // (define-public (stack-stx
+  //   (amount-ustx uint)
+  //   (pox-addr (tuple (version (buff 1)) (hashbytes (buff 20))))
+  //   (start-burn-ht uint)
+  //   (lock-period uint))
+
   // Locking period
   let argName = 'lock-period';
-  const lock_period = contract.contract_call.function_args.find(a => a.name === argName);
+  const lock_period = contract.contract_call.function_args?.[3]; // contract.contract_call.function_args.find(a => a.name === argName);
   if (!lock_period) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -929,7 +965,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Locked amount
   argName = 'amount-ustx';
-  const amount_ustx = contract.contract_call.function_args?.find(a => a.name === argName);
+  const amount_ustx = contract.contract_call.function_args?.[0]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!amount_ustx) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -937,7 +973,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // Start burn height
   argName = 'start-burn-ht';
-  const start_burn_height = contract.contract_call.function_args?.find(a => a.name === argName);
+  const start_burn_height = contract.contract_call.function_args?.[2]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!start_burn_height) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -964,7 +1000,7 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
 
   // BTC reward address
   argName = 'pox-addr';
-  const pox_address_raw = contract.contract_call.function_args?.find(a => a.name === argName);
+  const pox_address_raw = contract.contract_call.function_args?.[1]; // contract.contract_call.function_args?.find(a => a.name === argName);
   if (!pox_address_raw) {
     throw new Error(`Could not find field name ${argName} in contract call`);
   }
@@ -976,9 +1012,8 @@ function parseStackStxArgs(contract: ContractCallTransaction): RosettaStakeContr
         version: ClarityValueBuffer;
         hashbytes: ClarityValueBuffer;
       }>;
-      // TODO(perf): this should be able to use stacks-native-encoding stx-to-btc address fn
       args.pox_addr = poxAddressToBtcAddress(
-        hexToBuffer(addressCV.data.version.buffer),
+        hexToBuffer(addressCV.data.version.buffer)[0],
         hexToBuffer(addressCV.data.hashbytes.buffer),
         chainID == ChainID.Mainnet ? 'mainnet' : 'testnet'
       );
@@ -1022,7 +1057,7 @@ function getStxCurrencyMetadata(): RosettaCurrency {
 
 export function rawTxToStacksTransaction(raw_tx: string): StacksTransaction {
   const buffer = hexToBuffer(raw_tx);
-  const transaction: StacksTransaction = deserializeTransaction(BufferReader.fromBuffer(buffer));
+  const transaction: StacksTransaction = deserializeTransaction(new BytesReader(buffer));
   return transaction;
 }
 
@@ -1071,11 +1106,17 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     case TxPayloadTypeID.SmartContract:
       transactionType = DbTxTypeId.SmartContract;
       break;
+    case TxPayloadTypeID.VersionedSmartContract:
+      transactionType = DbTxTypeId.VersionedSmartContract;
+      break;
     case TxPayloadTypeID.ContractCall:
       transactionType = DbTxTypeId.ContractCall;
       break;
     case TxPayloadTypeID.Coinbase:
       transactionType = DbTxTypeId.Coinbase;
+      break;
+    case TxPayloadTypeID.CoinbaseToAltRecipient:
+      transactionType = DbTxTypeId.CoinbaseToAltRecipient;
       break;
     case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
@@ -1174,15 +1215,15 @@ export function getSigners(transaction: StacksTransaction): RosettaAccountIdenti
 }
 
 export function getStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
+  return new StacksTestnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 function getStacksMainnetNetwork() {
-  const stacksNetwork = new StacksMainnet();
-  stacksNetwork.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
-  return stacksNetwork;
+  return new StacksMainnet({
+    url: `http://${getCoreNodeEndpoint()}`,
+  });
 }
 
 export function getStacksNetwork() {
@@ -1198,7 +1239,7 @@ export function verifySignature(
   publicAddress: string,
   signature: MessageSignature
 ): boolean {
-  const { r, s } = parseRecoverableSignature(signature.data);
+  const { r, s } = parseRecoverableSignatureVrs(signature.data);
 
   try {
     const ec = new EC('secp256k1');

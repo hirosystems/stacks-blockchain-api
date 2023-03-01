@@ -18,7 +18,6 @@ import {
   AnchorMode,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
-import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout, unwrapOptional } from '../helpers';
@@ -224,11 +223,12 @@ async function callContractFunction(
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
-  const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
-  contractCallTx.setFee(fee);
+  // const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
+  // contractCallTx.setFee(fee);
 
-  const serialized: Buffer = contractCallTx.serialize();
+  const serialized: Buffer = Buffer.from(contractCallTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'call-contract-func');
 }
@@ -248,17 +248,22 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     postConditionMode: PostConditionMode.Allow,
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
 
   const contractId = senderAddress + '.' + contractName;
 
-  const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-  const feeRateResult = await feeRateReq.text();
-  const txBytes = new BN(contractDeployTx.serialize().byteLength);
-  const feeRate = new BN(feeRateResult);
-  const fee = feeRate.mul(txBytes);
-  contractDeployTx.setFee(fee);
-  const { txId } = await sendCoreTx(contractDeployTx.serialize(), api, 'deploy-contract');
+  // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+  // const feeRateResult = await feeRateReq.text();
+  // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
+  // const feeRate = BigInt(feeRateResult);
+  // const fee = feeRate * txBytes;
+  // contractDeployTx.setFee(fee);
+  const { txId } = await sendCoreTx(
+    Buffer.from(contractDeployTx.serialize()),
+    api,
+    'deploy-contract'
+  );
 
   return { txId, contractId };
 }
@@ -271,14 +276,15 @@ async function transferStx(
   await waitForBlock(api);
   const transferTx = await makeSTXTokenTransfer({
     recipient: recipientAddr,
-    amount: new BN(amount),
+    amount: amount,
     senderKey: senderPk,
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
-  const serialized: Buffer = transferTx.serialize();
+  const serialized: Buffer = Buffer.from(transferTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
 
@@ -304,11 +310,11 @@ async function sendCoreTx(
 }
 
 function getStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = getCoreNodeEndpoint({
+  const url = getCoreNodeEndpoint({
     host: `http://${HOST}`,
     port: PORT,
   });
+  const stacksNetwork = new StacksTestnet({ url });
   return stacksNetwork;
 }
 

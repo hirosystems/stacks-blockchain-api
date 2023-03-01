@@ -33,6 +33,7 @@ export enum ResourceType {
   Contract,
   Microblock,
   Token,
+  Pox2Event,
 }
 
 const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -64,15 +65,24 @@ const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: 
     defaultLimit: 50,
     maxLimit: 200,
   },
+  [ResourceType.Pox2Event]: {
+    defaultLimit: 96,
+    maxLimit: 200,
+  },
 };
 
-export function getPagingQueryLimit(resourceType: ResourceType, limitOverride?: any) {
+export function getPagingQueryLimit(
+  resourceType: ResourceType,
+  limitOverride?: any,
+  maxLimitOverride?: number
+) {
   const pagingQueryLimit = pagingQueryLimits[resourceType];
   if (!limitOverride) {
     return pagingQueryLimit.defaultLimit;
   }
   const newLimit = parsePagingQueryInput(limitOverride);
-  if (newLimit > pagingQueryLimit.maxLimit) {
+  const maxLimit = maxLimitOverride ?? pagingQueryLimit.maxLimit;
+  if (newLimit > maxLimit) {
     throw new InvalidRequestError(
       `'limit' must be equal to or less than ${pagingQueryLimit.maxLimit}`,
       InvalidRequestErrorType.invalid_query

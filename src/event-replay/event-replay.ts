@@ -1,15 +1,5 @@
-import * as path from 'path';
 import * as fs from 'fs';
-import { startEventServer } from '../event-stream/event-server';
-import {
-  defaultLogLevel,
-  getApiConfiguredChainID,
-  HttpClientResponse,
-  httpPostRequest,
-  logger,
-} from '../helpers';
-import { findBnsGenesisBlockData, findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { importV1BnsNames, importV1BnsSubdomains, importV1TokenOfferingData } from '../import-v1';
+import * as path from 'path';
 import {
   databaseHasData,
   exportRawEventRequests,
@@ -17,6 +7,10 @@ import {
 } from '../datastore/event-requests';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { startEventServer } from '../event-stream/event-server';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest, logger } from '../helpers';
+import { importV1TokenOfferingData } from '../import-v1';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
 enum EventImportMode {
   /**

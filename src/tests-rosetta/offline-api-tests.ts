@@ -1,4 +1,3 @@
-import * as BigNum from 'bn.js';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import {
@@ -25,7 +24,6 @@ import {
   UnsignedContractCallOptions,
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { bufferToHexPrefixString } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
@@ -54,8 +52,9 @@ import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
 import * as nock from 'nock';
-import { decodeBtcAddress } from '@stacks/stacking';
+import * as poxHelpers from '../pox-helpers';
 import { PgStore } from '../datastore/pg-store';
+import { decodeBtcAddress } from '@stacks/stacking';
 
 describe('Rosetta offline API', () => {
   let db: PgStore;
@@ -499,9 +498,9 @@ describe('Rosetta offline API', () => {
     );
     const senderAddr = testnetKeys[0].stacksAddress;
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
-    const amount = new BN(1000);
-    const fee = new BN(180);
-    const nonce = new BN(0);
+    const amount = 1000;
+    const fee = 180;
+    const nonce = 0;
     const options: SignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
@@ -518,7 +517,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -545,9 +544,9 @@ describe('Rosetta offline API', () => {
     );
     const senderAddr = testnetKeys[0].stacksAddress;
     const recipientAddr = 'STDE7Y8HV3RX8VBM2TZVWJTS7ZA1XB0SSC3NEVH0';
-    const amount = new BN(1000);
-    const fee = new BN(180);
-    const nonce = new BN(0);
+    const amount = 1000;
+    const fee = 180;
+    const nonce = 0;
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipientAddr,
       amount: amount,
@@ -565,7 +564,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(testTransaction.serialize()),
+      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -670,20 +669,20 @@ describe('Rosetta offline API', () => {
 
     const tokenTransferOptions: UnsignedTokenTransferOptions = {
       recipient: recipient,
-      amount: new BN('500000'),
-      fee: new BN(fee),
+      amount: 500000,
+      fee: fee,
       publicKey: publicKey,
       network: getStacksNetwork(),
-      nonce: new BN(0),
+      nonce: 0,
       anchorMode: AnchorMode.Any,
     };
 
     const transaction = await makeUnsignedSTXTokenTransfer(tokenTransferOptions);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, 0);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -868,16 +867,16 @@ describe('Rosetta offline API', () => {
             },
           },
           metadata: {
-            number_of_cycles: number_of_cycles, 
+            number_of_cycles: number_of_cycles,
             pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
           }
         },
       ],
       metadata: {
         account_sequence: 0,
-        contract_address: contract_address, 
+        contract_address: contract_address,
         contract_name: contract_name,
-        burn_block_height: burn_block_height, 
+        burn_block_height: burn_block_height,
       },
       public_keys: [
         {
@@ -889,8 +888,8 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
       hashbytes,
@@ -910,18 +909,18 @@ describe('Rosetta offline API', () => {
         uintCV(number_of_cycles),
       ],
       validateWithAbi: false,
-      nonce: new BN(0), 
-      fee: new BN(fee),
+      nonce: 0,
+      fee: fee,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
     // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, 0);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1040,8 +1039,8 @@ describe('Rosetta offline API', () => {
 
     const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
 
-    const { hashMode, data } = decodeBtcAddress(poxBTCAddress);
-    const hashModeBuffer = bufferCV(new BN(hashMode, 10).toArrayLike(Buffer));
+    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
+    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
     const hashbytes = bufferCV(data);
     const poxAddressCV = tupleCV({
       hashbytes,
@@ -1060,18 +1059,18 @@ describe('Rosetta offline API', () => {
         someCV(uintCV(burn_block_height)),
         someCV(poxAddressCV),
       ],
-      fee: new BN(fee),
-      nonce: new BN(0),
+      fee: fee,
+      nonce: 0,
       validateWithAbi: false,
       network: getStacksNetwork(),
       anchorMode: AnchorMode.Any,
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
-    const unsignedTransaction = transaction.serialize();
+    const unsignedTransaction = Buffer.from(transaction.serialize());
 
     const signer = new TransactionSigner(transaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(fee), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, fee, 0);
 
     const result = await supertest(api.server)
       .post(`/rosetta/v1/construction/payloads`)
@@ -1105,23 +1104,23 @@ describe('Rosetta offline API', () => {
     const txOptions: UnsignedTokenTransferOptions = {
       publicKey: publicKey,
       recipient: standardPrincipalCV(testnetKeys[1].stacksAddress),
-      amount: new BigNum(12345),
+      amount: 12345,
       network: getStacksTestnetNetwork(),
       memo: 'test memo',
-      nonce: new BigNum(0),
-      fee: new BigNum(200),
+      nonce: 0,
+      fee: 200,
       anchorMode: AnchorMode.Any,
     };
 
     const unsignedTransaction = await makeUnsignedSTXTokenTransfer(txOptions);
-    const unsignedSerializedTx = unsignedTransaction.serialize().toString('hex');
+    const unsignedSerializedTx = Buffer.from(unsignedTransaction.serialize()).toString('hex');
 
     const signer = new TransactionSigner(unsignedTransaction);
 
-    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, new BN(200), new BN(0));
+    const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, 200, 0);
 
     signer.signOrigin(createStacksPrivateKey(testnetKeys[0].secretKey));
-    const signedSerializedTx = signer.transaction.serialize().toString('hex');
+    const signedSerializedTx = Buffer.from(signer.transaction.serialize()).toString('hex');
 
     const signature: MessageSignature = getSignature(signer.transaction) as MessageSignature;
 

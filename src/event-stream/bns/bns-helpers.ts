@@ -179,8 +179,9 @@ export function parseNamespaceRawValue(
 }
 
 export function GetStacksNetwork(chainId: ChainID) {
-  const network = chainId === ChainID.Mainnet ? new StacksMainnet() : new StacksTestnet();
-  network.coreApiUrl = `http://${getCoreNodeEndpoint()}`;
+  const url = `http://${getCoreNodeEndpoint()}`;
+  const network =
+    chainId === ChainID.Mainnet ? new StacksMainnet({ url }) : new StacksTestnet({ url });
   return network;
 }
 
@@ -263,8 +264,12 @@ export function parseNameRenewalWithNoZonefileHashFromContractCall(
     payload.function_args.length === 5 &&
     hexToCV(payload.function_args[4].hex).type === ClarityType.OptionalNone
   ) {
-    const namespace = (hexToCV(payload.function_args[0].hex) as BufferCV).buffer.toString('utf8');
-    const name = (hexToCV(payload.function_args[1].hex) as BufferCV).buffer.toString('utf8');
+    const namespace = Buffer.from(
+      (hexToCV(payload.function_args[0].hex) as BufferCV).buffer
+    ).toString('utf8');
+    const name = Buffer.from((hexToCV(payload.function_args[1].hex) as BufferCV).buffer).toString(
+      'utf8'
+    );
     return {
       name: `${name}.${namespace}`,
       namespace_id: namespace,

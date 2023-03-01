@@ -1,28 +1,45 @@
-import { hexToBuffer, logError, parseEnum } from '../helpers';
+import { hexToBuffer, logError, parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
   DbBlock,
   DbEvent,
+  DbEventBase,
   DbEventTypeId,
   DbFaucetRequest,
   DbFaucetRequestCurrency,
   DbFtEvent,
   DbMempoolStats,
   DbMempoolTx,
+  DbMempoolTxRaw,
   DbMicroblock,
   DbNftEvent,
+  DbPox2BaseEventData,
+  DbPox2DelegateStackExtendEvent,
+  DbPox2DelegateStackIncreaseEvent,
+  DbPox2DelegateStackStxEvent,
+  DbPox2DelegateStxEvent,
+  DbPox2Event,
+  DbPox2HandleUnlockEvent,
+  DbPox2StackAggregationCommitEvent,
+  DbPox2StackAggregationCommitIndexedEvent,
+  DbPox2StackAggregationIncreaseEvent,
+  DbPox2StackExtendEvent,
+  DbPox2StackIncreaseEvent,
+  DbPox2StackStxEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
   DbStxLockEvent,
   DbTx,
   DbTxAnchorMode,
+  DbTxRaw,
   DbTxStatus,
   DbTxTypeId,
   FaucetRequestQueryResult,
   MempoolTxQueryResult,
   MicroblockQueryResult,
+  Pox2EventQueryResult,
   TxQueryResult,
 } from './common';
 import {
@@ -44,10 +61,10 @@ import { PgSqlClient } from './connection';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
+import { Pox2EventName } from '../pox-helpers';
 
 export const TX_COLUMNS = [
   'tx_id',
-  'raw_tx',
   'tx_index',
   'index_block_hash',
   'parent_index_block_hash',
@@ -74,6 +91,7 @@ export const TX_COLUMNS = [
   'token_transfer_recipient_address',
   'token_transfer_amount',
   'token_transfer_memo',
+  'smart_contract_clarity_version',
   'smart_contract_contract_id',
   'smart_contract_source_code',
   'contract_call_contract_id',
@@ -82,6 +100,7 @@ export const TX_COLUMNS = [
   'poison_microblock_header_1',
   'poison_microblock_header_2',
   'coinbase_payload',
+  'coinbase_alt_recipient',
   'raw_result',
   'event_count',
   'execution_cost_read_count',
@@ -94,7 +113,6 @@ export const TX_COLUMNS = [
 export const MEMPOOL_TX_COLUMNS = [
   'pruned',
   'tx_id',
-  'raw_tx',
   'type_id',
   'anchor_mode',
   'status',
@@ -111,6 +129,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'token_transfer_recipient_address',
   'token_transfer_amount',
   'token_transfer_memo',
+  'smart_contract_clarity_version',
   'smart_contract_contract_id',
   'smart_contract_source_code',
   'contract_call_contract_id',
@@ -119,6 +138,7 @@ export const MEMPOOL_TX_COLUMNS = [
   'poison_microblock_header_1',
   'poison_microblock_header_2',
   'coinbase_payload',
+  'coinbase_alt_recipient',
 ];
 
 export const BLOCK_COLUMNS = [
@@ -163,6 +183,7 @@ export const TX_METADATA_TABLES = [
   'stx_events',
   'ft_events',
   'nft_events',
+  'pox2_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',
@@ -170,6 +191,39 @@ export const TX_METADATA_TABLES = [
   'namespaces',
   'subdomains',
 ] as const;
+
+export const POX2_EVENT_COLUMNS = [
+  'event_index',
+  'tx_id',
+  'tx_index',
+  'block_height',
+  'index_block_hash',
+  'parent_index_block_hash',
+  'microblock_hash',
+  'microblock_sequence',
+  'canonical',
+  'microblock_canonical',
+  'stacker',
+  'locked',
+  'balance',
+  'burnchain_unlock_height',
+  'name',
+  'pox_addr',
+  'pox_addr_raw',
+  'first_cycle_locked',
+  'first_unlocked_cycle',
+  'lock_period',
+  'lock_amount',
+  'start_burn_height',
+  'unlock_burn_height',
+  'delegator',
+  'delegate_to',
+  'increase_by',
+  'total_locked',
+  'extend_count',
+  'reward_cycle',
+  'amount_ustx',
+];
 
 /**
  * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
@@ -260,7 +314,6 @@ export function parseMempoolTxQueryResult(result: MempoolTxQueryResult): DbMempo
     tx_id: result.tx_id,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
-    raw_tx: result.raw_tx,
     type_id: result.type_id as DbTxTypeId,
     anchor_mode: result.anchor_mode as DbTxAnchorMode,
     status: result.status,
@@ -297,7 +350,6 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     tx_index: result.tx_index,
     nonce: result.nonce,
     sponsor_nonce: result.sponsor_nonce ?? undefined,
-    raw_tx: result.raw_tx,
     index_block_hash: result.index_block_hash,
     parent_index_block_hash: result.parent_index_block_hash,
     block_hash: result.block_hash,
@@ -342,6 +394,10 @@ function parseTxTypeSpecificQueryResult(
   } else if (target.type_id === DbTxTypeId.SmartContract) {
     target.smart_contract_contract_id = result.smart_contract_contract_id;
     target.smart_contract_source_code = result.smart_contract_source_code;
+  } else if (target.type_id === DbTxTypeId.VersionedSmartContract) {
+    target.smart_contract_clarity_version = result.smart_contract_clarity_version;
+    target.smart_contract_contract_id = result.smart_contract_contract_id;
+    target.smart_contract_source_code = result.smart_contract_source_code;
   } else if (target.type_id === DbTxTypeId.ContractCall) {
     target.contract_call_contract_id = result.contract_call_contract_id;
     target.contract_call_function_name = result.contract_call_function_name;
@@ -351,6 +407,9 @@ function parseTxTypeSpecificQueryResult(
     target.poison_microblock_header_2 = result.poison_microblock_header_2;
   } else if (target.type_id === DbTxTypeId.Coinbase) {
     target.coinbase_payload = result.coinbase_payload;
+  } else if (target.type_id === DbTxTypeId.CoinbaseToAltRecipient) {
+    target.coinbase_payload = result.coinbase_payload;
+    target.coinbase_alt_recipient = result.coinbase_alt_recipient;
   } else {
     throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
   }
@@ -420,6 +479,7 @@ export function parseDbEvents(
     locked_amount: string;
     unlock_height: string;
     locked_address: string;
+    contract_name: string;
   }[],
   stxResults: {
     event_index: number;
@@ -431,6 +491,7 @@ export function parseDbEvents(
     sender?: string | undefined;
     recipient?: string | undefined;
     amount: string;
+    memo?: string;
   }[],
   ftResults: {
     event_index: number;
@@ -486,6 +547,7 @@ export function parseDbEvents(
       locked_amount: BigInt(result.locked_amount),
       unlock_height: Number(result.unlock_height),
       locked_address: result.locked_address,
+      contract_name: result.contract_name,
     };
     events[rowIndex++] = event;
   }
@@ -502,6 +564,9 @@ export function parseDbEvents(
       event_type: DbEventTypeId.StxAsset,
       amount: BigInt(result.amount),
     };
+    if (result.memo) {
+      event.memo = result.memo;
+    }
     events[rowIndex++] = event;
   }
   for (const result of ftResults) {
@@ -554,11 +619,200 @@ export function parseDbEvents(
   return events;
 }
 
+export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
+  const baseEvent: DbEventBase = {
+    event_index: row.event_index,
+    tx_id: row.tx_id,
+    tx_index: row.tx_index,
+    block_height: row.block_height,
+    canonical: row.canonical,
+  };
+  const basePox2Event: DbPox2BaseEventData = {
+    stacker: row.stacker,
+    locked: BigInt(row.locked ?? 0),
+    balance: BigInt(row.balance),
+    burnchain_unlock_height: BigInt(row.burnchain_unlock_height),
+    pox_addr: row.pox_addr ?? null,
+    pox_addr_raw: row.pox_addr_raw ?? null,
+  };
+  const rowName = row.name as Pox2EventName;
+  switch (rowName) {
+    case Pox2EventName.HandleUnlock: {
+      const eventData: DbPox2HandleUnlockEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          first_cycle_locked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+          first_unlocked_cycle: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackStx: {
+      const eventData: DbPox2StackStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackIncrease: {
+      const eventData: DbPox2StackIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackExtend: {
+      const eventData: DbPox2StackExtendEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStx: {
+      const eventData: DbPox2DelegateStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          delegate_to: unwrapOptionalProp(row, 'delegate_to'),
+          unlock_burn_height: row.unlock_burn_height
+            ? BigInt(unwrapOptionalProp(row, 'unlock_burn_height'))
+            : null,
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackStx: {
+      const eventData: DbPox2DelegateStackStxEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
+          lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackIncrease: {
+      const eventData: DbPox2DelegateStackIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
+          total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.DelegateStackExtend: {
+      const eventData: DbPox2DelegateStackExtendEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
+          delegator: unwrapOptionalProp(row, 'delegator'),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationCommit: {
+      const eventData: DbPox2StackAggregationCommitEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationCommitIndexed: {
+      const eventData: DbPox2StackAggregationCommitIndexedEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case Pox2EventName.StackAggregationIncrease: {
+      const eventData: DbPox2StackAggregationIncreaseEvent = {
+        ...basePox2Event,
+        name: rowName,
+        data: {
+          reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    default: {
+      throw new Error(`Unexpected event name ${rowName}`);
+    }
+  }
+}
+
 export function parseQueryResultToSmartContract(row: {
   tx_id: string;
   canonical: boolean;
   contract_id: string;
   block_height: number;
+  clarity_version: number | null;
   source_code: string;
   abi: unknown | null;
 }) {
@@ -567,6 +821,7 @@ export function parseQueryResultToSmartContract(row: {
     canonical: row.canonical,
     contract_id: row.contract_id,
     block_height: row.block_height,
+    clarity_version: row.clarity_version,
     source_code: row.source_code,
     // The consumers of this object expect the value to be stringify
     // JSON if exists, otherwise null rather than undefined.
@@ -585,6 +840,7 @@ export function parseTxsWithAssetTransfers(
     event_recipient?: string | undefined;
     event_asset_identifier?: string | undefined;
     event_value?: string | undefined;
+    event_memo?: string | undefined;
   })[],
   stxAddress: string
 ) {
@@ -598,6 +854,7 @@ export function parseTxsWithAssetTransfers(
         amount: bigint;
         sender?: string;
         recipient?: string;
+        memo?: string;
       }[];
       ft_transfers: {
         asset_identifier: string;
@@ -637,6 +894,7 @@ export function parseTxsWithAssetTransfers(
             amount: eventAmount,
             sender: r.event_sender,
             recipient: r.event_recipient,
+            memo: r.event_memo,
           });
           if (r.event_sender === stxAddress) {
             txResult.stx_sent += eventAmount;
@@ -744,6 +1002,13 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       dbTx.smart_contract_source_code = txData.payload.code_body;
       break;
     }
+    case TxPayloadTypeID.VersionedSmartContract: {
+      const sender_address = getTxSenderAddress(txData);
+      dbTx.smart_contract_contract_id = sender_address + '.' + txData.payload.contract_name;
+      dbTx.smart_contract_source_code = txData.payload.code_body;
+      dbTx.smart_contract_clarity_version = txData.payload.clarity_version;
+      break;
+    }
     case TxPayloadTypeID.ContractCall: {
       const contractAddress = txData.payload.address;
       dbTx.contract_call_contract_id = `${contractAddress}.${txData.payload.contract_name}`;
@@ -760,6 +1025,15 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       dbTx.coinbase_payload = txData.payload.payload_buffer;
       break;
     }
+    case TxPayloadTypeID.CoinbaseToAltRecipient: {
+      dbTx.coinbase_payload = txData.payload.payload_buffer;
+      if (txData.payload.recipient.type_id === PrincipalTypeID.Standard) {
+        dbTx.coinbase_alt_recipient = txData.payload.recipient.address;
+      } else {
+        dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
+      }
+      break;
+    }
     default:
       throw new Error(`Unexpected transaction type ID: ${JSON.stringify(txData.payload)}`);
   }
@@ -772,8 +1046,8 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   sponsorAddress: string | undefined;
   rawTx: string;
   receiptDate: number;
-}): DbMempoolTx {
-  const dbTx: DbMempoolTx = {
+}): DbMempoolTxRaw {
+  const dbTx: DbMempoolTxRaw = {
     pruned: false,
     nonce: Number(msg.txData.auth.origin_condition.nonce),
     sponsor_nonce:
@@ -800,10 +1074,10 @@ export function createDbMempoolTxFromCoreMsg(msg: {
   return dbTx;
 }
 
-export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTx {
+export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
   const coreTx = msg.core_tx;
   const parsedTx = msg.parsed_tx;
-  const dbTx: DbTx = {
+  const dbTx: DbTxRaw = {
     tx_id: coreTx.txid,
     tx_index: coreTx.tx_index,
     nonce: Number(parsedTx.auth.origin_condition.nonce),
@@ -901,4 +1175,23 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
       }
     });
   });
+}
+
+export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempoolTxRaw[] {
+  const dbMempoolTxs: DbMempoolTxRaw[] = [];
+  for (const tx of txs) {
+    const dbMempoolTx: DbMempoolTxRaw = Object.assign(tx, {
+      pruned: false,
+      receipt_time: tx.burn_block_time,
+      fee_rate: BigInt(tx.fee_rate),
+      raw_tx: tx.raw_result,
+      token_transfer_amount:
+        tx.token_transfer_amount != null
+          ? BigInt(tx.token_transfer_amount)
+          : tx.token_transfer_amount,
+      sponsor_address: tx.sponsor_address ?? undefined,
+    });
+    dbMempoolTxs.push(dbMempoolTx);
+  }
+  return dbMempoolTxs;
 }

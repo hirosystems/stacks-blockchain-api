@@ -11,24 +11,24 @@ import {
   stringAsciiCV,
   serializeCV,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction } from 'stacks-encoding-native-js';
 import {
   DbBlock,
-  DbTx,
   DbTxTypeId,
   DbStxEvent,
   DbEventTypeId,
   DbAssetEventTypeId,
   DbFtEvent,
   DbNftEvent,
-  DbMempoolTx,
   DbSmartContract,
   DbSmartContractEvent,
   DbTokenOfferingLocked,
   DataStoreTxEventData,
   DataStoreMicroblockUpdateData,
+  DbTxRaw,
+  DbMempoolTxRaw,
+  DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
@@ -94,8 +94,8 @@ describe('address tests', () => {
       stxEventCount = 1,
       ftEventCount = 1,
       nftEventCount = 1
-    ): [DbTx, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
-      const tx: DbTx = {
+    ): [DbTxRaw, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
+      const tx: DbTxRaw = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
@@ -175,7 +175,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHexPrefixString(serializeCV(uintCV(amount))),
+          value: bufferToHexPrefixString(Buffer.from(serializeCV(uintCV(amount)))),
           recipient,
           sender,
         };
@@ -205,6 +205,7 @@ describe('address tests', () => {
         names: [],
         namespaces: [],
         smartContracts: [],
+        pox2Events: [],
       })),
     });
 
@@ -862,8 +863,8 @@ describe('address tests', () => {
       amount: number,
       canonical: boolean = true,
       sponsoredAddress: string | undefined = undefined
-    ): DbTx => {
-      const tx: DbTx = {
+    ): DbTxRaw => {
+      const tx: DbTxRaw = {
         tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
@@ -913,7 +914,7 @@ describe('address tests', () => {
       createStxTx(testAddr2, testAddr4, 35, true, testAddr7),
     ];
 
-    const tx: DbTx = {
+    const tx: DbTxRaw = {
       tx_id: '0x1234',
       tx_index: 4,
       anchor_mode: 3,
@@ -1098,6 +1099,7 @@ describe('address tests', () => {
       tx_id: '0x421234',
       canonical: true,
       block_height: block.block_height,
+      clarity_version: null,
       contract_id: testContractAddr,
       source_code: '(some-contract-src)',
       abi: JSON.stringify(contractJsonAbi),
@@ -1107,7 +1109,6 @@ describe('address tests', () => {
       tx_index: 5,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: '0x',
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1143,9 +1144,9 @@ describe('address tests', () => {
       abi: JSON.stringify(contractJsonAbi),
     };
 
-    const dataStoreTxs = txs.map(dbTx => {
+    const dataStoreTxs = txs.map(DbTxRaw => {
       return {
-        tx: dbTx,
+        tx: DbTxRaw,
         stxLockEvents: [],
         stxEvents: [],
         ftEvents: [],
@@ -1154,6 +1155,7 @@ describe('address tests', () => {
         smartContracts: [],
         names: [],
         namespaces: [],
+        pox2Events: [],
       } as DataStoreTxEventData;
     });
     dataStoreTxs.push({
@@ -1166,9 +1168,10 @@ describe('address tests', () => {
       smartContracts: [smartContract1],
       names: [],
       namespaces: [],
+      pox2Events: [],
     });
     dataStoreTxs.push({
-      tx: contractCall,
+      tx: { ...contractCall, raw_tx: '0x' },
       stxLockEvents: [],
       stxEvents: [
         {
@@ -1190,6 +1193,7 @@ describe('address tests', () => {
       smartContracts: [],
       names: [],
       namespaces: [],
+      pox2Events: [],
     });
     await db.update({
       block: block,
@@ -1580,6 +1584,7 @@ describe('address tests', () => {
           tx_index: 4,
           coinbase_payload: {
             data: '0x636f696e62617365206869',
+            alt_recipient: null,
           },
           event_count: 5,
           events: [],
@@ -1964,7 +1969,7 @@ describe('address tests', () => {
 
     const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
     expect(blockTxsRows.found).toBe(true);
-    const blockTxsRowsResult = blockTxsRows.result as DbTx[];
+    const blockTxsRowsResult = blockTxsRows.result as DbTxRaw[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);
     expect({
       ...contractCallResult1,
@@ -2020,21 +2025,21 @@ describe('address tests', () => {
       contractName: 'hello-world',
       functionName: 'fn-name',
       functionArgs: [{ type: ClarityType.Int, value: BigInt(556) }],
-      fee: new BN(200),
+      fee: 200,
       senderKey: 'b8d99fd45da58038d630d9855d3ca2466e8e0f89d3894c4724f0efc9ff4b51f001',
-      nonce: new BN(0),
+      nonce: 0,
       sponsored: true,
       anchorMode: AnchorMode.Any,
     });
     const sponsoredTx = await sponsorTransaction({
       transaction: txBuilder,
       sponsorPrivateKey: '381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301',
-      fee: new BN(300),
-      sponsorNonce: new BN(2),
+      fee: 300,
+      sponsorNonce: 2,
     });
-    const serialized = sponsoredTx.serialize();
+    const serialized = Buffer.from(sponsoredTx.serialize());
     const tx = decodeTransaction(serialized);
-    const dbTx = createDbTxFromCoreMsg({
+    const DbTxRaw = createDbTxFromCoreMsg({
       core_tx: {
         raw_tx: '0x' + serialized.toString('hex'),
         status: 'success',
@@ -2084,8 +2089,9 @@ describe('address tests', () => {
       non_fungible_tokens: [],
     };
     const smartContract: DbSmartContract = {
-      tx_id: dbTx.tx_id,
+      tx_id: DbTxRaw.tx_id,
       canonical: true,
+      clarity_version: null,
       contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
       block_height: dbBlock.block_height,
       source_code: '()',
@@ -2097,7 +2103,7 @@ describe('address tests', () => {
       minerRewards: [],
       txs: [
         {
-          tx: dbTx,
+          tx: DbTxRaw,
           stxEvents: [],
           stxLockEvents: [],
           ftEvents: [],
@@ -2106,6 +2112,7 @@ describe('address tests', () => {
           names: [],
           namespaces: [],
           smartContracts: [smartContract],
+          pox2Events: [],
         },
       ],
     });
@@ -2141,7 +2148,7 @@ describe('address tests', () => {
     expect(sponsor_nonces.type).toBe('application/json');
     expect(JSON.parse(sponsor_nonces.text)).toEqual(expectedResp2);
 
-    const mempoolTx: DbMempoolTx = {
+    const mempoolTx: DbMempoolTxRaw = {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 1,
@@ -2193,7 +2200,7 @@ describe('address tests', () => {
      * Sponsor detected missing nonce
      */
 
-    const mempoolTx1: DbMempoolTx = {
+    const mempoolTx1: DbMempoolTxRaw = {
       tx_id: '0x52123456',
       anchor_mode: 3,
       nonce: 1,
@@ -2280,7 +2287,7 @@ describe('address tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const stxTx: DbTx = {
+    const stxTx: DbTxRaw = {
       tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
       tx_index: 0,
       anchor_mode: 3,
@@ -2348,6 +2355,7 @@ describe('address tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2388,7 +2396,7 @@ describe('address tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
     };
-    const stxTx1: DbTx = {
+    const stxTx1: DbTxRaw = {
       tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
       tx_index: 0,
       anchor_mode: 3,
@@ -2452,6 +2460,7 @@ describe('address tests', () => {
           smartContracts: [],
           names: [],
           namespaces: [],
+          pox2Events: [],
         },
       ],
     });
@@ -2579,6 +2588,7 @@ describe('address tests', () => {
         smartContracts: [],
         names: [],
         namespaces: [],
+        pox2Events: [],
       });
     }
     await db.updateMicroblocks(mbData);
