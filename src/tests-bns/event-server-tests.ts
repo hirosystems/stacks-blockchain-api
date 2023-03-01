@@ -1,13 +1,13 @@
 import { ChainID } from '@stacks/transactions';
-import { bnsNameCV, httpPostRequest } from '../helpers';
-import { bnsImportMiddleware, EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
-import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
-import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
-import { getGenesisBlockData } from '../event-replay/helpers';
 import { NextFunction } from 'express';
+import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
+import { PgSqlClient } from '../datastore/connection';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { getGenesisBlockData } from '../event-replay/helpers';
+import { bnsImportMiddleware, EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { bnsNameCV, httpPostRequest } from '../helpers';
+import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -15,6 +15,7 @@ describe('BNS event server tests', () => {
   let eventServer: EventStreamServer;
 
   beforeEach(async () => {
+    console.log('nick');
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: true });
