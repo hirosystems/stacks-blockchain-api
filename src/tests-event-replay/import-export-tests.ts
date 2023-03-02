@@ -1,14 +1,14 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
-import { PgSqlClient } from 'src/datastore/connection';
-import { startEventServer } from 'src/event-stream/event-server';
-import { httpPostRequest } from 'src/helpers';
-import { useWithCleanup } from 'src/tests/test-helpers';
+import { PgSqlClient } from '../datastore/connection';
 import { getPgClientConfig } from '../datastore/connection-legacy';
 import { databaseHasData, getRawEventRequests } from '../datastore/event-requests';
 import { cycleMigrations, dangerousDropAllTables, runMigrations } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
+import { startEventServer } from '../event-stream/event-server';
+import { httpPostRequest } from '../helpers';
+import { useWithCleanup } from '../tests/test-helpers';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;

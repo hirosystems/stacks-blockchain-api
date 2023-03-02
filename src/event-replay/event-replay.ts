@@ -153,7 +153,8 @@ export async function importEventsFromTsv(
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) { // TODO: match PR
+        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
+          // TODO: match PR
           // Prunable events are ignored here.
           continue;
         }
