@@ -133,51 +133,8 @@ describe('import/export tests', () => {
       await runMigrations(undefined, 'down');
     });
 
-    // test('IBD mode blocks certain API routes', async () => {
-    //   process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    //   const routesVisited = new Set();
-
-    //   await useWithCleanup(
-    //     () => {
-    //       const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
-    //       const rawEventsIterator = getRawEventRequests(readStream);
-    //       return [rawEventsIterator, () => readStream.close()] as const;
-    //     },
-    //     async () => {
-    //       const eventServer = await startEventServer({
-    //         datastore: db,
-    //         chainId: ChainID.Mainnet,
-    //         serverHost: '127.0.0.1',
-    //         serverPort: 0,
-    //         httpLogLevel: 'debug',
-    //       });
-    //       return [eventServer, eventServer.closeAsync] as const;
-    //     },
-    //     async (rawEventsIterator, eventServer) => {
-    //       for await (const rawEvents of rawEventsIterator) {
-    //         for (const rawEvent of rawEvents) {
-    //           routesVisited.add(rawEvent.event_path);
-    //           const response = await httpPostRequest({
-    //             host: '127.0.0.1',
-    //             port: eventServer.serverAddress.port,
-    //             path: rawEvent.event_path,
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: Buffer.from(rawEvent.payload, 'utf8'),
-    //             throwOnNotOK: true,
-    //           });
-    //           if (ibdRoutes.includes(rawEvent.event_path)) {
-    //             expect(response.statusCode).toBe(200);
-    //             expect(response.response).toBe('IBD mode active.');
-    //           }
-    //         }
-    //       }
-    //     }
-    //   );
-    // });
-
-    test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
-      process.env.IBD_MODE_UNTIL_BLOCK = '1';
-
+    test('IBD mode blocks certain API routes', async () => {
+      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
       const routesVisited = new Set();
 
       await useWithCleanup(
@@ -209,21 +166,64 @@ describe('import/export tests', () => {
                 throwOnNotOK: true,
               });
               if (ibdRoutes.includes(rawEvent.event_path)) {
-                const chainTip = await db.getChainTip(client, false);
-                const ibdThreshold = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string);
-                if (chainTip.blockHeight < ibdThreshold) {
-                  expect(response.statusCode).toBe(200);
-                  expect(response.response).toBe('IBD mode active.');
-                } else {
-                  expect(response.statusCode).toBe(200);
-                  expect(response.response).not.toBe('IBD mode active.');
-                }
+                expect(response.statusCode).toBe(200);
+                expect(response.response).toBe('IBD mode active.');
               }
             }
           }
         }
       );
     });
+
+    // test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
+    //   process.env.IBD_MODE_UNTIL_BLOCK = '1';
+
+    //   const routesVisited = new Set();
+
+    //   await useWithCleanup(
+    //     () => {
+    //       const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+    //       const rawEventsIterator = getRawEventRequests(readStream);
+    //       return [rawEventsIterator, () => readStream.close()] as const;
+    //     },
+    //     async () => {
+    //       const eventServer = await startEventServer({
+    //         datastore: db,
+    //         chainId: ChainID.Mainnet,
+    //         serverHost: '127.0.0.1',
+    //         serverPort: 0,
+    //         httpLogLevel: 'debug',
+    //       });
+    //       return [eventServer, eventServer.closeAsync] as const;
+    //     },
+    //     async (rawEventsIterator, eventServer) => {
+    //       for await (const rawEvents of rawEventsIterator) {
+    //         for (const rawEvent of rawEvents) {
+    //           routesVisited.add(rawEvent.event_path);
+    //           const response = await httpPostRequest({
+    //             host: '127.0.0.1',
+    //             port: eventServer.serverAddress.port,
+    //             path: rawEvent.event_path,
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: Buffer.from(rawEvent.payload, 'utf8'),
+    //             throwOnNotOK: true,
+    //           });
+    //           if (ibdRoutes.includes(rawEvent.event_path)) {
+    //             const chainTip = await db.getChainTip(client, false);
+    //             const ibdThreshold = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string);
+    //             if (chainTip.blockHeight < ibdThreshold) {
+    //               expect(response.statusCode).toBe(200);
+    //               expect(response.response).toBe('IBD mode active.');
+    //             } else {
+    //               expect(response.statusCode).toBe(200);
+    //               expect(response.response).not.toBe('IBD mode active.');
+    //             }
+    //           }
+    //         }
+    //       }
+    //     }
+    //   );
+    // });
 
     test('IBD mode prevents refreshing materialized views', async () => {
       process.env.IBD_MODE_UNTIL_BLOCK = '1000';

@@ -1071,7 +1071,7 @@ describe('BNS event server tests', () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
 
-    await httpPostRequest({
+    httpPostRequest({
       host: '127.0.0.1',
       port: eventServer.serverAddress.port,
       path: '/new_block',
