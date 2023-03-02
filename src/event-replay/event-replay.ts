@@ -8,7 +8,7 @@ import {
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest, logger } from '../helpers';
 import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
