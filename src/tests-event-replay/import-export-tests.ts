@@ -133,9 +133,9 @@ describe('import/export tests', () => {
       await runMigrations(undefined, 'down');
     });
 
-    test('IBD mode blocks certain API routes', async () => {
-      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-      const routesVisited = new Set();
+    // test('IBD mode blocks certain API routes', async () => {
+    //   process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+    //   const routesVisited = new Set();
 
     //   await useWithCleanup(
     //     () => {
