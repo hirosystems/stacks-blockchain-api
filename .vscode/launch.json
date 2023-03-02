@@ -210,7 +210,7 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: My Tests",
+      "name": "Jest: My IBD Tests",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
@@ -218,7 +218,7 @@
         "--no-cache",
         "--detectOpenHandles",
         "--config",
-        "${workspaceRoot}/tests/jest.config.my-tests.js"
+        "${workspaceRoot}/tests/jest.config.my-ibd-tests.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
@@ -291,6 +291,23 @@
         "--no-cache",
         "--config",
         "${workspaceRoot}/tests/jest.config.bns.js"
+      ],
+      "outputCapture": "std",
+      "console": "integratedTerminal",
+      "preLaunchTask": "stacks-node:deploy-dev",
+      "postDebugTask": "stacks-node:stop-dev"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Jest: My BNS Tests",
+      "program": "${workspaceFolder}/node_modules/.bin/jest",
+      "args": [
+        "--testTimeout=3600000",
+        "--runInBand",
+        "--no-cache",
+        "--config",
+        "${workspaceRoot}/tests/jest.config.my-bns-tests.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",

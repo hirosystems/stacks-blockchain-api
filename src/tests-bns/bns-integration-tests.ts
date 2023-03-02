@@ -1,27 +1,22 @@
-import { ApiServer, startApiServer } from '../api/init';
-import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import { createHash } from 'crypto';
-import { DbTxRaw, DbTxStatus } from '../datastore/common';
-import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 import {
-  broadcastTransaction,
-  bufferCV,
-  FungibleConditionCode,
+  AnchorMode, broadcastTransaction,
+  bufferCV, ChainID, FungibleConditionCode,
   makeContractCall,
-  makeStandardSTXPostCondition,
-  standardPrincipalCV,
-  uintCV,
-  SignedContractCallOptions,
-  noneCV,
+  makeStandardSTXPostCondition, noneCV, PostConditionMode, SignedContractCallOptions, someCV, standardPrincipalCV,
+  uintCV
 } from '@stacks/transactions';
-import { logger } from '../helpers';
+import { createHash } from 'crypto';
+import { Server } from 'net';
+import * as supertest from 'supertest';
+import { ApiServer, startApiServer } from '../api/init';
 import { testnetKeys } from '../api/routes/debug';
-import { TestBlockBuilder } from '../test-utils/test-builders';
-import { PgWriteStore } from '../datastore/pg-write-store';
+import { DbTxRaw, DbTxStatus } from '../datastore/common';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { startEventServer } from '../event-stream/event-server';
+import { logger } from '../helpers';
+import { TestBlockBuilder } from '../test-utils/test-builders';
 
 
 function hash160(bfr: Buffer): Buffer {
@@ -604,6 +599,8 @@ describe('BNS integration tests', () => {
     await api.terminate();
     await db?.close();
     await runMigrations(undefined, 'down');
+    api.datastore.eventEmitter.removeAllListeners('txUpdate');
+    api.datastore.eventEmitter.removeAllListeners('nameUpdate')
   });
 });
 
