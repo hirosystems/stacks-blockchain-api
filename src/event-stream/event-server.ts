@@ -1,77 +1,76 @@
-import { inspect } from 'util';
-import * as net from 'net';
-import { createServer } from 'http';
-import * as express from 'express';
+import { ChainID } from '@stacks/transactions';
 import * as bodyParser from 'body-parser';
-import { asyncHandler } from '../api/async-handler';
-import PQueue from 'p-queue';
+import * as express from 'express';
 import * as expressWinston from 'express-winston';
-import * as winston from 'winston';
-import { hexToBuffer, logError, logger, LogLevel } from '../helpers';
+import { createServer } from 'http';
+import * as net from 'net';
+import PQueue from 'p-queue';
 import {
-  CoreNodeBlockMessage,
-  CoreNodeEventType,
-  CoreNodeBurnBlockMessage,
-  CoreNodeDropMempoolTxMessage,
-  CoreNodeAttachmentMessage,
-  CoreNodeMicroblockMessage,
-  CoreNodeParsedTxMessage,
-  CoreNodeEvent,
-  CoreNodeTxMessage,
-} from './core-node-message';
-import {
-  DbEventBase,
-  DbSmartContractEvent,
-  DbStxEvent,
-  DbEventTypeId,
-  DbFtEvent,
-  DbAssetEventTypeId,
-  DbNftEvent,
-  DbBlock,
-  DataStoreBlockUpdateData,
-  DbStxLockEvent,
-  DbMinerReward,
-  DbBurnchainReward,
-  DbRewardSlotHolder,
-  DataStoreMicroblockUpdateData,
-  DataStoreTxEventData,
-  DbMicroblock,
-  DataStoreAttachmentData,
-  DbPox2Event,
-  DbTxStatus,
-} from '../datastore/common';
-import {
-  getTxSenderAddress,
-  getTxSponsorAddress,
-  parseMessageTransaction,
-  CoreNodeMsgBlockData,
-  parseMicroblocksFromTxs,
-} from './reader';
-import {
-  decodeTransaction,
-  decodeClarityValue,
   ClarityValueBuffer,
   ClarityValueStringAscii,
   ClarityValueTuple,
+  decodeClarityValue,
+  decodeTransaction,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
+import { inspect } from 'util';
+import * as winston from 'winston';
+import { asyncHandler } from '../api/async-handler';
+import {
+  DataStoreAttachmentData,
+  DataStoreBlockUpdateData,
+  DataStoreMicroblockUpdateData,
+  DataStoreTxEventData,
+  DbAssetEventTypeId,
+  DbBlock,
+  DbBurnchainReward,
+  DbEventBase,
+  DbEventTypeId,
+  DbFtEvent,
+  DbMicroblock,
+  DbMinerReward,
+  DbNftEvent,
+  DbPox2Event,
+  DbRewardSlotHolder,
+  DbSmartContractEvent,
+  DbStxEvent,
+  DbStxLockEvent,
+  DbTxStatus,
+} from '../datastore/common';
+import {
+  createDbMempoolTxFromCoreMsg,
+  createDbTxFromCoreMsg,
+  getTxDbStatus,
+} from '../datastore/helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
+import { hexToBuffer, logError, logger, LogLevel } from '../helpers';
+import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
+import { Pox2ContractIdentifer } from '../pox-helpers';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
   parseNameRenewalWithNoZonefileHashFromContractCall,
   parseNamespaceFromContractEvent,
 } from './bns/bns-helpers';
-import { PgWriteStore } from '../datastore/pg-write-store';
 import {
-  createDbMempoolTxFromCoreMsg,
-  createDbTxFromCoreMsg,
-  getTxDbStatus,
-} from '../datastore/helpers';
-import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
-import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
-import { Pox2ContractIdentifer } from '../pox-helpers';
+  CoreNodeAttachmentMessage,
+  CoreNodeBlockMessage,
+  CoreNodeBurnBlockMessage,
+  CoreNodeDropMempoolTxMessage,
+  CoreNodeEvent,
+  CoreNodeEventType,
+  CoreNodeMicroblockMessage,
+  CoreNodeParsedTxMessage,
+} from './core-node-message';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
+import {
+  CoreNodeMsgBlockData,
+  getTxSenderAddress,
+  getTxSponsorAddress,
+  parseMessageTransaction,
+  parseMicroblocksFromTxs,
+} from './reader';
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -783,6 +782,20 @@ export async function startEventServer(opts: {
 
   const app = express();
 
+  const handleRawEventRequest = asyncHandler(async req => {
+    await messageHandler.handleRawEventRequest(req.path, req.body, db);
+
+    if (logger.isDebugEnabled()) {
+      const eventPath = req.path;
+      let payload = JSON.stringify(req.body);
+      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+      if (payload.length > 10_000_000) {
+        payload = 'payload body too large for logging';
+      }
+      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+    }
+  });
+
   app.use(
     expressWinston.logger({
       format: logger.format,
@@ -797,24 +810,30 @@ export async function startEventServer(opts: {
   );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
+
+  if (process.env.IBD_MODE_UNTIL_BLOCK) {
+    app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'], async (req, res, next) => {
+      try {
+        const chainTip = await db.getChainTip(db.sql, false);
+        if (chainTip.blockHeight >= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string)) {
+          next();
+        } else {
+          handleRawEventRequest(req, res, next);
+          res.status(200).send(`IBD mode active.`);
+        }
+      } catch (error) {
+        res
+          .status(500)
+          .json({ error })
+          .send('A middleware error occurred processing the request in IBD mode.');
+      }
+    });
+  }
+
   app.get('/', (req, res) => {
     res
       .status(200)
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
-  });
-
-  const handleRawEventRequest = asyncHandler(async req => {
-    await messageHandler.handleRawEventRequest(req.path, req.body, db);
-
-    if (logger.isDebugEnabled()) {
-      const eventPath = req.path;
-      let payload = JSON.stringify(req.body);
-      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-      if (payload.length > 10_000_000) {
-        payload = 'payload body too large for logging';
-      }
-      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
-    }
   });
 
   app.post(

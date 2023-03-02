@@ -2780,6 +2780,12 @@ export class PgWriteStore extends PgStore {
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
+    if (process.env.IBD_MODE_UNTIL_BLOCK) {
+      const chainTip = await this.getChainTip(sql);
+      if (chainTip.blockHeight <= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)) {
+        return;
+      }
+    }
     await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
   }
 

@@ -1,9 +1,5 @@
-import * as path from 'path';
 import * as fs from 'fs';
-import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
-import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
-import { importV1TokenOfferingData } from '../import-v1';
+import * as path from 'path';
 import {
   databaseHasData,
   exportRawEventRequests,
@@ -11,6 +7,10 @@ import {
 } from '../datastore/event-requests';
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { startEventServer } from '../event-stream/event-server';
+import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { importV1TokenOfferingData } from '../import-v1';
+import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
 enum EventImportMode {
   /**
@@ -69,8 +69,9 @@ export async function importEventsFromTsv(
   filePath?: string,
   importMode?: string,
   wipeDb: boolean = false,
-  force: boolean = false
-): Promise<void> {
+  force: boolean = false,
+  prunedBlockHeightOption?: number
+): Promise<HttpClientResponse[]> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
@@ -112,11 +113,13 @@ export async function importEventsFromTsv(
   const blockWindowSize = parseInt(
     process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
   );
-  const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
+  const prunedBlockHeight =
+    prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
+    process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
 
   const db = await PgWriteStore.connect({
@@ -145,11 +148,12 @@ export async function importEventsFromTsv(
   logger.level = 'warn';
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
+  const responses = [];
   let isPruneFinished = false;
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
+        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) { // TODO: match PR
           // Prunable events are ignored here.
           continue;
         }
@@ -158,7 +162,7 @@ export async function importEventsFromTsv(
           console.log(`Resuming prunable event import...`);
         }
       }
-      await httpPostRequest({
+      const response = await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,
         path: rawEvent.event_path,
@@ -172,10 +176,12 @@ export async function importEventsFromTsv(
           console.log(`Event file block height reached: ${blockHeight}`);
         }
       }
+      responses.push(response);
     }
   }
   await db.finishEventReplay();
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+  return responses;
 }
