@@ -112,69 +112,69 @@ describe('import/export tests', () => {
     expect(configState.bns_subdomains_imported).toBe(true);
   });
 
-  // describe('IBD', () => {
-  //   let db: PgWriteStore;
-  //   let client: PgSqlClient;
-  //   const ibdRoutes = ['/new_microblocks', '/new_mempool_tx', '/drop_mempool_tx'];
+  describe('IBD', () => {
+    let db: PgWriteStore;
+    let client: PgSqlClient;
+    const ibdRoutes = ['/new_microblocks', '/new_mempool_tx', '/drop_mempool_tx'];
 
-  //   beforeEach(async () => {
-  //     process.env.PG_DATABASE = 'postgres';
-  //     await cycleMigrations();
-  //     db = await PgWriteStore.connect({
-  //       usageName: 'tests',
-  //       withNotifier: false,
-  //       skipMigrations: true,
-  //     });
-  //     client = db.sql;
-  //   });
+    beforeEach(async () => {
+      process.env.PG_DATABASE = 'postgres';
+      await cycleMigrations();
+      db = await PgWriteStore.connect({
+        usageName: 'tests',
+        withNotifier: false,
+        skipMigrations: true,
+      });
+      client = db.sql;
+    });
 
-  //   afterEach(async () => {
-  //     process.env.IBD_MODE_UNTIL_BLOCK = undefined;
-  //     await db?.close();
-  //     await runMigrations(undefined, 'down');
-  //   });
+    afterEach(async () => {
+      process.env.IBD_MODE_UNTIL_BLOCK = undefined;
+      await db?.close();
+      await runMigrations(undefined, 'down');
+    });
 
-  //   test('IBD mode blocks certain API routes', async () => {
-  //     process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-  //     const routesVisited = new Set();
+    test('IBD mode blocks certain API routes', async () => {
+      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+      const routesVisited = new Set();
 
-  //     await useWithCleanup(
-  //       () => {
-  //         const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
-  //         const rawEventsIterator = getRawEventRequests(readStream);
-  //         return [rawEventsIterator, () => readStream.close()] as const;
-  //       },
-  //       async () => {
-  //         const eventServer = await startEventServer({
-  //           datastore: db,
-  //           chainId: ChainID.Mainnet,
-  //           serverHost: '127.0.0.1',
-  //           serverPort: 0,
-  //           httpLogLevel: 'debug',
-  //         });
-  //         return [eventServer, eventServer.closeAsync] as const;
-  //       },
-  //       async (rawEventsIterator, eventServer) => {
-  //         for await (const rawEvents of rawEventsIterator) {
-  //           for (const rawEvent of rawEvents) {
-  //             routesVisited.add(rawEvent.event_path);
-  //             const response = await httpPostRequest({
-  //               host: '127.0.0.1',
-  //               port: eventServer.serverAddress.port,
-  //               path: rawEvent.event_path,
-  //               headers: { 'Content-Type': 'application/json' },
-  //               body: Buffer.from(rawEvent.payload, 'utf8'),
-  //               throwOnNotOK: true,
-  //             });
-  //             if (ibdRoutes.includes(rawEvent.event_path)) {
-  //               expect(response.statusCode).toBe(200);
-  //               expect(response.response).toBe('IBD mode active.');
-  //             }
-  //           }
-  //         }
-  //       }
-  //     );
-  //   });
+      await useWithCleanup(
+        () => {
+          const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+          const rawEventsIterator = getRawEventRequests(readStream);
+          return [rawEventsIterator, () => readStream.close()] as const;
+        },
+        async () => {
+          const eventServer = await startEventServer({
+            datastore: db,
+            chainId: ChainID.Mainnet,
+            serverHost: '127.0.0.1',
+            serverPort: 0,
+            httpLogLevel: 'debug',
+          });
+          return [eventServer, eventServer.closeAsync] as const;
+        },
+        async (rawEventsIterator, eventServer) => {
+          for await (const rawEvents of rawEventsIterator) {
+            for (const rawEvent of rawEvents) {
+              routesVisited.add(rawEvent.event_path);
+              const response = await httpPostRequest({
+                host: '127.0.0.1',
+                port: eventServer.serverAddress.port,
+                path: rawEvent.event_path,
+                headers: { 'Content-Type': 'application/json' },
+                body: Buffer.from(rawEvent.payload, 'utf8'),
+                throwOnNotOK: true,
+              });
+              if (ibdRoutes.includes(rawEvent.event_path)) {
+                expect(response.statusCode).toBe(200);
+                expect(response.response).toBe('IBD mode active.');
+              }
+            }
+          }
+        }
+      );
+    });
 
   //   test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
   //     process.env.IBD_MODE_UNTIL_BLOCK = '1';
