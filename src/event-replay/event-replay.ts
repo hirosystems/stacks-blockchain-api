@@ -149,19 +149,10 @@ export async function importEventsFromTsv(
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
   const responses = [];
-  let isPruneFinished = false;
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
-          // TODO: match PR
-          // Prunable events are ignored here.
-          continue;
-        }
-        if (blockHeight == prunedBlockHeight && !isPruneFinished) {
-          isPruneFinished = true;
-          console.log(`Resuming prunable event import...`);
-        }
+        console.log(`Resuming prunable event import...`);
       }
       const response = await httpPostRequest({
         host: '127.0.0.1',
