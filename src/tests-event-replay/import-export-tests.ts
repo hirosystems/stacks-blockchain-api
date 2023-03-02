@@ -1,13 +1,13 @@
 // import { ChainID } from '@stacks/transactions';
-// import * as fs from 'fs';
 import { PgSqlClient } from '../datastore/connection';
 // import { getRawEventRequests } from '../datastore/event-requests';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
-// import { importEventsFromTsv } from '../event-replay/event-replay';
+import { importEventsFromTsv } from '../event-replay/event-replay';
 // import { startEventServer } from '../event-stream/event-server';
 // import { httpPostRequest } from '../helpers';
 // import { useWithCleanup } from '../tests/test-helpers';
+// import * as fs from 'fs';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -133,9 +133,9 @@ describe('import/export tests', () => {
       await runMigrations(undefined, 'down');
     });
 
-    // test('IBD mode blocks certain API routes', async () => {
-    //   process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    //   const routesVisited = new Set();
+    test('IBD mode blocks certain API routes', async () => {
+      process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+      const routesVisited = new Set();
 
     //   await useWithCleanup(
     //     () => {
@@ -231,27 +231,26 @@ describe('import/export tests', () => {
       expect(result).toBe(undefined);
     });
 
-    //   test('IBD mode covers prune mode', async () => {
-    //     const responses = await importEventsFromTsv(
-    //       'src/tests-event-replay/tsv/mocknet.tsv',
-    //       'pruned',
-    //       true,
-    //       true,
-    //       1000
-    //     );
-    //     let hitIbdRoute = false;
-    //     for (const response of responses) {
-    //       console.log({ response });
-    //       if (response.response === 'IBD mode active.') {
-    //         hitIbdRoute = true;
-    //         expect(
-    //           ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'].includes(
-    //             (response as any)?.req?.path
-    //           )
-    //         ).toBe(true);
-    //       }
-    //     }
-    //     expect(hitIbdRoute).toBe(true);
-    //   });
+    test('IBD mode covers prune mode', async () => {
+      const responses = await importEventsFromTsv(
+        'src/tests-event-replay/tsv/mocknet.tsv',
+        'pruned',
+        true,
+        true,
+        1000
+      );
+      let hitIbdRoute = false;
+      for (const response of responses) {
+        if (response.response === 'IBD mode active.') {
+          hitIbdRoute = true;
+          expect(
+            ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'].includes(
+              (response as any)?.req?.path
+            )
+          ).toBe(true);
+        }
+      }
+      expect(hitIbdRoute).toBe(true);
+    });
   });
 });

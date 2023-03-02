@@ -1,14 +1,3 @@
-import { execSync } from 'child_process';
-import * as crypto from 'crypto';
-import * as dotenv from 'dotenv-flow';
-import * as path from 'path';
-import * as util from 'util';
-import * as stream from 'stream';
-import * as http from 'http';
-import * as winston from 'winston';
-import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
-import * as ecc from 'tiny-secp256k1';
-import * as btc from 'bitcoinjs-lib';
 import {
   BufferCV,
   bufferCV,
@@ -19,14 +8,24 @@ import {
   tupleCV,
 } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
+import * as btc from 'bitcoinjs-lib';
+import { execSync } from 'child_process';
+import * as dotenv from 'dotenv-flow';
+import * as http from 'http';
+import { isArrayBufferView } from 'node:util/types';
+import * as path from 'path';
+import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import * as stream from 'stream';
+import * as ecc from 'tiny-secp256k1';
+import * as util from 'util';
+import * as winston from 'winston';
 import {
   CliConfigSetColors,
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import { isArrayBufferView } from 'node:util/types';
+import { DbEventTypeId } from './datastore/common';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -195,11 +194,11 @@ export const logger = winston.createLogger({
 export function logError(message: string, ...errorData: any[]) {
   if (isDevEnv) {
     console.error(message);
-    if (errorData?.length > 0) {
-      errorData.forEach(e => console.error(e));
+    if (errorData && Array.isArray(errorData) && errorData?.length > 0) {
+      errorData?.forEach(e => console.error(e));
     }
   } else {
-    if (errorData?.length > 0) {
+    if (errorData && Array.isArray(errorData) && errorData?.length > 0) {
       logger.error(message, ...errorData);
     } else {
       logger.error(message);
