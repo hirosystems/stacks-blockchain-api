@@ -1,5 +1,6 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
+import { PgSqlClient } from 'src/datastore/connection';
 import { startEventServer } from 'src/event-stream/event-server';
 import { httpPostRequest } from 'src/helpers';
 import { useWithCleanup } from 'src/tests/test-helpers';
