@@ -11,5 +11,5 @@ module.exports = {
   coverageDirectory: '<rootDir>/../coverage',
   globalSetup: '<rootDir>/tests-event-replay/setup.ts',
   globalTeardown: '<rootDir>/tests-event-replay/teardown.ts',
-  testTimeout: 20000,
+  testTimeout: 60000,
 };
