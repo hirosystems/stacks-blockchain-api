@@ -1,14 +1,14 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
 import { PgSqlClient } from '../datastore/connection';
-import { startEventServer } from '../event-stream/event-server';
-import { httpPostRequest } from '../helpers';
-import { useWithCleanup } from '../tests/test-helpers';
 import { getPgClientConfig } from '../datastore/connection-legacy';
 import { databaseHasData, getRawEventRequests } from '../datastore/event-requests';
 import { cycleMigrations, dangerousDropAllTables, runMigrations } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
+import { startEventServer } from '../event-stream/event-server';
+import { httpPostRequest } from '../helpers';
+import { useWithCleanup } from '../tests/test-helpers';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
@@ -137,11 +137,11 @@ describe('IBD', () => {
 
   test('IBD mode blocks certain API routes', async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    const routesVisited = new Set();
+    const ibdRoutesVisited = new Set();
 
     await useWithCleanup(
       () => {
-        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mocknet.tsv');
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
@@ -158,7 +158,7 @@ describe('IBD', () => {
       async (rawEventsIterator, eventServer) => {
         for await (const rawEvents of rawEventsIterator) {
           for (const rawEvent of rawEvents) {
-            routesVisited.add(rawEvent.event_path);
+            ibdRoutesVisited.add(rawEvent.event_path);
             const response = await httpPostRequest({
               host: '127.0.0.1',
               port: eventServer.serverAddress.port,
@@ -175,16 +175,17 @@ describe('IBD', () => {
         }
       }
     );
+    expect(ibdRoutesVisited.size).toBeGreaterThan(0);
   });
 
   test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1';
 
-    const routesVisited = new Set();
+    const ibdRoutesVisited = new Set();
 
     await useWithCleanup(
       () => {
-        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mainnet.tsv');
+        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mocknet.tsv');
         const rawEventsIterator = getRawEventRequests(readStream);
         return [rawEventsIterator, () => readStream.close()] as const;
       },
@@ -201,7 +202,7 @@ describe('IBD', () => {
       async (rawEventsIterator, eventServer) => {
         for await (const rawEvents of rawEventsIterator) {
           for (const rawEvent of rawEvents) {
-            routesVisited.add(rawEvent.event_path);
+            ibdRoutesVisited.add(rawEvent.event_path);
             const response = await httpPostRequest({
               host: '127.0.0.1',
               port: eventServer.serverAddress.port,
@@ -225,6 +226,7 @@ describe('IBD', () => {
         }
       }
     );
+    expect(ibdRoutesVisited.size).toBeGreaterThan(0);
   });
 
   test('IBD mode prevents refreshing materialized views', async () => {
