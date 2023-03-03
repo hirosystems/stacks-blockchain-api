@@ -68,7 +68,7 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
-import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
+import { handleBnsImport, importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
@@ -734,24 +734,6 @@ export type EventStreamServer = net.Server & {
   closeAsync: () => Promise<void>;
 };
 
-export const bnsImportMiddleware = (db: PgWriteStore) => {
-  return asyncHandler(async (req, res, next) => {
-    const blockMessage: CoreNodeBlockMessage = req.body;
-    const bnsDir = process.env.BNS_IMPORT_DIR;
-    if ((blockMessage.block_height === 0 || blockMessage.block_height === 1) && bnsDir) {
-      const configState = await db.getConfigState();
-      if (!configState.bns_names_onchain_imported || !configState.bns_subdomains_imported) {
-        const bnsGenesisBlock = getBnsGenesisBlockFromBlockMessage(blockMessage);
-        logger.verbose('Starting V1 BNS names import');
-        await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
-        logger.verbose('Starting V1 BNS subdomains import');
-        await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
-      }
-    }
-    next();
-  });
-};
-
 export async function startEventServer(opts: {
   datastore: PgWriteStore;
   chainId: ChainID;
@@ -843,6 +825,9 @@ export async function startEventServer(opts: {
       try {
         const blockMessage: CoreNodeBlockMessage = req.body;
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
+        if (blockMessage.block_height === 1) {
+          await handleBnsImport(db);
+        }
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
@@ -850,7 +835,6 @@ export async function startEventServer(opts: {
         res.status(500).json({ error: error });
       }
     }),
-    bnsImportMiddleware(db),
     handleRawEventRequest
   );
 

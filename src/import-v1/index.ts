@@ -22,7 +22,7 @@ import {
   logger,
   REPO_DIR,
 } from '../helpers';
-import { BnsGenesisBlock } from '../event-replay/helpers';
+import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
 
@@ -545,4 +545,24 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
     await db.updateConfigState(updatedConfigState, sql);
   });
   logger.info('Stacks 1.0 token offering data import completed');
+}
+
+export async function handleBnsImport(db: PgWriteStore) {
+  const bnsDir = process.env.BNS_IMPORT_DIR;
+  if (!bnsDir) {
+    console.log(`BNS_IMPORT_DIR not configured, will not import BNS data`);
+    return;
+  }
+  const configState = await db.getConfigState();
+  if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
+    console.log('Skipping V1 BNS import, already imported');
+    return;
+  }
+
+  const bnsGenesisBlock = await getBnsGenesisBlockFromBlockMessage(db);
+  console.log('Starting V1 BNS names import');
+  await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
+  console.log('Starting V1 BNS subdomains import');
+  await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
+  console.log('BNS import completed');
 }

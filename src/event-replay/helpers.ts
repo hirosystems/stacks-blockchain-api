@@ -1,9 +1,8 @@
 import { PgWriteStore } from '../datastore/pg-write-store';
 import * as fs from 'fs';
 import * as readline from 'readline';
-import { decodeTransaction, TxPayloadTypeID } from 'stacks-encoding-native-js';
-import { DataStoreBnsBlockData } from '../datastore/common';
-import { ReverseFileStream } from './reverse-file-stream';
+import { DataStoreBnsBlockData, DbTxTypeId } from '../datastore/common';
+import { readLinesReversed } from './reverse-file-stream';
 import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 export type BnsGenesisBlock = DataStoreBnsBlockData & {
@@ -21,13 +20,16 @@ export type BnsGenesisBlock = DataStoreBnsBlockData & {
  */
 export async function findTsvBlockHeight(filePath: string): Promise<number> {
   let blockHeight = 0;
-  const reverseStream = new ReverseFileStream(filePath);
+  const reverseStream = readLinesReversed(filePath);
   for await (const data of reverseStream) {
     const columns = data.split('\t');
     const eventName = columns[2];
     if (eventName === '/new_block') {
-      const payload = columns[3];
-      blockHeight = JSON.parse(payload).block_height;
+      const payload: { block_height?: number } = JSON.parse(columns[3]);
+      if (!payload.block_height || payload.block_height === 0) {
+        continue;
+      }
+      blockHeight = payload.block_height;
       break;
     }
   }
@@ -58,27 +60,28 @@ export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlo
   throw new Error('Genesis block data not found');
 }
 
-export function getBnsGenesisBlockFromBlockMessage(
-  genesisBlockMessage: CoreNodeBlockMessage
-): BnsGenesisBlock {
-  if (genesisBlockMessage.block_height !== 0 && genesisBlockMessage.block_height !== 1) {
-    throw new Error(
-      `This block message with height ${genesisBlockMessage.block_height} is not the genesis block message`
-    );
+export async function getBnsGenesisBlockFromBlockMessage(
+  db: PgWriteStore
+): Promise<BnsGenesisBlock> {
+  const genesisBlock = await db.getBlock({ height: 1 });
+  if (!genesisBlock.found) {
+    throw new Error('Could not find genesis block');
   }
-  const txs = genesisBlockMessage.transactions;
-  for (const tx of txs) {
-    const decodedTx = decodeTransaction(tx.raw_tx);
+  const txs = await db.getTxsFromBlock({ hash: genesisBlock.result.block_hash }, 100, 0);
+  if (!txs.found) {
+    throw new Error('Could not find genesis transactions');
+  }
+  for (const tx of txs.result.results) {
     // Look for the only token transfer transaction in the genesis block. This is the one
     // that contains all the events, including all BNS name registrations.
-    if (decodedTx.payload.type_id === TxPayloadTypeID.TokenTransfer) {
+    if (tx.type_id === DbTxTypeId.TokenTransfer) {
       return {
-        index_block_hash: genesisBlockMessage.index_block_hash,
-        parent_index_block_hash: genesisBlockMessage.parent_index_block_hash,
-        microblock_hash: genesisBlockMessage.parent_microblock,
-        microblock_sequence: genesisBlockMessage.parent_microblock_sequence,
+        index_block_hash: genesisBlock.result.index_block_hash,
+        parent_index_block_hash: genesisBlock.result.parent_index_block_hash,
+        microblock_hash: genesisBlock.result.parent_microblock_hash,
+        microblock_sequence: genesisBlock.result.parent_microblock_sequence,
         microblock_canonical: true,
-        tx_id: decodedTx.tx_id,
+        tx_id: tx.tx_id,
         tx_index: tx.tx_index,
       };
     }

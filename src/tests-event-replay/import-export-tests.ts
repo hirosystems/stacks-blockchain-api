@@ -1,5 +1,6 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
+import { getBnsGenesisBlockFromBlockMessage, getGenesisBlockData } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { getPgClientConfig } from '../datastore/connection-legacy';
 import { databaseHasData, getRawEventRequests } from '../datastore/event-requests';
@@ -104,9 +105,22 @@ describe('import/export tests', () => {
     await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
   });
 
-  test('Bns import occurs', async () => {
+  test('Bns import occurs (block 1 genesis)', async () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
     await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    const configState = await db.getConfigState();
+    expect(configState.bns_names_onchain_imported).toBe(true);
+    expect(configState.bns_subdomains_imported).toBe(true);
+  });
+
+  test('Bns import occurs (block 0 genesis)', async () => {
+    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
+    await importEventsFromTsv(
+      'src/tests-event-replay/tsv/mainnet-block0.tsv',
+      'archival',
+      true,
+      true
+    );
     const configState = await db.getConfigState();
     expect(configState.bns_names_onchain_imported).toBe(true);
     expect(configState.bns_subdomains_imported).toBe(true);
@@ -246,7 +260,6 @@ describe('IBD', () => {
     );
     let hitIbdRoute = false;
     for (const response of responses) {
-      console.log({ response });
       if (response.response === 'IBD mode active.') {
         hitIbdRoute = true;
         expect(
