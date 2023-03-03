@@ -1,3 +1,10 @@
+## [7.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.1...v7.1.0) (2023-03-03)
+
+
+### Features
+
+* initial block download option to speed up chain sync ([#1373](https://github.com/hirosystems/stacks-blockchain-api/issues/1373)) ([1f350ec](https://github.com/hirosystems/stacks-blockchain-api/commit/1f350ec45a44840b879c2e31958ada68e1c204e4))
+
 ## [7.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.0.1) (2023-02-23)
 
 
