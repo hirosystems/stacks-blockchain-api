@@ -550,18 +550,19 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
 export async function handleBnsImport(db: PgWriteStore) {
   const bnsDir = process.env.BNS_IMPORT_DIR;
   if (!bnsDir) {
-    logger.warn(`BNS_IMPORT_DIR not configured, will not import BNS data`);
+    console.log(`BNS_IMPORT_DIR not configured, will not import BNS data`);
     return;
   }
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported && configState.bns_subdomains_imported) {
-    logger.warn('Skipping V1 BNS import, already imported');
+    console.log('Skipping V1 BNS import, already imported');
     return;
   }
 
   const bnsGenesisBlock = await getBnsGenesisBlockFromBlockMessage(db);
-  logger.warn('Starting V1 BNS names import');
+  console.log('Starting V1 BNS names import');
   await importV1BnsNames(db, bnsDir, bnsGenesisBlock);
-  logger.warn('Starting V1 BNS subdomains import');
+  console.log('Starting V1 BNS subdomains import');
   await importV1BnsSubdomains(db, bnsDir, bnsGenesisBlock);
+  console.log('BNS import completed');
 }
