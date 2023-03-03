@@ -1069,7 +1069,7 @@ describe('BNS event server tests', () => {
 
   test('BNS middleware is async. /new_block posts return before importing BNS finishes', async () => {
     process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
-    const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet.tsv');
+    const genesisBlock = await getGenesisBlockData('src/tests-event-replay/tsv/mainnet-block0.tsv');
 
     await httpPostRequest({
       host: '127.0.0.1',

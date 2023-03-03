@@ -783,6 +783,20 @@ export async function startEventServer(opts: {
 
   const app = express();
 
+  const handleRawEventRequest = asyncHandler(async req => {
+    await messageHandler.handleRawEventRequest(req.path, req.body, db);
+
+    if (logger.isDebugEnabled()) {
+      const eventPath = req.path;
+      let payload = JSON.stringify(req.body);
+      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
+      if (payload.length > 10_000_000) {
+        payload = 'payload body too large for logging';
+      }
+      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+    }
+  });
+
   app.use(
     expressWinston.logger({
       format: logger.format,
@@ -797,24 +811,30 @@ export async function startEventServer(opts: {
   );
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
+
+  if (process.env.IBD_MODE_UNTIL_BLOCK) {
+    app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'], async (req, res, next) => {
+      try {
+        const chainTip = await db.getChainTip(db.sql, false);
+        if (chainTip.blockHeight >= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string)) {
+          next();
+        } else {
+          handleRawEventRequest(req, res, next);
+          res.status(200).send(`IBD mode active.`);
+        }
+      } catch (error) {
+        res
+          .status(500)
+          .json({ error })
+          .send('A middleware error occurred processing the request in IBD mode.');
+      }
+    });
+  }
+
   app.get('/', (req, res) => {
     res
       .status(200)
       .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
-  });
-
-  const handleRawEventRequest = asyncHandler(async req => {
-    await messageHandler.handleRawEventRequest(req.path, req.body, db);
-
-    if (logger.isDebugEnabled()) {
-      const eventPath = req.path;
-      let payload = JSON.stringify(req.body);
-      // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
-      if (payload.length > 10_000_000) {
-        payload = 'payload body too large for logging';
-      }
-      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
-    }
   });
 
   app.post(
