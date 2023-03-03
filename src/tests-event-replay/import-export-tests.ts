@@ -246,7 +246,6 @@ describe('IBD', () => {
     );
     let hitIbdRoute = false;
     for (const response of responses) {
-      console.log({ response });
       if (response.response === 'IBD mode active.') {
         hitIbdRoute = true;
         expect(

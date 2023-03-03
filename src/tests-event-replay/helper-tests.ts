@@ -23,6 +23,8 @@ describe('helper tests', () => {
     for (let i = 1; i <= 1000; i++) {
       contents += `line${i}\n`;
     }
+    // trim tailing \n char
+    contents = contents.substring(0, contents.length - 1);
     const testFilePath = writeTmpFile('test1.txt', contents);
     try {
       // Default stream buffer is 64KB, set to 300 bytes so file is larger than memory buffer
@@ -79,7 +81,7 @@ line4`;
   });
 
   test('ReverseFileStream streams file in reverse', async () => {
-    const contents = ['line1', 'line2', 'line3', 'line4'].join('\r\n');
+    const contents = ['line1', 'line2', 'line3', 'line4'].join('\n');
     const testFilePath = writeTmpFile('test1.txt', contents);
     try {
       const reverseStream = readLinesReversed(testFilePath);

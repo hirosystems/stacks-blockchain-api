@@ -132,6 +132,10 @@ export function readLinesReversed(
       callback();
     },
     destroy: (error, callback) => {
+      if ((error as Error)?.name === 'AbortError') {
+        // Ignore "AbortError", it means the stream was intentionally destroyed (e.g. a `break` statement in an async iterator)
+        error = null;
+      }
       reverseReadStream.destroy(error || undefined);
       callback(error);
     },
