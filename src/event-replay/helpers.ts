@@ -26,8 +26,11 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
     const columns = data.split('\t');
     const eventName = columns[2];
     if (eventName === '/new_block') {
-      const payload = columns[3];
-      blockHeight = JSON.parse(payload).block_height;
+      const payload: { block_height?: number } = JSON.parse(columns[3]);
+      if (!payload.block_height || payload.block_height === 0) {
+        continue;
+      }
+      blockHeight = payload.block_height;
       break;
     }
   }
