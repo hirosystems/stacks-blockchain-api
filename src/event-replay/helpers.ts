@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as readline from 'readline';
 import { decodeTransaction, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { DataStoreBnsBlockData } from '../datastore/common';
-import { ReverseFileStream } from './reverse-file-stream';
+import { createReverseFileStream } from './reverse-file-stream';
 import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 export type BnsGenesisBlock = DataStoreBnsBlockData & {
@@ -21,7 +21,7 @@ export type BnsGenesisBlock = DataStoreBnsBlockData & {
  */
 export async function findTsvBlockHeight(filePath: string): Promise<number> {
   let blockHeight = 0;
-  const reverseStream = new ReverseFileStream(filePath);
+  const reverseStream = createReverseFileStream(filePath);
   for await (const data of reverseStream) {
     const columns = data.split('\t');
     const eventName = columns[2];

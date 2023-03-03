@@ -1,69 +1,112 @@
 import * as stream from 'stream';
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 
-/**
- * Streams lines from a text file in reverse, starting from the end of the file.
- * Modernized version of https://www.npmjs.com/package/fs-reverse
- */
-export class ReverseFileStream extends stream.Readable {
-  private fileDescriptor: number;
-  private position: number;
+// Vendored and modified source from https://github.com/wmzy/reverse-read-line
 
-  private lineBuffer: string[] = [];
-  private remainder: string = '';
+export function createReverseFileStream(
+  filename: string,
+  {
+    encoding = 'utf8',
+    bufferSize = 4096,
+    separator,
+  }: {
+    encoding?: BufferEncoding;
+    bufferSize?: number;
+    separator?: string;
+  } = {}
+): stream.Readable {
+  let fd: fsPromises.FileHandle;
+  let size: number;
+  let offset: number;
+  let buffer: Buffer;
+  let leftover: Buffer;
+  let hasEnd: boolean;
+  let lines: string[] = [];
+  const sep = separator || /\r?\n/;
 
-  public readonly fileLength: number;
-  public bytesRead: number = 0;
-
-  constructor(filePath: string, opts?: stream.ReadableOptions) {
-    super({
-      ...{
-        // `objectMode` avoids the `Buffer->utf8->Buffer->utf8` conversions when pushing strings
-        objectMode: true,
-        // Restore default size for byte-streams, since objectMode sets it to 16
-        highWaterMark: 16384,
-        autoDestroy: true,
-      },
-      ...opts,
-    });
-    this.fileLength = fs.statSync(filePath).size;
-    this.position = this.fileLength;
-    this.fileDescriptor = fs.openSync(filePath, 'r', 0o666);
+  function splitLine(str: string) {
+    return str.split(sep);
   }
 
-  _read(size: number): void {
-    while (this.lineBuffer.length === 0 && this.position > 0) {
-      // Read `size` bytes from the end of the file.
-      const length = Math.min(size, this.position);
-      const buffer = Buffer.alloc(length);
-      this.position = this.position - length;
-      this.bytesRead += fs.readSync(this.fileDescriptor, buffer, 0, length, this.position);
+  let splitBuffer: (buf: Buffer) => number[];
 
-      // Split into lines to fill the `lineBuffer`
-      this.remainder = buffer.toString('utf8') + this.remainder;
-      this.lineBuffer = this.remainder.split(/\r?\n/);
+  if (separator) {
+    const separatorBuffer = Buffer.from(separator, encoding);
+    splitBuffer = (buf: Buffer) => {
+      const l = buf.indexOf(separatorBuffer);
+      if (l < 0) return [];
+      return [l, l + separator.length];
+    };
+  } else {
+    const [bufCR, bufLF] = Buffer.from('\r\n', encoding);
+    splitBuffer = function defaultSplitBuffer(buf: Buffer) {
+      const l = buf.indexOf(bufLF, 1);
+      if (l < 0) return [];
 
-      // Ignore empty/trailing lines, `readable.push('')` is not recommended
-      this.lineBuffer = this.lineBuffer.filter(line => line.length > 0);
-      const remainderHasPrefixEnding = this.remainder.startsWith('\n');
-      this.remainder = this.lineBuffer.shift() ?? '';
+      const r = l + 1;
+      if (buf[l - 1] === bufCR) return [l - 1, r];
+      return [l, r];
+    };
+  }
 
-      // Preserve the line-ending char for the remainder if one was at the read boundary
-      if (remainderHasPrefixEnding) {
-        this.remainder = '\n' + this.remainder;
-      }
+  async function openAndReadStat() {
+    if (fd !== undefined) return Promise.resolve();
+    fd = await fsPromises.open(filename, 'r');
+    const stats = await fd.stat();
+    size = stats.size;
+    bufferSize = Math.min(size, bufferSize);
+    offset = size - bufferSize;
+    buffer = Buffer.alloc(bufferSize);
+    leftover = Buffer.alloc(0);
+    lines = [];
+  }
+
+  async function readTrunk(): Promise<void> {
+    await openAndReadStat();
+    const readResult = await fd.read(buffer, 0, bufferSize, offset);
+    const buf = Buffer.concat([readResult.buffer.slice(0, readResult.bytesRead), leftover]);
+    if (offset === 0) {
+      hasEnd = true;
+      const str = buf.toString(encoding);
+      lines = splitLine(str).concat(lines);
+      return;
     }
-    if (this.lineBuffer.length) {
-      this.push(this.lineBuffer.pop());
-    } else if (this.remainder.length) {
-      this.push(this.remainder);
-      this.remainder = '';
+    if (offset < bufferSize) {
+      bufferSize = offset;
+      offset = 0;
     } else {
-      this.push(null);
+      offset -= bufferSize;
     }
+    const [sl, sr] = splitBuffer(buf);
+    if (!sl) {
+      leftover = buf;
+      return readTrunk();
+    }
+    leftover = buf.slice(0, sl);
+    const str = buf.slice(sr).toString(encoding);
+    lines = splitLine(str).concat(lines);
   }
 
-  _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
-    fs.closeSync(this.fileDescriptor);
-  }
+  let trimEndBR: () => void | Promise<void> = () => {
+    trimEndBR = () => {};
+    if (!lines[lines.length - 1]) lines.pop();
+    if (!lines.length && !hasEnd) return readTrunk();
+    return Promise.resolve();
+  };
+
+  return new stream.Readable({
+    encoding: 'utf8',
+    async read() {
+      if (!lines.length && !hasEnd) {
+        await readTrunk();
+      }
+      await trimEndBR();
+      const line = lines.pop();
+      this.push(line === undefined ? null : line);
+    },
+    async destroy(_err, cb) {
+      await fd.close();
+      cb(null);
+    },
+  });
 }
