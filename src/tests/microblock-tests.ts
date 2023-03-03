@@ -91,17 +91,15 @@ describe('microblock tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, rawEventsIterator, eventServer, api) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-          }
+        for await (const rawEvent of rawEventsIterator) {
+          await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: true,
+          });
         }
         // test that the out-of-order microblocks were not stored
         const mbHash1 = '0xb714e75a7dae26fee0e77788317a0c84e513d1d8647a376b21b1c864e55c135a';
@@ -153,17 +151,15 @@ describe('microblock tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, rawEventsIterator, eventServer, api) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-          }
+        for await (const rawEvent of rawEventsIterator) {
+          await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: true,
+          });
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
         const { body: txBody }: { body: Transaction } = txResult2;
@@ -219,17 +215,15 @@ describe('microblock tests', () => {
         return [apiServer, apiServer.terminate] as const;
       },
       async (_, rawEventsIterator, eventServer, api) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-          }
+        for await (const rawEvent of rawEventsIterator) {
+          await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: true,
+          });
         }
         const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${lostTx}`);
         const { body: txBody }: { body: Transaction } = txResult2;
