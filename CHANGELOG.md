@@ -1,3 +1,10 @@
+## [7.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0...v7.1.1) (2023-03-03)
+
+
+### Bug Fixes
+
+* duplicate BNS imports and event-replay prune mode bug with large tsv files ([#1571](https://github.com/hirosystems/stacks-blockchain-api/issues/1571)) ([e2b58b2](https://github.com/hirosystems/stacks-blockchain-api/commit/e2b58b2208e6a06a498472599159235ebb821a08))
+
 ## [7.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.1...v7.1.0) (2023-03-03)
 
 
