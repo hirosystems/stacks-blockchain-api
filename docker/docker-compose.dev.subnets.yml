@@ -20,7 +20,7 @@ services:
   stacks-subnet:
     # restart: on-failure
     #image: "hirosystems/stacks-subnets:206-merge-stretch"
-    image: "hirosystems/stacks-subnets@sha256:7e296cd319f81b87b5a9c11f4c478dafb122c114dc805d832d68f39be150af49"
+    image: "hirosystems/stacks-subnets:0.3.0"
     command: subnet-node start --config=/app/config/Stacks-subnet.toml
     ports:
       - "30443:30443" # subnet-node RPC interface

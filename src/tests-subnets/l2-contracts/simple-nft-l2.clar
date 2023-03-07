@@ -1,3 +1,5 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/helper/simple-nft-l2.clar
+
 (define-constant CONTRACT_OWNER tx-sender)
 (define-constant CONTRACT_ADDRESS (as-contract tx-sender))
 

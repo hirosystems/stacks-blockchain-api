@@ -110,7 +110,6 @@ describe('Subnets tests', () => {
 
   test('Deploy L1 contract dependencies', async () => {
     const contracts: { name: string; clarityVersion: number }[] = [
-      { name: 'nft-trait', clarityVersion: 1 },
       { name: 'sip-010-trait-ft-standard', clarityVersion: 1 },
       { name: 'sip-traits', clarityVersion: 1 },
       { name: 'subnet-traits', clarityVersion: 1 },
@@ -622,7 +621,7 @@ describe('Subnets tests', () => {
         contractAddress: accounts.USER.addr,
         contractName: 'simple-ft-l1',
         functionName: 'gift-tokens',
-        functionArgs: [standardPrincipalCV(accounts.USER.addr)],
+        functionArgs: [uintCV(1), standardPrincipalCV(accounts.USER.addr)],
         senderKey: accounts.USER.key,
         validateWithAbi: false,
         network: l1Network,
