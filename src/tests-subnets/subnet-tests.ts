@@ -860,7 +860,7 @@ describe('Subnets tests', () => {
     });
   });
 
-  describe.skip('STX use-case test', () => {
+  describe('STX use-case test', () => {
     test('Step 1: Publish STX contract to L2', async () => {
       const curBlock = await l2Client.getInfo();
       await standByUntilBlock(curBlock.stacks_tip_height + 1);
