@@ -804,7 +804,7 @@ describe('Subnets tests', () => {
         withdrawal_root: string;
         sibling_hashes: string;
       }>(
-        `v2/withdrawal/ft/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${accounts.USER.addr}/simple-ft-l2/5`
+        `v2/withdrawal/ft/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${accounts.USER.addr}/simple-ft-l2/1`
       );
       console.log(json_merkle_entry);
       const cv_merkle_entry = {
@@ -843,8 +843,8 @@ describe('Subnets tests', () => {
         const result = await callReadOnlyFunction({
           contractAddress: accounts.USER.addr,
           contractName: 'simple-ft-l1',
-          functionName: 'get-owner',
-          functionArgs: [uintCV(5)],
+          functionName: 'get-balance',
+          functionArgs: [standardPrincipalCV(accounts.ALT_USER.addr)],
           network: l1Network,
           senderAddress: accounts.ALT_USER.addr,
         });
