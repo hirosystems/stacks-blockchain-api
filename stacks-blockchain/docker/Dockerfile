@@ -1,5 +1,5 @@
-# Pointed to stacks-blockchain `next` branch as of commit https://github.com/stacks-network/stacks-blockchain/commit/43b3398c428890d67392d6125b326c31913c1712
-FROM --platform=linux/amd64 hirosystems/stacks-api-e2e:stacks2.1-ecb1872 as build
+# Pointed to stacks-blockchain `2.1.0.0.0` git tag
+FROM --platform=linux/amd64 hirosystems/stacks-api-e2e:stacks2.1-a50d830 as build
 
 FROM --platform=linux/amd64 debian:bullseye
 
