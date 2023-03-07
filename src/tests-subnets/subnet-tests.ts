@@ -110,6 +110,7 @@ describe('Subnets tests', () => {
 
   test('Deploy L1 contract dependencies', async () => {
     const contracts: { name: string; clarityVersion: number }[] = [
+      { name: 'nft-trait', clarityVersion: 1 },
       { name: 'sip-010-trait-ft-standard', clarityVersion: 1 },
       { name: 'sip-traits', clarityVersion: 1 },
       { name: 'subnet-traits', clarityVersion: 1 },
