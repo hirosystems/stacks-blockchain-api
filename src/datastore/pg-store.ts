@@ -3501,7 +3501,7 @@ export class PgStore {
           n.tx_index DESC,
           n.event_index DESC
       )
-      SELECT * FROM name_results WHERE status <> 'name-revoke'
+      SELECT * FROM name_results WHERE status IS NULL OR status <> 'name-revoke'
     `;
   }
 
@@ -3638,7 +3638,7 @@ export class PgStore {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
-      const subdomainsQuery = await sql<{ fully_qualified_subdomain: string }[]>`
+      const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
         WITH addr_subdomains AS (
           SELECT DISTINCT ON (fully_qualified_subdomain)
             fully_qualified_subdomain
@@ -3651,7 +3651,7 @@ export class PgStore {
             AND microblock_canonical = TRUE
         )
         SELECT DISTINCT ON (fully_qualified_subdomain)
-          fully_qualified_subdomain
+          fully_qualified_subdomain, name
         FROM
           subdomains
           INNER JOIN addr_subdomains USING (fully_qualified_subdomain)
@@ -3661,6 +3661,14 @@ export class PgStore {
         ORDER BY
           fully_qualified_subdomain
       `;
+      const subdomainMap = new Map<string, string[]>();
+      for (const item of subdomainsQuery) {
+        const val = subdomainMap.get(item.name);
+        subdomainMap.set(
+          item.name,
+          val ? [...val, item.fully_qualified_subdomain] : [item.fully_qualified_subdomain]
+        );
+      }
       // 2. Get names owned by this address which were imported from Blockstack v1. These also don't
       //    have an associated NFT event so we have to look directly at the `names` table, however,
       //    we'll also check if any of these names are still owned by the same user.
@@ -3691,19 +3699,31 @@ export class PgStore {
         FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
-      const results: Set<string> = new Set([
-        ...subdomainsQuery.map(i => i.fully_qualified_subdomain),
-        ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
-        ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
-      ]);
-      // 4. Now that we've acquired all names owned by this address, filter out the ones that are
-      //    revoked.
-      return (
+      // 4. Now that we've acquired all names/subdomains owned by this address, filter out the ones
+      //    that are revoked. For subdomains, verify the parent name is not revoked.
+      const validatedNames = (
         await this.getNamesAtBlockHeight({
-          names: Array.from(results),
+          names: Array.from(
+            new Set([
+              ...subdomainMap.keys(),
+              ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
+              ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
+            ])
+          ),
           blockHeight: maxBlockHeight,
         })
       ).map(i => i.name);
+      // 5. Gather results.
+      const namesResult: string[] = [];
+      for (const name of validatedNames) {
+        const subdomains = subdomainMap.get(name);
+        if (subdomains) {
+          namesResult.push(...subdomains);
+        } else {
+          namesResult.push(name);
+        }
+      }
+      return namesResult.sort();
     });
     if (queryResult.length > 0) {
       return {
