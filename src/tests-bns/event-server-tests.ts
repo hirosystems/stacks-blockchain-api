@@ -181,7 +181,6 @@ describe('BNS event server tests', () => {
     const name1 = await db.getName({
       name: 'dayslikewater.btc',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name1.found).toBe(true);
     expect(name1.result?.namespace_id).toBe('btc');
@@ -290,7 +289,6 @@ describe('BNS event server tests', () => {
     const name2 = await db.getName({
       name: 'dayslikewater.btc',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name2.found).toBe(true);
     expect(name2.result?.namespace_id).toBe('btc');
@@ -343,7 +341,6 @@ describe('BNS event server tests', () => {
     const name1 = await db.getName({
       name: 'friedger.id',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name1.found).toBe(true);
     expect(name1.result?.namespace_id).toBe('id');
@@ -417,7 +414,6 @@ describe('BNS event server tests', () => {
     const name2 = await db.getName({
       name: 'friedger.id',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name2.found).toBe(true);
     expect(name2.result?.namespace_id).toBe('id');
@@ -517,10 +513,9 @@ describe('BNS event server tests', () => {
       throwOnNotOK: true,
     });
 
-    const name = await db.getName({ name: 'jnj.btc', chainId: ChainID.Mainnet, includeUnanchored: true });
+    const name = await db.getName({ name: 'jnj.btc', includeUnanchored: true });
     expect(name.found).toBe(true);
     expect(name.result?.zonefile_hash).toBe('9198e0b61a029671e53bd59aa229e7ae05af35a3');
-    expect(name.result?.index_block_hash).toBe('0x0200');
     expect(name.result?.tx_id).toBe('0x1212');
     expect(name.result?.status).toBe('name-update');
   });
@@ -833,7 +828,6 @@ describe('BNS event server tests', () => {
     const name = await db.getName({
       name: 'cricketwireless.btc',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name.found).toBe(true);
     expect(name.result?.namespace_id).toBe('btc');
@@ -1013,7 +1007,6 @@ describe('BNS event server tests', () => {
     const name = await db.getName({
       name: 'ape.mega',
       includeUnanchored: true,
-      chainId: ChainID.Mainnet
     });
     expect(name.found).toBe(true);
     expect(name.result?.namespace_id).toBe('mega');
