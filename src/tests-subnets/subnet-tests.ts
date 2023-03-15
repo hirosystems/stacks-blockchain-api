@@ -272,7 +272,7 @@ describe('Subnets tests', () => {
       }
     });
 
-    test('Step 2b: Validate register-new-nft-contract synthetic tx', async () => {
+    test('Step 2b: Validate register-asset-contract synthetic tx', async () => {
       while (true) {
         const expectedContractID = `ST000000000000000000002AMW42H.subnet`;
         const resp = await supertest(testEnv.api.server)
@@ -283,7 +283,7 @@ describe('Subnets tests', () => {
         if (
           txListResp.total === 0 ||
           tx.contract_call.contract_id !== expectedContractID ||
-          tx.contract_call.function_name !== 'register-new-nft-contract'
+          tx.contract_call.function_name !== 'register-asset-contract'
         ) {
           await timeout(200);
           continue;
@@ -295,6 +295,11 @@ describe('Subnets tests', () => {
             contract_call: {
               contract_id: expectedContractID,
               function_args: [
+                expect.objectContaining({
+                  name: 'asset-type',
+                  repr: '"nft"',
+                  type: '(string-ascii 3)',
+                }),
                 {
                   hex: '0x061a43596b5386f466863e25658ddf94bd0fadab00480d73696d706c652d6e66742d6c31',
                   name: 'l1-contract',
@@ -307,10 +312,14 @@ describe('Subnets tests', () => {
                   repr: `'${accounts.USER.addr}.simple-nft-l2`,
                   type: 'principal',
                 },
+                expect.objectContaining({
+                  name: 'burnchain-txid',
+                  type: '(buff 32)',
+                }),
               ],
-              function_name: 'register-new-nft-contract',
+              function_name: 'register-asset-contract',
               function_signature:
-                '(define-public (register-new-nft-contract (l1-contract principal) (l2-contract principal)))',
+                '(define-public (register-asset-contract (asset-type (string-ascii 3)) (l1-contract principal) (l2-contract principal) (burnchain-txid (buff 32))))',
             },
             event_count: 1,
             events: [],
@@ -339,7 +348,9 @@ describe('Subnets tests', () => {
               contract_id: 'ST000000000000000000002AMW42H.subnet',
               topic: 'print',
               value: expect.objectContaining({
-                repr: `(tuple (asset-type "nft") (event "register-contract") (l1-contract '${accounts.USER.addr}.simple-nft-l1) (l2-contract '${accounts.USER.addr}.simple-nft-l2) (withdrawal_id u0))`,
+                repr: expect.stringContaining(
+                  `(l1-contract '${accounts.USER.addr}.simple-nft-l1) (l2-contract '${accounts.USER.addr}.simple-nft-l2)`
+                ),
               }),
             },
             event_index: 0,
@@ -696,7 +707,7 @@ describe('Subnets tests', () => {
       }
     });
 
-    test('Step 2b: Validate register-new-ft-contract synthetic tx', async () => {
+    test('Step 2b: Validate register-asset-contract synthetic tx', async () => {
       while (true) {
         const expectedContractID = `ST000000000000000000002AMW42H.subnet`;
         const resp = await supertest(testEnv.api.server)
@@ -707,7 +718,7 @@ describe('Subnets tests', () => {
         if (
           txListResp.total === 0 ||
           tx.contract_call.contract_id !== expectedContractID ||
-          tx.contract_call.function_name !== 'register-new-ft-contract'
+          tx.contract_call.function_name !== 'register-asset-contract'
         ) {
           await timeout(200);
           continue;
@@ -720,6 +731,11 @@ describe('Subnets tests', () => {
               contract_id: expectedContractID,
               function_args: [
                 expect.objectContaining({
+                  name: 'asset-type',
+                  repr: '"ft"',
+                  type: '(string-ascii 3)',
+                }),
+                expect.objectContaining({
                   name: 'l1-contract',
                   repr: `'${accounts.USER.addr}.simple-ft-l1`,
                   type: 'principal',
@@ -729,10 +745,14 @@ describe('Subnets tests', () => {
                   repr: `'${accounts.USER.addr}.simple-ft-l2`,
                   type: 'principal',
                 }),
+                expect.objectContaining({
+                  name: 'burnchain-txid',
+                  type: '(buff 32)',
+                }),
               ],
-              function_name: 'register-new-ft-contract',
+              function_name: 'register-asset-contract',
               function_signature:
-                '(define-public (register-new-ft-contract (l1-contract principal) (l2-contract principal)))',
+                '(define-public (register-asset-contract (asset-type (string-ascii 3)) (l1-contract principal) (l2-contract principal) (burnchain-txid (buff 32))))',
             },
             event_count: 1,
             events: [],
@@ -761,7 +781,9 @@ describe('Subnets tests', () => {
               contract_id: 'ST000000000000000000002AMW42H.subnet',
               topic: 'print',
               value: expect.objectContaining({
-                repr: `(tuple (asset-type "ft") (event "register-contract") (l1-contract '${accounts.USER.addr}.simple-ft-l1) (l2-contract '${accounts.USER.addr}.simple-ft-l2) (withdrawal_id u0))`,
+                repr: expect.stringContaining(
+                  `(l1-contract '${accounts.USER.addr}.simple-ft-l1) (l2-contract '${accounts.USER.addr}.simple-ft-l2)`
+                ),
               }),
             },
             event_index: 0,

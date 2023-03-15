@@ -32,6 +32,7 @@ import {
   TxPublicKeyEncoding,
   TxSpendingConditionSingleSigHashMode,
   decodeClarityValueList,
+  ClarityValueBuffer,
 } from 'stacks-encoding-native-js';
 import {
   DbMicroblockPartial,
@@ -91,26 +92,37 @@ function createSubnetTransactionFromL1RegisterAsset(
   subnetEvent: SmartContractEvent,
   txId: string
 ): DecodedTxResult {
+  if (
+    burnchainOp.register_asset.asset_type !== 'ft' &&
+    burnchainOp.register_asset.asset_type !== 'nft'
+  ) {
+    throw new Error(
+      `Unexpected L1 register asset type: ${JSON.stringify(burnchainOp.register_asset)}`
+    );
+  }
+
   const [contractAddress, contractName] = subnetEvent.contract_event.contract_identifier
     .split('::')[0]
     .split('.');
   const decContractAddress = decodeStacksAddress(contractAddress);
 
-  // (define-public (register-new-ft-contract (l1-contract principal) (l2-contract principal))
-  // (define-public (register-new-nft-contract (l1-contract principal) (l2-contract principal))
-  let fnName: string;
-  if (burnchainOp.register_asset.asset_type === 'ft') {
-    fnName = 'register-new-ft-contract';
-  } else if (burnchainOp.register_asset.asset_type === 'nft') {
-    fnName = 'register-new-nft-contract';
-  } else {
-    throw new Error(
-      `Unexpected L1 register asset type: ${JSON.stringify(burnchainOp.register_asset)}`
-    );
-  }
+  const decodedLogEvent = decodeClarityValue<
+    ClarityValueTuple<{
+      'burnchain-txid': ClarityValueBuffer;
+    }>
+  >(subnetEvent.contract_event.raw_value);
+
+  // (define-public (register-asset-contract
+  //   (asset-type (string-ascii 3))
+  //   (l1-contract principal)
+  //   (l2-contract principal)
+  //   (burnchain-txid (buff 32))
+  const fnName = 'register-asset-contract';
   const legacyClarityVals = [
+    stringAsciiCV(burnchainOp.register_asset.asset_type),
     principalCV(burnchainOp.register_asset.l1_contract_id),
     principalCV(burnchainOp.register_asset.l2_contract_id),
+    bufferCV(hexToBuffer(decodedLogEvent.data['burnchain-txid'].buffer)),
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
