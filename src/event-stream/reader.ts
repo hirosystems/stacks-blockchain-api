@@ -1,4 +1,5 @@
 import {
+  BurnchainOp,
   CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
@@ -45,6 +46,7 @@ import {
   I32_MAX,
   bufferToHexPrefixString,
   hexToBuffer,
+  SubnetContractIdentifer,
 } from '../helpers';
 import {
   TransactionVersion,
@@ -81,6 +83,78 @@ export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
     sponsorAddress = tx.auth.sponsor_condition.signer.address;
   }
   return sponsorAddress;
+}
+
+function createSubnetTransactionFromL1RegisterAsset(
+  chainId: ChainID,
+  burnchainOp: BurnchainOp,
+  subnetEvent: SmartContractEvent,
+  txId: string
+): DecodedTxResult {
+  const [contractAddress, contractName] = subnetEvent.contract_event.contract_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+
+  // (define-public (register-new-ft-contract (l1-contract principal) (l2-contract principal))
+  // (define-public (register-new-nft-contract (l1-contract principal) (l2-contract principal))
+  let fnName: string;
+  if (burnchainOp.register_asset.asset_type === 'ft') {
+    fnName = 'register-new-ft-contract';
+  } else if (burnchainOp.register_asset.asset_type === 'nft') {
+    fnName = 'register-new-nft-contract';
+  } else {
+    throw new Error(
+      `Unexpected L1 register asset type: ${JSON.stringify(burnchainOp.register_asset)}`
+    );
+  }
+  const legacyClarityVals = [
+    principalCV(burnchainOp.register_asset.l1_contract_id),
+    principalCV(burnchainOp.register_asset.l2_contract_id),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decContractAddress[0],
+          address_hash_bytes: decContractAddress[1],
+          address: contractAddress,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: fnName,
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
 }
 
 function createSubnetTransactionFromL1NftDeposit(
@@ -573,6 +647,14 @@ export function parseMessageTransaction(
         })
         .find(e => !!e);
 
+      const subnetEvents = events.filter(
+        (e): e is SmartContractEvent =>
+          e.type === CoreNodeEventType.ContractEvent &&
+          e.contract_event.topic === 'print' &&
+          (e.contract_event.contract_identifier === SubnetContractIdentifer.mainnet ||
+            e.contract_event.contract_identifier === SubnetContractIdentifer.testnet)
+      );
+
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
         txSender = stxTransferEvent.stx_transfer_event.sender;
@@ -607,6 +689,18 @@ export function parseMessageTransaction(
         txSender = ftMintEvent.ft_mint_event.recipient;
       } else if (stxMintEvent) {
         rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
+        txSender = getTxSenderAddress(rawTx);
+      } else if (
+        subnetEvents.length > 0 &&
+        coreTx.burnchain_op &&
+        coreTx.burnchain_op.register_asset
+      ) {
+        rawTx = createSubnetTransactionFromL1RegisterAsset(
+          chainId,
+          coreTx.burnchain_op,
+          subnetEvents[0],
+          coreTx.txid
+        );
         txSender = getTxSenderAddress(rawTx);
       } else {
         logError(
