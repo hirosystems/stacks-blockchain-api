@@ -635,22 +635,6 @@ describe('BNS API tests', () => {
       'imported.btc'
     ]);
 
-    const subdomain2: DbBnsSubdomain = {
-      namespace_id: 'btc',
-      name: 'imported.btc',
-      fully_qualified_subdomain: 'test.imported.btc',
-      resolver: 'https://registrar.blockstack.org',
-      owner: address3,
-      zonefile: 'test',
-      zonefile_hash: 'test-hash',
-      zonefile_offset: 0,
-      parent_zonefile_hash: 'p-test-hash',
-      parent_zonefile_index: 0,
-      block_height: dbBlock.block_height,
-      tx_index: 0,
-      tx_id: '0x5454',
-      canonical: true,
-    };
     await db.resolveBnsSubdomains(
       {
         index_block_hash: dbBlock.index_block_hash,
@@ -659,7 +643,40 @@ describe('BNS API tests', () => {
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
       },
-      [subdomain2]
+      [
+        {
+          namespace_id: 'btc',
+          name: 'imported.btc',
+          fully_qualified_subdomain: 'test.imported.btc',
+          resolver: 'https://registrar.blockstack.org',
+          owner: address3,
+          zonefile: 'test',
+          zonefile_hash: 'test-hash',
+          zonefile_offset: 0,
+          parent_zonefile_hash: 'p-test-hash',
+          parent_zonefile_index: 0,
+          block_height: dbBlock.block_height,
+          tx_index: 0,
+          tx_id: '0x5454',
+          canonical: true,
+        },
+        {
+          namespace_id: 'btc',
+          name: 'imported.btc',
+          fully_qualified_subdomain: 'test2.imported.btc',
+          resolver: 'https://registrar.blockstack.org',
+          owner: address3,
+          zonefile: 'test',
+          zonefile_hash: 'test-hash',
+          zonefile_offset: 0,
+          parent_zonefile_hash: 'p-test-hash',
+          parent_zonefile_index: 0,
+          block_height: dbBlock.block_height,
+          tx_index: 0,
+          tx_id: '0x5454',
+          canonical: true,
+        }
+      ]
     );
 
     // New subdomain resolves.
@@ -668,7 +685,8 @@ describe('BNS API tests', () => {
     expect(query9.type).toBe('application/json');
     expect(query9.body.names).toStrictEqual([
       'imported.btc',
-      'test.imported.btc'
+      'test.imported.btc',
+      'test2.imported.btc',
     ]);
 
     // Revoked name stops resolving.

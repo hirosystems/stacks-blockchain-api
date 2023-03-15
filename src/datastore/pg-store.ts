@@ -625,7 +625,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true 
+        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
@@ -645,9 +645,9 @@ export class PgStore {
       const microblockQuery = await sql<
         (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
-      SELECT microblocks.*, txs.tx_id 
+      SELECT microblocks.*, txs.tx_id
       FROM microblocks LEFT JOIN txs USING(microblock_hash)
-      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND
         txs.canonical = true AND txs.microblock_canonical = true
       ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
       LIMIT ${args.limit}
@@ -3661,7 +3661,7 @@ export class PgStore {
         ORDER BY
           fully_qualified_subdomain
       `;
-      const subdomainMap = new Map<string, string[]>();
+      const subdomainMap = new Map<string, string[]>(); // name -> subdomain array
       for (const item of subdomainsQuery) {
         const val = subdomainMap.get(item.name);
         subdomainMap.set(
@@ -3693,33 +3693,32 @@ export class PgStore {
         `;
         oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
       }
+      const namesToValidate = importedNamesQuery
+        .map(i => i.name)
+        .filter(i => !oldImportedNames.includes(i));
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
         FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
+      namesToValidate.push(...nftNamesQuery.map(i => bnsHexValueToName(i.value)));
       // 4. Now that we've acquired all names/subdomains owned by this address, filter out the ones
       //    that are revoked. For subdomains, verify the parent name is not revoked.
       const validatedNames = (
         await this.getNamesAtBlockHeight({
-          names: Array.from(
-            new Set([
-              ...subdomainMap.keys(),
-              ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
-              ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
-            ])
-          ),
+          names: Array.from(new Set([...subdomainMap.keys(), ...namesToValidate])),
           blockHeight: maxBlockHeight,
         })
       ).map(i => i.name);
-      // 5. Gather results.
+      // 5. Gather results. Keep all valid names + all subdomains whose parent names are valid.
       const namesResult: string[] = [];
       for (const name of validatedNames) {
         const subdomains = subdomainMap.get(name);
         if (subdomains) {
           namesResult.push(...subdomains);
-        } else {
+        }
+        if (namesToValidate.includes(name)) {
           namesResult.push(name);
         }
       }
