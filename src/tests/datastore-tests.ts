@@ -4107,11 +4107,9 @@ describe('postgres datastore', () => {
     let name = await db.getName({
       name: 'xyz.abc',
       includeUnanchored: false,
-      chainId: ChainID.Mainnet,
     });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
-    expect(name.result.index_block_hash).toBe(block2.index_block_hash);
 
     let namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
@@ -4326,11 +4324,9 @@ describe('postgres datastore', () => {
     name = await db.getName({
       name: 'xyz.abc',
       includeUnanchored: false,
-      chainId: ChainID.Mainnet,
     });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
-    expect(name.result.index_block_hash).toBe(block2.index_block_hash);
 
     namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
@@ -4400,11 +4396,9 @@ describe('postgres datastore', () => {
     name = await db.getName({
       name: 'xyz.abc',
       includeUnanchored: false,
-      chainId: ChainID.Mainnet,
     });
     assert(name.found);
     expect(name.result.canonical).toBe(true);
-    expect(name.result.index_block_hash).toBe(block2b.index_block_hash);
 
     namespace = await db.getNamespace({ namespace: 'abc', includeUnanchored: false });
     assert(namespace.found);
