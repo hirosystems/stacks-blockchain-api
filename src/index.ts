@@ -97,7 +97,7 @@ async function monitorCoreRpcConnection(): Promise<void> {
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`);
+      logger.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`, error);
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
