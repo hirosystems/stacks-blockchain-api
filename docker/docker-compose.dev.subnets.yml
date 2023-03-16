@@ -19,8 +19,9 @@ services:
       - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts
   stacks-subnet:
     # restart: on-failure
-    #image: "hirosystems/stacks-subnets:206-merge-stretch"
-    image: "hirosystems/stacks-subnets:0.3.0"
+    image: "hirosystems/stacks-subnets:7012d22"
+    # build:
+    #   dockerfile: ./subnet-node.Dockerfile
     command: subnet-node start --config=/app/config/Stacks-subnet.toml
     ports:
       - "30443:30443" # subnet-node RPC interface
