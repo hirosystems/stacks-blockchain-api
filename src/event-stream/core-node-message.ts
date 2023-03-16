@@ -148,6 +148,28 @@ interface FtBurnEvent extends CoreNodeEventBase {
   };
 }
 
+interface BurnchainOpRegisterAssetNft {
+  register_asset: {
+    asset_type: 'nft';
+    burn_header_hash: string;
+    l1_contract_id: string;
+    l2_contract_id: string;
+    txid: string;
+  };
+}
+
+interface BurnchainOpRegisterAssetFt {
+  register_asset: {
+    asset_type: 'ft';
+    burn_header_hash: string;
+    l1_contract_id: string;
+    l2_contract_id: string;
+    txid: string;
+  };
+}
+
+export type BurnchainOp = BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt;
+
 export type CoreNodeEvent =
   | SmartContractEvent
   | StxTransferEvent
@@ -174,6 +196,7 @@ export interface CoreNodeTxMessage {
   microblock_sequence: number | null;
   microblock_hash: string | null;
   microblock_parent_hash: string | null;
+  burnchain_op?: BurnchainOp | null;
 }
 
 export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {

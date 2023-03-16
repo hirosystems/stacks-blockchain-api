@@ -1,15 +1,24 @@
-## [7.1.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.1.0-beta.1) (2023-02-14)
-
-
-### Features
-
-* beta release with subnets support ([06164eb](https://github.com/hirosystems/stacks-blockchain-api/commit/06164eb1dd2b23d6fa192fefc6692b08108cc8be))
-* support for subnets ([#1549](https://github.com/hirosystems/stacks-blockchain-api/issues/1549)) ([5d7056c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d7056c1ba0aa0b202f341a83adf0f6bd2d13c71))
+## [7.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0...v7.1.1) (2023-03-03)
 
 
 ### Bug Fixes
 
-* fixed the order of microblocks_streamed returned in reverse order in block endpoint ([#1528](https://github.com/hirosystems/stacks-blockchain-api/issues/1528)) ([764f64a](https://github.com/hirosystems/stacks-blockchain-api/commit/764f64a538c88a17c381eccb867ed3032e73bea1))
+* duplicate BNS imports and event-replay prune mode bug with large tsv files ([#1571](https://github.com/hirosystems/stacks-blockchain-api/issues/1571)) ([e2b58b2](https://github.com/hirosystems/stacks-blockchain-api/commit/e2b58b2208e6a06a498472599159235ebb821a08))
+
+## [7.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.1...v7.1.0) (2023-03-03)
+
+
+### Features
+
+* initial block download option to speed up chain sync ([#1373](https://github.com/hirosystems/stacks-blockchain-api/issues/1373)) ([1f350ec](https://github.com/hirosystems/stacks-blockchain-api/commit/1f350ec45a44840b879c2e31958ada68e1c204e4))
+
+## [7.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.0.1) (2023-02-23)
+
+
+### Bug Fixes
+
+* ensure transactions are never reported as both pending and confirmed ([#1561](https://github.com/hirosystems/stacks-blockchain-api/issues/1561)) ([a5a398e](https://github.com/hirosystems/stacks-blockchain-api/commit/a5a398e0d665980fd42f27e86e068076beac16ea))
+* support genesis block 0 during BNS sync ([#1559](https://github.com/hirosystems/stacks-blockchain-api/issues/1559)) ([6750861](https://github.com/hirosystems/stacks-blockchain-api/commit/6750861e99c88a6a672f007c26ec36cfb0cce6b1))
 
 ## [7.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.4...v7.0.0) (2023-02-07)
 

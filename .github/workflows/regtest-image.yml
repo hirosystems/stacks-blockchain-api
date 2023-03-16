@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       stacks_blockchain_commit:
-        description: 'stacks-blockchain git commit'
+        description: 'stacks-blockchain git commit, branch, or tag'
         required: true
         type: string
 
@@ -43,13 +43,21 @@ jobs:
           sudo apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross gcc-aarch64-linux-gnu
       - name: Fetch Stacks node repo
         if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          BLOCKCHAIN_REPO: https://github.com/stacks-network/stacks-blockchain.git
         run: |
           echo "$PWD"
           mkdir stacks-blockchain-repo && cd stacks-blockchain-repo
-          git init
-          git remote add origin https://github.com/stacks-network/stacks-blockchain.git
-          git -c protocol.version=2 fetch --depth=1 origin $STACKS_BLOCKCHAIN_COMMIT
-          git reset --hard FETCH_HEAD
+          if git ls-remote -htq --exit-code $BLOCKCHAIN_REPO $STACKS_BLOCKCHAIN_COMMIT; then
+            echo "Cloning Stacks blockchain from branch or tag: $STACKS_BLOCKCHAIN_COMMIT"
+            git clone --depth 1 --branch "$STACKS_BLOCKCHAIN_COMMIT" "$BLOCKCHAIN_REPO" .
+          else
+            echo "Cloning Stacks blockchain from commit: $STACKS_BLOCKCHAIN_COMMIT"
+            git init
+            git remote add origin $BLOCKCHAIN_REPO
+            git -c protocol.version=2 fetch --depth=1 origin $STACKS_BLOCKCHAIN_COMMIT
+            git reset --hard FETCH_HEAD
+          fi
       - name: Rust cache
         if: steps.cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2

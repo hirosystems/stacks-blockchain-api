@@ -1526,3 +1526,10 @@ export interface SmartContractInsertValues {
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
+
+export interface DbChainTip {
+  blockHeight: number;
+  blockHash: string;
+  indexBlockHash: string;
+  burnBlockHeight: number;
+}

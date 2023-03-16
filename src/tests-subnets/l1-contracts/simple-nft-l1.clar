@@ -1,9 +1,11 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/helper/simple-nft.clar
+
 (define-constant CONTRACT_OWNER tx-sender)
 (define-constant CONTRACT_ADDRESS (as-contract tx-sender))
 
 (define-constant ERR_NOT_AUTHORIZED (err u1001))
 
-(impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.nft-trait.nft-trait)
+(impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.sip-traits.nft-trait)
 (impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.subnet-traits.mint-from-subnet-trait)
 
 (define-data-var lastId uint u0)

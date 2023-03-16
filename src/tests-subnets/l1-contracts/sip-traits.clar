@@ -1,3 +1,5 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/helper/sip-traits.clar
+
 (define-trait nft-trait
    (
      ;; Last token ID, limited to uint range

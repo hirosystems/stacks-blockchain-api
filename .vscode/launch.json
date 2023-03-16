@@ -205,7 +205,7 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/jest.config.event-replay.js"
+        "${workspaceRoot}/tests/jest.config.event-replay.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
