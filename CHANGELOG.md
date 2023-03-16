@@ -1,3 +1,10 @@
+## [7.1.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0-beta.1...v7.1.0-beta.2) (2023-03-16)
+
+
+### Features
+
+* support register asset event synthetic tx parsing ([#1583](https://github.com/hirosystems/stacks-blockchain-api/issues/1583)) ([57d58f2](https://github.com/hirosystems/stacks-blockchain-api/commit/57d58f2f8d65bad2821b34dc3717f20e8addf8cb))
+
 ## [7.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0...v7.1.1) (2023-03-03)
 
 
