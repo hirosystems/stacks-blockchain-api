@@ -160,6 +160,21 @@ describe('PoX-2 - Delegate Stacking operations', () => {
       })
     );
 
+    // validate delegator stackers
+    const stackersRes: any = await fetchGet(
+      `/extended/v1/stacking/${delegatorAccount.stxAddr}/stackers`
+    );
+    expect(stackersRes).toBeDefined();
+    expect(stackersRes.total).toBe(1);
+    expect(stackersRes.results).toHaveLength(1);
+    expect(stackersRes.results[0]).toEqual({
+      amount_ustx: delegateAmount.toString(),
+      burnchain_unlock_height: null,
+      pox_addr: delegateeAccount.btcTestnetAddr,
+      stacker: delegateeAccount.stxAddr,
+      tx_id: delegateStxDbTx.tx_id,
+    });
+
     // check delegatee locked amount is still zero
     const balanceInfo2 = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(balanceInfo2.locked)).toBe(0n);

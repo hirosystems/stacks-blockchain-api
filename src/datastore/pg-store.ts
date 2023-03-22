@@ -45,6 +45,7 @@ import {
   DbNftEvent,
   DbNonFungibleTokenMetadata,
   DbPox2Event,
+  DbPox2Stacker,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -2026,6 +2027,49 @@ export class PgStore {
       `;
       const result = queryResults.map(result => parseDbPox2Event(result));
       return { found: true, result: result };
+    });
+  }
+
+  async getPox2StackersForDelegator(args: {
+    delegator: string;
+    blockHeight: number;
+    burnBlockHeight: number;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<{ stackers: DbPox2Stacker[]; total: number }>> {
+    return await this.sqlTransaction(async sql => {
+      const queryResults = await sql<
+        {
+          stacker: string;
+          pox_addr: string | null;
+          amount_ustx: string;
+          burnchain_unlock_height: number | null;
+          tx_id: string;
+          total_rows: number;
+        }[]
+      >`
+        SELECT 
+          stacker, pox_addr, amount_ustx, burnchain_unlock_height::integer, tx_id,
+          (COUNT(*) OVER())::integer AS total_rows
+        FROM pox2_events
+        WHERE 
+          canonical = true AND microblock_canonical = true AND
+          name = ${Pox2EventName.DelegateStx} AND delegate_to = ${args.delegator} AND
+          block_height <= ${args.blockHeight} AND
+          (burnchain_unlock_height > ${args.burnBlockHeight} OR burnchain_unlock_height = 0) 
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${args.limit}
+        OFFSET ${args.offset}
+      `;
+      const total = queryResults[0]?.total_rows ?? 0;
+      const stackers: DbPox2Stacker[] = queryResults.map(result => ({
+        stacker: result.stacker,
+        pox_addr: result.pox_addr || null,
+        amount_ustx: result.amount_ustx,
+        burnchain_unlock_height: result.burnchain_unlock_height || null,
+        tx_id: result.tx_id,
+      }));
+      return { found: true, result: { stackers, total } };
     });
   }
 

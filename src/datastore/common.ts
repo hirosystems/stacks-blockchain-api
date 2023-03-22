@@ -425,6 +425,14 @@ export type DbPox2EventData =
 
 export type DbPox2Event = DbEventBase & DbPox2EventData;
 
+export interface DbPox2Stacker {
+  stacker: string;
+  pox_addr: string | null;
+  amount_ustx: string;
+  burnchain_unlock_height: number | null;
+  tx_id: string;
+}
+
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
