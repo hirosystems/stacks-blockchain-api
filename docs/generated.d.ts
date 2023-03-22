@@ -91,6 +91,7 @@ export type SchemaMergeRootStub =
   | SearchSuccessResult
   | TxSearchResult
   | SearchResult
+  | StackerListResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -173,6 +174,7 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
+  | DelegatorStacker
   | FungibleTokenMetadata
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
@@ -2851,6 +2853,31 @@ export interface TxSearchResult {
     };
     metadata?: Transaction;
   };
+}
+/**
+ * GET request that returns stacking pool member details for a given delegator
+ */
+export interface StackerListResponse {
+  /**
+   * The number of Stackers to return
+   */
+  limit: number;
+  /**
+   * The number to Stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of microblocks available
+   */
+  total: number;
+  results: DelegatorStacker[];
+}
+export interface DelegatorStacker {
+  stacker: string;
+  pox_addr?: string;
+  amount_ustx: string;
+  burn_block_unlock_height?: number;
+  tx_id: string;
 }
 /**
  * List of fungible tokens metadata

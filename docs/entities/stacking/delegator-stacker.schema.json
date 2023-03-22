@@ -1,0 +1,23 @@
+{
+  "title": "DelegatorStacker",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stacker", "amount_ustx", "tx_id"],
+  "properties": {
+    "stacker": {
+      "type": "string"
+    },
+    "pox_addr": {
+      "type": "string"
+    },
+    "amount_ustx": {
+      "type": "string"
+    },
+    "burn_block_unlock_height": {
+      "type": "integer"
+    },
+    "tx_id": {
+      "type": "string"
+    }
+  }
+}

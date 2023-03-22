@@ -1,19 +1,9 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import {
-  BurnchainReward,
-  BurnchainRewardListResponse,
-  BurnchainRewardSlotHolder,
-  BurnchainRewardSlotHolderListResponse,
-  BurnchainRewardsTotal,
-} from '@stacks/stacks-blockchain-api-types';
-
-import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
+import { StackerListResponse } from '@stacks/stacks-blockchain-api-types';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
-import { parsePox2Event } from '../controllers/db-controller';
-import { getBlockParams, validatePrincipal, validateRequestHexInput } from '../query-helpers';
+import { getBlockParams, validatePrincipal } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 
 export function createStackingRouter(db: PgStore): express.Router {
@@ -61,9 +51,8 @@ export function createStackingRouter(db: PgStore): express.Router {
           res.status(404).json({ error: error });
           throw new Error(error);
         }
-        // const results = assetEvents.map(event => parseDbEvent(event));
-        // const response: AddressAssetEvents = { limit, offset, total, results };
-        const response = {
+
+        const response: StackerListResponse = {
           limit,
           offset,
           total: stackersQuery.result.total,

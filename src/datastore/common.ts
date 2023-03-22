@@ -427,9 +427,9 @@ export type DbPox2Event = DbEventBase & DbPox2EventData;
 
 export interface DbPox2Stacker {
   stacker: string;
-  pox_addr: string | null;
+  pox_addr?: string;
   amount_ustx: string;
-  burnchain_unlock_height: number | null;
+  burn_block_unlock_height?: number;
   tx_id: string;
 }
 

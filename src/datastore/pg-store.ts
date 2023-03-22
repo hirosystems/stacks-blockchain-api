@@ -2064,9 +2064,9 @@ export class PgStore {
       const total = queryResults[0]?.total_rows ?? 0;
       const stackers: DbPox2Stacker[] = queryResults.map(result => ({
         stacker: result.stacker,
-        pox_addr: result.pox_addr || null,
+        pox_addr: result.pox_addr || undefined,
         amount_ustx: result.amount_ustx,
-        burnchain_unlock_height: result.burnchain_unlock_height || null,
+        burn_block_unlock_height: result.burnchain_unlock_height || undefined,
         tx_id: result.tx_id,
       }));
       return { found: true, result: { stackers, total } };

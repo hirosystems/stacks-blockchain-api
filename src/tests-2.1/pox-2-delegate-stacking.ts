@@ -169,7 +169,6 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     expect(stackersRes.results).toHaveLength(1);
     expect(stackersRes.results[0]).toEqual({
       amount_ustx: delegateAmount.toString(),
-      burnchain_unlock_height: null,
       pox_addr: delegateeAccount.btcTestnetAddr,
       stacker: delegateeAccount.stxAddr,
       tx_id: delegateStxDbTx.tx_id,
