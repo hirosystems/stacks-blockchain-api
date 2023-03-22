@@ -646,8 +646,8 @@ export interface DbBnsNamespace {
   buckets: string;
   base: bigint;
   coeff: bigint;
-  nonalpha_discount: number;
-  no_vowel_discount: number;
+  nonalpha_discount: bigint;
+  no_vowel_discount: bigint;
   lifetime: number;
   status?: string;
   tx_id: string;
@@ -1431,8 +1431,8 @@ export interface BnsNamespaceInsertValues {
   buckets: string;
   base: PgNumeric;
   coeff: PgNumeric;
-  nonalpha_discount: number;
-  no_vowel_discount: number;
+  nonalpha_discount: PgNumeric;
+  no_vowel_discount: PgNumeric;
   lifetime: number;
   status: string | null;
   tx_index: number;
