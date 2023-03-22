@@ -17,7 +17,7 @@
     },
     "total": {
       "type": "integer",
-      "description": "The number of microblocks available"
+      "description": "The total number of Stackers"
     },
     "results": {
       "type": "array",

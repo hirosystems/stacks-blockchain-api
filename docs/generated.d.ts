@@ -2867,7 +2867,7 @@ export interface StackerListResponse {
    */
   offset: number;
   /**
-   * The number of microblocks available
+   * The total number of Stackers
    */
   total: number;
   results: DelegatorStacker[];
