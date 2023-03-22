@@ -225,11 +225,25 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
-      router.use('/stacking', createStackingRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
       if (chainId !== ChainID.Mainnet && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
+      return router;
+    })()
+  );
+
+  app.use(
+    '/extended/beta',
+    (() => {
+      const router = express.Router();
+      router.use(cors());
+      router.use((req, res, next) => {
+        // Set caching on all routes to be disabled by default, individual routes can override
+        res.set('Cache-Control', 'no-store');
+        next();
+      });
+      router.use('/stacking', createStackingRouter(datastore));
       return router;
     })()
   );

@@ -162,7 +162,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
 
     // validate delegator stackers
     const stackersRes: any = await fetchGet(
-      `/extended/v1/stacking/${delegatorAccount.stxAddr}/stackers`
+      `/extended/beta/stacking/${delegatorAccount.stxAddr}/stackers`
     );
     expect(stackersRes).toBeDefined();
     expect(stackersRes.total).toBe(1);
