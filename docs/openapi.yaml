@@ -2977,7 +2977,11 @@ paths:
     get:
       operationId: get_ft_metadata_list
       summary: Fungible tokens metadata list
-      description: Retrieves list of fungible tokens with their metadata. More information on Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
+
+        Retrieves list of fungible tokens with their metadata. More information on Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
       tags:
         - Fungible Tokens
       parameters:
@@ -3216,7 +3220,11 @@ paths:
     get:
       operationId: get_nft_metadata_list
       summary: Non fungible tokens metadata list
-      description: Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
+
+        Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
         - Non-Fungible Tokens
       parameters:
@@ -3249,7 +3257,10 @@ paths:
       operationId: get_contract_nft_metadata
       summary: Non fungible tokens metadata for contract ID
       deprecated: true
-      description: Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
+
+        Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
       tags:
         - Non-Fungible Tokens
       parameters:
@@ -3273,7 +3284,11 @@ paths:
     get:
       operationId: get_contract_ft_metadata
       summary: Fungible tokens metadata for contract id
-      description: Retrieves the metadata for fungible tokens for a given contract id
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
+
+        Retrieves the metadata for fungible tokens for a given contract id
       tags:
         - Fungible Tokens
       parameters:

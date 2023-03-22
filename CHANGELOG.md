@@ -1,3 +1,32 @@
+## [7.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.1...v7.1.2) (2023-03-22)
+
+
+### Bug Fixes
+
+* expand namespace discount column types to numeric ([#1591](https://github.com/hirosystems/stacks-blockchain-api/issues/1591)) ([276b5d2](https://github.com/hirosystems/stacks-blockchain-api/commit/276b5d20f9d7dbb84fec231ee36ac14f522aeeaa))
+
+## [7.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0...v7.1.1) (2023-03-03)
+
+
+### Bug Fixes
+
+* duplicate BNS imports and event-replay prune mode bug with large tsv files ([#1571](https://github.com/hirosystems/stacks-blockchain-api/issues/1571)) ([e2b58b2](https://github.com/hirosystems/stacks-blockchain-api/commit/e2b58b2208e6a06a498472599159235ebb821a08))
+
+## [7.1.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.1...v7.1.0) (2023-03-03)
+
+
+### Features
+
+* initial block download option to speed up chain sync ([#1373](https://github.com/hirosystems/stacks-blockchain-api/issues/1373)) ([1f350ec](https://github.com/hirosystems/stacks-blockchain-api/commit/1f350ec45a44840b879c2e31958ada68e1c204e4))
+
+## [7.0.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.0.1) (2023-02-23)
+
+
+### Bug Fixes
+
+* ensure transactions are never reported as both pending and confirmed ([#1561](https://github.com/hirosystems/stacks-blockchain-api/issues/1561)) ([a5a398e](https://github.com/hirosystems/stacks-blockchain-api/commit/a5a398e0d665980fd42f27e86e068076beac16ea))
+* support genesis block 0 during BNS sync ([#1559](https://github.com/hirosystems/stacks-blockchain-api/issues/1559)) ([6750861](https://github.com/hirosystems/stacks-blockchain-api/commit/6750861e99c88a6a672f007c26ec36cfb0cce6b1))
+
 ## [7.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v6.3.4...v7.0.0) (2023-02-07)
 
 
