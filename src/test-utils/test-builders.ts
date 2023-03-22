@@ -532,8 +532,8 @@ interface TestBnsNamespaceArgs {
   buckets?: string;
   base?: bigint;
   coeff?: bigint;
-  nonalpha_discount?: number;
-  no_vowel_discount?: number;
+  nonalpha_discount?: bigint;
+  no_vowel_discount?: bigint;
   lifetime?: number;
   status?: string;
   tx_id?: string;
@@ -556,8 +556,8 @@ function testBnsNamespace(args?: TestBnsNamespaceArgs): DbBnsNamespace {
     buckets: args?.buckets ?? '1,1,1',
     base: args?.base ?? 1n,
     coeff: args?.coeff ?? 1n,
-    nonalpha_discount: args?.nonalpha_discount ?? 0,
-    no_vowel_discount: args?.no_vowel_discount ?? 0,
+    nonalpha_discount: args?.nonalpha_discount ?? 0n,
+    no_vowel_discount: args?.no_vowel_discount ?? 0n,
     lifetime: args?.lifetime ?? 0,
     status: args?.status ?? 'ready',
     tx_id: args?.tx_id ?? TX_ID,
