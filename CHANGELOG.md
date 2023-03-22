@@ -1,3 +1,10 @@
+## [7.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.1...v7.1.2) (2023-03-22)
+
+
+### Bug Fixes
+
+* expand namespace discount column types to numeric ([#1591](https://github.com/hirosystems/stacks-blockchain-api/issues/1591)) ([276b5d2](https://github.com/hirosystems/stacks-blockchain-api/commit/276b5d20f9d7dbb84fec231ee36ac14f522aeeaa))
+
 ## [7.1.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0...v7.1.1) (2023-03-03)
 
 
