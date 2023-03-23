@@ -415,7 +415,7 @@ With a serialized transaction in the [raw format](#raw-format), it can be broadc
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-curl --location --request POST 'https://stacks-node-api.testnet.stacks.co/v2/transactions' \
+curl --location --request POST 'https://api.testnet.hiro.so/v2/transactions' \
 --header 'Content-Type: application/octet-stream' \
 --data-raw '<tx_raw_format>'
 ```
@@ -433,7 +433,7 @@ Once a transaction has been successfully broadcast to the network, the transacti
 that received the broadcast. From the [Bitcoin wiki][]: "a node's memory pool contains all 0-confirmation transactions
 across the entire network that that particular node knows about." So, the set of transactions in the mempool might be
 different for each node in the network. For example, when you query the mempool endpoints on
-`stacks-node-api.mainnet.stacks.co`, the response reflects the set of unconfirmed transactions known to the nodes that
+`api.mainnet.hiro.so`, the response reflects the set of unconfirmed transactions known to the nodes that
 service that API.
 
 Miners can employ different heuristics and strategies for deciding which transactions to admit into the mempool and
@@ -475,7 +475,7 @@ Recent transactions can be obtained through the [`GET /extended/v1/tx`](https://
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-curl 'https://stacks-node-api.testnet.stacks.co/extended/v1/tx'
+curl 'https://api.testnet.hiro.so/extended/v1/tx'
 ```
 
 Sample response:
@@ -513,7 +513,7 @@ Mempool (registered, but not processed) transactions can be obtained using the [
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-curl 'https://stacks-node-api.testnet.stacks.co/extended/v1/tx/mempool'
+curl 'https://api.testnet.hiro.so/extended/v1/tx/mempool'
 ```
 
 Sample response:
@@ -552,7 +552,7 @@ Recent transactions can be filtered by [transaction type](#types) using the `typ
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-curl 'https://stacks-node-api.testnet.stacks.co/extended/v1/tx/?type=contract_call'
+curl 'https://api.testnet.hiro.so/extended/v1/tx/?type=contract_call'
 ```
 
 ### Get transaction by ID
@@ -561,7 +561,7 @@ A specific transaction can be obtained using the [`GET /extended/v1/tx/<tx_id>`]
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-curl 'https://stacks-node-api.testnet.stacks.co/extended/v1/tx/<tx_id>'
+curl 'https://api.testnet.hiro.so/extended/v1/tx/<tx_id>'
 ```
 
 Sample response:

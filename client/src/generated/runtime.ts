@@ -13,7 +13,7 @@
  */
 
 
-export const BASE_PATH = "https://stacks-node-api.mainnet.stacks.co".replace(/\/+$/, "");
+export const BASE_PATH = "https://api.mainnet.hiro.so".replace(/\/+$/, "");
 
 const isBlob = (value: any) => typeof Blob !== 'undefined' && value instanceof Blob;
 
