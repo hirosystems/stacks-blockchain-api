@@ -8,7 +8,7 @@ Title: Use Stacks Blockchain API
 The RESTful JSON API can be used without any authorization. The base path for the API is:
 
 ```for mainnet, replace `testnet` with `mainnet
-https://stacks-node-api.testnet.stacks.co/```
+https://api.testnet.hiro.so/```
 
 For more information about the Stacks Blockchain API, please refer to the [Stacks API reference](https://docs.hiro.so/api?_gl=1*1nvx6u*_ga*NTQ3NDA3NTIuMTY2MDA3MTQ1MA..*_ga_NB2VBT0KY2*MTY2MzkxNTIzNS4yMi4xLjE2NjM5MTY1OTMuMC4wLjA.) page.
 

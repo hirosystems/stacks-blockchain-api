@@ -6,14 +6,14 @@ Title: FAQ's
 
 #### **I am attempting to receive the status from a local Stacks Blockchain node API and present to a user how close it is to being synced. I can retrieve the current height of the local node (`/v2/info`). Is there any way for me to retrieve the real current height from an API node that is not completely synced? I want to avoid going directly to the centrally-hosted node.**
 
-Although the Stacks Blockchain API does not yet know when it is in sync mode vs normal "chain follower" mode, you may check the current height of the API by viewing the status endpoint (e.g. https://stacks-node-api.mainnet.stacks.co/extended/v1/status).
+Although the Stacks Blockchain API does not yet know when it is in sync mode vs normal "chain follower" mode, you may check the current height of the API by viewing the status endpoint (e.g. https://api.mainnet.hiro.so/extended/v1/status).
 
 You may also review the following issues:
 
 - [Feat/health check endpoint stacks-network/stacks-blockchain#2768](https://github.com/stacks-network/stacks-blockchain/pull/2768)
 - [Update /extended/v1/status to "syncing" if more than X blocks are missing](https://github.com/hirosystems/stacks-blockchain-api/issues/1055) stacks-blockchain-api#1055
 
-#### **[/extended/v1/tokens/nft/holdings/?limit=200&principal=SP3EQ7FQ8TFXB792P7VAGRXER0YNFMGM1Y8RS69RC](https://stacks-node-api.mainnet.stacks.co/extended/v1/tokens/nft/holdings/?limit=200&principal=SP3EQ7FQ8TFXB792P7VAGRXER0YNFMGM1Y8RS69RC) is only reporting 49 NFTs; however, the marketplace shows it has 133 NFTs: 92 NFTs for sale, and 41 NFTs are unlisted,. Why is `/holdings/` not returning all results?**
+#### **[/extended/v1/tokens/nft/holdings/?limit=200&principal=SP3EQ7FQ8TFXB792P7VAGRXER0YNFMGM1Y8RS69RC](https://api.mainnet.hiro.so/extended/v1/tokens/nft/holdings/?limit=200&principal=SP3EQ7FQ8TFXB792P7VAGRXER0YNFMGM1Y8RS69RC) is only reporting 49 NFTs; however, the marketplace shows it has 133 NFTs: 92 NFTs for sale, and 41 NFTs are unlisted,. Why is `/holdings/` not returning all results?**
 
 Many marketplace contracts are custodial; meaning, you do not actually own the NFT, but the marketplace contract does (but it has been marked to your address). This is why the NFT does not appear in `/holdings`.
 

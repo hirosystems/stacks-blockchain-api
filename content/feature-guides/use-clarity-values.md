@@ -24,14 +24,14 @@ import { uintCV, UIntCV, cvToHex, hexToCV, ClarityType } from '@stacks/transacti
   const apiConfig: Configuration = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
 
   const contractsApi: SmartContractsApiInterface = new SmartContractsApi(apiConfig);
 
   const principal: string = 'ST000000000000000000002AMW42H';
 
-  // use most recent from: https://stacks-node-api.<mainnet/testnet>.stacks.co/v2/pox
+  // use most recent from: https://api.<mainnet/testnet>.hiro.so/v2/pox
   const rewardCycle: UIntCV = uintCV(22);
 
   // call a read-only function

@@ -100,7 +100,7 @@ The response should look like this:
 
 :::tip
 
-To receive testnet STX tokens, use the [faucet](https://explorer.stacks.co/sandbox/faucet?chain=testnet).
+To receive testnet STX tokens, use the [faucet](https://explorer.hiro.so/sandbox/faucet?chain=testnet).
 
 :::
 
@@ -129,7 +129,7 @@ stx send_tokens ST2KMMVJAB00W5Z6XWTFPH6B13JE9RJ2DCSHYX0S7 1000 200 0 381314da39a
 ```json
 {
   "txid": "0xd32de0d66b4a07e0d7eeca320c37a10111c8c703315e79e17df76de6950c622c",
-  "transaction": "https://explorer.stacks.co/txid/0xd32de0d66b4a07e0d7eeca320c37a10111c8c703315e79e17df76de6950c622c"
+  "transaction": "https://explorer.hiro.so/txid/0xd32de0d66b4a07e0d7eeca320c37a10111c8c703315e79e17df76de6950c622c"
 }
 ```
 
