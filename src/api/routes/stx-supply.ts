@@ -10,9 +10,11 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getBlockParams } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 
 export function createStxSupplyRouter(db: PgStore): express.Router {
   const router = express.Router();
+  const cacheHandler = getETagCacheHandler(db);
 
   async function getStxSupplyInfo(
     args:
@@ -44,6 +46,7 @@ export function createStxSupplyRouter(db: PgStore): express.Router {
 
   router.get(
     '/',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const blockParams = getBlockParams(req, res, next);
       const supply = await getStxSupplyInfo(blockParams);
@@ -53,30 +56,36 @@ export function createStxSupplyRouter(db: PgStore): express.Router {
         unlocked_stx: supply.unlockedStx,
         block_height: supply.blockHeight,
       };
+      setETagCacheHeaders(res);
       res.json(result);
     })
   );
 
   router.get(
     '/total/plain',
+    cacheHandler,
     asyncHandler(async (req, res) => {
       const supply = await getStxSupplyInfo({ includeUnanchored: false });
       const result: GetStxTotalSupplyPlainResponse = supply.totalStx;
+      setETagCacheHeaders(res);
       res.type('text/plain').send(result);
     })
   );
 
   router.get(
     '/circulating/plain',
+    cacheHandler,
     asyncHandler(async (req, res) => {
       const supply = await getStxSupplyInfo({ includeUnanchored: false });
       const result: GetStxCirculatingSupplyPlainResponse = supply.unlockedStx;
+      setETagCacheHeaders(res);
       res.type('text/plain').send(result);
     })
   );
 
   router.get(
     '/legacy_format',
+    cacheHandler,
     asyncHandler(async (req, res, next) => {
       const blockParams = getBlockParams(req, res, next);
       const supply = await getStxSupplyInfo(blockParams);
@@ -91,6 +100,7 @@ export function createStxSupplyRouter(db: PgStore): express.Router {
         ),
         blockHeight: supply.blockHeight.toString(),
       };
+      setETagCacheHeaders(res);
       res.json(result);
     })
   );

@@ -2346,7 +2346,7 @@ export class PgStore {
       if (result.length < 1) {
         throw new Error(`No rows returned from total supply query`);
       }
-      return { stx: BigInt(result[0].amount), blockHeight: atBlockHeight };
+      return { stx: BigInt(result[0]?.amount ?? 0), blockHeight: atBlockHeight };
     });
   }
 
