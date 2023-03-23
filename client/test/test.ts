@@ -4,7 +4,7 @@ import { Configuration, BlocksApi, SmartContractsApi, AccountsApi } from '../src
 (async () => {
   const apiConfig = new Configuration({
     fetchApi: fetch, // `fetch` lib must be specified in Node.js environments
-    basePath: 'https://stacks-node-api.mainnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.mainnet.hiro.so', // defaults to http://localhost:3999
   });
 
   const blockApi = new BlocksApi(apiConfig);

@@ -1,8 +1,8 @@
 openapi: 3.0.2
 servers:
-  - url: https://stacks-node-api.mainnet.stacks.co/
+  - url: https://api.mainnet.hiro.so/
     description: Mainnet
-  - url: https://stacks-node-api.testnet.stacks.co/
+  - url: https://api.testnet.hiro.so/
     description: Testnet
   - url: http://localhost:3999/
     description: Local
@@ -95,7 +95,7 @@ paths:
         specified testnet address.
 
         The endpoint returns the transaction ID, which you can use to view the transaction in the
-        [Stacks Explorer](https://explorer.stacks.co/?chain=testnet). The tokens are delivered once the transaction has
+        [Stacks Explorer](https://explorer.hiro.so/?chain=testnet). The tokens are delivered once the transaction has
         been included in an anchor block.
 
         A common reason for failed faucet transactions is that the faucet has run out of tokens. If you are experiencing

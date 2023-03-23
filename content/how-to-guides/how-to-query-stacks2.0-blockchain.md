@@ -14,7 +14,7 @@ The RESTful JSON API can be used without any authorization. The base path for th
 
 ```bash
 # for mainnet, replace `testnet` with `mainnet`
-https://stacks-node-api.testnet.stacks.co/
+https://api.testnet.hiro.so/
 ```
 
 :::info
@@ -76,7 +76,7 @@ import { Configuration, AccountsApi } from '@stacks/blockchain-api-client';
   const apiConfig = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
 
   // initiate the /accounts API with the basepath and fetch library
@@ -109,7 +109,7 @@ import {
   const apiConfig: Configuration = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
 
   const principal: string = 'ST000000000000000000002AMW42H';
@@ -153,12 +153,12 @@ You can refer to the rate limit for each endpoint in the table below:
 
 | **Endpoint**                                                                                | **Rate-Limit (RPM)**  |
 | ------------------------------------------------------------------------------------------- | --------------------- |
-| stacks-node-api.mainnet.stacks.co/extended/ <br/> stacks-node-api.stacks.co/extended/ <br/> | <br/> 500 <br/> <br/> |
-| stacks-node-api.mainnet.stacks.co/rosetta/ <br/> stacks-node-api.stacks.co/rosetta/<br/>    | <br/> 200 <br/> <br/> |
-| stacks-node-api.mainnet.stacks.co/v2/ <br/> stacks-node-api.stacks.co/v2/ <br/>             | <br/> 100 <br/> <br/> |
-| stacks-node-api.testnet.stacks.co/extended/ <br/>                                           | 100 <br/>             |
-| stacks-node-api.testnet.stacks.co/v2/ <br/>                                                 | 100 <br/>             |
-| stacks-node-api.testnet.stacks.co/extended/v1/faucets/ <br/>                                | 1 <br/>               |
+| api.mainnet.hiro.so/extended/ <br/> api.hiro.so/extended/ <br/> | <br/> 500 <br/> <br/> |
+| api.mainnet.hiro.so/rosetta/ <br/> api.hiro.so/rosetta/<br/>    | <br/> 200 <br/> <br/> |
+| api.mainnet.hiro.so/v2/ <br/> api.hiro.so/v2/ <br/>             | <br/> 100 <br/> <br/> |
+| api.testnet.hiro.so/extended/ <br/>                                           | 100 <br/>             |
+| api.testnet.hiro.so/v2/ <br/>                                                 | 100 <br/>             |
+| api.testnet.hiro.so/extended/v1/faucets/ <br/>                                | 1 <br/>               |
 
 ### STX faucet
 
@@ -252,14 +252,14 @@ import { uintCV, UIntCV, cvToHex, hexToCV, ClarityType } from '@stacks/transacti
   const apiConfig: Configuration = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
 
   const contractsApi: SmartContractsApiInterface = new SmartContractsApi(apiConfig);
 
   const principal: string = 'ST000000000000000000002AMW42H';
 
-  // use most recent from: https://stacks-node-api.<mainnet/testnet>.stacks.co/v2/pox
+  // use most recent from: https://api.<mainnet/testnet>.hiro.so/v2/pox
   const rewardCycle: UIntCV = uintCV(22);
 
   // call a read-only function
@@ -334,7 +334,7 @@ The API allows querying the most recently streamed microblocks:
 
 ```bash
 # for mainnet, remove `.testnet`
-curl 'https://stacks-node-api-microblocks.testnet.stacks.co/extended/v1/microblock'
+curl 'https://api.testnet.hiro.so/extended/v1/microblock'
 ```
 
 ```json
@@ -368,7 +368,7 @@ API provides an endpoint to make nonce handling simpler:
 ```bash
 # for mainnet, remove `.testnet`
 # replace <principal> with your STX address
-curl 'https://stacks-node-api-microblocks.testnet.stacks.co/extended/v1/address/<principal>/nonces'
+curl 'https://api.testnet.hiro.so/extended/v1/address/<principal>/nonces'
 ```
 
 ```json

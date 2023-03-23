@@ -32,8 +32,8 @@ Here is example code that subscribes to updates for a specific Stacks address:
 ```js
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 
-// for testnet, replace with wss://stacks-node-api.testnet.stacks.co/
-const client = await connectWebSocketClient('wss://stacks-node-api.mainnet.stacks.co/');
+// for testnet, replace with wss://api.testnet.hiro.so/
+const client = await connectWebSocketClient('wss://api.mainnet.hiro.so/');
 
 const sub = await client.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', event =>
   console.log(event);
@@ -48,8 +48,8 @@ await sub.unsubscribe();
 import { io } from "socket.io-client";
 import * as stacks from '@stacks/blockchain-api-client';
 
-// for testnet, replace with https://stacks-node-api.testnet.stacks.co/
-const socketUrl = "https://stacks-node-api.mainnet.stacks.co/";
+// for testnet, replace with https://api.testnet.hiro.so/
+const socketUrl = "https://api.mainnet.hiro.so/";
 
 const socket = io(socketUrl, {
   transports: [ "websocket" ]

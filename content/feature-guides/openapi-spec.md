@@ -31,7 +31,7 @@ import { Configuration, AccountsApi } from '@stacks/blockchain-api-client';
   const apiConfig = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
   // initiate the /accounts API with the basepath and fetch library
   const accountsApi = new AccountsApi(apiConfig);
@@ -60,7 +60,7 @@ import {
   const apiConfig: Configuration = new Configuration({
     fetchApi: fetch,
     // for mainnet, replace `testnet` with `mainnet`
-    basePath: 'https://stacks-node-api.testnet.stacks.co', // defaults to http://localhost:3999
+    basePath: 'https://api.testnet.hiro.so', // defaults to http://localhost:3999
   });
   const principal: string = 'ST000000000000000000002AMW42H';
   // initiate the /accounts API with the basepath and fetch library
