@@ -11,7 +11,7 @@ The Stacks Blockchain API enables you to query the most recently streamed microb
 
 ```bash
 # for mainnet, remove `.testnet`
-curl 'https://stacks-node-api-microblocks.testnet.stacks.co/extended/v1/microblock'
+curl 'https://api.testnet.hiro.so/extended/v1/microblock'
 ```
 
 ```json

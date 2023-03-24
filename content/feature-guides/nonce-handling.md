@@ -10,7 +10,7 @@ Stacks Blockchain API provides an endpoint to make nonce handling simpler when u
 ```bash
 # for mainnet, remove `.testnet`
 # replace <principal> with your STX address
-curl 'https://stacks-node-api-microblocks.testnet.stacks.co/extended/v1/address/<principal>/nonces'
+curl 'https://api.testnet.hiro.so/extended/v1/address/<principal>/nonces'
 ```
 
 ```json
