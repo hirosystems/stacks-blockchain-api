@@ -1,3 +1,11 @@
+## [7.1.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.2...v7.1.3) (2023-03-27)
+
+
+### Bug Fixes
+
+* domain migration ([#1596](https://github.com/hirosystems/stacks-blockchain-api/issues/1596)) ([#1597](https://github.com/hirosystems/stacks-blockchain-api/issues/1597)) ([e348ac0](https://github.com/hirosystems/stacks-blockchain-api/commit/e348ac05b325272e0317b3af314469b3e94c0adc))
+* postgres should not be required in STACKS_API_MODE=offline mode [#1391](https://github.com/hirosystems/stacks-blockchain-api/issues/1391) ([#1599](https://github.com/hirosystems/stacks-blockchain-api/issues/1599)) ([299705f](https://github.com/hirosystems/stacks-blockchain-api/commit/299705f270981b226fdeae2c7c37c00ce16fe4ce))
+
 ## [7.1.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.1...v7.1.2) (2023-03-22)
 
 
