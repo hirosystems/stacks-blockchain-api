@@ -8,7 +8,7 @@ servers:
     description: Local
 info:
   title: Stacks Blockchain API
-  version: v7.1.2
+  version: v7.1.3
   description: >
     Welcome to the API reference overview for the <a
     href="https://docs.hiro.so/get-started/stacks-blockchain-api">Stacks
