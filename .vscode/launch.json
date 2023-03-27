@@ -112,6 +112,34 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: mocknet offline-mode",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": [
+        "-r",
+        "ts-node/register/transpile-only",
+        "-r",
+        "tsconfig-paths/register"
+      ],
+      "args": [
+        "${workspaceFolder}/src/index.ts"
+      ],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "stacks-node:start-mocknet",
+      "postDebugTask": "stacks-node:stop-mocknet",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "STACKS_API_MODE": "offline",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch: read-only",
       "skipFiles": [
         "<node_internals>/**"
