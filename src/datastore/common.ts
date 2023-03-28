@@ -430,6 +430,7 @@ export interface DbPox2Stacker {
   pox_addr?: string;
   amount_ustx: string;
   burn_block_unlock_height?: number;
+  block_height: number;
   tx_id: string;
 }
 

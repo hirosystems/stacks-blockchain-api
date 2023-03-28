@@ -3,7 +3,7 @@ import { asyncHandler } from '../async-handler';
 import { PoolDelegationsResponse } from '@stacks/stacks-blockchain-api-types';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
-import { getBlockParams, validatePrincipal } from '../query-helpers';
+import { getBlockHeightQueryParam, getBlockParams, validatePrincipal } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 
 export function createStackingRouter(db: PgStore): express.Router {
@@ -19,6 +19,7 @@ export function createStackingRouter(db: PgStore): express.Router {
       validatePrincipal(poolPrincipal);
       const limit = getPagingQueryLimit(ResourceType.Stacker, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const afterBlock = getBlockHeightQueryParam('after_block', false, req, res, next) || 0;
 
       const response = await db.sqlTransaction(async sql => {
         const blockParams = getBlockParams(req, res, next);
@@ -43,6 +44,7 @@ export function createStackingRouter(db: PgStore): express.Router {
           delegator: poolPrincipal,
           blockHeight,
           burnBlockHeight,
+          afterBlockHeight: afterBlock,
           limit,
           offset,
         });

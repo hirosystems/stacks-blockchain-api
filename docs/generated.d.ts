@@ -2873,10 +2873,29 @@ export interface PoolDelegationsResponse {
   results: PoolDelegation[];
 }
 export interface PoolDelegation {
+  /**
+   * The principal of the pool member that issued the delegation
+   */
   stacker: string;
+  /**
+   * The pox-addr value specified by the stacker when then delegated
+   */
   pox_addr?: string;
+  /**
+   * The amount of uSTX delegated by the stacker
+   */
   amount_ustx: string;
+  /**
+   * The optional burnchain block unlock height that the stacker may have specified
+   */
   burn_block_unlock_height?: number;
+  /**
+   * The block height at which the stacker delegation transaction was mined at
+   */
+  block_height: number;
+  /**
+   * The tx_id of the stacker delegation operation
+   */
   tx_id: string;
 }
 /**

@@ -2034,6 +2034,7 @@ export class PgStore {
     delegator: string;
     blockHeight: number;
     burnBlockHeight: number;
+    afterBlockHeight: number;
     limit: number;
     offset: number;
   }): Promise<FoundOrNot<{ stackers: DbPox2Stacker[]; total: number }>> {
@@ -2043,20 +2044,35 @@ export class PgStore {
           stacker: string;
           pox_addr: string | null;
           amount_ustx: string;
-          burnchain_unlock_height: number | null;
+          unlock_burn_height: number | null;
           tx_id: string;
+          block_height: number;
           total_rows: number;
         }[]
       >`
-        SELECT 
-          stacker, pox_addr, amount_ustx, burnchain_unlock_height::integer, tx_id,
-          (COUNT(*) OVER())::integer AS total_rows
-        FROM pox2_events
-        WHERE 
-          canonical = true AND microblock_canonical = true AND
-          name = ${Pox2EventName.DelegateStx} AND delegate_to = ${args.delegator} AND
-          block_height <= ${args.blockHeight} AND
-          (burnchain_unlock_height > ${args.burnBlockHeight} OR burnchain_unlock_height = 0) 
+        WITH ordered_pox2_events AS (
+          SELECT
+            stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id,
+            block_height, microblock_sequence, tx_index, event_index
+          FROM pox2_events
+          WHERE
+            canonical = true AND microblock_canonical = true AND
+            name = ${Pox2EventName.DelegateStx} AND delegate_to = ${args.delegator} AND
+            block_height <= ${args.blockHeight} AND block_height > ${args.afterBlockHeight} AND
+            (unlock_burn_height > ${args.burnBlockHeight} OR unlock_burn_height IS NULL)
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ),
+        distinct_rows AS (
+          SELECT DISTINCT ON (stacker) 
+            stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
+            block_height, microblock_sequence, tx_index, event_index
+          FROM ordered_pox2_events
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT
+          stacker, pox_addr, amount_ustx, unlock_burn_height, block_height::integer, tx_id,
+          COUNT(*) OVER()::integer AS total_rows
+        FROM distinct_rows
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}
@@ -2066,7 +2082,8 @@ export class PgStore {
         stacker: result.stacker,
         pox_addr: result.pox_addr || undefined,
         amount_ustx: result.amount_ustx,
-        burn_block_unlock_height: result.burnchain_unlock_height || undefined,
+        burn_block_unlock_height: result.unlock_burn_height || undefined,
+        block_height: result.block_height,
         tx_id: result.tx_id,
       }));
       return { found: true, result: { stackers, total } };

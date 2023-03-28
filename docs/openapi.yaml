@@ -3489,6 +3489,12 @@ paths:
           example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11"
           schema:
             type: string
+        - name: after_block
+          in: query
+          description: If specified, only delegation events after the given block will be included
+          required: false
+          schema:
+            type: integer
         - name: unanchored
           in: query
           description: whether or not to include Stackers from unconfirmed transactions
