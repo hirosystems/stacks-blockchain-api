@@ -170,21 +170,19 @@ describe('IBD', () => {
         return [eventServer, eventServer.closeAsync] as const;
       },
       async (rawEventsIterator, eventServer) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            ibdRoutesVisited.add(rawEvent.event_path);
-            const response = await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-            if (ibdRoutes.includes(rawEvent.event_path)) {
-              expect(response.statusCode).toBe(200);
-              expect(response.response).toBe('IBD mode active.');
-            }
+        for await (const rawEvent of rawEventsIterator) {
+          ibdRoutesVisited.add(rawEvent.event_path);
+          const response = await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: true,
+          });
+          if (ibdRoutes.includes(rawEvent.event_path)) {
+            expect(response.statusCode).toBe(200);
+            expect(response.response).toBe('IBD mode active.');
           }
         }
       }
@@ -214,27 +212,25 @@ describe('IBD', () => {
         return [eventServer, eventServer.closeAsync] as const;
       },
       async (rawEventsIterator, eventServer) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            ibdRoutesVisited.add(rawEvent.event_path);
-            const response = await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-            if (ibdRoutes.includes(rawEvent.event_path)) {
-              const chainTip = await db.getChainTip(client, false);
-              const ibdThreshold = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string);
-              if (chainTip.blockHeight < ibdThreshold) {
-                expect(response.statusCode).toBe(200);
-                expect(response.response).toBe('IBD mode active.');
-              } else {
-                expect(response.statusCode).toBe(200);
-                expect(response.response).not.toBe('IBD mode active.');
-              }
+        for await (const rawEvent of rawEventsIterator) {
+          ibdRoutesVisited.add(rawEvent.event_path);
+          const response = await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: true,
+          });
+          if (ibdRoutes.includes(rawEvent.event_path)) {
+            const chainTip = await db.getChainTip(client, false);
+            const ibdThreshold = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string);
+            if (chainTip.blockHeight < ibdThreshold) {
+              expect(response.statusCode).toBe(200);
+              expect(response.response).toBe('IBD mode active.');
+            } else {
+              expect(response.statusCode).toBe(200);
+              expect(response.response).not.toBe('IBD mode active.');
             }
           }
         }

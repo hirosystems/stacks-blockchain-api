@@ -55,31 +55,29 @@ describe('Events table', () => {
         return [eventServer, eventServer.closeAsync] as const;
       },
       async (rawEventsIterator, eventServer) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            try {
-              if (rawEvent.event_path === '/new_block') {
-                const payloadJson = JSON.parse(rawEvent.payload);
-                payloadJson.transactions = undefined;
-                rawEvent.payload = JSON.stringify(payloadJson);
-              }
-            } catch (error) {}
-            const rawEventRequestCountResultBefore = await getRawEventCount();
-            const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0];
-            const response = await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: false,
-            });
+        for await (const rawEvent of rawEventsIterator) {
+          try {
             if (rawEvent.event_path === '/new_block') {
-              expect(response.statusCode).toBe(500);
-              const rawEventRequestCountResultAfter = await getRawEventCount();
-              const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
-              expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
+              const payloadJson = JSON.parse(rawEvent.payload);
+              payloadJson.transactions = undefined;
+              rawEvent.payload = JSON.stringify(payloadJson);
             }
+          } catch (error) {}
+          const rawEventRequestCountResultBefore = await getRawEventCount();
+          const rawEventRequestCountBefore = rawEventRequestCountResultBefore[0];
+          const response = await httpPostRequest({
+            host: '127.0.0.1',
+            port: eventServer.serverAddress.port,
+            path: rawEvent.event_path,
+            headers: { 'Content-Type': 'application/json' },
+            body: Buffer.from(rawEvent.payload, 'utf8'),
+            throwOnNotOK: false,
+          });
+          if (rawEvent.event_path === '/new_block') {
+            expect(response.statusCode).toBe(500);
+            const rawEventRequestCountResultAfter = await getRawEventCount();
+            const rawEventRequestCountAfter = rawEventRequestCountResultAfter[0];
+            expect(rawEventRequestCountBefore).toEqual(rawEventRequestCountAfter);
           }
         }
       }

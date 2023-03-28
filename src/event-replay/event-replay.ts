@@ -134,38 +134,44 @@ export async function importEventsFromTsv(
 
   // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
-  const rawEventsIterator = getRawEventRequests(readStream, status => {
-    console.log(status);
-  });
+  const rawEventsIterator = getRawEventRequests(readStream);
   // Set logger to only output for warnings/errors, otherwise the event replay will result
   // in the equivalent of months/years of API log output.
   logger.level = 'warn';
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
+  let lastStatusUpdatePercent = 0;
   const responses = [];
-  for await (const rawEvents of rawEventsIterator) {
-    for (const rawEvent of rawEvents) {
-      if (eventImportMode === EventImportMode.pruned) {
-        if (blockHeight === prunedBlockHeight) {
-          console.log(`Resuming prunable event import...`);
-        }
+  for await (const rawEvent of rawEventsIterator) {
+    if (eventImportMode === EventImportMode.pruned) {
+      if (blockHeight === prunedBlockHeight) {
+        console.log(`Resuming prunable event import...`);
       }
-      const response = await httpPostRequest({
-        host: '127.0.0.1',
-        port: eventServer.serverAddress.port,
-        path: rawEvent.event_path,
-        headers: { 'Content-Type': 'application/json' },
-        body: Buffer.from(rawEvent.payload, 'utf8'),
-        throwOnNotOK: true,
-      });
-      if (rawEvent.event_path === '/new_block') {
-        blockHeight = await getDbBlockHeight(db);
-        if (blockHeight && blockHeight % 1000 === 0) {
+    }
+    const response = await httpPostRequest({
+      host: '127.0.0.1',
+      port: eventServer.serverAddress.port,
+      path: rawEvent.event_path,
+      headers: { 'Content-Type': 'application/json' },
+      body: Buffer.from(rawEvent.payload, 'utf8'),
+      throwOnNotOK: true,
+    });
+    if (rawEvent.event_path === '/new_block') {
+      blockHeight = await getDbBlockHeight(db);
+      if (blockHeight) {
+        if (blockHeight % 1000 === 0) {
           console.log(`Event file block height reached: ${blockHeight}`);
         }
+        const percentProgress = (blockHeight / tsvBlockHeight) * 100;
+        if (percentProgress > lastStatusUpdatePercent + 1) {
+          lastStatusUpdatePercent = Math.floor(percentProgress);
+          console.log(
+            `Blocks processed: ${lastStatusUpdatePercent}% (${blockHeight} / ${tsvBlockHeight})`
+          );
+        }
       }
-      responses.push(response);
     }
+    responses.push(response);
   }
   await db.finishEventReplay();
   console.log(`Event import and playback successful.`);
