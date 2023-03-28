@@ -1,7 +1,7 @@
 {
-  "description": "GET request that returns stacking pool member details for a given delegator",
+  "description": "GET request that returns stacking pool member details for a given pool (delegator) principal",
   "additionalProperties": false,
-  "title": "StackerListResponse",
+  "title": "PoolDelegationsResponse",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
   "properties": {
@@ -22,7 +22,7 @@
     "results": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/stacking/delegator-stacker.schema.json"
+        "$ref": "../../entities/stacking/pool-delegation.schema.json"
       }
     }
   }

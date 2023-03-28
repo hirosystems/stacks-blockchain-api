@@ -1,5 +1,5 @@
 {
-  "title": "DelegatorStacker",
+  "title": "PoolDelegation",
   "type": "object",
   "additionalProperties": false,
   "required": ["stacker", "amount_ustx", "tx_id"],

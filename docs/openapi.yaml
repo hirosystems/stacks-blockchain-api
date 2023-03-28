@@ -3474,15 +3474,15 @@ paths:
                 $ref: ./api/transaction/get-transaction-events.schema.json
               example:
                 $ref: ./api/transaction/get-transaction-events.example.json
-  /extended/beta/stacking/{delegator}/stackers:
+  /extended/beta/stacking/{pool_principal}/delegations:
     get:
       summary: Stacking pool members
       description: Retrieves the list of stacking pool members for a given delegator principal.
       tags:
         - Stacking
-      operationId: get_delegator_stackers
+      operationId: get_pool_delegations
       parameters:
-        - name: delegator
+        - name: pool_principal
           in: path
           description: Address principal of the stacking pool delegator
           required: true
@@ -3520,6 +3520,6 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/stacking/get-delegator-stackers.schema.json
+                $ref: ./api/stacking/get-pool-delegations.schema.json
               example:
-                $ref: ./api/stacking/get-delegator-stackers.example.json
+                $ref: ./api/stacking/get-pool-delegations.example.json

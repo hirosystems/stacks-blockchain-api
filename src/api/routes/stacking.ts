@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { StackerListResponse } from '@stacks/stacks-blockchain-api-types';
+import { PoolDelegationsResponse } from '@stacks/stacks-blockchain-api-types';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
 import { getBlockParams, validatePrincipal } from '../query-helpers';
@@ -11,12 +11,12 @@ export function createStackingRouter(db: PgStore): express.Router {
   const cacheHandler = getETagCacheHandler(db);
 
   router.get(
-    '/:delegator/stackers',
+    '/:pool_principal/delegations',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       // get recent asset event associated with address
-      const delegator = req.params['delegator'];
-      validatePrincipal(delegator);
+      const poolPrincipal = req.params['pool_principal'];
+      validatePrincipal(poolPrincipal);
       const limit = getPagingQueryLimit(ResourceType.Stacker, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
@@ -39,8 +39,8 @@ export function createStackingRouter(db: PgStore): express.Router {
         }
         const burnBlockHeight = dbBlock.result.burn_block_height;
 
-        const stackersQuery = await db.getPox2StackersForDelegator({
-          delegator,
+        const stackersQuery = await db.getPox2PoolDelegations({
+          delegator: poolPrincipal,
           blockHeight,
           burnBlockHeight,
           limit,
@@ -52,7 +52,7 @@ export function createStackingRouter(db: PgStore): express.Router {
           throw new Error(error);
         }
 
-        const response: StackerListResponse = {
+        const response: PoolDelegationsResponse = {
           limit,
           offset,
           total: stackersQuery.result.total,

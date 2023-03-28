@@ -2030,7 +2030,7 @@ export class PgStore {
     });
   }
 
-  async getPox2StackersForDelegator(args: {
+  async getPox2PoolDelegations(args: {
     delegator: string;
     blockHeight: number;
     burnBlockHeight: number;

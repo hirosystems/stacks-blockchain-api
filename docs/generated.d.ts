@@ -91,7 +91,7 @@ export type SchemaMergeRootStub =
   | SearchSuccessResult
   | TxSearchResult
   | SearchResult
-  | StackerListResponse
+  | PoolDelegationsResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -174,7 +174,7 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
-  | DelegatorStacker
+  | PoolDelegation
   | FungibleTokenMetadata
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
@@ -2855,9 +2855,9 @@ export interface TxSearchResult {
   };
 }
 /**
- * GET request that returns stacking pool member details for a given delegator
+ * GET request that returns stacking pool member details for a given pool (delegator) principal
  */
-export interface StackerListResponse {
+export interface PoolDelegationsResponse {
   /**
    * The number of Stackers to return
    */
@@ -2870,9 +2870,9 @@ export interface StackerListResponse {
    * The total number of Stackers
    */
   total: number;
-  results: DelegatorStacker[];
+  results: PoolDelegation[];
 }
-export interface DelegatorStacker {
+export interface PoolDelegation {
   stacker: string;
   pox_addr?: string;
   amount_ustx: string;
