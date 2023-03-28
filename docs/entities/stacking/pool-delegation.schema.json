@@ -10,7 +10,7 @@
     },
     "pox_addr": {
       "type": "string",
-      "description": "The pox-addr value specified by the stacker when then delegated"
+      "description": "The pox-addr value specified by the stacker in the delegation operation"
     },
     "amount_ustx": {
       "type": "string",

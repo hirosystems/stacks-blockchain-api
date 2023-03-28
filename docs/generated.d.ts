@@ -2878,7 +2878,7 @@ export interface PoolDelegation {
    */
   stacker: string;
   /**
-   * The pox-addr value specified by the stacker when then delegated
+   * The pox-addr value specified by the stacker in the delegation operation
    */
   pox_addr?: string;
   /**
