@@ -1,0 +1,29 @@
+{
+  "description": "GET request that returns stacking pool member details for a given pool (delegator) principal",
+  "additionalProperties": false,
+  "title": "PoolDelegationsResponse",
+  "type": "object",
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 200,
+      "description": "The number of Stackers to return"
+    },
+    "offset": {
+      "type": "integer",
+      "description": "The number to Stackers to skip (starting at `0`)",
+      "default": 0
+    },
+    "total": {
+      "type": "integer",
+      "description": "The total number of Stackers"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/stacking/pool-delegation.schema.json"
+      }
+    }
+  }
+}

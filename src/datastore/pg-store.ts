@@ -45,6 +45,7 @@ import {
   DbNftEvent,
   DbNonFungibleTokenMetadata,
   DbPox2Event,
+  DbPox2Stacker,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -2026,6 +2027,66 @@ export class PgStore {
       `;
       const result = queryResults.map(result => parseDbPox2Event(result));
       return { found: true, result: result };
+    });
+  }
+
+  async getPox2PoolDelegations(args: {
+    delegator: string;
+    blockHeight: number;
+    burnBlockHeight: number;
+    afterBlockHeight: number;
+    limit: number;
+    offset: number;
+  }): Promise<FoundOrNot<{ stackers: DbPox2Stacker[]; total: number }>> {
+    return await this.sqlTransaction(async sql => {
+      const queryResults = await sql<
+        {
+          stacker: string;
+          pox_addr: string | null;
+          amount_ustx: string;
+          unlock_burn_height: number | null;
+          tx_id: string;
+          block_height: number;
+          total_rows: number;
+        }[]
+      >`
+        WITH ordered_pox2_events AS (
+          SELECT
+            stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id,
+            block_height, microblock_sequence, tx_index, event_index
+          FROM pox2_events
+          WHERE
+            canonical = true AND microblock_canonical = true AND
+            name = ${Pox2EventName.DelegateStx} AND delegate_to = ${args.delegator} AND
+            block_height <= ${args.blockHeight} AND block_height > ${args.afterBlockHeight} AND
+            (unlock_burn_height > ${args.burnBlockHeight} OR unlock_burn_height IS NULL)
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ),
+        distinct_rows AS (
+          SELECT DISTINCT ON (stacker) 
+            stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
+            block_height, microblock_sequence, tx_index, event_index
+          FROM ordered_pox2_events
+          ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT
+          stacker, pox_addr, amount_ustx, unlock_burn_height, block_height::integer, tx_id,
+          COUNT(*) OVER()::integer AS total_rows
+        FROM distinct_rows
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${args.limit}
+        OFFSET ${args.offset}
+      `;
+      const total = queryResults[0]?.total_rows ?? 0;
+      const stackers: DbPox2Stacker[] = queryResults.map(result => ({
+        stacker: result.stacker,
+        pox_addr: result.pox_addr || undefined,
+        amount_ustx: result.amount_ustx,
+        burn_block_unlock_height: result.unlock_burn_height || undefined,
+        block_height: result.block_height,
+        tx_id: result.tx_id,
+      }));
+      return { found: true, result: { stackers, total } };
     });
   }
 

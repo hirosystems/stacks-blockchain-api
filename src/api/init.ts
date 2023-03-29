@@ -47,6 +47,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
 import { isPgConnectionError } from '../datastore/helpers';
+import { createStackingRouter } from './routes/stacking';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -228,6 +229,21 @@ export async function startApiServer(opts: {
       if (chainId !== ChainID.Mainnet && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
+      return router;
+    })()
+  );
+
+  app.use(
+    '/extended/beta',
+    (() => {
+      const router = express.Router();
+      router.use(cors());
+      router.use((req, res, next) => {
+        // Set caching on all routes to be disabled by default, individual routes can override
+        res.set('Cache-Control', 'no-store');
+        next();
+      });
+      router.use('/stacking', createStackingRouter(datastore));
       return router;
     })()
   );
