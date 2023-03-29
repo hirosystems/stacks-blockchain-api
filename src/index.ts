@@ -111,18 +111,21 @@ async function init(): Promise<void> {
     );
   }
   const apiMode = getApiMode();
-  const dbStore =
-    apiMode === StacksApiMode.offline
-      ? OfflineDummyStore
-      : await PgStore.connect({
-          usageName: `datastore-${apiMode}`,
-        });
-  const dbWriteStore = await PgWriteStore.connect({
-    usageName: `write-datastore-${apiMode}`,
-    skipMigrations: apiMode === StacksApiMode.readOnly,
-  });
-
-  registerMempoolPromStats(dbWriteStore.eventEmitter);
+  let dbStore: PgStore;
+  let dbWriteStore: PgWriteStore;
+  if (apiMode === StacksApiMode.offline) {
+    dbStore = OfflineDummyStore;
+    dbWriteStore = OfflineDummyStore;
+  } else {
+    dbStore = await PgStore.connect({
+      usageName: `datastore-${apiMode}`,
+    });
+    dbWriteStore = await PgWriteStore.connect({
+      usageName: `write-datastore-${apiMode}`,
+      skipMigrations: apiMode === StacksApiMode.readOnly,
+    });
+    registerMempoolPromStats(dbWriteStore.eventEmitter);
+  }
 
   if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.writeOnly) {
     const configuredChainID = getApiConfiguredChainID();
@@ -168,7 +171,11 @@ async function init(): Promise<void> {
     }
   }
 
-  if (apiMode === StacksApiMode.default || apiMode === StacksApiMode.readOnly) {
+  if (
+    apiMode === StacksApiMode.default ||
+    apiMode === StacksApiMode.readOnly ||
+    apiMode === StacksApiMode.offline
+  ) {
     const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
@@ -193,14 +200,16 @@ async function init(): Promise<void> {
     });
   }
 
-  registerShutdownConfig({
-    name: 'DB',
-    handler: async () => {
-      await dbStore.close();
-      await dbWriteStore.close();
-    },
-    forceKillable: false,
-  });
+  if (apiMode !== StacksApiMode.offline) {
+    registerShutdownConfig({
+      name: 'DB',
+      handler: async () => {
+        await dbStore.close();
+        await dbWriteStore.close();
+      },
+      forceKillable: false,
+    });
+  }
 
   if (isProdEnv) {
     const prometheusServer = await createPrometheusServer({ port: 9153 });
