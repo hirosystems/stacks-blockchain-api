@@ -150,6 +150,7 @@
     "getopts": "2.3.0",
     "http-proxy-middleware": "2.0.1",
     "jsonc-parser": "3.0.0",
+    "jsonpathly": "1.7.5",
     "jsonrpc-lite": "2.2.0",
     "lru-cache": "6.0.0",
     "micro-base58": "0.5.1",

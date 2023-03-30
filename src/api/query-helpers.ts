@@ -3,12 +3,66 @@ import { NextFunction, Request, Response } from 'express';
 import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
+import * as jp from 'jsonpathly';
+import { JsonPathElement } from 'jsonpathly/dist/types/parser/types';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
   res.status(400).json({ error: errorMessage });
   next(error);
   throw error;
+}
+
+export function validateJsonPathQuery<TRequired extends boolean>(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  paramName: string,
+  paramRequired: TRequired
+): TRequired extends true ? string | never : string | null {
+  if (!(paramName in req.query)) {
+    if (paramRequired) {
+      handleBadRequest(res, next, `Request is missing required "${paramName}" query parameter`);
+    } else {
+      return null as TRequired extends true ? string | never : string | null;
+    }
+  }
+  const jsonPathInput = req.query[paramName];
+  if (typeof jsonPathInput !== 'string') {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected type for '${paramName}' parameter: ${JSON.stringify(jsonPathInput)}`
+    );
+  }
+
+  const maxCharLength = 200;
+  const maxOperations = 6;
+
+  if (jsonPathInput.length > maxCharLength) {
+    handleBadRequest(
+      res,
+      next,
+      `JsonPath parameter '${paramName}' is invalid: char length exceeded, max=${maxCharLength}, received=${jsonPathInput.length}`
+    );
+  }
+
+  const jsonPathComplexity = getJsonPathComplexity(jsonPathInput);
+  if ('error' in jsonPathComplexity) {
+    handleBadRequest(
+      res,
+      next,
+      `JsonPath parameter '${paramName}' is invalid: ${jsonPathComplexity.error.message}`
+    );
+  }
+  if (jsonPathComplexity.operations > maxOperations) {
+    handleBadRequest(
+      res,
+      next,
+      `JsonPath parameter '${paramName}' is invalid: operations exceeded, max=${maxOperations}, received=${jsonPathComplexity.operations}`
+    );
+  }
+  return jsonPathInput;
 }
 
 export function booleanValueForParam(
@@ -43,6 +97,96 @@ export function booleanValueForParam(
     next,
     `Unexpected value for '${paramName}' parameter: ${JSON.stringify(paramVal)}`
   );
+}
+
+/**
+ * Determine how complex a jsonpath expression is. This uses the jsonpathly library to parse the expression into a tree which
+ * is then evaluated to determine the number of operations in the expression.
+ * Returns an error if the expression is invalid or can't be parsed.
+ */
+export function getJsonPathComplexity(jsonpath: string): { error: Error } | { operations: number } {
+  if (jsonpath.trim().length === 0) {
+    return { error: new Error(`Invalid jsonpath, empty expression string`) };
+  }
+  let pathTree: JsonPathElement | null;
+  try {
+    pathTree = jp.parse(jsonpath);
+  } catch (error: any) {
+    return { error: error instanceof Error ? error : new Error(error.toString()) };
+  }
+
+  if (!pathTree) {
+    return { error: new Error(`Invalid jsonpath, evaluated as null`) };
+  }
+
+  let operations: number;
+  try {
+    operations = countJsonPathOperations(pathTree);
+  } catch (error: any) {
+    return { error: error instanceof Error ? error : new Error(error.toString()) };
+  }
+
+  return { operations };
+}
+
+export function countJsonPathOperations(element: JsonPathElement): number {
+  let count = 0;
+  const stack: {
+    element: JsonPathElement;
+    operationToAdd: number;
+  }[] = [{ element, operationToAdd: 0 }];
+
+  while (stack.length > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const { element, operationToAdd } = stack.pop()!;
+    count += operationToAdd;
+
+    switch (element.type) {
+      case 'operation':
+      case 'logicalExpression':
+      case 'comparator':
+        stack.push({ element: element.left, operationToAdd: 1 });
+        if (element.right) {
+          stack.push({ element: element.right, operationToAdd: 0 });
+        }
+        break;
+      case 'groupOperation':
+      case 'groupExpression':
+      case 'notExpression':
+      case 'filterExpression':
+      case 'bracketExpression':
+        stack.push({ element: element.value, operationToAdd: 1 });
+        break;
+      case 'subscript':
+        stack.push({ element: element.value, operationToAdd: 0 });
+      case 'root':
+      case 'current':
+        if (element.next) {
+          stack.push({ element: element.next, operationToAdd: 0 });
+        }
+        break;
+      case 'unions':
+      case 'indexes':
+        for (const value of element.values) {
+          stack.push({ element: value, operationToAdd: 1 });
+        }
+        break;
+      case 'slices':
+      case 'dotdot':
+      case 'dot':
+      case 'bracketMember':
+      case 'wildcard':
+      case 'numericLiteral':
+      case 'stringLiteral':
+      case 'identifier':
+      case 'value':
+        // These element types don't have nested elements to process
+        count++;
+        break;
+    }
+  }
+
+  return count;
 }
 
 /**
