@@ -1379,6 +1379,7 @@ export interface SmartContractEventInsertValues {
   contract_identifier: string;
   topic: string;
   value: PgBytea;
+  value_json: string;
 }
 
 export interface BurnchainRewardInsertValues {

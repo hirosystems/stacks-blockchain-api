@@ -2,8 +2,15 @@ import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Client, QueryResultRow } from 'pg';
 import * as PgCursor from 'pg-cursor';
-import { ClarityTypeID, ClarityValue, decodeClarityValue } from 'stacks-encoding-native-js';
-import { APP_DIR, isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
+import {
+  APP_DIR,
+  clarityValueToCompactJson,
+  isDevEnv,
+  isTestEnv,
+  logError,
+  logger,
+  REPO_DIR,
+} from '../helpers';
 import { getPgClientConfig, PgClientConfig } from './connection-legacy';
 import { connectPostgres, PgServer } from './connection';
 import { databaseHasData } from './event-requests';
@@ -103,40 +110,6 @@ export async function dangerousDropAllTables(opts?: {
   }
 }
 
-function clarityValueToJson(clarityValue: ClarityValue): any {
-  switch (clarityValue.type_id) {
-    case ClarityTypeID.Int:
-    case ClarityTypeID.UInt:
-    case ClarityTypeID.BoolTrue:
-    case ClarityTypeID.BoolFalse:
-      return clarityValue.value;
-    case ClarityTypeID.StringAscii:
-    case ClarityTypeID.StringUtf8:
-      return clarityValue.data;
-    case ClarityTypeID.ResponseOk:
-    case ClarityTypeID.OptionalSome:
-      return clarityValueToJson(clarityValue.value);
-    case ClarityTypeID.PrincipalStandard:
-      return clarityValue.address;
-    case ClarityTypeID.PrincipalContract:
-      return clarityValue.address + '.' + clarityValue.contract_name;
-    case ClarityTypeID.ResponseError:
-      return { _error: clarityValueToJson(clarityValue.value) };
-    case ClarityTypeID.OptionalNone:
-      return null;
-    case ClarityTypeID.List:
-      return clarityValue.list.map(clarityValueToJson) as any;
-    case ClarityTypeID.Tuple:
-      return Object.fromEntries(
-        Object.entries(clarityValue.data).map(([key, value]) => [key, clarityValueToJson(value)])
-      );
-    case ClarityTypeID.Buffer:
-      return clarityValue.hex;
-  }
-  // @ts-expect-error - all ClarityTypeID cases are handled above
-  throw new Error(`Unexpected Clarity type ID: ${clarityValue.type_id}`);
-}
-
 // Function to finish running sql migrations that are too complex for the node-pg-migrate library.
 async function completeSqlMigrations(client: Client, clientConfig: PgClientConfig) {
   try {
@@ -202,13 +175,11 @@ async function complete_1680181889941_contract_log_json(
   const percentLogInterval = 3;
 
   for await (const row of contractLogsCursor) {
-    const decoded = decodeClarityValue(row.value);
-    const clarityValueJson = clarityValueToJson(decoded);
-    const json = JSON.stringify(clarityValueJson);
+    const clarityValJson = JSON.stringify(clarityValueToCompactJson(row.value));
     await client.query({
       name: 'update_contract_log_json',
       text: 'UPDATE contract_logs SET value_json = $1 WHERE id = $2',
-      values: [json, row.id],
+      values: [clarityValJson, row.id],
     });
     rowsProcessed++;
     const percentComplete = Math.round((rowsProcessed / totalRowCount) * 100);
@@ -221,10 +192,15 @@ async function complete_1680181889941_contract_log_json(
   logger.info(`Running migration 1680181889941_contract_log_json.. set NOT NULL`);
   await client.query(`ALTER TABLE contract_logs ALTER COLUMN value_json SET NOT NULL`);
 
-  logger.info('Running migration 1680181889941_contract_log_json.. creating index');
+  logger.info('Running migration 1680181889941_contract_log_json.. creating jsonb_path_ops index');
   await client.query(
     `CREATE INDEX contract_logs_jsonpathops_idx ON contract_logs USING GIN (value_json jsonb_path_ops)`
   );
+
+  // logger.info('Running migration 1680181889941_contract_log_json.. creating jsonb_ops index');
+  // await client.query(
+  //   `CREATE INDEX contract_logs_jsonops_idx ON contract_logs USING GIN (value_json jsonb_ops)`
+  // );
 
   logger.info(`Running migration 1680181889941_contract_log_json.. 100%`);
 }

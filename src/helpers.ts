@@ -14,7 +14,13 @@ import * as dotenv from 'dotenv-flow';
 import * as http from 'http';
 import { isArrayBufferView } from 'node:util/types';
 import * as path from 'path';
-import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import {
+  ClarityTypeID,
+  ClarityValue,
+  decodeClarityValue,
+  isValidStacksAddress,
+  stacksToBitcoinAddress,
+} from 'stacks-encoding-native-js';
 import * as stream from 'stream';
 import * as ecc from 'tiny-secp256k1';
 import * as util from 'util';
@@ -325,6 +331,68 @@ export function isValidPrincipal(
     }
   }
   return false;
+}
+
+/**
+ * Encodes a Clarity value into a JSON object. This encoding does _not_ preserve exact Clarity type information.
+ * Instead, values are mapped to a JSON object that is optimized for readability and interoperability with
+ * JSON-based workflows (e.g. Postgres `jsonpath` support).
+ *  * OptionalSome and ResponseOk are unwrapped (i.e. the value is encoded directly without any nesting).
+ *  * OptionalNone is encoded as json `null`.
+ *  * ResponseError is encoded as an object with a single key `_error`.
+ *  * Buffers are encoded as an object containing the key `hex` with the hex-encoded string as the value,
+ *    and the key `utf8` with the utf8-encoded string as the value. When decoding a Buffer into a string that
+ *    does not exclusively contain valid UTF-8 data, the Unicode replacement character U+FFFD `�` will be used
+ *    to represent those errors.
+ *  * Ints and UInts are encoded as string-quoted integers.
+ *  * Booleans are encoded as booleans.
+ *  * Principals are encoded as strings, e.g. `<address>` or `<address>.<contract_name>`.
+ *  * StringAscii and StringUtf8 are both encoded as regular json strings.
+ *  * Lists are encoded as json arrays.
+ *  * Tuples are encoded as json objects.
+ * @param cv - the Clarity value to encode, or a hex-encoded string representation of a Clarity value.
+ */
+export function clarityValueToCompactJson(clarityValue: ClarityValue | string): any {
+  let cv: ClarityValue;
+  if (typeof clarityValue === 'string') {
+    cv = decodeClarityValue(clarityValue);
+  } else {
+    cv = clarityValue;
+  }
+  switch (cv.type_id) {
+    case ClarityTypeID.Int:
+    case ClarityTypeID.UInt:
+    case ClarityTypeID.BoolTrue:
+    case ClarityTypeID.BoolFalse:
+      return cv.value;
+    case ClarityTypeID.StringAscii:
+    case ClarityTypeID.StringUtf8:
+      return cv.data;
+    case ClarityTypeID.ResponseOk:
+    case ClarityTypeID.OptionalSome:
+      return clarityValueToCompactJson(cv.value);
+    case ClarityTypeID.PrincipalStandard:
+      return cv.address;
+    case ClarityTypeID.PrincipalContract:
+      return cv.address + '.' + cv.contract_name;
+    case ClarityTypeID.ResponseError:
+      return { _error: clarityValueToCompactJson(cv.value) };
+    case ClarityTypeID.OptionalNone:
+      return null;
+    case ClarityTypeID.List:
+      return cv.list.map(clarityValueToCompactJson) as any;
+    case ClarityTypeID.Tuple:
+      return Object.fromEntries(
+        Object.entries(cv.data).map(([key, value]) => [key, clarityValueToCompactJson(value)])
+      );
+    case ClarityTypeID.Buffer:
+      return {
+        hex: cv.buffer,
+        utf8: Buffer.from(cv.buffer.substring(2), 'hex').toString('utf8'),
+      };
+  }
+  // @ts-expect-error - all ClarityTypeID cases are handled above
+  throw new Error(`Unexpected Clarity type ID: ${cv.type_id}`);
 }
 
 export type HttpClientResponse = http.IncomingMessage & {

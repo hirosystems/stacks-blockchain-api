@@ -1,4 +1,12 @@
-import { logger, logError, getOrAdd, batchIterate, isProdEnv, I32_MAX } from '../helpers';
+import {
+  logger,
+  logError,
+  getOrAdd,
+  batchIterate,
+  isProdEnv,
+  I32_MAX,
+  clarityValueToCompactJson,
+} from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -1228,6 +1236,7 @@ export class PgWriteStore extends PgStore {
         contract_identifier: event.contract_identifier,
         topic: event.topic,
         value: event.value,
+        value_json: JSON.stringify(clarityValueToCompactJson(event.value)),
       }));
       const res = await sql`
         INSERT INTO contract_logs ${sql(values)}
@@ -1253,6 +1262,7 @@ export class PgWriteStore extends PgStore {
       contract_identifier: event.contract_identifier,
       topic: event.topic,
       value: event.value,
+      value_json: JSON.stringify(clarityValueToCompactJson(event.value)),
     };
     await sql`
       INSERT INTO contract_logs ${sql(values)}
