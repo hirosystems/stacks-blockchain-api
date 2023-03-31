@@ -346,12 +346,6 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
           },
         },
       };
-      if ('value_json' in dbEvent) {
-        Object.defineProperty(event.contract_log.value, 'json', {
-          value: dbEvent.value_json,
-          enumerable: true,
-        });
-      }
       return event;
     }
     case DbEventTypeId.StxLock: {

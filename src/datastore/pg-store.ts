@@ -2102,7 +2102,7 @@ export class PgStore {
     offset: number;
     filterPath: string | null;
     containsJson: any | undefined;
-  }): Promise<FoundOrNot<(DbSmartContractEvent & { value_json: any })[]>> {
+  }): Promise<FoundOrNot<DbSmartContractEvent[]>> {
     const hasFilterPath = filterPath !== null;
     const hasJsonContains = containsJson !== undefined;
 
@@ -2119,7 +2119,7 @@ export class PgStore {
       }[]
     >`
       SELECT
-        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value, value_json
+        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value
       FROM contract_logs
       WHERE canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}
       ${hasFilterPath ? this.sql`AND value_json @? ${filterPath}::jsonpath` : this.sql``}
@@ -2128,9 +2128,8 @@ export class PgStore {
       LIMIT ${limit}
       OFFSET ${offset}
     `;
-
     const result = logResults.map(result => {
-      const event: DbSmartContractEvent & { value_json: any } = {
+      const event: DbSmartContractEvent = {
         event_index: result.event_index,
         tx_id: result.tx_id,
         tx_index: result.tx_index,
@@ -2140,7 +2139,6 @@ export class PgStore {
         contract_identifier: result.contract_identifier,
         topic: result.topic,
         value: result.value,
-        value_json: result.value_json,
       };
       return event;
     });
