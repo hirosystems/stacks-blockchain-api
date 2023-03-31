@@ -1,6 +1,6 @@
 import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
-import { Client } from 'pg';
+import { Client, QueryResultRow } from 'pg';
 import * as PgCursor from 'pg-cursor';
 import { ClarityTypeID, ClarityValue, decodeClarityValue } from 'stacks-encoding-native-js';
 import { APP_DIR, isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
@@ -149,14 +149,36 @@ async function completeSqlMigrations(client: Client, clientConfig: PgClientConfi
   }
 }
 
+async function* pgCursorQuery<R extends QueryResultRow = any>(args: {
+  clientConfig: PgClientConfig;
+  queryText: string;
+  queryValues?: any[];
+  batchSize: number;
+}) {
+  const cursorClient = new Client(args.clientConfig);
+  try {
+    await cursorClient.connect();
+    const cursor = new PgCursor<R>(args.queryText, args.queryValues);
+    const cursorQuery = cursorClient.query(cursor);
+    let rows: R[] = [];
+    do {
+      rows = await new Promise((resolve, reject) => {
+        cursorQuery.read(args.batchSize, (error, rows) => (error ? reject(error) : resolve(rows)));
+      });
+      yield* rows;
+    } while (rows.length > 0);
+  } finally {
+    await cursorClient.end();
+  }
+}
+
 async function complete_1680181889941_contract_log_json(
   client: Client,
   clientConfig: PgClientConfig
 ) {
   // Determine if this migration has already been run by checking if the bew column is nullable.
   const result = await client.query(`
-    SELECT is_nullable
-    FROM information_schema.columns
+    SELECT is_nullable FROM information_schema.columns
     WHERE table_name = 'contract_logs' AND column_name = 'value_json'
   `);
   const migrationNeeded = result.rows[0].is_nullable === 'YES';
@@ -165,29 +187,11 @@ async function complete_1680181889941_contract_log_json(
   }
   logger.info(`Running migration 1680181889941_contract_log_json..`);
 
-  const getContractLogs = async function* () {
-    const cursorBatchSize = 1000;
-    const cursorClient = new Client(clientConfig);
-    try {
-      await cursorClient.connect();
-      type CursorRow = { id: string; value: string };
-      const cursor = new PgCursor<CursorRow>('SELECT id, value FROM contract_logs');
-      const cursorQuery = cursorClient.query(cursor);
-      let rows: CursorRow[] = [];
-      do {
-        rows = await new Promise((resolve, reject) => {
-          cursorQuery.read(cursorBatchSize, (error, rows) =>
-            error ? reject(error) : resolve(rows)
-          );
-        });
-        for (const row of rows) {
-          yield row;
-        }
-      } while (rows.length > 0);
-    } finally {
-      await cursorClient.end();
-    }
-  };
+  const contractLogsCursor = pgCursorQuery<{ id: string; value: string }>({
+    clientConfig,
+    queryText: 'SELECT id, value FROM contract_logs',
+    batchSize: 1000,
+  });
 
   const rowCountQuery = await client.query<{ count: number }>(
     'SELECT COUNT(*)::integer FROM contract_logs'
@@ -197,7 +201,7 @@ async function complete_1680181889941_contract_log_json(
   let lastPercentComplete = 0;
   const percentLogInterval = 3;
 
-  for await (const row of getContractLogs()) {
+  for await (const row of contractLogsCursor) {
     const decoded = decodeClarityValue(row.value);
     const clarityValueJson = clarityValueToJson(decoded);
     const json = JSON.stringify(clarityValueJson);
