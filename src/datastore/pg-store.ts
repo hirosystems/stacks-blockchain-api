@@ -2094,6 +2094,63 @@ export class PgStore {
     contractId,
     limit,
     offset,
+    filterPath,
+    containsJson,
+  }: {
+    contractId: string;
+    limit: number;
+    offset: number;
+    filterPath: string | null;
+    containsJson: any | undefined;
+  }): Promise<FoundOrNot<(DbSmartContractEvent & { value_json: any })[]>> {
+    const hasFilterPath = filterPath !== null;
+    const hasJsonContains = containsJson !== undefined;
+
+    const logResults = await this.sql<
+      {
+        event_index: number;
+        tx_id: string;
+        tx_index: number;
+        block_height: number;
+        contract_identifier: string;
+        topic: string;
+        value: string;
+        value_json: any;
+      }[]
+    >`
+      SELECT
+        event_index, tx_id, tx_index, block_height, contract_identifier, topic, value, value_json
+      FROM contract_logs
+      WHERE canonical = true AND microblock_canonical = true AND contract_identifier = ${contractId}
+      ${hasFilterPath ? this.sql`AND value_json @? ${filterPath}::jsonpath` : this.sql``}
+      ${hasJsonContains ? this.sql`AND value_json @> ${containsJson}::jsonb` : this.sql``}
+      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+
+    const result = logResults.map(result => {
+      const event: DbSmartContractEvent & { value_json: any } = {
+        event_index: result.event_index,
+        tx_id: result.tx_id,
+        tx_index: result.tx_index,
+        block_height: result.block_height,
+        canonical: true,
+        event_type: DbEventTypeId.SmartContractLog,
+        contract_identifier: result.contract_identifier,
+        topic: result.topic,
+        value: result.value,
+        value_json: result.value_json,
+      };
+      return event;
+    });
+    return { found: true, result };
+  }
+
+  async getSmartContractEventsFilteredByJsonPath({
+    contractId,
+    limit,
+    offset,
   }: {
     contractId: string;
     limit: number;

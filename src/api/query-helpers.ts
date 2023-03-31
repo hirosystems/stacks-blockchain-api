@@ -18,10 +18,10 @@ export function validateJsonPathQuery<TRequired extends boolean>(
   res: Response,
   next: NextFunction,
   paramName: string,
-  paramRequired: TRequired
+  args: { paramRequired: TRequired; maxCharLength: number; maxOperations: number }
 ): TRequired extends true ? string | never : string | null {
   if (!(paramName in req.query)) {
-    if (paramRequired) {
+    if (args.paramRequired) {
       handleBadRequest(res, next, `Request is missing required "${paramName}" query parameter`);
     } else {
       return null as TRequired extends true ? string | never : string | null;
@@ -36,8 +36,8 @@ export function validateJsonPathQuery<TRequired extends boolean>(
     );
   }
 
-  const maxCharLength = 200;
-  const maxOperations = 6;
+  const maxCharLength = args.maxCharLength;
+  const maxOperations = args.maxOperations;
 
   if (jsonPathInput.length > maxCharLength) {
     handleBadRequest(
