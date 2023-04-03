@@ -11,6 +11,84 @@ function handleBadRequest(res: Response, next: NextFunction, errorMessage: strin
   throw error;
 }
 
+export function validateJsonPathQuery<TRequired extends boolean>(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  paramName: string,
+  args: { paramRequired: TRequired; maxCharLength: number }
+): TRequired extends true ? string | never : string | null {
+  if (!(paramName in req.query)) {
+    if (args.paramRequired) {
+      handleBadRequest(res, next, `Request is missing required "${paramName}" query parameter`);
+    } else {
+      return null as TRequired extends true ? string | never : string | null;
+    }
+  }
+  const jsonPathInput = req.query[paramName];
+  if (typeof jsonPathInput !== 'string') {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected type for '${paramName}' parameter: ${JSON.stringify(jsonPathInput)}`
+    );
+  }
+
+  const maxCharLength = args.maxCharLength;
+
+  if (jsonPathInput.length > maxCharLength) {
+    handleBadRequest(
+      res,
+      next,
+      `JsonPath parameter '${paramName}' is invalid: char length exceeded, max=${maxCharLength}, received=${jsonPathInput.length}`
+    );
+  }
+
+  const disallowedOperation = containsDisallowedJsonPathOperation(jsonPathInput);
+  if (disallowedOperation) {
+    handleBadRequest(
+      res,
+      next,
+      `JsonPath parameter '${paramName}' is invalid: contains disallowed operation '${disallowedOperation.operation}'`
+    );
+  }
+
+  return jsonPathInput;
+}
+
+/**
+ * Disallow operations that could be used to perform expensive queries.
+ * See https://www.postgresql.org/docs/14/functions-json.html
+ */
+export function containsDisallowedJsonPathOperation(
+  jsonPath: string
+): false | { operation: string } {
+  const normalizedPath = jsonPath.replace(/\s+/g, '').toLowerCase();
+  const hasDisallowedOperations: [() => boolean, string][] = [
+    [() => normalizedPath.includes('.*'), '.* wildcard accessor'],
+    [() => normalizedPath.includes('[*]'), '[*] wildcard array accessor'],
+    [() => /\[\d+to(\d+|last)\]/.test(normalizedPath), '[n to m] array range accessor'],
+    [() => /\[[^\]]*\([^\)]*\)[^\]]*\]/.test(normalizedPath), '[()] array expression accessor'],
+    [() => normalizedPath.includes('.type('), '.type()'],
+    [() => normalizedPath.includes('.size('), '.size()'],
+    [() => normalizedPath.includes('.double('), '.double()'],
+    [() => normalizedPath.includes('.ceiling('), '.ceiling()'],
+    [() => normalizedPath.includes('.floor('), '.floor()'],
+    [() => normalizedPath.includes('.abs('), '.abs()'],
+    [() => normalizedPath.includes('.datetime('), '.datetime()'],
+    [() => normalizedPath.includes('.keyvalue('), '.keyvalue()'],
+    [() => normalizedPath.includes('isunknown'), 'is unknown'],
+    [() => normalizedPath.includes('like_regex'), 'like_regex'],
+    [() => normalizedPath.includes('startswith'), 'starts with'],
+  ];
+  for (const [hasDisallowedOperation, disallowedOperationName] of hasDisallowedOperations) {
+    if (hasDisallowedOperation()) {
+      return { operation: disallowedOperationName };
+    }
+  }
+  return false;
+}
+
 export function booleanValueForParam(
   req: Request,
   res: Response,

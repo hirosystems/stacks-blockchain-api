@@ -1006,6 +1006,20 @@ paths:
           schema:
             type: string
             example: "SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles"
+        - name: contains
+          in: query
+          description: Optional stringified JSON to select only results that contain the given JSON
+          required: false
+          schema:
+            type: string
+            example: '{"attachment":{"metadata":{"op":"name-register"}}}'
+        - name: filter_path
+          in: query
+          description: Optional [`jsonpath` expression](https://www.postgresql.org/docs/14/functions-json.html#FUNCTIONS-SQLJSON-PATH) to select only results that contain items matching the expression
+          required: false
+          schema:
+            type: string
+            example: '$.attachment.metadata?(@.op=="name-register")'
         - name: limit
           in: query
           description: max number of contract events to fetch

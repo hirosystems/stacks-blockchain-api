@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
-import { parseTraitAbi } from '../query-helpers';
+import { parseTraitAbi, validateJsonPathQuery } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
 
 export function createContractRouter(db: PgStore): express.Router {
@@ -50,14 +50,44 @@ export function createContractRouter(db: PgStore): express.Router {
 
   router.get(
     '/:contract_id/events',
-    asyncHandler(async (req, res) => {
+    asyncHandler(async (req, res, next) => {
       const { contract_id } = req.params;
       const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
+
+      const filterPath = validateJsonPathQuery(req, res, next, 'filter_path', {
+        paramRequired: false,
+        maxCharLength: 200,
+      });
+
+      const containsJsonQuery = req.query['contains'];
+      if (containsJsonQuery && typeof containsJsonQuery !== 'string') {
+        res.status(400).json({ error: `'contains' query param must be a string` });
+        return;
+      }
+      let containsJson: any | undefined;
+      const maxContainsJsonCharLength = 200;
+      if (containsJsonQuery) {
+        if (containsJsonQuery.length > maxContainsJsonCharLength) {
+          res.status(400).json({
+            error: `'contains' query param value exceeds ${maxContainsJsonCharLength} character limit`,
+          });
+          return;
+        }
+        try {
+          containsJson = JSON.parse(containsJsonQuery);
+        } catch (error) {
+          res.status(400).json({ error: `'contains' query param value must be valid JSON` });
+          return;
+        }
+      }
+
       const eventsQuery = await db.getSmartContractEvents({
         contractId: contract_id,
         limit,
         offset,
+        filterPath,
+        containsJson,
       });
       if (!eventsQuery.found) {
         res.status(404).json({ error: `cannot find events for contract by ID: ${contract_id}` });
