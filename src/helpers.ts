@@ -344,7 +344,8 @@ export function isValidPrincipal(
  *    and the key `utf8` with the utf8-encoded string as the value. When decoding a Buffer into a string that
  *    does not exclusively contain valid UTF-8 data, the Unicode replacement character U+FFFD `�` will be used
  *    to represent those errors.
- *  * Ints and UInts are encoded as string-quoted integers.
+ *  * Ints and UInts that are in the range of a safe js integers are encoded as numbers, otherwise they
+ *    are encoded as string-quoted integers.
  *  * Booleans are encoded as booleans.
  *  * Principals are encoded as strings, e.g. `<address>` or `<address>.<contract_name>`.
  *  * StringAscii and StringUtf8 are both encoded as regular json strings.
@@ -362,6 +363,8 @@ export function clarityValueToCompactJson(clarityValue: ClarityValue | string): 
   switch (cv.type_id) {
     case ClarityTypeID.Int:
     case ClarityTypeID.UInt:
+      const intVal = parseInt(cv.value);
+      return Number.isSafeInteger(intVal) ? intVal : cv.value;
     case ClarityTypeID.BoolTrue:
     case ClarityTypeID.BoolFalse:
       return cv.value;

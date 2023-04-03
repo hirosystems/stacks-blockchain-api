@@ -197,10 +197,10 @@ async function complete_1680181889941_contract_log_json(
     `CREATE INDEX contract_logs_jsonpathops_idx ON contract_logs USING GIN (value_json jsonb_path_ops)`
   );
 
-  // logger.info('Running migration 1680181889941_contract_log_json.. creating jsonb_ops index');
-  // await client.query(
-  //   `CREATE INDEX contract_logs_jsonops_idx ON contract_logs USING GIN (value_json jsonb_ops)`
-  // );
+  logger.info('Running migration 1680181889941_contract_log_json.. creating jsonb_ops index');
+  await client.query(
+    `CREATE INDEX contract_logs_jsonops_idx ON contract_logs USING GIN (value_json jsonb_ops)`
+  );
 
   logger.info(`Running migration 1680181889941_contract_log_json.. 100%`);
 }
