@@ -3,8 +3,6 @@ import { NextFunction, Request, Response } from 'express';
 import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
-import * as jp from 'jsonpathly';
-import { JsonPathElement } from 'jsonpathly/dist/types/parser/types';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
@@ -18,7 +16,7 @@ export function validateJsonPathQuery<TRequired extends boolean>(
   res: Response,
   next: NextFunction,
   paramName: string,
-  args: { paramRequired: TRequired; maxCharLength: number; maxOperations: number }
+  args: { paramRequired: TRequired; maxCharLength: number }
 ): TRequired extends true ? string | never : string | null {
   if (!(paramName in req.query)) {
     if (args.paramRequired) {
@@ -37,7 +35,6 @@ export function validateJsonPathQuery<TRequired extends boolean>(
   }
 
   const maxCharLength = args.maxCharLength;
-  const maxOperations = args.maxOperations;
 
   if (jsonPathInput.length > maxCharLength) {
     handleBadRequest(
@@ -47,22 +44,49 @@ export function validateJsonPathQuery<TRequired extends boolean>(
     );
   }
 
-  const jsonPathComplexity = getJsonPathComplexity(jsonPathInput);
-  if ('error' in jsonPathComplexity) {
+  const disallowedOperation = containsDisallowedJsonPathOperation(jsonPathInput);
+  if (disallowedOperation) {
     handleBadRequest(
       res,
       next,
-      `JsonPath parameter '${paramName}' is invalid: ${jsonPathComplexity.error.message}`
+      `JsonPath parameter '${paramName}' is invalid: contains disallowed operation '${disallowedOperation.operation}'`
     );
   }
-  if (jsonPathComplexity.operations > maxOperations) {
-    handleBadRequest(
-      res,
-      next,
-      `JsonPath parameter '${paramName}' is invalid: operations exceeded, max=${maxOperations}, received=${jsonPathComplexity.operations}`
-    );
-  }
+
   return jsonPathInput;
+}
+
+/**
+ * Disallow operations that could be used to perform expensive queries.
+ * See https://www.postgresql.org/docs/14/functions-json.html
+ */
+export function containsDisallowedJsonPathOperation(
+  jsonPath: string
+): false | { operation: string } {
+  const normalizedPath = jsonPath.replace(/\s+/g, '').toLowerCase();
+  const hasDisallowedOperations: [() => boolean, string][] = [
+    [() => normalizedPath.includes('.*'), '.* wildcard accessor'],
+    [() => normalizedPath.includes('[*]'), '[*] wildcard array accessor'],
+    [() => /\[\d+to(\d+|last)\]/.test(normalizedPath), '[n to m] array range accessor'],
+    [() => /\[[^\]]*\([^\)]*\)[^\]]*\]/.test(normalizedPath), '[()] array expression accessor'],
+    [() => normalizedPath.includes('.type('), '.type()'],
+    [() => normalizedPath.includes('.size('), '.size()'],
+    [() => normalizedPath.includes('.double('), '.double()'],
+    [() => normalizedPath.includes('.ceiling('), '.ceiling()'],
+    [() => normalizedPath.includes('.floor('), '.floor()'],
+    [() => normalizedPath.includes('.abs('), '.abs()'],
+    [() => normalizedPath.includes('.datetime('), '.datetime()'],
+    [() => normalizedPath.includes('.keyvalue('), '.keyvalue()'],
+    [() => normalizedPath.includes('isunknown'), 'is unknown'],
+    [() => normalizedPath.includes('like_regex'), 'like_regex'],
+    [() => normalizedPath.includes('startswith'), 'starts with'],
+  ];
+  for (const [hasDisallowedOperation, disallowedOperationName] of hasDisallowedOperations) {
+    if (hasDisallowedOperation()) {
+      return { operation: disallowedOperationName };
+    }
+  }
+  return false;
 }
 
 export function booleanValueForParam(
@@ -97,96 +121,6 @@ export function booleanValueForParam(
     next,
     `Unexpected value for '${paramName}' parameter: ${JSON.stringify(paramVal)}`
   );
-}
-
-/**
- * Determine how complex a jsonpath expression is. This uses the jsonpathly library to parse the expression into a tree which
- * is then evaluated to determine the number of operations in the expression.
- * Returns an error if the expression is invalid or can't be parsed.
- */
-export function getJsonPathComplexity(jsonpath: string): { error: Error } | { operations: number } {
-  if (jsonpath.trim().length === 0) {
-    return { error: new Error(`Invalid jsonpath, empty expression string`) };
-  }
-  let pathTree: JsonPathElement | null;
-  try {
-    pathTree = jp.parse(jsonpath);
-  } catch (error: any) {
-    return { error: error instanceof Error ? error : new Error(error.toString()) };
-  }
-
-  if (!pathTree) {
-    return { error: new Error(`Invalid jsonpath, evaluated as null`) };
-  }
-
-  let operations: number;
-  try {
-    operations = countJsonPathOperations(pathTree);
-  } catch (error: any) {
-    return { error: error instanceof Error ? error : new Error(error.toString()) };
-  }
-
-  return { operations };
-}
-
-export function countJsonPathOperations(element: JsonPathElement): number {
-  let count = 0;
-  const stack: {
-    element: JsonPathElement;
-    operationToAdd: number;
-  }[] = [{ element, operationToAdd: 0 }];
-
-  while (stack.length > 0) {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const { element, operationToAdd } = stack.pop()!;
-    count += operationToAdd;
-
-    switch (element.type) {
-      case 'operation':
-      case 'logicalExpression':
-      case 'comparator':
-        stack.push({ element: element.left, operationToAdd: 1 });
-        if (element.right) {
-          stack.push({ element: element.right, operationToAdd: 0 });
-        }
-        break;
-      case 'groupOperation':
-      case 'groupExpression':
-      case 'notExpression':
-      case 'filterExpression':
-      case 'bracketExpression':
-        stack.push({ element: element.value, operationToAdd: 1 });
-        break;
-      case 'subscript':
-        stack.push({ element: element.value, operationToAdd: 0 });
-      case 'root':
-      case 'current':
-        if (element.next) {
-          stack.push({ element: element.next, operationToAdd: 0 });
-        }
-        break;
-      case 'unions':
-      case 'indexes':
-        for (const value of element.values) {
-          stack.push({ element: value, operationToAdd: 1 });
-        }
-        break;
-      case 'slices':
-      case 'dotdot':
-      case 'dot':
-      case 'bracketMember':
-      case 'wildcard':
-      case 'numericLiteral':
-      case 'stringLiteral':
-      case 'identifier':
-      case 'value':
-        // These element types don't have nested elements to process
-        count++;
-        break;
-    }
-  }
-
-  return count;
 }
 
 /**

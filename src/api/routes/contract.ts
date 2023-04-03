@@ -55,22 +55,10 @@ export function createContractRouter(db: PgStore): express.Router {
       const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      /*
       const filterPath = validateJsonPathQuery(req, res, next, 'filter_path', {
         paramRequired: false,
         maxCharLength: 200,
-        maxOperations: 6,
       });
-      */
-
-      const filterPath = (req.query['filter_path'] ?? null) as string | null;
-      const maxFilterPathCharLength = 200;
-      if (filterPath && filterPath.length > maxFilterPathCharLength) {
-        res.status(400).json({
-          error: `'filter_path' query param value exceeds ${maxFilterPathCharLength} character limit`,
-        });
-        return;
-      }
 
       const containsJsonQuery = req.query['contains'];
       if (containsJsonQuery && typeof containsJsonQuery !== 'string') {

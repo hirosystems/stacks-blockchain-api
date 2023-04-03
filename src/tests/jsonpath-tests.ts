@@ -1,72 +1,50 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable prettier/prettier */
-import { getJsonPathComplexity } from '../api/query-helpers';
+import { containsDisallowedJsonPathOperation } from '../api/query-helpers';
 
 describe('jsonpath tests', () => {
 
-  const jsonPathVectors: [string, number][] = [
-    [ '$.key', 1 ],
-    [ '$.key.subkey', 2 ],
-    [ '$.array[*]', 3 ],
-    [ '$.array[*].subkey', 4 ],
-    [ '$.key1.key2.subkey', 3 ],
-    [ '$.key1.key2.array[*].subkey', 6 ],
-    [ '$.key.subkey1.subkey2.subkey3.subkey4', 5 ],
-    [ '$.array[*].subkey1.subkey2.subkey3.subkey4', 7 ],
-    [ '$.key1.key2.subkey1.subkey2.subkey3.subkey4', 6 ],
-    [ '$.key1.key2.array[*].subkey1.subkey2.subkey3.subkey4', 9 ],
-    [ '$.store.book[*].author', 5 ],
-    [ '$.store.book[*].title', 5 ],
-    [ '$.store.book[0,1].title', 8 ],
-    [ '$.store.book[0:2].title', 5 ],
-    [ '$.store.book[-1:].title', 5 ],
-    [ '$.store.book[-2].author', 4 ],
-    [ '$.store..price', 2 ],
-    [ '$..book[2]', 2 ],
-    [ '$..book[-2]', 2 ],
-    [ '$..book[0,1]', 6 ],
-    [ '$..book[:2]', 3 ],
-    [ '$..book[1:2]', 3 ],
-    [ '$..book[-2:]', 3 ],
-    [ '$..book[2:]', 3 ],
-    [ '$.store.book[?(@.isbn)]', 5 ],
-    [ '$..book[?(@.price<10)]', 6 ],
-    [ '$..book[?(@.price==8.95)]', 6 ],
-    [ '$..book[?(@.price!=8.95)]', 6 ],
-    [ '$..book[?(@.price<30 && @.category=="fiction")]', 10 ],
-    [ '$..book[?(@.price<30 || @.category=="fiction")]', 10 ],
-    [ '$.store.book[0:2].author[0:3].name[0:3].title', 11 ],
-    [ '$.store..author[0:2].books[0:2].title', 8 ],
-    [ '$.store.book[?(@.isbn)].publisher[0:2].name', 9 ],
-    [ '$.store.book[?(@.price<10)].author[0:2].books[0:2].title', 14 ],
-    [ '$..book[0:2].author[0:3].name[0:3].title', 10 ],
-    [ '$..book[-2:].author[0:3].name[0:3].title', 10 ],
-    [ '$..book[2:].author[0:3].name[0:3].title', 10 ],
-    [ '$..book[?(@.price<30 && @.category=="fiction")].author[0:2].books[0:2].title', 17 ],
-    [ '$..book[?(@.price<30 || @.category=="fiction")].author[0:2].books[0:2].title', 17 ],
-    [ '$.store.book[0:2].title[0:3].author[0:3].name', 11 ],
-    [ '$.store.book[?(@.isbn)].publisher[0:2].name[0:3].address', 12 ],
-    [ '$..book[0:2].title[0:3].author[0:3].name[0:3].address', 13 ],
-    [ '$..book[-2:].title[0:3].author[0:3].name[0:3].address', 13 ],
-    [ '$..book[2:].title[0:3].author[0:3].name[0:3].address', 13 ],
-    [ '$..book[?(@.price<30 && @.category=="fiction")].title[0:3].author[0:2].name[0:3].address', 20 ],
-    [ '$..book[?(@.price<30 || @.category=="fiction")].title[0:3].author[0:2].name[0:3].address', 20 ],
-    [ '$.store..author[0:2].books[0:2].title[0:3].publisher[0:2].name', 14 ],
-    [ '$.store.book[?(@.isbn)].publisher[0:2].name[0:3].address[0:2].city', 15 ],
+  const jsonPathVectors: [string, string | null][] = [
+    [ '$.track.segments.location', null ],
+    [ '$[0] + 3', null ],
+    [ '+ $.x', null ],
+    [ '7 - $[0]', null ],
+    [ '- $.x', null ],
+    [ '2 * $[0]', null ],
+    [ '$[0] / 2', null ],
+    [ '$[0] % 10', null ],
+    [ '$.**.HR', '.* wildcard accessor' ],
+    [ '$.* ? (@.v == "a")', '.* wildcard accessor' ],
+    [ '$.** ? (@.v == "a")', '.* wildcard accessor' ],
+    [ '$.track.segments[*].location', '[*] wildcard array accessor' ],
+    [ '$.[1 to 37634].a', '[n to m] array range accessor' ],
+    [ '$.[555 to last].a', '[n to m] array range accessor' ],
+    [ '$.[(3 + 4) to last].a', '[()] array expression accessor' ],
+    [ '$.[1 to (3 + 4)].a', '[()] array expression accessor' ],
+    [ '$.t.type()', '.type()' ],
+    [ '$.m.size()', '.size()' ],
+    [ '$.len.double() * 2', '.double()' ],
+    [ '$.h.ceiling()', '.ceiling()' ],
+    [ '$.h.floor()', '.floor()' ],
+    [ '$.z.abs()', '.abs()' ],
+    [ '$.a ? (@.datetime() < "2015-08-2".datetime())', '.datetime()' ],
+    [ '$.a.datetime("HH24:MI")', '.datetime()' ],
+    [ '$.keyvalue()', '.keyvalue()' ],
+    [ '$.a ? (@ like_regex "^abc")', 'like_regex' ],
+    [ '$.a ? (@ starts with "John")', 'starts with' ],
+    [ '$.a ? ((@ > 0) is unknown)', 'is unknown' ]
   ];
 
-  test.each(jsonPathVectors)('test jsonpath operation complexity: %p', (input, operations) => {
-    const complexity = getJsonPathComplexity(input);
-    expect(complexity).toEqual({ operations });
+  test.each(jsonPathVectors)('test jsonpath operation complexity: %p', (input, result) => {
+    const disallowed = containsDisallowedJsonPathOperation(input);
+    expect(disallowed).toEqual(result === null ? false : { operation: result });
   });
 
   /*
-  test.skip('generate vector data', () => {
-    const result = postgresExampleVectors.map(([input]) => {
-      const complexity = getJsonPathComplexity(input);
-      if ('error' in complexity) {
-        return [input, complexity.error.message];
-      }
-      return [input, complexity.operations];
+  test('generate vector data', () => {
+    const result = postgresExampleVectors.map((input) => {
+      const complexity = containsDisallowedJsonPathOperation(input);
+      return [input, complexity ? complexity.operation : null];
     });
     console.log(result);
   });
