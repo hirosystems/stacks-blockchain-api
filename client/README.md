@@ -32,8 +32,8 @@ Here is example code that subscribes to updates for a specific Stacks address:
 ```js
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 
-// for testnet, replace with wss://stacks-node-api.testnet.stacks.co/
-const client = await connectWebSocketClient('wss://stacks-node-api.mainnet.stacks.co/');
+// for testnet, replace with wss://api.testnet.hiro.so/
+const client = await connectWebSocketClient('wss://api.mainnet.hiro.so/');
 
 const sub = await client.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', event =>
   console.log(event);
@@ -48,8 +48,8 @@ await sub.unsubscribe();
 import { io } from "socket.io-client";
 import * as stacks from '@stacks/blockchain-api-client';
 
-// for testnet, replace with https://stacks-node-api.testnet.stacks.co/
-const socketUrl = "https://stacks-node-api.mainnet.stacks.co/";
+// for testnet, replace with https://api.testnet.hiro.so/
+const socketUrl = "https://api.mainnet.hiro.so/";
 
 const socket = io(socketUrl, {
   transports: [ "websocket" ]
@@ -287,61 +287,77 @@ Sent every time a transaction is sent or received by a specific Stacks address. 
 Example message if subscribed to updates for an address `SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q`:
 ```json
 {
-  "tx_id": "0x1f9e737dfbebcb57f0879a44518c1cc909be0ceb8ab0bc9b38ce63e3b6847917",
-  "nonce": 6,
-  "fee_rate": "277600",
-  "sender_address": "SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q",
-  "sponsored": false,
-  "post_condition_mode": "deny",
-  "post_conditions": [
-    {
-      "type": "stx",
-      "condition_code": "sent_less_than_or_equal_to",
-      "amount": "25000000",
-      "principal": {
-        "type_id": "principal_standard",
-        "address": "SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q"
+  "tx": {
+    "tx_id": "0x0c818b9af6356a2eb4d64ee1b2490193d97a82392c02e7264e006ae5979aa726",
+    "nonce": 32,
+    "fee_rate": "3000",
+    "sender_address": "SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR",
+    "sponsored": false,
+    "post_condition_mode": "deny",
+    "post_conditions": [
+      {
+        "type": "stx",
+        "condition_code": "sent_equal_to",
+        "amount": "4375722",
+        "principal": {
+          "type_id": "principal_contract",
+          "contract_name": "newyorkcitycoin-core-v1",
+          "address": "SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5"
+        }
       }
+    ],
+    "anchor_mode": "any",
+    "is_unanchored": false,
+    "block_hash": "0xe2a811451fed35331cf462a9107e3453fdebba1682dfad83cbbcdc603f644ed3",
+    "parent_block_hash": "0x6d8653da23188d4d78ab9b6448229be68abe1bca001f8c574c094289107bce15",
+    "block_height": 58775,
+    "burn_block_time": 1651720813,
+    "burn_block_time_iso": "2022-05-05T03:20:13.000Z",
+    "parent_burn_block_time": 1651720368,
+    "parent_burn_block_time_iso": "2022-05-05T03:12:48.000Z",
+    "canonical": true,
+    "tx_index": 36,
+    "tx_status": "success",
+    "tx_result": {
+      "hex": "0x0703",
+      "repr": "(ok true)"
     },
+    "microblock_hash": "",
+    "microblock_sequence": 2147483647,
+    "microblock_canonical": true,
+    "event_count": 1,
+    "events": [],
+    "execution_cost_read_count": 15,
+    "execution_cost_read_length": 31147,
+    "execution_cost_runtime": 81975,
+    "execution_cost_write_count": 2,
+    "execution_cost_write_length": 123,
+    "tx_type": "contract_call",
+    "contract_call": {
+      "contract_id": "SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-core-v1",
+      "function_name": "claim-stacking-reward",
+      "function_signature": "(define-public (claim-stacking-reward (targetCycle uint)))",
+      "function_args": [
+        {
+          "hex": "0x0100000000000000000000000000000008",
+          "repr": "u8",
+          "name": "targetCycle",
+          "type": "uint"
+        }
+      ]
+    }
+  },
+  "stx_sent": "3000",
+  "stx_received": "4375722",
+  "stx_transfers": [
     {
-      "type": "non_fungible",
-      "condition_code": "not_sent",
-      "principal": {
-        "type_id": "principal_contract",
-        "contract_name": "stacks-skaters",
-        "address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
-      },
-      "asset": {
-        "contract_name": "stacks-skaters",
-        "asset_name": "stacks-skaters",
-        "contract_address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
-      },
-      "asset_value": {
-        "hex": "0x0100000000000000000000000000000000",
-        "repr": "u0"
-      }
-    },
-    {
-      "type": "stx",
-      "condition_code": "sent_less_than_or_equal_to",
-      "amount": "20000000",
-      "principal": {
-        "type_id": "principal_contract",
-        "contract_name": "stacks-skaters",
-        "address": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG"
-      }
+      "amount": "4375722",
+      "sender": "SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-core-v1",
+      "recipient": "SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR"
     }
   ],
-  "anchor_mode": "any",
-  "tx_status": "pending",
-  "receipt_time": 1637172946,
-  "receipt_time_iso": "2021-11-17T18:15:46.000Z",
-  "tx_type": "contract_call",
-  "contract_call": {
-    "contract_id": "SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG.stacks-skaters",
-    "function_name": "mint",
-    "function_signature": ""
-  }
+  "ft_transfers": [],
+  "nft_transfers": []
 }
 ```
 Subscribe via WebSockets:
@@ -397,6 +413,52 @@ client.subscribeAddressBalanceUpdates('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q
 Subscribe via Socket.io:
 ```js
 sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
+```
+
+### NFT event updates
+
+Sent every time an NFT event occurs. You can subscribe to all events or events scoped to a single
+collection or a single asset.
+
+```json
+{
+  "asset_event_type": "transfer",
+  "asset_identifier": "SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1",
+  "value": {
+    "hex": "0x0100000000000000000000000000000095",
+    "repr": "u149"
+  },
+  "tx_id": "0xfb4bfc274007825dfd2d8f6c3f429407016779e9954775f82129108282d4c4ce",
+  "tx_index": 0,
+  "sender": null,
+  "recipient": "SP3BK1NNSWN719Z6KDW05RBGVS940YCN6X84STYPR",
+  "block_height": 45231,
+  "event_index": 0,
+}
+```
+Subscribe via WebSockets:
+```js
+client.subscribeNftEventUpdates(event => {});
+client.subscribeNftAssetEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  '0x0100000000000000000000000000000095',
+  event => {}
+);
+client.subscribeNftCollectionEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  event => {}
+);
+```
+Subscribe via Socket.io:
+```js
+sc.subscribeNftEventUpdates();
+sc.subscribeNftAssetEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  '0x0100000000000000000000000000000095',
+);
+sc.subscribeNftCollectionEventUpdates(
+  'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+);
 ```
 
 ## Known Issues

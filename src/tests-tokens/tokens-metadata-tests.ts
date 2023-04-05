@@ -6,24 +6,25 @@ import {
   PostConditionMode,
   AnchorMode,
 } from '@stacks/transactions';
-import * as BN from 'bn.js';
 import {
-  DbTx,
+  DbTxRaw,
   DbTxStatus,
   DbFungibleTokenMetadata,
   DbNonFungibleTokenMetadata,
+  DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { logger, timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
+import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -31,8 +32,7 @@ const HOST = 'localhost';
 const PORT = 20443;
 
 describe('api tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let api: ApiServer;
   let eventServer: EventStreamServer;
   let tokensProcessorQueue: TokensProcessorQueue;
@@ -51,11 +51,11 @@ describe('api tests', () => {
             dbTx.status === DbTxStatus.AbortByResponse ||
             dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
-          api.datastore.removeListener('txUpdate', listener);
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
           resolve(dbTx);
         }
       };
-      api.datastore.addListener('txUpdate', listener);
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
 
     return broadcastTx;
@@ -74,10 +74,7 @@ describe('api tests', () => {
 
   async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
     try {
-      const submitResult = await new StacksCoreRpcClient({
-        host: HOST,
-        port: PORT,
-      }).sendTransaction(serializedTx);
+      const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
       logger.error('error: ', error);
@@ -98,28 +95,29 @@ describe('api tests', () => {
       postConditionMode: PostConditionMode.Allow,
       sponsored: false,
       anchorMode: AnchorMode.Any,
+      fee: 100000,
     });
 
     const contractId = senderAddress + '.' + contractName;
 
-    const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-    const feeRateResult = await feeRateReq.text();
-    const txBytes = new BN(contractDeployTx.serialize().byteLength);
-    const feeRate = new BN(feeRateResult);
-    const fee = feeRate.mul(txBytes);
-    contractDeployTx.setFee(fee);
-    const { txId } = await sendCoreTx(contractDeployTx.serialize());
+    // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
+    // const feeRateResult = await feeRateReq.text();
+    // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
+    // const feeRate = BigInt(feeRateResult);
+    // const fee = feeRate * txBytes;
+    // contractDeployTx.setFee(fee);
+    const { txId } = await sendCoreTx(Buffer.from(contractDeployTx.serialize()));
     return { txId, contractId };
   }
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await new StacksCoreRpcClient().waitForConnection(60000);
   });
 
   beforeEach(() => {
@@ -174,18 +172,16 @@ describe('api tests', () => {
         entryProcessedWaiter.finish(blockHash);
       }
     };
-    db.on('blockUpdate', blockHandler);
+    db.eventEmitter.on('blockUpdate', blockHandler);
     // Set as not processed.
-    await db.query(async client => {
-      await client.query(
-        `UPDATE token_metadata_queue
-        SET processed = false
-        WHERE queue_id = 1`
-      );
-    });
+    await db.sql`
+      UPDATE token_metadata_queue
+      SET processed = false
+      WHERE queue_id = 1
+    `;
     // This will resolve when processed is true again.
     await entryProcessedWaiter;
-    db.off('blockUpdate', blockHandler);
+    db.eventEmitter.off('blockUpdate', blockHandler);
   });
 
   test('token nft-metadata data URL base64 w/o media type', async () => {
@@ -326,19 +322,19 @@ describe('api tests', () => {
         decimals: 5,
         image_uri: 'ft-metadata image uri example',
         image_canonical_uri: 'ft-metadata image canonical uri example',
-        contract_id: 'ABCDEFGHIJ.ft-metadata',
+        contract_id: 'ABCDEFGHIJ.ft-metadata' + i,
         tx_id: '0x123456',
         sender_address: 'ABCDEFGHIJ',
       };
-      await db.updateFtMetadata(ftMetadata);
+      await db.updateFtMetadata(ftMetadata, 1);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/ft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/ft/metadata?limit=20&offset=10`
@@ -363,15 +359,15 @@ describe('api tests', () => {
         sender_address: 'ABCDEFGHIJ',
       };
 
-      await db.updateNFtMetadata(nftMetadata);
+      await db.updateNFtMetadata(nftMetadata, 1);
     }
 
     const query = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
     expect(query.status).toBe(200);
-    expect(query.body.total).toBeGreaterThan(96);
-    expect(query.body.limit).toStrictEqual(96);
+    expect(query.body.total).toBeGreaterThan(getPagingQueryLimit(ResourceType.Token));
+    expect(query.body.limit).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
     expect(query.body.offset).toStrictEqual(0);
-    expect(query.body.results.length).toStrictEqual(96);
+    expect(query.body.results.length).toStrictEqual(getPagingQueryLimit(ResourceType.Token));
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/nft/metadata?limit=20&offset=10`
@@ -416,7 +412,6 @@ describe('api tests', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -99,6 +99,7 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenHoldingsList
   | NonFungibleTokenMintList
   | NonFungibleTokensMetadataList
+  | MempoolTransactionStatsResponse
   | MempoolTransactionListResponse
   | GetRawTransactionResult
   | TransactionEventsResponse
@@ -214,11 +215,9 @@ export type SchemaMergeRootStub =
   | TransactionType
   | Transaction
   | InboundStxTransfer
-  | RpcAddressBalanceNotificationParams
   | RpcAddressBalanceNotificationResponse
   | RpcAddressBalanceSubscriptionParams
   | RpcAddressBalanceSubscriptionRequest
-  | RpcAddressTxNotificationParams
   | RpcAddressTxNotificationResponse
   | RpcAddressTxSubscriptionParams
   | RpcAddressTxSubscriptionRequest
@@ -231,8 +230,14 @@ export type SchemaMergeRootStub =
   | RpcMicroblockNotificationResponse
   | RpcMicroblockSubscriptionParams
   | RpcMicroblockSubscriptionRequest
+  | RpcNftAssetEventSubscriptionParams
+  | RpcNftAssetEventSubscriptionRequest
+  | RpcNftCollectionEventSubscriptionParams
+  | RpcNftCollectionEventSubscriptionRequest
+  | RpcNftEventNotificationResponse
+  | RpcNftEventSubscriptionParams
+  | RpcNftEventSubscriptionRequest
   | RpcSubscriptionType
-  | RpcTxUpdateNotificationParams
   | RpcTxUpdateNotificationResponse
   | RpcTxUpdateSubscriptionParams
   | RpcTxUpdateSubscriptionRequest;
@@ -703,13 +708,25 @@ export type TransactionMetadata =
  * String literal of all Stacks 2.0 transaction types
  */
 export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
+export type RpcAddressBalanceNotificationParams = {
+  address: string;
+} & AddressStxBalanceResponse;
+export type RpcAddressTxNotificationParams = {
+  address: string;
+  tx_id: string;
+  tx_type: TransactionType;
+  tx_status: TransactionStatus;
+} & AddressTransactionWithTransfers;
 export type RpcSubscriptionType =
   | "tx_update"
   | "address_tx_update"
   | "address_balance_update"
   | "block"
   | "microblock"
-  | "mempool";
+  | "mempool"
+  | "nft_event"
+  | "nft_asset_event"
+  | "nft_collection_event";
 
 /**
  * GET request that returns address assets
@@ -730,6 +747,7 @@ export interface TransactionEventAsset {
   recipient?: string;
   amount?: string;
   value?: string;
+  memo?: string;
 }
 /**
  * GET request that returns address balances
@@ -812,9 +830,10 @@ export interface AddressNftListResponse {
   nft_events: NftEvent[];
 }
 export interface NftEvent {
-  sender: string;
-  recipient: string;
+  sender?: string;
+  recipient?: string;
   asset_identifier: string;
+  asset_event_type: string;
   /**
    * Identifier of the NFT
    */
@@ -829,7 +848,9 @@ export interface NftEvent {
     repr: string;
   };
   tx_id: string;
+  tx_index: number;
   block_height: number;
+  event_index: number;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -867,7 +888,7 @@ export interface InboundStxTransfer {
   /**
    * Indicates if the transfer is from a stx-transfer transaction or a contract-call transaction
    */
-  transfer_type: "bulk-send" | "stx-transfer";
+  transfer_type: "bulk-send" | "stx-transfer" | "stx-transfer-memo";
   /**
    * Index of the transaction within a block
    */
@@ -1003,6 +1024,10 @@ export interface SmartContractTransactionMetadata {
   tx_type: "smart_contract";
   smart_contract: {
     /**
+     * The Clarity version of the contract, only specified for versioned contract transactions, otherwise null
+     */
+    clarity_version?: number;
+    /**
      * Contract identifier formatted as `<principaladdress>.<contract_name>`
      */
     contract_id: string;
@@ -1067,6 +1092,10 @@ export interface CoinbaseTransactionMetadata {
      * Hex encoded 32-byte scratch space for block leader's use
      */
     data: string;
+    /**
+     * A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
+     */
+    alt_recipient?: string;
   };
 }
 /**
@@ -1112,6 +1141,10 @@ export interface Block {
    * Hash representing the block
    */
   hash: string;
+  /**
+   * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
+   */
+  index_block_hash: string;
   /**
    * Hash of the parent block
    */
@@ -1176,6 +1209,12 @@ export interface Block {
    * Execution cost write length.
    */
   execution_cost_write_length: number;
+  /**
+   * List of txs counts in each accepted microblock
+   */
+  microblock_tx_count: {
+    [k: string]: number | undefined;
+  };
 }
 /**
  * Error
@@ -1341,6 +1380,7 @@ export interface ContractListResponse {
 export interface SmartContract {
   tx_id: string;
   canonical: boolean;
+  contract_id: string;
   block_height: number;
   source_code: string;
   abi: string;
@@ -1569,6 +1609,7 @@ export interface ServerStatusResponse {
    * the current server status
    */
   status: string;
+  pox_v1_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**
@@ -1595,6 +1636,10 @@ export interface ChainTip {
    * the current microblock sequence number
    */
   microblock_sequence?: number;
+  /**
+   * the current burn chain block height
+   */
+  burn_block_height: number;
 }
 /**
  * GET request that returns network target block times
@@ -3070,6 +3115,107 @@ export interface NonFungibleTokenMetadata {
   sender_address: string;
 }
 /**
+ * GET request that returns stats on mempool transactions
+ */
+export interface MempoolTransactionStatsResponse {
+  /**
+   * Number of tranasction in the mempool, broken down by transaction type.
+   */
+  tx_type_counts: {
+    token_transfer: number;
+    smart_contract: number;
+    contract_call: number;
+    poison_microblock: number;
+  };
+  /**
+   * The simple mean (average) transaction fee, broken down by transaction type. Note that this does not factor in actual execution costs. The average fee is not a reliable metric for calculating a fee for a new transaction.
+   */
+  tx_simple_fee_averages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average time (in blocks) that transactions have lived in the mempool. The start block height is simply the current chain-tip of when the attached Stacks node receives the transaction. This timing can be different across Stacks nodes / API instances due to propagation timing differences in the p2p network.
+   */
+  tx_ages: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+  /**
+   * The average byte size of transactions in the mempool, broken down by transaction type.
+   */
+  tx_byte_sizes: {
+    token_transfer: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    smart_contract: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    contract_call: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+    poison_microblock: {
+      p25: number;
+      p50: number;
+      p75: number;
+      p95: number;
+    };
+  };
+}
+/**
  * GET request that returns transactions
  */
 export interface MempoolTransactionListResponse {
@@ -3227,10 +3373,6 @@ export interface TransactionNotFound {
     tx_id: string;
   };
 }
-export interface RpcAddressBalanceNotificationParams {
-  address: string;
-  balance: string;
-}
 export interface RpcAddressBalanceNotificationResponse {
   jsonrpc: "2.0";
   method: "address_balance_update";
@@ -3245,12 +3387,6 @@ export interface RpcAddressBalanceSubscriptionRequest {
   id: number | string;
   method: "address_balance_update";
   params: RpcAddressBalanceSubscriptionParams;
-}
-export interface RpcAddressTxNotificationParams {
-  address: string;
-  tx_id: string;
-  tx_type: TransactionType;
-  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 export interface RpcAddressTxNotificationResponse {
   jsonrpc: "2.0";
@@ -3309,15 +3445,45 @@ export interface RpcMicroblockSubscriptionRequest {
   method: "microblock";
   params: RpcMicroblockSubscriptionParams;
 }
-export interface RpcTxUpdateNotificationParams {
-  tx_id: string;
-  tx_type: TransactionType;
-  tx_status: TransactionStatus | MempoolTransactionStatus;
+export interface RpcNftAssetEventSubscriptionParams {
+  event: "nft_asset_event";
+  asset_identifier: string;
+  value: string;
+}
+export interface RpcNftAssetEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_asset_event";
+  params: RpcNftAssetEventSubscriptionParams;
+}
+export interface RpcNftCollectionEventSubscriptionParams {
+  event: "nft_collection_event";
+  asset_identifier: string;
+}
+export interface RpcNftCollectionEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_collection_event";
+  params: RpcNftCollectionEventSubscriptionParams;
+}
+export interface RpcNftEventNotificationResponse {
+  jsonrpc: "2.0";
+  method: "block";
+  params: NftEvent;
+}
+export interface RpcNftEventSubscriptionParams {
+  event: "nft_event";
+}
+export interface RpcNftEventSubscriptionRequest {
+  jsonrpc: "2.0";
+  id: number | string;
+  method: "nft_event";
+  params: RpcNftEventSubscriptionParams;
 }
 export interface RpcTxUpdateNotificationResponse {
   jsonrpc: "2.0";
   method: "tx_update";
-  params: RpcTxUpdateNotificationParams;
+  params: Transaction | MempoolTransaction;
 }
 export interface RpcTxUpdateSubscriptionParams {
   event: "tx_update";

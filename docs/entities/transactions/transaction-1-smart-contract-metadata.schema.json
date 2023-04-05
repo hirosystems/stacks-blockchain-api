@@ -14,6 +14,11 @@
       "additionalProperties": false,
       "required": ["contract_id", "source_code"],
       "properties": {
+        "clarity_version": {
+          "type": "number",
+          "description": "The Clarity version of the contract, only specified for versioned contract transactions, otherwise null",
+          "nullable": true
+        },
         "contract_id": {
           "type": "string",
           "description": "Contract identifier formatted as `<principaladdress>.<contract_name>`"

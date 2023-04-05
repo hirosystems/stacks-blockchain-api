@@ -35,7 +35,7 @@ Since we'll need to create some files/dirs for persistent data,
 we'll first create a base directory structure and set some permissions:
 
 ```bash
-$ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,bns,config,binaries}
+$ sudo mkdir -p /stacks-node/{persistent-data/stacks-blockchain,config,binaries}
 $ sudo chown -R $(whoami) /stacks-node 
 $ cd /stacks-node
 ```
@@ -43,7 +43,7 @@ $ cd /stacks-node
 ## Install Requirements
 
 ```bash
-$ PG_VERSION=12 \
+$ PG_VERSION=14 \
   && NODE_VERSION=16 \
   && sudo apt-get update \
   && sudo apt-get install -y \
@@ -65,26 +65,6 @@ $ PG_VERSION=12 \
     nodejs
 ```
 
-**Optional but recommended** - If you want the V1 BNS data, there are going to be a few extra steps:
-
-1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o /stacks-node/bns/export-data.tar.gz`
-2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C /stacks-node/bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.
-
-To Verify, run a script like the following to check the sha256sum:
-
-```bash
-for file in `ls /stacks-node/bns/* | grep -v sha256 | grep -v .tar.gz`; do
-    if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
-        echo "sha256 Matched $file"
-    else
-        echo "sha256 Mismatch $file"
-    fi
-done
-```
-
 ## postgres
 
 ### postgres permissions
@@ -99,7 +79,7 @@ create database stacks_db;
 grant all on database stacks_db to stacks;
 EOF
 $ sudo su - postgres -c "psql -f /tmp/file.sql" && rm -f /tmp/file.sql
-$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/12/main/pg_hba.conf
+$ echo "local   all             stacks                                  md5" | sudo tee -a /etc/postgresql/14/main/pg_hba.conf
 $ sudo systemctl restart postgresql
 ```
 
@@ -127,8 +107,6 @@ $ git clone https://github.com/hirosystems/stacks-blockchain-api /stacks-node/st
 The stacks blockchain api requires several Environment Variables to be set in order to run properly.  
 To reduce complexity, we're going to create a `.env` file that we'll use for these env vars.  
 
-** Note: ** to enable BNS names, uncomment `BNS_IMPORT_DIR` in the below `.env` file. 
-
 Create a new file: `/stacks-node/stacks-blockchain-api/.env` with the following content:
 
 ```bash
@@ -148,7 +126,6 @@ STACKS_BLOCKCHAIN_API_PORT=3999
 STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 STACKS_CORE_RPC_HOST=localhost
 STACKS_CORE_RPC_PORT=20443
-#BNS_IMPORT_DIR=/stacks-node/bns
 EOF
 $ cd /stacks-node/stacks-blockchain-api && nohup node ./lib/index.js &
 ```
@@ -181,7 +158,7 @@ $ cat <<EOF> /stacks-node/config/Config.toml
 working_dir = "/stacks-node/persistent-data/stacks-blockchain"
 rpc_bind = "0.0.0.0:20443"
 p2p_bind = "0.0.0.0:20444"
-bootstrap_node = "02da7a464ac770ae8337a343670778b93410f2f3fef6bea98dd1c3e9224459d36b@seed-0.mainnet.stacks.co:20444,02afeae522aab5f8c99a00ddf75fbcb4a641e052dd48836408d9cf437344b63516@seed-1.mainnet.stacks.co:20444,03652212ea76be0ed4cd83a25c06e57819993029a7b9999f7d63c36340b34a4e62@seed-2.mainnet.stacks.co:20444"
+bootstrap_node = "02196f005965cebe6ddc3901b7b1cc1aa7a88f305bb8c5893456b8f9a605923893@seed.mainnet.hiro.so:20444"
 wait_time_for_microblocks = 10000
 
 [[events_observer]]
@@ -226,10 +203,11 @@ $ sudo kill $(ps -ef | grep "/stacks-node/binaries/stacks-node" | grep -v grep |
 
 To verfiy the database is ready:
 
-1. Connect to the DB instance:  `psql -h localhost -U stacks stacks_db`
-    - use the password from the [Postgres Permissions Step](#postgres-permissions)
+1. Connect to the DB instance: `psql -h localhost -U stacks stacks_db`
+   - use the password from the [Postgres Permissions Step](#postgres-permissions)
 2. List current databases: `\l`
-3. Disconnect from the DB : `\q`
+3. Verify data is being written to the database: `select * from blocks limit 1;`
+4. Disconnect from the DB : `\q`
 
 ### stacks-blockchain testing
 

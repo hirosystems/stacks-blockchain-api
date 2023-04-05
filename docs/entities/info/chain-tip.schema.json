@@ -6,7 +6,8 @@
   "required": [
     "block_height",
     "block_hash",
-    "index_block_hash"
+    "index_block_hash",
+    "burn_block_height"
   ],
   "properties": {
     "block_height": {
@@ -28,6 +29,10 @@
     "microblock_sequence": {
       "type": "integer",
       "description": "the current microblock sequence number"
+    },
+    "burn_block_height": {
+      "type": "integer",
+      "description": "the current burn chain block height"
     }
   }
 }

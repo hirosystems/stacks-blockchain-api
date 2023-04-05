@@ -25,16 +25,68 @@ export function parsePagingQueryInput(val: any) {
   return parsedInput;
 }
 
-interface ParseLimitQueryParams {
-  maxItems: number;
-  errorMsg: string;
+export enum ResourceType {
+  Block,
+  Tx,
+  Event,
+  Burnchain,
+  Contract,
+  Microblock,
+  Token,
+  Pox2Event,
 }
 
-export function parseLimitQuery({ maxItems, errorMsg }: ParseLimitQueryParams) {
-  return (val: any) => {
-    const limit = parsePagingQueryInput(val);
-    if (limit > maxItems)
-      throw new InvalidRequestError(errorMsg, InvalidRequestErrorType.invalid_query);
-    return limit;
-  };
+const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
+  [ResourceType.Block]: {
+    defaultLimit: 20,
+    maxLimit: 30,
+  },
+  [ResourceType.Tx]: {
+    defaultLimit: 20,
+    maxLimit: 50,
+  },
+  [ResourceType.Event]: {
+    defaultLimit: 20,
+    maxLimit: 50,
+  },
+  [ResourceType.Burnchain]: {
+    defaultLimit: 96,
+    maxLimit: 250,
+  },
+  [ResourceType.Contract]: {
+    defaultLimit: 20,
+    maxLimit: 50,
+  },
+  [ResourceType.Microblock]: {
+    defaultLimit: 20,
+    maxLimit: 200,
+  },
+  [ResourceType.Token]: {
+    defaultLimit: 50,
+    maxLimit: 200,
+  },
+  [ResourceType.Pox2Event]: {
+    defaultLimit: 96,
+    maxLimit: 200,
+  },
+};
+
+export function getPagingQueryLimit(
+  resourceType: ResourceType,
+  limitOverride?: any,
+  maxLimitOverride?: number
+) {
+  const pagingQueryLimit = pagingQueryLimits[resourceType];
+  if (!limitOverride) {
+    return pagingQueryLimit.defaultLimit;
+  }
+  const newLimit = parsePagingQueryInput(limitOverride);
+  const maxLimit = maxLimitOverride ?? pagingQueryLimit.maxLimit;
+  if (newLimit > maxLimit) {
+    throw new InvalidRequestError(
+      `'limit' must be equal to or less than ${pagingQueryLimit.maxLimit}`,
+      InvalidRequestErrorType.invalid_query
+    );
+  }
+  return newLimit;
 }

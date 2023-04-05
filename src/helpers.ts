@@ -1,14 +1,3 @@
-import { execSync } from 'child_process';
-import * as crypto from 'crypto';
-import * as dotenv from 'dotenv-flow';
-import * as path from 'path';
-import * as util from 'util';
-import * as stream from 'stream';
-import * as http from 'http';
-import * as winston from 'winston';
-import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
-import * as btc from 'bitcoinjs-lib';
-import * as BN from 'bn.js';
 import {
   BufferCV,
   bufferCV,
@@ -19,13 +8,24 @@ import {
   tupleCV,
 } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
+import * as btc from 'bitcoinjs-lib';
+import { execSync } from 'child_process';
+import * as dotenv from 'dotenv-flow';
+import * as http from 'http';
+import { isArrayBufferView } from 'node:util/types';
+import * as path from 'path';
+import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
+import * as stream from 'stream';
+import * as ecc from 'tiny-secp256k1';
+import * as util from 'util';
+import * as winston from 'winston';
 import {
   CliConfigSetColors,
   NpmConfigSetLevels,
   SyslogConfigSetLevels,
 } from 'winston/lib/winston/config';
-import { DbEventTypeId, DbStxEvent, DbTx } from './datastore/common';
 import { StacksCoreRpcClient } from './core-rpc/client';
+import { DbEventTypeId } from './datastore/common';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -133,7 +133,7 @@ export function loadDotEnv(): void {
   if (didLoadDotEnv) {
     return;
   }
-  const dotenvConfig = dotenv.config();
+  const dotenvConfig = dotenv.config({ silent: true });
   if (dotenvConfig.error) {
     logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
     throw dotenvConfig.error;
@@ -217,9 +217,18 @@ export function formatMapToObject<TKey extends string, TValue, TFormatted>(
   return obj;
 }
 
-export const TOTAL_STACKS = new BigNumber(1320000000)
-  .plus(322146 * 100 + 5 * 50000) // air drop
-  .toString();
+// Note: this is the legacy amount defined in the Stacks 1.0 codebase:
+// export const TOTAL_STACKS /* 1352464600000000 */ = new BigNumber(1320000000)
+//   .plus(322146 * 100 + 5 * 50000) // air drop
+//   .toString();
+
+// See the Stacks 2.0 whitepaper: https://cloudflare-ipfs.com/ipfs/QmaGgiVHymeDjAc3aF1AwyhiFFwN97pme5m536cHT4FsAW
+//   > The Stacks cryptocurrency has a predefined future supply that reaches approx 1,818M STX by year 2050
+//   > Block reward: 1000 STX/block for first 4 yrs;
+//   > 500 STX/block for following 4 yrs;
+//   > 250 for the 4 yrs after that; and then 125 STX/block in perpetuity after that.
+// We are going to use the year 2050 projected supply because "125 STX/block in perpetuity" means the total supply is infinite.
+export const TOTAL_STACKS = new BigNumber(1_818_000_000n.toString());
 
 const MICROSTACKS_IN_STACKS = 1_000_000n;
 export const STACKS_DECIMAL_PLACES = 6;
@@ -236,12 +245,6 @@ export function microStxToStx(microStx: bigint | BigNumber): string {
   return bigNumResult.toFixed(STACKS_DECIMAL_PLACES, MAX_BIGNUMBER_ROUND_MODE);
 }
 
-export function digestSha512_256(input: Buffer): Buffer {
-  const hash = crypto.createHash('sha512-256');
-  const digest = hash.update(input).digest();
-  return digest;
-}
-
 /**
  * Checks if a string is a valid Bitcoin address.
  * Supports mainnet and testnet address.
@@ -249,6 +252,7 @@ export function digestSha512_256(input: Buffer): Buffer {
  * @param address - A bitcoin address.
  */
 export function isValidBitcoinAddress(address: string): boolean {
+  btc.initEccLib(ecc);
   try {
     btc.address.toOutputScript(address, btc.networks.bitcoin);
     return true;
@@ -257,6 +261,12 @@ export function isValidBitcoinAddress(address: string): boolean {
   }
   try {
     btc.address.toOutputScript(address, btc.networks.testnet);
+    return true;
+  } catch (e) {
+    // ignore
+  }
+  try {
+    btc.address.toOutputScript(address, btc.networks.regtest);
     return true;
   } catch (e) {
     // ignore
@@ -317,7 +327,7 @@ export function isValidPrincipal(
   return false;
 }
 
-type HttpClientResponse = http.IncomingMessage & {
+export type HttpClientResponse = http.IncomingMessage & {
   statusCode: number;
   statusMessage: string;
   response: string;
@@ -532,6 +542,31 @@ export function hexToBuffer(hex: string): Buffer {
   return Buffer.from(hex.substring(2), 'hex');
 }
 
+/**
+ * Decodes a hex string to a Buffer, trims the 0x-prefix if exists.
+ * If already a buffer, returns the input immediately.
+ */
+export function coerceToBuffer(hex: string | Buffer | ArrayBufferView): Buffer {
+  if (typeof hex === 'string') {
+    if (hex.startsWith('0x')) {
+      hex = hex.substring(2);
+    }
+    if (hex.length % 2 !== 0) {
+      throw new Error(`Hex string is an odd number of characters: ${hex}`);
+    }
+    if (!/^[0-9a-fA-F]*$/.test(hex)) {
+      throw new Error(`Hex string contains non-hexadecimal characters: ${hex}`);
+    }
+    return Buffer.from(hex, 'hex');
+  } else if (Buffer.isBuffer(hex)) {
+    return hex;
+  } else if (isArrayBufferView(hex)) {
+    return Buffer.from(hex.buffer, hex.byteOffset, hex.byteLength);
+  } else {
+    throw new Error(`Cannot convert to Buffer, unexpected type: ${hex.constructor.name}`);
+  }
+}
+
 export function hexToUtf8String(hex: string): string {
   const buffer = hexToBuffer(hex);
   return buffer.toString('utf8');
@@ -548,14 +583,55 @@ export function numberToHex(number: number, paddingBytes: number = 4): string {
   return '0x' + result;
 }
 
-export function unwrapOptional<T>(val: T, onNullish?: () => string): Exclude<T, undefined> {
+export function unwrapOptional<T>(
+  val: T | null,
+  onNullish?: () => string
+): Exclude<T, undefined | null> {
   if (val === undefined) {
     throw new Error(onNullish?.() ?? 'value is undefined');
   }
   if (val === null) {
     throw new Error(onNullish?.() ?? 'value is null');
   }
-  return val as Exclude<T, undefined>;
+  return val as Exclude<T, undefined | null>;
+}
+
+/**
+ * Provide an object and the key of a nullable / possibly-undefined property.
+ * The function will throw if the property value is null or undefined, otherwise
+ * the non-null / defined value is returned. Similar to {@link unwrapOptional}
+ * but with automatic useful error messages indicating the property key name.
+ * ```ts
+ * const myObj: {
+ *   thing1: string | null;
+ *   thing2: string | undefined;
+ *   thing3?: string;
+ * } = {
+ *   thing1: 'a',
+ *   thing2: 'b',
+ *   thing3: 'c',
+ * };
+ *
+ * // Unwrap type `string | null` to `string`
+ * const unwrapped1 = unwrapOptionalProp(myObj, 'thing1');
+ * // Unwrap type `string | undefined` to `string`
+ * const unwrapped2 = unwrapOptionalProp(myObj, 'thing2');
+ * // Unwrap type `string?` to `string`
+ * const unwrapped3 = unwrapOptionalProp(myObj, 'thing3');
+ * ```
+ */
+export function unwrapOptionalProp<TObj, TKey extends keyof TObj>(
+  obj: TObj,
+  key: TKey
+): Exclude<TObj[TKey], undefined | null> {
+  const val = obj[key];
+  if (val === undefined) {
+    throw new Error(`Value for property ${String(key)} is undefined`);
+  }
+  if (val === null) {
+    throw new Error(`Value for property ${String(key)} is null`);
+  }
+  return val as Exclude<TObj[TKey], undefined | null>;
 }
 
 export function assertNotNullish<T>(
@@ -636,31 +712,15 @@ export async function* asyncIterableToGenerator<T>(iter: AsyncIterable<T>) {
   }
 }
 
-export function distinctBy<T, V>(items: Iterable<T>, selector: (value: T) => V): T[] {
-  const result: T[] = [];
-  const set = new Set<V>();
-  for (const item of items) {
-    const key = selector(item);
-    if (!set.has(key)) {
-      set.add(key);
-      result.push(item);
-    }
-  }
-  return result;
-}
-
 function intMax(args: bigint[]): bigint;
 function intMax(args: number[]): number;
-function intMax(args: BN[]): BN;
-function intMax(args: bigint[] | number[] | BN[]): any {
+function intMax(args: bigint[] | number[]): any {
   if (args.length === 0) {
     throw new Error(`empty array not supported in intMax`);
   } else if (typeof args[0] === 'bigint') {
     return (args as bigint[]).reduce((m, e) => (e > m ? e : m));
   } else if (typeof args[0] === 'number') {
     return Math.max(...(args as number[]));
-  } else if (BN.isBN(args[0])) {
-    return (args as BN[]).reduce((m, e) => (e.gt(m) ? e : m));
   } else {
     // eslint-disable-next-line @typescript-eslint/ban-types
     throw new Error(`Unsupported type for intMax: ${(args[0] as object).constructor.name}`);
@@ -689,9 +749,6 @@ export async function getOrAddAsync<K, V>(
   }
   return val;
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type ElementType<T extends any[]> = T extends (infer U)[] ? U : never;
 
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
@@ -727,10 +784,11 @@ export async function resolveOrTimeout(
 ) {
   let timer: NodeJS.Timeout;
   const result = await Promise.race([
-    new Promise(async (resolve, _) => {
-      await promise;
-      clearTimeout(timer);
-      resolve(true);
+    new Promise((resolve, reject) => {
+      promise
+        .then(() => resolve(true))
+        .catch(error => reject(error))
+        .finally(() => clearTimeout(timer));
     }),
     new Promise((resolve, _) => {
       timer = setInterval(() => {
@@ -956,15 +1014,13 @@ export function parseDataUrl(
  * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
  * received NFT events.
  */
-export function bnsNameCV(name: string): Buffer {
+export function bnsNameCV(name: string): string {
   const components = name.split('.');
-  return hexToBuffer(
-    cvToHex(
-      tupleCV({
-        name: bufferCV(Buffer.from(components[0])),
-        namespace: bufferCV(Buffer.from(components[1])),
-      })
-    )
+  return cvToHex(
+    tupleCV({
+      name: bufferCV(Buffer.from(components[0])),
+      namespace: bufferCV(Buffer.from(components[1])),
+    })
   );
 }
 
@@ -977,7 +1033,18 @@ export function bnsHexValueToName(hex: string): string {
   const tuple = hexToCV(hex) as TupleCV;
   const name = tuple.data.name as BufferCV;
   const namespace = tuple.data.namespace as BufferCV;
-  return `${name.buffer.toString('utf8')}.${namespace.buffer.toString('utf8')}`;
+  return `${Buffer.from(name.buffer).toString('utf8')}.${Buffer.from(namespace.buffer).toString(
+    'utf8'
+  )}`;
+}
+
+/**
+ * Returns the parent BNS name from a subdomain.
+ * @param subdomain - Fully qualified subdomain
+ * @returns BNS name
+ */
+export function bnsNameFromSubdomain(subdomain: string): string {
+  return subdomain.split('.').slice(-2).join('.');
 }
 
 export function getBnsSmartContractId(chainId: ChainID): string {
@@ -992,33 +1059,6 @@ export function getSendManyContract(chainId: ChainID) {
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
-}
-
-/**
- * Determines if a transaction involved a smart contract.
- * @param dbTx - Transaction DB entry
- * @param stxEvents - Associated STX Events for this tx
- * @returns true if tx involved a smart contract, false otherwise
- */
-export function isSmartContractTx(dbTx: DbTx, stxEvents: DbStxEvent[] = []): boolean {
-  if (
-    dbTx.smart_contract_contract_id ||
-    dbTx.contract_call_contract_id ||
-    isValidContractName(dbTx.sender_address) ||
-    (dbTx.token_transfer_recipient_address &&
-      isValidContractName(dbTx.token_transfer_recipient_address))
-  ) {
-    return true;
-  }
-  for (const stxEvent of stxEvents) {
-    if (
-      (stxEvent.sender && isValidContractName(stxEvent.sender)) ||
-      (stxEvent.recipient && isValidContractName(stxEvent.recipient))
-    ) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -1069,4 +1109,13 @@ export function parseEventTypeStrings(values: string[]): DbEventTypeId[] {
         throw new Error(`Unexpected event type: ${JSON.stringify(v)}`);
     }
   });
+}
+
+export function doesThrow(fn: () => void) {
+  try {
+    fn();
+    return false;
+  } catch {
+    return true;
+  }
 }

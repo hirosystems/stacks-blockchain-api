@@ -1,14 +1,11 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { DbTxTypeId, DbTxStatus } from '../datastore/common';
+import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../datastore/common';
 import { waiter, Waiter } from '../helpers';
-import { PoolClient } from 'pg';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
   RpcTxUpdateSubscriptionParams,
-  RpcTxUpdateNotificationParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressTxNotificationParams,
   RpcAddressBalanceSubscriptionParams,
@@ -21,6 +18,10 @@ import {
   Block,
   RpcMicroblockSubscriptionParams,
   Microblock,
+  RpcNftEventSubscriptionParams,
+  RpcNftAssetEventSubscriptionParams,
+  RpcNftCollectionEventSubscriptionParams,
+  NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { connectWebSocketClient } from '../../client/src';
 import { ChainID } from '@stacks/transactions';
@@ -29,18 +30,17 @@ import {
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
-
-  let db: PgDataStore;
-  let dbClient: PoolClient;
+  let db: PgWriteStore;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    dbClient = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
@@ -87,7 +87,7 @@ describe('websocket notifications', () => {
       const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
       client.onNotification.push(msg => {
         if (msg.method === 'tx_update') {
-          const txUpdate: RpcTxUpdateNotificationParams = msg.params;
+          const txUpdate: RpcAddressTxNotificationParams = msg.params;
           txUpdates[updateIndex++]?.finish(txUpdate.tx_status);
         }
         if (msg.method === 'mempool') {
@@ -118,21 +118,21 @@ describe('websocket notifications', () => {
 
       // check for microblock tx update notification
       const txStatus2 = await txUpdates[1];
-      expect(txStatus2).toBe('pending');
+      expect(txStatus2).toBe('success');
 
       // update DB with TX after WS server is sent txid to monitor
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
 
       // check for tx update notification
       const txStatus3 = await txUpdates[2];
-      expect(txStatus3).toBe('pending');
+      expect(txStatus3).toBe('success');
 
       // unsubscribe from notifications for this tx
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
       expect(unsubscribeResult).toEqual({ tx_id: txId });
 
       // ensure tx updates no longer received
-      db.emit('txUpdate', txId);
+      db.eventEmitter.emit('txUpdate', txId);
       await new Promise(resolve => setImmediate(resolve));
       expect(txUpdates[3].isFinished).toBe(false);
     } finally {
@@ -275,6 +275,56 @@ describe('websocket notifications', () => {
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '100',
+        stx_sent: '150',
+        stx_transfers: [
+          {
+            amount: '100',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+        ],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x01',
+          block_height: 1,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x123466',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x123456',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          sponsored: false,
+          token_transfer: {
+            amount: '100',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
 
       const microblock = new TestMicroblockStreamBuilder()
@@ -298,6 +348,56 @@ describe('websocket notifications', () => {
         tx_id: '0x8913',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '150',
+        stx_sent: '200',
+        stx_transfers: [
+          {
+            amount: '150',
+            recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+            sender: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+        ],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x123456',
+          block_height: 2,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x11',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x01',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          sponsored: false,
+          token_transfer: {
+            amount: '150',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8913',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
     } finally {
       await client.call('unsubscribe', subParams);
@@ -352,10 +452,198 @@ describe('websocket notifications', () => {
       expect(txUpdate1).toEqual({
         address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         balance: '100',
+        burnchain_lock_height: 0,
+        burnchain_unlock_height: 0,
+        lock_height: 0,
+        lock_tx_id: '',
+        locked: '0',
+        total_fees_sent: '0',
+        total_miner_rewards_received: '0',
+        total_received: '100',
+        total_sent: '0',
       });
 
       const unsubscribeResult = await client.call('unsubscribe', subParams1);
       expect(unsubscribeResult).toEqual({ address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6' });
+    } finally {
+      socket.terminate();
+    }
+  });
+
+  test('websocket rpc - nft event updates', async () => {
+    const addr = apiServer.address;
+    const wsAddress = `ws://${addr}/extended/v1/ws`;
+    const socket = new WebSocket(wsAddress);
+
+    try {
+      await once(socket, 'open');
+      const client = new RpcWebSocketClient();
+      client.changeSocket(socket);
+      client.listenMessages();
+
+      const crashPunks = 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2';
+      const wastelandApes =
+        'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes';
+      const valueHex1 = '0x0100000000000000000000000000000d55';
+      const valueHex2 = '0x0100000000000000000000000000000095';
+      const stxAddress1 = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
+
+      // subscribe
+      const subParams1: RpcNftEventSubscriptionParams = {
+        event: 'nft_event',
+      };
+      const result1 = await client.call('subscribe', subParams1);
+      expect(result1).toEqual({});
+
+      const subParams2: RpcNftAssetEventSubscriptionParams = {
+        event: 'nft_asset_event',
+        asset_identifier: crashPunks,
+        value: valueHex1,
+      };
+      const result2 = await client.call('subscribe', subParams2);
+      expect(result2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+
+      const subParams3: RpcNftCollectionEventSubscriptionParams = {
+        event: 'nft_collection_event',
+        asset_identifier: wastelandApes,
+      };
+      const result3 = await client.call('subscribe', subParams3);
+      expect(result3).toEqual({ asset_identifier: wastelandApes });
+
+      const nftEventWaiters: Waiter<NftEvent>[] = [waiter(), waiter(), waiter(), waiter()];
+      const crashPunksWaiter: Waiter<NftEvent> = waiter();
+      const apeWaiters: Waiter<NftEvent>[] = [waiter(), waiter()];
+      client.onNotification.push(msg => {
+        const event: NftEvent = msg.params;
+        switch (msg.method) {
+          case 'nft_event':
+            nftEventWaiters[event.event_index].finish(event);
+            break;
+          case 'nft_asset_event':
+            if (event.asset_identifier == crashPunks && event.value.hex == valueHex1) {
+              crashPunksWaiter.finish(event);
+            }
+            break;
+          case 'nft_collection_event':
+            if (event.asset_identifier == wastelandApes) {
+              if (event.event_index == 2) {
+                apeWaiters[0].finish(event);
+              } else if (event.event_index == 3) {
+                apeWaiters[1].finish(event);
+              }
+            }
+            break;
+        }
+      });
+
+      const block = new TestBlockBuilder()
+        .addTx({
+          tx_id: '0x01',
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: crashPunks,
+          value: valueHex1,
+          recipient: stxAddress1,
+          event_index: 0,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: crashPunks,
+          value: valueHex2,
+          recipient: stxAddress1,
+          event_index: 1,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: wastelandApes,
+          value: valueHex1,
+          recipient: stxAddress1,
+          event_index: 2,
+        })
+        .addTxNftEvent({
+          asset_event_type_id: DbAssetEventTypeId.Mint,
+          asset_identifier: wastelandApes,
+          value: valueHex2,
+          recipient: stxAddress1,
+          event_index: 3,
+        })
+        .build();
+      await db.update(block);
+
+      const expectedEvent0 = {
+        asset_event_type: 'mint',
+        asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+        block_height: 1,
+        event_index: 0,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+      };
+      const expectedEvent1 = {
+        asset_event_type: 'mint',
+        asset_identifier: 'SP3QSAJQ4EA8WXEDSRRKMZZ29NH91VZ6C5X88FGZQ.crashpunks-v2::crashpunks-v2',
+        block_height: 1,
+        event_index: 1,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+      };
+      const expectedEvent2 = {
+        asset_event_type: 'mint',
+        asset_identifier:
+          'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+        block_height: 1,
+        event_index: 2,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000d55', repr: 'u3413' },
+      };
+      const expectedEvent3 = {
+        asset_event_type: 'mint',
+        asset_identifier:
+          'SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft::Wasteland-Apes',
+        block_height: 1,
+        event_index: 3,
+        recipient: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+        sender: null,
+        tx_id: '0x01',
+        tx_index: 0,
+        value: { hex: '0x0100000000000000000000000000000095', repr: 'u149' },
+      };
+
+      const event0 = await nftEventWaiters[0];
+      const event1 = await nftEventWaiters[1];
+      const event2 = await nftEventWaiters[2];
+      const event3 = await nftEventWaiters[3];
+      const crashEvent = await crashPunksWaiter;
+      const apeEvent0 = await apeWaiters[0];
+      const apeEvent1 = await apeWaiters[1];
+
+      expect(event0).toEqual(expectedEvent0);
+      expect(event1).toEqual(expectedEvent1);
+      expect(event2).toEqual(expectedEvent2);
+      expect(event3).toEqual(expectedEvent3);
+
+      expect(crashEvent).toEqual(expectedEvent0);
+
+      expect(apeEvent0).toEqual(expectedEvent2);
+      expect(apeEvent1).toEqual(expectedEvent3);
+
+      const unsubscribeResult1 = await client.call('unsubscribe', subParams1);
+      expect(unsubscribeResult1).toEqual({});
+
+      const unsubscribeResult2 = await client.call('unsubscribe', subParams2);
+      expect(unsubscribeResult2).toEqual({ asset_identifier: crashPunks, value: valueHex1 });
+
+      const unsubscribeResult3 = await client.call('unsubscribe', subParams3);
+      expect(unsubscribeResult3).toEqual({ asset_identifier: wastelandApes });
     } finally {
       socket.terminate();
     }
@@ -390,6 +678,50 @@ describe('websocket notifications', () => {
         tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
         tx_status: 'success',
         tx_type: 'token_transfer',
+        stx_received: '0',
+        stx_sent: '50',
+        stx_transfers: [],
+        tx: {
+          anchor_mode: 'any',
+          block_hash: '0x123456',
+          block_height: 1,
+          burn_block_time: 94869286,
+          burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          canonical: true,
+          event_count: 0,
+          events: [],
+          execution_cost_read_count: 0,
+          execution_cost_read_length: 0,
+          execution_cost_runtime: 0,
+          execution_cost_write_count: 0,
+          execution_cost_write_length: 0,
+          fee_rate: '50',
+          is_unanchored: false,
+          microblock_canonical: true,
+          microblock_hash: '0x123466',
+          microblock_sequence: 0,
+          nonce: 0,
+          parent_block_hash: '0x123456',
+          parent_burn_block_time: 94869286,
+          parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          sender_address: 'ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA',
+          sponsored: false,
+          token_transfer: {
+            amount: '100',
+            memo: '0x',
+            recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
+          tx_index: 0,
+          tx_result: {
+            hex: '0x0703',
+            repr: '(ok true)',
+          },
+          tx_status: 'success',
+          tx_type: 'token_transfer',
+        },
       });
       await subscription.unsubscribe();
     } finally {
@@ -399,7 +731,6 @@ describe('websocket notifications', () => {
 
   afterEach(async () => {
     await apiServer.terminate();
-    dbClient.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

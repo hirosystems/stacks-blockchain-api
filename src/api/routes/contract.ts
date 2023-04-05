@@ -1,25 +1,18 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore } from '../../datastore/common';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { parseDbEvent } from '../controllers/db-controller';
-import { ClarityAbi, ClarityAbiTypeId } from '@stacks/transactions';
 import { parseTraitAbi } from '../query-helpers';
+import { PgStore } from '../../datastore/pg-store';
 
-const MAX_EVENTS_PER_REQUEST = 50;
-const parseContractEventsQueryLimit = parseLimitQuery({
-  maxItems: MAX_EVENTS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
-});
-
-export function createContractRouter(db: DataStore): express.Router {
+export function createContractRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   router.get(
     '/by_trait',
     asyncHandler(async (req, res, next) => {
       const trait_abi = parseTraitAbi(req, res, next);
-      const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const smartContracts = await db.getSmartContractByTrait({
         trait: trait_abi,
@@ -59,7 +52,7 @@ export function createContractRouter(db: DataStore): express.Router {
     '/:contract_id/events',
     asyncHandler(async (req, res) => {
       const { contract_id } = req.params;
-      const limit = parseContractEventsQueryLimit(req.query.limit ?? 20);
+      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const eventsQuery = await db.getSmartContractEvents({
         contractId: contract_id,

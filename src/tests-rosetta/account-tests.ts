@@ -2,20 +2,19 @@ import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
-import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata } from '../datastore/common';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('/account tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -37,7 +36,7 @@ describe('/account tests', () => {
       sender_address: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5',
       contract_id: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token'
     };
-    await db.updateFtMetadata(ftMetadata);
+    await db.updateFtMetadata(ftMetadata, 1);
 
     // FT transfer
     const block1 = new TestBlockBuilder({
@@ -99,7 +98,6 @@ describe('/account tests', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -1,7 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import BigNumber from 'bignumber.js';
-import { DataStore } from '../../datastore/common';
 import { microStxToStx, STACKS_DECIMAL_PLACES, TOTAL_STACKS } from '../../helpers';
 import {
   GetStxCirculatingSupplyPlainResponse,
@@ -10,8 +9,9 @@ import {
   GetStxTotalSupplyPlainResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { getBlockParams } from '../query-helpers';
+import { PgStore } from '../../datastore/pg-store';
 
-export function createStxSupplyRouter(db: DataStore): express.Router {
+export function createStxSupplyRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   async function getStxSupplyInfo(

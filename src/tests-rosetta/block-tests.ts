@@ -1,22 +1,22 @@
 import * as supertest from 'supertest';
-import { ChainID, stringAsciiCV, uintCV } from '@stacks/transactions';
-import { PoolClient } from 'pg';
+import { bufferCV, ChainID, cvToHex, listCV, stringAsciiCV, tupleCV, uintCV } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../api/init';
-import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { bufferToHexPrefixString } from '../helpers';
+import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 
 describe('/block tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
   });
 
@@ -68,7 +68,7 @@ describe('/block tests', () => {
         sender_address: testContractAddr,
         contract_call_contract_id: testContractAddr,
         contract_call_function_name: 'test-contract-fn',
-        contract_call_function_args: createClarityValueArray(uintCV(123456), stringAsciiCV('hello')),
+        contract_call_function_args: bufferToHexPrefixString(createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))),
         abi: JSON.stringify(contractJsonAbi),
       })
       .build();
@@ -124,7 +124,7 @@ describe('/block tests', () => {
       sender_address: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5',
       contract_id: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token'
     };
-    await db.updateFtMetadata(ftMetadata);
+    await db.updateFtMetadata(ftMetadata, 1);
 
     // FT transfer
     const block1 = new TestBlockBuilder({
@@ -171,6 +171,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '-7500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       coin_change: {
         coin_action: 'coin_spent',
@@ -194,6 +197,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '7500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       coin_change: {
         coin_action: 'coin_created',
@@ -250,6 +256,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '-100',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       operation_identifier: {
         index: 1,
@@ -295,6 +304,9 @@ describe('/block tests', () => {
           symbol: 'NYC',
         },
         value: '500',
+        metadata: {
+          token_type: 'ft',
+        },
       },
       operation_identifier: {
         index: 1,
@@ -363,9 +375,233 @@ describe('/block tests', () => {
     expect(result5.operations[1]).toEqual(undefined);
   });
 
+  test('block/transaction - send-many-memo includes memo metadata', async () => {
+    const sendManyAddr = 'ST3F1X4QGV2SM8XD96X45M6RTQXKA1PZJZZCQAB4B.send-many-memo';
+    const sendManyAbi = {
+      "maps": [],
+      "functions": [
+        {
+          "args": [
+            {
+              "name": "result",
+              "type": { "response": { "ok": "bool", "error": "uint128" } }
+            },
+            {
+              "name": "prior",
+              "type": { "response": { "ok": "bool", "error": "uint128" } }
+            }
+          ],
+          "name": "check-err",
+          "access": "private",
+          "outputs": {
+            "type": { "response": { "ok": "bool", "error": "uint128" } }
+          }
+        },
+        {
+          "args": [
+            {
+              "name": "recipient",
+              "type": {
+                "tuple": [
+                  { "name": "memo", "type": { "buffer": { "length": 34 } } },
+                  { "name": "to", "type": "principal" },
+                  { "name": "ustx", "type": "uint128" }
+                ]
+              }
+            }
+          ],
+          "name": "send-stx",
+          "access": "private",
+          "outputs": {
+            "type": { "response": { "ok": "bool", "error": "uint128" } }
+          }
+        },
+        {
+          "args": [
+            {
+              "name": "recipients",
+              "type": {
+                "list": {
+                  "type": {
+                    "tuple": [
+                      { "name": "memo", "type": { "buffer": { "length": 34 } } },
+                      { "name": "to", "type": "principal" },
+                      { "name": "ustx", "type": "uint128" }
+                    ]
+                  },
+                  "length": 200
+                }
+              }
+            }
+          ],
+          "name": "send-many",
+          "access": "public",
+          "outputs": {
+            "type": { "response": { "ok": "bool", "error": "uint128" } }
+          }
+        },
+        {
+          "args": [
+            { "name": "ustx", "type": "uint128" },
+            { "name": "to", "type": "principal" },
+            { "name": "memo", "type": { "buffer": { "length": 34 } } }
+          ],
+          "name": "send-stx-with-memo",
+          "access": "public",
+          "outputs": {
+            "type": { "response": { "ok": "bool", "error": "uint128" } }
+          }
+        }
+      ],
+      "variables": [],
+      "fungible_tokens": [],
+      "non_fungible_tokens": []
+    };
+
+    // Deploy
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+    })
+      .addTx({ tx_id: '0x1111' })
+      .addTxSmartContract({ contract_id: sendManyAddr, abi: JSON.stringify(sendManyAbi) })
+      .build();
+    await db.update(block1);
+
+    // send-many
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({
+        tx_id: '0x1112',
+        type_id: DbTxTypeId.ContractCall,
+        sender_address: sendManyAddr,
+        contract_call_contract_id: sendManyAddr,
+        contract_call_function_name: 'send-many',
+        contract_call_function_args: bufferToHexPrefixString(
+          createClarityValueArray(
+            listCV([
+              tupleCV({
+                memo: bufferCV(Buffer.from('memo-1')),
+                to: principalCV('SPG7RD94XW8HN5NS7V68YDJAY4PJVZ2KNY79Z518'),
+                ustx: uintCV(2000)
+              }),
+              tupleCV({
+                memo: bufferCV(Buffer.from('memo-2')),
+                to: principalCV('SP2XN3N1C3HM1YFHKBE07EW7AFZBZPXDTHSP92HAX'),
+                ustx: uintCV(2500)
+              }),
+              tupleCV({
+                to: principalCV('SP2PDY84DFFJS0PQN3P0WBYZFW1EZSAC67N08BWH0'),
+                ustx: uintCV(50000)
+              }),
+            ])
+          )
+        ),
+        abi: JSON.stringify(sendManyAbi),
+      })
+      // Simulate events as they would come in the contract call (in order)
+      .addTxStxEvent({
+        sender: sendManyAddr,
+        recipient: 'SPG7RD94XW8HN5NS7V68YDJAY4PJVZ2KNY79Z518',
+        amount: 2000n
+      })
+      .addTxContractLogEvent({
+        contract_identifier: sendManyAddr,
+        topic: 'print',
+        value: cvToHex(bufferCV(Buffer.from('memo-1')))
+      })
+      .addTxStxEvent({
+        sender: sendManyAddr,
+        recipient: 'SP2XN3N1C3HM1YFHKBE07EW7AFZBZPXDTHSP92HAX',
+        amount: 2500n
+      })
+      .addTxContractLogEvent({
+        contract_identifier: sendManyAddr,
+        topic: 'print',
+        value: cvToHex(bufferCV(Buffer.from('memo-2')))
+      })
+      .addTxStxEvent({
+        sender: sendManyAddr,
+        recipient: 'SP2PDY84DFFJS0PQN3P0WBYZFW1EZSAC67N08BWH0',
+        amount: 50000n
+      })
+      .build();
+    await db.update(block2);
+
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: 2 },
+        transaction_identifier: { hash: '0x1112' },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    const result = JSON.parse(query1.text);
+    expect(result.transaction_identifier.hash).toEqual('0x1112');
+    expect(result.operations[2].metadata).toEqual({ memo: 'memo-1' });
+    expect(result.operations[2].operation_identifier.index).toEqual(2);
+    expect(result.operations[3].metadata).toEqual({ memo: 'memo-1' });
+    expect(result.operations[3].operation_identifier.index).toEqual(3);
+    expect(result.operations[4].metadata).toEqual({ memo: 'memo-2' });
+    expect(result.operations[4].operation_identifier.index).toEqual(4);
+    expect(result.operations[5].metadata).toEqual({ memo: 'memo-2' });
+    expect(result.operations[5].operation_identifier.index).toEqual(5);
+    expect(result.operations[6].metadata).toEqual({ memo: '' });
+    expect(result.operations[6].operation_identifier.index).toEqual(6);
+    expect(result.operations[7].metadata).toEqual({ memo: '' });
+    expect(result.operations[7].operation_identifier.index).toEqual(7);
+
+    // send-stx-with-memo
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_index_block_hash: '0x02',
+    })
+      .addTx({
+        tx_id: '0x1113',
+        type_id: DbTxTypeId.ContractCall,
+        sender_address: sendManyAddr,
+        contract_call_contract_id: sendManyAddr,
+        contract_call_function_name: 'send-stx-with-memo',
+        contract_call_function_args: bufferToHexPrefixString(
+          createClarityValueArray(
+            uintCV(2000),
+            principalCV('SPG7RD94XW8HN5NS7V68YDJAY4PJVZ2KNY79Z518'),
+            bufferCV(Buffer.from('memo-1')),
+          )
+        ),
+        abi: JSON.stringify(sendManyAbi),
+      })
+      // Simulate events as they would come in the contract call (in order)
+      .addTxStxEvent({
+        sender: sendManyAddr,
+        recipient: 'SPG7RD94XW8HN5NS7V68YDJAY4PJVZ2KNY79Z518',
+        amount: 2000n
+      })
+      .build();
+    await db.update(block3);
+
+    const query2 = await supertest(api.server)
+      .post(`/rosetta/v1/block/transaction`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: 3 },
+        transaction_identifier: { hash: '0x1113' },
+      });
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    const result2 = JSON.parse(query2.text);
+    expect(result2.transaction_identifier.hash).toEqual('0x1113');
+    expect(result2.operations[2].metadata).toEqual({ memo: 'memo-1' });
+    expect(result2.operations[3].metadata).toEqual({ memo: 'memo-1' });
+  });
+
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

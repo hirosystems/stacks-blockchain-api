@@ -1,8 +1,8 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
 import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
-import { DataStore } from '../../datastore/common';
 import { asyncHandler } from '../async-handler';
+import { PgStore } from '../../datastore/pg-store';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -163,7 +163,7 @@ export function parseIfNoneMatchHeader(
  * returns a string which can be used later for setting the cache control `ETag` response header.
  */
 async function checkETagCacheOK(
-  db: DataStore,
+  db: PgStore,
   req: Request,
   etagType: ETagType
 ): Promise<ETag | undefined | typeof CACHE_OK> {
@@ -221,7 +221,7 @@ async function checkETagCacheOK(
  * ```
  */
 export function getETagCacheHandler(
-  db: DataStore,
+  db: PgStore,
   etagType: ETagType = ETagType.chainTip
 ): RequestHandler {
   const requestHandler = asyncHandler(async (req, res, next) => {
@@ -243,47 +243,64 @@ export function getETagCacheHandler(
 }
 
 async function calculateETag(
-  db: DataStore,
+  db: PgStore,
   etagType: ETagType,
   req: Request
 ): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:
-      const chainTip = await db.getUnanchoredChainTip();
-      if (!chainTip.found) {
-        // This should never happen unless the API is serving requests before it has synced any blocks.
+      try {
+        const chainTip = await db.getUnanchoredChainTip();
+        if (!chainTip.found) {
+          // This should never happen unless the API is serving requests before it has synced any
+          // blocks.
+          return;
+        }
+        return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
+      } catch (error) {
+        logger.error(`Unable to calculate chain_tip ETag: ${error}`);
         return;
       }
-      return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
 
     case ETagType.mempool:
-      const digest = await db.getMempoolTxDigest();
-      if (!digest.found) {
-        // This should never happen unless the API is serving requests before it has synced any blocks.
+      try {
+        const digest = await db.getMempoolTxDigest();
+        if (!digest.found) {
+          // This should never happen unless the API is serving requests before it has synced any
+          // blocks.
+          return;
+        }
+        if (digest.result.digest === null) {
+          // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
+          return ETAG_EMPTY;
+        }
+        return digest.result.digest;
+      } catch (error) {
+        logger.error(`Unable to calculate mempool ETag: ${error}`);
         return;
       }
-      if (digest.result.digest === null) {
-        // A `null` mempool digest means the `bit_xor` postgres function is unavailable.
-        return ETAG_EMPTY;
-      }
-      return digest.result.digest;
 
     case ETagType.transaction:
-      const { tx_id } = req.params;
-      const normalizedTxId = normalizeHashString(tx_id);
-      if (normalizedTxId === false) {
-        return ETAG_EMPTY;
+      try {
+        const { tx_id } = req.params;
+        const normalizedTxId = normalizeHashString(tx_id);
+        if (normalizedTxId === false) {
+          return ETAG_EMPTY;
+        }
+        const status = await db.getTxStatus(normalizedTxId);
+        if (!status.found) {
+          return ETAG_EMPTY;
+        }
+        const elements: string[] = [
+          normalizedTxId,
+          status.result.index_block_hash ?? '',
+          status.result.microblock_hash ?? '',
+          status.result.status.toString(),
+        ];
+        return elements.join(':');
+      } catch (error) {
+        logger.error(`Unable to calculate transaction ETag: ${error}`);
+        return;
       }
-      const status = await db.getTxStatus(normalizedTxId);
-      if (!status.found) {
-        return ETAG_EMPTY;
-      }
-      const elements: string[] = [
-        normalizedTxId,
-        bufferToHexPrefixString(status.result.index_block_hash),
-        bufferToHexPrefixString(status.result.microblock_hash),
-        status.result.status.toString(),
-      ];
-      return elements.join(':');
   }
 }

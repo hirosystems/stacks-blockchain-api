@@ -78,37 +78,17 @@ Since we'll need to create some files/dirs for persistent data we'll first creat
 We'll be using:
 
 ```bash
-$ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,bns,config}
+$ mkdir -p ./stacks-node/{persistent-data/postgres,persistent-data/stacks-blockchain,config}
 $ docker pull blockstack/stacks-blockchain-api \
     && docker pull blockstack/stacks-blockchain \
-    && docker pull postgres:alpine
+    && docker pull postgres:14-alpine
 $ docker network create stacks-blockchain > /dev/null 2>&1
 $ cd ./stacks-node
 ```
 
-**Optional but recommended**: If you need the v1 BNS data, there are going to be a few extra steps.
-
-1. Download the BNS data:  
-`curl -L https://storage.googleapis.com/blockstack-v1-migration-data/export-data.tar.gz -o ./bns/export-data.tar.gz`
-2. Extract the data:  
-`tar -xzvf ./bns/export-data.tar.gz -C ./bns/`
-3. Each file in `./bns` will have a corresponding `sha256` value.  
-
-To Verify, run a script like the following to check the sha256sum:
-
-```bash
-for file in `ls ./bns/* | grep -v sha256 | grep -v .tar.gz`; do
-    if [ $(sha256sum $file | awk {'print $1'}) == $(cat ${file}.sha256 ) ]; then
-        echo "sha256 Matched $file"
-    else
-        echo "sha256 Mismatch $file"
-    fi
-done
-```
-
 ## Postgres
 
-The `postgres:alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
+The `postgres:14-alpine` image can be run with default settings, the only requirement is that a password Environment Variable is set for the `postgres` user: `POSTGRES_PASSWORD=postgres`
 
 ### Starting postgres
 
@@ -119,7 +99,7 @@ docker run -d --rm \
     -e POSTGRES_PASSWORD=postgres \
     -v $(pwd)/persistent-data/postgres:/var/lib/postgresql/data \
     -p 5432:5432 \
-    postgres:alpine
+    postgres:14-alpine
 ```
 
 There should now be a running postgres instance running on port `5432`:
@@ -127,7 +107,7 @@ There should now be a running postgres instance running on port `5432`:
 ```bash
 $ docker ps --filter name=postgres
 CONTAINER ID   IMAGE             COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-f835f3a8cfd4   postgres:alpine   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   postgres
+f835f3a8cfd4   postgres:14-alpine   "docker-entrypoint.s…"   1 minute ago   Up 1 minute   0.0.0.0:5432->5432/tcp, :::5432->5432/tcp   postgres
 ```
 
 ### Stopping Postgres
@@ -161,15 +141,8 @@ STACKS_BLOCKCHAIN_API_PORT=3999
 STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 STACKS_CORE_RPC_HOST=stacks-blockchain
 STACKS_CORE_RPC_PORT=20443
-BNS_IMPORT_DIR=/bns-data
 API_DOCS_URL=https://docs.hiro.so/api
 ```
-
-**Note** that here we are importing the bns data with the env var `BNS_IMPORT`.  
-
-To Disable this import, simply comment the line: `#BNS_IMPORT_DIR=/bns-data`  
-
-***If you leave this enabled***: please allow several minutes for the one-time import to complete before continuing.
 
 The other Environment Variables to pay attention to:
 
@@ -184,7 +157,6 @@ docker run -d --rm \
     --name stacks-blockchain-api \
     --net=stacks-blockchain \
     --env-file $(pwd)/.env \
-    -v $(pwd)/bns:/bns-data \
     -p 3700:3700 \
     -p 3999:3999 \
     blockstack/stacks-blockchain-api
@@ -230,7 +202,7 @@ Here is an example `Config.toml` that you can use - create this file as `./confi
 working_dir = "/root/stacks-node/data"
 rpc_bind = "0.0.0.0:20443"
 p2p_bind = "0.0.0.0:20444"
-bootstrap_node = "02da7a464ac770ae8337a343670778b93410f2f3fef6bea98dd1c3e9224459d36b@seed-0.mainnet.stacks.co:20444,02afeae522aab5f8c99a00ddf75fbcb4a641e052dd48836408d9cf437344b63516@seed-1.mainnet.stacks.co:20444,03652212ea76be0ed4cd83a25c06e57819993029a7b9999f7d63c36340b34a4e62@seed-2.mainnet.stacks.co:20444"
+bootstrap_node = "02196f005965cebe6ddc3901b7b1cc1aa7a88f305bb8c5893456b8f9a605923893@seed.mainnet.hiro.so:20444"
 wait_time_for_microblocks = 10000
 
 [[events_observer]]
@@ -295,7 +267,8 @@ To verfiy the database is ready:
     - *this will require a locally installed postgresql client*
     - use the password from the [Environment Variable](#postgres) `POSTGRES_PASSWORD`
 2. List current databases: `\l`
-3. Disconnect from the DB : `\q`
+3. Verify data is being written to the database: `select * from blocks limit 1;`
+4. Disconnect from the DB : `\q`
 
 ### stacks-blockchain testing
 

@@ -1,9 +1,10 @@
-import { logError, logger } from '../helpers';
+import { FoundOrNot, logError, logger } from '../helpers';
 import { Evt } from 'evt';
 import PQueue from 'p-queue';
-import { DataStore, DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
+import { DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { TokensContractHandler } from './tokens-contract-handler';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -13,7 +14,7 @@ const TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT = 5;
 
 export class TokensProcessorQueue {
   readonly queue: PQueue;
-  readonly db: DataStore;
+  readonly db: PgWriteStore;
   readonly chainId: ChainID;
 
   readonly processStartedEvent: Evt<{
@@ -32,19 +33,19 @@ export class TokensProcessorQueue {
   readonly onTokenMetadataUpdateQueued: (queueId: number) => void;
   readonly onBlockUpdate: (blockHash: string) => void;
 
-  constructor(db: DataStore, chainId: ChainID) {
+  constructor(db: PgWriteStore, chainId: ChainID) {
     this.db = db;
     this.chainId = chainId;
     this.queue = new PQueue({ concurrency: TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT });
     this.onTokenMetadataUpdateQueued = entry => this.queueNotificationHandler(entry);
-    this.db.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.db.eventEmitter.on('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
     this.onBlockUpdate = blockHash => this.blockNotificationHandler(blockHash);
-    this.db.on('blockUpdate', this.onBlockUpdate);
+    this.db.eventEmitter.on('blockUpdate', this.onBlockUpdate);
   }
 
   close() {
-    this.db.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
-    this.db.off('blockUpdate', this.onBlockUpdate);
+    this.db.eventEmitter.off('tokenMetadataUpdateQueued', this.onTokenMetadataUpdateQueued);
+    this.db.eventEmitter.off('blockUpdate', this.onBlockUpdate);
     this.queue.pause();
     this.queue.clear();
   }
@@ -56,15 +57,18 @@ export class TokensProcessorQueue {
         return;
       }
       const queuedEntries = [...this.queuedEntries.keys()];
-      entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
       await this.queue.onEmpty();
-      // await this.queue.onIdle();
     } while (entries.length > 0 || this.queuedEntries.size > 0);
   }
 
@@ -75,10 +79,16 @@ export class TokensProcessorQueue {
     const queuedEntries = [...this.queuedEntries.keys()];
     const limit = TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT - this.queuedEntries.size;
     if (limit > 0) {
-      const entries = await this.db.getTokenMetadataQueue(
-        TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
-        queuedEntries
-      );
+      let entries: DbTokenMetadataQueueEntry[];
+      try {
+        entries = await this.db.getTokenMetadataQueue(
+          TOKEN_METADATA_PARSING_CONCURRENCY_LIMIT,
+          queuedEntries
+        );
+      } catch (error) {
+        logger.error(error);
+        return;
+      }
       for (const entry of entries) {
         await this.queueHandler(entry);
       }
@@ -86,15 +96,20 @@ export class TokensProcessorQueue {
   }
 
   async queueNotificationHandler(queueId: number) {
-    const queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
+    let queueEntry: FoundOrNot<DbTokenMetadataQueueEntry>;
+    try {
+      queueEntry = await this.db.getTokenMetadataQueueEntry(queueId);
+    } catch (error) {
+      logger.error(error);
+      return;
+    }
     if (queueEntry.found) {
       await this.queueHandler(queueEntry.result);
     }
   }
 
   async blockNotificationHandler(_: string) {
-    // Every block, check if we have entries we still need to process.
-    await this.drainDbQueue();
+    await this.checkDbQueue();
   }
 
   async queueHandler(queueEntry: TokenMetadataUpdateInfo) {
@@ -104,8 +119,15 @@ export class TokensProcessorQueue {
     ) {
       return;
     }
-    const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
-    if (!contractQuery.found || !contractQuery.result.abi) {
+    let abi: string;
+    try {
+      const contractQuery = await this.db.getSmartContract(queueEntry.contractId);
+      if (!contractQuery.found || !contractQuery.result.abi) {
+        return;
+      }
+      abi = contractQuery.result.abi;
+    } catch (error) {
+      logger.error(error);
       return;
     }
     logger.info(
@@ -113,7 +135,7 @@ export class TokensProcessorQueue {
     );
     this.queuedEntries.set(queueEntry.queueId, queueEntry);
 
-    const contractAbi: ClarityAbi = JSON.parse(contractQuery.result.abi);
+    const contractAbi: ClarityAbi = JSON.parse(abi);
 
     const tokenContractHandler = new TokensContractHandler({
       contractId: queueEntry.contractId,

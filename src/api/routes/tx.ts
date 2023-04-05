@@ -1,8 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-import { DataStore, DbTx, DbMempoolTx, DbEventTypeId } from '../../datastore/common';
 import {
-  getTxFromDataStore,
   parseTxTypeStrings,
   parseDbMempoolTx,
   searchTx,
@@ -10,17 +8,7 @@ import {
   parseDbTx,
   parseDbEvent,
 } from '../controllers/db-controller';
-import {
-  waiter,
-  has0xPrefix,
-  logError,
-  isProdEnv,
-  isValidC32Address,
-  bufferToHexPrefixString,
-  isValidPrincipal,
-  hexToBuffer,
-  parseEventTypeStrings,
-} from '../../helpers';
+import { has0xPrefix, isProdEnv, isValidC32Address, isValidPrincipal } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
@@ -29,40 +17,22 @@ import {
   parseAddressOrTxId,
   parseEventTypeFilter,
 } from '../query-helpers';
-import { parseLimitQuery, parsePagingQueryInput } from '../pagination';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validate } from '../validate';
 import {
   TransactionType,
   TransactionResults,
   MempoolTransactionListResponse,
   GetRawTransactionResult,
-  Transaction,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   ETagType,
   getETagCacheHandler,
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
+import { PgStore } from '../../datastore/pg-store';
 
-const MAX_TXS_PER_REQUEST = 200;
-const parseTxQueryLimit = parseLimitQuery({
-  maxItems: MAX_TXS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_TXS_PER_REQUEST,
-});
-
-const MAX_MEMPOOL_TXS_PER_REQUEST = 200;
-const parseMempoolTxQueryLimit = parseLimitQuery({
-  maxItems: MAX_MEMPOOL_TXS_PER_REQUEST,
-  errorMsg: '`limit` must be equal to or less than ' + MAX_MEMPOOL_TXS_PER_REQUEST,
-});
-
-const MAX_EVENTS_PER_REQUEST = 200;
-const parseTxQueryEventsLimit = parseLimitQuery({
-  maxItems: MAX_EVENTS_PER_REQUEST,
-  errorMsg: '`event_limit` must be equal to or less than ' + MAX_EVENTS_PER_REQUEST,
-});
-
-export function createTxRouter(db: DataStore): express.Router {
+export function createTxRouter(db: PgStore): express.Router {
   const router = express.Router();
 
   const cacheHandler = getETagCacheHandler(db);
@@ -73,7 +43,7 @@ export function createTxRouter(db: DataStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const typeQuery = req.query.type;
@@ -115,7 +85,7 @@ export function createTxRouter(db: DataStore): express.Router {
         req.query.tx_id = [req.query.tx_id];
       }
       const txList: string[] = req.query.tx_id as string[];
-      const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit']);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       txList.forEach(tx => validateRequestHexInput(tx));
@@ -140,7 +110,7 @@ export function createTxRouter(db: DataStore): express.Router {
     '/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       let addrParams: (string | undefined)[];
@@ -201,7 +171,7 @@ export function createTxRouter(db: DataStore): express.Router {
     '/mempool/dropped',
     mempoolCacheHandler,
     asyncHandler(async (req, res) => {
-      const limit = parseTxQueryLimit(req.query.limit ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const { results: txResults, total } = await db.getDroppedTxs({
         offset,
@@ -215,52 +185,12 @@ export function createTxRouter(db: DataStore): express.Router {
   );
 
   router.get(
-    '/stream',
+    '/mempool/stats',
+    mempoolCacheHandler,
     asyncHandler(async (req, res) => {
-      const protocol = req.query['protocol'];
-      const useEventSource = protocol === 'eventsource';
-      const useWebSocket = protocol === 'websocket';
-      if (!useEventSource && !useWebSocket) {
-        throw new Error(`Unsupported stream protocol "${protocol}"`);
-      }
-
-      if (useEventSource) {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          Connection: 'keep-alive',
-        });
-      } else if (useWebSocket) {
-        throw new Error('WebSocket stream not yet implemented');
-      }
-
-      const dbTxUpdate = async (txId: string): Promise<void> => {
-        try {
-          const txQuery = await searchTx(db, { txId, includeUnanchored: true });
-          if (!txQuery.found) {
-            throw new Error('error in tx stream, tx not found');
-          }
-          if (useEventSource) {
-            res.write(`event: tx\ndata: ${JSON.stringify(txQuery.result)}\n\n`);
-          }
-        } catch (error) {
-          // TODO: real error handling
-          logError('error streaming tx updates', error);
-        }
-      };
-
-      // EventEmitters don't like being passed Promise functions so wrap the async handler
-      const onTxUpdate = (txId: string): void => {
-        void dbTxUpdate(txId);
-      };
-
-      const endWaiter = waiter();
-      db.addListener('txUpdate', onTxUpdate);
-      res.on('close', () => {
-        endWaiter.finish();
-        db.removeListener('txUpdate', onTxUpdate);
-      });
-      await endWaiter;
+      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
+      setETagCacheHeaders(res, ETagType.mempool);
+      res.json(queryResult);
     })
   );
 
@@ -268,7 +198,7 @@ export function createTxRouter(db: DataStore): express.Router {
     '/events',
     cacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 100);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
 
       const principalOrTxId = parseAddressOrTxId(req, res, next);
@@ -292,10 +222,12 @@ export function createTxRouter(db: DataStore): express.Router {
     asyncHandler(async (req, res, next) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id);
+        const baseURL = req.protocol + '://' + req.headers.host + '/';
+        const url = new URL(req.url, baseURL);
+        return res.redirect('/extended/v1/tx/0x' + tx_id + url.search);
       }
 
-      const eventLimit = parseTxQueryEventsLimit(req.query['event_limit'] ?? 96);
+      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit'], 100);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       validateRequestHexInput(tx_id);
@@ -329,7 +261,7 @@ export function createTxRouter(db: DataStore): express.Router {
 
       if (rawTxQuery.found) {
         const response: GetRawTransactionResult = {
-          raw_tx: bufferToHexPrefixString(rawTxQuery.result.raw_tx),
+          raw_tx: rawTxQuery.result.raw_tx,
         };
         setETagCacheHeaders(res, ETagType.transaction);
         res.json(response);
@@ -344,7 +276,7 @@ export function createTxRouter(db: DataStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res) => {
       const { block_hash } = req.params;
-      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 200);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       validateRequestHexInput(block_hash);
       const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
@@ -376,7 +308,7 @@ export function createTxRouter(db: DataStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       const height = getBlockHeightPathParam(req, res, next);
-      const limit = parseTxQueryEventsLimit(req.query['limit'] ?? 96);
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit']);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       const result = await db.getTxsFromBlock({ height: height }, limit, offset);
       if (!result.found) {

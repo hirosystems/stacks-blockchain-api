@@ -25,7 +25,7 @@ interface CoreNodeEventBase {
   committed: boolean;
 }
 
-interface SmartContractEvent extends CoreNodeEventBase {
+export interface SmartContractEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.ContractEvent;
   contract_event: {
     /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.kv-store" */
@@ -43,6 +43,8 @@ export interface StxTransferEvent extends CoreNodeEventBase {
     recipient: string;
     sender: string;
     amount: string;
+    /** Hex-encoded string. Only provided when a memo was specified in the Clarity `stx-transfer?` function (requires a Stacks 2.1 contract). */
+    memo?: string;
   };
 }
 
@@ -73,10 +75,12 @@ export interface StxLockEvent extends CoreNodeEventBase {
     unlock_height: string;
     /** STX principal associated with the locked tokens. */
     locked_address: string;
+    /** Fully qualified contract ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.pox" or "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.pox-2" */
+    contract_identifier?: string;
   };
 }
 
-interface NftTransferEvent extends CoreNodeEventBase {
+export interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -214,6 +218,8 @@ export interface CoreNodeBlockMessage {
     from_stacks_block_hash: string;
     /** STX principal */
     recipient: string;
+    /** STX principal (available starting in Stacks 2.1) */
+    miner_address: string | null;
     /** String quoted micro-STX amount. */
     coinbase_amount: string;
     /** String quoted micro-STX amount. */
@@ -223,12 +229,13 @@ export interface CoreNodeBlockMessage {
     /** String quoted micro-STX amount. */
     tx_fees_streamed_produced: string;
   }[];
+  pox_v1_unlock_height?: number;
 }
 
 export interface CoreNodeParsedTxMessage {
   core_tx: CoreNodeTxMessage;
   parsed_tx: DecodedTxResult;
-  raw_tx: Buffer;
+  raw_tx: string;
   nonce: number;
   sender_address: string;
   sponsor_address: string | undefined;

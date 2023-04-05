@@ -1,6 +1,5 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { DataStore, DbBnsNamespace } from '../../../datastore/common';
 import {
   makeRandomPrivKey,
   getAddressFromPrivateKey,
@@ -9,19 +8,17 @@ import {
   bufferCVFromString,
   callReadOnlyFunction,
   ClarityType,
-  tupleCV,
-  uintCV,
-  listCV,
   ChainID,
 } from '@stacks/transactions';
-import { GetStacksNetwork, getBnsContractID } from './../../../bns-helpers';
 import {
   BnsGetNamePriceResponse,
   BnsGetNamespacePriceResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { isValidPrincipal, logger } from './../../../helpers';
+import { PgStore } from '../../../datastore/pg-store';
+import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
 
-export function createBnsPriceRouter(db: DataStore, chainId: ChainID): express.Router {
+export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const stacksNetwork = GetStacksNetwork(chainId);
 

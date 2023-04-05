@@ -1,8 +1,15 @@
-import * as path from 'path';
 import * as fs from 'fs';
-import { cycleMigrations, dangerousDropAllTables, PgDataStore } from '../datastore/postgres-store';
+import * as path from 'path';
+import {
+  databaseHasData,
+  exportRawEventRequests,
+  getRawEventRequests,
+} from '../datastore/event-requests';
+import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
+import { PgWriteStore } from '../datastore/pg-write-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, httpPostRequest, logger } from '../helpers';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest, logger } from '../helpers';
+import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 
 enum EventImportMode {
@@ -19,12 +26,6 @@ enum EventImportMode {
    */
   pruned = 'pruned',
 }
-
-/**
- * Event paths that will be ignored during `EventImportMode.pruned` if received outside of the
- * pruned block window.
- */
-const PRUNABLE_EVENT_PATHS = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 /**
  * Exports all Stacks node events stored in the `event_observer_requests` table to a TSV file.
@@ -47,7 +48,7 @@ export async function exportEventsAsTsv(
   console.log(`Export event data to file: ${resolvedFilePath}`);
   const writeStream = fs.createWriteStream(resolvedFilePath);
   console.log(`Export started...`);
-  await PgDataStore.exportRawEventRequests(writeStream);
+  await exportRawEventRequests(writeStream);
   console.log('Export successful.');
 }
 
@@ -62,8 +63,9 @@ export async function importEventsFromTsv(
   filePath?: string,
   importMode?: string,
   wipeDb: boolean = false,
-  force: boolean = false
-): Promise<void> {
+  force: boolean = false,
+  prunedBlockHeightOption?: number
+): Promise<HttpClientResponse[]> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
@@ -83,7 +85,7 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await PgDataStore.containsAnyRawEventRequests();
+  const hasData = await databaseHasData();
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
@@ -91,28 +93,34 @@ export async function importEventsFromTsv(
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
   }
 
-  // This performs a "migration down" which drops the tables, then re-creates them.
-  // If there's a breaking change in the migration files, this will throw, and the pg database needs wiped manually,
-  // or the `--force` option can be used.
-  await cycleMigrations({ dangerousAllowDataLoss: true });
+  try {
+    await cycleMigrations({ dangerousAllowDataLoss: true, checkForEmptyData: true });
+  } catch (error) {
+    logger.error(error);
+    throw new Error(
+      `DB migration cycle failed, possibly due to an incompatible API version upgrade. Add --wipe-db --force or perform a manual DB wipe before importing.`
+    );
+  }
 
   // Look for the TSV's block height and determine the prunable block window.
   const tsvBlockHeight = await findTsvBlockHeight(resolvedFilePath);
   const blockWindowSize = parseInt(
     process.env['STACKS_MEMPOOL_TX_GARBAGE_COLLECTION_THRESHOLD'] ?? '256'
   );
-  const prunedBlockHeight = Math.max(tsvBlockHeight - blockWindowSize, 0);
+  const prunedBlockHeight =
+    prunedBlockHeightOption ?? Math.max(tsvBlockHeight - blockWindowSize, 0);
   console.log(`Event file's block height: ${tsvBlockHeight}`);
   console.log(`Starting event import and playback in ${eventImportMode} mode`);
   if (eventImportMode === EventImportMode.pruned) {
     console.log(`Ignoring all prunable events before block height: ${prunedBlockHeight}`);
+    process.env.IBD_MODE_UNTIL_BLOCK = `${prunedBlockHeight}`;
   }
 
-  const db = await PgDataStore.connect({
+  const db = await PgWriteStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
     withNotifier: false,
-    eventReplay: true,
+    isEventReplay: true,
   });
   const eventServer = await startEventServer({
     datastore: db,
@@ -122,31 +130,27 @@ export async function importEventsFromTsv(
     httpLogLevel: 'debug',
   });
 
+  await importV1TokenOfferingData(db);
+
+  // Import TSV chain data
   const readStream = fs.createReadStream(resolvedFilePath);
-  const rawEventsIterator = PgDataStore.getRawEventRequests(readStream, status => {
+  const rawEventsIterator = getRawEventRequests(readStream, status => {
     console.log(status);
   });
   // Set logger to only output for warnings/errors, otherwise the event replay will result
   // in the equivalent of months/years of API log output.
   logger.level = 'warn';
-  // Disable this feature so a redundant export file isn't created while importing from an existing one.
-  delete process.env['STACKS_EXPORT_EVENTS_FILE'];
   // The current import block height. Will be updated with every `/new_block` event.
   let blockHeight = 0;
-  let isPruneFinished = false;
+  const responses = [];
   for await (const rawEvents of rawEventsIterator) {
     for (const rawEvent of rawEvents) {
       if (eventImportMode === EventImportMode.pruned) {
-        if (PRUNABLE_EVENT_PATHS.includes(rawEvent.event_path) && blockHeight < prunedBlockHeight) {
-          // Prunable events are ignored here.
-          continue;
-        }
-        if (blockHeight == prunedBlockHeight && !isPruneFinished) {
-          isPruneFinished = true;
+        if (blockHeight === prunedBlockHeight) {
           console.log(`Resuming prunable event import...`);
         }
       }
-      await httpPostRequest({
+      const response = await httpPostRequest({
         host: '127.0.0.1',
         port: eventServer.serverAddress.port,
         path: rawEvent.event_path,
@@ -156,11 +160,16 @@ export async function importEventsFromTsv(
       });
       if (rawEvent.event_path === '/new_block') {
         blockHeight = await getDbBlockHeight(db);
+        if (blockHeight && blockHeight % 1000 === 0) {
+          console.log(`Event file block height reached: ${blockHeight}`);
+        }
       }
+      responses.push(response);
     }
   }
   await db.finishEventReplay();
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();
+  return responses;
 }

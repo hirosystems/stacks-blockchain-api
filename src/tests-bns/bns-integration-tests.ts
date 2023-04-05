@@ -1,17 +1,11 @@
-
-
-
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
 import { createHash } from 'crypto';
-import { DbTx, DbTxStatus } from '../datastore/common';
+import { DbTxRaw, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
-
 import {
   broadcastTransaction,
   bufferCV,
@@ -23,12 +17,12 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import BigNum = require('bn.js');
 import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
-import { importV1BnsData } from '../import-v1';
-import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -49,30 +43,29 @@ type TestnetKey = {
 }
 
 describe('BNS integration tests', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let eventServer: Server;
   let api: ApiServer;
 
-  function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>(resolve => {
+  function standByForTx(expectedTxId: string): Promise<DbTxRaw> {
+    const broadcastTx = new Promise<DbTxRaw>(resolve => {
       const listener: (txId: string) => void = async txId => {
         const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
         if (!dbTxQuery.found) {
           return;
         }
-        const dbTx = dbTxQuery.result as DbTx;
+        const dbTx = dbTxQuery.result as DbTxRaw;
         if (
           dbTx.tx_id === expectedTxId &&
           (dbTx.status === DbTxStatus.Success ||
             dbTx.status === DbTxStatus.AbortByResponse ||
             dbTx.status === DbTxStatus.AbortByPostCondition)
         ) {
-          api.datastore.removeListener('txUpdate', listener);
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
           resolve(dbTx);
         }
       };
-      api.datastore.addListener('txUpdate', listener);
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
     });
 
     return broadcastTx;
@@ -81,11 +74,11 @@ describe('BNS integration tests', () => {
     const broadcastTx = new Promise<string>(resolve => {
       const listener: (txId: string) => void = txId => {
         if (txId === expectedTxId) {
-          api.datastore.removeListener('nameUpdate', listener);
+          api.datastore.eventEmitter.removeListener('nameUpdate', listener);
           resolve(txId);
         }
       };
-      api.datastore.addListener('nameUpdate', listener);
+      api.datastore.eventEmitter.addListener('nameUpdate', listener);
     });
 
     return broadcastTx;
@@ -93,7 +86,7 @@ describe('BNS integration tests', () => {
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeContractCall(txOptions);
     const body: {tx: string, attachment?: string} = {
-      tx: transaction.serialize().toString('hex'),
+      tx: Buffer.from(transaction.serialize()).toString('hex'),
     };
     if(zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
     const apiResult = await fetch(network.getBroadcastApiUrl(), {
@@ -101,10 +94,10 @@ describe('BNS integration tests', () => {
       body: JSON.stringify(body),
       headers: { 'Content-Type': 'application/json' },
     });
-    const submitResult = await apiResult.json();
+    await apiResult.json();
     const expectedTxId = '0x' + transaction.txid();
     const result = await standByForTx(expectedTxId);
-    if (result.status != 1) logger.error('name-import error');
+    if (result.status != 1) throw new Error('result status error');
     await standbyBnsName(expectedTxId);
     return transaction;
   }
@@ -116,9 +109,10 @@ describe('BNS integration tests', () => {
       functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
-      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1))],
+      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1)],
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     const transaction = await makeContractCall(txOptions);
@@ -162,7 +156,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     const revealTransaction = await makeContractCall(revealTxOptions);
     await broadcastTransaction(revealTransaction, network);
@@ -173,10 +168,8 @@ describe('BNS integration tests', () => {
   async function initiateNamespaceNetwork(namespace: string, salt: Buffer, namespaceHash: Buffer, testnetKey: TestnetKey, expiration: number){
     while (true) {
       try {
-        const preorderTransaction = await namespacePreorder(namespaceHash, testnetKey);
-
-        const revealTransaction = await namespaceReveal(namespace, salt, testnetKey, expiration);
-
+        await namespacePreorder(namespaceHash, testnetKey);
+        await namespaceReveal(namespace, salt, testnetKey, expiration);
         break;
       } catch (e) {
         console.log('error connection', e);
@@ -192,15 +185,13 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
-
     const transaction = await makeContractCall(txOptions);
     await broadcastTransaction(transaction, network);
-
     const readyResult = await standByForTx('0x' + transaction.txid());
     if (readyResult.status != 1) logger.error('namespace-ready error');
-
     return transaction;
   }
   async function nameImport(namespace: string, zonefile: string, name: string, testnetKey: TestnetKey) {
@@ -217,7 +208,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
   }
@@ -234,14 +226,15 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     return await getContractTransaction(txOptions, zonefile);
   }
   async function namePreorder(namespace: string, saltName: string, testnetKey: TestnetKey, name: string) {
     const postConditions = [
-      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, new BigNum(1)),
+      makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
     ];
     const fqn = `${name}.${namespace}${saltName}`;
     const nameSaltedHash = hash160(Buffer.from(fqn));
@@ -254,7 +247,8 @@ describe('BNS integration tests', () => {
       validateWithAbi: true,
       postConditions: postConditions,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
 
     const preOrderTransaction = await makeContractCall(preOrderTxOptions);
@@ -277,7 +271,8 @@ describe('BNS integration tests', () => {
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions, zonefile);
   }
@@ -297,6 +292,7 @@ describe('BNS integration tests', () => {
       postConditionMode: PostConditionMode.Allow,
       anchorMode: AnchorMode.Any,
       network,
+      fee: 100000,
     };
 
     return await getContractTransaction(txOptions);
@@ -310,7 +306,8 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions);
   }
@@ -329,7 +326,8 @@ describe('BNS integration tests', () => {
       senderKey: pkey,
       validateWithAbi: true,
       network,
-      anchorMode: AnchorMode.Any
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
     };
     return await getContractTransaction(txOptions);
   }
@@ -337,8 +335,7 @@ describe('BNS integration tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
@@ -402,7 +399,7 @@ describe('BNS integration tests', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false });
+      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false, chainId: ChainID.Testnet });
       expect(query2.found).toBe(true);
       if(query2.result)
         expect(query2.result.resolver).toBe('');
@@ -479,7 +476,7 @@ describe('BNS integration tests', () => {
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const testnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[2].stacksAddress};
-    // initializing namespace network 
+    // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
     await namespaceReady(namespace, testnetKey.pkey);
 
@@ -515,88 +512,96 @@ describe('BNS integration tests', () => {
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
     const testnetKey = { pkey: testnetKeys[4].secretKey, address: testnetKeys[4].stacksAddress};
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
-    
+
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
     await nameImport(namespace, zonefile, name, testnetKey);
     await namespaceReady(namespace, testnetKey.pkey);
 
     // testing name revoke
-    const transaction = await nameRevoke(namespace, name, testnetKey.pkey);
+    await nameRevoke(namespace, name, testnetKey.pkey);
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-    expect(query1.status).toBe(200);
+    expect(query1.status).toBe(404);
     expect(query1.type).toBe('application/json');
-    expect(query1.body.status).toBe('name-revoke');
   });
 
-  test('name-renewal contract call', async () => {
+  test('name-import/name-renewal contract call', async () => {
     const zonefile = `new zone file`;
     const namespace = 'name-renewal';
     const name = 'renewal';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
     const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress};
-    
+
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
     await nameImport(namespace, zonefile, name, testnetKey);
     await namespaceReady(namespace, testnetKey.pkey);
 
-    //name renewal
+    // check expiration block
+    const query0 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query0.status).toBe(200);
+    expect(query0.type).toBe('application/json');
+    expect(query0.body.expire_block).toBe(0);  // Imported names don't know about their namespaces
+
+    // name renewal
     await nameRenewal(namespace, zonefile, testnetKey.pkey, name);
-    try {
-      const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
-      expect(query1.status).toBe(200);
-      expect(query1.type).toBe('application/json');
-      expect(query1.body.zonefile).toBe(zonefile);
-      expect(query1.body.status).toBe('name-renewal');
-    } catch (err: any) {
-      throw new Error('Error post transaction: ' + err.message);
-    }
-  });
-
-  test('bns v1-import', async () => {
-    await importV1BnsData(db, 'src/tests-bns/import-test-files');
-
-    // test on-chain name import
-    const query1 = await supertest(api.server).get(`/v1/names/zumrai.id`);
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(query1.body).toEqual({
-      address: 'SP29EJ0SVM2TRZ3XGVTZPVTKF4SV1VMD8C0GA5SK5',
-      blockchain: 'stacks',
-      expire_block: 52595,
-      last_txid: '',
-      status: 'name-register',
-      zonefile:
-        '$ORIGIN zumrai.id\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1EPno1VcdGx89ukN2we4iVpnFtkHzw8i5d/profile.json"\n\n',
-      zonefile_hash: '853cd126478237bc7392e65091f7ffa5a1556a33',
-    });
+    expect(query1.body.zonefile).toBe(zonefile);
+    expect(query1.body.status).toBe('name-renewal');
 
-    // test subdomain import
-    const query2 = await supertest(api.server).get(`/v1/names/flushreset.id.blockstack`);
+    // Name should appear only once in namespace list
+    const query2 = await supertest(api.server).get(`/v1/namespaces/${namespace}/names`);
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    expect(query2.body).toEqual({
-      address: 'SP2S2F9TCAT43KEJT02YTG2NXVCPZXS1426T63D9H',
-      blockchain: 'stacks',
-      last_txid: '',
-      resolver: 'https://registrar.blockstack.org',
-      status: 'registered_subdomain',
-      zonefile:
-        '$ORIGIN flushreset.id.blockstack\n$TTL 3600\n_http._tcp	IN	URI	10	1	"https://gaia.blockstack.org/hub/1HEznKZ7mK5fmibweM7eAk8SwRgJ1bWY92/profile.json"\n\n',
-      zonefile_hash: '14dc091ebce8ea117e1276d802ee903cc0fdde81',
-    });
+    expect(query2.body).toStrictEqual(["renewal.name-renewal"]);
 
-    const dbquery = await db.getSubdomain({ subdomain: `flushreset.id.blockstack`, includeUnanchored: false });
-    assert(dbquery.found)
-    if (dbquery.result){
-    expect(dbquery.result.name).toBe('id.blockstack');}
+    // check new expiration block, should not be 0
+    const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.expire_block).not.toBe(0);
+  });
+
+  test('name-register/name-renewal contract call', async () => {
+    const saltName = '0000';
+    const zonefile = `new zone file`;
+    const namespace = 'name-renewal2';
+    const name = 'renewal2';
+    const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
+    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress};
+
+    // initializing namespace network
+    await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
+    await namespaceReady(namespace, testnetKey.pkey);
+    await nameRegister(namespace, saltName, zonefile, testnetKey, name);
+
+    // check expiration block, should not be 0
+    const query0 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query0.status).toBe(200);
+    expect(query0.type).toBe('application/json');
+    expect(query0.body.expire_block).not.toBe(0);
+    const prevExpiration = query0.body.expire_block;
+
+    // name renewal
+    await nameRenewal(namespace, zonefile, testnetKey.pkey, name);
+    const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(query1.body.zonefile).toBe(zonefile);
+    expect(query1.body.status).toBe('name-renewal');
+
+    // check new expiration block, should be greater than the previous one
+    const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
+    expect(query3.status).toBe(200);
+    expect(query3.type).toBe('application/json');
+    expect(query3.body.expire_block > prevExpiration).toBe(true);
   });
 
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

@@ -1,17 +1,16 @@
-import { PgDataStore, cycleMigrations, runMigrations } from '../datastore/postgres-store';
 import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { DbBlock, DbMempoolTx, DbTx, DbTxStatus } from '../datastore/common';
 import { AnchorMode, ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
-import * as BN from 'bn.js';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
 import { timeout } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 const sender1 = {
   address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -25,8 +24,7 @@ const PORT = 20443;
 const stacksNetwork = GetStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let eventServer: Server;
   let api: ApiServer;
   let rosettaOutput: any;
@@ -34,8 +32,7 @@ describe('Rosetta API', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests' });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests' });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
@@ -88,7 +85,6 @@ describe('Rosetta API', () => {
   afterAll(async () => {
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });
@@ -103,14 +99,15 @@ async function transferStx(
   await waitForBlock(api);
   const transferTx = await makeSTXTokenTransfer({
     recipient: recipientAddr,
-    amount: new BN(amount),
+    amount: amount,
     senderKey: senderPk,
     network: stacksNetwork,
     memo: 'test-transaction',
     sponsored: false,
     anchorMode: AnchorMode.Any,
+    fee: 100000,
   });
-  const serialized: Buffer = transferTx.serialize();
+  const serialized: Buffer = Buffer.from(transferTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
   await standByForTx(txId, api);
@@ -121,10 +118,10 @@ async function transferStx(
 function standByForTx(expectedTxId: string, api: ApiServer): Promise<string> {
   const broadcastTx = new Promise<string>(resolve => {
     const listener: (info: string) => void = info => {
-      api.datastore.removeListener('txUpdate', listener);
+      api.datastore.eventEmitter.removeListener('txUpdate', listener);
       resolve(info);
     };
-    api.datastore.addListener('txUpdate', listener);
+    api.datastore.eventEmitter.addListener('txUpdate', listener);
   });
 
   return broadcastTx;
@@ -149,16 +146,18 @@ async function sendCoreTx(
 }
 
 function GetStacksTestnetNetwork() {
-  const stacksNetwork = new StacksTestnet();
-  stacksNetwork.coreApiUrl = getCoreNodeEndpoint({
+  const url = getCoreNodeEndpoint({
     host: `http://${HOST}`,
     port: PORT,
   });
+  const stacksNetwork = new StacksTestnet({ url });
   return stacksNetwork;
 }
 
 async function waitForBlock(api: ApiServer) {
-  await new Promise<string>(resolve => api.datastore.once('blockUpdate', block => resolve(block)));
+  await new Promise<string>(resolve =>
+    api.datastore.eventEmitter.once('blockUpdate', block => resolve(block))
+  );
 }
 
 function sleep(ms: number) {

@@ -3,7 +3,6 @@ import { ChainID, ClarityAbi, cvToHex, noneCV, uintCV } from '@stacks/transactio
 import { PoolClient } from 'pg';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { ApiServer, startApiServer } from '../api/init';
-import { cycleMigrations, PgDataStore, runMigrations } from '../datastore/postgres-store';
 import {
   METADATA_MAX_PAYLOAD_BYTE_SIZE,
   TokensContractHandler,
@@ -11,6 +10,9 @@ import {
 import { DbTxTypeId } from '../datastore/common';
 import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
 import { getTokenMetadataFetchTimeoutMs } from '../token-metadata/helpers';
+import { PgWriteStore } from '../datastore/pg-write-store';
+import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 
 const NFT_CONTRACT_ABI: ClarityAbi = {
   maps: [],
@@ -103,8 +105,7 @@ const NFT_CONTRACT_ABI: ClarityAbi = {
 };
 
 describe('token metadata strict mode', () => {
-  let db: PgDataStore;
-  let client: PoolClient;
+  let db: PgWriteStore;
   let api: ApiServer;
 
   const contractId = 'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1';
@@ -113,8 +114,7 @@ describe('token metadata strict mode', () => {
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
-    db = await PgDataStore.connect({ usageName: 'tests', withNotifier: false });
-    client = await db.pool.connect();
+    db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
     process.env['STACKS_API_ENABLE_FT_METADATA'] = '1';
@@ -188,6 +188,33 @@ describe('token metadata strict mode', () => {
     const entry = await db.getTokenMetadataQueueEntry(1);
     expect(entry.result?.retry_count).toEqual(1);
     expect(entry.result?.processed).toBe(false);
+  });
+
+  test('db errors are handled gracefully in contract handler', async () => {
+    process.env['STACKS_CORE_RPC_PORT'] = '11111'; // Make node unreachable
+    process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'] = '1';
+    process.env['STACKS_API_TOKEN_METADATA_MAX_RETRIES'] = '0';
+    const handler = new TokensContractHandler({
+      contractId: contractId,
+      smartContractAbi: NFT_CONTRACT_ABI,
+      datastore: db,
+      chainId: ChainID.Testnet,
+      txId: contractTxId,
+      dbQueueId: 1,
+    });
+    await db.close(); // End connection to trigger postgres error
+    await expect(handler.start()).resolves.not.toThrow();
+  });
+
+  test('db errors are handled gracefully in queue', async () => {
+    const queue = new TokensProcessorQueue(db, ChainID.Testnet);
+    await db.close(); // End connection to trigger postgres error
+    await expect(queue.checkDbQueue()).resolves.not.toThrow();
+    await expect(queue.drainDbQueue()).resolves.not.toThrow();
+    await expect(queue.queueNotificationHandler(1)).resolves.not.toThrow();
+    await expect(
+      queue.queueHandler({ queueId: 1, txId: '0x11', contractId: 'test' })
+    ).resolves.not.toThrow();
   });
 
   test('node runtime errors get retried', async () => {
@@ -356,7 +383,6 @@ describe('token metadata strict mode', () => {
 
   afterEach(async () => {
     await api.terminate();
-    client.release();
     await db?.close();
     await runMigrations(undefined, 'down');
   });

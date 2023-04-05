@@ -1,9 +1,5 @@
 import * as child_process from 'child_process';
-import {
-  DataStore,
-  DbFungibleTokenMetadata,
-  DbNonFungibleTokenMetadata,
-} from '../datastore/common';
+import { DbFungibleTokenMetadata, DbNonFungibleTokenMetadata } from '../datastore/common';
 import {
   ChainID,
   ClarityAbi,
@@ -28,6 +24,7 @@ import {
 } from './helpers';
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { FetchError } from 'node-fetch';
+import { PgWriteStore } from '../datastore/pg-write-store';
 
 /**
  * The maximum number of bytes of metadata to fetch.
@@ -83,7 +80,7 @@ interface FtTokenMetadata {
 interface TokenHandlerArgs {
   contractId: string;
   smartContractAbi: ClarityAbi;
-  datastore: DataStore;
+  datastore: PgWriteStore;
   chainId: ChainID;
   txId: string;
   dbQueueId: number;
@@ -99,7 +96,7 @@ export class TokensContractHandler {
   readonly contractId: string;
   readonly txId: string;
   readonly dbQueueId: number;
-  private readonly db: DataStore;
+  private readonly db: PgWriteStore;
   private readonly randomPrivKey = makeRandomPrivKey();
   private readonly chainId: ChainID;
   private readonly address: string;
@@ -152,30 +149,40 @@ export class TokensContractHandler {
       processingFinished = true;
     } catch (error) {
       if (error instanceof RetryableTokenMetadataError) {
-        const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
-        if (
-          getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
-          retries <= getTokenMetadataMaxRetries()
-        ) {
-          logger.info(
-            `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
-          );
-        } else {
-          logger.warn(
-            `[token-metadata] max retries reached while processing ${this.contractId}, giving up: ${error}`
-          );
+        try {
+          const retries = await this.db.increaseTokenMetadataQueueEntryRetryCount(this.dbQueueId);
+          if (
+            getTokenMetadataProcessingMode() === TokenMetadataProcessingMode.strict ||
+            retries <= getTokenMetadataMaxRetries()
+          ) {
+            logger.info(
+              `[token-metadata] a recoverable error happened while processing ${this.contractId}, trying again later: ${error}`
+            );
+          } else {
+            logger.warn(
+              `[token-metadata] max retries reached while processing ${this.contractId}, giving up: ${error}`
+            );
+            processingFinished = true;
+          }
+        } catch (error) {
+          logger.error(error);
           processingFinished = true;
         }
       } else {
         // Something more serious happened, mark this contract as done.
+        logger.error(error);
         processingFinished = true;
       }
     } finally {
       if (processingFinished) {
-        await this.db.updateProcessedTokenMetadataQueueEntry(this.dbQueueId);
-        logger.info(
-          `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
-        );
+        try {
+          await this.db.updateProcessedTokenMetadataQueueEntry(this.dbQueueId);
+          logger.info(
+            `[token-metadata] finished processing ${this.contractId} in ${sw.getElapsed()} ms`
+          );
+        } catch (error) {
+          logger.error(error);
+        }
       }
     }
   }
@@ -225,7 +232,7 @@ export class TokensContractHandler {
       tx_id: this.txId,
       sender_address: this.contractAddress,
     };
-    await this.db.updateFtMetadata(fungibleTokenMetadata);
+    await this.db.updateFtMetadata(fungibleTokenMetadata, this.dbQueueId);
   }
 
   /**
@@ -271,7 +278,7 @@ export class TokensContractHandler {
       tx_id: this.txId,
       sender_address: this.contractAddress,
     };
-    await this.db.updateNFtMetadata(nonFungibleTokenMetadata);
+    await this.db.updateNFtMetadata(nonFungibleTokenMetadata, this.dbQueueId);
   }
 
   /**

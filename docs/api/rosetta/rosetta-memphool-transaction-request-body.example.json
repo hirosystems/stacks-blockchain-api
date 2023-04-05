@@ -1,0 +1,9 @@
+{
+  "network_identifier": {
+    "blockchain": "stacks",
+    "network": "mainnet"
+  },
+  "transaction_identifier": {
+    "hash": "0xe6761e6ce26b366e1db70da31096f0de47f623e70f0b495b20f658b03bd21cea"
+  }
+}
