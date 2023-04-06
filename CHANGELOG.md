@@ -1,3 +1,10 @@
+## [7.1.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.3...v7.1.4) (2023-04-06)
+
+
+### Bug Fixes
+
+* sha256 tx cache etags to make them shorter ([#1603](https://github.com/hirosystems/stacks-blockchain-api/issues/1603)) ([02ebb4c](https://github.com/hirosystems/stacks-blockchain-api/commit/02ebb4cc990a6e6bda5201a39bf394b1fb4c4afb))
+
 ## [7.1.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.2...v7.1.3) (2023-03-27)
 
 
