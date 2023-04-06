@@ -3,6 +3,7 @@ import * as prom from 'prom-client';
 import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
+import { sha256 } from 'bitcoinjs-lib/src/crypto';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -297,7 +298,8 @@ async function calculateETag(
           status.result.microblock_hash ?? '',
           status.result.status.toString(),
         ];
-        return elements.join(':');
+        const tag = Buffer.from(elements.join(':'));
+        return sha256(tag).toString('hex');
       } catch (error) {
         logger.error(`Unable to calculate transaction ETag: ${error}`);
         return;
