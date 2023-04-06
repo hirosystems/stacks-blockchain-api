@@ -207,7 +207,7 @@ describe('IBD', () => {
     await getIbdInterceptCountFromTsvEvents();
     await db.refreshMaterializedView('chain_tip', client);
     const res = await db.sql<{ block_height: number }[]>`SELECT * FROM chain_tip`;
-    expect(res[0].block_height).toBeUndefined();
+    expect(res.count).toBe(0);
   });
 
   test('IBD mode allows refreshing materialized views after height has passed', async () => {
