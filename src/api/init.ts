@@ -155,11 +155,15 @@ export async function startApiServer(opts: {
       format: logger.format,
       transports: logger.transports,
       metaField: (null as unknown) as string,
-      statusLevels: {
-        error: 'error',
-        warn: httpLogLevel ?? 'http',
-        success: httpLogLevel ?? 'http',
-      },
+      statusLevels: false,
+      level: function (req, res) {
+        let level = "";
+        if (res.statusCode >= 100) { level = "info"; }
+        if (res.statusCode >= 400) { level = "warn"; }
+        if (res.statusCode >= 500) { level = "error"; }
+
+        return level;
+      }
     })
   );
 

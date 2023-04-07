@@ -186,7 +186,7 @@ const defaultLogLevel: LogLevel = (() => {
   if (isDevEnv) {
     return 'debug';
   }
-  return 'http';
+  return 'info';
 })();
 
 export const logger = winston.createLogger({
