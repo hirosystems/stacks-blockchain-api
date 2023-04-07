@@ -46,6 +46,14 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
+export function getIbdBlockHeight(): number | undefined {
+  const val = process.env.IBD_MODE_UNTIL_BLOCK;
+  if (val) {
+    const num = Number.parseInt(val);
+    return !Number.isNaN(num) ? num : undefined;
+  }
+}
+
 export function sha256(content: string) {
   return createHash('sha256').update(content).digest('hex');
 }

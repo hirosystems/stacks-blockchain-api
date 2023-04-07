@@ -19,7 +19,7 @@ enum EventImportMode {
    */
   archival = 'archival',
   /**
-   * The Event Server will ingore certain "prunable" events (see `PRUNABLE_EVENT_PATHS`) from
+   * The Event Server will ingore certain "prunable" events (see `IBD_PRUNABLE_ROUTES`) from
    * the imported TSV file if they are received outside of a block window, usually set to
    * TSV's `block_height` - 256.
    * This allows the import to be faster at the expense of historical blockchain information.
