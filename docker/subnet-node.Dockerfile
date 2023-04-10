@@ -7,7 +7,7 @@ ARG GIT_COMMIT='No Commit Info'
 WORKDIR /src
 
 RUN git clone https://github.com/hirosystems/stacks-subnets.git .
-RUN git checkout 77c6625947cdf66ab02acc5c03c08e5142911494
+RUN git checkout 135de42ef37fe4976a2335825ae4004bc433d874
 
 RUN mkdir /out /contracts
 

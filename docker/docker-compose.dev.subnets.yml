@@ -19,7 +19,7 @@ services:
       - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts
   stacks-subnet:
     # restart: on-failure
-    image: "hirosystems/stacks-subnets:7012d22"
+    image: "hirosystems/stacks-subnets:0.4.3-alpha-3"
     # build:
     #   dockerfile: ./subnet-node.Dockerfile
     command: subnet-node start --config=/app/config/Stacks-subnet.toml
