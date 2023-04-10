@@ -83,6 +83,11 @@
         "prerelease": true
       },
       {
+        "name": "subnets",
+        "channel": "subnets",
+        "prerelease": true
+      },
+      {
         "name": "stacks-2.1",
         "channel": "stacks-2.1",
         "prerelease": true
