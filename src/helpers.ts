@@ -26,6 +26,7 @@ import {
 } from 'winston/lib/winston/config';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
+import { createHash } from 'node:crypto';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -44,6 +45,18 @@ export const I32_MAX = 0x7fffffff;
 export const EMPTY_HASH_256 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 export const pipelineAsync = util.promisify(stream.pipeline);
+
+export function getIbdBlockHeight(): number | undefined {
+  const val = process.env.IBD_MODE_UNTIL_BLOCK;
+  if (val) {
+    const num = Number.parseInt(val);
+    return !Number.isNaN(num) ? num : undefined;
+  }
+}
+
+export function sha256(content: string) {
+  return createHash('sha256').update(content).digest('hex');
+}
 
 function createEnumChecker<T extends string, TEnumValue extends number>(
   enumVariable: { [key in T]: TEnumValue }
@@ -173,7 +186,7 @@ const defaultLogLevel: LogLevel = (() => {
   if (isDevEnv) {
     return 'debug';
   }
-  return 'http';
+  return 'info';
 })();
 
 export const logger = winston.createLogger({

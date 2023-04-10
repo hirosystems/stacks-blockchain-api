@@ -156,11 +156,7 @@ export async function startApiServer(opts: {
       format: logger.format,
       transports: logger.transports,
       metaField: (null as unknown) as string,
-      statusLevels: {
-        error: 'error',
-        warn: httpLogLevel ?? 'http',
-        success: httpLogLevel ?? 'http',
-      },
+      statusLevels: true,
     })
   );
 

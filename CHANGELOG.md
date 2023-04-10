@@ -1,3 +1,17 @@
+## [7.1.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.4...v7.1.5) (2023-04-07)
+
+
+### Bug Fixes
+
+* materialized view refresh after IBD height has passed ([#1604](https://github.com/hirosystems/stacks-blockchain-api/issues/1604)) ([e62fb72](https://github.com/hirosystems/stacks-blockchain-api/commit/e62fb722d4971da74e6ccc9a5d90fc6882acd355))
+
+## [7.1.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.3...v7.1.4) (2023-04-06)
+
+
+### Bug Fixes
+
+* sha256 tx cache etags to make them shorter ([#1603](https://github.com/hirosystems/stacks-blockchain-api/issues/1603)) ([02ebb4c](https://github.com/hirosystems/stacks-blockchain-api/commit/02ebb4cc990a6e6bda5201a39bf394b1fb4c4afb))
+
 ## [7.1.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.2...v7.1.3) (2023-03-27)
 
 

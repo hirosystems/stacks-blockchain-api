@@ -7,7 +7,7 @@ import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as expressWinston from 'express-winston';
 import * as winston from 'winston';
-import { hexToBuffer, logError, logger, LogLevel } from '../helpers';
+import { getIbdBlockHeight, hexToBuffer, logError, logger, LogLevel } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -17,7 +17,6 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
-  CoreNodeTxMessage,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -68,10 +67,11 @@ import {
   createDbTxFromCoreMsg,
   getTxDbStatus,
 } from '../datastore/helpers';
-import { handleBnsImport, importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
-import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
+import { handleBnsImport } from '../import-v1';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
+
+export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 async function handleRawEventRequest(
   eventPath: string,
@@ -794,21 +794,21 @@ export async function startEventServer(opts: {
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
-  if (process.env.IBD_MODE_UNTIL_BLOCK) {
-    app.use(['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'], async (req, res, next) => {
+  const ibdHeight = getIbdBlockHeight();
+  if (ibdHeight) {
+    app.use(IBD_PRUNABLE_ROUTES, async (req, res, next) => {
       try {
         const chainTip = await db.getChainTip(db.sql, false);
-        if (chainTip.blockHeight >= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string)) {
+        if (chainTip.blockHeight > ibdHeight) {
           next();
         } else {
           handleRawEventRequest(req, res, next);
-          res.status(200).send(`IBD mode active.`);
+          res.status(200).send(`IBD`);
         }
       } catch (error) {
         res
           .status(500)
-          .json({ error })
-          .send('A middleware error occurred processing the request in IBD mode.');
+          .json({ message: 'A middleware error occurred processing the request in IBD mode.' });
       }
     });
   }

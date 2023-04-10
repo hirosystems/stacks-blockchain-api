@@ -1,6 +1,6 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { bufferToHexPrefixString, logger, normalizeHashString } from '../../helpers';
+import { logger, normalizeHashString, sha256 } from '../../helpers';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
 
@@ -297,7 +297,7 @@ async function calculateETag(
           status.result.microblock_hash ?? '',
           status.result.status.toString(),
         ];
-        return elements.join(':');
+        return sha256(elements.join(':'));
       } catch (error) {
         logger.error(`Unable to calculate transaction ETag: ${error}`);
         return;

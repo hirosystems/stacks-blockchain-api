@@ -1,4 +1,12 @@
-import { logger, logError, getOrAdd, batchIterate, isProdEnv, I32_MAX } from '../helpers';
+import {
+  logger,
+  logError,
+  getOrAdd,
+  batchIterate,
+  isProdEnv,
+  I32_MAX,
+  getIbdBlockHeight,
+} from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -2779,11 +2787,9 @@ export class PgWriteStore extends PgStore {
     if (this.isEventReplay && skipDuringEventReplay) {
       return;
     }
-    if (process.env.IBD_MODE_UNTIL_BLOCK) {
-      const chainTip = await this.getChainTip(sql);
-      if (chainTip.blockHeight <= Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK)) {
-        return;
-      }
+    const ibdHeight = getIbdBlockHeight();
+    if (ibdHeight && (await this.getChainTip(sql, false)).blockHeight <= ibdHeight) {
+      return;
     }
     await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
   }

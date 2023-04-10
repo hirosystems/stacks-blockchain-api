@@ -7,8 +7,8 @@ import { databaseHasData, getRawEventRequests } from '../datastore/event-request
 import { cycleMigrations, dangerousDropAllTables, runMigrations } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
-import { startEventServer } from '../event-stream/event-server';
-import { httpPostRequest } from '../helpers';
+import { IBD_PRUNABLE_ROUTES, startEventServer } from '../event-stream/event-server';
+import { getIbdBlockHeight, httpPostRequest } from '../helpers';
 import { useWithCleanup } from '../tests/test-helpers';
 
 describe('import/export tests', () => {
@@ -130,7 +130,6 @@ describe('import/export tests', () => {
 describe('IBD', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
-  const ibdRoutes = ['/new_microblocks', '/new_mempool_tx', '/drop_mempool_tx'];
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -149,10 +148,8 @@ describe('IBD', () => {
     await runMigrations(undefined, 'down');
   });
 
-  test('IBD mode blocks certain API routes', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    const ibdRoutesVisited = new Set();
-
+  const getIbdInterceptCountFromTsvEvents = async (): Promise<number> => {
+    let ibdResponses = 0;
     await useWithCleanup(
       () => {
         const readStream = fs.createReadStream('src/tests-event-replay/tsv/mocknet.tsv');
@@ -172,8 +169,7 @@ describe('IBD', () => {
       async (rawEventsIterator, eventServer) => {
         for await (const rawEvents of rawEventsIterator) {
           for (const rawEvent of rawEvents) {
-            ibdRoutesVisited.add(rawEvent.event_path);
-            const response = await httpPostRequest({
+            const result = await httpPostRequest({
               host: '127.0.0.1',
               port: eventServer.serverAddress.port,
               path: rawEvent.event_path,
@@ -181,72 +177,45 @@ describe('IBD', () => {
               body: Buffer.from(rawEvent.payload, 'utf8'),
               throwOnNotOK: true,
             });
-            if (ibdRoutes.includes(rawEvent.event_path)) {
-              expect(response.statusCode).toBe(200);
-              expect(response.response).toBe('IBD mode active.');
+            if (result.response === 'IBD') {
+              expect(result.statusCode).toBe(200);
+              ibdResponses++;
             }
           }
         }
       }
     );
-    expect(ibdRoutesVisited.size).toBeGreaterThan(0);
+    return ibdResponses;
+  };
+
+  test('IBD mode blocks certain API routes', async () => {
+    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
+    // TSV has 1 microblock message.
+    await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(1);
+    await expect(db.getChainTip(client, false)).resolves.toHaveProperty('blockHeight', 28);
   });
 
   test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1';
-
-    const ibdRoutesVisited = new Set();
-
-    await useWithCleanup(
-      () => {
-        const readStream = fs.createReadStream('src/tests-event-replay/tsv/mocknet.tsv');
-        const rawEventsIterator = getRawEventRequests(readStream);
-        return [rawEventsIterator, () => readStream.close()] as const;
-      },
-      async () => {
-        const eventServer = await startEventServer({
-          datastore: db,
-          chainId: ChainID.Mainnet,
-          serverHost: '127.0.0.1',
-          serverPort: 0,
-          httpLogLevel: 'debug',
-        });
-        return [eventServer, eventServer.closeAsync] as const;
-      },
-      async (rawEventsIterator, eventServer) => {
-        for await (const rawEvents of rawEventsIterator) {
-          for (const rawEvent of rawEvents) {
-            ibdRoutesVisited.add(rawEvent.event_path);
-            const response = await httpPostRequest({
-              host: '127.0.0.1',
-              port: eventServer.serverAddress.port,
-              path: rawEvent.event_path,
-              headers: { 'Content-Type': 'application/json' },
-              body: Buffer.from(rawEvent.payload, 'utf8'),
-              throwOnNotOK: true,
-            });
-            if (ibdRoutes.includes(rawEvent.event_path)) {
-              const chainTip = await db.getChainTip(client, false);
-              const ibdThreshold = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK as string);
-              if (chainTip.blockHeight < ibdThreshold) {
-                expect(response.statusCode).toBe(200);
-                expect(response.response).toBe('IBD mode active.');
-              } else {
-                expect(response.statusCode).toBe(200);
-                expect(response.response).not.toBe('IBD mode active.');
-              }
-            }
-          }
-        }
-      }
-    );
-    expect(ibdRoutesVisited.size).toBeGreaterThan(0);
+    // Microblock processed normally.
+    await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(0);
+    await expect(db.getChainTip(client, false)).resolves.toHaveProperty('blockHeight', 28);
   });
 
   test('IBD mode prevents refreshing materialized views', async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    const result = await db.refreshMaterializedView('fizzbuzz', client);
-    expect(result).toBe(undefined);
+    await getIbdInterceptCountFromTsvEvents();
+    await db.refreshMaterializedView('chain_tip', client);
+    const res = await db.sql<{ block_height: number }[]>`SELECT * FROM chain_tip`;
+    expect(res.count).toBe(0);
+  });
+
+  test('IBD mode allows refreshing materialized views after height has passed', async () => {
+    process.env.IBD_MODE_UNTIL_BLOCK = '10';
+    await getIbdInterceptCountFromTsvEvents();
+    await db.refreshMaterializedView('chain_tip', client);
+    const res = await db.sql<{ block_height: number }[]>`SELECT * FROM chain_tip`;
+    expect(res[0].block_height).toBe(28);
   });
 
   test('IBD mode covers prune mode', async () => {
@@ -260,13 +229,8 @@ describe('IBD', () => {
     );
     let hitIbdRoute = false;
     for (const response of responses) {
-      if (response.response === 'IBD mode active.') {
+      if (response.response === 'IBD') {
         hitIbdRoute = true;
-        expect(
-          ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'].includes(
-            (response as any)?.req?.path
-          )
-        ).toBe(true);
       }
     }
     expect(hitIbdRoute).toBe(true);
