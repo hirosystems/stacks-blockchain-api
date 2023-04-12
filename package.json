@@ -96,6 +96,25 @@
           "preset": "conventionalcommits"
         }
       ],
+      [
+        "@semantic-release/exec",
+        {
+          "execCwd": "client",
+          "prepareCmd": "npm ci"
+        }
+      ],
+      [
+        "@semantic-release/npm",
+        {
+          "pkgRoot": "./docs"
+        }
+      ],
+      [
+        "@semantic-release/npm",
+        {
+          "pkgRoot": "./client"
+        }
+      ],
       "@semantic-release/github",
       "@semantic-release/changelog",
       "@semantic-release/git"
@@ -212,7 +231,7 @@
     "nodemon": "2.0.19",
     "pg-connection-string": "2.5.0",
     "prettier": "2.2.1",
-    "rimraf": "3.0.2",
+    "rimraf": "5.0.0",
     "rpc-websocket-client": "1.1.4",
     "socket.io-client": "4.5.4",
     "supertest": "4.0.2",
