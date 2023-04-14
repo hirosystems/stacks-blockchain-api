@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
+import { jsonpathToAst, JsonpathAst, JsonpathItem } from 'jsonpath-pg';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
@@ -44,12 +45,18 @@ export function validateJsonPathQuery<TRequired extends boolean>(
     );
   }
 
-  const disallowedOperation = containsDisallowedJsonPathOperation(jsonPathInput);
-  if (disallowedOperation) {
+  let ast: JsonpathAst;
+  try {
+    ast = jsonpathToAst(jsonPathInput);
+  } catch (error) {
+    handleBadRequest(res, next, `JsonPath parameter '${paramName}' is invalid: ${error}`);
+  }
+  const astComplexity = calculateJsonpathComplexity(ast);
+  if (typeof astComplexity !== 'number') {
     handleBadRequest(
       res,
       next,
-      `JsonPath parameter '${paramName}' is invalid: contains disallowed operation '${disallowedOperation.operation}'`
+      `JsonPath parameter '${paramName}' is invalid: contains disallowed operation '${astComplexity.disallowedOperation}'`
     );
   }
 
@@ -57,36 +64,105 @@ export function validateJsonPathQuery<TRequired extends boolean>(
 }
 
 /**
+ * Scan the a jsonpath expression to determine complexity.
  * Disallow operations that could be used to perform expensive queries.
  * See https://www.postgresql.org/docs/14/functions-json.html
  */
-export function containsDisallowedJsonPathOperation(
-  jsonPath: string
-): false | { operation: string } {
-  const normalizedPath = jsonPath.replace(/\s+/g, '').toLowerCase();
-  const hasDisallowedOperations: [() => boolean, string][] = [
-    [() => normalizedPath.includes('.*'), '.* wildcard accessor'],
-    [() => normalizedPath.includes('[*]'), '[*] wildcard array accessor'],
-    [() => /\[\d+to(\d+|last)\]/.test(normalizedPath), '[n to m] array range accessor'],
-    [() => /\[[^\]]*\([^\)]*\)[^\]]*\]/.test(normalizedPath), '[()] array expression accessor'],
-    [() => normalizedPath.includes('.type('), '.type()'],
-    [() => normalizedPath.includes('.size('), '.size()'],
-    [() => normalizedPath.includes('.double('), '.double()'],
-    [() => normalizedPath.includes('.ceiling('), '.ceiling()'],
-    [() => normalizedPath.includes('.floor('), '.floor()'],
-    [() => normalizedPath.includes('.abs('), '.abs()'],
-    [() => normalizedPath.includes('.datetime('), '.datetime()'],
-    [() => normalizedPath.includes('.keyvalue('), '.keyvalue()'],
-    [() => normalizedPath.includes('isunknown'), 'is unknown'],
-    [() => normalizedPath.includes('like_regex'), 'like_regex'],
-    [() => normalizedPath.includes('startswith'), 'starts with'],
-  ];
-  for (const [hasDisallowedOperation, disallowedOperationName] of hasDisallowedOperations) {
-    if (hasDisallowedOperation()) {
-      return { operation: disallowedOperationName };
+export function calculateJsonpathComplexity(
+  ast: JsonpathAst
+): number | { disallowedOperation: string } {
+  let totalComplexity = 0;
+  const stack: JsonpathItem[] = [...ast.expr];
+
+  while (stack.length > 0) {
+    const item = stack.pop() as JsonpathItem;
+
+    switch (item.type) {
+      // Recursive lookup operations not allowed
+      case '[*]':
+      case '.*':
+      case '.**':
+      // string "starts with" operation not allowed
+      case 'starts with':
+      // string regex operations not allowed
+      case 'like_regex':
+      // Index range operations not allowed
+      case 'last':
+      // Type coercion not allowed
+      case 'is_unknown':
+      // Item method operations not allowed
+      case 'type':
+      case 'size':
+      case 'double':
+      case 'ceiling':
+      case 'floor':
+      case 'abs':
+      case 'datetime':
+      case 'keyvalue':
+        return { disallowedOperation: item.type };
+
+      // Array index accessor
+      case '[subscript]':
+        if (item.elems.some(elem => elem.to.length > 0)) {
+          // Range operations not allowed
+          return { disallowedOperation: '[n to m] array range accessor' };
+        } else {
+          totalComplexity += 1;
+          stack.push(...item.elems.flatMap(elem => elem.from));
+        }
+        break;
+
+      // Simple path navigation operations
+      case '$':
+      case '@':
+        break;
+
+      // Path literals
+      case '$variable':
+      case '.key':
+      case 'null':
+      case 'string':
+      case 'numeric':
+      case 'bool':
+        totalComplexity += 1;
+        break;
+
+      // Binary operations
+      case '&&':
+      case '||':
+      case '==':
+      case '!=':
+      case '<':
+      case '>':
+      case '<=':
+      case '>=':
+      case '+':
+      case '-':
+      case '*':
+      case '/':
+      case '%':
+        totalComplexity += 3;
+        stack.push(...item.left, ...item.right);
+        break;
+
+      // Unary operations
+      case '?':
+      case '!':
+      case '+unary':
+      case '-unary':
+      case 'exists':
+        totalComplexity += 2;
+        stack.push(...item.arg);
+        break;
+
+      default:
+        // @ts-expect-error - exhaustive switch
+        const unexpectedTypeID = item.type;
+        throw new Error(`Unexpected jsonpath expression type ID: ${unexpectedTypeID}`);
     }
   }
-  return false;
+
+  return totalComplexity;
 }
 
 export function booleanValueForParam(
