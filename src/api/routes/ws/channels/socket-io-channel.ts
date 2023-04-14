@@ -23,6 +23,8 @@ import {
   getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
 
+const component = { component: 'socket-io' };
+
 /**
  * SocketIO channel for sending real time API updates.
  */
@@ -49,7 +51,7 @@ export class SocketIOChannel extends WebSocketChannel {
     this.io = io;
 
     io.on('connection', async socket => {
-      logger.verbose(`[socket.io] new connection: ${socket.id}`);
+      logger.verbose(`new connection: ${socket.id}`, component);
       if (socket.handshake.headers['x-forwarded-for']) {
         this.prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
       } else {
@@ -64,7 +66,7 @@ export class SocketIOChannel extends WebSocketChannel {
         }
       }
       socket.on('disconnect', reason => {
-        logger.verbose(`[socket.io] disconnected ${socket.id}: ${reason}`);
+        logger.verbose(`disconnected ${socket.id}: ${reason}`, component);
         this.prometheus?.disconnect(socket);
       });
       socket.on('subscribe', async (topic, callback) => {
@@ -101,16 +103,16 @@ export class SocketIOChannel extends WebSocketChannel {
 
     const adapter = io.of('/').adapter;
     adapter.on('create-room', room => {
-      logger.verbose(`[socket.io] room created: ${room}`);
+      logger.verbose(`room created: ${room}`, component);
     });
     adapter.on('delete-room', room => {
-      logger.verbose(`[socket.io] room deleted: ${room}`);
+      logger.verbose(`room deleted: ${room}`, component);
     });
     adapter.on('join-room', (room, id) => {
-      logger.verbose(`[socket.io] socket ${id} joined room: ${room}`);
+      logger.verbose(`socket ${id} joined room: ${room}`, component);
     });
     adapter.on('leave-room', (room, id) => {
-      logger.verbose(`[socket.io] socket ${id} left room: ${room}`);
+      logger.verbose(`socket ${id} left room: ${room}`, component);
     });
     this.adapter = adapter;
   }
