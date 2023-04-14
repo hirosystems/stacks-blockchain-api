@@ -206,7 +206,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
           logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
         } else {
           if (!p.value.ok) {
-            logError(
+            logger.warn(
               `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
             );
           }
