@@ -49,7 +49,7 @@ export class SocketIOChannel extends WebSocketChannel {
     this.io = io;
 
     io.on('connection', async socket => {
-      logger.info(`[socket.io] new connection: ${socket.id}`);
+      logger.verbose(`[socket.io] new connection: ${socket.id}`);
       if (socket.handshake.headers['x-forwarded-for']) {
         this.prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
       } else {
@@ -64,7 +64,7 @@ export class SocketIOChannel extends WebSocketChannel {
         }
       }
       socket.on('disconnect', reason => {
-        logger.info(`[socket.io] disconnected ${socket.id}: ${reason}`);
+        logger.verbose(`[socket.io] disconnected ${socket.id}: ${reason}`);
         this.prometheus?.disconnect(socket);
       });
       socket.on('subscribe', async (topic, callback) => {
@@ -101,16 +101,16 @@ export class SocketIOChannel extends WebSocketChannel {
 
     const adapter = io.of('/').adapter;
     adapter.on('create-room', room => {
-      logger.info(`[socket.io] room created: ${room}`);
+      logger.verbose(`[socket.io] room created: ${room}`);
     });
     adapter.on('delete-room', room => {
-      logger.info(`[socket.io] room deleted: ${room}`);
+      logger.verbose(`[socket.io] room deleted: ${room}`);
     });
     adapter.on('join-room', (room, id) => {
-      logger.info(`[socket.io] socket ${id} joined room: ${room}`);
+      logger.verbose(`[socket.io] socket ${id} joined room: ${room}`);
     });
     adapter.on('leave-room', (room, id) => {
-      logger.info(`[socket.io] socket ${id} left room: ${room}`);
+      logger.verbose(`[socket.io] socket ${id} left room: ${room}`);
     });
     this.adapter = adapter;
   }
