@@ -214,7 +214,15 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const principal = req.params['principal'];
       validatePrincipal(principal);
       const untilBlock = parseUntilBlockQuery(req, res, next);
-      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const response = await db.sqlTransaction(async sql => {
@@ -317,7 +325,15 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         } else {
           blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         }
-        const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+
+        let limit: number;
+        try {
+          limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+        } catch (error: any) {
+          res.status(400).json({ error: error.message });
+          return;
+        }
+
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
         const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
           stxAddress: stxAddress,
@@ -389,7 +405,15 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
-      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const response = await db.sqlTransaction(async sql => {
@@ -442,7 +466,14 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
           }
 
-          const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+          let limit: number;
+          try {
+            limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+          } catch (error: any) {
+            res.status(400).json({ error: error.message });
+            return;
+          }
+
           const offset = parsePagingQueryInput(req.query.offset ?? 0);
           const { results, total } = await db.getInboundTransfers({
             stxAddress,
@@ -488,13 +519,21 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
-      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
       const nftListResponse = await db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+      const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
         const response = await db.getAddressNFTEvent({
           stxAddress,
@@ -538,7 +577,14 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     '/:address/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const address = req.params['address'];

@@ -21,7 +21,14 @@ export function createPox2EventsRouter(db: PgStore): express.Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit(ResourceType.Pox2Event, req.query.limit);
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Pox2Event, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const queryResults = await db.getPox2Events({ offset, limit });
