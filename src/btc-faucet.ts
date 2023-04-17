@@ -34,7 +34,7 @@ export function getKeyAddress(key: ECPairInterface): string {
 export function getRpcClient(): RPCClient {
   const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
-    throw new BtcFaucetConfigError('BTC Faucet not fully configured.');
+    throw new BtcFaucetConfigError('BTC Faucet is not configured.');
   }
   const client = new RPCClient({
     url: BTC_RPC_HOST,

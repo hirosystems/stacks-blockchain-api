@@ -152,7 +152,7 @@ describe('btc faucet', () => {
       expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.5 });
     });
 
-    test('faucet http receive endpoint', async () => {
+    test('faucet not configured', async () => {
       process.env.BTC_RPC_PORT = '';
       const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
       const response = await supertest(apiServer.server).post(
@@ -160,7 +160,7 @@ describe('btc faucet', () => {
       );
       expect(response.status).toBe(403);
       const resJson = JSON.parse(response.text);
-      expect(resJson.error).toBe('BTC Faucet not fully configured.');
+      expect(resJson.error).toBe('BTC Faucet is not configured.');
     });
 
     afterAll(async () => {
