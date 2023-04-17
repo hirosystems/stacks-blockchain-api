@@ -5,6 +5,7 @@ import * as Bluebird from 'bluebird';
 import { parsePort, time, logger, logError } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
+import { BtcFaucetConfigError } from './errors';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -34,7 +35,7 @@ export function getKeyAddress(key: ECPairInterface): string {
 export function getRpcClient(): RPCClient {
   const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
-    throw new Error('BTC Faucet not fully configured.');
+    throw new BtcFaucetConfigError('BTC Faucet is not configured.');
   }
   const client = new RPCClient({
     url: BTC_RPC_HOST,

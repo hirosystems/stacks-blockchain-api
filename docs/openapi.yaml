@@ -172,6 +172,21 @@ paths:
                 $ref: ./api/faucet/run-faucet.schema.json
               example:
                 $ref: ./api/faucet/run-faucet.example.json
+        403:
+          description: BTC Faucet not fully configured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  success:
+                    type: boolean
+              example:
+                error: BTC Faucet not fully configured
+                success: false
+
         500:
           description: Faucet call failed
 
