@@ -533,7 +533,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
       const nftListResponse = await db.sqlTransaction(async sql => {
-      const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
 
         const response = await db.getAddressNFTEvent({
           stxAddress,

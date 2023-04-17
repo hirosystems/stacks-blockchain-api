@@ -197,8 +197,7 @@ export const logger = winston.createLogger({
     winston.format.metadata(),
     winston.format.timestamp(),
     winston.format.json(),
-    winston.format.errors({ stack: true }),
-
+    winston.format.errors({ stack: true })
   ),
   transports: [
     new winston.transports.Console({
