@@ -35,8 +35,8 @@ const SUBDOMAIN_BATCH_SIZE = 2000;
 const STX_VESTING_BATCH_SIZE = 2000;
 
 const enum StacksNodeType {
-  L1 = 'l1',
-  Subnet = 'subnet'
+  L1 = 'L1',
+  Subnet = 'subnet',
 }
 
 class LineReaderStream extends stream.Duplex {
@@ -554,8 +554,8 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
 
 export async function handleBnsImport(db: PgWriteStore) {
   const stacksNodeType = process.env.STACKS_NODE_TYPE;
-  if (stackNodeType === StacksNodeType.Subnet) {
-    logger.error('BNS imports should not be enabled for a Subnet');
+  if (stacksNodeType === StacksNodeType.Subnet) {
+    logger.warn('BNS imports should not be enabled for a Subnet. Skipping...');
     return;
   }
 
