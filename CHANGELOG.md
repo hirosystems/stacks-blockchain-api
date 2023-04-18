@@ -1,3 +1,19 @@
+## [7.1.0-subnets.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.0.0...v7.1.0-subnets.1) (2023-04-18)
+
+
+### Features
+
+* beta release with subnets support ([06164eb](https://github.com/hirosystems/stacks-blockchain-api/commit/06164eb1dd2b23d6fa192fefc6692b08108cc8be))
+* support for subnets ([#1549](https://github.com/hirosystems/stacks-blockchain-api/issues/1549)) ([5d7056c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d7056c1ba0aa0b202f341a83adf0f6bd2d13c71))
+* support register asset event synthetic tx parsing ([#1583](https://github.com/hirosystems/stacks-blockchain-api/issues/1583)) ([57d58f2](https://github.com/hirosystems/stacks-blockchain-api/commit/57d58f2f8d65bad2821b34dc3717f20e8addf8cb))
+
+
+### Bug Fixes
+
+* fixed the order of microblocks_streamed returned in reverse order in block endpoint ([#1528](https://github.com/hirosystems/stacks-blockchain-api/issues/1528)) ([764f64a](https://github.com/hirosystems/stacks-blockchain-api/commit/764f64a538c88a17c381eccb867ed3032e73bea1))
+* publish `subnets` branch/channel prerelease of API ([1f7ad41](https://github.com/hirosystems/stacks-blockchain-api/commit/1f7ad4119ef7c0a19b4cbe92ec0ad21a878f6d41))
+* **subnets:** use boot address for burnchain-tx signer ([#1618](https://github.com/hirosystems/stacks-blockchain-api/issues/1618)) ([b1d6824](https://github.com/hirosystems/stacks-blockchain-api/commit/b1d68242c358b389444bf1651f27bf3b211f75ca)), closes [#1616](https://github.com/hirosystems/stacks-blockchain-api/issues/1616)
+
 ## [7.1.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.0-beta.1...v7.1.0-beta.2) (2023-03-16)
 
 
