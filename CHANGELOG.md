@@ -1,3 +1,10 @@
+## [7.1.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.5...v7.1.6) (2023-04-18)
+
+
+### Bug Fixes
+
+* allow negative fee value in Rosetta tx construction ([#1614](https://github.com/hirosystems/stacks-blockchain-api/issues/1614)) ([74877c4](https://github.com/hirosystems/stacks-blockchain-api/commit/74877c4f96afe2a923f4c0e0d0852fdee0c386b3))
+
 ## [7.1.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.4...v7.1.5) (2023-04-07)
 
 
