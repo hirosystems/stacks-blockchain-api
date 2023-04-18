@@ -21,7 +21,14 @@ export function createMicroblockRouter(db: PgStore): express.Router {
   router.get(
     '/',
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit(ResourceType.Microblock, req.query.limit);
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Microblock, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const query = await getMicroblocksFromDataStore({ db, offset, limit });
       const response: MicroblockListResponse = {

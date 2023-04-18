@@ -17,7 +17,15 @@ export function createStackingRouter(db: PgStore): express.Router {
       // get recent asset event associated with address
       const poolPrincipal = req.params['pool_principal'];
       validatePrincipal(poolPrincipal);
-      const limit = getPagingQueryLimit(ResourceType.Stacker, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Stacker, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const afterBlock = getBlockHeightQueryParam('after_block', false, req, res, next) || 0;
 
