@@ -116,6 +116,7 @@ class MicroblockGapError extends Error {
  */
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
+  protected isIbdBlockHeightReached = false;
   protected get closeTimeout(): number {
     return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.primary) ?? '5');
   }
@@ -457,6 +458,9 @@ export class PgWriteStore extends PgStore {
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
     });
+    // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
+    const ibdHeight = getIbdBlockHeight();
+    this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
 
     await this.refreshNftCustody(batchedTxData);
     await this.refreshMaterializedView('chain_tip');
@@ -2784,11 +2788,7 @@ export class PgWriteStore extends PgStore {
    */
   async refreshMaterializedView(viewName: string, sql?: PgSqlClient, skipDuringEventReplay = true) {
     sql = sql ?? this.sql;
-    if (this.isEventReplay && skipDuringEventReplay) {
-      return;
-    }
-    const ibdHeight = getIbdBlockHeight();
-    if (ibdHeight && (await this.getChainTip(sql, false)).blockHeight <= ibdHeight) {
+    if ((this.isEventReplay && skipDuringEventReplay) || !this.isIbdBlockHeightReached) {
       return;
     }
     await sql`REFRESH MATERIALIZED VIEW ${isProdEnv ? sql`CONCURRENTLY` : sql``} ${sql(viewName)}`;
