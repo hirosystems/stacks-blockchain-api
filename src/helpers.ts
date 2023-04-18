@@ -741,6 +741,12 @@ function intMax(args: bigint[] | number[]): any {
 }
 export { intMax };
 
+export class BigIntMath {
+  static abs(a: bigint): bigint {
+    return a < 0n ? -a : a;
+  }
+}
+
 export function getOrAdd<K, V>(map: Map<K, V>, key: K, create: () => V): V {
   let val = map.get(key);
   if (val === undefined) {
