@@ -34,6 +34,11 @@ const readFile = util.promisify(fs.readFile);
 const SUBDOMAIN_BATCH_SIZE = 2000;
 const STX_VESTING_BATCH_SIZE = 2000;
 
+const enum StacksNodeType {
+  L1 = 'l1',
+  Subnet = 'subnet'
+}
+
 class LineReaderStream extends stream.Duplex {
   asyncGen: AsyncGenerator<string, void, unknown>;
   readlineInstance: readline.Interface;
@@ -548,6 +553,12 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
 }
 
 export async function handleBnsImport(db: PgWriteStore) {
+  const stacksNodeType = process.env.STACKS_NODE_TYPE;
+  if (stackNodeType === StacksNodeType.Subnet) {
+    logger.error('BNS imports should not be enabled for a Subnet');
+    return;
+  }
+
   const bnsDir = process.env.BNS_IMPORT_DIR;
   if (!bnsDir) {
     console.log(`BNS_IMPORT_DIR not configured, will not import BNS data`);
