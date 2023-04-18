@@ -48,6 +48,8 @@ import {
   bufferToHexPrefixString,
   hexToBuffer,
   SubnetContractIdentifer,
+  BootAddress,
+  getBootAddressForChain,
 } from '../helpers';
 import {
   TransactionVersion,
@@ -174,7 +176,9 @@ function createSubnetTransactionFromL1NftDeposit(
   event: NftMintEvent,
   txId: string
 ): DecodedTxResult {
-  const decRecipientAddress = decodeStacksAddress(event.nft_mint_event.recipient);
+  const bootAddressString = getBootAddressForChain(chainId);
+  const bootAddress = decodeStacksAddress(bootAddressString);
+
   const [contractAddress, contractName] = event.nft_mint_event.asset_identifier
     .split('::')[0]
     .split('.');
@@ -200,9 +204,9 @@ function createSubnetTransactionFromL1NftDeposit(
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
         signer: {
-          address_version: decRecipientAddress[0],
-          address_hash_bytes: decRecipientAddress[1],
-          address: event.nft_mint_event.recipient,
+          address_version: bootAddress[0],
+          address_hash_bytes: bootAddress[1],
+          address: bootAddressString,
         },
         nonce: '0',
         tx_fee: '0',
@@ -233,7 +237,9 @@ function createSubnetTransactionFromL1FtDeposit(
   event: FtMintEvent,
   txId: string
 ): DecodedTxResult {
-  const decRecipientAddress = decodeStacksAddress(event.ft_mint_event.recipient);
+  const bootAddressString = getBootAddressForChain(chainId);
+  const bootAddress = decodeStacksAddress(bootAddressString);
+
   const [contractAddress, contractName] = event.ft_mint_event.asset_identifier
     .split('::')[0]
     .split('.');
@@ -259,9 +265,9 @@ function createSubnetTransactionFromL1FtDeposit(
       origin_condition: {
         hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
         signer: {
-          address_version: decRecipientAddress[0],
-          address_hash_bytes: decRecipientAddress[1],
-          address: event.ft_mint_event.recipient,
+          address_version: bootAddress[0],
+          address_hash_bytes: bootAddress[1],
+          address: bootAddressString,
         },
         nonce: '0',
         tx_fee: '0',
@@ -293,8 +299,8 @@ function createSubnetTransactionFromL1StxDeposit(
   txId: string
 ): DecodedTxResult {
   const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
-  const bootAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+
+  const bootAddressString = getBootAddressForChain(chainId);
   const bootAddress = decodeStacksAddress(bootAddressString);
 
   const tx: DecodedTxResult = {
@@ -364,8 +370,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
   const lockPeriod = Math.floor((unlockBurnHeight - burnBlockHeight) / rewardCycleLength);
   const senderAddress = decodeStacksAddress(event.stx_lock_event.locked_address);
-  const poxAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const poxAddressString = getBootAddressForChain(chainId);
   const poxAddress = decodeStacksAddress(poxAddressString);
 
   const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
@@ -453,8 +458,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   }
 
   const senderAddress = decodeStacksAddress(decodedEvent.stacker);
-  const poxContractAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const poxContractAddressString = getBootAddressForChain(chainId);
   const poxContractAddress = decodeStacksAddress(poxContractAddressString);
   const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
@@ -695,10 +699,10 @@ export function parseMessageTransaction(
         txSender = pox2Event.decodedEvent.stacker;
       } else if (nftMintEvent) {
         rawTx = createSubnetTransactionFromL1NftDeposit(chainId, nftMintEvent, coreTx.txid);
-        txSender = nftMintEvent.nft_mint_event.recipient;
+        txSender = getTxSenderAddress(rawTx);
       } else if (ftMintEvent) {
         rawTx = createSubnetTransactionFromL1FtDeposit(chainId, ftMintEvent, coreTx.txid);
-        txSender = ftMintEvent.ft_mint_event.recipient;
+        txSender = getTxSenderAddress(rawTx);
       } else if (stxMintEvent) {
         rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
         txSender = getTxSenderAddress(rawTx);

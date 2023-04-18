@@ -455,7 +455,7 @@ describe('Subnets tests', () => {
             fee_rate: '0',
             post_condition_mode: 'allow',
             post_conditions: [],
-            sender_address: accounts.USER.addr,
+            sender_address: 'ST000000000000000000002AMW42H',
             sponsored: false,
             tx_index: 0,
             tx_result: {
@@ -889,7 +889,7 @@ describe('Subnets tests', () => {
             fee_rate: '0',
             post_condition_mode: 'allow',
             post_conditions: [],
-            sender_address: accounts.USER.addr,
+            sender_address: 'ST000000000000000000002AMW42H',
             sponsored: false,
             tx_index: 0,
             tx_result: {

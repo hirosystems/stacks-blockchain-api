@@ -1038,6 +1038,15 @@ export function bnsHexValueToName(hex: string): string {
   )}`;
 }
 
+export const enum BootAddress {
+  mainnet = 'SP000000000000000000002Q6VF78',
+  testnet = 'ST000000000000000000002AMW42H',
+}
+
+export function getBootAddressForChain(chainId: ChainID): BootAddress {
+  return chainId === ChainID.Mainnet ? BootAddress.mainnet : BootAddress.testnet;
+}
+
 /**
  * Returns the parent BNS name from a subdomain.
  * @param subdomain - Fully qualified subdomain
@@ -1048,9 +1057,7 @@ export function bnsNameFromSubdomain(subdomain: string): string {
 }
 
 export function getBnsSmartContractId(chainId: ChainID): string {
-  return chainId === ChainID.Mainnet
-    ? 'SP000000000000000000002Q6VF78.bns::names'
-    : 'ST000000000000000000002AMW42H.bns::names';
+  return `${getBootAddressForChain(chainId)}.bns::names`;
 }
 
 export const enum SubnetContractIdentifer {
