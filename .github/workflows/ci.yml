@@ -823,6 +823,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
         id: semantic
