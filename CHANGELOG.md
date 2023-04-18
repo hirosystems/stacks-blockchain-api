@@ -1,3 +1,10 @@
+## [7.1.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.6...v7.1.7) (2023-04-18)
+
+
+### Bug Fixes
+
+* only calculate IBD height reach once per update ([#1620](https://github.com/hirosystems/stacks-blockchain-api/issues/1620)) ([94e4686](https://github.com/hirosystems/stacks-blockchain-api/commit/94e46864235ac8220fda31a9eed7db4bd11e64f6)), closes [#1617](https://github.com/hirosystems/stacks-blockchain-api/issues/1617)
+
 ## [7.1.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.5...v7.1.6) (2023-04-18)
 
 
