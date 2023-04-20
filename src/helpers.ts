@@ -1074,6 +1074,11 @@ export function getBnsSmartContractId(chainId: ChainID): string {
     : 'ST000000000000000000002AMW42H.bns::names';
 }
 
+export const enum SubnetContractIdentifer {
+  mainnet = 'SP000000000000000000002Q6VF78.subnet',
+  testnet = 'ST000000000000000000002AMW42H.subnet',
+}
+
 export function getSendManyContract(chainId: ChainID) {
   const contractId =
     chainId === ChainID.Mainnet

@@ -1,3 +1,5 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/helper/subnet-traits.clar
+
 ;; In order to process deposits and withdrawals to a subnet, an asset
 ;; contract must implement this trait.
 (define-trait mint-from-subnet-trait

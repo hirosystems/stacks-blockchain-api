@@ -272,6 +272,96 @@ describe('Subnets tests', () => {
       }
     });
 
+    test('Step 2b: Validate register-asset-contract synthetic tx', async () => {
+      while (true) {
+        const expectedContractID = `ST000000000000000000002AMW42H.subnet`;
+        const resp = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx?limit=1&type=contract_call`)
+          .expect(200);
+        const txListResp = resp.body as TransactionResults;
+        const tx = txListResp.results[0] as ContractCallTransaction;
+        if (
+          txListResp.total === 0 ||
+          tx.contract_call.contract_id !== expectedContractID ||
+          tx.contract_call.function_name !== 'register-asset-contract'
+        ) {
+          await timeout(200);
+          continue;
+        }
+        expect(tx).toEqual(
+          expect.objectContaining({
+            anchor_mode: 'any',
+            canonical: true,
+            contract_call: {
+              contract_id: expectedContractID,
+              function_args: [
+                expect.objectContaining({
+                  name: 'asset-type',
+                  repr: '"nft"',
+                  type: '(string-ascii 3)',
+                }),
+                {
+                  hex: '0x061a43596b5386f466863e25658ddf94bd0fadab00480d73696d706c652d6e66742d6c31',
+                  name: 'l1-contract',
+                  repr: `'${accounts.USER.addr}.simple-nft-l1`,
+                  type: 'principal',
+                },
+                {
+                  hex: '0x061a43596b5386f466863e25658ddf94bd0fadab00480d73696d706c652d6e66742d6c32',
+                  name: 'l2-contract',
+                  repr: `'${accounts.USER.addr}.simple-nft-l2`,
+                  type: 'principal',
+                },
+                expect.objectContaining({
+                  name: 'burnchain-txid',
+                  type: '(buff 32)',
+                }),
+              ],
+              function_name: 'register-asset-contract',
+              function_signature:
+                '(define-public (register-asset-contract (asset-type (string-ascii 3)) (l1-contract principal) (l2-contract principal) (burnchain-txid (buff 32))))',
+            },
+            event_count: 1,
+            events: [],
+            fee_rate: '0',
+            post_condition_mode: 'allow',
+            post_conditions: [],
+            sender_address: 'ST000000000000000000002AMW42H',
+            sponsored: false,
+            tx_index: 0,
+            tx_result: {
+              hex: '0x0703',
+              repr: '(ok true)',
+            },
+            tx_status: 'success',
+            tx_type: 'contract_call',
+          })
+        );
+
+        const respEvents = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
+          .expect(200);
+        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        expect(txEvents).toEqual([
+          {
+            contract_log: {
+              contract_id: 'ST000000000000000000002AMW42H.subnet',
+              topic: 'print',
+              value: expect.objectContaining({
+                repr: expect.stringContaining(
+                  `(l1-contract '${accounts.USER.addr}.simple-nft-l1) (l2-contract '${accounts.USER.addr}.simple-nft-l2)`
+                ),
+              }),
+            },
+            event_index: 0,
+            event_type: 'smart_contract_log',
+            tx_id: tx.tx_id,
+          },
+        ]);
+        break;
+      }
+    });
+
     test('Step 3: Mint an NFT on the L1 chain', async () => {
       const tx = await makeContractCall({
         contractAddress: accounts.USER.addr,
@@ -617,12 +707,100 @@ describe('Subnets tests', () => {
       }
     });
 
+    test('Step 2b: Validate register-asset-contract synthetic tx', async () => {
+      while (true) {
+        const expectedContractID = `ST000000000000000000002AMW42H.subnet`;
+        const resp = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx?limit=1&type=contract_call`)
+          .expect(200);
+        const txListResp = resp.body as TransactionResults;
+        const tx = txListResp.results[0] as ContractCallTransaction;
+        if (
+          txListResp.total === 0 ||
+          tx.contract_call.contract_id !== expectedContractID ||
+          tx.contract_call.function_name !== 'register-asset-contract'
+        ) {
+          await timeout(200);
+          continue;
+        }
+        expect(tx).toEqual(
+          expect.objectContaining({
+            anchor_mode: 'any',
+            canonical: true,
+            contract_call: {
+              contract_id: expectedContractID,
+              function_args: [
+                expect.objectContaining({
+                  name: 'asset-type',
+                  repr: '"ft"',
+                  type: '(string-ascii 3)',
+                }),
+                expect.objectContaining({
+                  name: 'l1-contract',
+                  repr: `'${accounts.USER.addr}.simple-ft-l1`,
+                  type: 'principal',
+                }),
+                expect.objectContaining({
+                  name: 'l2-contract',
+                  repr: `'${accounts.USER.addr}.simple-ft-l2`,
+                  type: 'principal',
+                }),
+                expect.objectContaining({
+                  name: 'burnchain-txid',
+                  type: '(buff 32)',
+                }),
+              ],
+              function_name: 'register-asset-contract',
+              function_signature:
+                '(define-public (register-asset-contract (asset-type (string-ascii 3)) (l1-contract principal) (l2-contract principal) (burnchain-txid (buff 32))))',
+            },
+            event_count: 1,
+            events: [],
+            fee_rate: '0',
+            post_condition_mode: 'allow',
+            post_conditions: [],
+            sender_address: 'ST000000000000000000002AMW42H',
+            sponsored: false,
+            tx_index: 0,
+            tx_result: {
+              hex: '0x0703',
+              repr: '(ok true)',
+            },
+            tx_status: 'success',
+            tx_type: 'contract_call',
+          })
+        );
+
+        const respEvents = await supertest(testEnv.api.server)
+          .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
+          .expect(200);
+        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        expect(txEvents).toEqual([
+          {
+            contract_log: {
+              contract_id: 'ST000000000000000000002AMW42H.subnet',
+              topic: 'print',
+              value: expect.objectContaining({
+                repr: expect.stringContaining(
+                  `(l1-contract '${accounts.USER.addr}.simple-ft-l1) (l2-contract '${accounts.USER.addr}.simple-ft-l2)`
+                ),
+              }),
+            },
+            event_index: 0,
+            event_type: 'smart_contract_log',
+            tx_id: tx.tx_id,
+          },
+        ]);
+        break;
+      }
+    });
+
     test('Step 3: Mint FT on the L1 chain', async () => {
       const tx = await makeContractCall({
         contractAddress: accounts.USER.addr,
         contractName: 'simple-ft-l1',
         functionName: 'gift-tokens',
-        functionArgs: [standardPrincipalCV(accounts.USER.addr)],
+        functionArgs: [uintCV(1), standardPrincipalCV(accounts.USER.addr)],
         senderKey: accounts.USER.key,
         validateWithAbi: false,
         network: l1Network,
@@ -804,7 +982,7 @@ describe('Subnets tests', () => {
         withdrawal_root: string;
         sibling_hashes: string;
       }>(
-        `v2/withdrawal/ft/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${accounts.USER.addr}/simple-ft-l2/5`
+        `v2/withdrawal/ft/${withdrawalBlockHeight}/${accounts.ALT_USER.addr}/${withdrawalId}/${accounts.USER.addr}/simple-ft-l2/1`
       );
       console.log(json_merkle_entry);
       const cv_merkle_entry = {
@@ -843,8 +1021,8 @@ describe('Subnets tests', () => {
         const result = await callReadOnlyFunction({
           contractAddress: accounts.USER.addr,
           contractName: 'simple-ft-l1',
-          functionName: 'get-owner',
-          functionArgs: [uintCV(5)],
+          functionName: 'get-balance',
+          functionArgs: [standardPrincipalCV(accounts.ALT_USER.addr)],
           network: l1Network,
           senderAddress: accounts.ALT_USER.addr,
         });
@@ -860,7 +1038,7 @@ describe('Subnets tests', () => {
     });
   });
 
-  describe.skip('STX use-case test', () => {
+  describe('STX use-case test', () => {
     test('Step 1: Publish STX contract to L2', async () => {
       const curBlock = await l2Client.getInfo();
       await standByUntilBlock(curBlock.stacks_tip_height + 1);
