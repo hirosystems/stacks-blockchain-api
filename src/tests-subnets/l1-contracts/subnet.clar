@@ -1,3 +1,5 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/subnet.clar
+
 ;; The .subnet contract
 
 (define-constant CONTRACT_ADDRESS (as-contract tx-sender))
@@ -31,8 +33,10 @@
 ;; Map recording processed withdrawal leaves
 (define-map processed-withdrawal-leaves-map { withdrawal-leaf-hash: (buff 32), withdrawal-root-hash: (buff 32) } bool)
 
-;; List of miners
+;; principal that can commit blocks
 (define-data-var miner principal 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6)
+;; principal that can register contracts
+(define-data-var admin principal 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6)
 
 ;; Map of allowed contracts for asset transfers - maps L1 contract principal to L2 contract principal
 (define-map allowed-contracts principal principal)
@@ -53,12 +57,19 @@
 ;; Register a new FT contract to be supported by this subnet.
 (define-public (register-new-ft-contract (ft-contract <ft-trait>) (l2-contract principal))
     (begin
-        ;; Verify that tx-sender is an authorized miner
-        (asserts! (is-miner tx-sender) (err ERR_INVALID_MINER))
+        ;; Verify that tx-sender is an authorized admin
+        (asserts! (is-admin tx-sender) (err ERR_INVALID_MINER))
 
         ;; Set up the assets that the contract is allowed to transfer
         (asserts! (map-insert allowed-contracts (contract-of ft-contract) l2-contract)
                   (err ERR_ASSET_ALREADY_ALLOWED))
+
+        (print {
+            event: "register-contract",
+            asset-type: "ft",
+            l1-contract: (contract-of ft-contract),
+            l2-contract: l2-contract
+        })
 
         (ok true)
     )
@@ -67,12 +78,19 @@
 ;; Register a new NFT contract to be supported by this subnet.
 (define-public (register-new-nft-contract (nft-contract <nft-trait>) (l2-contract principal))
     (begin
-        ;; Verify that tx-sender is an authorized miner
-        (asserts! (is-miner tx-sender) (err ERR_INVALID_MINER))
+        ;; Verify that tx-sender is an authorized admin
+        (asserts! (is-admin tx-sender) (err ERR_INVALID_MINER))
 
         ;; Set up the assets that the contract is allowed to transfer
         (asserts! (map-insert allowed-contracts (contract-of nft-contract) l2-contract)
                   (err ERR_ASSET_ALREADY_ALLOWED))
+
+        (print {
+            event: "register-contract",
+            asset-type: "nft",
+            l1-contract: (contract-of nft-contract),
+            l2-contract: l2-contract
+        })
 
         (ok true)
     )
@@ -82,6 +100,12 @@
 ;; Returns bool
 (define-private (is-miner (miner-to-check principal))
     (is-eq miner-to-check (var-get miner))
+)
+
+;; Helper function: returns a boolean indicating whether the given principal is an admin
+;; Returns bool
+(define-private (is-admin (addr-to-check principal))
+    (is-eq addr-to-check (var-get admin))
 )
 
 ;; Helper function: determines whether the commit-block operation satisfies pre-conditions

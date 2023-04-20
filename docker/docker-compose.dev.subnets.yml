@@ -2,7 +2,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "hirosystems/stacks-api-e2e:stacks2.1-ecb1872"
+    image: "hirosystems/stacks-api-e2e:stacks2.1-a50d830"
     command: |
       bash -c "rm /event-log.ndjson && /root/run.sh"
     ports:
@@ -19,8 +19,9 @@ services:
       - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts
   stacks-subnet:
     # restart: on-failure
-    #image: "hirosystems/stacks-subnets:206-merge-stretch"
-    image: "hirosystems/stacks-subnets@sha256:7e296cd319f81b87b5a9c11f4c478dafb122c114dc805d832d68f39be150af49"
+    image: "hirosystems/stacks-subnets:7012d22"
+    # build:
+    #   dockerfile: ./subnet-node.Dockerfile
     command: subnet-node start --config=/app/config/Stacks-subnet.toml
     ports:
       - "30443:30443" # subnet-node RPC interface

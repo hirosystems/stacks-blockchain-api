@@ -1,3 +1,5 @@
+;; https://github.com/hirosystems/stacks-subnets/blob/master/core-contracts/contracts/helper/simple-ft.clar
+
 (define-constant ERR_NOT_AUTHORIZED (err u1001))
 
 (impl-trait 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP.sip-traits.ft-trait)
@@ -7,8 +9,7 @@
 
 ;; get the token balance of owner
 (define-read-only (get-balance (owner principal))
-  (begin
-    (ok (ft-get-balance ft-token owner))))
+    (ok (ft-get-balance ft-token owner)))
 
 ;; returns the total number of tokens
 (define-read-only (get-total-supply)
@@ -49,9 +50,9 @@
 (define-read-only (get-token-uri)
   (ok none))
 
-(define-public (gift-tokens (recipient principal))
+(define-public (gift-tokens (amount uint) (recipient principal))
   (begin
     (asserts! (is-eq tx-sender recipient) ERR_NOT_AUTHORIZED)
-    (ft-mint? ft-token u1 recipient)
+    (ft-mint? ft-token amount recipient)
   )
 )
