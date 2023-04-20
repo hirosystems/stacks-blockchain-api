@@ -1,13 +1,17 @@
 import {
+  BurnchainOp,
   CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeMicroblockTxMessage,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
+  FtMintEvent,
   isTxWithMicroblockInfo,
+  NftMintEvent,
   SmartContractEvent,
   StxLockEvent,
+  StxMintEvent,
   StxTransferEvent,
 } from './core-node-message';
 import {
@@ -28,6 +32,7 @@ import {
   TxPublicKeyEncoding,
   TxSpendingConditionSingleSigHashMode,
   decodeClarityValueList,
+  ClarityValueBuffer,
 } from 'stacks-encoding-native-js';
 import {
   DbMicroblockPartial,
@@ -42,6 +47,7 @@ import {
   I32_MAX,
   bufferToHexPrefixString,
   hexToBuffer,
+  SubnetContractIdentifer,
 } from '../helpers';
 import {
   TransactionVersion,
@@ -58,6 +64,8 @@ import {
   SomeCV,
   NoneCV,
   UIntCV,
+  stringAsciiCV,
+  hexToCV,
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
@@ -76,6 +84,255 @@ export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
     sponsorAddress = tx.auth.sponsor_condition.signer.address;
   }
   return sponsorAddress;
+}
+
+function createSubnetTransactionFromL1RegisterAsset(
+  chainId: ChainID,
+  burnchainOp: BurnchainOp,
+  subnetEvent: SmartContractEvent,
+  txId: string
+): DecodedTxResult {
+  if (
+    burnchainOp.register_asset.asset_type !== 'ft' &&
+    burnchainOp.register_asset.asset_type !== 'nft'
+  ) {
+    throw new Error(
+      `Unexpected L1 register asset type: ${JSON.stringify(burnchainOp.register_asset)}`
+    );
+  }
+
+  const [contractAddress, contractName] = subnetEvent.contract_event.contract_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+
+  const decodedLogEvent = decodeClarityValue<
+    ClarityValueTuple<{
+      'burnchain-txid': ClarityValueBuffer;
+    }>
+  >(subnetEvent.contract_event.raw_value);
+
+  // (define-public (register-asset-contract
+  //   (asset-type (string-ascii 3))
+  //   (l1-contract principal)
+  //   (l2-contract principal)
+  //   (burnchain-txid (buff 32))
+  const fnName = 'register-asset-contract';
+  const legacyClarityVals = [
+    stringAsciiCV(burnchainOp.register_asset.asset_type),
+    principalCV(burnchainOp.register_asset.l1_contract_id),
+    principalCV(burnchainOp.register_asset.l2_contract_id),
+    bufferCV(hexToBuffer(decodedLogEvent.data['burnchain-txid'].buffer)),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decContractAddress[0],
+          address_hash_bytes: decContractAddress[1],
+          address: contractAddress,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: fnName,
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createSubnetTransactionFromL1NftDeposit(
+  chainId: ChainID,
+  event: NftMintEvent,
+  txId: string
+): DecodedTxResult {
+  const decRecipientAddress = decodeStacksAddress(event.nft_mint_event.recipient);
+  const [contractAddress, contractName] = event.nft_mint_event.asset_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+  const legacyClarityVals = [
+    hexToCV(event.nft_mint_event.raw_value),
+    principalCV(event.nft_mint_event.recipient),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decRecipientAddress[0],
+          address_hash_bytes: decRecipientAddress[1],
+          address: event.nft_mint_event.recipient,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: 'deposit-from-burnchain',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createSubnetTransactionFromL1FtDeposit(
+  chainId: ChainID,
+  event: FtMintEvent,
+  txId: string
+): DecodedTxResult {
+  const decRecipientAddress = decodeStacksAddress(event.ft_mint_event.recipient);
+  const [contractAddress, contractName] = event.ft_mint_event.asset_identifier
+    .split('::')[0]
+    .split('.');
+  const decContractAddress = decodeStacksAddress(contractAddress);
+  const legacyClarityVals = [
+    uintCV(event.ft_mint_event.amount),
+    principalCV(event.ft_mint_event.recipient),
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHexPrefixString(
+    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
+  );
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: decRecipientAddress[0],
+          address_hash_bytes: decRecipientAddress[1],
+          address: event.ft_mint_event.recipient,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address_version: decContractAddress[0],
+      address_hash_bytes: decContractAddress[1],
+      address: contractAddress,
+      contract_name: contractName,
+      function_name: 'deposit-from-burnchain',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createSubnetTransactionFromL1StxDeposit(
+  chainId: ChainID,
+  event: StxMintEvent,
+  txId: string
+): DecodedTxResult {
+  const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
+  const bootAddressString =
+    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+  const bootAddress = decodeStacksAddress(bootAddressString);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: bootAddress[0],
+          address_hash_bytes: bootAddress[1],
+          address: bootAddressString,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.TokenTransfer,
+      recipient: {
+        type_id: PrincipalTypeID.Standard,
+        address_version: recipientAddress[0],
+        address_hash_bytes: recipientAddress[1],
+        address: event.stx_mint_event.recipient,
+      },
+      amount: BigInt(event.stx_mint_event.amount).toString(),
+      memo_hex: '0x',
+    },
+  };
+  return tx;
 }
 
 function createTransactionFromCoreBtcStxLockEvent(
@@ -372,6 +629,15 @@ export function parseMessageTransaction(
       const stxLockEvent = events.find(
         (e): e is StxLockEvent => e.type === CoreNodeEventType.StxLockEvent
       );
+      const nftMintEvent = events.find(
+        (e): e is NftMintEvent => e.type === CoreNodeEventType.NftMintEvent
+      );
+      const ftMintEvent = events.find(
+        (e): e is FtMintEvent => e.type === CoreNodeEventType.FtMintEvent
+      );
+      const stxMintEvent = events.find(
+        (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
+      );
 
       const pox2Event = events
         .filter(
@@ -392,6 +658,14 @@ export function parseMessageTransaction(
           }
         })
         .find(e => !!e);
+
+      const subnetEvents = events.filter(
+        (e): e is SmartContractEvent =>
+          e.type === CoreNodeEventType.ContractEvent &&
+          e.contract_event.topic === 'print' &&
+          (e.contract_event.contract_identifier === SubnetContractIdentifer.mainnet ||
+            e.contract_event.contract_identifier === SubnetContractIdentifer.testnet)
+      );
 
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
@@ -419,11 +693,32 @@ export function parseMessageTransaction(
           coreTx.txid
         );
         txSender = pox2Event.decodedEvent.stacker;
+      } else if (nftMintEvent) {
+        rawTx = createSubnetTransactionFromL1NftDeposit(chainId, nftMintEvent, coreTx.txid);
+        txSender = nftMintEvent.nft_mint_event.recipient;
+      } else if (ftMintEvent) {
+        rawTx = createSubnetTransactionFromL1FtDeposit(chainId, ftMintEvent, coreTx.txid);
+        txSender = ftMintEvent.ft_mint_event.recipient;
+      } else if (stxMintEvent) {
+        rawTx = createSubnetTransactionFromL1StxDeposit(chainId, stxMintEvent, coreTx.txid);
+        txSender = getTxSenderAddress(rawTx);
+      } else if (
+        subnetEvents.length > 0 &&
+        coreTx.burnchain_op &&
+        coreTx.burnchain_op.register_asset
+      ) {
+        rawTx = createSubnetTransactionFromL1RegisterAsset(
+          chainId,
+          coreTx.burnchain_op,
+          subnetEvents[0],
+          coreTx.txid
+        );
+        txSender = getTxSenderAddress(rawTx);
       } else {
         logError(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
             coreTx
-          )}`
+          )}, event: ${JSON.stringify(events)}`
         );
         throw new Error('Unable to generate transaction from BTC tx');
       }

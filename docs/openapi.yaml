@@ -172,6 +172,21 @@ paths:
                 $ref: ./api/faucet/run-faucet.schema.json
               example:
                 $ref: ./api/faucet/run-faucet.example.json
+        403:
+          description: BTC Faucet not fully configured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  success:
+                    type: boolean
+              example:
+                error: BTC Faucet not fully configured
+                success: false
+
         500:
           description: Faucet call failed
 
@@ -3474,3 +3489,58 @@ paths:
                 $ref: ./api/transaction/get-transaction-events.schema.json
               example:
                 $ref: ./api/transaction/get-transaction-events.example.json
+  /extended/beta/stacking/{pool_principal}/delegations:
+    get:
+      summary: Stacking pool members
+      description: Retrieves the list of stacking pool members for a given delegator principal.
+      tags:
+        - Stacking
+      operationId: get_pool_delegations
+      parameters:
+        - name: pool_principal
+          in: path
+          description: Address principal of the stacking pool delegator
+          required: true
+          example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11"
+          schema:
+            type: string
+        - name: after_block
+          in: query
+          description: If specified, only delegation events after the given block will be included
+          required: false
+          schema:
+            type: integer
+        - name: unanchored
+          in: query
+          description: whether or not to include Stackers from unconfirmed transactions
+          required: false
+          schema:
+            type: boolean
+            default: false
+            example: true
+        - name: limit
+          in: query
+          description: number of items to return
+          required: false
+          schema:
+            type: integer
+            example: 100
+            default: 100
+            maximum: 200
+        - name: offset
+          in: query
+          description: number of items to skip
+          required: false
+          schema:
+            type: integer
+            example: 300
+            default: 0
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/stacking/get-pool-delegations.schema.json
+              example:
+                $ref: ./api/stacking/get-pool-delegations.example.json

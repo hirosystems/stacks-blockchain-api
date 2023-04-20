@@ -18,6 +18,7 @@ import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
 import { PgWriteStore } from '../../datastore/pg-write-store';
+import { BtcFaucetConfigError } from '../../errors';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -69,6 +70,18 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
   const router = express.Router();
   router.use(express.urlencoded({ extended: true }));
   router.use(express.json());
+  const missingBtcConfigMiddleware = (
+    err: Error,
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction
+  ) => {
+    if (err instanceof BtcFaucetConfigError) {
+      res.status(403).json({ error: err.message, success: false });
+    } else {
+      next(err);
+    }
+  };
 
   const btcFaucetRequestQueue = new PQueue({ concurrency: 1 });
 
@@ -111,7 +124,8 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           success: true,
         });
       });
-    })
+    }),
+    missingBtcConfigMiddleware
   );
 
   router.get(
@@ -120,7 +134,8 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
       const { address } = req.params;
       const balance = await getBtcBalance(btc.networks.regtest, address);
       res.json({ balance });
-    })
+    }),
+    missingBtcConfigMiddleware
   );
 
   const stxFaucetRequestQueue = new PQueue({ concurrency: 1 });

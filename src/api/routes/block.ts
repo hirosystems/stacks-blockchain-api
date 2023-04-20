@@ -16,7 +16,14 @@ export function createBlockRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await getBlocksWithMetadata({ offset, limit, db });

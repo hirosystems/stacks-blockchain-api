@@ -24,3 +24,10 @@ export class InvalidRequestError extends Error {
     this.status = status;
   }
 }
+
+export class BtcFaucetConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = this.constructor.name;
+  }
+}

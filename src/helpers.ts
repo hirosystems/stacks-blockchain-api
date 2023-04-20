@@ -186,13 +186,15 @@ const defaultLogLevel: LogLevel = (() => {
   if (isDevEnv) {
     return 'debug';
   }
-  return 'http';
+  return 'info';
 })();
 
 export const logger = winston.createLogger({
   level: defaultLogLevel,
   exitOnError: false,
+  defaultMeta: { component: 'core-api' },
   format: winston.format.combine(
+    winston.format.metadata(),
     winston.format.timestamp(),
     winston.format.json(),
     winston.format.errors({ stack: true })
@@ -1070,6 +1072,11 @@ export function getBnsSmartContractId(chainId: ChainID): string {
   return chainId === ChainID.Mainnet
     ? 'SP000000000000000000002Q6VF78.bns::names'
     : 'ST000000000000000000002AMW42H.bns::names';
+}
+
+export const enum SubnetContractIdentifer {
+  mainnet = 'SP000000000000000000002Q6VF78.subnet',
+  testnet = 'ST000000000000000000002AMW42H.subnet',
 }
 
 export function getSendManyContract(chainId: ChainID) {

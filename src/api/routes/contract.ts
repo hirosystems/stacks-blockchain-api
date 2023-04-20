@@ -12,7 +12,15 @@ export function createContractRouter(db: PgStore): express.Router {
     '/by_trait',
     asyncHandler(async (req, res, next) => {
       const trait_abi = parseTraitAbi(req, res, next);
-      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const smartContracts = await db.getSmartContractByTrait({
         trait: trait_abi,
@@ -52,7 +60,15 @@ export function createContractRouter(db: PgStore): express.Router {
     '/:contract_id/events',
     asyncHandler(async (req, res) => {
       const { contract_id } = req.params;
-      const limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
+
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Contract, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const eventsQuery = await db.getSmartContractEvents({
         contractId: contract_id,

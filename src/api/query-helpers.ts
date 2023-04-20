@@ -111,6 +111,56 @@ export function getBlockParams(
 }
 
 /**
+ * Parses a block height value from a given request query param.
+ * If an error is encountered while parsing the param then a 400 response with an error message is sent and the function throws.
+ * @param queryParamName - name of the query param
+ * @param paramRequired - if true then the function will throw and return a 400 if the param is missing, if false then the function will return null if the param is missing
+ */
+export function getBlockHeightQueryParam<TRequired extends boolean>(
+  queryParamName: string,
+  paramRequired: TRequired,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): TRequired extends true ? number | never : number | null {
+  if (!(queryParamName in req.query)) {
+    if (paramRequired) {
+      handleBadRequest(
+        res,
+        next,
+        `Request is missing required "${queryParamName}" query parameter`
+      );
+    } else {
+      return null as TRequired extends true ? number : number | null;
+    }
+  }
+  const heightParamVal = req.query[queryParamName];
+  if (typeof heightParamVal !== 'string') {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected type for block height query parameter: ${JSON.stringify(heightParamVal)}`
+    );
+  }
+  const height = parseInt(heightParamVal, 10);
+  if (!Number.isInteger(height)) {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected non-integer value for block height query parameter': ${heightParamVal}}`
+    );
+  }
+  if (height < 1) {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected integer value for block height query parameter: ${heightParamVal}`
+    );
+  }
+  return height;
+}
+
+/**
  * Determines the block height path parameters of a request.
  * If an error is encountered while parsing the params then a 400 response with an error message is sent and the function throws.
  */
