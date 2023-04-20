@@ -626,7 +626,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true 
+        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
@@ -646,9 +646,9 @@ export class PgStore {
       const microblockQuery = await sql<
         (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
-      SELECT microblocks.*, txs.tx_id 
+      SELECT microblocks.*, txs.tx_id
       FROM microblocks LEFT JOIN txs USING(microblock_hash)
-      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND
         txs.canonical = true AND txs.microblock_canonical = true
       ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
       LIMIT ${args.limit}
@@ -3532,44 +3532,38 @@ export class PgStore {
   async getName({
     name,
     includeUnanchored,
-    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
-    chainId: ChainID;
-  }): Promise<FoundOrNot<DbBnsName & { index_block_hash: string }>> {
-    const queryResult = await this.sqlTransaction(async sql => {
-      const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const nameZonefile = await sql<(DbBnsName & { tx_id: string; index_block_hash: string })[]>`
-        SELECT n.*, z.zonefile
+  }): Promise<FoundOrNot<DbBnsName>> {
+    return await this.sqlTransaction(async sql => {
+      const blockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const result = await this.getNamesAtBlockHeight({ names: [name], blockHeight });
+      return result.length ? { found: true, result: result[0] } : { found: false };
+    });
+  }
+
+  async getNamesAtBlockHeight(args: {
+    names: string[];
+    blockHeight: number;
+  }): Promise<DbBnsName[]> {
+    return await this.sql<DbBnsName[]>`
+      WITH name_results AS (
+        SELECT DISTINCT ON (n.name) n.*, z.zonefile
         FROM names AS n
         LEFT JOIN zonefiles AS z USING (name, tx_id, index_block_hash)
-        WHERE n.name = ${name}
-          AND n.registered_at <= ${maxBlockHeight}
+        WHERE n.name IN ${this.sql(args.names)}
+          AND n.registered_at <= ${args.blockHeight}
           AND n.canonical = true
           AND n.microblock_canonical = true
-        ORDER BY n.registered_at DESC,
+        ORDER BY n.name,
+          n.registered_at DESC,
           n.microblock_sequence DESC,
           n.tx_index DESC,
           n.event_index DESC
-        LIMIT 1
-      `;
-      if (nameZonefile.length === 0 || nameZonefile[0].status === 'name-revoke') {
-        return;
-      }
-      return nameZonefile[0];
-    });
-    if (queryResult) {
-      return {
-        found: true,
-        result: {
-          ...queryResult,
-          tx_id: queryResult.tx_id,
-          index_block_hash: queryResult.index_block_hash,
-        },
-      };
-    }
-    return { found: false } as const;
+      )
+      SELECT * FROM name_results WHERE status IS NULL OR status <> 'name-revoke'
+    `;
   }
 
   async getHistoricalZoneFile(args: {
@@ -3582,15 +3576,14 @@ export class PgStore {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, {
         includeUnanchored: args.includeUnanchored,
       });
-      const validZonefileHash = validateZonefileHash(args.zoneFileHash);
-      const parentNameStatus = await this.getName({
-        name: bnsNameFromSubdomain(args.name),
-        includeUnanchored: args.includeUnanchored,
-        chainId: args.chainId,
+      const parentName = await this.getNamesAtBlockHeight({
+        names: [bnsNameFromSubdomain(args.name)],
+        blockHeight: maxBlockHeight,
       });
-      if (!parentNameStatus.found) {
+      if (parentName.length === 0) {
         return [] as { zonefile: string }[];
       }
+      const validZonefileHash = validateZonefileHash(args.zoneFileHash);
       // Depending on the kind of name we got, use the correct table to pivot on canonical chain
       // state to get the zonefile. We can't pivot on the `txs` table because some names/subdomains
       // were imported from Stacks v1 and they don't have an associated tx.
@@ -3638,20 +3631,17 @@ export class PgStore {
   async getLatestZoneFile({
     name,
     includeUnanchored,
-    chainId,
   }: {
     name: string;
     includeUnanchored: boolean;
-    chainId: ChainID;
   }): Promise<FoundOrNot<DbBnsZoneFile>> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const parentNameStatus = await this.getName({
-        name: bnsNameFromSubdomain(name),
-        includeUnanchored,
-        chainId,
+      const parentName = await this.getNamesAtBlockHeight({
+        names: [bnsNameFromSubdomain(name)],
+        blockHeight: maxBlockHeight,
       });
-      if (!parentNameStatus.found) {
+      if (parentName.length === 0) {
         return [] as { zonefile: string }[];
       }
       // Depending on the kind of name we got, use the correct table to pivot on canonical chain
@@ -3709,7 +3699,7 @@ export class PgStore {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       // 1. Get subdomains owned by this address. These don't produce NFT events so we have to look
       //    directly at the `subdomains` table.
-      const subdomainsQuery = await sql<{ fully_qualified_subdomain: string }[]>`
+      const subdomainsQuery = await sql<{ name: string; fully_qualified_subdomain: string }[]>`
         WITH addr_subdomains AS (
           SELECT DISTINCT ON (fully_qualified_subdomain)
             fully_qualified_subdomain
@@ -3722,7 +3712,7 @@ export class PgStore {
             AND microblock_canonical = TRUE
         )
         SELECT DISTINCT ON (fully_qualified_subdomain)
-          fully_qualified_subdomain
+          fully_qualified_subdomain, name
         FROM
           subdomains
           INNER JOIN addr_subdomains USING (fully_qualified_subdomain)
@@ -3732,6 +3722,14 @@ export class PgStore {
         ORDER BY
           fully_qualified_subdomain
       `;
+      const subdomainMap = new Map<string, string[]>(); // name -> subdomain array
+      for (const item of subdomainsQuery) {
+        const val = subdomainMap.get(item.name);
+        subdomainMap.set(
+          item.name,
+          val ? [...val, item.fully_qualified_subdomain] : [item.fully_qualified_subdomain]
+        );
+      }
       // 2. Get names owned by this address which were imported from Blockstack v1. These also don't
       //    have an associated NFT event so we have to look directly at the `names` table, however,
       //    we'll also check if any of these names are still owned by the same user.
@@ -3756,31 +3754,36 @@ export class PgStore {
         `;
         oldImportedNames = oldImportedNamesQuery.map(i => bnsHexValueToName(i.value));
       }
+      const namesToValidate = importedNamesQuery
+        .map(i => i.name)
+        .filter(i => !oldImportedNames.includes(i));
       // 3. Get newer NFT names owned by this address.
       const nftNamesQuery = await sql<{ value: string }[]>`
         SELECT value
         FROM ${includeUnanchored ? sql`nft_custody_unanchored` : sql`nft_custody`}
         WHERE recipient = ${address} AND asset_identifier = ${getBnsSmartContractId(chainId)}
       `;
-      const results: Set<string> = new Set([
-        ...subdomainsQuery.map(i => i.fully_qualified_subdomain),
-        ...importedNamesQuery.map(i => i.name).filter(i => !oldImportedNames.includes(i)),
-        ...nftNamesQuery.map(i => bnsHexValueToName(i.value)),
-      ]);
-      // 4. Now that we've acquired all names owned by this address, filter out the ones that are
-      //    revoked.
-      const validatedResults: string[] = [];
-      for (const result of results) {
-        const valid = await this.getName({
-          name: bnsNameFromSubdomain(result),
-          includeUnanchored,
-          chainId,
-        });
-        if (valid.found) {
-          validatedResults.push(result);
+      namesToValidate.push(...nftNamesQuery.map(i => bnsHexValueToName(i.value)));
+      // 4. Now that we've acquired all names/subdomains owned by this address, filter out the ones
+      //    that are revoked. For subdomains, verify the parent name is not revoked.
+      const validatedNames = (
+        await this.getNamesAtBlockHeight({
+          names: Array.from(new Set([...subdomainMap.keys(), ...namesToValidate])),
+          blockHeight: maxBlockHeight,
+        })
+      ).map(i => i.name);
+      // 5. Gather results. Keep all valid names + all subdomains whose parent names are valid.
+      const namesResult: string[] = [];
+      for (const name of validatedNames) {
+        const subdomains = subdomainMap.get(name);
+        if (subdomains) {
+          namesResult.push(...subdomains);
+        }
+        if (namesToValidate.includes(name)) {
+          namesResult.push(name);
         }
       }
-      return validatedResults.sort();
+      return namesResult.sort();
     });
     if (queryResult.length > 0) {
       return {
@@ -3806,8 +3809,11 @@ export class PgStore {
   }): Promise<{ results: string[] }> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const status = await this.getName({ name, includeUnanchored, chainId });
-      if (!status.found) {
+      const status = await this.getNamesAtBlockHeight({
+        names: [name],
+        blockHeight: maxBlockHeight,
+      });
+      if (status.length === 0) {
         return [] as { fully_qualified_subdomain: string }[];
       }
       return await sql<{ fully_qualified_subdomain: string }[]>`
@@ -3884,12 +3890,11 @@ export class PgStore {
   }): Promise<FoundOrNot<DbBnsSubdomain & { index_block_hash: string }>> {
     const queryResult = await this.sqlTransaction(async sql => {
       const maxBlockHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
-      const status = await this.getName({
-        name: bnsNameFromSubdomain(subdomain),
-        includeUnanchored,
-        chainId,
+      const status = await this.getNamesAtBlockHeight({
+        names: [bnsNameFromSubdomain(subdomain)],
+        blockHeight: maxBlockHeight,
       });
-      if (!status.found) {
+      if (status.length === 0) {
         return [] as (DbBnsSubdomain & { tx_id: string; index_block_hash: string })[];
       }
       return await sql<(DbBnsSubdomain & { tx_id: string; index_block_hash: string })[]>`
