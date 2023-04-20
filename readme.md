@@ -64,7 +64,7 @@ If upgrading the API to a new major version (e.g. `3.0.0` to `4.0.0`) then the P
 
 ## API Run Modes
 
-The API supports a series of run modes, each accomodating different use cases for scaling and data access by toggling [architecture](#architecture) components on or off depending on its objective.
+The API supports a series of run modes, each accommodating different use cases for scaling and data access by toggling [architecture](#architecture) components on or off depending on its objective.
 
 ### Default mode (Read-write)
 
