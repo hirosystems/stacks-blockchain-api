@@ -261,7 +261,7 @@ $ docker stop stacks-blockchain
 
 ### Postgres testing
 
-To verfiy the database is ready:
+To verify the database is ready:
 
 1. Connect to the DB instance:  `psql -h localhost -U postgres`
     - *this will require a locally installed postgresql client*

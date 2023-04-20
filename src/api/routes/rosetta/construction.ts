@@ -53,6 +53,7 @@ import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/clie
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import {
+  BigIntMath,
   doesThrow,
   FoundOrNot,
   has0xPrefix,
@@ -565,7 +566,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidFees]);
         return;
       }
-      const fee: string = options.fee;
+
+      const txFee = BigIntMath.abs(BigInt(options.fee));
 
       const publicKeys: RosettaPublicKey[] = req.body.public_keys;
       if (!publicKeys) {
@@ -613,7 +615,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const tokenTransferOptions: UnsignedTokenTransferOptions = {
             recipient: recipientAddress,
             amount: BigInt(options.amount),
-            fee: BigInt(fee),
+            fee: txFee,
             publicKey: publicKeys[0].hex_bytes,
             network: getStacksNetwork(),
             nonce: nonce,
@@ -667,7 +669,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               uintCV(req.body.metadata.burn_block_height),
               uintCV(options.number_of_cycles),
             ],
-            fee: BigInt(options.fee),
+            fee: txFee,
             nonce: nonce,
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -711,6 +713,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
+
           const stackingTx: UnsignedContractCallOptions = {
             contractAddress: req.body.metadata.contract_address,
             contractName: req.body.metadata.contract_name,
@@ -722,7 +725,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               expire_burn_block_heightCV,
               poxAddressCV,
             ],
-            fee: BigInt(options.fee),
+            fee: txFee,
             nonce: nonce,
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -740,7 +743,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
       const signer = new TransactionSigner(transaction);
 
-      const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, BigInt(fee), nonce);
+      const prehash = makeSigHashPreSign(signer.sigHash, AuthType.Standard, txFee, nonce);
       const accountIdentifier: RosettaAccountIdentifier = {
         address: senderAddress,
       };

@@ -1,3 +1,11 @@
+## [7.1.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.5...v7.1.7) (2023-04-18)
+
+
+### Bug Fixes
+
+* allow negative fee value in Rosetta tx construction ([#1614](https://github.com/hirosystems/stacks-blockchain-api/issues/1614)) ([74877c4](https://github.com/hirosystems/stacks-blockchain-api/commit/74877c4f96afe2a923f4c0e0d0852fdee0c386b3))
+* only calculate IBD height reach once per update ([#1620](https://github.com/hirosystems/stacks-blockchain-api/issues/1620)) ([94e4686](https://github.com/hirosystems/stacks-blockchain-api/commit/94e46864235ac8220fda31a9eed7db4bd11e64f6)), closes [#1617](https://github.com/hirosystems/stacks-blockchain-api/issues/1617)
+
 ## [7.1.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.4...v7.1.5) (2023-04-07)
 
 
