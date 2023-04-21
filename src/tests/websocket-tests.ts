@@ -43,8 +43,7 @@ describe('websocket notifications', () => {
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Testnet,
-      httpLogLevel: 'silly',
+      chainId: ChainID.Testnet
     });
   });
 

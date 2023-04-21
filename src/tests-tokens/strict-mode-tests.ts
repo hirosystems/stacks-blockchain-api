@@ -115,7 +115,7 @@ describe('token metadata strict mode', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     process.env['STACKS_API_ENABLE_FT_METADATA'] = '1';
     process.env['STACKS_API_ENABLE_NFT_METADATA'] = '1';

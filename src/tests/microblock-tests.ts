@@ -77,16 +77,14 @@ describe('microblock tests', () => {
           datastore: db,
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
-          serverPort: 0,
-          httpLogLevel: 'debug',
+          serverPort: 0
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
+          chainId: ChainID.Mainnet
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -139,16 +137,14 @@ describe('microblock tests', () => {
           datastore: db,
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
-          serverPort: 0,
-          httpLogLevel: 'debug',
+          serverPort: 0
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
+          chainId: ChainID.Mainnet
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -205,16 +201,14 @@ describe('microblock tests', () => {
           datastore: db,
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
-          serverPort: 0,
-          httpLogLevel: 'debug',
+          serverPort: 0
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
+          chainId: ChainID.Mainnet
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -256,8 +250,7 @@ describe('microblock tests', () => {
       async () => {
         const apiServer = await startApiServer({
           datastore: db,
-          chainId: ChainID.Testnet,
-          httpLogLevel: 'silly',
+          chainId: ChainID.Testnet
         });
         return [apiServer, apiServer.terminate] as const;
       },

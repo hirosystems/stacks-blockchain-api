@@ -15,7 +15,7 @@ describe('/account tests', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
   test('/account/balance - returns ft balances', async () => {
@@ -83,7 +83,7 @@ describe('/account tests', () => {
         currency: {
           decimals: 6,
           symbol: 'STX'
-        }, 
+        },
         value: '1200'
       },
       {
