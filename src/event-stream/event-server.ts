@@ -5,9 +5,7 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
-import * as expressWinston from 'express-winston';
-import * as winston from 'winston';
-import { getIbdBlockHeight, hexToBuffer, logError, logger, LogLevel } from '../helpers';
+import { getIbdBlockHeight, hexToBuffer } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -70,6 +68,7 @@ import {
 import { handleBnsImport } from '../import-v1';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
+import { logger, loggerMiddleware, logError } from '../logger';
 
 export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -742,7 +741,6 @@ export async function startEventServer(opts: {
   serverHost?: string;
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
   serverPort?: number;
-  httpLogLevel?: LogLevel;
 }): Promise<EventStreamServer> {
   const db = opts.datastore;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
@@ -768,7 +766,7 @@ export async function startEventServer(opts: {
   const handleRawEventRequest = asyncHandler(async req => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
-    if (logger.isDebugEnabled()) {
+    if (logger.level === 'debug') {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
@@ -779,18 +777,7 @@ export async function startEventServer(opts: {
     }
   });
 
-  app.use(
-    expressWinston.logger({
-      format: logger.format,
-      transports: logger.transports,
-      metaField: (null as unknown) as string,
-      statusLevels: {
-        error: 'error',
-        warn: opts.httpLogLevel ?? 'http',
-        success: opts.httpLogLevel ?? 'http',
-      },
-    })
-  );
+  app.use(loggerMiddleware);
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
@@ -923,14 +910,6 @@ export async function startEventServer(opts: {
     logError(`Unexpected event on path ${req.path}`);
     next();
   });
-
-  app.use(
-    expressWinston.errorLogger({
-      winstonInstance: logger as winston.Logger,
-      metaField: (null as unknown) as string,
-      blacklistedMetaFields: ['trace', 'os', 'process'],
-    })
-  );
 
   const server = createServer(app);
   await new Promise<void>((resolve, reject) => {
