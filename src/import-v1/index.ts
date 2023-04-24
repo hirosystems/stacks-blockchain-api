@@ -18,13 +18,12 @@ import {
   asyncBatchIterate,
   asyncIterableToGenerator,
   I32_MAX,
-  logError,
-  logger,
   REPO_DIR,
 } from '../helpers';
 import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger, logError } from '../logger';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);

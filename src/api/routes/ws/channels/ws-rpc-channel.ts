@@ -4,7 +4,6 @@ import * as net from 'net';
 import {
   isProdEnv,
   isValidPrincipal,
-  logError,
   normalizeHashString,
   resolveOrTimeout,
 } from '../../../../helpers';
@@ -43,6 +42,7 @@ import {
   NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
+import { logError } from '../../../../logger';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

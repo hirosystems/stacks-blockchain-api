@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort, stopwatch, logError, timeout } from '../helpers';
+import { parsePort, stopwatch, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
+import { logError } from '../logger';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */

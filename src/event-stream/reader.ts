@@ -42,8 +42,6 @@ import {
 import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
-  logger,
-  logError,
   I32_MAX,
   bufferToHexPrefixString,
   hexToBuffer,
@@ -72,6 +70,7 @@ import { c32ToB58 } from 'c32check';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
+import { logger, logError } from '../logger';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;

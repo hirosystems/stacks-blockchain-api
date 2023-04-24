@@ -9,7 +9,7 @@ import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
 import { isValidTxId } from '../../../../api/query-helpers';
-import { isProdEnv, isValidPrincipal, logger } from '../../../../helpers';
+import { isProdEnv, isValidPrincipal } from '../../../../helpers';
 import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
   ListenerType,
@@ -22,6 +22,7 @@ import {
   getWsPingIntervalMs,
   getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
+import { logger } from '../../../../logger';
 
 const component = { component: 'socket-io' };
 

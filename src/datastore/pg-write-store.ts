@@ -1,6 +1,4 @@
 import {
-  logger,
-  logError,
   getOrAdd,
   batchIterate,
   isProdEnv,
@@ -100,6 +98,7 @@ import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
+import { logger, logError } from '../logger';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -360,7 +359,7 @@ export class PgWriteStore extends PgStore {
       if (isCanonical && data.pox_v1_unlock_height !== undefined) {
         // update the pox_state.pox_v1_unlock_height singleton
         await sql`
-          UPDATE pox_state 
+          UPDATE pox_state
           SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
           WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
         `;
@@ -777,7 +776,7 @@ export class PgWriteStore extends PgStore {
       UPDATE mempool_txs
       SET pruned = true
       FROM txs
-      WHERE 
+      WHERE
         mempool_txs.tx_id = txs.tx_id AND
         mempool_txs.pruned = false AND
         txs.canonical = true AND
@@ -799,7 +798,7 @@ export class PgWriteStore extends PgStore {
     const tablesUpdates: Record<string, number> = {};
     const txsResult = await sql<TxQueryResult[]>`
       UPDATE txs
-      SET 
+      SET
         canonical = true,
         block_height = 1,
         tx_index = tx_index + 1,
@@ -822,7 +821,7 @@ export class PgWriteStore extends PgStore {
       const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
       const metadataResult = await sql`
         UPDATE ${sql(table)}
-        SET 
+        SET
           canonical = true,
           ${heightCol} = 1,
           ${txIndexBump}
@@ -1871,7 +1870,7 @@ export class PgWriteStore extends PgStore {
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
         ON CONFLICT (contract_id)
-        DO 
+        DO
           UPDATE SET ${sql(values)}
       `;
       await sql`
@@ -1903,7 +1902,7 @@ export class PgWriteStore extends PgStore {
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
         ON CONFLICT (contract_id)
-        DO 
+        DO
           UPDATE SET ${sql(values)}
       `;
       await sql`
@@ -2280,7 +2279,7 @@ export class PgWriteStore extends PgStore {
       );
 
       const txs: TxQueryResult[] = await sql`
-        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
+        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)}
         FROM txs
         WHERE tx_id IN ${sql(txsRequiringInsertion)}
         ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC

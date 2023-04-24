@@ -5,8 +5,6 @@ import { createServer, Server } from 'http';
 import * as express from 'express';
 import { asyncHandler } from './api/async-handler';
 import {
-  logError,
-  logger,
   parsePort,
   stopwatch,
   timeout,
@@ -18,6 +16,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 import { createProfiler, startProfiler, stopProfiler } from 'stacks-encoding-native-js';
+import { logger, logError } from './logger';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 

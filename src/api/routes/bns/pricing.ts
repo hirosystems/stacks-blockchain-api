@@ -14,9 +14,10 @@ import {
   BnsGetNamePriceResponse,
   BnsGetNamespacePriceResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { isValidPrincipal, logger } from './../../../helpers';
+import { isValidPrincipal } from './../../../helpers';
 import { PgStore } from '../../../datastore/pg-store';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
+import { logger } from '../../../logger';
 
 export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

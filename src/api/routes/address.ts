@@ -16,7 +16,6 @@ import {
   isProdEnv,
   isValidC32Address,
   isValidPrincipal,
-  logger,
 } from '../../helpers';
 import {
   getAssetEventTypeString,
@@ -50,7 +49,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-import { PgSqlClient } from '../../datastore/connection';
+import { logger } from '../../logger';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,

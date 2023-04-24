@@ -1,8 +1,9 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { logger, normalizeHashString, sha256 } from '../../helpers';
+import { normalizeHashString, sha256 } from '../../helpers';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
+import { logger } from '../../logger';
 
 const CACHE_OK = Symbol('cache_ok');
 

@@ -8,9 +8,10 @@ import {
 import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { startEventServer } from '../event-stream/event-server';
-import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest, logger } from '../helpers';
+import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers';
 import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
+import { logger } from '../logger';
 
 enum EventImportMode {
   /**
@@ -126,8 +127,7 @@ export async function importEventsFromTsv(
     datastore: db,
     chainId: getApiConfiguredChainID(),
     serverHost: '127.0.0.1',
-    serverPort: 0,
-    httpLogLevel: 'debug',
+    serverPort: 0
   });
 
   await importV1TokenOfferingData(db);

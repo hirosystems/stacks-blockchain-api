@@ -1,7 +1,5 @@
 import * as express from 'express';
-import * as fs from 'fs';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
-import { logger } from '../../helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { API_VERSION } from '../init';

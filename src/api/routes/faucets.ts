@@ -13,12 +13,13 @@ import {
 import { StacksNetwork, StacksTestnet } from '@stacks/network';
 import { makeBtcFaucetPayment, getBtcBalance } from '../../btc-faucet';
 import { DbFaucetRequestCurrency } from '../../datastore/common';
-import { intMax, logger, stxToMicroStx } from '../../helpers';
+import { intMax, stxToMicroStx } from '../../helpers';
 import { testnetKeys, getStacksTestnetNetwork } from './debug';
 import { StacksCoreRpcClient } from '../../core-rpc/client';
 import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
 import { PgWriteStore } from '../../datastore/pg-write-store';
 import { BtcFaucetConfigError } from '../../errors';
+import { logger } from '../../logger';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];

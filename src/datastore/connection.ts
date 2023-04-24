@@ -1,6 +1,7 @@
-import { logError, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import { parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
 import { isPgConnectionError } from './helpers';
+import { logError } from '../logger';
 
 export type PgSqlClient = postgres.Sql<any> | postgres.TransactionSql<any>;
 

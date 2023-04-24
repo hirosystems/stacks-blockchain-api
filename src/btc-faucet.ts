@@ -2,10 +2,11 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import * as Bluebird from 'bluebird';
-import { parsePort, time, logger, logError } from './helpers';
+import { parsePort, time } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 import { BtcFaucetConfigError } from './errors';
+import { logger, logError } from './logger';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;

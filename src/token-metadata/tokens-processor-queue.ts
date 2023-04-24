@@ -1,10 +1,11 @@
-import { FoundOrNot, logError, logger } from '../helpers';
+import { FoundOrNot } from '../helpers';
 import { Evt } from 'evt';
 import PQueue from 'p-queue';
 import { DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
 import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { TokensContractHandler } from './tokens-contract-handler';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger, logError } from '../logger';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before

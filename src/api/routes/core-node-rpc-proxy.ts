@@ -1,7 +1,7 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware, Options, responseInterceptor } from 'http-proxy-middleware';
-import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
+import { parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,6 +10,7 @@ import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
 import { PgStore } from '../../datastore/pg-store';
+import { logger, logError } from '../../logger';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC

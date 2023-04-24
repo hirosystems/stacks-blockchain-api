@@ -1,4 +1,5 @@
-import { logError, logger, resolveOrTimeout } from './helpers';
+import { resolveOrTimeout } from './helpers';
+import { logger, logError } from './logger';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 

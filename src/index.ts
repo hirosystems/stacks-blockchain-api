@@ -1,8 +1,6 @@
 import {
   loadDotEnv,
   timeout,
-  logger,
-  logError,
   isProdEnv,
   numberToHex,
   parseArgBoolean,
@@ -27,6 +25,7 @@ import { PgWriteStore } from './datastore/pg-write-store';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
+import { logger, logError } from './logger';
 
 enum StacksApiMode {
   /**

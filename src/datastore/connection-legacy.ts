@@ -1,7 +1,8 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
-import { logError, logger, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import { parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import { PgServer } from './connection';
 import { isPgConnectionError } from './helpers';
+import { logger, logError } from '../logger';
 
 export type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };

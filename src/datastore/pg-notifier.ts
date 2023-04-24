@@ -1,5 +1,5 @@
 import * as postgres from 'postgres';
-import { logError, logger } from '../helpers';
+import { logger, logError } from '../logger';
 import { DbConfigState } from './common';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
