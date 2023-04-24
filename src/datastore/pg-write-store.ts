@@ -92,7 +92,7 @@ import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
-import { logger, logError } from '../logger';
+import { logger } from '../logger';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -1937,7 +1937,7 @@ export class PgWriteStore extends PgStore {
         throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.count}`);
       }
     } catch (e: any) {
-      logError(`Locked Info errors ${e.message}`, e);
+      logger.error(`Locked Info errors ${e.message}`, e);
       throw e;
     }
   }
@@ -2022,7 +2022,7 @@ export class PgWriteStore extends PgStore {
         INSERT INTO faucet_requests ${this.sql(values)}
       `;
     } catch (error) {
-      logError(`Error performing faucet request update: ${error}`, error);
+      logger.error(`Error performing faucet request update: ${error}`, error);
       throw error;
     }
   }

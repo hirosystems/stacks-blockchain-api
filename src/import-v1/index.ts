@@ -18,7 +18,7 @@ import { asyncBatchIterate, asyncIterableToGenerator, I32_MAX, REPO_DIR } from '
 import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { logger, logError } from '../logger';
+import { logger } from '../logger';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -270,7 +270,7 @@ async function readZones(zfname: string): Promise<Map<string, string>> {
   const hashes = new Map<string, string>();
 
   const zstream = stream.pipeline(fs.createReadStream(zfname), new LineReaderStream(), err => {
-    if (err) logError(`readzones: ${err}`);
+    if (err) logger.error(`readzones: ${err}`);
   });
 
   const generator = asyncIterableToGenerator<string>(zstream);
@@ -298,7 +298,7 @@ async function valid(fileName: string): Promise<boolean> {
   await pipeline(fs.createReadStream(fileName), hash);
   const calchash = hash.digest('hex');
   if (expected !== calchash) {
-    logError(`calculated ${calchash} for ${fileName} != ${expected}`);
+    logger.error(`calculated ${calchash} for ${fileName} != ${expected}`);
     return false;
   }
   return true;
@@ -398,7 +398,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
       throw new Error(`${importDir} is not a directory`);
     }
   } catch (error) {
-    logError(`Cannot import from ${importDir}`, error);
+    logger.error(`Cannot import from ${importDir}`, error);
     throw error;
   }
 
@@ -407,7 +407,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
   for (const fname of importFiles) {
     if (!(await valid(path.join(importDir, fname)))) {
       const errMsg = `Cannot read import file due to sha256 mismatch: ${fname}`;
-      logError(errMsg);
+      logger.error(errMsg);
       throw new Error(errMsg);
     }
   }

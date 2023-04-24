@@ -62,7 +62,7 @@ import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { Pox2EventName } from '../pox-helpers';
-import { logError } from '../logger';
+import { logger } from '../logger';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -1172,7 +1172,7 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
       try {
         updatePromMempoolStats(mempoolStats);
       } catch (error) {
-        logError(`Error updating prometheus mempool stats`, error);
+        logger.error(`Error updating prometheus mempool stats`, error);
       }
     });
   });

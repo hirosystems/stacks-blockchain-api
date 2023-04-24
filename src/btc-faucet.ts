@@ -6,7 +6,7 @@ import { parsePort, time } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 import { BtcFaucetConfigError } from './errors';
-import { logger, logError } from './logger';
+import { logger } from './logger';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -96,7 +96,7 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
     ms => logger.verbose(`scantxoutset for ${address} took ${ms} ms`)
   );
   if (!txOutSet.success) {
-    logError(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
+    logger.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({

@@ -3,7 +3,7 @@ import fetch, { RequestInit } from 'node-fetch';
 import { parsePort, stopwatch, timeout } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
-import { logError } from '../logger';
+import { logger } from '../logger';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */
@@ -171,7 +171,7 @@ export class StacksCoreRpcClient {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return resultJson;
     } catch (error) {
-      logError(`Error parsing json: "${resultString}"`, error);
+      logger.error(`Error parsing json: "${resultString}"`, error);
       throw error;
     }
   }
@@ -192,7 +192,7 @@ export class StacksCoreRpcClient {
       const resultString = await result.text();
       return resultString;
     } catch (error) {
-      logError(`Error reading response from ${url}`, error);
+      logger.error(`Error reading response from ${url}`, error);
       throw error;
     }
   }

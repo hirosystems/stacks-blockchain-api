@@ -25,7 +25,7 @@ import { PgWriteStore } from './datastore/pg-write-store';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
-import { logger, logError } from './logger';
+import { logger } from './logger';
 
 enum StacksApiMode {
   /**
@@ -145,7 +145,7 @@ async function init(): Promise<void> {
       const error = new Error(
         `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
       );
-      logError(error.message, error);
+      logger.error(error.message, error);
       throw error;
     }
     monitorCoreRpcConnection().catch(error => {
@@ -238,7 +238,7 @@ function initApp() {
       logger.info('App initialized');
     })
     .catch(error => {
-      logError(`app failed to start: ${error}`, error);
+      logger.error(`app failed to start: ${error}`, error);
       process.exit(1);
     });
 }

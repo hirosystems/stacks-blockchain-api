@@ -70,7 +70,7 @@ import { c32ToB58 } from 'c32check';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
-import { logger, logError } from '../logger';
+import { logger } from '../logger';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -714,7 +714,7 @@ export function parseMessageTransaction(
         );
         txSender = getTxSenderAddress(rawTx);
       } else {
-        logError(
+        logger.error(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
             coreTx
           )}, event: ${JSON.stringify(events)}`
@@ -806,7 +806,7 @@ export function parseMessageTransaction(
     }
     return parsedTx;
   } catch (error) {
-    logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
+    logger.error(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
     throw error;
   }
 }

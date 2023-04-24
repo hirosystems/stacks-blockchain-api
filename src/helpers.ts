@@ -21,7 +21,7 @@ import * as util from 'util';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { createHash } from 'node:crypto';
-import { logger, logError } from './logger';
+import { logger } from './logger';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -143,7 +143,7 @@ export function loadDotEnv(): void {
   }
   const dotenvConfig = dotenv.config({ silent: true });
   if (dotenvConfig.error) {
-    logError(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
+    logger.error(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
     throw dotenvConfig.error;
   }
   didLoadDotEnv = true;
@@ -1039,7 +1039,7 @@ export async function getStacksNodeChainID(): Promise<ChainID> {
 export function getApiConfiguredChainID() {
   if (!('STACKS_CHAIN_ID' in process.env)) {
     const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logError(error.message, error);
+    logger.error(error.message, error);
     throw error;
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);

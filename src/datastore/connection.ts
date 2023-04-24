@@ -1,7 +1,7 @@
 import { parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import * as postgres from 'postgres';
 import { isPgConnectionError } from './helpers';
-import { logError } from '../logger';
+import { logger } from '../logger';
 
 export type PgSqlClient = postgres.Sql<any> | postgres.TransactionSql<any>;
 
@@ -93,12 +93,12 @@ export async function connectPostgres({
         const timeElapsed = initTimer.getElapsed();
         if (timeElapsed - lastElapsedLog > 2000) {
           lastElapsedLog = timeElapsed;
-          logError(`Pg connection failed: ${error}, retrying..`);
+          logger.error(`Pg connection failed: ${error}, retrying..`);
         }
         connectionError = error;
         await timeout(100);
       } else {
-        logError('Cannot connect to pg', error);
+        logger.error('Cannot connect to pg', error);
         throw error;
       }
     } finally {

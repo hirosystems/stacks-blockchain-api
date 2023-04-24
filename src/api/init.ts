@@ -46,7 +46,7 @@ import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
 import { isPgConnectionError } from '../datastore/helpers';
 import { createStackingRouter } from './routes/stacking';
-import { logger, loggerMiddleware, logError } from '../logger';
+import { logger, loggerMiddleware } from '../logger';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -382,7 +382,7 @@ export async function startApiServer(opts: {
       logger.info('Closing WebSocket channels...');
       ws.close(error => {
         if (error) {
-          logError('Failed to gracefully close WebSocket channels', error);
+          logger.error('Failed to gracefully close WebSocket channels', error);
           reject(error);
         } else {
           logger.info('API WebSocket channels closed.');

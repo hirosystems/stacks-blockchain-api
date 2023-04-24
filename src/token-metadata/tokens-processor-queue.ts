@@ -5,7 +5,7 @@ import { DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore
 import { ChainID, ClarityAbi } from '@stacks/transactions';
 import { TokensContractHandler } from './tokens-contract-handler';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { logger, logError } from '../logger';
+import { logger } from '../logger';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -156,7 +156,7 @@ export class TokensProcessorQueue {
         await tokenContractHandler.start();
       })
       .catch(error => {
-        logError(
+        logger.error(
           `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
           error
         );
