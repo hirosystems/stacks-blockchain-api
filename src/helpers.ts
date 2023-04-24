@@ -18,15 +18,10 @@ import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-na
 import * as stream from 'stream';
 import * as ecc from 'tiny-secp256k1';
 import * as util from 'util';
-import * as winston from 'winston';
-import {
-  CliConfigSetColors,
-  NpmConfigSetLevels,
-  SyslogConfigSetLevels,
-} from 'winston/lib/winston/config';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { createHash } from 'node:crypto';
+import { logger, logError } from './logger';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isTestEnv = process.env.NODE_ENV === 'test';
@@ -152,73 +147,6 @@ export function loadDotEnv(): void {
     throw dotenvConfig.error;
   }
   didLoadDotEnv = true;
-}
-
-type EqualsTest<T> = <A>() => A extends T ? 1 : 0;
-type Equals<A1, A2> = EqualsTest<A2> extends EqualsTest<A1> ? 1 : 0;
-type Filter<K, I> = Equals<K, I> extends 1 ? never : K;
-type OmitIndex<T, I extends string | number> = {
-  [K in keyof T as Filter<K, I>]: T[K];
-};
-type KnownKeys<T> = keyof OmitIndex<OmitIndex<T, number>, string>;
-
-export type LogLevel = KnownKeys<NpmConfigSetLevels>;
-type DisabledLogLevels = Exclude<
-  KnownKeys<SyslogConfigSetLevels> | KnownKeys<CliConfigSetColors>,
-  LogLevel
->;
-type LoggerInterface = Omit<winston.Logger, DisabledLogLevels> & { level: LogLevel };
-
-const LOG_LEVELS: LogLevel[] = ['error', 'warn', 'info', 'http', 'verbose', 'debug', 'silly'];
-const defaultLogLevel: LogLevel = (() => {
-  const STACKS_API_LOG_LEVEL_ENV_VAR = 'STACKS_API_LOG_LEVEL';
-  const logLevelEnvVar = process.env[
-    STACKS_API_LOG_LEVEL_ENV_VAR
-  ]?.toLowerCase().trim() as LogLevel;
-  if (logLevelEnvVar) {
-    if (LOG_LEVELS.includes(logLevelEnvVar)) {
-      return logLevelEnvVar;
-    }
-    throw new Error(
-      `Invalid ${STACKS_API_LOG_LEVEL_ENV_VAR}, should be one of ${LOG_LEVELS.join(',')}`
-    );
-  }
-  if (isDevEnv) {
-    return 'debug';
-  }
-  return 'info';
-})();
-
-export const logger = winston.createLogger({
-  level: defaultLogLevel,
-  exitOnError: false,
-  defaultMeta: { component: 'core-api' },
-  format: winston.format.combine(
-    winston.format.metadata(),
-    winston.format.timestamp(),
-    winston.format.json(),
-    winston.format.errors({ stack: true })
-  ),
-  transports: [
-    new winston.transports.Console({
-      handleExceptions: true,
-    }),
-  ],
-}) as LoggerInterface;
-
-export function logError(message: string, ...errorData: any[]) {
-  if (isDevEnv) {
-    console.error(message);
-    if (errorData?.length > 0) {
-      errorData.forEach(e => console.error(e));
-    }
-  } else {
-    if (errorData?.length > 0) {
-      logger.error(message, ...errorData);
-    } else {
-      logger.error(message);
-    }
-  }
 }
 
 export function formatMapToObject<TKey extends string, TValue, TFormatted>(
