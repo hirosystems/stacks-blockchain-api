@@ -84,7 +84,7 @@ async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(
+  logger.debug(
     `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
   );
   const rewards = burnBlockMsg.reward_recipients.map((r, index) => {
@@ -122,7 +122,7 @@ async function handleBurnBlockMessage(
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
-  logger.verbose(`Received ${rawTxs.length} mempool transactions`);
+  logger.debug(`Received ${rawTxs.length} mempool transactions`);
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
@@ -138,7 +138,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
     };
   });
   const dbMempoolTxs = decodedTxs.map(tx => {
-    logger.verbose(`Received mempool tx: ${tx.txId}`);
+    logger.debug(`Received mempool tx: ${tx.txId}`);
     const dbMempoolTx = createDbMempoolTxFromCoreMsg({
       txId: tx.txId,
       txData: tx.txData,
@@ -156,7 +156,7 @@ async function handleDroppedMempoolTxsMessage(
   msg: CoreNodeDropMempoolTxMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
+  logger.debug(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
   await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
 }
@@ -166,7 +166,7 @@ async function handleMicroblockMessage(
   msg: CoreNodeMicroblockMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
+  logger.debug(`Received microblock with ${msg.transactions.length} txs`);
   const dbMicroblocks = parseMicroblocksFromTxs({
     parentIndexBlockHash: msg.parent_index_block_hash,
     txs: msg.transactions,
@@ -201,7 +201,7 @@ async function handleMicroblockMessage(
     }
   });
   parsedTxs.forEach(tx => {
-    logger.verbose(`Received microblock mined tx: ${tx.core_tx.txid}`);
+    logger.debug(`Received microblock mined tx: ${tx.core_tx.txid}`);
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
@@ -254,7 +254,7 @@ async function handleBlockMessage(
     execution_cost_write_length: 0,
   };
 
-  logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
+  logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
 
   const dbMinerRewards: DbMinerReward[] = [];
   for (const minerReward of msg.matured_miner_rewards) {
@@ -275,7 +275,7 @@ async function handleBlockMessage(
     dbMinerRewards.push(dbMinerReward);
   }
 
-  logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
+  logger.debug(`Received ${dbMinerRewards.length} matured miner rewards`);
 
   const dbMicroblocks = parseMicroblocksFromTxs({
     parentIndexBlockHash: msg.parent_index_block_hash,
@@ -300,7 +300,7 @@ async function handleBlockMessage(
   });
 
   parsedTxs.forEach(tx => {
-    logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+    logger.debug(`Received anchor block mined tx: ${tx.core_tx.txid}`);
     logger.info('Transaction confirmed', {
       txid: tx.core_tx.txid,
       in_microblock: tx.microblock_hash != '',
@@ -376,7 +376,7 @@ function parseDataStoreTxEventData(
 
   for (const event of events) {
     if (!event.committed) {
-      logger.verbose(`Ignoring uncommitted tx event from tx ${event.txid}`);
+      logger.debug(`Ignoring uncommitted tx event from tx ${event.txid}`);
       continue;
     }
     const dbTx = dbData.find(entry => entry.tx.tx_id === event.txid);
@@ -392,11 +392,11 @@ function parseDataStoreTxEventData(
         } catch (e) {
           logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
         }
-        logger.verbose(
+        logger.debug(
           `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}, repr: ${reprStr}`
         );
       } else {
-        logger.verbose(
+        logger.debug(
           `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}`
         );
       }

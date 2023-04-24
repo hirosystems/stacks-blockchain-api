@@ -55,7 +55,7 @@ function tryClarityPoxAddressToBtcAddress(
       network
     );
   } catch (e) {
-    logger.verbose(
+    logger.debug(
       `Error encoding PoX address version: ${poxAddr.data.version.buffer}, hashbytes: ${poxAddr.data.hashbytes.buffer} to bitcoin address: ${e}`
     );
     btcAddr = null;

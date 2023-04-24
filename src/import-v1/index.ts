@@ -162,7 +162,7 @@ class ChainProcessor extends stream.Writable {
           await this.db.updateNames(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
-            logger.verbose(
+            logger.debug(
               `${this.tag}: [non-critical] no zonefile for ${obj.name} hash ${obj.zonefile_hash}`
             );
           }
@@ -420,7 +420,7 @@ export async function importV1BnsNames(
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported) {
-    logger.verbose('Stacks 1.0 BNS names are already imported');
+    logger.debug('Stacks 1.0 BNS names are already imported');
     return;
   }
   await validateBnsImportDir(importDir, ['chainstate.txt', 'name_zonefiles.txt']);
@@ -448,7 +448,7 @@ export async function importV1BnsSubdomains(
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_subdomains_imported) {
-    logger.verbose('Stacks 1.0 BNS subdomains are already imported');
+    logger.debug('Stacks 1.0 BNS subdomains are already imported');
     return;
   }
   await validateBnsImportDir(importDir, ['subdomains.csv', 'subdomain_zonefiles.txt']);
@@ -496,7 +496,7 @@ class Sha256PassThrough extends stream.PassThrough {
 export async function importV1TokenOfferingData(db: PgWriteStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
-    logger.verbose('Stacks 1.0 token offering data is already imported');
+    logger.debug('Stacks 1.0 token offering data is already imported');
     return;
   }
 

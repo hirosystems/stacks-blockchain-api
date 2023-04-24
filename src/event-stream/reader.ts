@@ -751,24 +751,24 @@ export function parseMessageTransaction(
       }
       case TxPayloadTypeID.CoinbaseToAltRecipient: {
         if (payload.recipient.type_id === PrincipalTypeID.Standard) {
-          logger.verbose(
+          logger.debug(
             `Coinbase to alt recipient, standard principal: ${payload.recipient.address}`
           );
         } else {
-          logger.verbose(
+          logger.debug(
             `Coinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}`
           );
         }
         break;
       }
       case TxPayloadTypeID.SmartContract: {
-        logger.verbose(
+        logger.debug(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
         );
         break;
       }
       case TxPayloadTypeID.ContractCall: {
-        logger.verbose(
+        logger.debug(
           `Contract call: ${payload.address}.${payload.contract_name}.${payload.function_name}`
         );
         break;
@@ -778,19 +778,19 @@ export function parseMessageTransaction(
         if (payload.recipient.type_id === PrincipalTypeID.Contract) {
           recipientPrincipal += '.' + payload.recipient.contract_name;
         }
-        logger.verbose(
+        logger.debug(
           `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
         );
         break;
       }
       case TxPayloadTypeID.PoisonMicroblock: {
-        logger.verbose(
+        logger.debug(
           `Poison microblock: header1 ${payload.microblock_header_1}), header2: ${payload.microblock_header_2}`
         );
         break;
       }
       case TxPayloadTypeID.VersionedSmartContract: {
-        logger.verbose(
+        logger.debug(
           `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`
         );
         break;

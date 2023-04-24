@@ -93,7 +93,7 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
   const txOutSet: TxOutSet = await time(
     () => client.scantxoutset({ action: 'start', scanobjects: [`addr(${address})`] }),
-    ms => logger.verbose(`scantxoutset for ${address} took ${ms} ms`)
+    ms => logger.debug(`scantxoutset for ${address} took ${ms} ms`)
   );
   if (!txOutSet.success) {
     logger.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
@@ -138,7 +138,7 @@ async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<G
         client.getrawtransaction({ txid: txId, verbose: true })
       );
     },
-    ms => logger.verbose(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
+    ms => logger.debug(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
   );
   return batchRawTxRes;
 }
@@ -147,7 +147,7 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   const txOutSet = await getTxOutSet(client, address);
   const mempoolTxIds: string[] = await time(
     () => client.getrawmempool(),
-    ms => logger.verbose(`getrawmempool took ${ms} ms`)
+    ms => logger.debug(`getrawmempool took ${ms} ms`)
   );
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
@@ -225,7 +225,7 @@ export async function makeBtcFaucetPayment(
   const txId = tx.getId();
   const sendTxResult: string = await time(
     () => client.sendrawtransaction({ hexstring: txHex }),
-    ms => logger.verbose(`sendrawtransaction took ${ms}`)
+    ms => logger.debug(`sendrawtransaction took ${ms}`)
   );
 
   if (sendTxResult !== txId) {
