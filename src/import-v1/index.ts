@@ -14,12 +14,7 @@ import {
   DbConfigState,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import {
-  asyncBatchIterate,
-  asyncIterableToGenerator,
-  I32_MAX,
-  REPO_DIR,
-} from '../helpers';
+import { asyncBatchIterate, asyncIterableToGenerator, I32_MAX, REPO_DIR } from '../helpers';
 import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';

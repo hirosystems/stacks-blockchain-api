@@ -127,7 +127,7 @@ export async function importEventsFromTsv(
     datastore: db,
     chainId: getApiConfiguredChainID(),
     serverHost: '127.0.0.1',
-    serverPort: 0
+    serverPort: 0,
   });
 
   await importV1TokenOfferingData(db);

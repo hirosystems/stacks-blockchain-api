@@ -30,7 +30,7 @@ describe('socket-io', () => {
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
-      chainId: ChainID.Testnet
+      chainId: ChainID.Testnet,
     });
   });
 

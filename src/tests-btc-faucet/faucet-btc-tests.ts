@@ -119,7 +119,7 @@ describe('btc faucet', () => {
       apiServer = await startApiServer({
         datastore: db,
         writeDatastore: writeDb,
-        chainId: ChainID.Testnet
+        chainId: ChainID.Testnet,
       });
     });
 

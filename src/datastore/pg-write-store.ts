@@ -1,10 +1,4 @@
-import {
-  getOrAdd,
-  batchIterate,
-  isProdEnv,
-  I32_MAX,
-  getIbdBlockHeight,
-} from '../helpers';
+import { getOrAdd, batchIterate, isProdEnv, I32_MAX, getIbdBlockHeight } from '../helpers';
 import {
   DbBlock,
   DbTx,

@@ -9,7 +9,7 @@ const logLevels = {
   debug: 20,
   info: 30,
   warn: 40,
-  error: 50
+  error: 50,
 };
 
 // Common logging configuration
@@ -23,20 +23,20 @@ const loggingConfiguration = {
   formatters: {
     level: (label: any) => {
       return { level: label.toLowerCase() };
-    }
+    },
   },
-  mixin () {
-    return { component: 'core-api' }
+  mixin: function () {
+    return { component: 'core-api' };
   },
-  customLogLevel (_req: any, res: any, err: any) {
+  customLogLevel: function (_req: any, res: any, err: any) {
     if (res.statusCode >= 400 && res.statusCode < 500) {
       return 'warn';
     } else if (res.statusCode >= 500 || err) {
       return 'error';
     }
     return 'info';
-  }
-}
+  },
+};
 
 // ad-hoc logger
 export const logger = pino(loggingConfiguration);

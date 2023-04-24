@@ -23,7 +23,7 @@ describe('Events table', () => {
       datastore: db,
       chainId: ChainID.Mainnet,
       serverHost: '127.0.0.1',
-      serverPort: 0
+      serverPort: 0,
     });
   });
 
@@ -48,7 +48,7 @@ describe('Events table', () => {
           datastore: db,
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
-          serverPort: 0
+          serverPort: 0,
         });
         return [eventServer, eventServer.closeAsync] as const;
       },

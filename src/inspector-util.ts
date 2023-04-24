@@ -4,13 +4,7 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { asyncHandler } from './api/async-handler';
-import {
-  parsePort,
-  stopwatch,
-  timeout,
-  pipelineAsync,
-  Stopwatch,
-} from './helpers';
+import { parsePort, stopwatch, timeout, pipelineAsync, Stopwatch } from './helpers';
 import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
