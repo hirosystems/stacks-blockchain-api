@@ -3348,6 +3348,10 @@ export interface AddressNonces {
    * Nonces that appear to be missing and likely causing a mempool transaction to be stuck.
    */
   detected_missing_nonces: number[];
+  /**
+   * Nonces currently in mempool for this address.
+   */
+  detected_mempool_nonces?: number[];
 }
 /**
  * Total burnchain rewards made to a recipient

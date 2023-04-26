@@ -661,6 +661,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
           last_mempool_tx_nonce: (null as unknown) as number,
           detected_missing_nonces: [],
+          detected_mempool_nonces: [],
         };
         setETagCacheHeaders(res);
         res.json(results);
@@ -671,6 +672,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
           possible_next_nonce: nonces.possibleNextNonce,
           detected_missing_nonces: nonces.detectedMissingNonces,
+          detected_mempool_nonces: nonces.detectedMempoolNonces,
         };
         setETagCacheHeaders(res);
         res.json(results);

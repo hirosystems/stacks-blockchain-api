@@ -30,6 +30,13 @@
       "items": {
         "type": "integer"
       }
+    },
+    "detected_mempool_nonces": {
+      "type": "array",
+      "description": "Nonces currently in mempool for this address.",
+      "items": {
+        "type": "integer"
+      }
     }
   }
 }
