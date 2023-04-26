@@ -409,9 +409,7 @@ export class PgWriteStore extends PgStore {
         }
         const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
         if (mempoolGarbageResults.deletedTxs.length > 0) {
-          logger.debug(
-            `Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`
-          );
+          logger.debug(`Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`);
         }
         garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
@@ -2268,9 +2266,7 @@ export class PgWriteStore extends PgStore {
     if (updatedRows.length < txIds.length) {
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
 
-      logger.debug(
-        `To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`
-      );
+      logger.debug(`To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`);
 
       const txs: TxQueryResult[] = await sql`
         SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)}
