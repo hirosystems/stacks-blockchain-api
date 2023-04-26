@@ -63,7 +63,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       );
     } catch (error) {
       pathCacheOptions.clear();
-      logger.error(`Error reading changes from ${proxyCacheControlFile}`, error);
+      logger.error(error, `Error reading changes from ${proxyCacheControlFile}`);
     }
   };
   updatePathCacheOptions();
@@ -97,7 +97,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
     try {
       fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
     } catch (error) {
-      logger.error(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
+      logger.error(error, `Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}`);
       return false;
     }
     const endpoints = fileContents
@@ -162,7 +162,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
         first_broadcast_at_stacks_height: blockHeight,
       });
     } catch (error) {
-      logger.error(`Error logging tx broadcast: ${error}`, error);
+      logger.error(error, 'Error logging tx broadcast');
     }
   }
 
@@ -205,8 +205,8 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       results.slice(1).forEach(p => {
         if (p.status === 'rejected') {
           logger.error(
-            `Error during POST /v2/transaction to extra endpoint: ${p.reason}`,
-            p.reason
+            p.reason,
+            `Error during POST /v2/transaction to extra endpoint: ${p.reason}`
           );
         } else {
           if (!p.value.ok) {
@@ -221,8 +221,8 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       const mainResult = results[0];
       if (mainResult.status === 'rejected') {
         logger.error(
-          `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`,
-          mainResult.reason
+          mainResult.reason,
+          `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`
         );
         res.status(500).json({ error: mainResult.reason });
       } else {

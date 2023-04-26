@@ -71,7 +71,7 @@ function registerShutdownSignals() {
     });
   });
   process.once('unhandledRejection', error => {
-    logger.error(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
+    logger.error(error, 'unhandledRejection');
     logger.error(`Shutting down... received unhandledRejection.`);
     void startShutdown();
   });

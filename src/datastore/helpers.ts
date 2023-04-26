@@ -1172,7 +1172,7 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
       try {
         updatePromMempoolStats(mempoolStats);
       } catch (error) {
-        logger.error(`Error updating prometheus mempool stats`, error);
+        logger.error(error, 'Error updating prometheus mempool stats');
       }
     });
   });

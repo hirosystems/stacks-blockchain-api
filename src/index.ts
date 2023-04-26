@@ -96,7 +96,7 @@ async function monitorCoreRpcConnection(): Promise<void> {
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.error(`Warning: failed to connect to node RPC server at ${client.endpoint}`, error);
+      logger.error(error, `Warning: failed to connect to node RPC server at ${client.endpoint}`);
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
@@ -145,11 +145,11 @@ async function init(): Promise<void> {
       const error = new Error(
         `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
       );
-      logger.error(error.message, error);
+      logger.error(error, error.message);
       throw error;
     }
     monitorCoreRpcConnection().catch(error => {
-      logger.error(`Error monitoring RPC connection: ${error}`, error);
+      logger.error(error, 'Error monitoring RPC connection');
     });
 
     if (!isFtMetadataEnabled()) {
@@ -238,7 +238,7 @@ function initApp() {
       logger.info('App initialized');
     })
     .catch(error => {
-      logger.error(`app failed to start: ${error}`, error);
+      logger.error(error, 'app failed to start');
       process.exit(1);
     });
 }

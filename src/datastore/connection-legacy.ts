@@ -37,7 +37,7 @@ export async function connectPgPool({
     } catch (error: any) {
       const pgConnectionError = isPgConnectionError(error);
       if (!pgConnectionError) {
-        logger.error('Cannot connect to pg', error);
+        logger.error(error, 'Cannot connect to pg');
         throw error;
       }
       const timeElapsed = initTimer.getElapsed();
@@ -62,7 +62,7 @@ export async function connectPgPool({
   });
   const pool = new Pool(poolConfig);
   pool.on('error', error => {
-    logger.error(`Postgres connection pool error: ${error.message}`, error);
+    logger.error(error, `Postgres connection pool error: ${error.message}`);
   });
   return pool;
 }

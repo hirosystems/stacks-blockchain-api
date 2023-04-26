@@ -667,7 +667,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
         .catch(e => {
-          logger.error(`Error storing raw core node request data`, e, payload);
+          logger.error(e, 'Error storing raw core node request data');
           throw e;
         });
     },
@@ -675,7 +675,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
-          logger.error(`Error processing core node block message`, e, msg);
+          logger.error(e, 'Error processing core node block message');
           throw e;
         });
     },
@@ -687,7 +687,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleMicroblockMessage(chainId, msg, db))
         .catch(e => {
-          logger.error(`Error processing core node microblock message`, e, msg);
+          logger.error(e, 'Error processing core node microblock message');
           throw e;
         });
     },
@@ -695,7 +695,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleBurnBlockMessage(msg, db))
         .catch(e => {
-          logger.error(`Error processing core node burn block message`, e, msg);
+          logger.error(e, 'Error processing core node burn block message');
           throw e;
         });
     },
@@ -703,7 +703,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
-          logger.error(`Error processing core node mempool message`, e, rawTxs);
+          logger.error(e, 'Error processing core node mempool message');
           throw e;
         });
     },
@@ -711,7 +711,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
-          logger.error(`Error processing core node dropped mempool txs message`, e, msg);
+          logger.error(e, 'Error processing core node dropped mempool txs message');
           throw e;
         });
     },
@@ -719,7 +719,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleNewAttachmentMessage(msg, db))
         .catch(e => {
-          logger.error(`Error processing new attachment message`, e, msg);
+          logger.error(e, 'Error processing new attachment message');
           throw e;
         });
     },
@@ -818,7 +818,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /new_block: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_block');
         res.status(500).json({ error: error });
       }
     }),
@@ -834,7 +834,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /new_burn_block: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_burn_block');
         res.status(500).json({ error: error });
       }
     }),
@@ -850,7 +850,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /new_mempool_tx: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_mempool_tx');
         res.status(500).json({ error: error });
       }
     }),
@@ -866,7 +866,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /drop_mempool_tx: ${error}`, error);
+        logger.error(error, 'error processing core-node /drop_mempool_tx');
         res.status(500).json({ error: error });
       }
     }),
@@ -882,7 +882,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /attachments/new: ${error}`, error);
+        logger.error(error, 'error processing core-node /attachments/new');
         res.status(500).json({ error: error });
       }
     }),
@@ -898,7 +898,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(`error processing core-node /new_microblocks: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_microblocks');
         res.status(500).json({ error: error });
       }
     }),

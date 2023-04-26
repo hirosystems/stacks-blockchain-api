@@ -78,7 +78,7 @@ describe('api tests', () => {
       const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
-      logger.error('error: ', error);
+      logger.error(error);
     }
     return Promise.resolve({ txId: '' });
   }
@@ -248,7 +248,7 @@ describe('api tests', () => {
       'src/tests-tokens/test-contracts/nft-trait.clar'
     );
     const tx = await standByForTx(contract.txId);
-    if (tx.status != 1) logger.error('contract deploy error', tx);
+    if (tx.status != 1) logger.error(tx, 'contract deploy error');
 
     const contract1 = await deployContract(
       'beeple',
@@ -290,7 +290,7 @@ describe('api tests', () => {
     );
 
     const tx = await standByForTx(contract.txId);
-    if (tx.status != 1) logger.error('contract deploy error', tx);
+    if (tx.status != 1) logger.error(tx, 'contract deploy error');
 
     const contract1 = await deployContract(
       'hey-token',

@@ -502,7 +502,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         setETagCacheHeaders(res);
         res.json(response);
       } catch (error) {
-        logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
+        logger.error(error, `Unable to get inbound transfers for ${stxAddress}`);
         throw error;
       }
     })

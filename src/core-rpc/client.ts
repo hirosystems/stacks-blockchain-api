@@ -171,7 +171,7 @@ export class StacksCoreRpcClient {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
       return resultJson;
     } catch (error) {
-      logger.error(`Error parsing json: "${resultString}"`, error);
+      logger.error(error, `Error parsing json: "${resultString}"`);
       throw error;
     }
   }
@@ -192,7 +192,7 @@ export class StacksCoreRpcClient {
       const resultString = await result.text();
       return resultString;
     } catch (error) {
-      logger.error(`Error reading response from ${url}`, error);
+      logger.error(error, `Error reading response from ${url}`);
       throw error;
     }
   }

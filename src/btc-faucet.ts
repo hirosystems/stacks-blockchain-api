@@ -96,7 +96,7 @@ async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet
     ms => logger.debug(`scantxoutset for ${address} took ${ms} ms`)
   );
   if (!txOutSet.success) {
-    logger.error(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
+    logger.error('scantxoutset did not immediately complete -- polling for progress...');
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({

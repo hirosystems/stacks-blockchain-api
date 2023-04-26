@@ -806,7 +806,7 @@ export function parseMessageTransaction(
     }
     return parsedTx;
   } catch (error) {
-    logger.error(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
+    logger.error(error, `error parsing message transaction ${JSON.stringify(coreTx)}`);
     throw error;
   }
 }

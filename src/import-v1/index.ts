@@ -270,7 +270,7 @@ async function readZones(zfname: string): Promise<Map<string, string>> {
   const hashes = new Map<string, string>();
 
   const zstream = stream.pipeline(fs.createReadStream(zfname), new LineReaderStream(), err => {
-    if (err) logger.error(`readzones: ${err}`);
+    if (err) logger.error(err, `readzones: ${err}`);
   });
 
   const generator = asyncIterableToGenerator<string>(zstream);
@@ -398,7 +398,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
       throw new Error(`${importDir} is not a directory`);
     }
   } catch (error) {
-    logger.error(`Cannot import from ${importDir}`, error);
+    logger.error(error, `Cannot import from ${importDir}`);
     throw error;
   }
 

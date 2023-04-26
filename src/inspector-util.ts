@@ -48,7 +48,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
       try {
         session.post('Profiler.enable', error => {
           if (error) {
-            logger.error(`[CpuProfiler] Error enabling profiling: ${error}`, error);
+            logger.error(error, '[CpuProfiler] Error enabling profiling');
             reject(error);
           } else {
             logger.info(`[CpuProfiler] Profiling enabled`);
@@ -56,7 +56,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
           }
         });
       } catch (error) {
-        logger.error(`[CpuProfiler] Error enabling profiling: ${error}`, error);
+        logger.error(error, '[CpuProfiler] Error enabling profiling');
         reject(error);
       }
     });
@@ -68,7 +68,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
         try {
           session.post('Profiler.setSamplingInterval', { interval: samplingInterval }, error => {
             if (error) {
-              logger.error(`[CpuProfiler] Error setting sampling interval: ${error}`, error);
+              logger.error(error, '[CpuProfiler] Error setting sampling interval');
               reject(error);
             } else {
               logger.info(`[CpuProfiler] Set sampling interval`);
@@ -76,7 +76,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
             }
           });
         } catch (error) {
-          logger.error(`[CpuProfiler] Error setting sampling interval: ${error}`, error);
+          logger.error(error, '[CpuProfiler] Error setting sampling interval');
           reject(error);
         }
       });
@@ -88,7 +88,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
       try {
         session.post('Profiler.start', error => {
           if (error) {
-            logger.error(`[CpuProfiler] Error starting profiling: ${error}`, error);
+            logger.error(error, '[CpuProfiler] Error starting profiling');
             reject(error);
           } else {
             sessionStopwatch.restart();
@@ -97,7 +97,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
           }
         });
       } catch (error) {
-        logger.error(`[CpuProfiler] Error starting profiling: ${error}`, error);
+        logger.error(error, '[CpuProfiler] Error starting profiling');
         reject(error);
       }
     });
@@ -112,7 +112,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
         try {
           session.post('Profiler.stop', (error, profileResult) => {
             if (error) {
-              logger.error(`[CpuProfiler] Error stopping profiling: ${error}`, error);
+              logger.error(error, '[CpuProfiler] Error stopping profiling');
               reject(error);
             } else {
               logger.info(`[CpuProfiler] Profiling stopped`);
@@ -139,7 +139,7 @@ function initCpuProfiling(samplingInterval?: number): ProfilerInstance<CpuProfil
               logger.info(`[CpuProfiler] Profiler already disconnected`);
               resolve();
             } else if (error) {
-              logger.error(`[CpuProfiler] Error disabling profiling: ${error}`, error);
+              logger.error(error, '[CpuProfiler] Error disabling profiling');
               reject(error);
             } else {
               logger.info(`[CpuProfiler] Profiling disabled`);
@@ -185,7 +185,7 @@ function initHeapSnapshot(
       try {
         session.post('HeapProfiler.enable', error => {
           if (error) {
-            logger.error(`[HeapProfiler] Error enabling profiling: ${error}`, error);
+            logger.error(error, '[HeapProfiler] Error enabling profiling');
             reject(error);
           } else {
             sw.restart();
@@ -194,7 +194,7 @@ function initHeapSnapshot(
           }
         });
       } catch (error) {
-        logger.error(`[HeapProfiler] Error enabling profiling: ${error}`, error);
+        logger.error(error, '[HeapProfiler] Error enabling profiling');
         reject(error);
       }
     });
@@ -210,8 +210,8 @@ function initHeapSnapshot(
       outputStream.write(message.params.chunk, error => {
         if (error) {
           logger.error(
-            `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`,
-            error
+            error,
+            `[HeapProfiler] Error writing heap profile chunk to output stream: ${error.message}`
           );
         }
       });
@@ -224,7 +224,7 @@ function initHeapSnapshot(
       try {
         session.post('HeapProfiler.takeHeapSnapshot', undefined, (error: Error | null) => {
           if (error) {
-            logger.error(`[HeapProfiler] Error taking snapshot: ${error}`, error);
+            logger.error(error, '[HeapProfiler] Error taking snapshot');
             reject(error);
           } else {
             logger.info(
@@ -234,7 +234,7 @@ function initHeapSnapshot(
           }
         });
       } catch (error) {
-        logger.error(`[HeapProfiler] Error taking snapshot: ${error}`, error);
+        logger.error(error, '[HeapProfiler] Error taking snapshot');
         reject(error);
       }
     });
@@ -259,7 +259,7 @@ function initHeapSnapshot(
               logger.info(`[HeapProfiler] Profiler already disconnected`);
               resolve();
             } else if (error) {
-              logger.error(`[HeapProfiler] Error disabling profiling: ${error}`, error);
+              logger.error(error, '[HeapProfiler] Error disabling profiling');
               reject(error);
             } else {
               logger.info(`[HeapProfiler] Profiling disabled`);

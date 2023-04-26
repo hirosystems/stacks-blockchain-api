@@ -157,8 +157,8 @@ export class TokensProcessorQueue {
       })
       .catch(error => {
         logger.error(
-          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
-          error
+          error,
+          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`
         );
       })
       .finally(() => {

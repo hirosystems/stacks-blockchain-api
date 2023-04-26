@@ -45,7 +45,7 @@ export async function runMigrations(
     }
     await PgMigrate(runnerOpts);
   } catch (error) {
-    logger.error(`Error running pg-migrate`, error);
+    logger.error(error, 'Error running pg-migrate');
     throw error;
   } finally {
     await client.end();

@@ -78,7 +78,7 @@ export async function startApiServer(opts: {
     API_VERSION.commit = commit;
     API_VERSION.tag = tag;
   } catch (error) {
-    logger.error(`Unable to read API version from .git-info`, error);
+    logger.error(error, `Unable to read API version from .git-info`);
   }
 
   const app = express();
@@ -287,6 +287,7 @@ export async function startApiServer(opts: {
   app.use(((error, req, res, next) => {
     if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
+        error,
         `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
           'Cache-Control'
         )}`
@@ -294,6 +295,7 @@ export async function startApiServer(opts: {
     }
     if (error && res.headersSent && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
+        error,
         `A non-200 response with an error in request processing has ETag: ${res.header(
           'ETag'
         )}, Cache-Control: ${res.header('Cache-Control')}`
@@ -382,7 +384,7 @@ export async function startApiServer(opts: {
       logger.info('Closing WebSocket channels...');
       ws.close(error => {
         if (error) {
-          logger.error('Failed to gracefully close WebSocket channels', error);
+          logger.error(error, 'Failed to gracefully close WebSocket channels');
           reject(error);
         } else {
           logger.info('API WebSocket channels closed.');

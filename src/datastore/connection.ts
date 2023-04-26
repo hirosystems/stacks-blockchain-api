@@ -93,12 +93,12 @@ export async function connectPostgres({
         const timeElapsed = initTimer.getElapsed();
         if (timeElapsed - lastElapsedLog > 2000) {
           lastElapsedLog = timeElapsed;
-          logger.error(`Pg connection failed: ${error}, retrying..`);
+          logger.error(error, 'Pg connection failed. Retrying..');
         }
         connectionError = error;
         await timeout(100);
       } else {
-        logger.error('Cannot connect to pg', error);
+        logger.error(error, 'Cannot connect to pg');
         throw error;
       }
     } finally {

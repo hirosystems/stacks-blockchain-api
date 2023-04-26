@@ -143,7 +143,7 @@ export function loadDotEnv(): void {
   }
   const dotenvConfig = dotenv.config({ silent: true });
   if (dotenvConfig.error) {
-    logger.error(`Error loading .env file: ${dotenvConfig.error}`, dotenvConfig.error);
+    logger.error(dotenvConfig.error, 'Error loading .env file');
     throw dotenvConfig.error;
   }
   didLoadDotEnv = true;
@@ -1039,7 +1039,7 @@ export async function getStacksNodeChainID(): Promise<ChainID> {
 export function getApiConfiguredChainID() {
   if (!('STACKS_CHAIN_ID' in process.env)) {
     const error = new Error(`Env var STACKS_CHAIN_ID is not set`);
-    logger.error(error.message, error);
+    logger.error(error, error.message);
     throw error;
   }
   const configuredChainID: ChainID = parseInt(process.env['STACKS_CHAIN_ID'] as string);
