@@ -306,10 +306,13 @@ export async function startApiServer(opts: {
     }
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
+        logger.warn(error, error.message);
         res.status(error.status).json({ error: error.message }).end();
       } else if (isPgConnectionError(error)) {
+        logger.error(error, error.message);
         res.status(503).json({ error: `The database service is unavailable` }).end();
       } else {
+        logger.error(error, error.message);
         res.status(500);
         const errorTag = uuid();
         Object.assign(error, { errorTag: errorTag });
