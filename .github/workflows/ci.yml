@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -218,7 +218,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -277,7 +277,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -336,7 +336,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -395,7 +395,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -471,7 +471,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -541,7 +541,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -600,7 +600,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -667,7 +667,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -734,7 +734,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -779,7 +779,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -799,6 +799,7 @@ jobs:
     steps:
     - name: Coveralls Finished
       uses: coverallsapp/github-action@master
+      if: ${{ false }}
       with:
         github-token: ${{ secrets.github_token }}
         parallel-finished: true

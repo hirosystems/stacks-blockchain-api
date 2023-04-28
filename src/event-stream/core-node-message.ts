@@ -230,6 +230,7 @@ export interface CoreNodeBlockMessage {
     tx_fees_streamed_produced: string;
   }[];
   pox_v1_unlock_height?: number;
+  pox_v2_unlock_height?: number;
 }
 
 export interface CoreNodeParsedTxMessage {
