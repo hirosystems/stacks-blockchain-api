@@ -4095,7 +4095,7 @@ export class PgStore {
     }
 
     let poxV2Unlocks: StxLockEventResult[] = [];
-    const checkPox2Unlocks = v2UnlockHeight !== null && current_burn_height < v2UnlockHeight;
+    const checkPox2Unlocks = v2UnlockHeight === null || current_burn_height < v2UnlockHeight;
     if (checkPox2Unlocks) {
       const pox2EventQuery = await sql<Pox2EventQueryResult[]>`
         SELECT DISTINCT ON (stacker) stacker, ${sql(POX2_EVENT_COLUMNS)}
