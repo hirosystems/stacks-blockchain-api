@@ -1610,6 +1610,7 @@ export interface ServerStatusResponse {
    */
   status: string;
   pox_v1_unlock_height?: number;
+  pox_v2_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**
