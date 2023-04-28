@@ -2,7 +2,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "hirosystems/stacks-api-e2e:stacks2.1-a50d830"
+    image: "hirosystems/stacks-api-e2e:stacks2.1-8107f75"
     command: |
       bash -c "rm /event-log.ndjson && /root/run.sh"
     ports:
