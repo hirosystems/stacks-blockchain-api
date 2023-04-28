@@ -1,3 +1,10 @@
+## [7.1.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.7...v7.1.8) (2023-04-28)
+
+
+### Bug Fixes
+
+* support Stacks 2.2 force pox-2 unlocks [#1634](https://github.com/hirosystems/stacks-blockchain-api/issues/1634) ([#1636](https://github.com/hirosystems/stacks-blockchain-api/issues/1636)) ([14706bd](https://github.com/hirosystems/stacks-blockchain-api/commit/14706bd64a27a70e88bb47fe61f40a6b1bec1dcc))
+
 ## [7.1.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.5...v7.1.7) (2023-04-18)
 
 
