@@ -730,6 +730,7 @@ export class PgStore {
     lastMempoolTxNonce: number | null;
     possibleNextNonce: number;
     detectedMissingNonces: number[];
+    detectedMempoolNonces: number[];
   }> {
     return await this.sqlTransaction(async sql => {
       const executedTxNonce = await sql<{ nonce: number | null }[]>`
@@ -775,6 +776,7 @@ export class PgStore {
         possibleNextNonce = Math.max(lastExecutedTxNonce ?? 0, lastMempoolTxNonce ?? 0) + 1;
       }
       const detectedMissingNonces: number[] = [];
+      let detectedMempoolNonces: number[] = [];
       if (lastExecutedTxNonce !== null && lastMempoolTxNonce !== null) {
         // There's a greater than one difference in the last mempool tx nonce and last executed tx nonce.
         // Check if there are any expected intermediate nonces missing from from the mempool.
@@ -797,9 +799,9 @@ export class PgStore {
               AND sponsor_nonce IN ${sql(expectedNonces)}
             AND pruned = false
           `;
-          const mempoolNonceArr = mempoolNonces.map(r => r.nonce);
+          detectedMempoolNonces = mempoolNonces.map(r => r.nonce);
           expectedNonces.forEach(nonce => {
-            if (!mempoolNonceArr.includes(nonce)) {
+            if (!detectedMempoolNonces.includes(nonce)) {
               detectedMissingNonces.push(nonce);
             }
           });
@@ -810,6 +812,7 @@ export class PgStore {
         lastMempoolTxNonce: lastMempoolTxNonce,
         possibleNextNonce: possibleNextNonce,
         detectedMissingNonces: detectedMissingNonces,
+        detectedMempoolNonces: detectedMempoolNonces,
       };
     });
   }
@@ -2063,7 +2066,7 @@ export class PgStore {
           ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ),
         distinct_rows AS (
-          SELECT DISTINCT ON (stacker) 
+          SELECT DISTINCT ON (stacker)
             stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
             block_height, microblock_sequence, tx_index, event_index
           FROM ordered_pox2_events
