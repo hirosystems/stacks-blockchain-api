@@ -15,11 +15,10 @@ export function createStatusRouter(db: PgStore): express.Router {
         server_version: `stacks-blockchain-api ${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`,
         status: 'ready',
       };
-      const pox1UnlockHeight = await db.getPox1UnlockHeight();
-      if (pox1UnlockHeight.found) {
-        response.pox_v1_unlock_height = pox1UnlockHeight.result;
-      } else {
-        response.pox_v1_unlock_height = null as any;
+      const poxForceUnlockHeights = await db.getPoxForceUnlockHeights();
+      if (poxForceUnlockHeights.found) {
+        response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
+        response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
       }
       const chainTip = await db.getUnanchoredChainTip();
       if (chainTip.found) {

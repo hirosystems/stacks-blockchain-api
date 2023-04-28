@@ -315,6 +315,7 @@ async function handleBlockMessage(
     minerRewards: dbMinerRewards,
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
     pox_v1_unlock_height: msg.pox_v1_unlock_height,
+    pox_v2_unlock_height: msg.pox_v2_unlock_height,
   };
 
   await db.update(dbData);

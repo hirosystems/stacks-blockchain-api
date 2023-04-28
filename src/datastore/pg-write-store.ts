@@ -365,6 +365,14 @@ export class PgWriteStore extends PgStore {
           WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
         `;
       }
+      if (isCanonical && data.pox_v2_unlock_height !== undefined) {
+        // update the pox_state.pox_v2_unlock_height singleton
+        await sql`
+          UPDATE pox_state 
+          SET pox_v2_unlock_height = ${data.pox_v2_unlock_height}
+          WHERE pox_v2_unlock_height != ${data.pox_v2_unlock_height}
+        `;
+      }
 
       // When receiving first block, check if "block 0" boot data was received,
       // if so, update their properties to correspond to "block 1", since we treat

@@ -19,6 +19,10 @@
       "type": "integer",
       "nullable": true
     },
+    "pox_v2_unlock_height": {
+      "type": "integer",
+      "nullable": true
+    },
     "chain_tip": {
       "$ref": "../../entities/info/chain-tip.schema.json"
     }
