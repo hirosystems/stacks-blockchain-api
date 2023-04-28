@@ -1,5 +1,5 @@
 # Pointed to stacks-blockchain `2.1.0.0.0` git tag
-FROM --platform=linux/amd64 hirosystems/stacks-api-e2e:stacks2.1-a50d830 as build
+FROM --platform=linux/amd64 hirosystems/stacks-api-e2e:stacks2.1-8107f75 as build
 
 FROM --platform=linux/amd64 debian:bullseye
 
