@@ -4159,7 +4159,6 @@ export class PgStore {
             burnchain_unlock_height < ${current_burn_height})
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
       `;
       for (const row of pox2EventQuery) {
         const pox2Event = parseDbPox2Event(row);
