@@ -1,3 +1,10 @@
+## [7.1.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.8...v7.1.9) (2023-05-01)
+
+
+### Bug Fixes
+
+* generate synthetic `stx_unlock` rosetta operations for all locked accounts after pox2 force unlock [#1639](https://github.com/hirosystems/stacks-blockchain-api/issues/1639) ([#1638](https://github.com/hirosystems/stacks-blockchain-api/issues/1638)) ([9b58bb6](https://github.com/hirosystems/stacks-blockchain-api/commit/9b58bb6b06a7a2a8b0bce967748f0fed909e2be5))
+
 ## [7.1.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.7...v7.1.8) (2023-04-28)
 
 
