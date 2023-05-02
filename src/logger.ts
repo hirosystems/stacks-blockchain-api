@@ -20,6 +20,7 @@ const loggingConfiguration = {
     }
     return 'info';
   },
+  autoLogging: false,
 };
 
 // ad-hoc logger
