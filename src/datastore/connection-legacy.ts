@@ -1,7 +1,8 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
-import { logError, logger, parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
+import { parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
 import { PgServer } from './connection';
 import { isPgConnectionError } from './helpers';
+import { logger } from '../logger';
 
 export type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };
@@ -36,13 +37,13 @@ export async function connectPgPool({
     } catch (error: any) {
       const pgConnectionError = isPgConnectionError(error);
       if (!pgConnectionError) {
-        logError('Cannot connect to pg', error);
+        logger.error(error, 'Cannot connect to pg');
         throw error;
       }
       const timeElapsed = initTimer.getElapsed();
       if (timeElapsed - lastElapsedLog > 2000) {
         lastElapsedLog = timeElapsed;
-        logError('Pg connection failed, retrying..');
+        logger.error('Pg connection failed, retrying..');
       }
       connectionError = error;
       await timeout(100);
@@ -61,7 +62,7 @@ export async function connectPgPool({
   });
   const pool = new Pool(poolConfig);
   pool.on('error', error => {
-    logger.error(`Postgres connection pool error: ${error.message}`, error);
+    logger.error(error, `Postgres connection pool error: ${error.message}`);
   });
   return pool;
 }

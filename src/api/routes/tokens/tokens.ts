@@ -53,14 +53,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         }
       }
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -122,14 +115,7 @@ export function createTokenRouter(db: PgStore): express.Router {
       }
       const strValue = value;
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -191,14 +177,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const includeTxMetadata = booleanValueForParam(req, res, next, 'tx_metadata');
@@ -259,14 +238,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await db.getFtMetadataList({ offset, limit });

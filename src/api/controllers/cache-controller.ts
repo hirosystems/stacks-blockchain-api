@@ -1,8 +1,9 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { logger, normalizeHashString, sha256 } from '../../helpers';
+import { normalizeHashString, sha256 } from '../../helpers';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
+import { logger } from '../../logger';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -258,7 +259,7 @@ async function calculateETag(
         }
         return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
       } catch (error) {
-        logger.error(`Unable to calculate chain_tip ETag: ${error}`);
+        logger.error(error, 'Unable to calculate chain_tip ETag');
         return;
       }
 
@@ -276,7 +277,7 @@ async function calculateETag(
         }
         return digest.result.digest;
       } catch (error) {
-        logger.error(`Unable to calculate mempool ETag: ${error}`);
+        logger.error(error, 'Unable to calculate mempool');
         return;
       }
 
@@ -299,7 +300,7 @@ async function calculateETag(
         ];
         return sha256(elements.join(':'));
       } catch (error) {
-        logger.error(`Unable to calculate transaction ETag: ${error}`);
+        logger.error(error, 'Unable to calculate transaction');
         return;
       }
   }
