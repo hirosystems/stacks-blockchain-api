@@ -177,7 +177,7 @@
     "postgres": "3.3.1",
     "prom-client": "14.0.1",
     "rpc-bitcoin": "2.0.0",
-    "socket.io": "4.5.4",
+    "socket.io": "4.6.1",
     "source-map-support": "0.5.21",
     "split2": "3.2.2",
     "stacks-encoding-native-js": "1.0.0",
