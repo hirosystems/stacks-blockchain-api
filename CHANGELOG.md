@@ -1,3 +1,10 @@
+## [7.1.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.9...v7.1.10) (2023-05-04)
+
+
+### Bug Fixes
+
+* bump engine.io and socket.io ([#1643](https://github.com/hirosystems/stacks-blockchain-api/issues/1643)) ([04b92ce](https://github.com/hirosystems/stacks-blockchain-api/commit/04b92ce1cce2ef5386e7074ea99f11504c5cf35b))
+
 ## [7.1.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.8...v7.1.9) (2023-05-01)
 
 
