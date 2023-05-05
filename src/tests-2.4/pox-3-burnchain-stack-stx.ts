@@ -135,7 +135,7 @@ async function createPox2StackStx(args: {
   };
 }
 
-describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;
@@ -170,7 +170,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
 
     const poxInfo = await client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+    expect(contractName).toBe('pox-3');
   });
 
   test('Fund STX to new account for testing', async () => {

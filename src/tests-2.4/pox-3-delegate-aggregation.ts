@@ -31,7 +31,7 @@ import {
 } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 
-describe('PoX-2 - Delegate aggregation increase operations', () => {
+describe('PoX-3 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
   const delegatorKey = '04608922f3ce63971bb120fa9c9454c5bd06370f61414040a737a6ee8ef8a10f01';
   const delegateeKey = 'b038e143cf4ee4c079b3c3605a8ed28732e5745c138b728408e80faf7a59b8c201';
@@ -120,7 +120,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
     // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
     poxInfo = await standByForNextPoxCycle();
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+    expect(contractName).toBe('pox-3');
   });
 
   test('Perform delegate-stx operation', async () => {
@@ -206,7 +206,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -266,7 +266,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
     expect(poxCycleAddressIndex).toEqual(0n);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -407,7 +407,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
 
     // validate delegate-stack-stx pox2 event for this tx
     const delegateStackIncreasePoxEvents: any = await fetchGet(
-      `/extended/v1/pox2_events/tx/${delegateStackIncreaseDbTx.tx_id}`
+      `/extended/v1/pox3_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
     expect(delegateStackIncreasePoxEvents).toBeDefined();
     expect(delegateStackIncreasePoxEvents.results).toHaveLength(1);
@@ -444,7 +444,7 @@ describe('PoX-2 - Delegate aggregation increase operations', () => {
 
     // validate stack-aggregation-commit pox2 event for this tx
     const stackAggreIncreasePoxEvents: any = await fetchGet(
-      `/extended/v1/pox2_events/tx/${stackAggrIncreaseTxId}`
+      `/extended/v1/pox3_events/tx/${stackAggrIncreaseTxId}`
     );
     expect(stackAggreIncreasePoxEvents).toBeDefined();
     expect(stackAggreIncreasePoxEvents.results).toHaveLength(1);

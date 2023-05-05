@@ -24,7 +24,7 @@ import {
 import { ClarityValueTuple, ClarityValueUInt } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 
-describe('PoX-2 - Delegate Stacking operations', () => {
+describe('PoX-3 - Delegate Stacking operations', () => {
   const seedKey = testnetKeys[4].secretKey;
   const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
@@ -110,7 +110,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     poxInfo = await standByForNextPoxCycle();
 
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+    expect(contractName).toBe('pox-3');
   });
 
   test('Perform delegate-stx operation', async () => {
@@ -143,7 +143,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
     // validate delegate-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStxDbTx.tx_id}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStxDbTx.tx_id}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -213,7 +213,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -277,7 +277,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
 
     // validate delegate-stack-stx pox2 event for this tx
     const res: any = await fetchGet(
-      `/extended/v1/pox2_events/tx/${delegateStackIncreaseDbTx.tx_id}`
+      `/extended/v1/pox3_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -339,7 +339,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(coreBalanceInfoPreIncrease.unlock_height);
 
     // validate delegate-stack-extend pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackExtendTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackExtendTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -391,7 +391,7 @@ describe('PoX-2 - Delegate Stacking operations', () => {
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

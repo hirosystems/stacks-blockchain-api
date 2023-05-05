@@ -171,7 +171,7 @@ async function createPox2DelegateStx(args: {
   };
 }
 
-describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;
@@ -215,7 +215,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
 
     const poxInfo = await client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+    expect(contractName).toBe('pox-3');
   });
 
   test('Fund STX to new account for testing', async () => {
@@ -350,7 +350,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     )})))`;
 
     expect(delegateStxTx.contract_call).toEqual({
-      contract_id: 'ST000000000000000000002AMW42H.pox-2',
+      contract_id: 'ST000000000000000000002AMW42H.pox-3',
       function_name: 'delegate-stx',
       function_signature:
         '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
@@ -418,7 +418,7 @@ describe('PoX-2 - Stack using Bitcoin-chain ops', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
