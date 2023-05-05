@@ -2566,15 +2566,27 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
     }
 
-    const poxResult = await sql`
+    // todo: do we still need pox2 marking here?
+    const pox2Result = await sql`
       UPDATE pox2_events
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
     `;
     if (canonical) {
-      updatedEntities.markedCanonical.pox2Events += poxResult.count;
+      updatedEntities.markedCanonical.pox2Events += pox2Result.count;
     } else {
-      updatedEntities.markedNonCanonical.pox2Events += poxResult.count;
+      updatedEntities.markedNonCanonical.pox2Events += pox2Result.count;
+    }
+
+    const pox3Result = await sql`
+      UPDATE pox3_events
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
+    if (canonical) {
+      updatedEntities.markedCanonical.pox3Events += pox3Result.count;
+    } else {
+      updatedEntities.markedNonCanonical.pox3Events += pox3Result.count;
     }
 
     const contractLogResult = await sql`
@@ -2780,6 +2792,7 @@ export class PgWriteStore extends PgStore {
         ftEvents: 0,
         nftEvents: 0,
         pox2Events: 0,
+        pox3Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -2796,6 +2809,7 @@ export class PgWriteStore extends PgStore {
         ftEvents: 0,
         nftEvents: 0,
         pox2Events: 0,
+        pox3Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,

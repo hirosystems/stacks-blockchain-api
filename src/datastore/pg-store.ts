@@ -45,6 +45,7 @@ import {
   DbNftEvent,
   DbNonFungibleTokenMetadata,
   DbPox2Event,
+  DbPox3Event,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -69,6 +70,7 @@ import {
   NftHoldingInfoWithTxMetadata,
   NonFungibleTokenMetadataQueryResult,
   Pox2EventQueryResult,
+  Pox3EventQueryResult,
   RawTxQueryResult,
   StxUnlockEvent,
   TransferQueryResult,
@@ -89,6 +91,7 @@ import {
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
   POX2_EVENT_COLUMNS,
+  POX3_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
   unsafeCols,
@@ -628,7 +631,7 @@ export class PgStore {
       const txQuery = await sql<{ tx_id: string }[]>`
         SELECT tx_id
         FROM txs
-        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true 
+        WHERE microblock_hash = ${args.microblockHash} AND canonical = true AND microblock_canonical = true
         ORDER BY tx_index DESC
       `;
       const microblock = parseMicroblockQueryResult(result[0]);
@@ -648,9 +651,9 @@ export class PgStore {
       const microblockQuery = await sql<
         (MicroblockQueryResult & { tx_id?: string | null; tx_index?: number | null })[]
       >`
-      SELECT microblocks.*, txs.tx_id 
+      SELECT microblocks.*, txs.tx_id
       FROM microblocks LEFT JOIN txs USING(microblock_hash)
-      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND 
+      WHERE microblocks.canonical = true AND microblocks.microblock_canonical = true AND
         txs.canonical = true AND txs.microblock_canonical = true
       ORDER BY microblocks.block_height DESC, microblocks.microblock_sequence DESC, txs.tx_index DESC
       LIMIT ${args.limit}
@@ -1998,6 +2001,28 @@ export class PgStore {
     });
   }
 
+  /** modified copy of `getPox2Events` */
+  async getPox3Events({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<DbPox3Event[]> {
+    return await this.sqlTransaction(async sql => {
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox3_events
+        WHERE canonical = true AND microblock_canonical = true
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return result;
+    });
+  }
+
   async getPox2EventsForTx({ txId }: { txId: string }): Promise<FoundOrNot<DbPox2Event[]>> {
     return await this.sqlTransaction(async sql => {
       const dbTx = await this.getTx({ txId, includeUnanchored: true });
@@ -2015,6 +2040,24 @@ export class PgStore {
     });
   }
 
+  /** modified copy of `getPox2EventsForTx` */
+  async getPox3EventsForTx({ txId }: { txId: string }): Promise<FoundOrNot<DbPox3Event[]>> {
+    return await this.sqlTransaction(async sql => {
+      const dbTx = await this.getTx({ txId, includeUnanchored: true });
+      if (!dbTx.found) {
+        return { found: false };
+      }
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox3_events
+        WHERE canonical = true AND microblock_canonical = true AND tx_id = ${txId}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return { found: true, result: result };
+    });
+  }
+
   async getPox2EventsForStacker({
     principal,
   }: {
@@ -2024,6 +2067,24 @@ export class PgStore {
       const queryResults = await sql<Pox2EventQueryResult[]>`
         SELECT ${sql(POX2_EVENT_COLUMNS)}
         FROM pox2_events
+        WHERE canonical = true AND microblock_canonical = true AND stacker = ${principal}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      `;
+      const result = queryResults.map(result => parseDbPox2Event(result));
+      return { found: true, result: result };
+    });
+  }
+
+  /** modified copy of `getPox2EventsForStacker` */
+  async getPox3EventsForStacker({
+    principal,
+  }: {
+    principal: string;
+  }): Promise<FoundOrNot<DbPox3Event[]>> {
+    return await this.sqlTransaction(async sql => {
+      const queryResults = await sql<Pox2EventQueryResult[]>`
+        SELECT ${sql(POX2_EVENT_COLUMNS)}
+        FROM pox3_events
         WHERE canonical = true AND microblock_canonical = true AND stacker = ${principal}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       `;
@@ -2293,6 +2354,48 @@ export class PgStore {
       }
     }
 
+    // == PoX-3 ================================================================
+    // Assuming includePox3State = true; since there is no unlock height for pox3 (yet)
+
+    // Query for the latest lock event that still applies to the current burn block height.
+    // Special case for `handle-unlock` which should be returned if it is the last received event.
+
+    // todo: do we need handle-unlock for pox3?
+
+    // Modified copy of the pox-2 query
+    const pox3EventQuery = await sql<Pox3EventQueryResult[]>`
+        SELECT ${sql(POX3_EVENT_COLUMNS)}
+        FROM pox3_events
+        WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
+        AND block_height <= ${blockHeight}
+        AND (
+          (name != ${Pox2EventName.HandleUnlock} AND burnchain_unlock_height >= ${burnBlockHeight})
+          OR
+          (name = ${Pox2EventName.HandleUnlock} AND burnchain_unlock_height < ${burnBlockHeight})
+        )
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT 1
+      `;
+    if (pox3EventQuery.length > 0) {
+      const pox3Event = parseDbPox2Event(pox3EventQuery[0]);
+      if (pox3Event.name === Pox2EventName.HandleUnlock) {
+        // on a handle-unlock, set all of the locked stx related property to empty/default
+        lockTxId = '';
+        locked = 0n;
+        burnchainUnlockHeight = 0;
+        lockHeight = 0;
+        burnchainLockHeight = 0;
+      } else {
+        lockTxId = pox3Event.tx_id;
+        locked = pox3Event.locked;
+        burnchainUnlockHeight = Number(pox3Event.burnchain_unlock_height);
+        lockHeight = pox3Event.block_height;
+        const blockQuery = await this.getBlockByHeightInternal(sql, lockHeight);
+        burnchainLockHeight = blockQuery.found ? blockQuery.result.burn_block_height : 0;
+      }
+    }
+    // =========================================================================
+
     const minerRewardQuery = await sql<{ amount: string }[]>`
       SELECT sum(
         coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced
@@ -2311,7 +2414,7 @@ export class PgStore {
       totalReceived,
       totalFeesSent: totalFees,
       totalMinerRewardsReceived: totalRewards,
-      lockTxId: lockTxId,
+      lockTxId,
       locked,
       lockHeight,
       burnchainLockHeight,
@@ -4083,10 +4186,10 @@ export class PgStore {
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= ${block.block_height}
         AND (
-          ( name != ${Pox2EventName.HandleUnlock} AND 
+          ( name != ${Pox2EventName.HandleUnlock} AND
             burnchain_unlock_height >= ${current_burn_height})
           OR
-          ( name = ${Pox2EventName.HandleUnlock} AND 
+          ( name = ${Pox2EventName.HandleUnlock} AND
             burnchain_unlock_height < ${current_burn_height})
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -4107,6 +4210,47 @@ export class PgStore {
       }
     }
 
+    // modified copy of pox2 unlocks query
+    let poxV3Unlocks: StxLockEventResult[] = [];
+    const pox3EventQuery = await sql<Pox3EventQueryResult[]>`
+        SELECT DISTINCT ON (stacker) stacker, ${sql(POX3_EVENT_COLUMNS)}
+        FROM pox3_events
+        WHERE canonical = true AND microblock_canonical = true
+        AND block_height <= ${block.block_height}
+        AND (
+          (
+            burnchain_unlock_height <= ${current_burn_height}
+            AND burnchain_unlock_height > ${previous_burn_height}
+            AND name IN ${sql([
+              Pox2EventName.StackStx,
+              Pox2EventName.StackIncrease,
+              Pox2EventName.StackExtend,
+              Pox2EventName.DelegateStackStx,
+              Pox2EventName.DelegateStackIncrease,
+              Pox2EventName.DelegateStackExtend,
+            ])}
+          ) OR (
+            name = ${Pox2EventName.HandleUnlock}
+            AND burnchain_unlock_height < ${current_burn_height}
+            AND burnchain_unlock_height >= ${previous_burn_height}
+          )
+        )
+        ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        LIMIT 1
+      `;
+    poxV3Unlocks = pox3EventQuery.map(row => {
+      const pox3Event = parseDbPox2Event(row) as DbPox3Event;
+      const unlockEvent: StxLockEventResult = {
+        locked_amount: pox3Event.locked.toString(),
+        unlock_height: Number(pox3Event.burnchain_unlock_height),
+        locked_address: pox3Event.stacker,
+        block_height: pox3Event.block_height,
+        tx_index: pox3Event.tx_index,
+        event_index: pox3Event.event_index,
+      };
+      return unlockEvent;
+    });
+
     const txIdQuery = await sql<{ tx_id: string }[]>`
       SELECT tx_id
       FROM txs
@@ -4116,7 +4260,13 @@ export class PgStore {
     `;
 
     const result: StxUnlockEvent[] = [];
-    for (const unlocks of [poxV1Unlocks, poxV1ForceUnlocks, poxV2Unlocks, poxV2ForceUnlocks]) {
+    for (const unlocks of [
+      poxV1Unlocks,
+      poxV1ForceUnlocks,
+      poxV2Unlocks,
+      poxV2ForceUnlocks,
+      poxV3Unlocks,
+    ]) {
       unlocks.forEach(row => {
         const unlockEvent: StxUnlockEvent = {
           unlocked_amount: row.locked_amount,

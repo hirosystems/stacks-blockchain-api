@@ -340,6 +340,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // Getting PoX info
           const poxInfo = await stackingRpc.getPoxInfo();
           const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
+          // todo: update stacks.js once released to use the latest stacking contract
           const contract = await stackingRpc.getStackingContract(poxOperationInfo);
           const [contractAddress, contractName] = contract.split('.');
 

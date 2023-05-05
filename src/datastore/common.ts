@@ -959,6 +959,7 @@ export interface UpdatedEntities {
     ftEvents: number;
     nftEvents: number;
     pox2Events: number;
+    pox3Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -975,6 +976,7 @@ export interface UpdatedEntities {
     ftEvents: number;
     nftEvents: number;
     pox2Events: number;
+    pox3Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -1266,6 +1268,9 @@ export interface Pox2EventQueryResult {
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: string | null;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Pox3EventQueryResult extends Pox2EventQueryResult {}
 
 export interface Pox2EventInsertValues {
   event_index: number;

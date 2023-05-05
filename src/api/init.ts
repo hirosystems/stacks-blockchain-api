@@ -47,6 +47,7 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
 import { isPgConnectionError } from '../datastore/helpers';
+import { createPox3EventsRouter } from './routes/pox3';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -225,6 +226,7 @@ export async function startApiServer(opts: {
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
+      router.use('/pox3_events', createPox3EventsRouter(datastore));
       if (chainId !== ChainID.Mainnet && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
