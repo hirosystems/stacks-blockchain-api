@@ -334,6 +334,7 @@ describe('search tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     };
@@ -1246,6 +1247,7 @@ describe('search tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
         {
           tx: stxTx2,
@@ -1258,6 +1260,7 @@ describe('search tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
         {
           tx: smartContractTx,
@@ -1270,6 +1273,7 @@ describe('search tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     };

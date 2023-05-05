@@ -42,6 +42,7 @@ import {
   I32_MAX,
   bufferToHexPrefixString,
   hexToBuffer,
+  BootContractAddress,
 } from '../helpers';
 import {
   TransactionVersion,
@@ -515,4 +516,14 @@ export function parseMessageTransaction(
     logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
     throw error;
   }
+}
+
+export function isPoxPrintEvent(event: SmartContractEvent): boolean {
+  if (event.contract_event.topic !== 'print') return false;
+
+  const [address, name] = event.contract_event.contract_identifier.split('.');
+  return (
+    (address == BootContractAddress.mainnet || address == BootContractAddress.testnet) &&
+    name.startsWith('pox')
+  );
 }

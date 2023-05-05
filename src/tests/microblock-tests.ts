@@ -381,6 +381,7 @@ describe('microblock tests', () => {
               names: [],
               namespaces: [],
               pox2Events: [],
+              pox3Events: [],
             },
           ],
         });
@@ -529,6 +530,7 @@ describe('microblock tests', () => {
               names: [],
               namespaces: [],
               pox2Events: [],
+              pox3Events: [],
             },
             {
               tx: mbTx2,
@@ -541,6 +543,7 @@ describe('microblock tests', () => {
               names: [],
               namespaces: [],
               pox2Events: [],
+              pox3Events: [],
             },
           ],
         });
