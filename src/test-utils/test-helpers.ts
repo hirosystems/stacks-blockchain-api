@@ -256,6 +256,17 @@ async function standByForTx(expectedTxId: string): Promise<DbTx> {
       await timeout(50);
     }
   }
+
+  // Ensure stacks-node is caught up processing the next nonce for this address
+  while (true) {
+    const nextNonce = await testEnv.client.getAccountNonce(tx.sender_address);
+    if (BigInt(nextNonce) > BigInt(tx.nonce)) {
+      break;
+    } else {
+      await timeout(50);
+    }
+  }
+
   return tx;
 }
 

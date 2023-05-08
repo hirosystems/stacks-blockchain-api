@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { createHash } from 'crypto';
@@ -41,7 +42,7 @@ type TestnetKey = {
   address: string;
 }
 
-describe.skip('BNS integration tests', () => {
+describe('BNS integration tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
