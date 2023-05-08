@@ -65,7 +65,7 @@ import { decodeBtcAddress } from '@stacks/stacking';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
+  // let eventServer: Server;
   let api: ApiServer;
 
   function standByForTx(expectedTxId: string): Promise<DbTxRaw> {
@@ -112,7 +112,7 @@ describe('Rosetta Construction', () => {
     process.env.STACKS_CHAIN_ID = '0x80000000';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
+    // eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     await new StacksCoreRpcClient().waitForConnection(60000);
   });
@@ -2604,7 +2604,7 @@ describe('Rosetta Construction', () => {
   });
 
   afterAll(async () => {
-    await new Promise<void>(resolve => eventServer.close(() => resolve()));
+    // await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     await db?.close();
     await runMigrations(undefined, 'down');

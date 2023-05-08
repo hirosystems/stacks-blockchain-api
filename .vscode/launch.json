@@ -254,8 +254,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
     },
     {
       "type": "node",

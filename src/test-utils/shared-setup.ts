@@ -2,7 +2,11 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { loadDotEnv, timeout } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import {
+  DummyEventMessageHandler,
+  EventStreamServer,
+  startEventServer,
+} from '../event-stream/event-server';
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 
@@ -28,7 +32,9 @@ export async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promi
   }
 }
 
-export async function defaultSetupInit() {
+export async function defaultSetupInit(
+  args: { dummyEventHandler: boolean } = { dummyEventHandler: false }
+) {
   if (!process.env.NODE_ENV) {
     process.env.NODE_ENV = 'test';
   }
@@ -38,7 +44,11 @@ export async function defaultSetupInit() {
 
   await cycleMigrations();
   const db = await PgWriteStore.connect({ usageName: 'tests' });
-  const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
+  const eventServer = await startEventServer({
+    datastore: db,
+    chainId: ChainID.Testnet,
+    messageHandler: args?.dummyEventHandler ? DummyEventMessageHandler : undefined,
+  });
 
   const client = new StacksCoreRpcClient();
   await standByForPoxToBeReady(client);
