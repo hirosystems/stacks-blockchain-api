@@ -257,8 +257,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run RPC tests
         run: npm run test:rpc
@@ -268,7 +268,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -375,8 +375,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run bns tests
         run: npm run test:bns
@@ -386,7 +386,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -434,8 +434,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run bns tests
         run: npm run test:bns-e2e
@@ -445,7 +445,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -569,8 +569,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: npm run test:rosetta
@@ -580,7 +580,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -628,8 +628,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: npm run test:rosetta-construction
@@ -639,7 +639,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -807,8 +807,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tokens tests
         run: npm run test:tokens-metadata
@@ -818,7 +818,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
@@ -852,8 +852,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tokens tests
         run: npm run test:tokens-strict
@@ -863,7 +863,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov
