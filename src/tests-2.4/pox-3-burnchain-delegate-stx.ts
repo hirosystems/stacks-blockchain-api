@@ -15,7 +15,7 @@ import {
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { timeout } from '../helpers';
+import { BootContractAddress, timeout } from '../helpers';
 import {
   Account,
   accountFromKey,
@@ -331,7 +331,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
 
   test('Ensure delegate-stx BitcoinOp parsed', async () => {
     const pox2Txs = await supertest(api.server)
-      .get(`/extended/v1/address/${Pox2ContractIdentifer.testnet}/transactions`)
+      .get(`/extended/v1/address/${BootContractAddress.testnet}.pox-3/transactions`)
       .expect(200);
     const delegateStxTxResp = await supertest(api.server)
       .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)

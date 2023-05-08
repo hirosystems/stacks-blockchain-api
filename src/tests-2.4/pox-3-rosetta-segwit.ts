@@ -20,6 +20,7 @@ import {
   getRosettaBlockByBurnBlockHeight,
   stackStxWithRosetta,
   standByForAccountUnlock,
+  standByForPoxCycle,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
@@ -109,6 +110,12 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
   });
 
   test('Rosetta - stack-stx', async () => {
+    // todo: without the `standByForPoxCycle` this test fails currenty with a
+    //       (err 24) ERR_INVALID_START_BURN_HEIGHT, which should not be
+    //       possible with rosetta, but might happen in race conditions
+    // This should be investigated further, but is not the purpose of this test
+    await standByForPoxCycle();
+
     const cycleCount = 1;
 
     const poxInfo = await testEnv.client.getPox();

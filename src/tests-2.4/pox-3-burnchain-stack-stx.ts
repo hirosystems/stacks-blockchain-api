@@ -9,7 +9,7 @@ import { AnchorMode, makeSTXTokenTransfer } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ECPair } from '../ec-helpers';
-import { timeout } from '../helpers';
+import { BootContractAddress, timeout } from '../helpers';
 import {
   Account,
   accountFromKey,
@@ -300,7 +300,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
     expect(txObj.tx_type).toBe('contract_call');
     expect(txObj.tx_status).toBe('success');
     expect(txObj.sender_address).toBe(account.stxAddr);
-    expect(txObj.contract_call.contract_id).toBe(Pox2ContractIdentifer.testnet);
+    expect(txObj.contract_call.contract_id).toBe(`${BootContractAddress.testnet}.pox-3`);
     expect(txObj.contract_call.function_name).toBe('stack-stx');
 
     const callArg1 = txObj.contract_call.function_args![0];

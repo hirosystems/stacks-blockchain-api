@@ -217,8 +217,7 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
   return dbBlock;
 }
 
-// todo: re-export if used elsewhere
-async function standByForTx(expectedTxId: string): Promise<DbTx> {
+export async function standByForTx(expectedTxId: string): Promise<DbTx> {
   const tx = await new Promise<DbTx>(async resolve => {
     const listener: (txId: string) => void = async txId => {
       if (txId !== expectedTxId) {
