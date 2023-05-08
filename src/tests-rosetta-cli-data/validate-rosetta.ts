@@ -1,8 +1,4 @@
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import fetch from 'node-fetch';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -11,7 +7,6 @@ import {
   ClarityValue,
   getAddressFromPrivateKey,
   getAbi,
-  estimateContractFunctionCall,
   ClarityAbi,
   encodeClarityValue,
   ChainID,
@@ -24,7 +19,7 @@ import { timeout, unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { runMigrations } from '../datastore/migrations';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -95,15 +90,12 @@ const stacksNetwork = getStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
   let api: ApiServer;
   let rosettaOutput: any;
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     // build rosetta-cli container
@@ -183,7 +175,6 @@ describe('Rosetta API', () => {
   });
 
   afterAll(async () => {
-    await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     await db?.close();
     await runMigrations(undefined, 'down');
