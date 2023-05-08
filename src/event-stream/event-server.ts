@@ -669,7 +669,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
   handleNewAttachment: () => {},
 };
 
-export interface EventMessageHandler {
+interface EventMessageHandler {
   handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,

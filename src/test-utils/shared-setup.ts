@@ -10,12 +10,12 @@ import {
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 
-export interface GlobalTestEnv {
+interface GlobalTestEnv {
   db: PgWriteStore;
   eventServer: EventStreamServer;
 }
 
-export async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
+async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
   let tries = 0;
   while (true) {
     try {
