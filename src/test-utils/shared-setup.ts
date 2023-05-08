@@ -15,7 +15,7 @@ interface GlobalTestEnv {
   eventServer: EventStreamServer;
 }
 
-async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
+export async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void> {
   let tries = 0;
   while (true) {
     try {

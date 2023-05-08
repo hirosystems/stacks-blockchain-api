@@ -788,15 +788,7 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  test-tokens:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite:
-          [
-            strict-mode-tests,
-            tokens-metadata-tests,
-          ]
+  test-tokens-metadata:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -819,7 +811,7 @@ jobs:
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tokens tests
-        run: npm run test:tokens -- --testPathPattern "${{ matrix.suite }}"
+        run: npm run test:tokens-metadata
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -841,23 +833,50 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  upload-coveralls:
+  test-tokens-strict:
     runs-on: ubuntu-latest
-    needs:
-      - test
-      - test-2_4
-      - test-bns
-      - test-rosetta
-      - test-rosetta-cli-construction
-      - test-rosetta-cli-data
-      - test-tokens
     steps:
-      - name: Coveralls Finished
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy -- -d
+          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tokens tests
+        run: npm run test:tokens-strict
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
         if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
-          parallel-finished: true
+          flag-name: run-${{ github.job }}
+          parallel: true
 
   build-publish:
     runs-on: ubuntu-latest
@@ -870,7 +889,8 @@ jobs:
       - test-rosetta
       - test-rosetta-cli-construction
       - test-rosetta-cli-data
-      - test-tokens
+      - test-tokens-metadata
+      - test-tokens-strict
     steps:
       - uses: actions/checkout@v2
         with:

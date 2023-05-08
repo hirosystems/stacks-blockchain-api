@@ -25,6 +25,7 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { standByForOneBlock, standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -34,31 +35,10 @@ const PORT = 20443;
 describe('tokens metadata tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
+  let eventServer: EventStreamServer;
   let tokensProcessorQueue: TokensProcessorQueue;
 
-  function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const broadcastTx = new Promise<DbTx>((resolve, reject) => {
-      const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        const dbTx = dbTxQuery.result;
-        if (
-          dbTx.tx_id === expectedTxId &&
-          (dbTx.status === DbTxStatus.Success ||
-            dbTx.status === DbTxStatus.AbortByResponse ||
-            dbTx.status === DbTxStatus.AbortByPostCondition)
-        ) {
-          api.datastore.eventEmitter.removeListener('txUpdate', listener);
-          resolve(dbTx);
-        }
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-    });
-
-    return broadcastTx;
-  }
+  const standByForTx = (expectedTxId: string) => standByForTxShared(expectedTxId, api);
 
   function standByForTokens(id: string): Promise<void> {
     const contractId = new Promise<void>(resolve => {
@@ -111,7 +91,9 @@ describe('tokens metadata tests', () => {
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
+    await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
     await new StacksCoreRpcClient().waitForConnection(60000);
@@ -120,6 +102,7 @@ describe('tokens metadata tests', () => {
   beforeEach(() => {
     process.env['STACKS_API_ENABLE_FT_METADATA'] = '1';
     process.env['STACKS_API_ENABLE_NFT_METADATA'] = '1';
+    process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'] = '1';
     nock.cleanAll();
   });
 
@@ -144,9 +127,12 @@ describe('tokens metadata tests', () => {
     const contract1 = await deployContract(
       'beeple-a',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-a.clar'
+      'src/tests-tokens-metadata/test-contracts/beeple-data-url-a.clar'
     );
     await standByForTokens(contract1.contractId);
+    await standByForTx(contract1.txId);
+    await standByForOneBlock(api);
+    await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
@@ -185,10 +171,13 @@ describe('tokens metadata tests', () => {
     const contract1 = await deployContract(
       'beeple-b',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-b.clar'
+      'src/tests-tokens-metadata/test-contracts/beeple-data-url-b.clar'
     );
 
     await standByForTokens(contract1.contractId);
+    await standByForTx(contract1.txId);
+    await standByForOneBlock(api);
+    await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
@@ -207,10 +196,13 @@ describe('tokens metadata tests', () => {
     const contract1 = await deployContract(
       'beeple-c',
       pKey,
-      'src/tests-tokens/test-contracts/beeple-data-url-c.clar'
+      'src/tests-tokens-metadata/test-contracts/beeple-data-url-c.clar'
     );
 
     await standByForTokens(contract1.contractId);
+    await standByForTx(contract1.txId);
+    await standByForOneBlock(api);
+    await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/${contract1.contractId}/nft/metadata`
@@ -241,7 +233,7 @@ describe('tokens metadata tests', () => {
     const contract = await deployContract(
       'nft-trait',
       pKey,
-      'src/tests-tokens/test-contracts/nft-trait.clar'
+      'src/tests-tokens-metadata/test-contracts/nft-trait.clar'
     );
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
@@ -249,10 +241,13 @@ describe('tokens metadata tests', () => {
     const contract1 = await deployContract(
       'beeple',
       pKey,
-      'src/tests-tokens/test-contracts/beeple.clar'
+      'src/tests-tokens-metadata/test-contracts/beeple.clar'
     );
 
     await standByForTokens(contract1.contractId);
+    await standByForTx(contract1.txId);
+    await standByForOneBlock(api);
+    await tokensProcessorQueue.drainDbQueue();
 
     const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
     const query1 = await supertest(api.server).get(
@@ -282,7 +277,7 @@ describe('tokens metadata tests', () => {
     const contract = await deployContract(
       'ft-trait',
       pKey,
-      'src/tests-tokens/test-contracts/ft-trait.clar'
+      'src/tests-tokens-metadata/test-contracts/ft-trait.clar'
     );
 
     const tx = await standByForTx(contract.txId);
@@ -291,10 +286,13 @@ describe('tokens metadata tests', () => {
     const contract1 = await deployContract(
       'hey-token',
       pKey,
-      'src/tests-tokens/test-contracts/hey-token.clar'
+      'src/tests-tokens-metadata/test-contracts/hey-token.clar'
     );
 
     await standByForTokens(contract1.contractId);
+    await standByForTx(contract1.txId);
+    await standByForOneBlock(api);
+    await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
       `/extended/v1/tokens/${contract1.contractId}/ft/metadata`
@@ -407,7 +405,9 @@ describe('tokens metadata tests', () => {
   });
 
   afterAll(async () => {
-    await api.terminate();
+    await eventServer.closeAsync();
+    await api.forceKill();
     await db?.close();
+    await runMigrations(undefined, 'down');
   });
 });
