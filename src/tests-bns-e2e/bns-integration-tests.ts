@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { createHash } from 'crypto';
@@ -23,7 +22,6 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 
-
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
     .update(createHash('sha256').update(bfr).digest())
@@ -40,13 +38,14 @@ const salt = Buffer.from('60104ad42ed976f5b8cfd6341496476aa72d1101', 'hex'); // 
 type TestnetKey = {
   pkey: string;
   address: string;
-}
+};
 
 describe('BNS integration tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
   async function standByForTx(expectedTxId: string): Promise<DbTx> {
+    console.trace(`Waiting for TX: ${expectedTxId}...`);
     const tx = await new Promise<DbTx>(async resolve => {
       let found = false;
       const listener: (txId: string) => void = async txId => {
@@ -65,7 +64,7 @@ describe('BNS integration tests', () => {
         resolve(dbTxQuery.result);
       };
       api.datastore.eventEmitter.addListener('txUpdate', listener);
-  
+
       // Check if tx is already received
       do {
         const dbTxQuery = await api.datastore.getTx({
@@ -79,9 +78,9 @@ describe('BNS integration tests', () => {
         } else {
           await timeout(50);
         }
-      } while (!found)
+      } while (!found);
     });
-  
+
     // Ensure stacks-node is caught up with processing the block for this tx
     while (true) {
       const nodeInfo = await new StacksCoreRpcClient().getInfo();
@@ -119,10 +118,10 @@ describe('BNS integration tests', () => {
   }
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeContractCall(txOptions);
-    const body: {tx: string, attachment?: string} = {
+    const body: { tx: string; attachment?: string } = {
       tx: Buffer.from(transaction.serialize()).toString('hex'),
     };
-    if(zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
+    if (zonefile) body.attachment = Buffer.from(zonefile).toString('hex');
     const apiResult = await fetch(network.getBroadcastApiUrl(), {
       method: 'post',
       body: JSON.stringify(body),
@@ -143,7 +142,9 @@ describe('BNS integration tests', () => {
       functionArgs: [bufferCV(namespaceHash), uintCV(64000000000)],
       senderKey: testnetKey.pkey,
       validateWithAbi: true,
-      postConditions: [makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1)],
+      postConditions: [
+        makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
+      ],
       network,
       anchorMode: AnchorMode.Any,
       fee: 100000,
@@ -156,7 +157,12 @@ describe('BNS integration tests', () => {
 
     return transaction;
   }
-  async function namespaceReveal(namespace: string, salt: Buffer, testnetKey: TestnetKey, expiration: number) {
+  async function namespaceReveal(
+    namespace: string,
+    salt: Buffer,
+    testnetKey: TestnetKey,
+    expiration: number
+  ) {
     const revealTxOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -199,7 +205,13 @@ describe('BNS integration tests', () => {
     if (reveal.status != 1) logger.error('Namespace Reveal Error');
     return revealTransaction;
   }
-  async function initiateNamespaceNetwork(namespace: string, salt: Buffer, namespaceHash: Buffer, testnetKey: TestnetKey, expiration: number){
+  async function initiateNamespaceNetwork(
+    namespace: string,
+    salt: Buffer,
+    namespaceHash: Buffer,
+    testnetKey: TestnetKey,
+    expiration: number
+  ) {
     await namespacePreorder(namespaceHash, testnetKey);
     await namespaceReveal(namespace, salt, testnetKey, expiration);
   }
@@ -221,7 +233,12 @@ describe('BNS integration tests', () => {
     if (readyResult.status != 1) logger.error('namespace-ready error');
     return transaction;
   }
-  async function nameImport(namespace: string, zonefile: string, name: string, testnetKey: TestnetKey) {
+  async function nameImport(
+    namespace: string,
+    zonefile: string,
+    name: string,
+    testnetKey: TestnetKey
+  ) {
     const txOptions = {
       contractAddress: deployedTo,
       contractName: deployedName,
@@ -259,7 +276,12 @@ describe('BNS integration tests', () => {
 
     return await getContractTransaction(txOptions, zonefile);
   }
-  async function namePreorder(namespace: string, saltName: string, testnetKey: TestnetKey, name: string) {
+  async function namePreorder(
+    namespace: string,
+    saltName: string,
+    testnetKey: TestnetKey,
+    name: string
+  ) {
     const postConditions = [
       makeStandardSTXPostCondition(testnetKey.address, FungibleConditionCode.GreaterEqual, 1),
     ];
@@ -283,7 +305,13 @@ describe('BNS integration tests', () => {
     const preorderResult = await standByForTx('0x' + preOrderTransaction.txid());
     return preOrderTransaction;
   }
-  async function nameRegister(namespace: string, saltName: string, zonefile: string, testnetKey: TestnetKey, name: string) {
+  async function nameRegister(
+    namespace: string,
+    saltName: string,
+    zonefile: string,
+    testnetKey: TestnetKey,
+    name: string
+  ) {
     await namePreorder(namespace, saltName, testnetKey, name);
     const txOptions = {
       contractAddress: deployedTo,
@@ -373,7 +401,7 @@ describe('BNS integration tests', () => {
     const name = 'alice';
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[0].secretKey, address: testnetKeys[0].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[0].secretKey, address: testnetKeys[0].stacksAddress };
 
     // initalizing namespace network - preorder and reveal
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
@@ -381,7 +409,11 @@ describe('BNS integration tests', () => {
     // testing name import
     await nameImport(namespace, importZonefile, name, testnetKey);
 
-    const importQuery = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false, chainId: network.chainId });
+    const importQuery = await db.getName({
+      name: `${name}.${namespace}`,
+      includeUnanchored: false,
+      chainId: network.chainId,
+    });
     const importQuery1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(importQuery1.status).toBe(200);
     expect(importQuery1.type).toBe('application/json');
@@ -403,7 +435,7 @@ describe('BNS integration tests', () => {
     const name = 'update';
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[1].secretKey, address: testnetKeys[1].stacksAddress };
 
     // initalizing namespace network - preorder and reveal
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
@@ -424,10 +456,13 @@ describe('BNS integration tests', () => {
       const query1 = await supertest(api.server).get(`/v1/names/1yeardaily.${name}.${namespace}`);
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
-      const query2 = await db.getSubdomain({ subdomain: `1yeardaily.${name}.${namespace}`, includeUnanchored: false, chainId: ChainID.Testnet });
+      const query2 = await db.getSubdomain({
+        subdomain: `1yeardaily.${name}.${namespace}`,
+        includeUnanchored: false,
+        chainId: ChainID.Testnet,
+      });
       expect(query2.found).toBe(true);
-      if(query2.result)
-        expect(query2.result.resolver).toBe('');
+      if (query2.result) expect(query2.result.resolver).toBe('');
 
       const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
       expect(query3.status).toBe(200);
@@ -496,7 +531,7 @@ describe('BNS integration tests', () => {
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
     const importZonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
-    const testnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[2].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[2].stacksAddress };
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 12);
     await namespaceReady(namespace, testnetKey.pkey);
@@ -506,13 +541,20 @@ describe('BNS integration tests', () => {
     const query1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    const query = await db.getName({ name: `${name}.${namespace}`, includeUnanchored: false, chainId: network.chainId });
+    const query = await db.getName({
+      name: `${name}.${namespace}`,
+      includeUnanchored: false,
+      chainId: network.chainId,
+    });
     expect(query.found).toBe(true);
     if (query.found) {
       expect(query.result.zonefile).toBe(zonefile);
     }
     // testing name transfer
-    const transferTestnetKey = { pkey: testnetKeys[2].secretKey, address: testnetKeys[3].stacksAddress};
+    const transferTestnetKey = {
+      pkey: testnetKeys[2].secretKey,
+      address: testnetKeys[3].stacksAddress,
+    };
     await nameTransfer(namespace, name, transferTestnetKey);
 
     const query2 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
@@ -527,7 +569,7 @@ describe('BNS integration tests', () => {
     const namespace = 'name-revoke';
     const name = 'foo';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[4].secretKey, address: testnetKeys[4].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[4].secretKey, address: testnetKeys[4].stacksAddress };
     const zonefile = `$ORIGIN ${name}.${namespace}\n$TTL 3600\n_http._tcp IN URI 10 1 "https://blockstack.s3.amazonaws.com/${name}.${namespace}"\n`;
 
     // initializing namespace network
@@ -547,7 +589,7 @@ describe('BNS integration tests', () => {
     const namespace = 'name-renewal';
     const name = 'renewal';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress };
 
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
@@ -558,7 +600,7 @@ describe('BNS integration tests', () => {
     const query0 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(query0.status).toBe(200);
     expect(query0.type).toBe('application/json');
-    expect(query0.body.expire_block).toBe(0);  // Imported names don't know about their namespaces
+    expect(query0.body.expire_block).toBe(0); // Imported names don't know about their namespaces
 
     // name renewal
     await nameRenewal(namespace, zonefile, testnetKey.pkey, name);
@@ -572,7 +614,7 @@ describe('BNS integration tests', () => {
     const query2 = await supertest(api.server).get(`/v1/namespaces/${namespace}/names`);
     expect(query2.status).toBe(200);
     expect(query2.type).toBe('application/json');
-    expect(query2.body).toStrictEqual(["renewal.name-renewal"]);
+    expect(query2.body).toStrictEqual(['renewal.name-renewal']);
 
     // check new expiration block, should not be 0
     const query3 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
@@ -587,7 +629,7 @@ describe('BNS integration tests', () => {
     const namespace = 'name-renewal2';
     const name = 'renewal2';
     const namespaceHash = hash160(Buffer.concat([Buffer.from(namespace), salt]));
-    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress};
+    const testnetKey = { pkey: testnetKeys[5].secretKey, address: testnetKeys[5].stacksAddress };
 
     // initializing namespace network
     await initiateNamespaceNetwork(namespace, salt, namespaceHash, testnetKey, 1);
@@ -622,4 +664,3 @@ describe('BNS integration tests', () => {
     await runMigrations(undefined, 'down');
   });
 });
-
