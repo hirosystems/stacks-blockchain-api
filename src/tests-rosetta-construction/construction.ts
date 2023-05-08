@@ -2082,6 +2082,8 @@ describe('Rosetta Construction', () => {
   //---------------------
 
   test('delegate-stacking rosetta transaction cycle', async () => {
+    await standByForPoxCycle(api, new StacksCoreRpcClient());
+
     //derive
     const publicKey = publicKeyToString(
       getPublicKey(createStacksPrivateKey(testnetKeys[1].secretKey))
@@ -2436,7 +2438,11 @@ describe('Rosetta Construction', () => {
       });
     expect(blockStxOpsQuery.status).toBe(200);
     expect(blockStxOpsQuery.type).toBe('application/json');
-    expect(blockStxOpsQuery.body.block.transactions[1].operations[1]).toMatchObject({
+
+    const stxOpsTx = blockStxOpsQuery.body.block.transactions.find(
+      (tx: any) => tx.transaction_identifier.hash === delegateStx.tx_id
+    );
+    expect(stxOpsTx.operations[1]).toMatchObject({
       type: 'delegate_stx',
       account: {
         address: testnetKeys[1].stacksAddress,
