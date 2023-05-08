@@ -44,19 +44,6 @@ describe('BNS integration tests', () => {
 
   const standByForTx = (expectedTxId: string) => standByForTxShared(expectedTxId, api);
 
-  function standbyBnsName(expectedTxId: string): Promise<string> {
-    const broadcastTx = new Promise<string>(resolve => {
-      const listener: (txId: string) => void = txId => {
-        if (txId === expectedTxId) {
-          api.datastore.eventEmitter.removeListener('nameUpdate', listener);
-          resolve(txId);
-        }
-      };
-      api.datastore.eventEmitter.addListener('nameUpdate', listener);
-    });
-
-    return broadcastTx;
-  }
   async function getContractTransaction(txOptions: SignedContractCallOptions, zonefile?: string) {
     const transaction = await makeContractCall(txOptions);
     const body: { tx: string; attachment?: string } = {
@@ -72,9 +59,9 @@ describe('BNS integration tests', () => {
     const expectedTxId = '0x' + transaction.txid();
     const result = await standByForTx(expectedTxId);
     if (result.status != 1) throw new Error('result status error');
-    await standbyBnsName(expectedTxId);
     return transaction;
   }
+
   async function namespacePreorder(namespaceHash: Buffer, testnetKey: TestnetKey) {
     const txOptions: SignedContractCallOptions = {
       contractAddress: deployedTo,

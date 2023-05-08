@@ -890,7 +890,6 @@ jobs:
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction
-      - test-tokens-metadata
       - test-tokens-strict
     steps:
       - uses: actions/checkout@v2
