@@ -142,15 +142,21 @@ export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   return lastPoxInfo;
 }
 
-export async function standByForPoxCycle(): Promise<CoreRpcPoxInfo> {
-  const firstPoxInfo = await testEnv.client.getPox();
+export async function standByForPoxCycle(
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<CoreRpcPoxInfo> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
+  const firstPoxInfo = await client.getPox();
   let lastPoxInfo: CoreRpcPoxInfo = JSON.parse(JSON.stringify(firstPoxInfo));
   do {
-    await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1);
-    lastPoxInfo = await testEnv.client.getPox();
+    await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1, api, client);
+    lastPoxInfo = await client.getPox();
   } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
   expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
-  const info = await testEnv.client.getInfo();
+  const info = await client.getInfo();
   console.log({
     'firstPoxInfo.next_cycle.prepare_phase_start_block_height':
       firstPoxInfo.next_cycle.prepare_phase_start_block_height,
@@ -179,35 +185,42 @@ export async function standByForPoxCycleEnd(): Promise<CoreRpcPoxInfo> {
   return nextCycleInfo;
 }
 
-export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
+export async function standByUntilBurnBlock(
+  burnBlockHeight: number,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbBlock> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
         return;
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlockQuery.result);
     };
-    testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlock();
+    const curHeight = await api.datastore.getCurrentBlock();
     if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({
+      const dbBlock = await api.datastore.getBlock({
         height: curHeight.result.block_height,
       });
       if (!dbBlock.found) {
         throw new Error('Unhandled missing block');
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlock.result);
     }
   });
 
   // Ensure stacks-node is caught up with processing this block
   while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
+    const nodeInfo = await client.getInfo();
     if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
       break;
     } else {
@@ -307,26 +320,32 @@ export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
   return tx;
 }
 
-export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+export async function standByUntilBlock(
+  blockHeight: number,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbBlock> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
         return;
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlockQuery.result);
     };
-    testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlockHeight();
+    const curHeight = await api.datastore.getCurrentBlockHeight();
     if (curHeight.found && curHeight.result >= blockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({ height: curHeight.result });
+      const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
       if (!dbBlock.found) {
         throw new Error('Unhandled missing block');
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlock.result);
       return;
     }
@@ -334,7 +353,7 @@ export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
 
   // Ensure stacks-node is caught up with processing this block
   while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
+    const nodeInfo = await client.getInfo();
     if (nodeInfo.stacks_tip_height >= blockHeight) {
       break;
     } else {
