@@ -2289,7 +2289,7 @@ describe('Rosetta Construction', () => {
           account_sequence: nonce,
           recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354'
         },
-        suggested_fee: [ { value: size.toString(), currency: {symbol: 'STX', decimals: 6} } ]
+        suggested_fee: [ { value: '380', currency: {symbol: 'STX', decimals: 6} } ]
       }
       expect(resultMetadata.body).toHaveProperty('metadata');
       expect(resultMetadata.body.suggested_fee).toStrictEqual(metadataResponse.suggested_fee);
