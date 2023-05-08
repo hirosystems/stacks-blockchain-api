@@ -671,6 +671,14 @@ jobs:
           parallel: true
 
   test-tokens:
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          [
+            strict-mode-tests,
+            tokens-metadata-tests,
+          ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -693,7 +701,7 @@ jobs:
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tokens tests
-        run: npm run test:tokens
+        run: npm run test:tokens -- --testPathPattern "${{ matrix.suite }}"
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
