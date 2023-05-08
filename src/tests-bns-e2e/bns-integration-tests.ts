@@ -1,7 +1,7 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { createHash } from 'crypto';
-import { DbTx, DbTxRaw, DbTxStatus } from '../datastore/common';
+import { DbTx } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 import {
@@ -15,9 +15,8 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import { logger, timeout } from '../helpers';
+import { logger, stopwatch, timeout } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
-import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
 import { StacksCoreRpcClient } from '../core-rpc/client';
@@ -45,6 +44,16 @@ describe('BNS integration tests', () => {
   let api: ApiServer;
 
   async function standByForTx(expectedTxId: string): Promise<DbTx> {
+    const stack = new Error().stack;
+    const timer = setTimeout(() => {
+      console.error(`Could not find TX ${expectedTxId} in time.. stack: ${stack}`);
+    }, 25_000);
+    const tx = await standByForTxInner(expectedTxId);
+    clearTimeout(timer);
+    return tx;
+  }
+
+  async function standByForTxInner(expectedTxId: string): Promise<DbTx> {
     console.trace(`Waiting for TX: ${expectedTxId}...`);
     const tx = await new Promise<DbTx>(async resolve => {
       let found = false;
