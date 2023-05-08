@@ -384,7 +384,7 @@ describe('Rosetta Construction', () => {
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
     expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
-    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('180');
+    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('270');
     expect(JSON.parse(result.text).metadata.memo).toBe('SAMPLE MEMO');
   });
 
@@ -757,7 +757,7 @@ describe('Rosetta Construction', () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
     const recipient = testnetKeys[1].stacksAddress;
-    const fee = '180';
+    const fee = '270';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -889,7 +889,7 @@ describe('Rosetta Construction', () => {
 
     const sender = testnetKeys[0].stacksAddress;
     const recipient = testnetKeys[1].stacksAddress;
-    const fee = '180';
+    const fee = '270';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -989,7 +989,7 @@ describe('Rosetta Construction', () => {
   test('payloads single sign - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
-    const fee = '180';
+    const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
     const contract_name = 'pox-3';
     const stacking_amount = 5000;
@@ -1196,7 +1196,7 @@ describe('Rosetta Construction', () => {
         },
       ],
       metadata: {
-        fee: '180',
+        fee: '270',
         account_sequence: 0,
       },
     };
@@ -1622,7 +1622,7 @@ describe('Rosetta Construction', () => {
     expect(JSON.parse(result.text).metadata).toHaveProperty('contract_address');
     expect(JSON.parse(result.text).metadata).toHaveProperty('contract_name');
     expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
-    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('260');
+    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('390');
 
   });
 
@@ -1636,7 +1636,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       options: {
-        fee: '180',
+        fee: '270',
         sender_address: testnetKeys[0].stacksAddress,
         type: 'delegate_stx',
         suggested_fee_multiplier: 1,
@@ -1662,7 +1662,7 @@ describe('Rosetta Construction', () => {
 
     const metadataResponse: RosettaConstructionMetadataResponse = {
       metadata: {
-        fee: '180',
+        fee: '270',
         sender_address: testnetKeys[0].stacksAddress,
         type: 'delegate_stx',
         suggested_fee_multiplier: 1,
@@ -1677,7 +1677,7 @@ describe('Rosetta Construction', () => {
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354'
       },
-      suggested_fee: [ { value: '260', currency: {symbol: 'STX', decimals: 6} } ]
+      suggested_fee: [ { value: '390', currency: {symbol: 'STX', decimals: 6} } ]
     }
 
     expect(result.body).toHaveProperty('metadata');
@@ -1848,7 +1848,7 @@ describe('Rosetta Construction', () => {
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_address');
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_name');
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('burn_block_height');
-    expect(JSON.parse(resultMetadata.text).suggested_fee[0].value).toBe('260');
+    expect(JSON.parse(resultMetadata.text).suggested_fee[0].value).toBe('390');
 
     //payloads
     const contract_address = resultMetadata.body.metadata.contract_address;
