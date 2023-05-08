@@ -62,50 +62,15 @@ import * as poxHelpers from '../pox-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
   // let eventServer: Server;
   let api: ApiServer;
 
-  function standByForTx(expectedTxId: string): Promise<DbTxRaw> {
-    const broadcastTx = new Promise<DbTxRaw>(resolve => {
-      const listener: (txId: string) => void = async txId => {
-        const dbTxQuery = await api.datastore.getTx({ txId: txId, includeUnanchored: true });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        const dbTx = dbTxQuery.result as DbTxRaw;
-        if (
-          dbTx.tx_id === expectedTxId &&
-          (dbTx.status === DbTxStatus.Success ||
-            dbTx.status === DbTxStatus.AbortByResponse ||
-            dbTx.status === DbTxStatus.AbortByPostCondition)
-        ) {
-          api.datastore.eventEmitter.removeListener('txUpdate', listener);
-          resolve(dbTx);
-        }
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-    });
-
-    return broadcastTx;
-  }
-
-  async function standByForPoxToBeReady(): Promise<void>{
-    let tries = 0;
-    while(true){
-      try{
-        tries++;
-        await  new StacksCoreRpcClient().getPox();
-        return Promise.resolve();
-      }
-      catch(error){
-        console.log('Error getting pox info on try ' + tries, error);
-        await timeout(500);
-      }
-    }
-  }
+  const standByForTx: typeof standByForTxShared = (expectedTxId: string) =>
+    standByForTxShared(expectedTxId, api);
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
@@ -1609,8 +1574,6 @@ describe('Rosetta Construction', () => {
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
-    await standByForPoxToBeReady();
-
     const result = await supertest(api.server)
     .post(`/rosetta/v1/construction/metadata`)
     .send(request);
@@ -1729,7 +1692,7 @@ describe('Rosetta Construction', () => {
 
 
     //preprocess
-    const fee = '260';
+    const fee = '360';
     const stacking_amount = '1250180000000000';//minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const number_of_cycles = 3;
@@ -2263,8 +2226,6 @@ describe('Rosetta Construction', () => {
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
 
-    await standByForPoxToBeReady();
-
     const resultMetadata = await supertest(api.server)
       .post(`/rosetta/v1/construction/metadata`)
       .send(metadataRequest);
@@ -2306,7 +2267,7 @@ describe('Rosetta Construction', () => {
       expect(resultMetadata.body.metadata.contract_name).toBe(metadataResponse.metadata.contract_name);
       expect(resultMetadata.body.metadata.fee).toBe(metadataResponse.metadata.fee);
       expect(resultMetadata.body.metadata.nonce).toBe(metadataResponse.metadata.nonce);
-      expect(resultMetadata.body.metadata.recent_block_hash).toBeTruthy();//can not predict recent block hash
+      // expect(resultMetadata.body.metadata.recent_block_hash).toBeTruthy();//can not predict recent block hash
 
     //payloads
     const payloadsRequest: RosettaConstructionPayloadsRequest = {

@@ -76,19 +76,19 @@ export const testEnv = {
     return (global as any).testEnv as TestEnvContext;
   },
   get db() {
-    return this.globalTestEnv.db;
+    return this.globalTestEnv?.db;
   },
   get api() {
-    return this.globalTestEnv.api;
+    return this.globalTestEnv?.api;
   },
   get client() {
-    return this.globalTestEnv.client;
+    return this.globalTestEnv?.client;
   },
   get stacksNetwork() {
-    return this.globalTestEnv.stacksNetwork;
+    return this.globalTestEnv?.stacksNetwork;
   },
   get bitcoinRpcClient() {
-    return this.globalTestEnv.bitcoinRpcClient;
+    return this.globalTestEnv?.bitcoinRpcClient;
   },
 };
 
@@ -217,55 +217,83 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
   return dbBlock;
 }
 
-export async function standByForTx(expectedTxId: string): Promise<DbTx> {
-  const tx = await new Promise<DbTx>(async resolve => {
-    const listener: (txId: string) => void = async txId => {
-      if (txId !== expectedTxId) {
-        return;
-      }
-      const dbTxQuery = await testEnv.api.datastore.getTx({
-        txId: expectedTxId,
-        includeUnanchored: false,
-      });
-      if (!dbTxQuery.found) {
-        return;
-      }
-      testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(dbTxQuery.result);
-    };
-    testEnv.api.datastore.eventEmitter.addListener('txUpdate', listener);
+export async function standByForTx(
+  expectedTxId: string,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbTx> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
 
-    // Check if tx is already received
-    const dbTxQuery = await testEnv.api.datastore.getTx({
-      txId: expectedTxId,
-      includeUnanchored: false,
+  const stack = new Error().stack;
+  const timeoutSeconds = 25;
+  const timer = setTimeout(() => {
+    console.error(
+      `Could not find TX ${expectedTxId} after ${timeoutSeconds} seconds.. stack: ${stack}`
+    );
+  }, timeoutSeconds * 1000);
+
+  const standByForTxInner = async () => {
+    console.log(`Waiting for TX: ${expectedTxId}...`);
+    const tx = await new Promise<DbTx>(async resolve => {
+      let found = false;
+      const listener: (txId: string) => void = async txId => {
+        if (txId !== expectedTxId) {
+          return;
+        }
+        const dbTxQuery = await api.datastore.getTx({
+          txId: expectedTxId,
+          includeUnanchored: false,
+        });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        api.datastore.eventEmitter.removeListener('txUpdate', listener);
+        found = true;
+        resolve(dbTxQuery.result);
+      };
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
+
+      // Check if tx is already received
+      do {
+        const dbTxQuery = await api.datastore.getTx({
+          txId: expectedTxId,
+          includeUnanchored: false,
+        });
+        if (dbTxQuery.found) {
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
+          found = true;
+          resolve(dbTxQuery.result);
+        } else {
+          await timeout(50);
+        }
+      } while (!found);
     });
-    if (dbTxQuery.found) {
-      testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(dbTxQuery.result);
-    }
-  });
 
-  // Ensure stacks-node is caught up with processing the block for this tx
-  while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
-    if (nodeInfo.stacks_tip_height >= tx.block_height) {
-      break;
-    } else {
-      await timeout(50);
+    // Ensure stacks-node is caught up with processing the block for this tx
+    while (true) {
+      const nodeInfo = await client.getInfo();
+      if (nodeInfo.stacks_tip_height >= tx.block_height) {
+        break;
+      } else {
+        await timeout(50);
+      }
     }
-  }
 
-  // Ensure stacks-node is caught up processing the next nonce for this address
-  while (true) {
-    const nextNonce = await testEnv.client.getAccountNonce(tx.sender_address);
-    if (BigInt(nextNonce) > BigInt(tx.nonce)) {
-      break;
-    } else {
-      await timeout(50);
+    // Ensure stacks-node is caught up processing the next nonce for this address
+    while (true) {
+      const nextNonce = await client.getAccountNonce(tx.sender_address);
+      if (BigInt(nextNonce) > BigInt(tx.nonce)) {
+        break;
+      } else {
+        await timeout(50);
+      }
     }
-  }
 
+    return tx;
+  };
+  const tx = await standByForTxInner();
+  clearTimeout(timer);
   return tx;
 }
 

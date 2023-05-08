@@ -20,6 +20,7 @@ import { testnetKeys } from '../api/routes/debug';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
 import { StacksCoreRpcClient } from '../core-rpc/client';
+import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 function hash160(bfr: Buffer): Buffer {
   const hash160 = createHash('ripemd160')
@@ -43,75 +44,9 @@ describe('BNS integration tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
-  async function standByForTx(expectedTxId: string): Promise<DbTx> {
-    const stack = new Error().stack;
-    const timer = setTimeout(() => {
-      console.error(`Could not find TX ${expectedTxId} in time.. stack: ${stack}`);
-    }, 25_000);
-    const tx = await standByForTxInner(expectedTxId);
-    clearTimeout(timer);
-    return tx;
-  }
+  const standByForTx: typeof standByForTxShared = (expectedTxId: string) =>
+    standByForTxShared(expectedTxId, api);
 
-  async function standByForTxInner(expectedTxId: string): Promise<DbTx> {
-    console.trace(`Waiting for TX: ${expectedTxId}...`);
-    const tx = await new Promise<DbTx>(async resolve => {
-      let found = false;
-      const listener: (txId: string) => void = async txId => {
-        if (txId !== expectedTxId) {
-          return;
-        }
-        const dbTxQuery = await api.datastore.getTx({
-          txId: expectedTxId,
-          includeUnanchored: false,
-        });
-        if (!dbTxQuery.found) {
-          return;
-        }
-        api.datastore.eventEmitter.removeListener('txUpdate', listener);
-        found = true;
-        resolve(dbTxQuery.result);
-      };
-      api.datastore.eventEmitter.addListener('txUpdate', listener);
-
-      // Check if tx is already received
-      do {
-        const dbTxQuery = await api.datastore.getTx({
-          txId: expectedTxId,
-          includeUnanchored: false,
-        });
-        if (dbTxQuery.found) {
-          api.datastore.eventEmitter.removeListener('txUpdate', listener);
-          found = true;
-          resolve(dbTxQuery.result);
-        } else {
-          await timeout(50);
-        }
-      } while (!found);
-    });
-
-    // Ensure stacks-node is caught up with processing the block for this tx
-    while (true) {
-      const nodeInfo = await new StacksCoreRpcClient().getInfo();
-      if (nodeInfo.stacks_tip_height >= tx.block_height) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-
-    // Ensure stacks-node is caught up processing the next nonce for this address
-    while (true) {
-      const nextNonce = await new StacksCoreRpcClient().getAccountNonce(tx.sender_address);
-      if (BigInt(nextNonce) > BigInt(tx.nonce)) {
-        break;
-      } else {
-        await timeout(50);
-      }
-    }
-
-    return tx;
-  }
   function standbyBnsName(expectedTxId: string): Promise<string> {
     const broadcastTx = new Promise<string>(resolve => {
       const listener: (txId: string) => void = txId => {
