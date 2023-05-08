@@ -400,7 +400,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.status(400).json(RosettaErrorsTypes.missingTransactionSize);
         return;
       }
-      const feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
+      const feeValue = Math.round(Number(feeInfo) * Number(options.size) * 1.5).toString();
       const currency: RosettaCurrency = {
         symbol: RosettaConstants.symbol,
         decimals: RosettaConstants.decimals,
