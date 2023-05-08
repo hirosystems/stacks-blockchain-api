@@ -27,6 +27,7 @@ import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { standByForOneBlock, standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
+const deploymentAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
 const HOST = 'localhost';
@@ -124,12 +125,13 @@ describe('tokens metadata tests', () => {
   });
 
   test('token nft-metadata data URL plain percent-encoded', async () => {
+    const standByPromise = standByForTokens(`${deploymentAddr}.beeple-a`);
     const contract1 = await deployContract(
       'beeple-a',
       pKey,
       'src/tests-tokens-metadata/test-contracts/beeple-data-url-a.clar'
     );
-    await standByForTokens(contract1.contractId);
+    await standByPromise;
     await standByForTx(contract1.txId);
     await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
@@ -168,13 +170,14 @@ describe('tokens metadata tests', () => {
   });
 
   test('token nft-metadata data URL base64 w/o media type', async () => {
+    const standByPromise = standByForTokens(`${deploymentAddr}.beeple-b`);
     const contract1 = await deployContract(
       'beeple-b',
       pKey,
       'src/tests-tokens-metadata/test-contracts/beeple-data-url-b.clar'
     );
 
-    await standByForTokens(contract1.contractId);
+    await standByPromise;
     await standByForTx(contract1.txId);
     await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
@@ -193,13 +196,14 @@ describe('tokens metadata tests', () => {
   });
 
   test('token nft-metadata data URL plain non-encoded', async () => {
+    const standByPromise = standByForTokens(`${deploymentAddr}.beeple-c`);
     const contract1 = await deployContract(
       'beeple-c',
       pKey,
       'src/tests-tokens-metadata/test-contracts/beeple-data-url-c.clar'
     );
 
-    await standByForTokens(contract1.contractId);
+    await standByPromise;
     await standByForTx(contract1.txId);
     await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
@@ -238,13 +242,14 @@ describe('tokens metadata tests', () => {
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
 
+    const standByPromise = standByForTokens(`${deploymentAddr}.beeple`);
     const contract1 = await deployContract(
       'beeple',
       pKey,
       'src/tests-tokens-metadata/test-contracts/beeple.clar'
     );
 
-    await standByForTokens(contract1.contractId);
+    await standByPromise;
     await standByForTx(contract1.txId);
     await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
@@ -283,13 +288,14 @@ describe('tokens metadata tests', () => {
     const tx = await standByForTx(contract.txId);
     if (tx.status != 1) logger.error('contract deploy error', tx);
 
+    const standByPromise = standByForTokens(`${deploymentAddr}.hey-token`);
     const contract1 = await deployContract(
       'hey-token',
       pKey,
       'src/tests-tokens-metadata/test-contracts/hey-token.clar'
     );
 
-    await standByForTokens(contract1.contractId);
+    await standByPromise;
     await standByForTx(contract1.txId);
     await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
