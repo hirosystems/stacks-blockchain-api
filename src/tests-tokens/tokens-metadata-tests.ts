@@ -31,10 +31,9 @@ const stacksNetwork = getStacksTestnetNetwork();
 const HOST = 'localhost';
 const PORT = 20443;
 
-describe('api tests', () => {
+describe('tokens metadata tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
-  let eventServer: EventStreamServer;
   let tokensProcessorQueue: TokensProcessorQueue;
 
   function standByForTx(expectedTxId: string): Promise<DbTx> {
@@ -112,9 +111,7 @@ describe('api tests', () => {
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     tokensProcessorQueue = new TokensProcessorQueue(db, ChainID.Testnet);
     await new StacksCoreRpcClient().waitForConnection(60000);
@@ -410,9 +407,7 @@ describe('api tests', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
     await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });
