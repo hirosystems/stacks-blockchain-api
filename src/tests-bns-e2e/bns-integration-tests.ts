@@ -1,7 +1,6 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
 import { createHash } from 'crypto';
-import { DbTx } from '../datastore/common';
 import { AnchorMode, ChainID, PostConditionMode, someCV } from '@stacks/transactions';
 import { StacksMocknet } from '@stacks/network';
 import {
@@ -15,11 +14,10 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import { logger, stopwatch, timeout } from '../helpers';
+import { logger } from '../helpers';
 import { testnetKeys } from '../api/routes/debug';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
-import { StacksCoreRpcClient } from '../core-rpc/client';
 import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 function hash160(bfr: Buffer): Buffer {
@@ -44,8 +42,7 @@ describe('BNS integration tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
-  const standByForTx: typeof standByForTxShared = (expectedTxId: string) =>
-    standByForTxShared(expectedTxId, api);
+  const standByForTx = (expectedTxId: string) => standByForTxShared(expectedTxId, api);
 
   function standbyBnsName(expectedTxId: string): Promise<string> {
     const broadcastTx = new Promise<string>(resolve => {
@@ -335,9 +332,6 @@ describe('BNS integration tests', () => {
     process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
-
-    // const block = new TestBlockBuilder().build();
-    // await db.update(block);
   });
 
   test('name-import/ready/update contract call', async () => {
