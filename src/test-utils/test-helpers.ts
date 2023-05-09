@@ -327,18 +327,6 @@ export async function standByForTxSuccess(
   return tx;
 }
 
-export async function standByForOneBlock(
-  apiArg?: ApiServer,
-  clientArg?: StacksCoreRpcClient
-): Promise<DbBlock> {
-  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
-  const api = apiArg ?? testEnv.api;
-
-  const currentInfo = await client.getInfo();
-  const currentBlock = currentInfo.stacks_tip_height;
-  return await standByUntilBlock(currentBlock + 1, api, client);
-}
-
 export async function standByUntilBlock(
   blockHeight: number,
   apiArg?: ApiServer,

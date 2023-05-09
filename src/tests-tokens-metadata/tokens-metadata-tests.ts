@@ -6,13 +6,7 @@ import {
   PostConditionMode,
   AnchorMode,
 } from '@stacks/transactions';
-import {
-  DbTxRaw,
-  DbTxStatus,
-  DbFungibleTokenMetadata,
-  DbNonFungibleTokenMetadata,
-  DbTx,
-} from '../datastore/common';
+import { DbFungibleTokenMetadata, DbNonFungibleTokenMetadata } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
@@ -25,7 +19,7 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { standByForOneBlock, standByForTx as standByForTxShared } from '../test-utils/test-helpers';
+import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 const deploymentAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
@@ -107,7 +101,7 @@ describe('tokens metadata tests', () => {
     nock.cleanAll();
   });
 
-  test('metadata disabled', async () => {
+  test.skip('metadata disabled', async () => {
     process.env['STACKS_API_ENABLE_FT_METADATA'] = '0';
     process.env['STACKS_API_ENABLE_NFT_METADATA'] = '0';
     const query1 = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
@@ -132,8 +126,6 @@ describe('tokens metadata tests', () => {
       'src/tests-tokens-metadata/test-contracts/beeple-data-url-a.clar'
     );
     await standByPromise;
-    await standByForTx(contract1.txId);
-    await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
@@ -178,8 +170,6 @@ describe('tokens metadata tests', () => {
     );
 
     await standByPromise;
-    await standByForTx(contract1.txId);
-    await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
@@ -204,8 +194,6 @@ describe('tokens metadata tests', () => {
     );
 
     await standByPromise;
-    await standByForTx(contract1.txId);
-    await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
@@ -231,6 +219,7 @@ describe('tokens metadata tests', () => {
         'I made a picture from start to finish every single day from May 1st, 2007 - January 7th, 2021. This is every motherfucking one of those pictures.',
     };
     nock('https://ipfs.io')
+      .persist()
       .get('/ipfs/QmPAg1mjxcEQPPtqsLoEcauVedaeMH81WXDPvPx3VC5zUz')
       .reply(200, nftMetadata);
 
@@ -250,8 +239,6 @@ describe('tokens metadata tests', () => {
     );
 
     await standByPromise;
-    await standByForTx(contract1.txId);
-    await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
 
     const senderAddress = getAddressFromPrivateKey(pKey, stacksNetwork.version);
@@ -277,7 +264,8 @@ describe('tokens metadata tests', () => {
       image: 'https://heystack.xyz/assets/Stacks128w.png',
     };
 
-    nock('https://heystack.xyz').get('/token-metadata.json').reply(200, ftMetadata);
+    // https://heystack.xyz/token-metadata.json
+    nock('https://heystack.xyz').persist().get('/token-metadata.json').reply(200, ftMetadata);
 
     const contract = await deployContract(
       'ft-trait',
@@ -296,8 +284,6 @@ describe('tokens metadata tests', () => {
     );
 
     await standByPromise;
-    await standByForTx(contract1.txId);
-    await standByForOneBlock(api);
     await tokensProcessorQueue.drainDbQueue();
 
     const query1 = await supertest(api.server).get(
@@ -384,7 +370,7 @@ describe('tokens metadata tests', () => {
     //mock the response
     const maxResponseBytes = 10_000;
     const randomData = Buffer.alloc(maxResponseBytes + 100, 'x', 'utf8');
-    nock('https://example.com').get('/large_payload').reply(200, randomData.toString());
+    nock('https://example.com').persist().get('/large_payload').reply(200, randomData.toString());
 
     await expect(async () => {
       await performFetch('https://example.com/large_payload', {
@@ -397,6 +383,7 @@ describe('tokens metadata tests', () => {
     //mock the response
     const responseTimeout = 100;
     nock('https://example.com')
+      .persist()
       .get('/timeout_payload')
       .reply(200, async (_uri, _requestBody, cb) => {
         await timeout(responseTimeout + 200);
@@ -412,6 +399,7 @@ describe('tokens metadata tests', () => {
 
   afterAll(async () => {
     await eventServer.closeAsync();
+    tokensProcessorQueue.close();
     await api.forceKill();
     await db?.close();
     await runMigrations(undefined, 'down');

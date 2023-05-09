@@ -460,7 +460,10 @@ export class TokensContractHandler {
     }
     if (!result.okay) {
       // Only runtime errors reported by the Stacks node should be retryable.
-      if (result.cause.startsWith('Runtime')) {
+      if (
+        result.cause.startsWith('Runtime') ||
+        result.cause.startsWith('Unchecked(NoSuchContract')
+      ) {
         throw new RetryableTokenMetadataError(
           `Runtime error while calling read-only function ${functionName}`
         );
