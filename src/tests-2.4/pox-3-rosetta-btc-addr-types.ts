@@ -21,7 +21,7 @@ const BTC_ADDRESS_CASES = [
 ] as const;
 
 describe.each(BTC_ADDRESS_CASES)(
-  'PoX-2 - Rosetta - Stack with BTC address format $addressFormat',
+  'PoX-3 - Rosetta - Stack with BTC address format $addressFormat',
   ({ addressFormat }) => {
     let poxInfo: CoreRpcPoxInfo;
     const account = testnetKeys[1];
@@ -57,7 +57,7 @@ describe.each(BTC_ADDRESS_CASES)(
         ustxAmount,
       });
       expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
-      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-2');
+      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-3');
     });
 
     test('Validate reward set received', async () => {

@@ -1138,3 +1138,8 @@ export function doesThrow(fn: () => void) {
     return true;
   }
 }
+
+export enum BootContractAddress {
+  mainnet = 'SP000000000000000000002Q6VF78',
+  testnet = 'ST000000000000000000002AMW42H',
+}

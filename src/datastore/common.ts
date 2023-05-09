@@ -425,6 +425,9 @@ export type DbPox2EventData =
 
 export type DbPox2Event = DbEventBase & DbPox2EventData;
 
+// todo: should we copy DbPox2EventData for pox3?
+export type DbPox3Event = DbEventBase & DbPox2EventData;
+
 export interface DbSmartContractEvent extends DbEventBase {
   event_type: DbEventTypeId.SmartContractLog;
   contract_identifier: string;
@@ -565,6 +568,7 @@ export interface DataStoreTxEventData {
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
   pox2Events: DbPox2Event[];
+  pox3Events: DbPox3Event[];
 }
 
 export interface DataStoreAttachmentData {
@@ -955,6 +959,7 @@ export interface UpdatedEntities {
     ftEvents: number;
     nftEvents: number;
     pox2Events: number;
+    pox3Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -971,6 +976,7 @@ export interface UpdatedEntities {
     ftEvents: number;
     nftEvents: number;
     pox2Events: number;
+    pox3Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -1262,6 +1268,9 @@ export interface Pox2EventQueryResult {
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: string | null;
 }
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Pox3EventQueryResult extends Pox2EventQueryResult {}
 
 export interface Pox2EventInsertValues {
   event_index: number;

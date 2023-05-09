@@ -1,11 +1,8 @@
-import { loadDotEnv } from '../helpers';
+import { defaultSetupInit } from '../test-utils/shared-setup';
 
 // ts-unused-exports:disable-next-line
-export default (): void => {
+export default async () => {
   console.log('Jest - setup..');
-  if (!process.env.NODE_ENV) {
-    process.env.NODE_ENV = 'test';
-  }
-  loadDotEnv();
+  await defaultSetupInit({dummyEventHandler: true});
   console.log('Jest - setup done');
 };

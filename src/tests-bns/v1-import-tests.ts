@@ -1,7 +1,5 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
 import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import * as assert from 'assert';
@@ -13,7 +11,6 @@ import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
 describe('BNS V1 import', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
   let api: ApiServer;
   let block: DataStoreBlockUpdateData;
 
@@ -21,7 +18,6 @@ describe('BNS V1 import', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
 
     block = new TestBlockBuilder().addTx().build();
@@ -29,7 +25,6 @@ describe('BNS V1 import', () => {
   });
 
   afterEach(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
     await db?.close();
     await runMigrations(undefined, 'down');

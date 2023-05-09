@@ -537,6 +537,7 @@ describe('mempool tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     };

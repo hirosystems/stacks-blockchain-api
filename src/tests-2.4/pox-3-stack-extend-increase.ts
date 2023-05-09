@@ -21,7 +21,7 @@ import {
 } from '../test-utils/test-helpers';
 import { decodeBtcAddress } from '@stacks/stacking';
 
-describe('PoX-2 - Stack extend and increase operations', () => {
+describe('PoX-3 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
   let btcAddr: string;
   let btcRegtestAccount: VerboseKeyOutput;
@@ -103,7 +103,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
     cycleBlockLength = lockPeriod * poxInfo.reward_cycle_length;
 
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-2');
+    expect(contractName).toBe('pox-3');
   });
 
   test('stack-stx tx', async () => {
@@ -175,7 +175,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
     expect(coreBalance.unlock_height).toBeGreaterThan(0);
 
     // validate the pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${sendTxResult.txId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -270,7 +270,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
     expect(coreBalance.unlock_height).toBe(expectedUnlockHeight);
 
     // validate the pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${sendTxResult.txId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -369,7 +369,7 @@ describe('PoX-2 - Stack extend and increase operations', () => {
     expect(coreBalance.unlock_height).toBeGreaterThan(coreBalancePreStackExtend.unlock_height);
 
     // validate the pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox2_events/tx/${sendTxResult.txId}`);
+    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${sendTxResult.txId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

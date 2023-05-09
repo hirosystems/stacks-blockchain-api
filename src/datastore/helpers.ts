@@ -184,6 +184,7 @@ export const TX_METADATA_TABLES = [
   'ft_events',
   'nft_events',
   'pox2_events',
+  'pox3_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',
@@ -224,6 +225,8 @@ export const POX2_EVENT_COLUMNS = [
   'reward_cycle',
   'amount_ustx',
 ];
+
+export const POX3_EVENT_COLUMNS = POX2_EVENT_COLUMNS;
 
 /**
  * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
