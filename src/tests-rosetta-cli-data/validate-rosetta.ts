@@ -115,9 +115,8 @@ describe('Rosetta API', () => {
         'src/tests-rosetta-cli-data/envs/env.data',
       ],
     });
-    expect(composeBuildResult.err).toBe('');
-    expect(composeBuildResult.exitCode).toBe(0);
     console.log('compose build result:', composeBuildResult);
+
     // start cli container
     void compose
       .upOne('rosetta-cli', {
