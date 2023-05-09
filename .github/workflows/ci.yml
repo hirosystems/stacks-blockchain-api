@@ -471,6 +471,7 @@ jobs:
             pox-3-btc-address-formats,
             pox-3-delegate-aggregation,
             pox-3-delegate-stacking,
+            pox-3-delegate-revoked-stacking,
             pox-3-stack-extend-increase,
             pox-3-rosetta-btc-addr-types,
             pox-3-rosetta-cycle-phases,
