@@ -79,8 +79,8 @@
         "prerelease": true
       },
       {
-        "name": "stacks-2.1",
-        "channel": "stacks-2.1",
+        "name": "stacks-2.4",
+        "channel": "feat/stacks-2.4",
         "prerelease": true
       }
     ],
