@@ -656,7 +656,6 @@ jobs:
 
   test-rosetta-cli-data:
     runs-on: ubuntu-latest
-    if: ${{ false }}
     steps:
       - uses: actions/checkout@v2
 
