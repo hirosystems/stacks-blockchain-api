@@ -310,8 +310,15 @@ export async function standByForTx(
   return tx;
 }
 
-export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
-  const tx = await standByForTx(expectedTxId);
+export async function standByForTxSuccess(
+  expectedTxId: string,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbTx> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
+  const tx = await standByForTx(expectedTxId, api, client);
   if (tx.status !== DbTxStatus.Success) {
     const txResult = decodeClarityValue(tx.raw_result);
     const resultRepr = txResult.repr;

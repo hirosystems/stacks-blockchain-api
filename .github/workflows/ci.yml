@@ -654,7 +654,6 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  # TODO: this test's setup is busted and needs to be refactored
   test-rosetta-cli-data:
     runs-on: ubuntu-latest
     if: ${{ false }}
@@ -697,8 +696,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy:2.1 -- -d
+          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: sudo npm run test:rosetta-cli:data
@@ -708,7 +707,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop:2.1
         if: always()
 
       - name: Upload coverage to Codecov

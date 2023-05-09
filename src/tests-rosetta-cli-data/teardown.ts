@@ -1,8 +1,8 @@
-import { defaultSetupTeardown } from '../test-utils/shared-setup';
-
+import type { GlobalServices } from './setup';
 // ts-unused-exports:disable-next-line
-export default async () => {
+export default async (): Promise<void> => {
   console.log('Jest - teardown..');
-  await defaultSetupTeardown();
+  const globalServices = (global as unknown) as GlobalServices;
+  await globalServices.db.close();
   console.log('Jest - teardown done');
 };

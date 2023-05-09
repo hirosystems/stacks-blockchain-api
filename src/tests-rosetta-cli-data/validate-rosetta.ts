@@ -20,6 +20,8 @@ import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
+import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { standByForTxSuccess } from '../test-utils/test-helpers';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -90,16 +92,20 @@ const stacksNetwork = getStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
+  let eventServer: EventStreamServer;
   let api: ApiServer;
   let rosettaOutput: any;
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({ usageName: 'tests' });
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
+    await new StacksCoreRpcClient().waitForConnection(60000);
+
     // build rosetta-cli container
-    await compose.buildOne('rosetta-cli', {
+    const composeBuildResult = await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
       composeOptions: [
@@ -109,18 +115,33 @@ describe('Rosetta API', () => {
         'src/tests-rosetta-cli-data/envs/env.data',
       ],
     });
+    expect(composeBuildResult.err).toBe('');
+    expect(composeBuildResult.exitCode).toBe(0);
+    console.log('compose build result:', composeBuildResult);
     // start cli container
-    void compose.upOne('rosetta-cli', {
-      cwd: path.join(__dirname, '../../'),
-      log: true,
-      composeOptions: [
-        '-f',
-        'docker/docker-compose.dev.rosetta-cli.yml',
-        '--env-file',
-        'src/tests-rosetta-cli-data/envs/env.data',
-      ],
-      commandOptions: ['--abort-on-container-exit'],
-    });
+    void compose
+      .upOne('rosetta-cli', {
+        cwd: path.join(__dirname, '../../'),
+        log: true,
+        composeOptions: [
+          '-f',
+          'docker/docker-compose.dev.rosetta-cli.yml',
+          '--env-file',
+          'src/tests-rosetta-cli-data/envs/env.data',
+        ],
+        commandOptions: ['--abort-on-container-exit', '--force-recreate'],
+        callback: (chunk, source) => {
+          if (source === 'stderr') {
+            console.error(`compose up stderr: ${chunk.toString()}`);
+          } else {
+            console.log(`compose up stdout: ${chunk.toString()}`);
+          }
+        },
+      })
+      .catch(error => {
+        console.error(`compose up error: ${error}`, error);
+        throw error;
+      });
 
     await waitForBlock(api);
 
@@ -175,6 +196,7 @@ describe('Rosetta API', () => {
   });
 
   afterAll(async () => {
+    await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     await db?.close();
     await runMigrations(undefined, 'down');
@@ -222,6 +244,7 @@ async function callContractFunction(
   const serialized: Buffer = Buffer.from(contractCallTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'call-contract-func');
+  await standByForTxSuccess(txId, api);
 }
 
 async function deployContract(senderPk: string, sourceFile: string, api: ApiServer) {
@@ -256,6 +279,8 @@ async function deployContract(senderPk: string, sourceFile: string, api: ApiServ
     'deploy-contract'
   );
 
+  await standByForTxSuccess(txId, api);
+
   return { txId, contractId };
 }
 async function transferStx(
@@ -278,6 +303,8 @@ async function transferStx(
   const serialized: Buffer = Buffer.from(transferTx.serialize());
 
   const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
+
+  await standByForTxSuccess(txId, api);
 
   return txId;
 }

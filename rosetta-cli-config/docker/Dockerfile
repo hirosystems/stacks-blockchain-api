@@ -1,4 +1,4 @@
-FROM everpeace/curl-jq as build
+FROM --platform=linux/amd64 everpeace/curl-jq as build
 
 RUN mkdir -p /bin
 
@@ -10,7 +10,7 @@ RUN curl -L --output rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64.tar.gz \
   && mv rosetta-cli-${ROSETTA_CLI_VERSION}-linux-amd64 /bin/rosetta-cli \
   && chmod +x /bin/rosetta-cli
 
-FROM debian:stretch
+FROM --platform=linux/amd64 debian:stretch
 
 RUN mkdir -p /bin /app
 

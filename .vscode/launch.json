@@ -411,8 +411,10 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
+      "smartStep": false,
+      "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
         "STACKS_CHAIN_ID": "0x80000000"
