@@ -976,3 +976,18 @@ jobs:
           labels: ${{ steps.meta_standalone.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
           push: ${{ (github.ref != 'refs/heads/master' || steps.semantic.outputs.new_release_version != '') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+
+      - name: API Discord notification
+        if: steps.semantic.outputs.new_release_version != ''
+        uses: Ilshidur/action-discord@f1ed8844d9b33c17221fab0f36672cde39800eed
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_API_WEBHOOK }}
+          DISCORD_USERNAME: Hiro Team
+          DISCORD_AVATAR: "https://i.imgur.com/z9Iy6ug.png"
+          DISCORD_EMBEDS: |
+            [{
+              "title": "API Release: ${{ steps.semantic.outputs.new_release_version }}",
+              "url": "https://github.com/hirosystems/stacks-blockchain-api/releases/tag/v${{ steps.semantic.outputs.new_release_version }}"
+            }]
+        with:
+          args: ":rocket: A new version (${{ steps.semantic.outputs.new_release_version }}) of the Stacks Blockchain API is available on Github!"
