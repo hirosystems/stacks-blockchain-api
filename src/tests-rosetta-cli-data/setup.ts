@@ -1,5 +1,4 @@
 import { loadDotEnv } from '../helpers';
-import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
 
 export interface GlobalServices {

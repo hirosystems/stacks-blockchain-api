@@ -47,7 +47,7 @@
     {
       "label": "deploy:krypton",
       "type": "shell",
-      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up --force-recreate -V",
       "isBackground": true,
       "problemMatcher": {
         "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },

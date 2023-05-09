@@ -297,7 +297,7 @@ describe('Rosetta offline API', () => {
             metadata: {},
           },
           amount: {
-            value: '180',
+            value: '270',
             currency: {
               symbol: 'STX',
               decimals: 6,
@@ -353,7 +353,7 @@ describe('Rosetta offline API', () => {
     const expectResponse: RosettaConstructionPreprocessResponse = {
       options: {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
-        fee: '180',
+        fee: '270',
         type: 'stack_stx',
         suggested_fee_multiplier: 1,
         amount: '500000',
@@ -393,7 +393,7 @@ describe('Rosetta offline API', () => {
             metadata: {},
           },
           amount: {
-            value: '180',
+            value: '270',
             currency: {
               symbol: 'STX',
               decimals: 6,
@@ -450,7 +450,7 @@ describe('Rosetta offline API', () => {
       options: {
         sender_address: testnetKeys[0].stacksAddress,
         delegate_to: testnetKeys[1].stacksAddress,
-        fee: '180',
+        fee: '270',
         type: 'delegate_stx',
         suggested_fee_multiplier: 1,
         amount: '500000',
@@ -586,7 +586,7 @@ describe('Rosetta offline API', () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[1].secretKey));
     const sender = testnetKeys[1].stacksAddress;
     const recipient = testnetKeys[0].stacksAddress;
-    const fee = '180';
+    const fee = '270';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -716,7 +716,7 @@ describe('Rosetta offline API', () => {
 
     const sender = testnetKeys[0].stacksAddress;
     const recipient = testnetKeys[1].stacksAddress;
-    const fee = '180';
+    const fee = '270';
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -816,9 +816,9 @@ describe('Rosetta offline API', () => {
   test('Sucess: offline - payloads single sign - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
-    const fee = '180';
+    const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox';
+    const contract_name = 'pox-3';
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
@@ -951,9 +951,9 @@ describe('Rosetta offline API', () => {
   test('Sucess: offline - payloads single sign - delegate - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
-    const fee = '180';
+    const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox';
+    const contract_name = 'pox-3';
     const stacking_amount = 5000;
     const burn_block_height  = 200;
 
@@ -976,7 +976,7 @@ describe('Rosetta offline API', () => {
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
         burn_block_height: burn_block_height
       },
-      suggested_fee: [ { value: '260', currency: {symbol: 'STX', decimals: 6} } ]
+      suggested_fee: [ { value: '390', currency: {symbol: 'STX', decimals: 6} } ]
     }
 
     const request: RosettaConstructionPayloadsRequest = {

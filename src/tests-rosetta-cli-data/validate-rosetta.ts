@@ -1,8 +1,4 @@
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import fetch from 'node-fetch';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -11,11 +7,11 @@ import {
   ClarityValue,
   getAddressFromPrivateKey,
   getAbi,
-  estimateContractFunctionCall,
   ClarityAbi,
   encodeClarityValue,
   ChainID,
   AnchorMode,
+  StacksTransaction,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
@@ -24,7 +20,10 @@ import { timeout, unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { runMigrations } from '../datastore/migrations';
+import { EventStreamServer, startEventServer } from '../event-stream/event-server';
+import { NonceJar, standByForTxSuccess } from '../test-utils/test-helpers';
+import * as supertest from 'supertest';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
@@ -95,19 +94,23 @@ const stacksNetwork = getStacksTestnetNetwork();
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
-  let eventServer: Server;
+  let eventServer: EventStreamServer;
   let api: ApiServer;
   let rosettaOutput: any;
+  let nonceJar: NonceJar;
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    const client = new StacksCoreRpcClient();
+    nonceJar = new NonceJar(api, client);
+
+    await client.waitForConnection(60000);
 
     // build rosetta-cli container
-    await compose.buildOne('rosetta-cli', {
+    const composeBuildResult = await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
       composeOptions: [
@@ -117,40 +120,77 @@ describe('Rosetta API', () => {
         'src/tests-rosetta-cli-data/envs/env.data',
       ],
     });
-    // start cli container
-    void compose.upOne('rosetta-cli', {
-      cwd: path.join(__dirname, '../../'),
-      log: true,
-      composeOptions: [
-        '-f',
-        'docker/docker-compose.dev.rosetta-cli.yml',
-        '--env-file',
-        'src/tests-rosetta-cli-data/envs/env.data',
-      ],
-      commandOptions: ['--abort-on-container-exit'],
-    });
+    console.log('compose build result:', composeBuildResult);
 
     await waitForBlock(api);
 
+    let txs: string[] = [];
     for (const addr of recipients) {
-      await transferStx(addr, 1000, sender1.privateKey, api);
-      await transferStx(addr, 1000, sender2.privateKey, api);
-      await transferStx(sender3.address, 6000, sender1.privateKey, api);
+      const tx1 = await transferStx(addr, 1000, sender1.privateKey, nonceJar);
+      const tx2 = await transferStx(addr, 1000, sender2.privateKey, nonceJar);
+      const tx3 = await transferStx(sender3.address, 6000, sender1.privateKey, nonceJar);
+      txs.push(tx1, tx2, tx3);
     }
+
+    for (const tx of txs) {
+      await standByForTxSuccess(tx, api);
+      console.log('one success');
+    }
+    txs = [];
 
     for (const sender of senders) {
       const response = await deployContract(
         sender.privateKey,
         'src/tests-rosetta-cli-data/contracts/hello-world.clar',
-        api
+        nonceJar
       );
       contracts.push(response.contractId);
+      txs.push(response.txId);
     }
 
-    for (const contract of contracts) {
-      await callContractFunction(api, sender1.privateKey, contract, 'say-hi');
-      await callContractFunction(api, sender2.privateKey, contract, 'say-hi');
+    for (const tx of txs) {
+      await standByForTxSuccess(tx, api);
     }
+    txs = [];
+
+    for (const contract of contracts) {
+      const tx1 = await callContractFunction(api, nonceJar, sender1.privateKey, contract, 'say-hi');
+      const tx2 = await callContractFunction(api, nonceJar, sender2.privateKey, contract, 'say-hi');
+      txs.push(tx1, tx2);
+    }
+
+    for (const tx of txs) {
+      await standByForTxSuccess(tx, api);
+    }
+    txs = [];
+  });
+
+  it('run rosetta-cli tool', async () => {
+    // start cli container
+    const composeUpResult = await compose
+      .upOne('rosetta-cli', {
+        cwd: path.join(__dirname, '../../'),
+        log: true,
+        composeOptions: [
+          '-f',
+          'docker/docker-compose.dev.rosetta-cli.yml',
+          '--env-file',
+          'src/tests-rosetta-cli-data/envs/env.data',
+        ],
+        commandOptions: ['--abort-on-container-exit', '--force-recreate'],
+        callback: (chunk, source) => {
+          if (source === 'stderr') {
+            console.error(`compose up stderr: ${chunk.toString()}`);
+          } else {
+            console.log(`compose up stdout: ${chunk.toString()}`);
+          }
+        },
+      })
+      .catch(error => {
+        console.error(`compose up error: ${error}`, error);
+        throw error;
+      });
+    console.log(composeUpResult);
 
     // Wait on rosetta-cli to finish output
     while (!rosettaOutput) {
@@ -183,6 +223,22 @@ describe('Rosetta API', () => {
   });
 
   afterAll(async () => {
+    const composeDownResult = await compose
+      .stopOne('rosetta-cli', {
+        cwd: path.join(__dirname, '../../'),
+        log: true,
+        composeOptions: [
+          '-f',
+          'docker/docker-compose.dev.rosetta-cli.yml',
+          '--env-file',
+          'src/tests-rosetta-cli-data/envs/env.data',
+        ],
+      })
+      .catch(error => {
+        console.error(`compose down error: ${error}`, error);
+      });
+    console.log('compose down result:', composeDownResult);
+
     await new Promise<void>(resolve => eventServer.close(() => resolve()));
     await api.terminate();
     await db?.close();
@@ -192,6 +248,7 @@ describe('Rosetta API', () => {
 
 async function callContractFunction(
   api: ApiServer,
+  nonceJar: NonceJar,
   senderPk: string,
   contractId: string,
   functionName: string,
@@ -213,100 +270,94 @@ async function callContractFunction(
     clarityValueArgs[i] = clarityVal;
   }
 
-  const contractCallTx = await makeContractCall({
-    contractAddress: contractAddr,
-    contractName: contractName,
-    functionName: functionName,
-    functionArgs: clarityValueArgs,
-    senderKey: senderPk,
-    network: stacksNetwork,
-    postConditionMode: PostConditionMode.Allow,
-    sponsored: false,
-    anchorMode: AnchorMode.Any,
-    fee: 100000,
+  const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
+    return await makeContractCall({
+      contractAddress: contractAddr,
+      contractName: contractName,
+      functionName: functionName,
+      functionArgs: clarityValueArgs,
+      senderKey: senderPk,
+      network: stacksNetwork,
+      postConditionMode: PostConditionMode.Allow,
+      sponsored: false,
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
+      nonce,
+    });
   });
-  // const fee = await estimateContractFunctionCall(contractCallTx, stacksNetwork);
-  // contractCallTx.setFee(fee);
 
-  const serialized: Buffer = Buffer.from(contractCallTx.serialize());
-
-  const { txId } = await sendCoreTx(serialized, api, 'call-contract-func');
+  return txId;
 }
 
-async function deployContract(senderPk: string, sourceFile: string, api: ApiServer) {
-  await waitForBlock(api);
+async function deployContract(senderPk: string, sourceFile: string, nonceJar: NonceJar) {
+  // await waitForBlock(api);
   const contractName = `test-contract-${uniqueId()}`;
   const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
   const source = fs.readFileSync(sourceFile).toString();
   const normalized_contract_source = source.replace(/\r/g, '').replace(/\t/g, ' ');
 
-  const contractDeployTx = await makeContractDeploy({
-    contractName: contractName,
-    codeBody: normalized_contract_source,
-    senderKey: senderPk,
-    network: stacksNetwork,
-    postConditionMode: PostConditionMode.Allow,
-    sponsored: false,
-    anchorMode: AnchorMode.Any,
-    fee: 100000,
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
+    return await makeContractDeploy({
+      contractName: contractName,
+      codeBody: normalized_contract_source,
+      senderKey: senderPk,
+      network: stacksNetwork,
+      postConditionMode: PostConditionMode.Allow,
+      sponsored: false,
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
+      nonce,
+    });
   });
 
   const contractId = senderAddress + '.' + contractName;
-
-  // const feeRateReq = await fetch(stacksNetwork.getTransferFeeEstimateApiUrl());
-  // const feeRateResult = await feeRateReq.text();
-  // const txBytes = BigInt(Buffer.from(contractDeployTx.serialize()).byteLength);
-  // const feeRate = BigInt(feeRateResult);
-  // const fee = feeRate * txBytes;
-  // contractDeployTx.setFee(fee);
-  const { txId } = await sendCoreTx(
-    Buffer.from(contractDeployTx.serialize()),
-    api,
-    'deploy-contract'
-  );
-
   return { txId, contractId };
 }
 async function transferStx(
   recipientAddr: string,
   amount: number,
   senderPk: string,
-  api: ApiServer
+  nonceJar: NonceJar
 ) {
-  await waitForBlock(api);
-  const transferTx = await makeSTXTokenTransfer({
-    recipient: recipientAddr,
-    amount: amount,
-    senderKey: senderPk,
-    network: stacksNetwork,
-    memo: 'test-transaction',
-    sponsored: false,
-    anchorMode: AnchorMode.Any,
-    fee: 100000,
+  const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
+    return await makeSTXTokenTransfer({
+      recipient: recipientAddr,
+      amount: amount,
+      senderKey: senderPk,
+      network: stacksNetwork,
+      memo: 'test-transaction',
+      sponsored: false,
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
+      nonce,
+    });
   });
-  const serialized: Buffer = Buffer.from(transferTx.serialize());
-
-  const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
 
   return txId;
 }
 
 async function sendCoreTx(
-  serializedTx: Buffer,
-  api: ApiServer,
-  type: string
-): Promise<{ txId: string }> {
-  try {
-    const submitResult = await new StacksCoreRpcClient({
-      host: HOST,
-      port: PORT,
-    }).sendTransaction(serializedTx);
-    return submitResult;
-  } catch (error) {
-    console.log(type);
-    console.error(error);
-  }
-  return Promise.resolve({ txId: '' });
+  address: string,
+  nonceJar: NonceJar,
+  buildTx: (nonce: number) => Promise<StacksTransaction>
+): Promise<{
+  txId: string;
+}> {
+  const nonceResult = await nonceJar.getNonce(address);
+  const tx = await buildTx(nonceResult);
+  const serializedTx = Buffer.from(tx.serialize());
+  const submitResult = await new StacksCoreRpcClient({
+    host: HOST,
+    port: PORT,
+  })
+    .sendTransaction(serializedTx)
+    .catch(error => {
+      console.error(`Tx broadcast error: ${error}`, error);
+      throw error;
+    });
+  return submitResult;
 }
 
 function getStacksTestnetNetwork() {

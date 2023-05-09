@@ -659,6 +659,16 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
   await db.updateAttachments(attachments);
 }
 
+export const DummyEventMessageHandler: EventMessageHandler = {
+  handleRawEventRequest: () => {},
+  handleBlockMessage: () => {},
+  handleMicroblockMessage: () => {},
+  handleBurnBlock: () => {},
+  handleMempoolTxs: () => {},
+  handleDroppedMempoolTxs: () => {},
+  handleNewAttachment: () => {},
+};
+
 interface EventMessageHandler {
   handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
