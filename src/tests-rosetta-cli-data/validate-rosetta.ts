@@ -22,7 +22,7 @@ import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { standByForTxSuccess } from '../test-utils/test-helpers';
+import { NonceJar, standByForTxSuccess } from '../test-utils/test-helpers';
 import * as supertest from 'supertest';
 
 const sender1 = {
@@ -92,36 +92,6 @@ const HOST = 'localhost';
 const PORT = 20443;
 const stacksNetwork = getStacksTestnetNetwork();
 
-/** Client-side nonce tracking */
-class NonceJar {
-  nonceMap = new Map<string, number>();
-  api: ApiServer;
-  client: StacksCoreRpcClient;
-
-  constructor(api: ApiServer, client: StacksCoreRpcClient) {
-    this.api = api;
-    this.client = client;
-  }
-
-  async getNonce(address: string): Promise<number> {
-    while (true) {
-      const clientNonce = this.nonceMap.get(address) ?? 0;
-      const apiReq = await supertest(this.api.server).get(`/extended/v1/address/${address}/nonces`);
-      const { possible_next_nonce, last_executed_tx_nonce } = apiReq.body;
-      const nodeNonce = await this.client.getAccountNonce(address, false);
-      const nextNonce = Math.max(possible_next_nonce, nodeNonce, clientNonce);
-      const lastExecutedNonce = Math.min(last_executed_tx_nonce, nodeNonce);
-      const chainedCount = nextNonce - lastExecutedNonce;
-      if (chainedCount >= 25) {
-        await timeout(700);
-        continue;
-      }
-      this.nonceMap.set(address, nextNonce + 1);
-      return nextNonce;
-    }
-  }
-}
-
 describe('Rosetta API', () => {
   let db: PgWriteStore;
   let eventServer: EventStreamServer;
@@ -181,9 +151,9 @@ describe('Rosetta API', () => {
 
     let txs: string[] = [];
     for (const addr of recipients) {
-      const tx1 = await transferStx(addr, 1000, sender1.privateKey, api, nonceJar);
-      const tx2 = await transferStx(addr, 1000, sender2.privateKey, api, nonceJar);
-      const tx3 = await transferStx(sender3.address, 6000, sender1.privateKey, api, nonceJar);
+      const tx1 = await transferStx(addr, 1000, sender1.privateKey, nonceJar);
+      const tx2 = await transferStx(addr, 1000, sender2.privateKey, nonceJar);
+      const tx3 = await transferStx(sender3.address, 6000, sender1.privateKey, nonceJar);
       txs.push(tx1, tx2, tx3);
     }
 
@@ -197,7 +167,6 @@ describe('Rosetta API', () => {
       const response = await deployContract(
         sender.privateKey,
         'src/tests-rosetta-cli-data/contracts/hello-world.clar',
-        api,
         nonceJar
       );
       contracts.push(response.contractId);
@@ -299,7 +268,7 @@ async function callContractFunction(
   }
 
   const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
-  const { txId } = await sendCoreTx(senderAddress, api, nonceJar, async nonce => {
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
     return await makeContractCall({
       contractAddress: contractAddr,
       contractName: contractName,
@@ -315,23 +284,17 @@ async function callContractFunction(
     });
   });
 
-  // await standByForTxSuccess(txId, api);
   return txId;
 }
 
-async function deployContract(
-  senderPk: string,
-  sourceFile: string,
-  api: ApiServer,
-  nonceJar: NonceJar
-) {
+async function deployContract(senderPk: string, sourceFile: string, nonceJar: NonceJar) {
   // await waitForBlock(api);
   const contractName = `test-contract-${uniqueId()}`;
   const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
   const source = fs.readFileSync(sourceFile).toString();
   const normalized_contract_source = source.replace(/\r/g, '').replace(/\t/g, ' ');
 
-  const { txId } = await sendCoreTx(senderAddress, api, nonceJar, async nonce => {
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
     return await makeContractDeploy({
       contractName: contractName,
       codeBody: normalized_contract_source,
@@ -346,19 +309,16 @@ async function deployContract(
   });
 
   const contractId = senderAddress + '.' + contractName;
-  // await standByForTxSuccess(txId, api);
   return { txId, contractId };
 }
 async function transferStx(
   recipientAddr: string,
   amount: number,
   senderPk: string,
-  api: ApiServer,
   nonceJar: NonceJar
 ) {
-  // await waitForBlock(api);
   const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
-  const { txId } = await sendCoreTx(senderAddress, api, nonceJar, async nonce => {
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
     return await makeSTXTokenTransfer({
       recipient: recipientAddr,
       amount: amount,
@@ -372,13 +332,11 @@ async function transferStx(
     });
   });
 
-  // await standByForTxSuccess(txId, api);
   return txId;
 }
 
 async function sendCoreTx(
   address: string,
-  api: ApiServer,
   nonceJar: NonceJar,
   buildTx: (nonce: number) => Promise<StacksTransaction>
 ): Promise<{

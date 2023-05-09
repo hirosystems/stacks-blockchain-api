@@ -49,7 +49,7 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
+import { I32_MAX, coerceToBuffer, hexToBuffer, timeout } from '../helpers';
 import { b58ToC32 } from 'c32check';
 
 export interface TestEnvContext {
@@ -614,4 +614,34 @@ export function decodePoxAddrArg(
   );
   const stxAddr = b58ToC32(btcAddr);
   return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };
+}
+
+/** Client-side nonce tracking */
+export class NonceJar {
+  nonceMap = new Map<string, number>();
+  api: ApiServer;
+  client: StacksCoreRpcClient;
+
+  constructor(api: ApiServer, client: StacksCoreRpcClient) {
+    this.api = api;
+    this.client = client;
+  }
+
+  async getNonce(address: string): Promise<number> {
+    while (true) {
+      const clientNonce = this.nonceMap.get(address) ?? 0;
+      const apiReq = await supertest(this.api.server).get(`/extended/v1/address/${address}/nonces`);
+      const { possible_next_nonce, last_executed_tx_nonce } = apiReq.body;
+      const nodeNonce = await this.client.getAccountNonce(address, false);
+      const nextNonce = Math.max(possible_next_nonce, nodeNonce, clientNonce);
+      const lastExecutedNonce = Math.min(last_executed_tx_nonce, nodeNonce);
+      const chainedCount = nextNonce - lastExecutedNonce;
+      if (chainedCount >= 25) {
+        await timeout(700);
+        continue;
+      }
+      this.nonceMap.set(address, nextNonce + 1);
+      return nextNonce;
+    }
+  }
 }
