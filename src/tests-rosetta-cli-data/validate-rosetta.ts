@@ -122,31 +122,6 @@ describe('Rosetta API', () => {
     });
     console.log('compose build result:', composeBuildResult);
 
-    // start cli container
-    void compose
-      .upOne('rosetta-cli', {
-        cwd: path.join(__dirname, '../../'),
-        log: true,
-        composeOptions: [
-          '-f',
-          'docker/docker-compose.dev.rosetta-cli.yml',
-          '--env-file',
-          'src/tests-rosetta-cli-data/envs/env.data',
-        ],
-        commandOptions: ['--abort-on-container-exit', '--force-recreate'],
-        callback: (chunk, source) => {
-          if (source === 'stderr') {
-            console.error(`compose up stderr: ${chunk.toString()}`);
-          } else {
-            console.log(`compose up stdout: ${chunk.toString()}`);
-          }
-        },
-      })
-      .catch(error => {
-        console.error(`compose up error: ${error}`, error);
-        throw error;
-      });
-
     await waitForBlock(api);
 
     let txs: string[] = [];
@@ -188,6 +163,34 @@ describe('Rosetta API', () => {
       await standByForTxSuccess(tx, api);
     }
     txs = [];
+  });
+
+  it('run rosetta-cli tool', async () => {
+    // start cli container
+    const composeUpResult = await compose
+      .upOne('rosetta-cli', {
+        cwd: path.join(__dirname, '../../'),
+        log: true,
+        composeOptions: [
+          '-f',
+          'docker/docker-compose.dev.rosetta-cli.yml',
+          '--env-file',
+          'src/tests-rosetta-cli-data/envs/env.data',
+        ],
+        commandOptions: ['--abort-on-container-exit', '--force-recreate'],
+        callback: (chunk, source) => {
+          if (source === 'stderr') {
+            console.error(`compose up stderr: ${chunk.toString()}`);
+          } else {
+            console.log(`compose up stdout: ${chunk.toString()}`);
+          }
+        },
+      })
+      .catch(error => {
+        console.error(`compose up error: ${error}`, error);
+        throw error;
+      });
+    console.log(composeUpResult);
 
     // Wait on rosetta-cli to finish output
     while (!rosettaOutput) {
