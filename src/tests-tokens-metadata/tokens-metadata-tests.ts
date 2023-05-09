@@ -101,7 +101,7 @@ describe('tokens metadata tests', () => {
     nock.cleanAll();
   });
 
-  test.skip('metadata disabled', async () => {
+  test('metadata disabled', async () => {
     process.env['STACKS_API_ENABLE_FT_METADATA'] = '0';
     process.env['STACKS_API_ENABLE_NFT_METADATA'] = '0';
     const query1 = await supertest(api.server).get(`/extended/v1/tokens/nft/metadata`);
