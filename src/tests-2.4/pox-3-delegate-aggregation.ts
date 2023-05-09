@@ -279,43 +279,6 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
     );
   });
 
-  // todo: move this test somewhere it doesn't interfere with the pox cycle counting
-  // test('Perform delegate-stx operation with increased amount', async () => {
-  //   const txFee = 10000n;
-  //   const balanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
-  //   const balanceTotal = BigInt(balanceInfo.balance);
-  //   expect(balanceTotal).toBeGreaterThan(txFee);
-  //   const balanceLocked = BigInt(balanceInfo.locked);
-  //   expect(balanceLocked).toBeGreaterThan(0n);
-
-  //   const delegateStxTx = await makeContractCall({
-  //     senderKey: delegateeAccount.secretKey,
-  //     contractAddress,
-  //     contractName,
-  //     functionName: 'delegate-stx',
-  //     functionArgs: [
-  //       uintCV(balanceLocked + 4000n),
-  //       standardPrincipalCV(delegatorAccount.stxAddr), // delegate-to
-  //       noneCV(), // untilBurnBlockHeight
-  //       someCV(delegateeAccount.poxAddrClar), // pox-addr
-  //     ],
-  //     network: testEnv.stacksNetwork,
-  //     anchorMode: AnchorMode.OnChainOnly,
-  //     fee: txFee,
-  //     validateWithAbi: false,
-  //   });
-  //   const { txId: delegateStxTxId } = await testEnv.client.sendTransaction(
-  //     Buffer.from(delegateStxTx.serialize())
-  //   );
-
-  //   const delegateStxDbTx = await standByForTx(delegateStxTxId);
-  //   expect(delegateStxDbTx.status).not.toEqual(DbTxStatus.Success);
-
-  //   // In PoX-3 we can't delegate while locked any more
-  //   const delegateStxDbTxResult = decodeClarityValue(delegateStxDbTx.raw_result);
-  //   expect(delegateStxDbTxResult.repr).toEqual('(err 3)'); // ERR_STACKING_ALREADY_STACKED
-  // });
-
   test('Perform stack-aggregation-increase - delegator increase committed stacking amount', async () => {
     const coreBalanceInfoPreIncrease = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     const txFee = 10000n;
