@@ -762,8 +762,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: sudo npm run test:rosetta-cli:construction
@@ -773,7 +773,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
