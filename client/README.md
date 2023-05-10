@@ -33,7 +33,11 @@ Here is example code that subscribes to updates for a specific Stacks address:
 import { connectWebSocketClient } from '@stacks/blockchain-api-client';
 
 // for testnet, replace with wss://api.testnet.hiro.so/
-const client = await connectWebSocketClient('wss://api.mainnet.hiro.so/');
+const client = await connectWebSocketClient('wss://api.mainnet.hiro.so/', {
+  headers: {
+    'x-hiro-product': 'blockchain-api-client',
+  },
+});
 
 const sub = await client.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', event =>
   console.log(event);
@@ -54,7 +58,11 @@ const socketUrl = "https://api.mainnet.hiro.so/";
 const socket = io(socketUrl, {
   transports: [ "websocket" ]
 });
-const sc = new stacks.StacksApiSocketClient(socket);
+const sc = new stacks.StacksApiSocketClient(socket, {
+  headers: {
+    'x-hiro-product': 'blockchain-api-client',
+  },
+});
 
 sc.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA');
 ```
