@@ -8,6 +8,7 @@ ARG PG_PORT=5432
 ARG PG_USER=postgres
 ARG PG_PASSWORD=postgres
 ARG SEED_CHAINSTATE=false
+ARG ARCHIVE_VERSION=latest
 
 #######################################################################
 ## Build the stacks-blockchain-api
@@ -51,15 +52,15 @@ RUN apt-get update -y \
 ## Build the final image with all components from build stages
 FROM debian:buster
 ARG STACKS_NETWORK
-ARG PG_VERSION
-ARG PG_VERSION
 ARG PG_HOST
 ARG PG_PORT
 ARG PG_USER
 ARG PG_PASSWORD
+ARG PG_VERSION
 ARG SEED_CHAINSTATE
 ARG STACKS_API_VERSION
 ARG STACKS_BLOCKCHAIN_VERSION
+ARG ARCHIVE_VERSION
 ENV SEED_CHAINSTATE=${SEED_CHAINSTATE}
 ENV STACKS_API_VERSION=${STACKS_API_VERSION}
 ENV STACKS_BLOCKCHAIN_VERSION=${STACKS_BLOCKCHAIN_VERSION}
@@ -82,6 +83,7 @@ ENV STACKS_BLOCKCHAIN_API_HOST=0.0.0.0
 ENV STACKS_CORE_RPC_HOST=127.0.0.1
 ENV STACKS_CORE_RPC_PORT=20443
 ENV STACKS_CORE_P2P_PORT=20444
+ENV ARCHIVE_VERSION=${ARCHIVE_VERSION}
 ENV LANG en_US.UTF-8  
 ENV LANGUAGE en_US:en  
 ENV LC_ALL en_US.UTF-8
@@ -130,10 +132,8 @@ mkdir -p "${PGDATA}" || exit 1
 chown -R postgres:postgres "${PGDATA}" || exit 1
 gosu postgres /usr/lib/postgresql/${PG_VERSION}/bin/initdb -D "${PGDATA}" --wal-segsize=512  || exit 1
 echo "host all all all trust" >> "$PGDATA/pg_hba.conf" || exit 1
-gosu postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl start -W -D ${PGDATA} -o "-c listen_addresses='*'"
-# give postgres 10s to startup
-echo "waiting 10s for postgres to start"
-sleep 10
+gosu postgres /usr/lib/postgresql/${PG_VERSION}/bin/pg_ctl start -w -D ${PGDATA} -o "-c listen_addresses='*'" || exit 1
+
 # download archive files if flag is true
 if [ "${SEED_CHAINSTATE}" = "true" ]; then
     /scripts/seed-chainstate.sh || exit 1
@@ -146,7 +146,6 @@ fi
 case "${STACKS_NETWORK}" in
     testnet)
         export STACKS_CHAIN_ID=0x80000000
-        export V2_POX_MIN_AMOUNT_USTX=90000000260
         ;;
     *)
         export STACKS_CHAIN_ID=0x00000001
@@ -208,16 +207,16 @@ echo "Seeding chainstate from https://archive.hiro.so"
 LOCAL_STACKS_API_VERSION=$(echo "${STACKS_API_VERSION:1}")
 
 # define URL's to download 
-PGDUMP_URL="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-latest.dump"
-PGDUMP_URL_SHA256="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-latest.sha256"
-CHAINDATA_URL="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-latest.tar.gz"
-CHAINDATA_URL_SHA256="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-latest.sha256"
+PGDUMP_URL="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-${ARCHIVE_VERSION}.dump"
+PGDUMP_URL_SHA256="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-${ARCHIVE_VERSION}.sha256"
+CHAINDATA_URL="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${ARCHIVE_VERSION}.tar.gz"
+CHAINDATA_URL_SHA256="https://archive.hiro.so/${STACKS_NETWORK}/stacks-blockchain/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${ARCHIVE_VERSION}.sha256"
 
 # define local storage locations
-PGDUMP_DEST="/tmp/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-latest.dump"
-PGDUMP_DEST_SHA256="/tmp/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-latest.sha256"
-CHAINDATA_DEST="/tmp/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-latest.tar.gz"
-CHAINDATA_DEST_SHA256="/tmp/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-latest.sha256"
+PGDUMP_DEST="/tmp/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-${ARCHIVE_VERSION}.dump"
+PGDUMP_DEST_SHA256="/tmp/stacks-blockchain-api-pg-${PG_VERSION}-${LOCAL_STACKS_API_VERSION}-${ARCHIVE_VERSION}.sha256"
+CHAINDATA_DEST="/tmp/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${ARCHIVE_VERSION}.tar.gz"
+CHAINDATA_DEST_SHA256="/tmp/${STACKS_NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${ARCHIVE_VERSION}.sha256"
 
 exit_error() {
     echo "${1}"
