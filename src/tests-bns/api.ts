@@ -54,7 +54,7 @@ describe('BNS API tests', () => {
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     const block = new TestBlockBuilder({
       block_hash: '0xff',

@@ -17,7 +17,7 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import { logger } from '../helpers';
+import { logger } from '../logger';
 import { testnetKeys } from '../api/routes/debug';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -336,8 +336,8 @@ describe('BNS integration tests', () => {
     process.env.PG_DATABASE = 'postgres';
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     const block = new TestBlockBuilder().build();
     await db.update(block);
@@ -606,4 +606,3 @@ describe('BNS integration tests', () => {
     await runMigrations(undefined, 'down');
   });
 });
-

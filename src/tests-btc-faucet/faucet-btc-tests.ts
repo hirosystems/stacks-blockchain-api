@@ -120,7 +120,6 @@ describe('btc faucet', () => {
         datastore: db,
         writeDatastore: writeDb,
         chainId: ChainID.Testnet,
-        httpLogLevel: 'silly',
       });
     });
 

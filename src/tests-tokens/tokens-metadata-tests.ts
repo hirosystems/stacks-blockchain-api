@@ -18,13 +18,14 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { logger, timeout, waiter, Waiter } from '../helpers';
+import { timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { logger } from '../logger';
 
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
@@ -77,7 +78,7 @@ describe('api tests', () => {
       const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
       return submitResult;
     } catch (error) {
-      logger.error('error: ', error);
+      logger.error(error);
     }
     return Promise.resolve({ txId: '' });
   }
@@ -247,7 +248,7 @@ describe('api tests', () => {
       'src/tests-tokens/test-contracts/nft-trait.clar'
     );
     const tx = await standByForTx(contract.txId);
-    if (tx.status != 1) logger.error('contract deploy error', tx);
+    if (tx.status != 1) logger.error(tx, 'contract deploy error');
 
     const contract1 = await deployContract(
       'beeple',
@@ -289,7 +290,7 @@ describe('api tests', () => {
     );
 
     const tx = await standByForTx(contract.txId);
-    if (tx.status != 1) logger.error('contract deploy error', tx);
+    if (tx.status != 1) logger.error(tx, 'contract deploy error');
 
     const contract1 = await deployContract(
       'hey-token',

@@ -13,7 +13,7 @@ import {
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
 } from '../datastore/common';
-import { bufferToHexPrefixString, coerceToBuffer, has0xPrefix, logger } from '../helpers';
+import { bufferToHexPrefixString, coerceToBuffer, has0xPrefix } from '../helpers';
 
 import {
   ClarityTypeID,
@@ -32,6 +32,7 @@ import {
 } from 'stacks-encoding-native-js';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { Pox2EventName } from '../pox-helpers';
+import { logger } from '../logger';
 
 function tryClarityPoxAddressToBtcAddress(
   poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
@@ -54,7 +55,7 @@ function tryClarityPoxAddressToBtcAddress(
       network
     );
   } catch (e) {
-    logger.verbose(
+    logger.debug(
       `Error encoding PoX address version: ${poxAddr.data.version.buffer}, hashbytes: ${poxAddr.data.hashbytes.buffer} to bitcoin address: ${e}`
     );
     btcAddr = null;

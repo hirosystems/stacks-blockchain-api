@@ -16,7 +16,6 @@ import {
   isProdEnv,
   isValidC32Address,
   isValidPrincipal,
-  logger,
 } from '../../helpers';
 import {
   getAssetEventTypeString,
@@ -50,7 +49,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-import { PgSqlClient } from '../../datastore/connection';
+import { logger } from '../../logger';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -214,15 +213,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const principal = req.params['principal'];
       validatePrincipal(principal);
       const untilBlock = parseUntilBlockQuery(req, res, next);
-
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const response = await db.sqlTransaction(async sql => {
@@ -326,14 +317,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
         }
 
-        let limit: number;
-        try {
-          limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-        } catch (error: any) {
-          res.status(400).json({ error: error.message });
-          return;
-        }
-
+        const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
         const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
           stxAddress: stxAddress,
@@ -406,14 +390,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const response = await db.sqlTransaction(async sql => {
@@ -466,14 +443,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
           }
 
-          let limit: number;
-          try {
-            limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-          } catch (error: any) {
-            res.status(400).json({ error: error.message });
-            return;
-          }
-
+          const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
           const offset = parsePagingQueryInput(req.query.offset ?? 0);
           const { results, total } = await db.getInboundTransfers({
             stxAddress,
@@ -503,7 +473,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         setETagCacheHeaders(res);
         res.json(response);
       } catch (error) {
-        logger.error(`Unable to get inbound transfers for ${stxAddress}`, error);
+        logger.error(error, `Unable to get inbound transfers for ${stxAddress}`);
         throw error;
       }
     })
@@ -520,14 +490,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const stxAddress = req.params['stx_address'];
       validatePrincipal(stxAddress);
 
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const untilBlock = parseUntilBlockQuery(req, res, next);
@@ -577,16 +540,8 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     '/:address/mempool',
     mempoolCacheHandler,
     asyncHandler(async (req, res, next) => {
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-
       const address = req.params['address'];
       if (!isValidC32Address(address)) {
         throw new InvalidRequestError(
@@ -594,7 +549,6 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           InvalidRequestErrorType.invalid_param
         );
       }
-
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results: txResults, total } = await db.getMempoolTxList({
         offset,
@@ -602,7 +556,6 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         address,
         includeUnanchored,
       });
-
       const results = txResults.map(tx => parseDbMempoolTx(tx));
       const response: MempoolTransactionListResponse = { limit, offset, total, results };
       if (!isProdEnv) {
@@ -661,6 +614,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
           last_mempool_tx_nonce: (null as unknown) as number,
           detected_missing_nonces: [],
+          detected_mempool_nonces: [],
         };
         setETagCacheHeaders(res);
         res.json(results);
@@ -671,6 +625,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
           possible_next_nonce: nonces.possibleNextNonce,
           detected_missing_nonces: nonces.detectedMissingNonces,
+          detected_mempool_nonces: nonces.detectedMempoolNonces,
         };
         setETagCacheHeaders(res);
         res.json(results);

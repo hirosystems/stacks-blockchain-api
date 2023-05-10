@@ -1,10 +1,11 @@
 import * as path from 'path';
 import PgMigrate, { RunnerOption } from 'node-pg-migrate';
 import { Client } from 'pg';
-import { APP_DIR, isDevEnv, isTestEnv, logError, logger, REPO_DIR } from '../helpers';
+import { APP_DIR, isDevEnv, isTestEnv, REPO_DIR } from '../helpers';
 import { getPgClientConfig, PgClientConfig } from './connection-legacy';
 import { connectPostgres, PgServer } from './connection';
 import { databaseHasData } from './event-requests';
+import { logger } from '../logger';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
@@ -44,7 +45,7 @@ export async function runMigrations(
     }
     await PgMigrate(runnerOpts);
   } catch (error) {
-    logError(`Error running pg-migrate`, error);
+    logger.error(error, 'Error running pg-migrate');
     throw error;
   } finally {
     await client.end();

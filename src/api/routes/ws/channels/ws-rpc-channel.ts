@@ -4,7 +4,6 @@ import * as net from 'net';
 import {
   isProdEnv,
   isValidPrincipal,
-  logError,
   normalizeHashString,
   resolveOrTimeout,
 } from '../../../../helpers';
@@ -43,6 +42,7 @@ import {
   NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
+import { logger } from '../../../../logger';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams
@@ -587,7 +587,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('transaction');
       }
     } catch (error) {
-      logError(`error sending websocket tx update for ${tx.tx_id}`, error);
+      logger.error(error, `error sending websocket tx update for ${tx.tx_id}`);
     }
   }
 
@@ -616,7 +616,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('address-transaction');
       }
     } catch (error) {
-      logError(`error sending websocket address tx updates to ${principal}`, error);
+      logger.error(error, `error sending websocket address tx updates to ${principal}`);
     }
   }
 
@@ -641,7 +641,7 @@ export class WsRpcChannel extends WebSocketChannel {
         );
         this.prometheus?.sendEvent('address-stx-balance');
       } catch (error) {
-        logError(`error sending websocket stx balance update to ${principal}`, error);
+        logger.error(error, `error sending websocket stx balance update to ${principal}`);
       }
     }
   }
@@ -661,7 +661,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('block');
       }
     } catch (error) {
-      logError(`error sending websocket block updates`, error);
+      logger.error(error, `error sending websocket block updates`);
     }
   }
 
@@ -680,7 +680,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('microblock');
       }
     } catch (error) {
-      logError(`error sending websocket microblock updates`, error);
+      logger.error(error, `error sending websocket microblock updates`);
     }
   }
 
@@ -699,7 +699,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('mempool');
       }
     } catch (error) {
-      logError(`error sending websocket mempool updates`, error);
+      logger.error(error, `error sending websocket mempool updates`);
     }
   }
 
@@ -718,7 +718,7 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
-      logError(`error sending websocket nft-event updates`, error);
+      logger.error(error, `error sending websocket nft-event updates`);
     }
   }
 
@@ -738,9 +738,9 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
-      logError(
-        `error sending websocket nft-asset-event updates for ${assetIdentifier} ${value}`,
-        error
+      logger.error(
+        error,
+        `error sending websocket nft-asset-event updates for ${assetIdentifier} ${value}`
       );
     }
   }
@@ -763,9 +763,9 @@ export class WsRpcChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('nft-event');
       }
     } catch (error) {
-      logError(
-        `error sending websocket nft-collection-event updates for ${assetIdentifier}`,
-        error
+      logger.error(
+        error,
+        `error sending websocket nft-collection-event updates for ${assetIdentifier}`
       );
     }
   }

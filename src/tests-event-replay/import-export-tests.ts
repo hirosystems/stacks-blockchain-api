@@ -171,7 +171,6 @@ describe('IBD', () => {
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
           serverPort: 0,
-          httpLogLevel: 'debug',
         });
         return [eventServer, eventServer.closeAsync] as const;
       },

@@ -9,7 +9,7 @@ import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
 import { isValidTxId } from '../../../../api/query-helpers';
-import { isProdEnv, isValidPrincipal, logger } from '../../../../helpers';
+import { isProdEnv, isValidPrincipal } from '../../../../helpers';
 import { WebSocketPrometheus } from '../web-socket-prometheus';
 import {
   ListenerType,
@@ -22,6 +22,7 @@ import {
   getWsPingIntervalMs,
   getWsPingTimeoutMs,
 } from '../web-socket-transmitter';
+import { logger } from '../../../../logger';
 
 const component = { component: 'socket-io' };
 
@@ -51,7 +52,7 @@ export class SocketIOChannel extends WebSocketChannel {
     this.io = io;
 
     io.on('connection', async socket => {
-      logger.verbose(`new connection: ${socket.id}`, component);
+      logger.debug(`new connection: ${socket.id}`, component);
       if (socket.handshake.headers['x-forwarded-for']) {
         this.prometheus?.connect(socket.handshake.headers['x-forwarded-for'] as string);
       } else {
@@ -66,7 +67,7 @@ export class SocketIOChannel extends WebSocketChannel {
         }
       }
       socket.on('disconnect', reason => {
-        logger.verbose(`disconnected ${socket.id}: ${reason}`, component);
+        logger.debug(`disconnected ${socket.id}: ${reason}`, component);
         this.prometheus?.disconnect(socket);
       });
       socket.on('subscribe', async (topic, callback) => {
@@ -103,16 +104,16 @@ export class SocketIOChannel extends WebSocketChannel {
 
     const adapter = io.of('/').adapter;
     adapter.on('create-room', room => {
-      logger.verbose(`room created: ${room}`, component);
+      logger.debug(`room created: ${room}`, component);
     });
     adapter.on('delete-room', room => {
-      logger.verbose(`room deleted: ${room}`, component);
+      logger.debug(`room deleted: ${room}`, component);
     });
     adapter.on('join-room', (room, id) => {
-      logger.verbose(`socket ${id} joined room: ${room}`, component);
+      logger.debug(`socket ${id} joined room: ${room}`, component);
     });
     adapter.on('leave-room', (room, id) => {
-      logger.verbose(`socket ${id} left room: ${room}`, component);
+      logger.debug(`socket ${id} left room: ${room}`, component);
     });
     this.adapter = adapter;
   }

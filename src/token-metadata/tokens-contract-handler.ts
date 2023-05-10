@@ -12,7 +12,7 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
-import { logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
+import { parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import * as querystring from 'querystring';
 import {
   getTokenMetadataFetchTimeoutMs,
@@ -25,6 +25,7 @@ import {
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { FetchError } from 'node-fetch';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger } from '../logger';
 
 /**
  * The maximum number of bytes of metadata to fetch.

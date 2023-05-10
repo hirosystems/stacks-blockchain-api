@@ -1,12 +1,4 @@
-import {
-  logger,
-  logError,
-  getOrAdd,
-  batchIterate,
-  isProdEnv,
-  I32_MAX,
-  getIbdBlockHeight,
-} from '../helpers';
+import { getOrAdd, batchIterate, isProdEnv, I32_MAX, getIbdBlockHeight } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -100,6 +92,7 @@ import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
+import { logger } from '../logger';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -245,7 +238,7 @@ export class PgWriteStore extends PgStore {
         const candidateTxIds = data.txs.map(d => d.tx.tx_id);
         const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
         if (removedTxsResult.removedTxs.length > 0) {
-          logger.verbose(
+          logger.debug(
             `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during new block ingestion`
           );
         }
@@ -360,7 +353,7 @@ export class PgWriteStore extends PgStore {
       if (isCanonical && data.pox_v1_unlock_height !== undefined) {
         // update the pox_state.pox_v1_unlock_height singleton
         await sql`
-          UPDATE pox_state 
+          UPDATE pox_state
           SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
           WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
         `;
@@ -416,9 +409,7 @@ export class PgWriteStore extends PgStore {
         }
         const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
         if (mempoolGarbageResults.deletedTxs.length > 0) {
-          logger.verbose(
-            `Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`
-          );
+          logger.debug(`Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`);
         }
         garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
 
@@ -728,7 +719,7 @@ export class PgWriteStore extends PgStore {
       const candidateTxIds = data.txs.map(d => d.tx.tx_id);
       const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
       if (removedTxsResult.removedTxs.length > 0) {
-        logger.verbose(
+        logger.debug(
           `Removed ${removedTxsResult.removedTxs.length} microblock-txs from mempool table during microblock ingestion`
         );
       }
@@ -777,7 +768,7 @@ export class PgWriteStore extends PgStore {
       UPDATE mempool_txs
       SET pruned = true
       FROM txs
-      WHERE 
+      WHERE
         mempool_txs.tx_id = txs.tx_id AND
         mempool_txs.pruned = false AND
         txs.canonical = true AND
@@ -799,7 +790,7 @@ export class PgWriteStore extends PgStore {
     const tablesUpdates: Record<string, number> = {};
     const txsResult = await sql<TxQueryResult[]>`
       UPDATE txs
-      SET 
+      SET
         canonical = true,
         block_height = 1,
         tx_index = tx_index + 1,
@@ -822,7 +813,7 @@ export class PgWriteStore extends PgStore {
       const txIndexBump = table === 'smart_contracts' ? sql`` : sql`tx_index = tx_index + 1,`;
       const metadataResult = await sql`
         UPDATE ${sql(table)}
-        SET 
+        SET
           canonical = true,
           ${heightCol} = 1,
           ${txIndexBump}
@@ -1871,7 +1862,7 @@ export class PgWriteStore extends PgStore {
       const result = await sql`
         INSERT INTO ft_metadata ${sql(values)}
         ON CONFLICT (contract_id)
-        DO 
+        DO
           UPDATE SET ${sql(values)}
       `;
       await sql`
@@ -1903,7 +1894,7 @@ export class PgWriteStore extends PgStore {
       const result = await sql`
         INSERT INTO nft_metadata ${sql(values)}
         ON CONFLICT (contract_id)
-        DO 
+        DO
           UPDATE SET ${sql(values)}
       `;
       await sql`
@@ -1944,7 +1935,7 @@ export class PgWriteStore extends PgStore {
         throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.count}`);
       }
     } catch (e: any) {
-      logError(`Locked Info errors ${e.message}`, e);
+      logger.error(e, `Locked Info errors ${e.message}`);
       throw e;
     }
   }
@@ -2029,7 +2020,7 @@ export class PgWriteStore extends PgStore {
         INSERT INTO faucet_requests ${this.sql(values)}
       `;
     } catch (error) {
-      logError(`Error performing faucet request update: ${error}`, error);
+      logger.error(error, `Error performing faucet request update: ${error}`);
       throw error;
     }
   }
@@ -2145,7 +2136,7 @@ export class PgWriteStore extends PgStore {
       .map(tx => tx.tx_id);
     const removedTxsResult = await this.pruneMempoolTxs(sql, txsToPrune);
     if (removedTxsResult.removedTxs.length > 0) {
-      logger.verbose(
+      logger.debug(
         `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during micro-reorg handling`
       );
     }
@@ -2254,7 +2245,7 @@ export class PgWriteStore extends PgStore {
       return { restoredTxs: [] };
     }
     for (const txId of txIds) {
-      logger.verbose(`Restoring mempool tx: ${txId}`);
+      logger.debug(`Restoring mempool tx: ${txId}`);
     }
 
     const updatedRows = await sql<{ tx_id: string }[]>`
@@ -2266,7 +2257,7 @@ export class PgWriteStore extends PgStore {
 
     const updatedTxs = updatedRows.map(r => r.tx_id);
     for (const tx of updatedTxs) {
-      logger.verbose(`Updated mempool tx: ${tx}`);
+      logger.debug(`Updated mempool tx: ${tx}`);
     }
 
     let restoredTxs = updatedRows.map(r => r.tx_id);
@@ -2275,12 +2266,10 @@ export class PgWriteStore extends PgStore {
     if (updatedRows.length < txIds.length) {
       const txsRequiringInsertion = txIds.filter(txId => !updatedTxs.includes(txId));
 
-      logger.verbose(
-        `To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`
-      );
+      logger.debug(`To restore mempool txs, ${txsRequiringInsertion.length} txs require insertion`);
 
       const txs: TxQueryResult[] = await sql`
-        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)} 
+        SELECT DISTINCT ON(tx_id) ${sql(TX_COLUMNS)}
         FROM txs
         WHERE tx_id IN ${sql(txsRequiringInsertion)}
         ORDER BY tx_id, block_height DESC, microblock_sequence DESC, tx_index DESC
@@ -2297,7 +2286,7 @@ export class PgWriteStore extends PgStore {
       restoredTxs = [...restoredTxs, ...txsRequiringInsertion];
 
       for (const tx of mempoolTxs) {
-        logger.verbose(`Inserted mempool tx: ${tx.tx_id}`);
+        logger.debug(`Inserted mempool tx: ${tx.tx_id}`);
       }
     }
 
@@ -2315,7 +2304,7 @@ export class PgWriteStore extends PgStore {
       return { removedTxs: [] };
     }
     for (const txId of txIds) {
-      logger.verbose(`Pruning mempool tx: ${txId}`);
+      logger.debug(`Pruning mempool tx: ${txId}`);
     }
     const updateResults = await sql<{ tx_id: string }[]>`
       UPDATE mempool_txs
@@ -2375,7 +2364,7 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedNonCanonical.txs += txResult.length;
     }
     for (const txId of txIds) {
-      logger.verbose(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
+      logger.debug(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
     }
     if (txIds.length) {
       await sql`
@@ -2604,8 +2593,8 @@ export class PgWriteStore extends PgStore {
     updatedEntities.markedCanonical.microblocks += microblocksAccepted.size;
     updatedEntities.markedNonCanonical.microblocks += microblocksOrphaned.size;
 
-    microblocksOrphaned.forEach(mb => logger.verbose(`Marked microblock as non-canonical: ${mb}`));
-    microblocksAccepted.forEach(mb => logger.verbose(`Marked microblock as canonical: ${mb}`));
+    microblocksOrphaned.forEach(mb => logger.debug(`Marked microblock as non-canonical: ${mb}`));
+    microblocksAccepted.forEach(mb => logger.debug(`Marked microblock as canonical: ${mb}`));
 
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
@@ -2618,7 +2607,7 @@ export class PgWriteStore extends PgStore {
       markCanonicalResult.txsMarkedCanonical
     );
     if (removedTxsResult.removedTxs.length > 0) {
-      logger.verbose(
+      logger.debug(
         `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during reorg handling`
       );
     }
@@ -2775,9 +2764,9 @@ export class PgWriteStore extends PgStore {
       ],
     ];
     const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
-    logger.verbose(`Entities marked as canonical: ${markedCanonical}`);
+    logger.debug(`Entities marked as canonical: ${markedCanonical}`);
     const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
-    logger.verbose(`Entities marked as non-canonical: ${markedNonCanonical}`);
+    logger.debug(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
   /**

@@ -1,7 +1,8 @@
 import * as path from 'path';
 import * as Ajv from 'ajv';
 import * as RefParser from '@apidevtools/json-schema-ref-parser';
-import { logger, getOrAddAsync, REPO_DIR } from '../helpers';
+import { getOrAddAsync, REPO_DIR } from '../helpers';
+import { logger } from '../logger';
 
 const derefSchemaCache: Map<string, RefParser.JSONSchema> = new Map();
 export async function dereferenceSchema(schemaFilePath: string): Promise<RefParser.JSONSchema> {

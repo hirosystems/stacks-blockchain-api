@@ -23,8 +23,7 @@ describe('BNS event server tests', () => {
       datastore: db,
       chainId: ChainID.Mainnet,
       serverHost: '127.0.0.1',
-      serverPort: 0,
-      httpLogLevel: 'debug',
+      serverPort: 0
     });
   });
 

@@ -42,8 +42,6 @@ import {
 import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
-  logger,
-  logError,
   I32_MAX,
   bufferToHexPrefixString,
   hexToBuffer,
@@ -72,6 +70,7 @@ import { c32ToB58 } from 'c32check';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
+import { logger } from '../logger';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -715,7 +714,7 @@ export function parseMessageTransaction(
         );
         txSender = getTxSenderAddress(rawTx);
       } else {
-        logError(
+        logger.error(
           `BTC transaction found, but no STX transfer event available to recreate transaction. TX: ${JSON.stringify(
             coreTx
           )}, event: ${JSON.stringify(events)}`
@@ -752,24 +751,24 @@ export function parseMessageTransaction(
       }
       case TxPayloadTypeID.CoinbaseToAltRecipient: {
         if (payload.recipient.type_id === PrincipalTypeID.Standard) {
-          logger.verbose(
+          logger.debug(
             `Coinbase to alt recipient, standard principal: ${payload.recipient.address}`
           );
         } else {
-          logger.verbose(
+          logger.debug(
             `Coinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}`
           );
         }
         break;
       }
       case TxPayloadTypeID.SmartContract: {
-        logger.verbose(
+        logger.debug(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
         );
         break;
       }
       case TxPayloadTypeID.ContractCall: {
-        logger.verbose(
+        logger.debug(
           `Contract call: ${payload.address}.${payload.contract_name}.${payload.function_name}`
         );
         break;
@@ -779,19 +778,19 @@ export function parseMessageTransaction(
         if (payload.recipient.type_id === PrincipalTypeID.Contract) {
           recipientPrincipal += '.' + payload.recipient.contract_name;
         }
-        logger.verbose(
+        logger.debug(
           `Token transfer: ${payload.amount} from ${parsedTx.sender_address} to ${recipientPrincipal}`
         );
         break;
       }
       case TxPayloadTypeID.PoisonMicroblock: {
-        logger.verbose(
+        logger.debug(
           `Poison microblock: header1 ${payload.microblock_header_1}), header2: ${payload.microblock_header_2}`
         );
         break;
       }
       case TxPayloadTypeID.VersionedSmartContract: {
-        logger.verbose(
+        logger.debug(
           `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`
         );
         break;
@@ -807,7 +806,7 @@ export function parseMessageTransaction(
     }
     return parsedTx;
   } catch (error) {
-    logError(`error parsing message transaction ${JSON.stringify(coreTx)}: ${error}`, error);
+    logger.error(error, `error parsing message transaction ${JSON.stringify(coreTx)}`);
     throw error;
   }
 }
