@@ -1,3 +1,10 @@
+## [7.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.1...v7.2.0-beta.2) (2023-05-11)
+
+
+### Bug Fixes
+
+* release pino logger and mempool nonces ([16d3593](https://github.com/hirosystems/stacks-blockchain-api/commit/16d359370b413de36444d15a3a48cf479823367f))
+
 ## [7.2.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.7...v7.2.0-beta.1) (2023-04-20)
 
 
