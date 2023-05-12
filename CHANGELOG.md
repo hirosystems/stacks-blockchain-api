@@ -1,3 +1,10 @@
+## [7.2.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.2...v7.2.0-beta.3) (2023-05-12)
+
+
+### Bug Fixes
+
+* enable requests auto logging ([#1656](https://github.com/hirosystems/stacks-blockchain-api/issues/1656)) ([2015b9c](https://github.com/hirosystems/stacks-blockchain-api/commit/2015b9c8805c189ebd80dfe16b775f805810a63f))
+
 ## [7.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.1...v7.2.0-beta.2) (2023-05-11)
 
 
