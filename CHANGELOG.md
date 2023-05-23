@@ -1,3 +1,10 @@
+## [7.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.2.0) (2023-05-23)
+
+
+### Features
+
+* Stacks 2.4 / `pox-3` ([#1650](https://github.com/hirosystems/stacks-blockchain-api/issues/1650)) ([30922c8](https://github.com/hirosystems/stacks-blockchain-api/commit/30922c8a7375e454871bf6b114c0be7ec8a0dfab))
+
 ## [7.1.11-stacks-2.4.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.1.11-stacks-2.4.1) (2023-05-09)
 
 
