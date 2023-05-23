@@ -60,6 +60,7 @@ import {
   DbMinerReward,
   StxUnlockEvent,
   DbPox2Event,
+  DbPox3Event,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, logger, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
@@ -202,7 +203,7 @@ export function getAssetEventTypeString(
   }
 }
 
-export function parsePox2Event(poxEvent: DbPox2Event) {
+export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
   const baseInfo = {
     block_height: poxEvent.block_height,
     tx_id: poxEvent.tx_id,

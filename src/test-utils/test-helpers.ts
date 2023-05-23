@@ -49,7 +49,7 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
+import { I32_MAX, coerceToBuffer, hexToBuffer, timeout } from '../helpers';
 import { b58ToC32 } from 'c32check';
 
 export interface TestEnvContext {
@@ -76,19 +76,19 @@ export const testEnv = {
     return (global as any).testEnv as TestEnvContext;
   },
   get db() {
-    return this.globalTestEnv.db;
+    return this.globalTestEnv?.db;
   },
   get api() {
-    return this.globalTestEnv.api;
+    return this.globalTestEnv?.api;
   },
   get client() {
-    return this.globalTestEnv.client;
+    return this.globalTestEnv?.client;
   },
   get stacksNetwork() {
-    return this.globalTestEnv.stacksNetwork;
+    return this.globalTestEnv?.stacksNetwork;
   },
   get bitcoinRpcClient() {
-    return this.globalTestEnv.bitcoinRpcClient;
+    return this.globalTestEnv?.bitcoinRpcClient;
   },
 };
 
@@ -142,15 +142,21 @@ export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   return lastPoxInfo;
 }
 
-export async function standByForPoxCycle(): Promise<CoreRpcPoxInfo> {
-  const firstPoxInfo = await testEnv.client.getPox();
+export async function standByForPoxCycle(
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<CoreRpcPoxInfo> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
+  const firstPoxInfo = await client.getPox();
   let lastPoxInfo: CoreRpcPoxInfo = JSON.parse(JSON.stringify(firstPoxInfo));
   do {
-    await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1);
-    lastPoxInfo = await testEnv.client.getPox();
+    await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1, api, client);
+    lastPoxInfo = await client.getPox();
   } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
   expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
-  const info = await testEnv.client.getInfo();
+  const info = await client.getInfo();
   console.log({
     'firstPoxInfo.next_cycle.prepare_phase_start_block_height':
       firstPoxInfo.next_cycle.prepare_phase_start_block_height,
@@ -179,35 +185,42 @@ export async function standByForPoxCycleEnd(): Promise<CoreRpcPoxInfo> {
   return nextCycleInfo;
 }
 
-export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<DbBlock> {
+export async function standByUntilBurnBlock(
+  burnBlockHeight: number,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbBlock> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
         return;
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlockQuery.result);
     };
-    testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlock();
+    const curHeight = await api.datastore.getCurrentBlock();
     if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({
+      const dbBlock = await api.datastore.getBlock({
         height: curHeight.result.block_height,
       });
       if (!dbBlock.found) {
         throw new Error('Unhandled missing block');
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlock.result);
     }
   });
 
   // Ensure stacks-node is caught up with processing this block
   while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
+    const nodeInfo = await client.getInfo();
     if (nodeInfo.stacks_tip_height >= dbBlock.block_height) {
       break;
     } else {
@@ -217,49 +230,95 @@ export async function standByUntilBurnBlock(burnBlockHeight: number): Promise<Db
   return dbBlock;
 }
 
-export async function standByForTx(expectedTxId: string): Promise<DbTx> {
-  const tx = await new Promise<DbTx>(async resolve => {
-    const listener: (txId: string) => void = async txId => {
-      if (txId !== expectedTxId) {
-        return;
-      }
-      const dbTxQuery = await testEnv.api.datastore.getTx({
-        txId: expectedTxId,
-        includeUnanchored: false,
-      });
-      if (!dbTxQuery.found) {
-        return;
-      }
-      testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(dbTxQuery.result);
-    };
-    testEnv.api.datastore.eventEmitter.addListener('txUpdate', listener);
+export async function standByForTx(
+  expectedTxId: string,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbTx> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
 
-    // Check if tx is already received
-    const dbTxQuery = await testEnv.api.datastore.getTx({
-      txId: expectedTxId,
-      includeUnanchored: false,
+  const stack = new Error().stack;
+  const timeoutSeconds = 25;
+  const timer = setTimeout(() => {
+    console.error(
+      `Could not find TX ${expectedTxId} after ${timeoutSeconds} seconds.. stack: ${stack}`
+    );
+  }, timeoutSeconds * 1000);
+
+  const standByForTxInner = async () => {
+    console.log(`Waiting for TX: ${expectedTxId}...`);
+    const tx = await new Promise<DbTx>(async resolve => {
+      let found = false;
+      const listener: (txId: string) => void = async txId => {
+        if (txId !== expectedTxId) {
+          return;
+        }
+        const dbTxQuery = await api.datastore.getTx({
+          txId: expectedTxId,
+          includeUnanchored: false,
+        });
+        if (!dbTxQuery.found) {
+          return;
+        }
+        api.datastore.eventEmitter.removeListener('txUpdate', listener);
+        found = true;
+        resolve(dbTxQuery.result);
+      };
+      api.datastore.eventEmitter.addListener('txUpdate', listener);
+
+      // Check if tx is already received
+      do {
+        const dbTxQuery = await api.datastore.getTx({
+          txId: expectedTxId,
+          includeUnanchored: false,
+        });
+        if (dbTxQuery.found) {
+          api.datastore.eventEmitter.removeListener('txUpdate', listener);
+          found = true;
+          resolve(dbTxQuery.result);
+        } else {
+          await timeout(50);
+        }
+      } while (!found);
     });
-    if (dbTxQuery.found) {
-      testEnv.api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(dbTxQuery.result);
-    }
-  });
 
-  // Ensure stacks-node is caught up with processing the block for this tx
-  while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
-    if (nodeInfo.stacks_tip_height >= tx.block_height) {
-      break;
-    } else {
-      await timeout(50);
+    // Ensure stacks-node is caught up with processing the block for this tx
+    while (true) {
+      const nodeInfo = await client.getInfo();
+      if (nodeInfo.stacks_tip_height >= tx.block_height) {
+        break;
+      } else {
+        await timeout(50);
+      }
     }
-  }
+
+    // Ensure stacks-node is caught up processing the next nonce for this address
+    while (true) {
+      const nextNonce = await client.getAccountNonce(tx.sender_address);
+      if (BigInt(nextNonce) > BigInt(tx.nonce)) {
+        break;
+      } else {
+        await timeout(50);
+      }
+    }
+
+    return tx;
+  };
+  const tx = await standByForTxInner();
+  clearTimeout(timer);
   return tx;
 }
 
-export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
-  const tx = await standByForTx(expectedTxId);
+export async function standByForTxSuccess(
+  expectedTxId: string,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbTx> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
+
+  const tx = await standByForTx(expectedTxId, api, client);
   if (tx.status !== DbTxStatus.Success) {
     const txResult = decodeClarityValue(tx.raw_result);
     const resultRepr = txResult.repr;
@@ -268,26 +327,32 @@ export async function standByForTxSuccess(expectedTxId: string): Promise<DbTx> {
   return tx;
 }
 
-export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
+export async function standByUntilBlock(
+  blockHeight: number,
+  apiArg?: ApiServer,
+  clientArg?: StacksCoreRpcClient
+): Promise<DbBlock> {
+  const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
+  const api = apiArg ?? testEnv.api;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await testEnv.api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
         return;
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlockQuery.result);
     };
-    testEnv.api.datastore.eventEmitter.addListener('blockUpdate', listener);
+    api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await testEnv.api.datastore.getCurrentBlockHeight();
+    const curHeight = await api.datastore.getCurrentBlockHeight();
     if (curHeight.found && curHeight.result >= blockHeight) {
-      const dbBlock = await testEnv.api.datastore.getBlock({ height: curHeight.result });
+      const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
       if (!dbBlock.found) {
         throw new Error('Unhandled missing block');
       }
-      testEnv.api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
       resolve(dbBlock.result);
       return;
     }
@@ -295,7 +360,7 @@ export async function standByUntilBlock(blockHeight: number): Promise<DbBlock> {
 
   // Ensure stacks-node is caught up with processing this block
   while (true) {
-    const nodeInfo = await testEnv.client.getInfo();
+    const nodeInfo = await client.getInfo();
     if (nodeInfo.stacks_tip_height >= blockHeight) {
       break;
     } else {
@@ -537,4 +602,34 @@ export function decodePoxAddrArg(
   );
   const stxAddr = b58ToC32(btcAddr);
   return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };
+}
+
+/** Client-side nonce tracking */
+export class NonceJar {
+  nonceMap = new Map<string, number>();
+  api: ApiServer;
+  client: StacksCoreRpcClient;
+
+  constructor(api: ApiServer, client: StacksCoreRpcClient) {
+    this.api = api;
+    this.client = client;
+  }
+
+  async getNonce(address: string): Promise<number> {
+    while (true) {
+      const clientNonce = this.nonceMap.get(address) ?? 0;
+      const apiReq = await supertest(this.api.server).get(`/extended/v1/address/${address}/nonces`);
+      const { possible_next_nonce, last_executed_tx_nonce } = apiReq.body;
+      const nodeNonce = await this.client.getAccountNonce(address, false);
+      const nextNonce = Math.max(possible_next_nonce, nodeNonce, clientNonce);
+      const lastExecutedNonce = Math.min(last_executed_tx_nonce, nodeNonce);
+      const chainedCount = nextNonce - lastExecutedNonce;
+      if (chainedCount >= 25) {
+        await timeout(700);
+        continue;
+      }
+      this.nonceMap.set(address, nextNonce + 1);
+      return nextNonce;
+    }
+  }
 }

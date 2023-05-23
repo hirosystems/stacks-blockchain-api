@@ -697,7 +697,9 @@ async function makeCallContractOperation(
         stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.testnet ||
         stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.mainnet ||
         stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.testnet ||
+        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.mainnet
       ) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {

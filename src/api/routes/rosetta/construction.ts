@@ -340,6 +340,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           // Getting PoX info
           const poxInfo = await stackingRpc.getPoxInfo();
           const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
+          // todo: update stacks.js once released to use the latest stacking contract
           const contract = await stackingRpc.getStackingContract(poxOperationInfo);
           const [contractAddress, contractName] = contract.split('.');
 
@@ -399,7 +400,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.status(400).json(RosettaErrorsTypes.missingTransactionSize);
         return;
       }
-      const feeValue = (BigInt(feeInfo) * BigInt(options.size)).toString();
+      const feeValue = Math.round(Number(feeInfo) * Number(options.size) * 1.5).toString();
       const currency: RosettaCurrency = {
         symbol: RosettaConstants.symbol,
         decimals: RosettaConstants.decimals,

@@ -7,16 +7,9 @@ import { Server } from 'net';
 import { ChainID } from '@stacks/transactions';
 
 describe('core RPC tests', () => {
-  let db: PgWriteStore;
-  let eventServer: Server;
-  let api: ApiServer;
   let client: StacksCoreRpcClient;
 
   beforeAll(async () => {
-    await cycleMigrations();
-    db = await PgWriteStore.connect({ usageName: 'tests' });
-    eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     client = new StacksCoreRpcClient();
     await new StacksCoreRpcClient().waitForConnection(60000);
   });
@@ -28,7 +21,7 @@ describe('core RPC tests', () => {
 
   test('get pox info', async () => {
     const poxInfo = await client.getPox();
-    expect(poxInfo.contract_id).toBe(`ST000000000000000000002AMW42H.pox`);
+    expect(poxInfo.contract_id).toBe(`ST000000000000000000002AMW42H.pox-3`);
   });
 
   test('get account nonce', async () => {
@@ -47,9 +40,6 @@ describe('core RPC tests', () => {
   });
 
   afterAll(async () => {
-    await new Promise(resolve => eventServer.close(() => resolve(true)));
-    await api.terminate();
-    await db?.close();
     await runMigrations(undefined, 'down');
   });
 });

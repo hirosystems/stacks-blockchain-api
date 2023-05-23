@@ -1,3 +1,19 @@
+## [7.1.11-stacks-2.4.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.1.11-stacks-2.4.1) (2023-05-09)
+
+
+### Bug Fixes
+
+* add pox-3 events table migration ([4c78556](https://github.com/hirosystems/stacks-blockchain-api/commit/4c785565a1cf168f966710d6b749edbf88bf7cf1))
+* add pox3_events array ([f9f4f42](https://github.com/hirosystems/stacks-blockchain-api/commit/f9f4f42c35789968c257072cb10563112189bb53))
+* include pox-3 events in reader filter ([dc36080](https://github.com/hirosystems/stacks-blockchain-api/commit/dc360802ab3424d57171999e52cb093472f2262c))
+* pox-3 support in Rosetta stacking ops parsing ([2397186](https://github.com/hirosystems/stacks-blockchain-api/commit/239718626215fdfea4c0cabd3365f256eab470fd))
+* switching routes/methods to pox3 ([b0c6bef](https://github.com/hirosystems/stacks-blockchain-api/commit/b0c6beffb376ab5130f3d22b6cdaf82be927bdc9))
+
+
+### Reverts
+
+* accidental discord notification removal ([a150258](https://github.com/hirosystems/stacks-blockchain-api/commit/a150258bdd1dcaf6472fbcfa604516783719dac8))
+
 ## [7.1.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.9...v7.1.10) (2023-05-04)
 
 

@@ -7,3 +7,5 @@ services:
     command: ${CMD}
     volumes:
       - ${OUTPUT}
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts

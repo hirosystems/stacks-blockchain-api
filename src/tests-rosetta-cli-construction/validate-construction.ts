@@ -1,8 +1,13 @@
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { startEventServer } from '../event-stream/event-server';
 import { Server } from 'net';
-import { AnchorMode, ChainID, makeSTXTokenTransfer } from '@stacks/transactions';
+import {
+  AnchorMode,
+  ChainID,
+  StacksTransaction,
+  getAddressFromPrivateKey,
+  makeSTXTokenTransfer,
+} from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
@@ -10,7 +15,8 @@ import { timeout } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { runMigrations } from '../datastore/migrations';
+import { NonceJar, standByForTxSuccess } from '../test-utils/test-helpers';
 
 const sender1 = {
   address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
@@ -28,16 +34,20 @@ describe('Rosetta API', () => {
   let eventServer: Server;
   let api: ApiServer;
   let rosettaOutput: any;
+  let nonceJar: NonceJar;
 
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+    const client = new StacksCoreRpcClient();
+    nonceJar = new NonceJar(api, client);
+
+    await client.waitForConnection(60000);
 
     // build rosetta-cli container
-    await compose.buildOne('rosetta-cli', {
+    const composeBuildResult = await compose.buildOne('rosetta-cli', {
       cwd: path.join(__dirname, '../../'),
       log: true,
       composeOptions: [
@@ -47,26 +57,46 @@ describe('Rosetta API', () => {
         'src/tests-rosetta-cli-construction/envs/env.construction',
       ],
     });
-    // start cli container
-    void compose.upOne('rosetta-cli', {
-      cwd: path.join(__dirname, '../../'),
-      log: true,
-      composeOptions: [
-        '-f',
-        'docker/docker-compose.dev.rosetta-cli.yml',
-        '--env-file',
-        'src/tests-rosetta-cli-construction/envs/env.construction',
-      ],
-      commandOptions: ['--abort-on-container-exit'],
-    });
+    console.log('compose build result:', composeBuildResult);
 
     await waitForBlock(api);
 
-    await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
-    await transferStx(recipientAdd1, 1000000000, sender1.privateKey, api);
+    let txs: string[] = [
+      await transferStx(recipientAdd1, 1000000000, sender1.privateKey, nonceJar),
+      await transferStx(recipientAdd1, 1000000000, sender1.privateKey, nonceJar),
+      await transferStx(recipientAdd1, 1000000000, sender1.privateKey, nonceJar),
+      await transferStx(recipientAdd1, 1000000000, sender1.privateKey, nonceJar),
+      await transferStx(recipientAdd1, 1000000000, sender1.privateKey, nonceJar),
+    ];
+
+    for (const tx of txs) {
+      await standByForTxSuccess(tx, api);
+      console.log('one success');
+    }
+    txs = [];
+  });
+
+  it('run rosetta-cli tool', async () => {
+    // start cli container
+    const upResult = await compose.upOne('rosetta-cli', {
+      cwd: path.join(__dirname, '../../'),
+      log: true,
+      composeOptions: [
+        '-f',
+        'docker/docker-compose.dev.rosetta-cli.yml',
+        '--env-file',
+        'src/tests-rosetta-cli-construction/envs/env.construction',
+      ],
+      commandOptions: ['--abort-on-container-exit', '--force-recreate'],
+      callback: (chunk, source) => {
+        if (source === 'stderr') {
+          console.error(`compose up stderr: ${chunk.toString()}`);
+        } else {
+          console.log(`compose up stdout: ${chunk.toString()}`);
+        }
+      },
+    });
+    console.log(upResult);
 
     // Wait on rosetta-cli to finish output
     while (!rosettaOutput) {
@@ -83,6 +113,22 @@ describe('Rosetta API', () => {
   });
 
   afterAll(async () => {
+    const composeDownResult = await compose
+      .stopOne('rosetta-cli', {
+        cwd: path.join(__dirname, '../../'),
+        log: true,
+        composeOptions: [
+          '-f',
+          'docker/docker-compose.dev.rosetta-cli.yml',
+          '--env-file',
+          'src/tests-rosetta-cli-construction/envs/env.construction',
+        ],
+      })
+      .catch(error => {
+        console.error(`compose down error: ${error}`, error);
+      });
+    console.log('compose down result:', composeDownResult);
+
     await new Promise(resolve => eventServer.close(() => resolve(true)));
     await api.terminate();
     await db?.close();
@@ -94,55 +140,46 @@ async function transferStx(
   recipientAddr: string,
   amount: number,
   senderPk: string,
-  api: ApiServer
+  nonceJar: NonceJar
 ) {
-  await waitForBlock(api);
-  const transferTx = await makeSTXTokenTransfer({
-    recipient: recipientAddr,
-    amount: amount,
-    senderKey: senderPk,
-    network: stacksNetwork,
-    memo: 'test-transaction',
-    sponsored: false,
-    anchorMode: AnchorMode.Any,
-    fee: 100000,
+  const senderAddress = getAddressFromPrivateKey(senderPk, stacksNetwork.version);
+  const { txId } = await sendCoreTx(senderAddress, nonceJar, async nonce => {
+    return await makeSTXTokenTransfer({
+      recipient: recipientAddr,
+      amount: amount,
+      senderKey: senderPk,
+      network: stacksNetwork,
+      memo: 'test-transaction',
+      sponsored: false,
+      anchorMode: AnchorMode.Any,
+      fee: 100000,
+      nonce,
+    });
   });
-  const serialized: Buffer = Buffer.from(transferTx.serialize());
-
-  const { txId } = await sendCoreTx(serialized, api, 'transfer-stx');
-  await standByForTx(txId, api);
 
   return txId;
 }
 
-function standByForTx(expectedTxId: string, api: ApiServer): Promise<string> {
-  const broadcastTx = new Promise<string>(resolve => {
-    const listener: (info: string) => void = info => {
-      api.datastore.eventEmitter.removeListener('txUpdate', listener);
-      resolve(info);
-    };
-    api.datastore.eventEmitter.addListener('txUpdate', listener);
-  });
-
-  return broadcastTx;
-}
-
 async function sendCoreTx(
-  serializedTx: Buffer,
-  api: ApiServer,
-  type: string
-): Promise<{ txId: string }> {
-  try {
-    const submitResult = await new StacksCoreRpcClient({
-      host: HOST,
-      port: PORT,
-    }).sendTransaction(serializedTx);
-    return submitResult;
-  } catch (error) {
-    console.log(type);
-    console.error(error);
-  }
-  return Promise.resolve({ txId: '' });
+  address: string,
+  nonceJar: NonceJar,
+  buildTx: (nonce: number) => Promise<StacksTransaction>
+): Promise<{
+  txId: string;
+}> {
+  const nonceResult = await nonceJar.getNonce(address);
+  const tx = await buildTx(nonceResult);
+  const serializedTx = Buffer.from(tx.serialize());
+  const submitResult = await new StacksCoreRpcClient({
+    host: HOST,
+    port: PORT,
+  })
+    .sendTransaction(serializedTx)
+    .catch(error => {
+      console.error(`Tx broadcast error: ${error}`, error);
+      throw error;
+    });
+  return submitResult;
 }
 
 function GetStacksTestnetNetwork() {
@@ -158,8 +195,4 @@ async function waitForBlock(api: ApiServer) {
   await new Promise<string>(resolve =>
     api.datastore.eventEmitter.once('blockUpdate', block => resolve(block))
   );
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
