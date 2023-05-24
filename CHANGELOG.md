@@ -1,3 +1,10 @@
+## [7.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0...v7.2.1) (2023-05-24)
+
+
+### Bug Fixes
+
+* bump socket.io-parser from 4.2.1 to 4.2.3 ([#1663](https://github.com/hirosystems/stacks-blockchain-api/issues/1663)) ([c7eb1c2](https://github.com/hirosystems/stacks-blockchain-api/commit/c7eb1c29838197862378e6dfe7605f5c880ce04b))
+
 ## [7.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.2.0) (2023-05-23)
 
 
