@@ -20,11 +20,7 @@ There are multiple ways to interact with the endpoint. However, this document wa
 
 ## Using Curl
 
-The following section walks you through using an API key with Curl.
-
-`curl https://api.hiro.so -H 'x-hiro-api-key: <API_KEY>'`
-
-Now, put the API key value that you received from your request, and the command now looks like this: 
+Using curl, you will pass the API key in a `x-hiro-api-key` header. Use the following command as an example to call the API endpoint `https://api.hiro.so/extended/v1/microblock`.
 
 `curl https://api.hiro.so/extended/v1/microblock -H 'x-hiro-api-key: Nabcs1234efg56789aaaaaaaaqqqqqqqeeeeee12334345'`
 
