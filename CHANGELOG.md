@@ -1,3 +1,10 @@
+## [7.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.1...v7.2.2) (2023-06-07)
+
+
+### Bug Fixes
+
+* option to skip RPC request during init which may avoid startup deadlocks [#1584](https://github.com/hirosystems/stacks-blockchain-api/issues/1584) ([#1640](https://github.com/hirosystems/stacks-blockchain-api/issues/1640)) ([e0e61d3](https://github.com/hirosystems/stacks-blockchain-api/commit/e0e61d383963673fbc1ed7bb4f75c9f5af69bcdf))
+
 ## [7.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0...v7.2.1) (2023-05-24)
 
 
