@@ -34,7 +34,7 @@ import {
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { CHAIN_ID_TESTNET, cssEscape, unwrapOptional } from '../../helpers';
+import { NETWORK_CHAIN_ID, cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 import { PgStore } from '../../datastore/pg-store';
 import { DbTx } from '../../datastore/common';
@@ -579,7 +579,7 @@ export function createDebugRouter(db: PgStore): express.Router {
 
   const rosettaNetwork = {
     blockchain: RosettaConstants.blockchain,
-    network: getRosettaNetworkName(CHAIN_ID_TESTNET),
+    network: getRosettaNetworkName(NETWORK_CHAIN_ID.testnet),
   };
 
   async function stackWithRosetta(

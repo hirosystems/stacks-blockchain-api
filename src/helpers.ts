@@ -959,8 +959,10 @@ export function parseDataUrl(
  */
 export type ChainID = number;
 
-export const CHAIN_ID_MAINNET = 0x00000001;
-export const CHAIN_ID_TESTNET = 0x80000000;
+export const enum NETWORK_CHAIN_ID {
+  mainnet = 0x00000001,
+  testnet = 0x80000000,
+}
 
 /**
  * Checks if the given chain_id is a mainnet or testnet chain id.
@@ -968,9 +970,9 @@ export const CHAIN_ID_TESTNET = 0x80000000;
  * the `CUSTOM_CHAIN_IDS` env var for any configured custom chain ids (used for subnets).
  */
 export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
-  if (chainID === CHAIN_ID_MAINNET) {
+  if (chainID === NETWORK_CHAIN_ID.mainnet) {
     return 'mainnet';
-  } else if (chainID === CHAIN_ID_TESTNET) {
+  } else if (chainID === NETWORK_CHAIN_ID.testnet) {
     return 'testnet';
   }
   const chainIDHex = numberToHex(chainID);
@@ -1009,8 +1011,8 @@ export function chainIdConfigurationCheck() {
   } catch (error) {
     logger.error(error);
     const chainIdHex = numberToHex(chainID);
-    const mainnetHex = numberToHex(CHAIN_ID_MAINNET);
-    const testnetHex = numberToHex(CHAIN_ID_TESTNET);
+    const mainnetHex = numberToHex(NETWORK_CHAIN_ID.mainnet);
+    const testnetHex = numberToHex(NETWORK_CHAIN_ID.testnet);
     logger.error(
       `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex}, testnet=${testnetHex}, or custom chain IDs: CUSTOM_CHAIN_IDS=${process.env.CUSTOM_CHAIN_IDS}`
     );
