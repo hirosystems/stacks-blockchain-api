@@ -1,6 +1,5 @@
 import {
   abiFunctionToString,
-  ChainID,
   ClarityAbi,
   ClarityAbiFunction,
   getTypeString,
@@ -61,7 +60,7 @@ import {
   StxUnlockEvent,
   DbPox2Event,
 } from '../../datastore/common';
-import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256 } from '../../helpers';
+import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';

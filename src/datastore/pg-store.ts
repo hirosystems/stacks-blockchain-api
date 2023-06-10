@@ -3,7 +3,7 @@ import {
   AddressUnlockSchedule,
   TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
-import { ChainID, ClarityAbi } from '@stacks/transactions';
+import { ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
   assertNotNullish,
@@ -13,6 +13,7 @@ import {
   bnsNameCV,
   getBnsSmartContractId,
   bnsNameFromSubdomain,
+  ChainID,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {

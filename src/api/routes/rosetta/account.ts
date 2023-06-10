@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
-import { has0xPrefix, FoundOrNot } from '../../../helpers';
+import { has0xPrefix, FoundOrNot, ChainID } from '../../../helpers';
 import {
   RosettaAccount,
   RosettaBlockIdentifier,
@@ -13,7 +13,6 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
-import { ChainID } from '@stacks/transactions';
 import { getValidatedFtMetadata } from '../../../rosetta-helpers';
 import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
 

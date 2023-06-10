@@ -1,6 +1,6 @@
 import * as T from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
+import { ChainID, getChainIDNetwork } from '../helpers';
 
 export const RosettaNetworks = {
   testnet: 'testnet',
@@ -20,9 +20,9 @@ export const RosettaConstants = {
 };
 
 export function getRosettaNetworkName(chainId: ChainID): string {
-  if (chainId === ChainID.Mainnet) {
+  if (getChainIDNetwork(chainId) === 'mainnet') {
     return RosettaNetworks.mainnet;
-  } else if (chainId === ChainID.Testnet) {
+  } else if (getChainIDNetwork(chainId) === 'testnet') {
     return RosettaNetworks.testnet;
   } else {
     throw new Error(`Cannot get rosetta network for unexpected chainID "${chainId}"`);
