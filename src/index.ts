@@ -6,6 +6,7 @@ import {
   parseArgBoolean,
   getApiConfiguredChainID,
   getStacksNodeChainID,
+  chainIdConfigurationCheck,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init';
@@ -109,6 +110,7 @@ async function init(): Promise<void> {
         '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
+  chainIdConfigurationCheck();
   const apiMode = getApiMode();
   let dbStore: PgStore;
   let dbWriteStore: PgWriteStore;

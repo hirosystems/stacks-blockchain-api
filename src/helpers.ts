@@ -981,25 +981,40 @@ export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
       `Unknown chain_id ${chainIDHex}, use ${customChainIDEnv} to specify custom testnet or mainnet chain_ids (for example for subnets)`
     );
   }
-  const customIdMap = customChainIDs.split(',').map(x => x.split('='));
-  for (const [kind, id] of customIdMap) {
-    if (kind.trim().toLowerCase() === 'testnet') {
-      if (parseInt(id) === chainID) {
-        return 'testnet';
-      }
-    } else if (kind.trim().toLowerCase() === 'mainnet') {
-      if (parseInt(id) === chainID) {
-        return 'mainnet';
-      }
-    } else {
-      throw new Error(
-        `Error parsing ${customChainIDEnv} chain_id kind "${kind}", should be either 'testnet' or 'mainnet'`
-      );
+
+  const customIdMap = new Map<number, string>(
+    customChainIDs
+      .split(',')
+      .map(pair => pair.split('='))
+      .map(([k, v]) => [parseInt(v), k.trim().toLowerCase()])
+  );
+  const customIdNetwork = customIdMap.get(chainID);
+  if (customIdNetwork) {
+    if (customIdNetwork === 'testnet' || customIdNetwork === 'mainnet') {
+      return customIdNetwork;
     }
+    throw new Error(
+      `Error parsing ${customChainIDEnv} chain_id network "${customIdNetwork}", should be either 'testnet' or 'mainnet'`
+    );
   }
   throw new Error(
     `Unknown chain_id ${chainIDHex}, does not match mainnet=0x00000001, testnet=0x80000000, or any configured custom IDs: ${customChainIDEnv}=${customChainIDs}`
   );
+}
+
+export function chainIdConfigurationCheck() {
+  const chainID = getApiConfiguredChainID();
+  try {
+    getChainIDNetwork(chainID);
+  } catch (error) {
+    logger.error(error);
+    const chainIdHex = numberToHex(chainID);
+    const mainnetHex = numberToHex(CHAIN_ID_MAINNET);
+    const testnetHex = numberToHex(CHAIN_ID_TESTNET);
+    logger.error(
+      `Oops! The configuration for STACKS_CHAIN_ID=${chainIdHex} does not match mainnet=${mainnetHex}, testnet=${testnetHex}, or custom chain IDs: CUSTOM_CHAIN_IDS=${process.env.CUSTOM_CHAIN_IDS}`
+    );
+  }
 }
 
 /**
