@@ -1,3 +1,10 @@
+## [7.2.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.3...v7.2.0-beta.4) (2023-06-10)
+
+
+### Features
+
+* support custom chain_id (e.g. for subnets) ([#1669](https://github.com/hirosystems/stacks-blockchain-api/issues/1669)) ([1c6e35a](https://github.com/hirosystems/stacks-blockchain-api/commit/1c6e35a2dc0b5c161d35f291220a0bef6c6f5d28))
+
 ## [7.2.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.2...v7.2.0-beta.3) (2023-05-12)
 
 
