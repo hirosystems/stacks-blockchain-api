@@ -46,10 +46,11 @@ import {
   bufferToHexPrefixString,
   hexToBuffer,
   SubnetContractIdentifer,
+  getChainIDNetwork,
+  ChainID,
 } from '../helpers';
 import {
   TransactionVersion,
-  ChainID,
   uintCV,
   tupleCV,
   bufferCV,
@@ -133,7 +134,10 @@ function createSubnetTransactionFromL1RegisterAsset(
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -192,7 +196,10 @@ function createSubnetTransactionFromL1NftDeposit(
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -251,7 +258,10 @@ function createSubnetTransactionFromL1FtDeposit(
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -293,12 +303,17 @@ function createSubnetTransactionFromL1StxDeposit(
 ): DecodedTxResult {
   const recipientAddress = decodeStacksAddress(event.stx_mint_event.recipient);
   const bootAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? 'SP000000000000000000002Q6VF78'
+      : 'ST000000000000000000002AMW42H';
   const bootAddress = decodeStacksAddress(bootAddressString);
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -360,11 +375,13 @@ function createTransactionFromCoreBtcStxLockEvent(
   const unlockBurnHeight = Number(resultTuple.data['unlock-burn-height'].value);
 
   // Number of cycles: floor((unlock-burn-height - burn-height) / reward-cycle-length)
-  const rewardCycleLength = chainId === ChainID.Mainnet ? 2100 : 50;
+  const rewardCycleLength = getChainIDNetwork(chainId) === 'mainnet' ? 2100 : 50;
   const lockPeriod = Math.floor((unlockBurnHeight - burnBlockHeight) / rewardCycleLength);
   const senderAddress = decodeStacksAddress(event.stx_lock_event.locked_address);
   const poxAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? 'SP000000000000000000002Q6VF78'
+      : 'ST000000000000000000002AMW42H';
   const poxAddress = decodeStacksAddress(poxAddressString);
 
   const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
@@ -390,7 +407,10 @@ function createTransactionFromCoreBtcStxLockEvent(
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -453,7 +473,9 @@ function createTransactionFromCoreBtcDelegateStxEvent(
 
   const senderAddress = decodeStacksAddress(decodedEvent.stacker);
   const poxContractAddressString =
-    chainId === ChainID.Mainnet ? 'SP000000000000000000002Q6VF78' : 'ST000000000000000000002AMW42H';
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? 'SP000000000000000000002Q6VF78'
+      : 'ST000000000000000000002AMW42H';
   const poxContractAddress = decodeStacksAddress(poxContractAddressString);
   const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
@@ -483,7 +505,10 @@ function createTransactionFromCoreBtcDelegateStxEvent(
 
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -527,7 +552,10 @@ function createTransactionFromCoreBtcTxEvent(
   const senderAddress = decodeStacksAddress(event.stx_transfer_event.sender);
   const tx: DecodedTxResult = {
     tx_id: txId,
-    version: chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
     chain_id: chainId,
     auth: {
       type_id: PostConditionAuthFlag.Standard,
@@ -647,7 +675,7 @@ export function parseMessageTransaction(
               e.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
         )
         .map(e => {
-          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const network = getChainIDNetwork(chainId);
           const decodedEvent = decodePox2PrintEvent(e.contract_event.raw_value, network);
           if (decodedEvent) {
             return {

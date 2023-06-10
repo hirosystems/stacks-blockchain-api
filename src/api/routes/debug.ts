@@ -29,13 +29,12 @@ import {
   tupleCV,
   bufferCV,
   AnchorMode,
-  ChainID,
   deserializeTransaction,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
-import { cssEscape, unwrapOptional } from '../../helpers';
+import { NETWORK_CHAIN_ID, cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
 import { PgStore } from '../../datastore/pg-store';
 import { DbTx } from '../../datastore/common';
@@ -580,7 +579,7 @@ export function createDebugRouter(db: PgStore): express.Router {
 
   const rosettaNetwork = {
     blockchain: RosettaConstants.blockchain,
-    network: getRosettaNetworkName(ChainID.Testnet),
+    network: getRosettaNetworkName(NETWORK_CHAIN_ID.testnet),
   };
 
   async function stackWithRosetta(

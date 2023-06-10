@@ -5,7 +5,7 @@ import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
+import { ChainID } from '../../../helpers';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,

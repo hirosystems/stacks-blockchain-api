@@ -5,7 +5,7 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
-import { getIbdBlockHeight, hexToBuffer } from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -52,7 +52,6 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -426,7 +425,7 @@ function parseDataStoreTxEventData(
           (event.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
             event.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
         ) {
-          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const network = getChainIDNetwork(chainId) === 'mainnet' ? 'mainnet' : 'testnet';
           const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
           if (poxEventData !== null) {
             logger.debug(`Pox2 event data:`, poxEventData);

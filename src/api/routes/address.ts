@@ -10,6 +10,7 @@ import {
   validatePrincipal,
 } from '../query-helpers';
 import {
+  ChainID,
   formatMapToObject,
   getSendManyContract,
   has0xPrefix,
@@ -39,7 +40,6 @@ import {
   AddressNonces,
   NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { validate } from '../validate';
 import { NextFunction, Request, Response } from 'express';
