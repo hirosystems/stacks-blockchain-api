@@ -19,16 +19,13 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { apiDocumentationUrl, isProdEnv, waiter } from '../helpers';
+import { ChainID, apiDocumentationUrl, getChainIDNetwork, isProdEnv, waiter } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { createBnsNamesRouter } from './routes/bns/names';
 import { createBnsAddressesRouter } from './routes/bns/addresses';
-
-import { ChainID } from '@stacks/transactions';
-
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
@@ -214,7 +211,7 @@ export async function startApiServer(opts: {
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
-      if (chainId !== ChainID.Mainnet && writeDatastore) {
+      if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
       return router;

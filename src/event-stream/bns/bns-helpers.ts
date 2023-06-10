@@ -1,5 +1,5 @@
-import { BufferCV, ChainID, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
-import { bnsNameCV, hexToBuffer, hexToUtf8String } from '../../helpers';
+import { BufferCV, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
+import { bnsNameCV, ChainID, getChainIDNetwork, hexToBuffer, hexToUtf8String } from '../../helpers';
 import {
   CoreNodeEvent,
   CoreNodeEventType,
@@ -181,7 +181,9 @@ export function parseNamespaceRawValue(
 export function GetStacksNetwork(chainId: ChainID) {
   const url = `http://${getCoreNodeEndpoint()}`;
   const network =
-    chainId === ChainID.Mainnet ? new StacksMainnet({ url }) : new StacksTestnet({ url });
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? new StacksMainnet({ url })
+      : new StacksTestnet({ url });
   return network;
 }
 
@@ -238,7 +240,9 @@ export function parseZoneFileTxt(txtEntries: string | string[]) {
 
 export function getBnsContractID(chainId: ChainID) {
   const contractId =
-    chainId === ChainID.Mainnet ? BnsContractIdentifier.mainnet : BnsContractIdentifier.testnet;
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? BnsContractIdentifier.mainnet
+      : BnsContractIdentifier.testnet;
   return contractId;
 }
 

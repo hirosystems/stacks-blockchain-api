@@ -1,12 +1,4 @@
-import {
-  BufferCV,
-  bufferCV,
-  ChainID,
-  cvToHex,
-  hexToCV,
-  TupleCV,
-  tupleCV,
-} from '@stacks/transactions';
+import { BufferCV, bufferCV, cvToHex, hexToCV, TupleCV, tupleCV } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import * as btc from 'bitcoinjs-lib';
 import { execSync } from 'child_process';
@@ -960,6 +952,57 @@ export function parseDataUrl(
 }
 
 /**
+ * Unsigned 32-bit integer.
+ *  - Mainnet: 0x00000001
+ *  - Testnet: 0x80000000
+ *  - Subnets: _dynamic_
+ */
+export type ChainID = number;
+
+export const CHAIN_ID_MAINNET = 0x00000001;
+export const CHAIN_ID_TESTNET = 0x80000000;
+
+/**
+ * Checks if the given chain_id is a mainnet or testnet chain id.
+ * First checks the L1 network IDs (mainnet=0x00000001 and testnet=0x80000000), then checks
+ * the `CUSTOM_CHAIN_IDS` env var for any configured custom chain ids (used for subnets).
+ */
+export function getChainIDNetwork(chainID: ChainID): 'mainnet' | 'testnet' {
+  if (chainID === CHAIN_ID_MAINNET) {
+    return 'mainnet';
+  } else if (chainID === CHAIN_ID_TESTNET) {
+    return 'testnet';
+  }
+  const chainIDHex = numberToHex(chainID);
+  const customChainIDEnv = 'CUSTOM_CHAIN_IDS';
+  const customChainIDs = process.env[customChainIDEnv];
+  if (!customChainIDs) {
+    throw new Error(
+      `Unknown chain_id ${chainIDHex}, use ${customChainIDEnv} to specify custom testnet or mainnet chain_ids (for example for subnets)`
+    );
+  }
+  const customIdMap = customChainIDs.split(',').map(x => x.split('='));
+  for (const [kind, id] of customIdMap) {
+    if (kind.trim().toLowerCase() === 'testnet') {
+      if (parseInt(id) === chainID) {
+        return 'testnet';
+      }
+    } else if (kind.trim().toLowerCase() === 'mainnet') {
+      if (parseInt(id) === chainID) {
+        return 'mainnet';
+      }
+    } else {
+      throw new Error(
+        `Error parsing ${customChainIDEnv} chain_id kind "${kind}", should be either 'testnet' or 'mainnet'`
+      );
+    }
+  }
+  throw new Error(
+    `Unknown chain_id ${chainIDHex}, does not match mainnet=0x00000001, testnet=0x80000000, or any configured custom IDs: ${customChainIDEnv}=${customChainIDs}`
+  );
+}
+
+/**
  * Creates a Clarity tuple Buffer from a BNS name, just how it is stored in
  * received NFT events.
  */
@@ -997,7 +1040,7 @@ export function bnsNameFromSubdomain(subdomain: string): string {
 }
 
 export function getBnsSmartContractId(chainId: ChainID): string {
-  return chainId === ChainID.Mainnet
+  return getChainIDNetwork(chainId) === 'mainnet'
     ? 'SP000000000000000000002Q6VF78.bns::names'
     : 'ST000000000000000000002AMW42H.bns::names';
 }
@@ -1009,7 +1052,7 @@ export const enum SubnetContractIdentifer {
 
 export function getSendManyContract(chainId: ChainID) {
   const contractId =
-    chainId === ChainID.Mainnet
+    getChainIDNetwork(chainId) === 'mainnet'
       ? process.env.MAINNET_SEND_MANY_CONTRACT_ID
       : process.env.TESTNET_SEND_MANY_CONTRACT_ID;
   return contractId;
@@ -1023,13 +1066,9 @@ export async function getStacksNodeChainID(): Promise<ChainID> {
   const client = new StacksCoreRpcClient();
   await client.waitForConnection(Infinity);
   const coreInfo = await client.getInfo();
-  if (coreInfo.network_id === ChainID.Mainnet) {
-    return ChainID.Mainnet;
-  } else if (coreInfo.network_id === ChainID.Testnet) {
-    return ChainID.Testnet;
-  } else {
-    throw new Error(`Unexpected network_id "${coreInfo.network_id}"`);
-  }
+  // parse chain_id kind (mainnet or testnet) to ensure it is valid and understood by the API
+  getChainIDNetwork(coreInfo.network_id);
+  return coreInfo.network_id;
 }
 
 /**
