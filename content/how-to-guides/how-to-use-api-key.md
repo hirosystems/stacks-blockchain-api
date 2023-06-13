@@ -2,7 +2,7 @@
 Title: How to use API key
 ---
 
-API keys are alpha-numeric string values distributed to the developer customers to grant access to your API.
+API keys are alpha-numeric codes that identify and authenticate an application or developer.
 
 # Steps to use API Key
 
