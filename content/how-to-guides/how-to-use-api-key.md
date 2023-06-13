@@ -14,7 +14,7 @@ _The API key is passed in the **header** of your API call._
 
 :::
 
-There are multiple ways to interact with the endpoint. However, this document walks you through three ways to make an [API call](https://docs.hiro.so/api#tag/Microblocks/operation/get_microblock_list). You can choose between any of the following methods.
+There are multiple ways to interact with the API endpoints. However, this document walks you through three ways to make an [API call](https://docs.hiro.so/api#tag/Microblocks/operation/get_microblock_list). You can choose between any of the following methods.
 
 - Curl
 - Postman
