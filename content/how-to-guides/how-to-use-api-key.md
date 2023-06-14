@@ -8,11 +8,8 @@ API keys are alpha-numeric codes that identify and authenticate an application o
 
 This guide helps you with the steps to use the API key to interact with the Stacks Blockchain API.
 
-:::note
-
-_The API key is passed in the **header** of your API call._
-
-:::
+> **_NOTE:_**
+> The API key is passed in the **header** of your API call and is used only for private use, like server-side applications. This key is not to be exposed or shared and is treated as a password.
 
 There are multiple ways to interact with the API endpoints. However, this document walks you through three ways to make an [API call](https://docs.hiro.so/api#tag/Microblocks/operation/get_microblock_list). You can choose between any of the following methods.
 
@@ -36,7 +33,7 @@ Select **Send** to get recent microblocks.
 
 ![API-Key](../images/api-key.jpeg)
 
-## Using the Typescript function
+## Using the API key in Typescript
 
 ```typescript
 function getRecentMicroblocks(apiKey: string) {
