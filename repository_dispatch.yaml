@@ -1,0 +1,42 @@
+name: Send Repository Dispatch Event to ApiTest Repo
+
+on:
+  push:
+    branches:
+      - master
+env:
+  DOMAIN_API: https://stacks-node-api.testnet.stacks.co #this will be updated with the test api URL
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository A
+        uses: actions/checkout@v2
+
+      - run: touch .env.apitest
+      - run: |
+          echo "" >> .env.apitest
+          echo "DOMAIN_API=$DOMAIN_API" >> .env.apitest
+      - run: cat .env.apitest
+      - name: convert .env to JSON
+        id: convert-json
+        uses: ricosandyca/convert-env-json@main
+        with:
+          type: env-to-json
+          input_path: .env.apitest
+          output_path: .env.apitest.json
+      - name: Read JSON file
+        id: read-json
+        run: |
+          echo "payload=$(echo $(cat .env.apitest.json))" >> $GITHUB_OUTPUT
+      - name: Echo JSON file
+        id: echo-json
+        run: printf ${{ steps.read-json.outputs.payload }}
+      - name: Send repository dispatch event
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.PAT_SECRET }} #to be updated with a Personal Access Token and secret
+          repository: hirosystems/apiTest
+          event-type: data-transfer
+          client-payload: ${{ steps.read-json.outputs.payload }}
