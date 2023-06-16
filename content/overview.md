@@ -2,7 +2,7 @@
 Title: Overview
 ---
 
-# Overview
+# Stacks Blockchain API Overview
 
 The Stacks blockchain API allows you to query the Stacks blockchain and interact with smart contracts. It was built to maintain paginated, materialized views of the Stacks Blockchain.
 
