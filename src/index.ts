@@ -27,6 +27,7 @@ import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/help
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
+import { run } from './event-replay/parquet-based/event-replay';
 
 enum StacksApiMode {
   /**
@@ -275,6 +276,13 @@ function getProgramArgs() {
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
+      }
+    | {
+        operand: 'from-parquet-events';
+        options: {
+          ['wipe-db']?: boolean;
+          ['disable-indexes']?: boolean;
+        }
       };
   return { args, parsedOpts };
 }
@@ -290,6 +298,8 @@ async function handleProgramArgs() {
       args.options['wipe-db'],
       args.options.force
     );
+  } else if (args.operand === 'from-parquet-events') {
+    await run(args.options['wipe-db'], args.options['disable-indexes']);
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {

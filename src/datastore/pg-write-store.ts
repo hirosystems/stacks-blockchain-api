@@ -1580,6 +1580,7 @@ export class PgWriteStore extends PgStore {
           (burn_block_hash = ${burnchainBlockHash}
             OR burn_block_height >= ${burnchainBlockHeight})
       `;
+
       if (existingRewards.count > 0) {
         logger.warn(
           `Invalidated ${existingRewards.count} burnchain rewards after fork detected at burnchain block ${burnchainBlockHash}`
@@ -1602,6 +1603,46 @@ export class PgWriteStore extends PgStore {
         if (rewardInsertResult.count !== 1) {
           throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
         }
+      }
+    });
+  }
+
+  async insertBurnchainRewardsAndSlotHoldersBatch(
+    rewards: DbBurnchainReward[],
+    slotHolders: DbRewardSlotHolder[]): Promise<void> {
+    return await this.sqlWriteTransaction(async sql => {
+      const rewardValues: BurnchainRewardInsertValues[] = rewards.map(reward => ({
+        canonical: true,
+        burn_block_hash: reward.burn_block_hash,
+        burn_block_height: reward.burn_block_height,
+        burn_amount: reward.burn_amount.toString(),
+        reward_recipient: reward.reward_recipient,
+        reward_amount: reward.reward_amount,
+        reward_index: reward.reward_index,
+      }));
+
+      const res = await sql`
+        INSERT into burnchain_rewards ${sql(rewardValues)}
+      `;
+
+      if(res.count !== rewardValues.length) {
+        throw new Error(`Failed to insert burnchain reward for ${rewardValues}`);
+      }
+
+      const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
+        canonical: true,
+        burn_block_hash: slot.burn_block_hash,
+        burn_block_height: slot.burn_block_height,
+        address: slot.address,
+        slot_index: slot.slot_index,
+      }));
+
+      const result = await sql`
+        INSERT INTO reward_slot_holders ${sql(slotValues)}
+      `;
+
+      if (result.count !== slotValues.length) {
+        throw new Error(`Failed to insert slot holder for ${slotValues}`);
       }
     });
   }
@@ -2969,5 +3010,24 @@ export class PgWriteStore extends PgStore {
       await this.refreshMaterializedView('chain_tip', sql, false);
       await this.refreshMaterializedView('mempool_digest', sql, false);
     });
+  }
+
+  /** Enable or disable indexes for the provided set of tables. */
+  async toggleTableIndexes(sql: PgSqlClient, tables: string[], enabled: boolean): Promise<void> {
+    const tableSchema = this.sql.options.connection.search_path ?? 'public';
+    const result = await sql`
+      UPDATE pg_index
+      SET ${sql({ indisready: enabled, indisvalid: enabled })}
+      WHERE indrelid = ANY (
+        SELECT oid FROM pg_class
+        WHERE relname IN ${sql(tables)}
+        AND relnamespace = (
+          SELECT oid FROM pg_namespace WHERE nspname = ${tableSchema}
+        )
+      )
+    `;
+    if (result.count === 0) {
+      throw new Error(`No updates made while toggling table indexes`);
+    }
   }
 }
