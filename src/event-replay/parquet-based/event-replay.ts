@@ -1,11 +1,18 @@
+
+import * as tty from 'tty';
+
 import { PgWriteStore } from '../../datastore/pg-write-store';
 import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
 import { logger } from '../../logger';
+import { createTimeTracker } from './helpers';
 import { insertNewBurnBlockEvents } from './importers/new_burn_block_importer';
+import { insertNewBlockEvents } from './importers/new_block_importer';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 
 const run = async (wipeDB: boolean = false, disableIndexes: boolean = false) => {
+  const timeTracker = createTimeTracker();
+
   const db = await PgWriteStore.connect({
     usageName: 'import-events',
     skipMigrations: true,
@@ -49,7 +56,8 @@ const run = async (wipeDB: boolean = false, disableIndexes: boolean = false) => 
 
   try {
     await Promise.all([
-      insertNewBurnBlockEvents(db),
+      insertNewBurnBlockEvents(db, timeTracker),
+      // insertNewBlockEvents(db, timeTracker)
     ]);
   } catch (err) {
     throw err;
@@ -58,8 +66,14 @@ const run = async (wipeDB: boolean = false, disableIndexes: boolean = false) => 
       logger.info(`Enable indexes on tables: ${tables.join(', ')}`);
       db.toggleTableIndexes(db.sql, tables, true);
     }
-  }
 
+    if (true || tty.isatty(1)) {
+      console.log('Tracked function times:');
+      console.table(timeTracker.getDurations(3));
+    } else {
+      logger.info(`Tracked function times`, timeTracker.getDurations(3));
+    }
+  }
 }
 
 export { run };

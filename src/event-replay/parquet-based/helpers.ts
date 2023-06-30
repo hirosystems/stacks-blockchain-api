@@ -51,38 +51,14 @@ const createTimeTracker = (): TimeTracker => {
   };
 }
 
-export interface Stopwatch {
-  /** Milliseconds since stopwatch was created. */
-  getElapsed: () => number;
-  /** Seconds since stopwatch was created. */
-  getElapsedSeconds: (roundDecimals?: number) => number;
-  getElapsedAndRestart: () => number;
-  restart(): void;
+function* chunks<T>(arr: T[], n: number): Generator<T[], void> {
+  for (let i = 0; i < arr.length; i += n) {
+    yield arr.slice(i, i + n);
+  }
 }
 
-export function stopwatch(): Stopwatch {
-  let start = process.hrtime.bigint();
-  const result: Stopwatch = {
-    getElapsedSeconds: (roundDecimals?: number) => {
-      const elapsedMs = result.getElapsed();
-      const seconds = elapsedMs / 1000;
-      return roundDecimals === undefined ? seconds : +seconds.toFixed(roundDecimals);
-    },
-    getElapsed: () => {
-      const end = process.hrtime.bigint();
-      return Number((end - start) / 1_000_000n);
-    },
-    getElapsedAndRestart: () => {
-      const end = process.hrtime.bigint();
-      const result = Number((end - start) / 1_000_000n);
-      start = process.hrtime.bigint();
-      return result;
-    },
-    restart: () => {
-      start = process.hrtime.bigint();
-    },
-  };
-  return result;
-}
+const splitIntoChunks = async (data: object[], chunk_size: number) => {
+  return [...chunks(data, chunk_size)];
+};
 
-export { TimeTracker, createTimeTracker };
+export { TimeTracker, createTimeTracker, splitIntoChunks };

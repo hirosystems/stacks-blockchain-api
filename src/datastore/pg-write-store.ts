@@ -1607,45 +1607,43 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async insertBurnchainRewardsAndSlotHoldersBatch(
-    rewards: DbBurnchainReward[],
-    slotHolders: DbRewardSlotHolder[]): Promise<void> {
-    return await this.sqlWriteTransaction(async sql => {
-      const rewardValues: BurnchainRewardInsertValues[] = rewards.map(reward => ({
-        canonical: true,
-        burn_block_hash: reward.burn_block_hash,
-        burn_block_height: reward.burn_block_height,
-        burn_amount: reward.burn_amount.toString(),
-        reward_recipient: reward.reward_recipient,
-        reward_amount: reward.reward_amount,
-        reward_index: reward.reward_index,
-      }));
+  async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
+    const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
+      canonical: true,
+      burn_block_hash: slot.burn_block_hash,
+      burn_block_height: slot.burn_block_height,
+      address: slot.address,
+      slot_index: slot.slot_index,
+    }));
 
-      const res = await sql`
-        INSERT into burnchain_rewards ${sql(rewardValues)}
-      `;
+    const result = await sql`
+      INSERT INTO reward_slot_holders ${sql(slotValues)}
+    `;
 
-      if(res.count !== rewardValues.length) {
-        throw new Error(`Failed to insert burnchain reward for ${rewardValues}`);
-      }
+    if (result.count !== slotValues.length) {
+      throw new Error(`Failed to insert slot holder for ${slotValues}`);
+    }
+  };
 
-      const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
-        canonical: true,
-        burn_block_hash: slot.burn_block_hash,
-        burn_block_height: slot.burn_block_height,
-        address: slot.address,
-        slot_index: slot.slot_index,
-      }));
+  async insertBurnchainRewardsBatch(sql: PgSqlClient, rewards: DbBurnchainReward[]): Promise<void> {
+    const rewardValues: BurnchainRewardInsertValues[] = rewards.map(reward => ({
+      canonical: true,
+      burn_block_hash: reward.burn_block_hash,
+      burn_block_height: reward.burn_block_height,
+      burn_amount: reward.burn_amount.toString(),
+      reward_recipient: reward.reward_recipient,
+      reward_amount: reward.reward_amount,
+      reward_index: reward.reward_index,
+    }));
 
-      const result = await sql`
-        INSERT INTO reward_slot_holders ${sql(slotValues)}
-      `;
+    const res = await sql`
+      INSERT into burnchain_rewards ${sql(rewardValues)}
+    `;
 
-      if (result.count !== slotValues.length) {
-        throw new Error(`Failed to insert slot holder for ${slotValues}`);
-      }
-    });
-  }
+    if(res.count !== rewardValues.length) {
+      throw new Error(`Failed to insert burnchain reward for ${rewardValues}`);
+    }
+  };
 
   async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {

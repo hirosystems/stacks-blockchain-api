@@ -1,12 +1,13 @@
-import * as duckdb from 'duckdb';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
 import { DbBurnchainReward, DbRewardSlotHolder } from '../../../datastore/common';
 import { CoreNodeBurnBlockMessage } from '../../../event-stream/core-node-message';
 import { logger } from '../../../logger';
+import { TimeTracker, splitIntoChunks } from '../helpers';
+import { DatasetStore } from '../dataset/store';
 
 const INSERT_BATCH_SIZE = 500;
 
-const parsePayload = (payload: CoreNodeBurnBlockMessage) => {
+const DbBurnchainRewardParse = (payload: CoreNodeBurnBlockMessage) => {
   const rewards = payload.reward_recipients.map((r, index) => {
     const dbReward: DbBurnchainReward = {
       canonical: true,
@@ -17,9 +18,14 @@ const parsePayload = (payload: CoreNodeBurnBlockMessage) => {
       reward_amount: BigInt(r.amt),
       reward_index: index,
     };
+
     return dbReward;
   });
 
+  return rewards;
+};
+
+const DbRewardSlotHolderParse = (payload: CoreNodeBurnBlockMessage) => {
   const slotHolders = payload.reward_slot_holders.map((r, index) => {
     const slotHolder: DbRewardSlotHolder = {
       canonical: true,
@@ -31,51 +37,37 @@ const parsePayload = (payload: CoreNodeBurnBlockMessage) => {
     return slotHolder;
   });
 
-  return { rewards, slotHolders };
-}
-
-function* chunks<T>(arr: T[], n: number): Generator<T[], void> {
-  for (let i = 0; i < arr.length; i += n) {
-    yield arr.slice(i, i + n);
-  }
-}
-
-const fromCanonicalDataset = (process: any) => {
-  var inMemoryDB = new duckdb.Database(':memory:');
-  inMemoryDB.all(
-    "SELECT * FROM READ_PARQUET('events/new_burn_block/canonical/*.parquet')",
-    (err: any, res: any) => {
-      if (err) {
-        throw err;
-      }
-      process(res);
-    });
-}
-
-const fromDatasetAndInsert = async (db: PgWriteStore) => {
-  fromCanonicalDataset((events: any) => {
-    [...chunks(events, INSERT_BATCH_SIZE)].forEach(async (chunk: any) => {
-      let burnchainRewards: DbBurnchainReward[] = [];
-      let slotHolders: DbRewardSlotHolder[] = [];
-      chunk.forEach((ev: any) => {
-        const payload: CoreNodeBurnBlockMessage = JSON.parse(ev['payload']);
-        const burnBlockData = parsePayload(payload);
-        burnBlockData.rewards.forEach(reward => burnchainRewards.push(reward));
-        burnBlockData.slotHolders.forEach(holder => slotHolders.push(holder));
-      });
-
-      if (burnchainRewards.length !== 0 && slotHolders.length !== 0) {
-        await db.insertBurnchainRewardsAndSlotHoldersBatch(burnchainRewards, slotHolders);
-      }
-    });
-  });
-}
-
-const insertNewBurnBlockEvents = (db: PgWriteStore) => {
-  return new Promise((resolve) => {
-    logger.info(`Inserting NEW_BURN_BLOCK events to db...`);
-    fromDatasetAndInsert(db);
-  });
+  return slotHolders;
 };
 
-export { insertNewBurnBlockEvents };
+const insertBurnchainRewardsAndSlotHolders = async (db: PgWriteStore, chunks: any) => {
+  for (const chunk of chunks) {
+    let burnchainRewards: DbBurnchainReward[] = [];
+    let slotHolders: DbRewardSlotHolder[] = [];
+    for (const event of chunk) {
+      const payload: CoreNodeBurnBlockMessage = JSON.parse(event['payload']);
+      const burnchainRewardsData = DbBurnchainRewardParse(payload);
+      const slotHoldersData = DbRewardSlotHolderParse(payload);
+      burnchainRewardsData.forEach(reward => burnchainRewards.push(reward));
+      slotHoldersData.forEach(slotHolder => slotHolders.push(slotHolder));
+    };
+
+    if (burnchainRewards.length !== 0) {
+      await db.insertBurnchainRewardsBatch(db.sql, burnchainRewards);
+    }
+
+    if (slotHolders.length !== 0) {
+      await db.insertSlotHoldersBatch(db.sql, slotHolders);
+    }
+  };
+};
+
+export const insertNewBurnBlockEvents = async (db: PgWriteStore, dataset: DatasetStore, timeTracker: TimeTracker) => {
+  logger.info(`Inserting NEW_BURN_BLOCK events to db...`);
+
+  await timeTracker.track('insertNewBurnBlockEvents', async () => {
+    return dataset.newBurnBlockEventsOrdered()
+      .then(async (data: any) => await splitIntoChunks(data, INSERT_BATCH_SIZE))
+      .then(async (chunks: any) => await insertBurnchainRewardsAndSlotHolders(db, chunks));
+  });
+};
