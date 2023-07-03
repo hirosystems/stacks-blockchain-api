@@ -1,4 +1,3 @@
-
 import * as tty from 'tty';
 
 import { PgWriteStore } from '../../datastore/pg-write-store';
@@ -7,6 +6,7 @@ import { logger } from '../../logger';
 import { createTimeTracker } from './helpers';
 import { insertNewBurnBlockEvents } from './importers/new_burn_block_importer';
 import { insertNewBlockEvents } from './importers/new_block_importer';
+import { DatasetStore } from './dataset/store';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 
@@ -19,6 +19,8 @@ const run = async (wipeDB: boolean = false, disableIndexes: boolean = false) => 
     withNotifier: false,
     isEventReplay: true,
   });
+
+  const dataset = await DatasetStore.connect();
 
   if (wipeDB) {
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
@@ -56,8 +58,8 @@ const run = async (wipeDB: boolean = false, disableIndexes: boolean = false) => 
 
   try {
     await Promise.all([
-      insertNewBurnBlockEvents(db, timeTracker),
-      // insertNewBlockEvents(db, timeTracker)
+      insertNewBurnBlockEvents(db, dataset, timeTracker),
+      insertNewBlockEvents(db, dataset, timeTracker)
     ]);
   } catch (err) {
     throw err;
