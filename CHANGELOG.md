@@ -1,3 +1,61 @@
+## [7.2.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.1...v7.2.2) (2023-06-07)
+
+
+### Bug Fixes
+
+* option to skip RPC request during init which may avoid startup deadlocks [#1584](https://github.com/hirosystems/stacks-blockchain-api/issues/1584) ([#1640](https://github.com/hirosystems/stacks-blockchain-api/issues/1640)) ([e0e61d3](https://github.com/hirosystems/stacks-blockchain-api/commit/e0e61d383963673fbc1ed7bb4f75c9f5af69bcdf))
+
+## [7.2.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0...v7.2.1) (2023-05-24)
+
+
+### Bug Fixes
+
+* bump socket.io-parser from 4.2.1 to 4.2.3 ([#1663](https://github.com/hirosystems/stacks-blockchain-api/issues/1663)) ([c7eb1c2](https://github.com/hirosystems/stacks-blockchain-api/commit/c7eb1c29838197862378e6dfe7605f5c880ce04b))
+
+## [7.2.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.2.0) (2023-05-23)
+
+
+### Features
+
+* Stacks 2.4 / `pox-3` ([#1650](https://github.com/hirosystems/stacks-blockchain-api/issues/1650)) ([30922c8](https://github.com/hirosystems/stacks-blockchain-api/commit/30922c8a7375e454871bf6b114c0be7ec8a0dfab))
+
+## [7.1.11-stacks-2.4.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.1.11-stacks-2.4.1) (2023-05-09)
+
+
+### Bug Fixes
+
+* add pox-3 events table migration ([4c78556](https://github.com/hirosystems/stacks-blockchain-api/commit/4c785565a1cf168f966710d6b749edbf88bf7cf1))
+* add pox3_events array ([f9f4f42](https://github.com/hirosystems/stacks-blockchain-api/commit/f9f4f42c35789968c257072cb10563112189bb53))
+* include pox-3 events in reader filter ([dc36080](https://github.com/hirosystems/stacks-blockchain-api/commit/dc360802ab3424d57171999e52cb093472f2262c))
+* pox-3 support in Rosetta stacking ops parsing ([2397186](https://github.com/hirosystems/stacks-blockchain-api/commit/239718626215fdfea4c0cabd3365f256eab470fd))
+* switching routes/methods to pox3 ([b0c6bef](https://github.com/hirosystems/stacks-blockchain-api/commit/b0c6beffb376ab5130f3d22b6cdaf82be927bdc9))
+
+
+### Reverts
+
+* accidental discord notification removal ([a150258](https://github.com/hirosystems/stacks-blockchain-api/commit/a150258bdd1dcaf6472fbcfa604516783719dac8))
+
+## [7.1.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.9...v7.1.10) (2023-05-04)
+
+
+### Bug Fixes
+
+* bump engine.io and socket.io ([#1643](https://github.com/hirosystems/stacks-blockchain-api/issues/1643)) ([04b92ce](https://github.com/hirosystems/stacks-blockchain-api/commit/04b92ce1cce2ef5386e7074ea99f11504c5cf35b))
+
+## [7.1.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.8...v7.1.9) (2023-05-01)
+
+
+### Bug Fixes
+
+* generate synthetic `stx_unlock` rosetta operations for all locked accounts after pox2 force unlock [#1639](https://github.com/hirosystems/stacks-blockchain-api/issues/1639) ([#1638](https://github.com/hirosystems/stacks-blockchain-api/issues/1638)) ([9b58bb6](https://github.com/hirosystems/stacks-blockchain-api/commit/9b58bb6b06a7a2a8b0bce967748f0fed909e2be5))
+
+## [7.1.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.7...v7.1.8) (2023-04-28)
+
+
+### Bug Fixes
+
+* support Stacks 2.2 force pox-2 unlocks [#1634](https://github.com/hirosystems/stacks-blockchain-api/issues/1634) ([#1636](https://github.com/hirosystems/stacks-blockchain-api/issues/1636)) ([14706bd](https://github.com/hirosystems/stacks-blockchain-api/commit/14706bd64a27a70e88bb47fe61f40a6b1bec1dcc))
+
 ## [7.1.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.5...v7.1.7) (2023-04-18)
 
 

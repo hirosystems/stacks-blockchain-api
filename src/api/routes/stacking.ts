@@ -41,7 +41,7 @@ export function createStackingRouter(db: PgStore): express.Router {
         }
         const burnBlockHeight = dbBlock.result.burn_block_height;
 
-        const stackersQuery = await db.getPox2PoolDelegations({
+        const stackersQuery = await db.getPox3PoolDelegations({
           delegator: poolPrincipal,
           blockHeight,
           burnBlockHeight,

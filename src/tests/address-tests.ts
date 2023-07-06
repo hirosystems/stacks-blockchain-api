@@ -206,6 +206,7 @@ describe('address tests', () => {
         namespaces: [],
         smartContracts: [],
         pox2Events: [],
+        pox3Events: [],
       })),
     });
 
@@ -1162,6 +1163,7 @@ describe('address tests', () => {
         names: [],
         namespaces: [],
         pox2Events: [],
+        pox3Events: [],
       } as DataStoreTxEventData;
     });
     dataStoreTxs.push({
@@ -1175,6 +1177,7 @@ describe('address tests', () => {
       names: [],
       namespaces: [],
       pox2Events: [],
+      pox3Events: [],
     });
     dataStoreTxs.push({
       tx: { ...contractCall, raw_tx: '0x' },
@@ -1200,6 +1203,7 @@ describe('address tests', () => {
       names: [],
       namespaces: [],
       pox2Events: [],
+      pox3Events: [],
     });
     await db.update({
       block: block,
@@ -2119,6 +2123,7 @@ describe('address tests', () => {
           namespaces: [],
           smartContracts: [smartContract],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     });
@@ -2367,6 +2372,7 @@ describe('address tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     });
@@ -2472,6 +2478,7 @@ describe('address tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     });
@@ -2600,6 +2607,7 @@ describe('address tests', () => {
         names: [],
         namespaces: [],
         pox2Events: [],
+        pox3Events: [],
       });
     }
     await db.updateMicroblocks(mbData);

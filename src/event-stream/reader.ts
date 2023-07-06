@@ -48,6 +48,7 @@ import {
   SubnetContractIdentifer,
   getChainIDNetwork,
   ChainID,
+  BootContractAddress,
 } from '../helpers';
 import {
   TransactionVersion,
@@ -355,6 +356,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   burnBlockHeight: number,
   txResult: string,
   txId: string,
+  /** also pox-3 compatible */
   stxStacksPox2Event: DbPox2StackStxEvent | undefined
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
@@ -380,8 +382,8 @@ function createTransactionFromCoreBtcStxLockEvent(
   const senderAddress = decodeStacksAddress(event.stx_lock_event.locked_address);
   const poxAddressString =
     getChainIDNetwork(chainId) === 'mainnet'
-      ? 'SP000000000000000000002Q6VF78'
-      : 'ST000000000000000000002AMW42H';
+      ? BootContractAddress.mainnet
+      : BootContractAddress.testnet;
   const poxAddress = decodeStacksAddress(poxAddressString);
 
   const contractName = event.stx_lock_event.contract_identifier?.split('.')?.[1] ?? 'pox';
@@ -666,13 +668,11 @@ export function parseMessageTransaction(
         (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
       );
 
-      const pox2Event = events
+      // pox-2 and pox-3 compatible events
+      const poxEvent = events
         .filter(
           (e): e is SmartContractEvent =>
-            e.type === CoreNodeEventType.ContractEvent &&
-            e.contract_event.topic === 'print' &&
-            (e.contract_event.contract_identifier === Pox2ContractIdentifer.mainnet ||
-              e.contract_event.contract_identifier === Pox2ContractIdentifer.testnet)
+            e.type === CoreNodeEventType.ContractEvent && isPoxPrintEvent(e)
         )
         .map(e => {
           const network = getChainIDNetwork(chainId);
@@ -698,9 +698,9 @@ export function parseMessageTransaction(
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
         txSender = stxTransferEvent.stx_transfer_event.sender;
       } else if (stxLockEvent) {
-        const stxStacksPox2Event =
-          pox2Event?.decodedEvent.name === Pox2EventName.StackStx
-            ? pox2Event.decodedEvent
+        const stxStacksPoxEvent =
+          poxEvent?.decodedEvent.name === Pox2EventName.StackStx
+            ? poxEvent.decodedEvent
             : undefined;
         rawTx = createTransactionFromCoreBtcStxLockEvent(
           chainId,
@@ -708,18 +708,18 @@ export function parseMessageTransaction(
           blockData.burn_block_height,
           coreTx.raw_result,
           coreTx.txid,
-          stxStacksPox2Event
+          stxStacksPoxEvent
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
-      } else if (pox2Event && pox2Event.decodedEvent.name === Pox2EventName.DelegateStx) {
+      } else if (poxEvent && poxEvent.decodedEvent.name === Pox2EventName.DelegateStx) {
         rawTx = createTransactionFromCoreBtcDelegateStxEvent(
           chainId,
-          pox2Event.contractEvent,
-          pox2Event.decodedEvent,
+          poxEvent.contractEvent,
+          poxEvent.decodedEvent,
           coreTx.raw_result,
           coreTx.txid
         );
-        txSender = pox2Event.decodedEvent.stacker;
+        txSender = poxEvent.decodedEvent.stacker;
       } else if (nftMintEvent) {
         rawTx = createSubnetTransactionFromL1NftDeposit(chainId, nftMintEvent, coreTx.txid);
         txSender = nftMintEvent.nft_mint_event.recipient;
@@ -837,4 +837,14 @@ export function parseMessageTransaction(
     logger.error(error, `error parsing message transaction ${JSON.stringify(coreTx)}`);
     throw error;
   }
+}
+
+export function isPoxPrintEvent(event: SmartContractEvent): boolean {
+  if (event.contract_event.topic !== 'print') return false;
+
+  const [address, name] = event.contract_event.contract_identifier.split('.');
+  return (
+    (address == BootContractAddress.mainnet || address == BootContractAddress.testnet) &&
+    name.startsWith('pox')
+  );
 }

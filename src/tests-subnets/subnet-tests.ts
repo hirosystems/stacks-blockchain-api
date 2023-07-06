@@ -212,7 +212,7 @@ describe('Subnets tests', () => {
       });
       const tx = await makeContractDeploy({
         senderKey: accounts.USER.key,
-        // clarityVersion: 1,
+        clarityVersion: null as any,
         contractName: contractName,
         codeBody: src,
         network: l2Network,
@@ -647,7 +647,7 @@ describe('Subnets tests', () => {
       });
       const tx = await makeContractDeploy({
         senderKey: accounts.USER.key,
-        // clarityVersion: 1,
+        clarityVersion: null as any,
         contractName: contractName,
         codeBody: src,
         network: l2Network,
@@ -1050,7 +1050,7 @@ describe('Subnets tests', () => {
       });
       const tx = await makeContractDeploy({
         senderKey: accounts.USER.key,
-        // clarityVersion: 1,
+        clarityVersion: null as any,
         contractName: contractName,
         codeBody: src,
         network: l2Network,

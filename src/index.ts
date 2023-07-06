@@ -97,7 +97,10 @@ async function monitorCoreRpcConnection(): Promise<void> {
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.error(error, `Warning: failed to connect to node RPC server at ${client.endpoint}`);
+      logger.warn(
+        error,
+        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`
+      );
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
@@ -140,15 +143,18 @@ async function init(): Promise<void> {
       forceKillable: false,
     });
 
-    const networkChainId = await getStacksNodeChainID();
-    if (networkChainId !== configuredChainID) {
-      const chainIdConfig = numberToHex(configuredChainID);
-      const chainIdNode = numberToHex(networkChainId);
-      const error = new Error(
-        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
-      );
-      logger.error(error, error.message);
-      throw error;
+    const skipChainIdCheck = parseArgBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
+    if (!skipChainIdCheck) {
+      const networkChainId = await getStacksNodeChainID();
+      if (networkChainId !== configuredChainID) {
+        const chainIdConfig = numberToHex(configuredChainID);
+        const chainIdNode = numberToHex(networkChainId);
+        const error = new Error(
+          `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+        );
+        logger.error(error, error.message);
+        throw error;
+      }
     }
     monitorCoreRpcConnection().catch(error => {
       logger.error(error, 'Error monitoring RPC connection');
