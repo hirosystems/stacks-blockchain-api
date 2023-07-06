@@ -11,7 +11,7 @@ const account = testnetKeys[1];
 const btcAddr = '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o';
 
 describe.each(BLOCK_SHIFT_COUNT)(
-  'PoX-2 - Rosetta - Stack on any phase of cycle $shift',
+  'PoX-3 - Rosetta - Stack on any phase of cycle $shift',
   ({ shift }) => {
     test('Standby for cycle phase', async () => {
       const poxInfo = await testEnv.client.getPox();

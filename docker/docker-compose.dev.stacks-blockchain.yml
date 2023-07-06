@@ -1,9 +1,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    build:
-      context: ../stacks-blockchain/docker
-    command: stacks-node start --config=/app/config/Stacks-dev.toml
+    image: "hirosystems/stacks-api-e2e:stacks2.4-f930deb"
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700

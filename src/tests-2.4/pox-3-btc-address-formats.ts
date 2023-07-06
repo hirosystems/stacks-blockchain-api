@@ -22,13 +22,13 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 
-describe('PoX-2 - Stack using supported bitcoin address formats', () => {
+describe('PoX-3 - Stack using supported bitcoin address formats', () => {
   test('Standby for next cycle', async () => {
     const poxInfo = await testEnv.client.getPox();
     await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
   });
 
-  describe('PoX-2 - Stacking operations P2SH-P2WPKH', () => {
+  describe('PoX-3 - Stacking operations P2SH-P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAccount: VerboseKeyOutput;
@@ -85,7 +85,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-2');
+      expect(contractName).toBe('pox-3');
     });
 
     test('stack-stx tx', async () => {
@@ -277,7 +277,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-2 - Stacking operations P2WPKH', () => {
+  describe('PoX-3 - Stacking operations P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -332,7 +332,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-2');
+      expect(contractName).toBe('pox-3');
     });
 
     test('stack-stx tx', async () => {
@@ -525,7 +525,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-2 - Stacking operations P2WSH', () => {
+  describe('PoX-3 - Stacking operations P2WSH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -585,7 +585,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-2');
+      expect(contractName).toBe('pox-3');
     });
 
     test('stack-stx tx', async () => {
@@ -777,7 +777,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-2 - Stacking operations P2TR', () => {
+  describe('PoX-3 - Stacking operations P2TR', () => {
     const account = testnetKeys[2];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -837,7 +837,7 @@ describe('PoX-2 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-2');
+      expect(contractName).toBe('pox-3');
     });
 
     test('stack-stx tx', async () => {
