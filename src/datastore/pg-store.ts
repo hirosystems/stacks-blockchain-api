@@ -47,7 +47,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbPox2Event,
   DbPox3Event,
-  DbPox2Stacker,
+  DbPox3Stacker,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -2098,14 +2098,14 @@ export class PgStore {
     });
   }
 
-  async getPox2PoolDelegations(args: {
+  async getPox3PoolDelegations(args: {
     delegator: string;
     blockHeight: number;
     burnBlockHeight: number;
     afterBlockHeight: number;
     limit: number;
     offset: number;
-  }): Promise<FoundOrNot<{ stackers: DbPox2Stacker[]; total: number }>> {
+  }): Promise<FoundOrNot<{ stackers: DbPox3Stacker[]; total: number }>> {
     return await this.sqlTransaction(async sql => {
       const queryResults = await sql<
         {
@@ -2118,11 +2118,11 @@ export class PgStore {
           total_rows: number;
         }[]
       >`
-        WITH ordered_pox2_events AS (
+        WITH ordered_pox3_events AS (
           SELECT
             stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id,
             block_height, microblock_sequence, tx_index, event_index
-          FROM pox2_events
+          FROM pox3_events
           WHERE
             canonical = true AND microblock_canonical = true AND
             name = ${Pox2EventName.DelegateStx} AND delegate_to = ${args.delegator} AND
@@ -2134,7 +2134,7 @@ export class PgStore {
           SELECT DISTINCT ON (stacker)
             stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
             block_height, microblock_sequence, tx_index, event_index
-          FROM ordered_pox2_events
+          FROM ordered_pox3_events
           ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT
@@ -2146,7 +2146,7 @@ export class PgStore {
         OFFSET ${args.offset}
       `;
       const total = queryResults[0]?.total_rows ?? 0;
-      const stackers: DbPox2Stacker[] = queryResults.map(result => ({
+      const stackers: DbPox3Stacker[] = queryResults.map(result => ({
         stacker: result.stacker,
         pox_addr: result.pox_addr || undefined,
         amount_ustx: result.amount_ustx,

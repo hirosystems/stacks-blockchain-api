@@ -428,7 +428,7 @@ export type DbPox2Event = DbEventBase & DbPox2EventData;
 // todo: should we copy DbPox2EventData for pox3?
 export type DbPox3Event = DbEventBase & DbPox2EventData;
 
-export interface DbPox2Stacker {
+export interface DbPox3Stacker {
   stacker: string;
   pox_addr?: string;
   amount_ustx: string;
