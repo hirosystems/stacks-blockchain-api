@@ -18,7 +18,7 @@
     "extra-bigint": "0.0.62",
     "getopts": "^2.3.0",
     "node-fetch": "^2.6.6",
-    "pg": "^8.2.1",
+    "pg": "^8.11.1",
     "pg-copy-streams": "^5.1.1",
     "pg-cursor": "^2.6.0",
     "pg-listen": "^1.7.0",
