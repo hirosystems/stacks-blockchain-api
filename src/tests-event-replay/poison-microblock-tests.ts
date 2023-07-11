@@ -1,15 +1,6 @@
-import { ChainID } from '@stacks/transactions';
-import * as fs from 'fs';
-import { getBnsGenesisBlockFromBlockMessage, getGenesisBlockData } from '../event-replay/helpers';
-import { PgSqlClient } from '../datastore/connection';
-import { getPgClientConfig } from '../datastore/connection-legacy';
-import { databaseHasData, getRawEventRequests } from '../datastore/event-requests';
-import { cycleMigrations, dangerousDropAllTables, runMigrations } from '../datastore/migrations';
+import { DbTxTypeId } from '../../src/datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
-import { IBD_PRUNABLE_ROUTES, startEventServer } from '../event-stream/event-server';
-import { getIbdBlockHeight, httpPostRequest } from '../helpers';
-import { useWithCleanup } from '../tests/test-helpers';
+import { importEventsFromTsv } from '../event-replay/event-replay';
 
 describe('poison microblock for height 80743', () => {
   let db: PgWriteStore;
@@ -34,8 +25,18 @@ describe('poison microblock for height 80743', () => {
       true,
       true
     );
+    const poisonTxId = '0x58ffe62029f94f7101b959536ea4953b9bce0ec3f6e2a06254c511bdd5cfa9e7';
     const chainTip = await db.getUnanchoredChainTip();
+    // query the txs table and check the transaction type
+    const searchResult = await db.searchHash({ hash: poisonTxId });
+    let entityData: any;
+    if (searchResult.result?.entity_data) {
+      entityData = searchResult.result?.entity_data;
+    }
     expect(chainTip.found).toBe(true);
+    // check the transaction type to be contract call for this poison block
+    expect(entityData.type_id).toBe(DbTxTypeId.ContractCall);
+    expect(searchResult.found).toBe(true);
     expect(chainTip.result?.blockHeight).toBe(1);
     expect(chainTip.result?.indexBlockHash).toBe(
       '0x05ca75b9949195da435e6e36d731dbaa10bb75fda576a52263e25164990bfdaa'
