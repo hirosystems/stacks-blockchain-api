@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('stx_events', {
     id: {
@@ -58,11 +61,11 @@ exports.up = pgm => {
     memo: 'bytea',
   });
 
-  pgm.createIndex('stx_events', 'tx_id', { method: 'hash' });
-  pgm.createIndex('stx_events', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('stx_events', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('stx_events', 'sender', { method: 'hash' });
-  pgm.createIndex('stx_events', 'recipient', { method: 'hash' });
+  pgm.createIndex('stx_events', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('stx_events', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('stx_events', 'microblock_hash', { method: INDEX_METHOD });
+  pgm.createIndex('stx_events', 'sender', { method: INDEX_METHOD });
+  pgm.createIndex('stx_events', 'recipient', { method: INDEX_METHOD });
   pgm.createIndex('stx_events', 'event_index');
   pgm.createIndex('stx_events', [{ name: 'block_height', sort: 'DESC' }]);
 

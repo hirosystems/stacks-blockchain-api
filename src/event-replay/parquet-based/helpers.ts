@@ -1,12 +1,12 @@
 interface TimeTracker {
-    track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
-    trackSync<T = void>(name: string, fn: () => T): T;
-    getDurations: (
-        roundDecimals?: number
-    ) => {
-        name: string;
-        seconds: string;
-    }[];
+  track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
+  trackSync<T = void>(name: string, fn: () => T): T;
+  getDurations: (
+    roundDecimals?: number
+  ) => {
+    name: string;
+    seconds: string;
+  }[];
 }
 
 const createTimeTracker = (): TimeTracker => {
@@ -49,6 +49,40 @@ const createTimeTracker = (): TimeTracker => {
         });
     },
   };
+};
+
+interface Stopwatch {
+  /** Milliseconds since stopwatch was created. */
+  getElapsed: () => number;
+  /** Seconds since stopwatch was created. */
+  getElapsedSeconds: (roundDecimals?: number) => number;
+  getElapsedAndRestart: () => number;
+  restart(): void;
+}
+
+function stopwatch(): Stopwatch {
+  let start = process.hrtime.bigint();
+  const result: Stopwatch = {
+    getElapsedSeconds: (roundDecimals?: number) => {
+      const elapsedMs = result.getElapsed();
+      const seconds = elapsedMs / 1000;
+      return roundDecimals === undefined ? seconds : +seconds.toFixed(roundDecimals);
+    },
+    getElapsed: () => {
+      const end = process.hrtime.bigint();
+      return Number((end - start) / 1_000_000n);
+    },
+    getElapsedAndRestart: () => {
+      const end = process.hrtime.bigint();
+      const result = Number((end - start) / 1_000_000n);
+      start = process.hrtime.bigint();
+      return result;
+    },
+    restart: () => {
+      start = process.hrtime.bigint();
+    },
+  };
+  return result;
 }
 
 function* chunks<T>(arr: T[], n: number): Generator<T[], void> {
@@ -57,8 +91,8 @@ function* chunks<T>(arr: T[], n: number): Generator<T[], void> {
   }
 }
 
-const splitIntoChunks = async (data: object[], chunk_size: number) => {
+const splitIntoChunks = (data: number[], chunk_size: number) => {
   return [...chunks(data, chunk_size)];
 };
 
-export { TimeTracker, createTimeTracker, splitIntoChunks };
+export { createTimeTracker, splitIntoChunks };

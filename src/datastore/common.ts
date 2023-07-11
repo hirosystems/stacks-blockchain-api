@@ -704,6 +704,7 @@ export interface DbBnsSubdomain {
   tx_id: string;
   tx_index: number;
   canonical: boolean;
+  index_block_hash?: string;
 }
 
 export interface DbConfigState {

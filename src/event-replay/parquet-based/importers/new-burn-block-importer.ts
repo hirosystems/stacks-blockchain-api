@@ -2,7 +2,7 @@ import { PgWriteStore } from '../../../datastore/pg-write-store';
 import { DbBurnchainReward, DbRewardSlotHolder } from '../../../datastore/common';
 import { CoreNodeBurnBlockMessage } from '../../../event-stream/core-node-message';
 import { logger } from '../../../logger';
-import { TimeTracker, splitIntoChunks } from '../helpers';
+import { splitIntoChunks } from '../helpers';
 import { DatasetStore } from '../dataset/store';
 
 const INSERT_BATCH_SIZE = 500;
@@ -42,15 +42,15 @@ const DbRewardSlotHolderParse = (payload: CoreNodeBurnBlockMessage) => {
 
 const insertBurnchainRewardsAndSlotHolders = async (db: PgWriteStore, chunks: any) => {
   for (const chunk of chunks) {
-    let burnchainRewards: DbBurnchainReward[] = [];
-    let slotHolders: DbRewardSlotHolder[] = [];
+    const burnchainRewards: DbBurnchainReward[] = [];
+    const slotHolders: DbRewardSlotHolder[] = [];
     for (const event of chunk) {
       const payload: CoreNodeBurnBlockMessage = JSON.parse(event['payload']);
       const burnchainRewardsData = DbBurnchainRewardParse(payload);
       const slotHoldersData = DbRewardSlotHolderParse(payload);
       burnchainRewardsData.forEach(reward => burnchainRewards.push(reward));
       slotHoldersData.forEach(slotHolder => slotHolders.push(slotHolder));
-    };
+    }
 
     if (burnchainRewards.length !== 0) {
       await db.insertBurnchainRewardsBatch(db.sql, burnchainRewards);
@@ -59,15 +59,14 @@ const insertBurnchainRewardsAndSlotHolders = async (db: PgWriteStore, chunks: an
     if (slotHolders.length !== 0) {
       await db.insertSlotHoldersBatch(db.sql, slotHolders);
     }
-  };
+  }
 };
 
-export const insertNewBurnBlockEvents = async (db: PgWriteStore, dataset: DatasetStore, timeTracker: TimeTracker) => {
-  logger.info(`Inserting NEW_BURN_BLOCK events to db...`);
+export const processNewBurnBlockEvents = async (db: PgWriteStore, dataset: DatasetStore) => {
+  logger.info({ component: 'event-replay' }, 'NEW_BURN_BLOCK events process started');
 
-  await timeTracker.track('insertNewBurnBlockEvents', async () => {
-    return dataset.newBurnBlockEventsOrdered()
-      .then(async (data: any) => await splitIntoChunks(data, INSERT_BATCH_SIZE))
-      .then(async (chunks: any) => await insertBurnchainRewardsAndSlotHolders(db, chunks));
-  });
+  return dataset
+    .newBurnBlockEventsOrdered()
+    .then((data: any) => splitIntoChunks(data, INSERT_BATCH_SIZE))
+    .then(async (chunks: any) => await insertBurnchainRewardsAndSlotHolders(db, chunks));
 };

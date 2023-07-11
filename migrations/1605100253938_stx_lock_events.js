@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('stx_lock_events', {
     id: {
@@ -69,10 +72,10 @@ exports.up = pgm => {
     { name: 'tx_index', sort: 'DESC' },
   ]);
 
-  pgm.createIndex('stx_lock_events', 'tx_id', { method: 'hash' });
-  pgm.createIndex('stx_lock_events', 'index_block_hash', { method: 'hash' });
-  pgm.createIndex('stx_lock_events', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('stx_lock_events', 'locked_address', { method: 'hash' });
+  pgm.createIndex('stx_lock_events', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('stx_lock_events', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('stx_lock_events', 'microblock_hash', { method: INDEX_METHOD });
+  pgm.createIndex('stx_lock_events', 'locked_address', { method: INDEX_METHOD });
   pgm.createIndex('stx_lock_events', [{ name: 'block_height', sort: 'DESC' }]);
   pgm.createIndex('stx_lock_events', [{ name: 'unlock_height', sort: 'DESC' }]);
   pgm.createIndex('stx_lock_events', 'contract_name');

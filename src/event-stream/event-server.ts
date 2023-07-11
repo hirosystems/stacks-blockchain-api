@@ -36,6 +36,8 @@ import {
   DataStoreAttachmentData,
   DbPox2Event,
   DbTxStatus,
+  DbBnsSubdomain,
+  DataStoreBnsBlockData,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -58,6 +60,8 @@ import {
   parseNameFromContractEvent,
   parseNameRenewalWithNoZonefileHashFromContractCall,
   parseNamespaceFromContractEvent,
+  parseZoneFileTxt,
+  parseResolver,
 } from './bns/bns-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import {
@@ -69,6 +73,7 @@ import { handleBnsImport } from '../import-v1';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
+import * as zoneFileParser from 'zone-file';
 
 export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -1074,4 +1079,95 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
   };
 
   return dbData;
+}
+
+export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
+  const zoneFiles: { zonefile: string; zonefileHash: string; txId: string }[] = [];
+
+  const subdomainObj: {
+    attachmentData: DataStoreAttachmentData;
+    dbBnsSubdomain: DbBnsSubdomain[];
+  } = {
+    attachmentData: {
+      op: '',
+      name: '',
+      namespace: '',
+      zonefile: '',
+      zonefileHash: '',
+      txId: '',
+      indexBlockHash: '',
+      blockHeight: 0,
+    },
+    dbBnsSubdomain: [],
+  };
+
+  for (const attachment of msg) {
+    if (
+      attachment.contract_id === BnsContractIdentifier.mainnet ||
+      attachment.contract_id === BnsContractIdentifier.testnet
+    ) {
+      const metadataCV = decodeClarityValue<
+        ClarityValueTuple<{
+          op: ClarityValueStringAscii;
+          name: ClarityValueBuffer;
+          namespace: ClarityValueBuffer;
+        }>
+      >(attachment.metadata);
+      const op = metadataCV.data['op'].data;
+      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      const zonefileHash = attachment.content_hash;
+      zoneFiles.push({
+        zonefile,
+        zonefileHash,
+        txId: attachment.tx_id,
+      });
+      if (op === 'name-update') {
+        const name = hexToBuffer(metadataCV.data['name'].buffer).toString('utf8');
+        const namespace = hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8');
+        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+        const zoneFileTxt = zoneFileContents.txt;
+        // Case for subdomain
+        if (zoneFileTxt) {
+          for (let i = 0; i < zoneFileTxt.length; i++) {
+            const zoneFile = zoneFileTxt[i];
+            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
+            const subdomain: DbBnsSubdomain = {
+              name: name.concat('.', namespace),
+              namespace_id: namespace,
+              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
+              owner: parsedTxt.owner,
+              zonefile_hash: parsedTxt.zoneFileHash,
+              zonefile: parsedTxt.zoneFile,
+              tx_id: attachment.tx_id,
+              tx_index: -1,
+              canonical: true,
+              parent_zonefile_hash: attachment.content_hash.slice(2),
+              parent_zonefile_index: 0, // TODO need to figure out this field
+              block_height: Number.parseInt(attachment.block_height, 10),
+              zonefile_offset: 1,
+              resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
+              index_block_hash: attachment.index_block_hash,
+            };
+
+            const attachmentData: DataStoreAttachmentData = {
+              op: op,
+              name: subdomain.name,
+              namespace: '',
+              zonefile: subdomain.zonefile,
+              zonefileHash: subdomain.zonefile_hash,
+              txId: subdomain.tx_id,
+              indexBlockHash: subdomain.index_block_hash || '',
+              blockHeight: subdomain.block_height,
+            };
+
+            subdomainObj.dbBnsSubdomain.push(subdomain);
+            subdomainObj.attachmentData = attachmentData;
+          }
+        }
+      }
+    }
+  }
+
+  return { zoneFiles, subdomainObj };
 }

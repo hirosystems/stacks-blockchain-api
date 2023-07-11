@@ -27,7 +27,11 @@ import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/help
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
-import { run } from './event-replay/parquet-based/event-replay';
+import {
+  ingestAttachmentNew,
+  ingestNewBlock,
+  ingestNewBurnBlock,
+} from './event-replay/parquet-based/event-replay';
 
 enum StacksApiMode {
   /**
@@ -280,9 +284,11 @@ function getProgramArgs() {
     | {
         operand: 'from-parquet-events';
         options: {
-          ['wipe-db']?: boolean;
-          ['disable-indexes']?: boolean;
-        }
+          ['new-burn-block']?: boolean;
+          ['attachment-new']?: boolean;
+          ['new-block']?: boolean;
+          ['ids-path']?: string;
+        };
       };
   return { args, parsedOpts };
 }
@@ -299,7 +305,17 @@ async function handleProgramArgs() {
       args.options.force
     );
   } else if (args.operand === 'from-parquet-events') {
-    await run(args.options['wipe-db'], args.options['disable-indexes']);
+    if (args.options['new-burn-block']) {
+      await ingestNewBurnBlock();
+    }
+
+    if (args.options['attachment-new']) {
+      await ingestAttachmentNew();
+    }
+
+    if (args.options['new-block']) {
+      await ingestNewBlock(args.options['ids-path']);
+    }
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {

@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('burnchain_rewards', {
     id: {
@@ -35,7 +38,7 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('burnchain_rewards', 'burn_block_hash', { method: 'hash' });
-  pgm.createIndex('burnchain_rewards', 'reward_recipient', { method: 'hash' });
+  pgm.createIndex('burnchain_rewards', 'burn_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('burnchain_rewards', 'reward_recipient', { method: INDEX_METHOD });
   pgm.createIndex('burnchain_rewards', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }

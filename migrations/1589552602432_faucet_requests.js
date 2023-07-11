@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('faucet_requests', {
     id: {
@@ -23,5 +26,5 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('faucet_requests', 'address', { method: 'hash' });
+  pgm.createIndex('faucet_requests', 'address', { method: INDEX_METHOD });
 }

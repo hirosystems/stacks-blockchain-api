@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('mempool_txs', {
     id: {
@@ -103,13 +106,13 @@ exports.up = pgm => {
     }
   });
 
-  pgm.createIndex('mempool_txs', 'tx_id', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'contract_call_contract_id', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'tx_id', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'contract_call_contract_id', { method: INDEX_METHOD });
   pgm.createIndex('mempool_txs', 'nonce');
-  pgm.createIndex('mempool_txs', 'sender_address', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'smart_contract_contract_id', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'sponsor_address', { method: 'hash' });
-  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: 'hash' });
+  pgm.createIndex('mempool_txs', 'sender_address', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'smart_contract_contract_id', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'sponsor_address', { method: INDEX_METHOD });
+  pgm.createIndex('mempool_txs', 'token_transfer_recipient_address', { method: INDEX_METHOD });
   pgm.createIndex('mempool_txs', [{ name: 'receipt_time', sort: 'DESC' }]);
   pgm.createIndex('mempool_txs', ['type_id', 'receipt_block_height'], { where: 'pruned = false'});
   pgm.createIndex('mempool_txs', ['type_id', 'fee_rate'], { where: 'pruned = false'});

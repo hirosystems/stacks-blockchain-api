@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('token_offering_locked', {
     id: {
@@ -19,5 +22,5 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('token_offering_locked', 'address', { method: 'hash' });
+  pgm.createIndex('token_offering_locked', 'address', { method: INDEX_METHOD });
 }

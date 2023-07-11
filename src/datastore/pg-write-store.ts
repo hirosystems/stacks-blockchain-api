@@ -552,107 +552,30 @@ export class PgWriteStore extends PgStore {
     return result.count;
   }
 
-  async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
-    const values: BlockInsertValues[] = blocks.map(block => ({
-      block_hash: block.block_hash,
-      index_block_hash: block.index_block_hash,
-      parent_index_block_hash: block.parent_index_block_hash,
-      parent_block_hash: block.parent_block_hash,
-      parent_microblock_hash: block.parent_microblock_hash,
-      parent_microblock_sequence: block.parent_microblock_sequence,
-      block_height: block.block_height,
-      burn_block_time: block.burn_block_time,
-      burn_block_hash: block.burn_block_hash,
-      burn_block_height: block.burn_block_height,
-      miner_txid: block.miner_txid,
-      canonical: block.canonical,
-      execution_cost_read_count: block.execution_cost_read_count,
-      execution_cost_read_length: block.execution_cost_read_length,
-      execution_cost_runtime: block.execution_cost_runtime,
-      execution_cost_write_count: block.execution_cost_write_count,
-      execution_cost_write_length: block.execution_cost_write_length,
-    }));
+  async insertStxEventBatch(sql: PgSqlClient, stxEvents: StxEventInsertValues[]) {
+    const values = stxEvents.map(s => {
+      const value: StxEventInsertValues = {
+        event_index: s.event_index,
+        tx_id: s.tx_id,
+        tx_index: s.tx_index,
+        block_height: s.block_height,
+        index_block_hash: s.index_block_hash,
+        parent_index_block_hash: s.parent_index_block_hash,
+        microblock_hash: s.microblock_hash,
+        microblock_sequence: s.microblock_sequence,
+        microblock_canonical: s.microblock_canonical,
+        canonical: s.canonical,
+        asset_event_type_id: s.asset_event_type_id,
+        sender: s.sender,
+        recipient: s.recipient,
+        amount: s.amount,
+        memo: s.memo ?? null,
+      };
+      return value;
+    });
     await sql`
-      INSERT INTO blocks ${sql(values)}
+      INSERT INTO stx_events ${sql(values)}
     `;
-  }
-
-  async insertMicroblock(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
-    const values: MicroblockInsertValues[] = microblocks.map(mb => ({
-      canonical: mb.canonical,
-      microblock_canonical: mb.microblock_canonical,
-      microblock_hash: mb.microblock_hash,
-      microblock_sequence: mb.microblock_sequence,
-      microblock_parent_hash: mb.microblock_parent_hash,
-      parent_index_block_hash: mb.parent_index_block_hash,
-      block_height: mb.block_height,
-      parent_block_height: mb.parent_block_height,
-      parent_block_hash: mb.parent_block_hash,
-      index_block_hash: mb.index_block_hash,
-      block_hash: mb.block_hash,
-      parent_burn_block_height: mb.parent_burn_block_height,
-      parent_burn_block_hash: mb.parent_burn_block_hash,
-      parent_burn_block_time: mb.parent_burn_block_time,
-    }));
-    const mbResult = await sql`
-      INSERT INTO microblocks ${sql(values)}
-    `;
-    if (mbResult.count !== microblocks.length) {
-      throw new Error(
-        `Unexpected row count after inserting microblocks: ${mbResult.count} vs ${values.length}`
-      );
-    }
-  }
-
-  async insertTxBatch(sql: PgSqlClient, txs: DbTx[]): Promise<void> {
-    const values: TxInsertValues[] = txs.map(tx => ({
-      tx_id: tx.tx_id,
-      raw_tx: tx.raw_result,
-      tx_index: tx.tx_index,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      block_hash: tx.block_hash,
-      parent_block_hash: tx.parent_block_hash,
-      block_height: tx.block_height,
-      burn_block_time: tx.burn_block_time,
-      parent_burn_block_time: tx.parent_burn_block_time,
-      type_id: tx.type_id,
-      anchor_mode: tx.anchor_mode,
-      status: tx.status,
-      canonical: tx.canonical,
-      post_conditions: tx.post_conditions,
-      nonce: tx.nonce,
-      fee_rate: tx.fee_rate,
-      sponsored: tx.sponsored,
-      sponsor_nonce: tx.sponsor_nonce ?? null,
-      sponsor_address: tx.sponsor_address ?? null,
-      sender_address: tx.sender_address,
-      origin_hash_mode: tx.origin_hash_mode,
-      microblock_canonical: tx.microblock_canonical,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_hash: tx.microblock_hash,
-      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
-      token_transfer_amount: tx.token_transfer_amount ?? null,
-      token_transfer_memo: tx.token_transfer_memo ?? null,
-      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
-      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
-      smart_contract_source_code: tx.smart_contract_source_code ?? null,
-      contract_call_contract_id: tx.contract_call_contract_id ?? null,
-      contract_call_function_name: tx.contract_call_function_name ?? null,
-      contract_call_function_args: tx.contract_call_function_args ?? null,
-      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
-      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
-      coinbase_payload: tx.coinbase_payload ?? null,
-      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
-      raw_result: tx.raw_result,
-      event_count: tx.event_count,
-      execution_cost_read_count: tx.execution_cost_read_count,
-      execution_cost_read_length: tx.execution_cost_read_length,
-      execution_cost_runtime: tx.execution_cost_runtime,
-      execution_cost_write_count: tx.execution_cost_write_count,
-      execution_cost_write_length: tx.execution_cost_write_length,
-    }));
-    await sql`INSERT INTO txs ${sql(values)}`;
   }
 
   async updateBurnchainRewardSlotHolders({
@@ -1726,7 +1649,7 @@ export class PgWriteStore extends PgStore {
     if (result.count !== slotValues.length) {
       throw new Error(`Failed to insert slot holder for ${slotValues}`);
     }
-  };
+  }
 
   async insertBurnchainRewardsBatch(sql: PgSqlClient, rewards: DbBurnchainReward[]): Promise<void> {
     const rewardValues: BurnchainRewardInsertValues[] = rewards.map(reward => ({
@@ -1743,10 +1666,10 @@ export class PgWriteStore extends PgStore {
       INSERT into burnchain_rewards ${sql(rewardValues)}
     `;
 
-    if(res.count !== rewardValues.length) {
+    if (res.count !== rewardValues.length) {
       throw new Error(`Failed to insert burnchain reward for ${rewardValues}`);
     }
-  };
+  }
 
   async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {
@@ -3099,7 +3022,7 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Called when a full event import is complete.
+   * (event-replay) Finishes DB setup after an event-replay.
    */
   async finishEventReplay() {
     if (!this.isEventReplay) {
@@ -3113,7 +3036,235 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  /** Enable or disable indexes for the provided set of tables. */
+  /**
+   * batch operations (mainly for event-replay)
+   */
+
+  async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
+    const values: BlockInsertValues[] = blocks.map(block => ({
+      block_hash: block.block_hash,
+      index_block_hash: block.index_block_hash,
+      parent_index_block_hash: block.parent_index_block_hash,
+      parent_block_hash: block.parent_block_hash,
+      parent_microblock_hash: block.parent_microblock_hash,
+      parent_microblock_sequence: block.parent_microblock_sequence,
+      block_height: block.block_height,
+      burn_block_time: block.burn_block_time,
+      burn_block_hash: block.burn_block_hash,
+      burn_block_height: block.burn_block_height,
+      miner_txid: block.miner_txid,
+      canonical: block.canonical,
+      execution_cost_read_count: block.execution_cost_read_count,
+      execution_cost_read_length: block.execution_cost_read_length,
+      execution_cost_runtime: block.execution_cost_runtime,
+      execution_cost_write_count: block.execution_cost_write_count,
+      execution_cost_write_length: block.execution_cost_write_length,
+    }));
+    await sql`
+      INSERT INTO blocks ${sql(values)}
+    `;
+  }
+
+  async insertMicroblock(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
+    const values: MicroblockInsertValues[] = microblocks.map(mb => ({
+      canonical: mb.canonical,
+      microblock_canonical: mb.microblock_canonical,
+      microblock_hash: mb.microblock_hash,
+      microblock_sequence: mb.microblock_sequence,
+      microblock_parent_hash: mb.microblock_parent_hash,
+      parent_index_block_hash: mb.parent_index_block_hash,
+      block_height: mb.block_height,
+      parent_block_height: mb.parent_block_height,
+      parent_block_hash: mb.parent_block_hash,
+      index_block_hash: mb.index_block_hash,
+      block_hash: mb.block_hash,
+      parent_burn_block_height: mb.parent_burn_block_height,
+      parent_burn_block_hash: mb.parent_burn_block_hash,
+      parent_burn_block_time: mb.parent_burn_block_time,
+    }));
+    const mbResult = await sql`
+      INSERT INTO microblocks ${sql(values)}
+    `;
+    if (mbResult.count !== microblocks.length) {
+      throw new Error(
+        `Unexpected row count after inserting microblocks: ${mbResult.count} vs ${values.length}`
+      );
+    }
+  }
+
+  // alias to insertMicroblock
+  async insertMicroblockBatch(sql: PgSqlClient, microblocks: DbMicroblock[]): Promise<void> {
+    return this.insertMicroblock(sql, microblocks);
+  }
+
+  async insertTxBatch(sql: PgSqlClient, txs: DbTx[]): Promise<void> {
+    const values: TxInsertValues[] = txs.map(tx => ({
+      tx_id: tx.tx_id,
+      raw_tx: tx.raw_result,
+      tx_index: tx.tx_index,
+      index_block_hash: tx.index_block_hash,
+      parent_index_block_hash: tx.parent_index_block_hash,
+      block_hash: tx.block_hash,
+      parent_block_hash: tx.parent_block_hash,
+      block_height: tx.block_height,
+      burn_block_time: tx.burn_block_time,
+      parent_burn_block_time: tx.parent_burn_block_time,
+      type_id: tx.type_id,
+      anchor_mode: tx.anchor_mode,
+      status: tx.status,
+      canonical: tx.canonical,
+      post_conditions: tx.post_conditions,
+      nonce: tx.nonce,
+      fee_rate: tx.fee_rate,
+      sponsored: tx.sponsored,
+      sponsor_nonce: tx.sponsor_nonce ?? null,
+      sponsor_address: tx.sponsor_address ?? null,
+      sender_address: tx.sender_address,
+      origin_hash_mode: tx.origin_hash_mode,
+      microblock_canonical: tx.microblock_canonical,
+      microblock_sequence: tx.microblock_sequence,
+      microblock_hash: tx.microblock_hash,
+      token_transfer_recipient_address: tx.token_transfer_recipient_address ?? null,
+      token_transfer_amount: tx.token_transfer_amount ?? null,
+      token_transfer_memo: tx.token_transfer_memo ?? null,
+      smart_contract_clarity_version: tx.smart_contract_clarity_version ?? null,
+      smart_contract_contract_id: tx.smart_contract_contract_id ?? null,
+      smart_contract_source_code: tx.smart_contract_source_code ?? null,
+      contract_call_contract_id: tx.contract_call_contract_id ?? null,
+      contract_call_function_name: tx.contract_call_function_name ?? null,
+      contract_call_function_args: tx.contract_call_function_args ?? null,
+      poison_microblock_header_1: tx.poison_microblock_header_1 ?? null,
+      poison_microblock_header_2: tx.poison_microblock_header_2 ?? null,
+      coinbase_payload: tx.coinbase_payload ?? null,
+      coinbase_alt_recipient: tx.coinbase_alt_recipient ?? null,
+      raw_result: tx.raw_result,
+      event_count: tx.event_count,
+      execution_cost_read_count: tx.execution_cost_read_count,
+      execution_cost_read_length: tx.execution_cost_read_length,
+      execution_cost_runtime: tx.execution_cost_runtime,
+      execution_cost_write_count: tx.execution_cost_write_count,
+      execution_cost_write_length: tx.execution_cost_write_length,
+    }));
+    await sql`INSERT INTO txs ${sql(values)}`;
+  }
+
+  async insertPrincipalStxTxsBatch(sql: PgSqlClient, values: PrincipalStxTxsInsertValues[]) {
+    await sql`
+      INSERT INTO principal_stx_txs ${sql(values)}
+    `;
+  }
+
+  async insertContractEventBatch(sql: PgSqlClient, values: SmartContractEventInsertValues[]) {
+    await sql`
+      INSERT INTO contract_logs ${sql(values)}
+    `;
+  }
+
+  async insertFtEventBatch(sql: PgSqlClient, values: FtEventInsertValues[]) {
+    await sql`
+      INSERT INTO ft_events ${sql(values)}
+    `;
+  }
+
+  async insertNftEventBatch(sql: PgSqlClient, values: NftEventInsertValues[]) {
+    await sql`INSERT INTO nft_events ${sql(values)}`;
+  }
+
+  async insertNameBatch(sql: PgSqlClient, values: BnsNameInsertValues[]) {
+    await sql`
+      INSERT INTO names ${sql(values)}
+    `;
+  }
+
+  async insertNamespace(
+    sql: PgSqlClient,
+    blockData: {
+      index_block_hash: string;
+      parent_index_block_hash: string;
+      microblock_hash: string;
+      microblock_sequence: number;
+      microblock_canonical: boolean;
+    },
+    bnsNamespace: DbBnsNamespace
+  ) {
+    const values: BnsNamespaceInsertValues = {
+      namespace_id: bnsNamespace.namespace_id,
+      launched_at: bnsNamespace.launched_at ?? null,
+      address: bnsNamespace.address,
+      reveal_block: bnsNamespace.reveal_block,
+      ready_block: bnsNamespace.ready_block,
+      buckets: bnsNamespace.buckets,
+      base: bnsNamespace.base.toString(),
+      coeff: bnsNamespace.coeff.toString(),
+      nonalpha_discount: bnsNamespace.nonalpha_discount.toString(),
+      no_vowel_discount: bnsNamespace.no_vowel_discount.toString(),
+      lifetime: bnsNamespace.lifetime,
+      status: bnsNamespace.status ?? null,
+      tx_index: bnsNamespace.tx_index,
+      tx_id: bnsNamespace.tx_id,
+      canonical: bnsNamespace.canonical,
+      index_block_hash: blockData.index_block_hash,
+      parent_index_block_hash: blockData.parent_index_block_hash,
+      microblock_hash: blockData.microblock_hash,
+      microblock_sequence: blockData.microblock_sequence,
+      microblock_canonical: blockData.microblock_canonical,
+    };
+    await sql`
+      INSERT INTO namespaces ${sql(values)}
+    `;
+  }
+
+  async insertZonefileBatch(sql: PgSqlClient, values: BnsZonefileInsertValues[]) {
+    await sql`
+      INSERT INTO zonefiles ${sql(values)}
+    `;
+  }
+
+  async updateBatchSubdomainsEventReplay(
+    sql: PgSqlClient,
+    data: DataStoreAttachmentSubdomainData[]
+  ): Promise<void> {
+    const subdomainValues: BnsSubdomainInsertValues[] = [];
+    for (const dataItem of data) {
+      if (dataItem.subdomains && dataItem.blockData) {
+        for (const subdomain of dataItem.subdomains) {
+          subdomainValues.push({
+            name: subdomain.name,
+            namespace_id: subdomain.namespace_id,
+            fully_qualified_subdomain: subdomain.fully_qualified_subdomain,
+            owner: subdomain.owner,
+            zonefile_hash: validateZonefileHash(subdomain.zonefile_hash),
+            parent_zonefile_hash: subdomain.parent_zonefile_hash,
+            parent_zonefile_index: subdomain.parent_zonefile_index,
+            block_height: subdomain.block_height,
+            tx_index: subdomain.tx_index,
+            zonefile_offset: subdomain.zonefile_offset,
+            resolver: subdomain.resolver,
+            canonical: subdomain.canonical,
+            tx_id: subdomain.tx_id,
+            index_block_hash: dataItem.blockData.index_block_hash,
+            parent_index_block_hash: dataItem.blockData.parent_index_block_hash,
+            microblock_hash: dataItem.blockData.microblock_hash,
+            microblock_sequence: dataItem.blockData.microblock_sequence,
+            microblock_canonical: dataItem.blockData.microblock_canonical,
+          });
+        }
+      }
+    }
+    if (subdomainValues.length === 0) {
+      return;
+    }
+    const result = await sql`
+      INSERT INTO subdomains ${sql(subdomainValues)}
+    `;
+    if (result.count !== subdomainValues.length) {
+      throw new Error(`Expected ${subdomainValues.length} subdomain inserts, got ${result.count}`);
+    }
+  }
+
+  /**
+   * (event-replay) Enable or disable indexes for the provided set of tables.
+   */
   async toggleTableIndexes(sql: PgSqlClient, tables: string[], enabled: boolean): Promise<void> {
     const tableSchema = this.sql.options.connection.search_path ?? 'public';
     const result = await sql`

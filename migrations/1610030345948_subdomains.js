@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('subdomains', {
     id: {
@@ -80,8 +83,8 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('subdomains', 'name');
-  pgm.createIndex('subdomains', 'index_block_hash');
+  pgm.createIndex('subdomains', 'name', { method: INDEX_METHOD });
+  pgm.createIndex('subdomains', 'index_block_hash', { method: INDEX_METHOD });
   pgm.createIndex('subdomains', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },

@@ -1,4 +1,7 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
+
+const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
+
 exports.up = pgm => {
   pgm.createTable('microblocks', {
     id: {
@@ -26,7 +29,7 @@ exports.up = pgm => {
       type: 'integer',
       notNull: true,
     },
-    // For the first microblock (sequence number 0), this points to the parent/anchor block hash, 
+    // For the first microblock (sequence number 0), this points to the parent/anchor block hash,
     // for subsequent microblocks it points to the previous microblock's hash.
     microblock_parent_hash: {
       type: 'bytea',
@@ -70,8 +73,8 @@ exports.up = pgm => {
     }
   });
 
-  pgm.createIndex('microblocks', 'microblock_hash', { method: 'hash' });
-  pgm.createIndex('microblocks', 'parent_index_block_hash', { method: 'hash' });
+  pgm.createIndex('microblocks', 'microblock_hash', { method: INDEX_METHOD });
+  pgm.createIndex('microblocks', 'parent_index_block_hash', { method: INDEX_METHOD });
   pgm.createIndex('microblocks', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' }
