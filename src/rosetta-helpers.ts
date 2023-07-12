@@ -55,7 +55,7 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, hexToBuffer, logger, getSendManyContract } from './helpers';
+import { unwrapOptional, hexToBuffer, getSendManyContract } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
@@ -80,6 +80,7 @@ import { PgStore } from './datastore/pg-store';
 import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
+import { logger } from './logger';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',

@@ -6,7 +6,6 @@ on:
       - master
       - develop
       - beta
-      - stacks-2.4
     tags-ignore:
       - "**"
     paths-ignore:
@@ -397,6 +396,65 @@ jobs:
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
         if: ${{ false }}
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-subnets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy:subnets -- -d
+          npm run devenv:logs:subnets -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tests
+        run: npm run test:subnets
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop:subnets
+        if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: always()
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -971,7 +1029,7 @@ jobs:
           context: .
           build-args: |
             STACKS_API_VERSION=${{ github.head_ref || github.ref_name }}
-          file: docker/stx-rosetta.Dockerfile
+          file: docker/rosetta.Dockerfile
           tags: ${{ steps.meta_standalone.outputs.tags }}
           labels: ${{ steps.meta_standalone.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)

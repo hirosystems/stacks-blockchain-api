@@ -25,7 +25,7 @@ describe('cache-control tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
   test('parse if-none-match header', () => {
@@ -224,6 +224,26 @@ describe('cache-control tests', () => {
     expect(fetchBlockByHeightCacheMiss.type).toBe('application/json');
     expect(JSON.parse(fetchBlockByHeightCacheMiss.text)).toEqual(expectedResp1);
     expect(fetchBlockByHeightCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+
+    const fetchStxSupplyResp1 = expect.objectContaining({ total_stx: expect.any(String) });
+    const fetchStxSupply = await supertest(api.server).get(`/extended/v1/stx_supply`);
+    expect(fetchStxSupply.type).toBe('application/json');
+    expect(fetchStxSupply.body).toEqual(fetchStxSupplyResp1);
+    expect(fetchStxSupply.headers['etag']).toBe(`"${block1.index_block_hash}"`);
+
+    const fetchStxSupplyCached = await supertest(api.server)
+      .get(`/extended/v1/stx_supply`)
+      .set('If-None-Match', `"${block1.index_block_hash}"`);
+    expect(fetchStxSupplyCached.status).toBe(304);
+    expect(fetchStxSupplyCached.text).toBe('');
+
+    const fetchStxSupplyCacheMiss = await supertest(api.server)
+      .get(`/extended/v1/stx_supply`)
+      .set('If-None-Match', '"0x12345678"');
+    expect(fetchStxSupplyCacheMiss.status).toBe(200);
+    expect(fetchStxSupplyCacheMiss.type).toBe('application/json');
+    expect(fetchStxSupplyCacheMiss.body).toEqual(fetchStxSupplyResp1);
+    expect(fetchStxSupplyCacheMiss.headers['etag']).toBe(`"${block1.index_block_hash}"`);
 
     const mb1: DbMicroblockPartial = {
       microblock_hash: '0xff01',

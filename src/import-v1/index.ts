@@ -14,17 +14,11 @@ import {
   DbConfigState,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import {
-  asyncBatchIterate,
-  asyncIterableToGenerator,
-  I32_MAX,
-  logError,
-  logger,
-  REPO_DIR,
-} from '../helpers';
+import { asyncBatchIterate, asyncIterableToGenerator, I32_MAX, REPO_DIR } from '../helpers';
 import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger } from '../logger';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -33,6 +27,11 @@ const readFile = util.promisify(fs.readFile);
 
 const SUBDOMAIN_BATCH_SIZE = 2000;
 const STX_VESTING_BATCH_SIZE = 2000;
+
+const enum StacksNodeType {
+  L1 = 'L1',
+  Subnet = 'subnet',
+}
 
 class LineReaderStream extends stream.Duplex {
   asyncGen: AsyncGenerator<string, void, unknown>;
@@ -163,7 +162,7 @@ class ChainProcessor extends stream.Writable {
           await this.db.updateNames(this.sql, this.genesisBlock, obj);
           this.rowCount += 1;
           if (obj.zonefile === '') {
-            logger.verbose(
+            logger.debug(
               `${this.tag}: [non-critical] no zonefile for ${obj.name} hash ${obj.zonefile_hash}`
             );
           }
@@ -271,7 +270,7 @@ async function readZones(zfname: string): Promise<Map<string, string>> {
   const hashes = new Map<string, string>();
 
   const zstream = stream.pipeline(fs.createReadStream(zfname), new LineReaderStream(), err => {
-    if (err) logError(`readzones: ${err}`);
+    if (err) logger.error(err, `readzones: ${err}`);
   });
 
   const generator = asyncIterableToGenerator<string>(zstream);
@@ -299,7 +298,7 @@ async function valid(fileName: string): Promise<boolean> {
   await pipeline(fs.createReadStream(fileName), hash);
   const calchash = hash.digest('hex');
   if (expected !== calchash) {
-    logError(`calculated ${calchash} for ${fileName} != ${expected}`);
+    logger.error(`calculated ${calchash} for ${fileName} != ${expected}`);
     return false;
   }
   return true;
@@ -399,7 +398,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
       throw new Error(`${importDir} is not a directory`);
     }
   } catch (error) {
-    logError(`Cannot import from ${importDir}`, error);
+    logger.error(error, `Cannot import from ${importDir}`);
     throw error;
   }
 
@@ -408,7 +407,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
   for (const fname of importFiles) {
     if (!(await valid(path.join(importDir, fname)))) {
       const errMsg = `Cannot read import file due to sha256 mismatch: ${fname}`;
-      logError(errMsg);
+      logger.error(errMsg);
       throw new Error(errMsg);
     }
   }
@@ -421,7 +420,7 @@ export async function importV1BnsNames(
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported) {
-    logger.verbose('Stacks 1.0 BNS names are already imported');
+    logger.debug('Stacks 1.0 BNS names are already imported');
     return;
   }
   await validateBnsImportDir(importDir, ['chainstate.txt', 'name_zonefiles.txt']);
@@ -449,7 +448,7 @@ export async function importV1BnsSubdomains(
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_subdomains_imported) {
-    logger.verbose('Stacks 1.0 BNS subdomains are already imported');
+    logger.debug('Stacks 1.0 BNS subdomains are already imported');
     return;
   }
   await validateBnsImportDir(importDir, ['subdomains.csv', 'subdomain_zonefiles.txt']);
@@ -497,7 +496,7 @@ class Sha256PassThrough extends stream.PassThrough {
 export async function importV1TokenOfferingData(db: PgWriteStore) {
   const configState = await db.getConfigState();
   if (configState.token_offering_imported) {
-    logger.verbose('Stacks 1.0 token offering data is already imported');
+    logger.debug('Stacks 1.0 token offering data is already imported');
     return;
   }
 
@@ -548,6 +547,12 @@ export async function importV1TokenOfferingData(db: PgWriteStore) {
 }
 
 export async function handleBnsImport(db: PgWriteStore) {
+  const stacksNodeType = process.env.STACKS_NODE_TYPE;
+  if (stacksNodeType === StacksNodeType.Subnet) {
+    logger.warn('BNS imports should not be enabled for a Subnet. Skipping...');
+    return;
+  }
+
   const bnsDir = process.env.BNS_IMPORT_DIR;
   if (!bnsDir) {
     console.log(`BNS_IMPORT_DIR not configured, will not import BNS data`);

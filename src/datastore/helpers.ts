@@ -1,4 +1,4 @@
-import { hexToBuffer, logError, parseEnum, unwrapOptionalProp } from '../helpers';
+import { hexToBuffer, parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -62,6 +62,7 @@ import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { Pox2EventName } from '../pox-helpers';
+import { logger } from '../logger';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -1174,7 +1175,7 @@ export function registerMempoolPromStats(pgEvents: PgStoreEventEmitter) {
       try {
         updatePromMempoolStats(mempoolStats);
       } catch (error) {
-        logError(`Error updating prometheus mempool stats`, error);
+        logger.error(error, 'Error updating prometheus mempool stats');
       }
     });
   });

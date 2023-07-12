@@ -1,13 +1,12 @@
 import {
   loadDotEnv,
   timeout,
-  logger,
-  logError,
   isProdEnv,
   numberToHex,
   parseArgBoolean,
   getApiConfiguredChainID,
   getStacksNodeChainID,
+  chainIdConfigurationCheck,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
 import { startApiServer } from './api/init';
@@ -27,6 +26,7 @@ import { PgWriteStore } from './datastore/pg-write-store';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
 import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
+import { logger } from './logger';
 
 enum StacksApiMode {
   /**
@@ -98,8 +98,8 @@ async function monitorCoreRpcConnection(): Promise<void> {
     } catch (error) {
       previouslyConnected = false;
       logger.warn(
-        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`,
-        error
+        error,
+        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`
       );
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
@@ -113,6 +113,7 @@ async function init(): Promise<void> {
         '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
+  chainIdConfigurationCheck();
   const apiMode = getApiMode();
   let dbStore: PgStore;
   let dbWriteStore: PgWriteStore;
@@ -151,13 +152,12 @@ async function init(): Promise<void> {
         const error = new Error(
           `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
         );
-        logError(error.message, error);
+        logger.error(error, error.message);
         throw error;
       }
     }
-
     monitorCoreRpcConnection().catch(error => {
-      logger.error(`Error monitoring RPC connection: ${error}`, error);
+      logger.error(error, 'Error monitoring RPC connection');
     });
 
     if (!isFtMetadataEnabled()) {
@@ -246,7 +246,7 @@ function initApp() {
       logger.info('App initialized');
     })
     .catch(error => {
-      logError(`app failed to start: ${error}`, error);
+      logger.error(error, 'app failed to start');
       process.exit(1);
     });
 }

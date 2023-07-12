@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
 import { isUnanchoredRequest } from '../../query-helpers';
-import { ChainID } from '@stacks/transactions';
+import { ChainID } from '../../../helpers';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,

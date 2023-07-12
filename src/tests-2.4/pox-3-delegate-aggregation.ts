@@ -153,6 +153,21 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
+    // validate pool delegations
+    const stackersRes: any = await fetchGet(
+      `/extended/beta/stacking/${delegatorAccount.stxAddr}/delegations`
+    );
+    expect(stackersRes).toBeDefined();
+    expect(stackersRes.total).toBe(1);
+    expect(stackersRes.results).toHaveLength(1);
+    expect(stackersRes.results[0]).toEqual({
+      amount_ustx: delegateAmount.toString(),
+      pox_addr: delegateeAccount.btcTestnetAddr,
+      stacker: delegateeAccount.stxAddr,
+      tx_id: delegateStxDbTx.tx_id,
+      block_height: delegateStxDbTx.block_height,
+    });
+
     // check delegatee locked amount is still zero
     const balanceInfo2 = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(balanceInfo2.locked)).toBe(0n);

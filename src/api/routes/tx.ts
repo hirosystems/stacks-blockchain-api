@@ -85,6 +85,7 @@ export function createTxRouter(db: PgStore): express.Router {
         req.query.tx_id = [req.query.tx_id];
       }
       const txList: string[] = req.query.tx_id as string[];
+
       const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit']);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -276,6 +277,7 @@ export function createTxRouter(db: PgStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res) => {
       const { block_hash } = req.params;
+
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 200);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       validateRequestHexInput(block_hash);
@@ -308,6 +310,7 @@ export function createTxRouter(db: PgStore): express.Router {
     cacheHandler,
     asyncHandler(async (req, res, next) => {
       const height = getBlockHeightPathParam(req, res, next);
+
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit']);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       const result = await db.getTxsFromBlock({ height: height }, limit, offset);

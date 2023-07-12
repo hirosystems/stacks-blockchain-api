@@ -8,15 +8,15 @@ import {
   bufferCVFromString,
   callReadOnlyFunction,
   ClarityType,
-  ChainID,
 } from '@stacks/transactions';
 import {
   BnsGetNamePriceResponse,
   BnsGetNamespacePriceResponse,
 } from '@stacks/stacks-blockchain-api-types';
-import { isValidPrincipal, logger } from './../../../helpers';
+import { ChainID, getChainIDNetwork, isValidPrincipal } from './../../../helpers';
 import { PgStore } from '../../../datastore/pg-store';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
+import { logger } from '../../../logger';
 
 export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -33,7 +33,9 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
       const randomPrivKey = makeRandomPrivKey();
       const address = getAddressFromPrivateKey(
         randomPrivKey.data,
-        chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+        getChainIDNetwork(chainId) === 'mainnet'
+          ? TransactionVersion.Mainnet
+          : TransactionVersion.Testnet
       );
       const bnsContractIdentifier = getBnsContractID(chainId);
       if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
@@ -86,7 +88,9 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
       const randomPrivKey = makeRandomPrivKey();
       const address = getAddressFromPrivateKey(
         randomPrivKey.data,
-        chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+        getChainIDNetwork(chainId) === 'mainnet'
+          ? TransactionVersion.Mainnet
+          : TransactionVersion.Testnet
       );
 
       const bnsContractIdentifier = getBnsContractID(chainId);

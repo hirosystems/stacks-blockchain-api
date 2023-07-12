@@ -1,7 +1,7 @@
 import * as express from 'express';
 import * as cors from 'cors';
 import { createProxyMiddleware, Options, responseInterceptor } from 'http-proxy-middleware';
-import { logError, logger, parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
+import { parsePort, pipelineAsync, REPO_DIR } from '../../helpers';
 import { Agent } from 'http';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -10,6 +10,7 @@ import * as chokidar from 'chokidar';
 import * as jsoncParser from 'jsonc-parser';
 import fetch, { RequestInit } from 'node-fetch';
 import { PgStore } from '../../datastore/pg-store';
+import { logger } from '../../logger';
 
 function GetStacksNodeProxyEndpoint() {
   // Use STACKS_CORE_PROXY env vars if available, otherwise fallback to `STACKS_CORE_RPC
@@ -62,7 +63,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       );
     } catch (error) {
       pathCacheOptions.clear();
-      logger.error(`Error reading changes from ${proxyCacheControlFile}`, error);
+      logger.error(error, `Error reading changes from ${proxyCacheControlFile}`);
     }
   };
   updatePathCacheOptions();
@@ -96,7 +97,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
     try {
       fileContents = await fs.promises.readFile(filePath, { encoding: 'utf8' });
     } catch (error) {
-      logError(`Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}: ${error}`, error);
+      logger.error(error, `Error reading ${STACKS_API_EXTRA_TX_ENDPOINTS_FILE_ENV_VAR}`);
       return false;
     }
     const endpoints = fileContents
@@ -161,7 +162,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
         first_broadcast_at_stacks_height: blockHeight,
       });
     } catch (error) {
-      logError(`Error logging tx broadcast: ${error}`, error);
+      logger.error(error, 'Error logging tx broadcast');
     }
   }
 
@@ -203,10 +204,13 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       // to the extra endpoints are logged.
       results.slice(1).forEach(p => {
         if (p.status === 'rejected') {
-          logError(`Error during POST /v2/transaction to extra endpoint: ${p.reason}`, p.reason);
+          logger.error(
+            p.reason,
+            `Error during POST /v2/transaction to extra endpoint: ${p.reason}`
+          );
         } else {
           if (!p.value.ok) {
-            logError(
+            logger.warn(
               `Response ${p.value.status} during POST /v2/transaction to extra endpoint ${p.value.url}`
             );
           }
@@ -216,9 +220,9 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
       // Proxy the result of the (non-extra) http response back to the client.
       const mainResult = results[0];
       if (mainResult.status === 'rejected') {
-        logError(
-          `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`,
-          mainResult.reason
+        logger.error(
+          mainResult.reason,
+          `Error in primary POST /v2/transaction proxy: ${mainResult.reason}`
         );
         res.status(500).json({ error: mainResult.reason });
       } else {

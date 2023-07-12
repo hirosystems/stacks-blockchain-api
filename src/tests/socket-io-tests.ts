@@ -31,7 +31,6 @@ describe('socket-io', () => {
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
-      httpLogLevel: 'silly',
     });
   });
 

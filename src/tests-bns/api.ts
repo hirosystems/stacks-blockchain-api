@@ -54,7 +54,7 @@ describe('BNS API tests', () => {
     await cycleMigrations();
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
     const block = new TestBlockBuilder({
       block_hash: '0xff',
@@ -633,6 +633,60 @@ describe('BNS API tests', () => {
     expect(query6.type).toBe('application/json');
     expect(query6.body.names).toStrictEqual([
       'imported.btc'
+    ]);
+
+    await db.resolveBnsSubdomains(
+      {
+        index_block_hash: dbBlock.index_block_hash,
+        parent_index_block_hash: dbBlock.parent_index_block_hash,
+        microblock_hash: '',
+        microblock_sequence: I32_MAX,
+        microblock_canonical: true,
+      },
+      [
+        {
+          namespace_id: 'btc',
+          name: 'imported.btc',
+          fully_qualified_subdomain: 'test.imported.btc',
+          resolver: 'https://registrar.blockstack.org',
+          owner: address3,
+          zonefile: 'test',
+          zonefile_hash: 'test-hash',
+          zonefile_offset: 0,
+          parent_zonefile_hash: 'p-test-hash',
+          parent_zonefile_index: 0,
+          block_height: dbBlock.block_height,
+          tx_index: 0,
+          tx_id: '0x5454',
+          canonical: true,
+        },
+        {
+          namespace_id: 'btc',
+          name: 'imported.btc',
+          fully_qualified_subdomain: 'test2.imported.btc',
+          resolver: 'https://registrar.blockstack.org',
+          owner: address3,
+          zonefile: 'test',
+          zonefile_hash: 'test-hash',
+          zonefile_offset: 0,
+          parent_zonefile_hash: 'p-test-hash',
+          parent_zonefile_index: 0,
+          block_height: dbBlock.block_height,
+          tx_index: 0,
+          tx_id: '0x5454',
+          canonical: true,
+        }
+      ]
+    );
+
+    // New subdomain resolves.
+    const query9 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address3}`);
+    expect(query9.status).toBe(200);
+    expect(query9.type).toBe('application/json');
+    expect(query9.body.names).toStrictEqual([
+      'imported.btc',
+      'test.imported.btc',
+      'test2.imported.btc',
     ]);
 
     // Revoked name stops resolving.

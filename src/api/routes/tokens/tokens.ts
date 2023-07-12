@@ -52,6 +52,7 @@ export function createTokenRouter(db: PgStore): express.Router {
           }
         }
       }
+
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -113,6 +114,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         value = `0x${value}`;
       }
       const strValue = value;
+
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -174,6 +176,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         res.status(400).json({ error: `Invalid or missing asset_identifier` });
         return;
       }
+
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const includeUnanchored = isUnanchoredRequest(req, res, next);
@@ -261,7 +264,14 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
 
-      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
+      let limit: number;
+      try {
+        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
+      } catch (error: any) {
+        res.status(400).json({ error: error.message });
+        return;
+      }
+
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const { results, total } = await db.getNftMetadataList({ offset, limit });

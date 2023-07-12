@@ -14,7 +14,7 @@ import {
   SignedContractCallOptions,
   noneCV,
 } from '@stacks/transactions';
-import { logger } from '../helpers';
+import { logger } from '../logger';
 import { testnetKeys } from '../api/routes/debug';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';
@@ -333,7 +333,7 @@ describe('BNS integration tests', () => {
   beforeAll(async () => {
     process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
   test('name-import/ready/update contract call', async () => {
@@ -352,7 +352,6 @@ describe('BNS integration tests', () => {
     const importQuery = await db.getName({
       name: `${name}.${namespace}`,
       includeUnanchored: false,
-      chainId: network.chainId,
     });
     const importQuery1 = await supertest(api.server).get(`/v1/names/${name}.${namespace}`);
     expect(importQuery1.status).toBe(200);
@@ -484,7 +483,6 @@ describe('BNS integration tests', () => {
     const query = await db.getName({
       name: `${name}.${namespace}`,
       includeUnanchored: false,
-      chainId: network.chainId,
     });
     expect(query.found).toBe(true);
     if (query.found) {

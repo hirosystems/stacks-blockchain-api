@@ -192,7 +192,7 @@ export async function standByUntilBurnBlock(
 ): Promise<DbBlock> {
   const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
   const api = apiArg ?? testEnv.api;
-
+  let blockFound = false;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
       const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
@@ -200,21 +200,27 @@ export async function standByUntilBurnBlock(
         return;
       }
       api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      blockFound = true;
       resolve(dbBlockQuery.result);
     };
     api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await api.datastore.getCurrentBlock();
-    if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-      const dbBlock = await api.datastore.getBlock({
-        height: curHeight.result.block_height,
-      });
-      if (!dbBlock.found) {
-        throw new Error('Unhandled missing block');
+    while (!blockFound) {
+      const curHeight = await api.datastore.getCurrentBlock();
+      if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
+        const dbBlock = await api.datastore.getBlock({
+          height: curHeight.result.block_height,
+        });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        blockFound = true;
+        resolve(dbBlock.result);
+      } else {
+        await timeout(200);
       }
-      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      resolve(dbBlock.result);
     }
   });
 
@@ -332,6 +338,7 @@ export async function standByUntilBlock(
   apiArg?: ApiServer,
   clientArg?: StacksCoreRpcClient
 ): Promise<DbBlock> {
+  let blockFound = false;
   const client = clientArg ?? testEnv?.client ?? new StacksCoreRpcClient();
   const api = apiArg ?? testEnv.api;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
@@ -341,20 +348,25 @@ export async function standByUntilBlock(
         return;
       }
       api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+      blockFound = true;
       resolve(dbBlockQuery.result);
     };
     api.datastore.eventEmitter.addListener('blockUpdate', listener);
 
     // Check if block height already reached
-    const curHeight = await api.datastore.getCurrentBlockHeight();
-    if (curHeight.found && curHeight.result >= blockHeight) {
-      const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
-      if (!dbBlock.found) {
-        throw new Error('Unhandled missing block');
+    while (!blockFound) {
+      const curHeight = await api.datastore.getCurrentBlockHeight();
+      if (curHeight.found && curHeight.result >= blockHeight) {
+        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
+        if (!dbBlock.found) {
+          throw new Error('Unhandled missing block');
+        }
+        api.datastore.eventEmitter.removeListener('blockUpdate', listener);
+        resolve(dbBlock.result);
+        return;
+      } else {
+        await timeout(200);
       }
-      api.datastore.eventEmitter.removeListener('blockUpdate', listener);
-      resolve(dbBlock.result);
-      return;
     }
   });
 

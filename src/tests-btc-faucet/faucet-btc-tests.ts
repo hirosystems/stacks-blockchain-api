@@ -106,6 +106,7 @@ describe('btc faucet', () => {
     let apiServer: ApiServer;
     let db: PgStore;
     let writeDb: PgWriteStore;
+    const OLD_ENV = process.env;
     beforeAll(async () => {
       process.env.PG_DATABASE = 'postgres';
       await cycleMigrations();
@@ -119,7 +120,6 @@ describe('btc faucet', () => {
         datastore: db,
         writeDatastore: writeDb,
         chainId: ChainID.Testnet,
-        httpLogLevel: 'silly',
       });
     });
 
@@ -151,7 +151,19 @@ describe('btc faucet', () => {
       expect(JSON.parse(balanceResponse.text)).toEqual({ balance: 0.5 });
     });
 
+    test('faucet not configured', async () => {
+      process.env.BTC_RPC_PORT = '';
+      const addr = getKeyAddress(ECPair.makeRandom({ network: regtest }));
+      const response = await supertest(apiServer.server).post(
+        `/extended/v1/faucets/btc?address=${addr}`
+      );
+      expect(response.status).toBe(403);
+      const resJson = JSON.parse(response.text);
+      expect(resJson.error).toBe('BTC Faucet is not configured.');
+    });
+
     afterAll(async () => {
+      process.env = OLD_ENV;
       await apiServer.terminate();
       await db?.close();
       await writeDb?.close();

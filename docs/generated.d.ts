@@ -91,6 +91,7 @@ export type SchemaMergeRootStub =
   | SearchSuccessResult
   | TxSearchResult
   | SearchResult
+  | PoolDelegationsResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -173,6 +174,7 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
+  | PoolDelegation
   | FungibleTokenMetadata
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
@@ -2854,6 +2856,50 @@ export interface TxSearchResult {
   };
 }
 /**
+ * GET request that returns stacking pool member details for a given pool (delegator) principal
+ */
+export interface PoolDelegationsResponse {
+  /**
+   * The number of Stackers to return
+   */
+  limit: number;
+  /**
+   * The number to Stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of Stackers
+   */
+  total: number;
+  results: PoolDelegation[];
+}
+export interface PoolDelegation {
+  /**
+   * The principal of the pool member that issued the delegation
+   */
+  stacker: string;
+  /**
+   * The pox-addr value specified by the stacker in the delegation operation
+   */
+  pox_addr?: string;
+  /**
+   * The amount of uSTX delegated by the stacker
+   */
+  amount_ustx: string;
+  /**
+   * The optional burnchain block unlock height that the stacker may have specified
+   */
+  burn_block_unlock_height?: number;
+  /**
+   * The block height at which the stacker delegation transaction was mined at
+   */
+  block_height: number;
+  /**
+   * The tx_id of the stacker delegation operation
+   */
+  tx_id: string;
+}
+/**
  * List of fungible tokens metadata
  */
 export interface FungibleTokensMetadataList {
@@ -3303,6 +3349,10 @@ export interface AddressNonces {
    * Nonces that appear to be missing and likely causing a mempool transaction to be stuck.
    */
   detected_missing_nonces: number[];
+  /**
+   * Nonces currently in mempool for this address.
+   */
+  detected_mempool_nonces?: number[];
 }
 /**
  * Total burnchain rewards made to a recipient

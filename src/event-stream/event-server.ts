@@ -5,9 +5,7 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
-import * as expressWinston from 'express-winston';
-import * as winston from 'winston';
-import { getIbdBlockHeight, hexToBuffer, logError, logger, LogLevel } from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -55,7 +53,6 @@ import {
   ClarityValueTuple,
   TxPayloadTypeID,
 } from 'stacks-encoding-native-js';
-import { ChainID } from '@stacks/transactions';
 import { BnsContractIdentifier } from './bns/bns-constants';
 import {
   parseNameFromContractEvent,
@@ -71,6 +68,7 @@ import {
 import { handleBnsImport } from '../import-v1';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
+import { logger, loggerMiddleware } from '../logger';
 
 export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -86,7 +84,7 @@ async function handleBurnBlockMessage(
   burnBlockMsg: CoreNodeBurnBlockMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(
+  logger.debug(
     `Received burn block message hash ${burnBlockMsg.burn_block_hash}, height: ${burnBlockMsg.burn_block_height}, reward recipients: ${burnBlockMsg.reward_recipients.length}`
   );
   const rewards = burnBlockMsg.reward_recipients.map((r, index) => {
@@ -124,7 +122,7 @@ async function handleBurnBlockMessage(
 }
 
 async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Promise<void> {
-  logger.verbose(`Received ${rawTxs.length} mempool transactions`);
+  logger.debug(`Received ${rawTxs.length} mempool transactions`);
   // TODO: mempool-tx receipt date should be sent from the core-node
   const receiptDate = Math.round(Date.now() / 1000);
   const decodedTxs = rawTxs.map(str => {
@@ -140,7 +138,7 @@ async function handleMempoolTxsMessage(rawTxs: string[], db: PgWriteStore): Prom
     };
   });
   const dbMempoolTxs = decodedTxs.map(tx => {
-    logger.verbose(`Received mempool tx: ${tx.txId}`);
+    logger.debug(`Received mempool tx: ${tx.txId}`);
     const dbMempoolTx = createDbMempoolTxFromCoreMsg({
       txId: tx.txId,
       txData: tx.txData,
@@ -158,7 +156,7 @@ async function handleDroppedMempoolTxsMessage(
   msg: CoreNodeDropMempoolTxMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(`Received ${msg.dropped_txids.length} dropped mempool txs`);
+  logger.debug(`Received ${msg.dropped_txids.length} dropped mempool txs`);
   const dbTxStatus = getTxDbStatus(msg.reason);
   await db.dropMempoolTxs({ status: dbTxStatus, txIds: msg.dropped_txids });
 }
@@ -168,7 +166,7 @@ async function handleMicroblockMessage(
   msg: CoreNodeMicroblockMessage,
   db: PgWriteStore
 ): Promise<void> {
-  logger.verbose(`Received microblock with ${msg.transactions.length} txs`);
+  logger.debug(`Received microblock with ${msg.transactions.length} txs`);
   const dbMicroblocks = parseMicroblocksFromTxs({
     parentIndexBlockHash: msg.parent_index_block_hash,
     txs: msg.transactions,
@@ -203,7 +201,7 @@ async function handleMicroblockMessage(
     }
   });
   parsedTxs.forEach(tx => {
-    logger.verbose(`Received microblock mined tx: ${tx.core_tx.txid}`);
+    logger.debug(`Received microblock mined tx: ${tx.core_tx.txid}`);
   });
   const updateData: DataStoreMicroblockUpdateData = {
     microblocks: dbMicroblocks,
@@ -256,7 +254,7 @@ async function handleBlockMessage(
     execution_cost_write_length: 0,
   };
 
-  logger.verbose(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
+  logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
 
   const dbMinerRewards: DbMinerReward[] = [];
   for (const minerReward of msg.matured_miner_rewards) {
@@ -277,7 +275,7 @@ async function handleBlockMessage(
     dbMinerRewards.push(dbMinerReward);
   }
 
-  logger.verbose(`Received ${dbMinerRewards.length} matured miner rewards`);
+  logger.debug(`Received ${dbMinerRewards.length} matured miner rewards`);
 
   const dbMicroblocks = parseMicroblocksFromTxs({
     parentIndexBlockHash: msg.parent_index_block_hash,
@@ -302,7 +300,7 @@ async function handleBlockMessage(
   });
 
   parsedTxs.forEach(tx => {
-    logger.verbose(`Received anchor block mined tx: ${tx.core_tx.txid}`);
+    logger.debug(`Received anchor block mined tx: ${tx.core_tx.txid}`);
     logger.info('Transaction confirmed', {
       txid: tx.core_tx.txid,
       in_microblock: tx.microblock_hash != '',
@@ -380,7 +378,7 @@ function parseDataStoreTxEventData(
 
   for (const event of events) {
     if (!event.committed) {
-      logger.verbose(`Ignoring uncommitted tx event from tx ${event.txid}`);
+      logger.debug(`Ignoring uncommitted tx event from tx ${event.txid}`);
       continue;
     }
     const dbTx = dbData.find(entry => entry.tx.tx_id === event.txid);
@@ -396,11 +394,11 @@ function parseDataStoreTxEventData(
         } catch (e) {
           logger.warn(`Failed to decode contract log event: ${event.contract_event.raw_value}`);
         }
-        logger.verbose(
+        logger.debug(
           `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}, repr: ${reprStr}`
         );
       } else {
-        logger.verbose(
+        logger.debug(
           `Ignoring tx event from unsuccessful tx ${event.txid}, status: ${dbTx.tx.status}`
         );
       }
@@ -427,7 +425,7 @@ function parseDataStoreTxEventData(
         dbTx.contractLogEvents.push(entry);
 
         if (isPoxPrintEvent(event)) {
-          const network = chainId === ChainID.Mainnet ? 'mainnet' : 'testnet';
+          const network = getChainIDNetwork(chainId) === 'mainnet' ? 'mainnet' : 'testnet';
           const [, contractName] = event.contract_event.contract_identifier.split('.');
           // todo: switch could be abstracted more
           switch (contractName) {
@@ -699,7 +697,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleRawEventRequest(eventPath, payload, db))
         .catch(e => {
-          logError(`Error storing raw core node request data`, e, payload);
+          logger.error(e, 'Error storing raw core node request data');
           throw e;
         });
     },
@@ -707,7 +705,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleBlockMessage(chainId, msg, db))
         .catch(e => {
-          logError(`Error processing core node block message`, e, msg);
+          logger.error(e, 'Error processing core node block message');
           throw e;
         });
     },
@@ -719,7 +717,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleMicroblockMessage(chainId, msg, db))
         .catch(e => {
-          logError(`Error processing core node microblock message`, e, msg);
+          logger.error(e, 'Error processing core node microblock message');
           throw e;
         });
     },
@@ -727,7 +725,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleBurnBlockMessage(msg, db))
         .catch(e => {
-          logError(`Error processing core node burn block message`, e, msg);
+          logger.error(e, 'Error processing core node burn block message');
           throw e;
         });
     },
@@ -735,7 +733,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleMempoolTxsMessage(rawTxs, db))
         .catch(e => {
-          logError(`Error processing core node mempool message`, e, rawTxs);
+          logger.error(e, 'Error processing core node mempool message');
           throw e;
         });
     },
@@ -743,7 +741,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleDroppedMempoolTxsMessage(msg, db))
         .catch(e => {
-          logError(`Error processing core node dropped mempool txs message`, e, msg);
+          logger.error(e, 'Error processing core node dropped mempool txs message');
           throw e;
         });
     },
@@ -751,7 +749,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       return processorQueue
         .add(() => handleNewAttachmentMessage(msg, db))
         .catch(e => {
-          logError(`Error processing new attachment message`, e, msg);
+          logger.error(e, 'Error processing new attachment message');
           throw e;
         });
     },
@@ -773,7 +771,6 @@ export async function startEventServer(opts: {
   serverHost?: string;
   /** If not specified, this is read from the STACKS_CORE_EVENT_PORT env var. */
   serverPort?: number;
-  httpLogLevel?: LogLevel;
 }): Promise<EventStreamServer> {
   const db = opts.datastore;
   const messageHandler = opts.messageHandler ?? createMessageProcessorQueue();
@@ -799,29 +796,18 @@ export async function startEventServer(opts: {
   const handleRawEventRequest = asyncHandler(async req => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
-    if (logger.isDebugEnabled()) {
+    if (logger.level === 'debug') {
       const eventPath = req.path;
       let payload = JSON.stringify(req.body);
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
       if (payload.length > 10_000_000) {
         payload = 'payload body too large for logging';
       }
-      logger.debug(`[stacks-node event] ${eventPath} ${payload}`);
+      logger.debug(`${eventPath} ${payload}`, { component: 'stacks-node-event' });
     }
   });
 
-  app.use(
-    expressWinston.logger({
-      format: logger.format,
-      transports: logger.transports,
-      metaField: (null as unknown) as string,
-      statusLevels: {
-        error: 'error',
-        warn: opts.httpLogLevel ?? 'http',
-        success: opts.httpLogLevel ?? 'http',
-      },
-    })
-  );
+  app.use(loggerMiddleware);
 
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
@@ -862,7 +848,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /new_block: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_block');
         res.status(500).json({ error: error });
       }
     }),
@@ -878,7 +864,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /new_burn_block: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_burn_block');
         res.status(500).json({ error: error });
       }
     }),
@@ -894,7 +880,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /new_mempool_tx: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_mempool_tx');
         res.status(500).json({ error: error });
       }
     }),
@@ -910,7 +896,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /drop_mempool_tx: ${error}`, error);
+        logger.error(error, 'error processing core-node /drop_mempool_tx');
         res.status(500).json({ error: error });
       }
     }),
@@ -926,7 +912,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /attachments/new: ${error}`, error);
+        logger.error(error, 'error processing core-node /attachments/new');
         res.status(500).json({ error: error });
       }
     }),
@@ -942,7 +928,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logError(`error processing core-node /new_microblocks: ${error}`, error);
+        logger.error(error, 'error processing core-node /new_microblocks');
         res.status(500).json({ error: error });
       }
     }),
@@ -951,17 +937,9 @@ export async function startEventServer(opts: {
 
   app.post('*', (req, res, next) => {
     res.status(404).json({ error: `no route handler for ${req.path}` });
-    logError(`Unexpected event on path ${req.path}`);
+    logger.error(`Unexpected event on path ${req.path}`);
     next();
   });
-
-  app.use(
-    expressWinston.errorLogger({
-      winstonInstance: logger as winston.Logger,
-      metaField: (null as unknown) as string,
-      blacklistedMetaFields: ['trace', 'os', 'process'],
-    })
-  );
 
   const server = createServer(app);
   await new Promise<void>((resolve, reject) => {

@@ -13,7 +13,7 @@ import { ListenerType, WebSocketChannel, WebSocketPayload } from './web-socket-c
 import { SocketIOChannel } from './channels/socket-io-channel';
 import { WsRpcChannel } from './channels/ws-rpc-channel';
 import { parseNftEvent } from '../../../datastore/helpers';
-import { logger } from '../../../helpers';
+import { logger } from '../../../logger';
 
 export function getWsPingIntervalMs(): number {
   return parseInt(process.env['STACKS_API_WS_PING_INTERVAL'] ?? '5') * 1000;
@@ -58,27 +58,27 @@ export class WebSocketTransmitter {
     this.db.eventEmitter.addListener('blockUpdate', blockHash =>
       this.queue
         .add(() => this.blockUpdate(blockHash))
-        .catch(error => logger.error(`WebSocketTransmitter blockUpdate error: ${error}`))
+        .catch(error => logger.error(error, 'WebSocketTransmitter blockUpdate error'))
     );
     this.db.eventEmitter.addListener('microblockUpdate', microblockHash =>
       this.queue
         .add(() => this.microblockUpdate(microblockHash))
-        .catch(error => logger.error(`WebSocketTransmitter microblockUpdate error: ${error}`))
+        .catch(error => logger.error(error, 'WebSocketTransmitter microblockUpdate error'))
     );
     this.db.eventEmitter.addListener('nftEventUpdate', (txId, eventIndex) =>
       this.queue
         .add(() => this.nftEventUpdate(txId, eventIndex))
-        .catch(error => logger.error(`WebSocketTransmitter nftEventUpdate error: ${error}`))
+        .catch(error => logger.error(error, 'WebSocketTransmitter nftEventUpdate error'))
     );
     this.db.eventEmitter.addListener('txUpdate', txId =>
       this.queue
         .add(() => this.txUpdate(txId))
-        .catch(error => logger.error(`WebSocketTransmitter txUpdate error: ${error}`))
+        .catch(error => logger.error(error, 'WebSocketTransmitter txUpdate error'))
     );
     this.db.eventEmitter.addListener('addressUpdate', (address, blockHeight) =>
       this.queue
         .add(() => this.addressUpdate(address, blockHeight))
-        .catch(error => logger.error(`WebSocketTransmitter addressUpdate error: ${error}`))
+        .catch(error => logger.error(error, 'WebSocketTransmitter addressUpdate error'))
     );
 
     this.channels.push(new SocketIOChannel(this.server));

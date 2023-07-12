@@ -1,8 +1,6 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
 import * as express from 'express';
-import * as expressWinston from 'express-winston';
-import * as winston from 'winston';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 
@@ -21,16 +19,13 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { apiDocumentationUrl, isProdEnv, logError, logger, LogLevel, waiter } from '../helpers';
+import { ChainID, apiDocumentationUrl, getChainIDNetwork, isProdEnv, waiter } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { createBnsNamesRouter } from './routes/bns/names';
 import { createBnsAddressesRouter } from './routes/bns/addresses';
-
-import { ChainID } from '@stacks/transactions';
-
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
@@ -46,8 +41,10 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
-import { isPgConnectionError } from '../datastore/helpers';
 import { createPox3EventsRouter } from './routes/pox3';
+import { isPgConnectionError } from '../datastore/helpers';
+import { createStackingRouter } from './routes/stacking';
+import { logger, loggerMiddleware } from '../logger';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -70,9 +67,8 @@ export async function startApiServer(opts: {
   serverHost?: string;
   /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
   serverPort?: number;
-  httpLogLevel?: LogLevel;
 }): Promise<ApiServer> {
-  const { datastore, writeDatastore, chainId, serverHost, serverPort, httpLogLevel } = opts;
+  const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
 
   try {
     const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
@@ -80,7 +76,7 @@ export async function startApiServer(opts: {
     API_VERSION.commit = commit;
     API_VERSION.tag = tag;
   } catch (error) {
-    logger.error(`Unable to read API version from .git-info`, error);
+    logger.error(error, `Unable to read API version from .git-info`);
   }
 
   const app = express();
@@ -150,19 +146,9 @@ export async function startApiServer(opts: {
     res.append('Access-Control-Expose-Headers', 'X-API-Version');
     next();
   });
-  // Setup request logging
-  app.use(
-    expressWinston.logger({
-      format: logger.format,
-      transports: logger.transports,
-      metaField: (null as unknown) as string,
-      statusLevels: {
-        error: 'error',
-        warn: httpLogLevel ?? 'http',
-        success: httpLogLevel ?? 'http',
-      },
-    })
-  );
+
+  // Common logger middleware for the whole API.
+  app.use(loggerMiddleware);
 
   app.set('json spaces', 2);
 
@@ -227,9 +213,24 @@ export async function startApiServer(opts: {
       router.use('/tokens', createTokenRouter(datastore));
       router.use('/pox2_events', createPox2EventsRouter(datastore));
       router.use('/pox3_events', createPox3EventsRouter(datastore));
-      if (chainId !== ChainID.Mainnet && writeDatastore) {
+      if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
+      return router;
+    })()
+  );
+
+  app.use(
+    '/extended/beta',
+    (() => {
+      const router = express.Router();
+      router.use(cors());
+      router.use((req, res, next) => {
+        // Set caching on all routes to be disabled by default, individual routes can override
+        res.set('Cache-Control', 'no-store');
+        next();
+      });
+      router.use('/stacking', createStackingRouter(datastore));
       return router;
     })()
   );
@@ -285,6 +286,7 @@ export async function startApiServer(opts: {
   app.use(((error, req, res, next) => {
     if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
+        error,
         `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
           'Cache-Control'
         )}`
@@ -292,6 +294,7 @@ export async function startApiServer(opts: {
     }
     if (error && res.headersSent && res.statusCode !== 200 && res.hasHeader('ETag')) {
       logger.error(
+        error,
         `A non-200 response with an error in request processing has ETag: ${res.header(
           'ETag'
         )}, Cache-Control: ${res.header('Cache-Control')}`
@@ -302,6 +305,7 @@ export async function startApiServer(opts: {
     }
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
+        logger.warn(error, error.message);
         res.status(error.status).json({ error: error.message }).end();
       } else if (isPgConnectionError(error)) {
         res.status(503).json({ error: `The database service is unavailable` }).end();
@@ -316,18 +320,6 @@ export async function startApiServer(opts: {
     }
     next(error);
   }) as express.ErrorRequestHandler);
-
-  app.use(
-    expressWinston.errorLogger({
-      winstonInstance: logger as winston.Logger,
-      metaField: (null as unknown) as string,
-      blacklistedMetaFields: ['trace', 'os', 'process'],
-      skip: (_req, _res, error) => {
-        // Do not log errors for client 4xx responses
-        return error instanceof InvalidRequestError;
-      },
-    })
-  );
 
   // Store all the registered express routes for usage with metrics reporting
   routes = expressListEndpoints(app).map(endpoint => ({
@@ -392,7 +384,7 @@ export async function startApiServer(opts: {
       logger.info('Closing WebSocket channels...');
       ws.close(error => {
         if (error) {
-          logError('Failed to gracefully close WebSocket channels', error);
+          logger.error(error, 'Failed to gracefully close WebSocket channels');
           reject(error);
         } else {
           logger.info('API WebSocket channels closed.');

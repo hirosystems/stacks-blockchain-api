@@ -44,7 +44,6 @@ describe('websocket notifications', () => {
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
-      httpLogLevel: 'silly',
     });
   });
 

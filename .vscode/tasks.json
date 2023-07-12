@@ -45,6 +45,29 @@
       "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
     },
     {
+      "label": "deploy:subnets",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.subnets.yml up --force-recreate -V",
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": { "regexp": ".", "file": 1, "location": 2, "message": 3 },
+        "background": { "activeOnStart": true, "beginsPattern": ".", "endsPattern": "." }
+      },
+      "presentation": { "echo": true, "reveal": "always", "focus": false, "panel": "dedicated", "clear": false }
+    },
+    {
+      "label": "stop:subnets",
+      "type": "shell",
+      "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.subnets.yml down -v -t 0",
+      "presentation": {
+        "echo": true,
+        "reveal": "silent",
+        "focus": false,
+        "panel": "shared",
+        "clear": false
+      }
+    },
+    {
       "label": "deploy:krypton",
       "type": "shell",
       "command": "docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.stacks-krypton.yml up --force-recreate -V",

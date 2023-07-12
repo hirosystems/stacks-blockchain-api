@@ -27,7 +27,6 @@ import {
   AuthType,
   bufferCV,
   BytesReader,
-  ChainID,
   createMessageSignature,
   deserializeTransaction,
   emptyMessageSignature,
@@ -54,8 +53,10 @@ import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import {
   BigIntMath,
+  ChainID,
   doesThrow,
   FoundOrNot,
+  getChainIDNetwork,
   has0xPrefix,
   hexToBuffer,
   isValidC32Address,
@@ -91,7 +92,9 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
   const stackingOpts = { url: `http://${getCoreNodeEndpoint()}` };
   const stackingRpc = new StackingClient(
     '', // anonymous
-    chainId == ChainID.Mainnet ? new StacksMainnet(stackingOpts) : new StacksTestnet(stackingOpts)
+    getChainIDNetwork(chainId) == 'mainnet'
+      ? new StacksMainnet(stackingOpts)
+      : new StacksTestnet(stackingOpts)
   );
 
   //construction/derive endpoint

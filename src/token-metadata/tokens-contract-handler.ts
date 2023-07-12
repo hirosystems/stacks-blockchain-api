@@ -1,7 +1,6 @@
 import * as child_process from 'child_process';
 import { DbFungibleTokenMetadata, DbNonFungibleTokenMetadata } from '../datastore/common';
 import {
-  ChainID,
   ClarityAbi,
   ClarityType,
   ClarityValue,
@@ -12,7 +11,7 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
-import { logger, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
+import { ChainID, getChainIDNetwork, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
 import * as querystring from 'querystring';
 import {
   getTokenMetadataFetchTimeoutMs,
@@ -25,6 +24,7 @@ import {
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { FetchError } from 'node-fetch';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger } from '../logger';
 
 /**
  * The maximum number of bytes of metadata to fetch.
@@ -114,7 +114,9 @@ export class TokensContractHandler {
 
     this.address = getAddressFromPrivateKey(
       this.randomPrivKey.data,
-      this.chainId === ChainID.Mainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+      getChainIDNetwork(this.chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet
     );
     if (isCompliantFt(args.smartContractAbi)) {
       this.tokenKind = 'ft';

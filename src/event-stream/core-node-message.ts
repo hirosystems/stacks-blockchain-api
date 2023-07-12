@@ -48,7 +48,7 @@ export interface StxTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface StxMintEvent extends CoreNodeEventBase {
+export interface StxMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.StxMintEvent;
   stx_mint_event: {
     recipient: string;
@@ -93,7 +93,7 @@ export interface NftTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface NftMintEvent extends CoreNodeEventBase {
+export interface NftMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftMintEvent;
   nft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -128,7 +128,7 @@ interface FtTransferEvent extends CoreNodeEventBase {
   };
 }
 
-interface FtMintEvent extends CoreNodeEventBase {
+export interface FtMintEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.FtMintEvent;
   ft_mint_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -147,6 +147,28 @@ interface FtBurnEvent extends CoreNodeEventBase {
     amount: string;
   };
 }
+
+interface BurnchainOpRegisterAssetNft {
+  register_asset: {
+    asset_type: 'nft';
+    burn_header_hash: string;
+    l1_contract_id: string;
+    l2_contract_id: string;
+    txid: string;
+  };
+}
+
+interface BurnchainOpRegisterAssetFt {
+  register_asset: {
+    asset_type: 'ft';
+    burn_header_hash: string;
+    l1_contract_id: string;
+    l2_contract_id: string;
+    txid: string;
+  };
+}
+
+export type BurnchainOp = BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt;
 
 export type CoreNodeEvent =
   | SmartContractEvent
@@ -174,6 +196,7 @@ export interface CoreNodeTxMessage {
   microblock_sequence: number | null;
   microblock_hash: string | null;
   microblock_parent_hash: string | null;
+  burnchain_op?: BurnchainOp | null;
 }
 
 export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {

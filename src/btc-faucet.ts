@@ -2,9 +2,11 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
 import * as Bluebird from 'bluebird';
-import { parsePort, time, logger, logError } from './helpers';
+import { parsePort, time } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
+import { BtcFaucetConfigError } from './errors';
+import { logger } from './logger';
 
 function getFaucetPk(): string {
   const { BTC_FAUCET_PK } = process.env;
@@ -34,7 +36,7 @@ export function getKeyAddress(key: ECPairInterface): string {
 export function getRpcClient(): RPCClient {
   const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
   if (!BTC_RPC_PORT || !BTC_RPC_HOST || !BTC_RPC_PW || !BTC_RPC_USER) {
-    throw new Error('BTC Faucet not fully configured.');
+    throw new BtcFaucetConfigError('BTC Faucet is not configured.');
   }
   const client = new RPCClient({
     url: BTC_RPC_HOST,
@@ -91,10 +93,10 @@ export async function getBtcBalance(network: btc.Network, address: string) {
 async function getTxOutSet(client: RPCClient, address: string): Promise<TxOutSet> {
   const txOutSet: TxOutSet = await time(
     () => client.scantxoutset({ action: 'start', scanobjects: [`addr(${address})`] }),
-    ms => logger.verbose(`scantxoutset for ${address} took ${ms} ms`)
+    ms => logger.debug(`scantxoutset for ${address} took ${ms} ms`)
   );
   if (!txOutSet.success) {
-    logError(`WARNING: scantxoutset did not immediately complete -- polling for progress...`);
+    logger.error('scantxoutset did not immediately complete -- polling for progress...');
     let scanProgress = true;
     do {
       scanProgress = await client.scantxoutset({
@@ -136,7 +138,7 @@ async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<G
         client.getrawtransaction({ txid: txId, verbose: true })
       );
     },
-    ms => logger.verbose(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
+    ms => logger.debug(`batch getrawtransaction for ${txIds.length} txs took ${ms} ms`)
   );
   return batchRawTxRes;
 }
@@ -145,7 +147,7 @@ async function getSpendableUtxos(client: RPCClient, address: string): Promise<Tx
   const txOutSet = await getTxOutSet(client, address);
   const mempoolTxIds: string[] = await time(
     () => client.getrawmempool(),
-    ms => logger.verbose(`getrawmempool took ${ms} ms`)
+    ms => logger.debug(`getrawmempool took ${ms} ms`)
   );
   const rawTxs = await getRawTransactions(client, mempoolTxIds);
   const spentUtxos = rawTxs.map(tx => tx.vin).flat();
@@ -223,7 +225,7 @@ export async function makeBtcFaucetPayment(
   const txId = tx.getId();
   const sendTxResult: string = await time(
     () => client.sendrawtransaction({ hexstring: txHex }),
-    ms => logger.verbose(`sendrawtransaction took ${ms}`)
+    ms => logger.debug(`sendrawtransaction took ${ms}`)
   );
 
   if (sendTxResult !== txId) {

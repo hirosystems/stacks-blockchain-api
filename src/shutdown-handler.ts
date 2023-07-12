@@ -1,4 +1,5 @@
-import { logError, logger, resolveOrTimeout } from './helpers';
+import { resolveOrTimeout } from './helpers';
+import { logger } from './logger';
 
 const SHUTDOWN_SIGNALS = ['SIGINT', 'SIGTERM'] as const;
 
@@ -29,7 +30,7 @@ async function startShutdown() {
         timeoutMs,
         !config.forceKillable,
         () =>
-          logError(
+          logger.error(
             `${config.name} is taking longer than expected to shutdown, possibly hanging indefinitely`
           )
       );
@@ -37,7 +38,7 @@ async function startShutdown() {
         if (config.forceKillable && config.forceKillHandler) {
           await Promise.resolve(config.forceKillHandler());
         }
-        logError(
+        logger.error(
           `${config.name} was force killed after taking longer than ${timeoutMs}ms to shutdown`
         );
       } else {
@@ -45,7 +46,7 @@ async function startShutdown() {
       }
     } catch (error) {
       errorEncountered = true;
-      logError(`Error running ${config.name} shutdown handler`, error);
+      logger.error(`Error running ${config.name} shutdown handler`, error);
     }
   }
   if (errorEncountered) {
@@ -70,12 +71,12 @@ function registerShutdownSignals() {
     });
   });
   process.once('unhandledRejection', error => {
-    logError(`unhandledRejection ${(error as any)?.message ?? error}`, error as Error);
+    logger.error(error, 'unhandledRejection');
     logger.error(`Shutting down... received unhandledRejection.`);
     void startShutdown();
   });
   process.once('uncaughtException', error => {
-    logError(`Received uncaughtException: ${error}`, error);
+    logger.error(`Received uncaughtException: ${error}`, error);
     logger.error(`Shutting down... received uncaughtException.`);
     void startShutdown();
   });

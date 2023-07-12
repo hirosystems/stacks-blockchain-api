@@ -20,7 +20,7 @@ import {
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
 import { PgSqlClient } from '../datastore/connection';
-import { bufferToHexPrefixString, httpPostRequest, I32_MAX, logger } from '../helpers';
+import { bufferToHexPrefixString, httpPostRequest, I32_MAX } from '../helpers';
 import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
@@ -41,6 +41,7 @@ import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { getRawEventRequests } from '../datastore/event-requests';
+import { logger } from '../logger';
 
 describe('microblock tests', () => {
   let db: PgWriteStore;
@@ -78,7 +79,6 @@ describe('microblock tests', () => {
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
           serverPort: 0,
-          httpLogLevel: 'debug',
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
@@ -86,7 +86,6 @@ describe('microblock tests', () => {
         const apiServer = await startApiServer({
           datastore: db,
           chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -140,7 +139,6 @@ describe('microblock tests', () => {
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
           serverPort: 0,
-          httpLogLevel: 'debug',
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
@@ -148,7 +146,6 @@ describe('microblock tests', () => {
         const apiServer = await startApiServer({
           datastore: db,
           chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -206,7 +203,6 @@ describe('microblock tests', () => {
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
           serverPort: 0,
-          httpLogLevel: 'debug',
         });
         return [eventServer, eventServer.closeAsync] as const;
       },
@@ -214,7 +210,6 @@ describe('microblock tests', () => {
         const apiServer = await startApiServer({
           datastore: db,
           chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
         });
         return [apiServer, apiServer.terminate] as const;
       },
@@ -257,7 +252,6 @@ describe('microblock tests', () => {
         const apiServer = await startApiServer({
           datastore: db,
           chainId: ChainID.Testnet,
-          httpLogLevel: 'silly',
         });
         return [apiServer, apiServer.terminate] as const;
       },

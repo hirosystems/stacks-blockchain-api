@@ -49,7 +49,6 @@ describe('v2-proxy tests', () => {
         const apiServer = await startApiServer({
           datastore: db,
           chainId: ChainID.Mainnet,
-          httpLogLevel: 'debug',
         });
         return [apiServer, apiServer.terminate] as const;
       },

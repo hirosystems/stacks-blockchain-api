@@ -1,5 +1,5 @@
 import * as postgres from 'postgres';
-import { logError, logger } from '../helpers';
+import { logger } from '../logger';
 import { DbConfigState } from './common';
 import { connectPostgres, PgServer, PgSqlClient } from './connection';
 
@@ -93,7 +93,7 @@ export class PgNotifier {
         () => logger.info(`PgNotifier connected, listening on channel: ${this.pgChannelName}`)
       );
     } catch (error) {
-      logError('PgNotifier fatal connection error', error);
+      logger.error(error, 'PgNotifier fatal connection error');
       throw error;
     }
   }
@@ -153,7 +153,7 @@ export class PgNotifier {
     await this.sql
       .notify(this.pgChannelName, JSON.stringify(notification))
       .catch(error =>
-        logError(`PgNotifier error sending notification of type: ${notification.type}`, error)
+        logger.error(error, `PgNotifier error sending notification of type: ${notification.type}`)
       );
   }
 }

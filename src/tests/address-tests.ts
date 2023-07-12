@@ -56,7 +56,7 @@ describe('address tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet, httpLogLevel: 'silly' });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
   test('address transaction transfers', async () => {
@@ -718,6 +718,7 @@ describe('address tests', () => {
     // Chain-tip nonce
     const expectedNonceResults1 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 3,
       last_mempool_tx_nonce: 4,
       possible_next_nonce: 5,
@@ -739,6 +740,7 @@ describe('address tests', () => {
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx2] });
     const expectedNonceResults2 = {
       detected_missing_nonces: [6, 5],
+      detected_mempool_nonces: [4],
       last_executed_tx_nonce: 3,
       last_mempool_tx_nonce: 7,
       possible_next_nonce: 8,
@@ -753,6 +755,7 @@ describe('address tests', () => {
     // Get nonce at block height
     const expectedNonceResults3 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 2,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 3,
@@ -767,6 +770,7 @@ describe('address tests', () => {
     // Get nonce at block hash
     const expectedNonceResults4 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 2,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 3,
@@ -781,6 +785,7 @@ describe('address tests', () => {
     // Get nonce for account with no transactions
     const expectedNonceResultsNoTxs1 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: null,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 0,
@@ -795,6 +800,7 @@ describe('address tests', () => {
     // Get nonce for account with no transactions
     const expectedNonceResultsNoTxs2 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: null,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 0,
@@ -2128,6 +2134,7 @@ describe('address tests', () => {
     //sender nonce
     const expectedResp = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 0,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 1,
@@ -2142,6 +2149,7 @@ describe('address tests', () => {
     //sponsor_nonce
     const expectedResp2 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 2,
       last_mempool_tx_nonce: null,
       possible_next_nonce: 3,
@@ -2176,6 +2184,7 @@ describe('address tests', () => {
     //mempool sender nonce
     const expectedResp3 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 0,
       last_mempool_tx_nonce: 1,
       possible_next_nonce: 2,
@@ -2190,6 +2199,7 @@ describe('address tests', () => {
     //mempool sponsor_nonce
     const expectedResp4 = {
       detected_missing_nonces: [],
+      detected_mempool_nonces: [],
       last_executed_tx_nonce: 2,
       last_mempool_tx_nonce: 3,
       possible_next_nonce: 4,
@@ -2227,6 +2237,7 @@ describe('address tests', () => {
 
     const expectedResp5 = {
       detected_missing_nonces: [5, 4],
+      detected_mempool_nonces: [3],
       last_executed_tx_nonce: 2,
       last_mempool_tx_nonce: 6,
       possible_next_nonce: 7,

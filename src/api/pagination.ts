@@ -34,6 +34,7 @@ export enum ResourceType {
   Microblock,
   Token,
   Pox2Event,
+  Stacker,
 }
 
 const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -67,6 +68,10 @@ const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: 
   },
   [ResourceType.Pox2Event]: {
     defaultLimit: 96,
+    maxLimit: 200,
+  },
+  [ResourceType.Stacker]: {
+    defaultLimit: 100,
     maxLimit: 200,
   },
 };

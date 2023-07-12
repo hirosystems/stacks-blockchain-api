@@ -1,10 +1,11 @@
-import { FoundOrNot, logError, logger } from '../helpers';
+import { ChainID, FoundOrNot } from '../helpers';
 import { Evt } from 'evt';
 import PQueue from 'p-queue';
 import { DbTokenMetadataQueueEntry, TokenMetadataUpdateInfo } from '../datastore/common';
-import { ChainID, ClarityAbi } from '@stacks/transactions';
+import { ClarityAbi } from '@stacks/transactions';
 import { TokensContractHandler } from './tokens-contract-handler';
 import { PgWriteStore } from '../datastore/pg-write-store';
+import { logger } from '../logger';
 
 /**
  * The maximum number of token metadata parsing operations that can be ran concurrently before
@@ -155,9 +156,9 @@ export class TokensProcessorQueue {
         await tokenContractHandler.start();
       })
       .catch(error => {
-        logError(
-          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`,
-          error
+        logger.error(
+          error,
+          `[token-metadata] error processing token contract: ${tokenContractHandler.contractAddress} ${tokenContractHandler.contractName} from tx ${tokenContractHandler.txId}`
         );
       })
       .finally(() => {

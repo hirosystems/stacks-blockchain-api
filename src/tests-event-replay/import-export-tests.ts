@@ -125,6 +125,15 @@ describe('import/export tests', () => {
     expect(configState.bns_names_onchain_imported).toBe(true);
     expect(configState.bns_subdomains_imported).toBe(true);
   });
+
+  test('BNS import should be skipped for Stacks subnet nodes', async () => {
+    process.env.STACKS_NODE_TYPE = 'subnet';
+    process.env.BNS_IMPORT_DIR = 'src/tests-bns/import-test-files';
+    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    const configState = await db.getConfigState();
+    expect(configState.bns_names_onchain_imported).toBe(false);
+    expect(configState.bns_subdomains_imported).toBe(false);
+  });
 });
 
 describe('IBD', () => {
@@ -162,7 +171,6 @@ describe('IBD', () => {
           chainId: ChainID.Mainnet,
           serverHost: '127.0.0.1',
           serverPort: 0,
-          httpLogLevel: 'debug',
         });
         return [eventServer, eventServer.closeAsync] as const;
       },

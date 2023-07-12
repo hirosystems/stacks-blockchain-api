@@ -5,7 +5,7 @@ import { parsePagingQueryInput } from '../../../api/pagination';
 import { isUnanchoredRequest } from '../../query-helpers';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
 import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
-import { ChainID } from '@stacks/transactions';
+import { ChainID } from '../../../helpers';
 import {
   getETagCacheHandler,
   setETagCacheHeaders,
@@ -62,7 +62,7 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
     asyncHandler(async (req, res, next) => {
       const { name } = req.params;
       const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored, chainId });
+      const zonefile = await db.getLatestZoneFile({ name: name, includeUnanchored });
       if (zonefile.found) {
         setETagCacheHeaders(res);
         res.json(zonefile.result);
@@ -131,7 +131,6 @@ export function createBnsNamesRouter(db: PgStore, chainId: ChainID): express.Rou
             const nameQuery = await db.getName({
               name,
               includeUnanchored: includeUnanchored,
-              chainId: chainId,
             });
             if (!nameQuery.found) {
               throw { error: `cannot find name ${name}` };
