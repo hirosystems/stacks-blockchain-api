@@ -21,16 +21,13 @@ import { splitIntoChunks } from './helpers';
   const files = fs.readdirSync(dir).filter(f => f.endsWith('txt'));
 
   // delete previous files
-  files.map(
-    file =>
-      new Promise((resolve, reject) => {
-        try {
-          fs.unlinkSync(`${dir}/${file}`);
-        } catch (err) {
-          throw err;
-        }
-      })
-  );
+  files.map(file => {
+    try {
+      fs.unlinkSync(`${dir}/${file}`);
+    } catch (err) {
+      throw err;
+    }
+  });
 
   // create id files
   chunks.forEach((chunk, idx) => {
@@ -40,5 +37,5 @@ import { splitIntoChunks } from './helpers';
     });
   });
 })().catch(err => {
-  throw new err();
+  throw err;
 });
