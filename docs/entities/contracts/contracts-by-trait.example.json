@@ -1,0 +1,21 @@
+{
+  "functions": [
+    {
+      "access": "read_only",
+      "args": [],
+      "name": "get-total-supply",
+      "outputs": {
+        "type": {
+          "response": {
+            "ok": "uint128",
+            "error": "uint128"
+          }
+        }
+      }
+    }
+  ],
+  "variables": [],
+  "maps": [],
+  "fungible_tokens": [],
+  "non_fungible_tokens": []
+}
