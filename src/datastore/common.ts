@@ -1220,6 +1220,11 @@ export interface StxLockEventInsertValues {
   contract_name: string;
 }
 
+export interface RawEventRequestInsertValues {
+  event_path: string;
+  payload: string;
+}
+
 export interface Pox2EventQueryResult {
   event_index: number;
   tx_id: string;

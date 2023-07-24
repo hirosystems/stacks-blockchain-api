@@ -6,6 +6,7 @@ import { logger } from '../../logger';
 import { createTimeTracker } from './helpers';
 import { processNewBurnBlockEvents } from './importers/new-burn-block-importer';
 import { processAttachmentNewEvents } from './importers/attachment-new-importer';
+import { processRawEvents } from './importers/raw-importer';
 import { DatasetStore } from './dataset/store';
 import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
 import { splitIntoChunks } from './helpers';
@@ -60,6 +61,68 @@ export class ReplayController {
     try {
       await timeTracker.track('ATTACHMENTS_NEW_EVENTS', async () => {
         await processAttachmentNewEvents(this.db, this.dataset);
+      });
+    } catch (err) {
+      throw err;
+    } finally {
+      if (true || tty.isatty(1)) {
+        console.log('Tracked function times:');
+        console.table(timeTracker.getDurations(3));
+      } else {
+        logger.info(`Tracked function times`, timeTracker.getDurations(3));
+      }
+    }
+  };
+
+  /**
+   *
+   */
+  ingestNewBlockEvents = (): Promise<boolean> => {
+    return new Promise(async resolve => {
+      cluster.setupPrimary({
+        exec: __dirname + '/new-block-worker',
+      });
+
+      let workersReady = 0;
+      const idFiles = await this.genIdsFiles();
+      for (const idFile of idFiles) {
+        cluster.fork().send(idFile);
+        workersReady++;
+      }
+
+      for (const id in cluster.workers) {
+        const worker: _cluster.Worker | undefined = cluster.workers[id];
+        worker?.on('message', (msg, _handle) => {
+          switch (msg.msgType) {
+            case 'FINISH':
+              logger.info({ component: 'event-replay' }, `${msg.msg}`);
+              workersReady--;
+              worker.disconnect();
+              break;
+            default:
+              // default action
+              break;
+          }
+        });
+
+        worker?.on('disconnect', () => {
+          if (workersReady === 0) {
+            resolve(true);
+          }
+        });
+      }
+    });
+  };
+
+  /**
+   *
+   */
+  ingestRawEvents = async () => {
+    const timeTracker = createTimeTracker();
+
+    try {
+      await timeTracker.track('RAW_EVENTS', async () => {
+        await processRawEvents(this.db, this.dataset);
       });
     } catch (err) {
       throw err;
@@ -193,48 +256,15 @@ export class ReplayController {
     await this.db.close();
   };
 
-  ingestNewBlockEvents = (): Promise<boolean> => {
-    return new Promise(async resolve => {
-      cluster.setupPrimary({
-        exec: __dirname + '/new-block-worker',
-      });
-
-      let workersReady = 0;
-      const idFiles = await this.genIdsFiles();
-      for (const idFile of idFiles) {
-        cluster.fork().send(idFile);
-        workersReady++;
-      }
-
-      for (const id in cluster.workers) {
-        const worker: _cluster.Worker | undefined = cluster.workers[id];
-        worker?.on('message', (msg, _handle) => {
-          switch (msg.msgType) {
-            case 'FINISH':
-              logger.info({ component: 'event-replay' }, `${msg.msg}`);
-              workersReady--;
-              worker.disconnect();
-              break;
-            default:
-              // default action
-              break;
-          }
-        });
-
-        worker?.on('disconnect', () => {
-          if (workersReady === 0) {
-            resolve(true);
-          }
-        });
-      }
-    });
-  };
-
   /**
    *
    */
   do = async () => {
-    await Promise.all([this.ingestNewBurnBlockEvents(), this.ingestAttachmentNewEvents()]);
+    await Promise.all([
+      this.ingestNewBurnBlockEvents(),
+      this.ingestAttachmentNewEvents(),
+      this.ingestRawEvents(),
+    ]);
     await this.ingestNewBlockEvents();
   };
 }

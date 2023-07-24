@@ -63,6 +63,7 @@ import {
   DbMempoolTxRaw,
   DbChainTip,
   DbPox3Event,
+  RawEventRequestInsertValues,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -3260,6 +3261,15 @@ export class PgWriteStore extends PgStore {
     if (result.count !== subdomainValues.length) {
       throw new Error(`Expected ${subdomainValues.length} subdomain inserts, got ${result.count}`);
     }
+  }
+
+  async insertRawEventRequestBatch(
+    sql: PgSqlClient,
+    events: RawEventRequestInsertValues[]
+  ): Promise<void> {
+    await sql`
+      INSERT INTO event_observer_requests ${this.sql(events)}
+    `;
   }
 
   /**

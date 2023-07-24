@@ -12,7 +12,7 @@ export class DatasetStore {
   }
 
   //
-  // NEW_BLOCK canonical payload manipulation/queries
+  // NEW_BLOCK EVENTS
   //
 
   newBlockEventsIds = (): Promise<number[]> => {
@@ -96,6 +96,21 @@ export class DatasetStore {
           resolve(result);
         }
       );
+    });
+  };
+
+  //
+  // RAW EVENTS
+  //
+
+  rawEventsStream = (): Promise<QueryResult> => {
+    return new Promise(resolve => {
+      const con = this.db.connect();
+      const res = con.stream(
+        `SELECT event, payload FROM READ_PARQUET('events/raw*.parquet') ORDER BY id`
+      );
+
+      resolve(res);
     });
   };
 }
