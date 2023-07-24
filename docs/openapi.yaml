@@ -976,6 +976,15 @@ paths:
       tags:
         - Smart Contracts
       operationId: get_contracts_by_trait
+      requestBody:
+        description: Trait Application Binary Interface(ABI) in the JSON format
+        required: true
+        content:
+          application/json:
+            schema:
+              type: string
+            example: 
+              $ref: ./entities/contracts/contracts-by-trait.example.json
       responses:
         200:
           description: List of contracts implement given trait
@@ -990,6 +999,7 @@ paths:
           in: query
           description: JSON abi of the trait.
           required: true
+          example: 
           schema:
             type: string
         - name: limit
