@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as tty from 'tty';
 
-import { processNewBlockEvents } from './importers/new-block-importer';
-import { PgWriteStore } from '../../datastore/pg-write-store';
-import { DatasetStore } from './dataset/store';
-import { logger } from '../../logger';
-import { createTimeTracker } from './helpers';
+import { processNewBlockEvents } from '../importers/new-block-importer';
+import { PgWriteStore } from '../../../datastore/pg-write-store';
+import { DatasetStore } from '../dataset/store';
+import { logger } from '../../../logger';
+import { createTimeTracker } from '../helpers';
 
 const ingestNewBlock = async (idFile?: string) => {
   const db = await PgWriteStore.connect({

@@ -19,7 +19,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       con.all(
-        "SELECT ID FROM READ_PARQUET('events/new_block/canonical/*.parquet')",
+        "SELECT id FROM READ_PARQUET('events/new_block/canonical/*.parquet')",
         (err: any, result: any) => {
           if (err) {
             throw err;
@@ -103,14 +103,25 @@ export class DatasetStore {
   // RAW EVENTS
   //
 
-  rawEventsStream = (): Promise<QueryResult> => {
+  rawEvents = (): Promise<QueryResult> => {
     return new Promise(resolve => {
       const con = this.db.connect();
-      const res = con.stream(
-        `SELECT event, payload FROM READ_PARQUET('events/raw*.parquet') ORDER BY id`
-      );
+      con.all(
+        `SELECT method, payload FROM READ_PARQUET([
+          'events/new_burn_block/canonical/*.parquet',
+          'events/attachments/new/*.parquet',
+          'events/new_microblocks/*.parquet',
+          'events/drop_mempool_tx/*.parquet',
+          'events/new_mempool_tx/*.parquet',
+        ]) ORDER BY id`,
+        (err: any, result: any) => {
+          if (err) {
+            throw err;
+          }
 
-      resolve(res);
+          resolve(result);
+        }
+      );
     });
   };
 }

@@ -1,33 +1,43 @@
 import * as tty from 'tty';
-import * as fs from 'fs';
 
 import { PgWriteStore } from '../../datastore/pg-write-store';
 import { logger } from '../../logger';
-import { createTimeTracker } from './helpers';
+import { createTimeTracker, genIdsFiles } from './helpers';
 import { processNewBurnBlockEvents } from './importers/new-burn-block-importer';
 import { processAttachmentNewEvents } from './importers/attachment-new-importer';
 import { processRawEvents } from './importers/raw-importer';
 import { DatasetStore } from './dataset/store';
 import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
-import { splitIntoChunks } from './helpers';
+import { IndexesState } from '../../datastore/common';
 
 import * as _cluster from 'cluster';
 const cluster = (_cluster as unknown) as _cluster.Cluster; // typings fix
-
-const MIGRATIONS_TABLE = 'pgmigrations';
-
-enum IndexesState {
-  On,
-  Off,
-}
 
 export class ReplayController {
   private readonly db;
   private readonly dataset;
 
+  /**
+   *
+   */
   private constructor(db: PgWriteStore, dataset: DatasetStore) {
     this.db = db;
     this.dataset = dataset;
+  }
+
+  /**
+   *
+   */
+  static async init() {
+    const db = await PgWriteStore.connect({
+      usageName: 'event-replay',
+      skipMigrations: true,
+      withNotifier: false,
+      isEventReplay: true,
+    });
+    const dataset = DatasetStore.connect();
+
+    return new ReplayController(db, dataset);
   }
 
   /**
@@ -77,14 +87,36 @@ export class ReplayController {
   /**
    *
    */
+  ingestRawEvents = async () => {
+    const timeTracker = createTimeTracker();
+
+    try {
+      await timeTracker.track('RAW_EVENTS', async () => {
+        await processRawEvents(this.db, this.dataset);
+      });
+    } catch (err) {
+      throw err;
+    } finally {
+      if (true || tty.isatty(1)) {
+        console.log('Tracked function times:');
+        console.table(timeTracker.getDurations(3));
+      } else {
+        logger.info(`Tracked function times`, timeTracker.getDurations(3));
+      }
+    }
+  };
+
+  /**
+   *
+   */
   ingestNewBlockEvents = (): Promise<boolean> => {
     return new Promise(async resolve => {
       cluster.setupPrimary({
-        exec: __dirname + '/new-block-worker',
+        exec: __dirname + '/workers/new-block-worker',
       });
 
       let workersReady = 0;
-      const idFiles = await this.genIdsFiles();
+      const idFiles = await genIdsFiles(this.dataset);
       for (const idFile of idFiles) {
         cluster.fork().send(idFile);
         workersReady++;
@@ -117,53 +149,6 @@ export class ReplayController {
   /**
    *
    */
-  ingestRawEvents = async () => {
-    const timeTracker = createTimeTracker();
-
-    try {
-      await timeTracker.track('RAW_EVENTS', async () => {
-        await processRawEvents(this.db, this.dataset);
-      });
-    } catch (err) {
-      throw err;
-    } finally {
-      if (true || tty.isatty(1)) {
-        console.log('Tracked function times:');
-        console.table(timeTracker.getDurations(3));
-      } else {
-        logger.info(`Tracked function times`, timeTracker.getDurations(3));
-      }
-    }
-  };
-
-  /**
-   *
-   */
-  private toggleIndexes = async (state: IndexesState) => {
-    const db = this.db;
-    const dbName = db.sql.options.database;
-    const tableSchema = db.sql.options.connection.search_path ?? 'public';
-    const tablesQuery = await db.sql<{ tablename: string }[]>`
-      SELECT tablename FROM pg_catalog.pg_tables
-      WHERE tablename != ${MIGRATIONS_TABLE}
-      AND schemaname = ${tableSchema}`;
-    if (tablesQuery.length === 0) {
-      const errorMsg = `No tables found in database '${dbName}', schema '${tableSchema}'`;
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-    const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
-
-    if (state === IndexesState.Off) {
-      await db.toggleTableIndexes(db.sql, tables, false);
-    } else if (state == IndexesState.On) {
-      await db.toggleTableIndexes(db.sql, tables, true);
-    }
-  };
-
-  /**
-   *
-   */
   prepare = async () => {
     logger.info({ component: 'event-replay' }, 'Cleaning up the Database');
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
@@ -181,77 +166,20 @@ export class ReplayController {
       { component: 'event-replay' },
       'Disabling indexes and constraints to speed up insertion'
     );
-    await this.toggleIndexes(IndexesState.Off);
+    await this.db.toggleAllTableIndexes(this.db.sql, IndexesState.Off);
   };
-
-  /**
-   *
-   */
-  private genIdsFiles = async () => {
-    const args = process.argv.slice(2);
-    const workers: number = Number(args[1].split('=')[1]);
-
-    logger.info(
-      { component: 'event-replay' },
-      `Generating ID files for ${workers} parallel workers`
-    );
-
-    const dir = './events/new_block';
-
-    const ids: number[] = await this.dataset.newBlockEventsIds();
-    const batchSize = Math.ceil(ids.length / workers);
-    const chunks = splitIntoChunks(ids, batchSize);
-
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('txt'));
-
-    // delete previous files
-    files.map(file => {
-      try {
-        fs.unlinkSync(`${dir}/${file}`);
-      } catch (err) {
-        throw err;
-      }
-    });
-
-    // create id files
-    chunks.forEach((chunk, idx) => {
-      const filename = `./events/new_block/ids_${idx + 1}.txt`;
-      chunk.forEach(id => {
-        fs.writeFileSync(filename, id.toString() + '\n', { flag: 'a' });
-      });
-    });
-
-    return fs.readdirSync(dir).filter(f => f.endsWith('txt'));
-  };
-
-  /**
-   *
-   */
-  static async init() {
-    const db = await PgWriteStore.connect({
-      usageName: 'event-replay',
-      skipMigrations: true,
-      withNotifier: false,
-      isEventReplay: true,
-    });
-    const dataset = DatasetStore.connect();
-
-    return new ReplayController(db, dataset);
-  }
 
   /**
    *
    */
   teardown = async () => {
-    const db = this.db;
-
     // Re-enabling indexes
     logger.info({ component: 'event-replay' }, 'Re-enabling indexes and constraints on tables');
-    await this.toggleIndexes(IndexesState.On);
+    await this.db.toggleAllTableIndexes(this.db.sql, IndexesState.On);
 
     // Refreshing materialized views
     logger.info({ component: 'event-replay' }, `Refreshing materialized views`);
-    await db.finishEventReplay();
+    await this.db.finishEventReplay();
 
     await this.db.close();
   };
@@ -265,6 +193,7 @@ export class ReplayController {
       this.ingestAttachmentNewEvents(),
       this.ingestRawEvents(),
     ]);
+
     await this.ingestNewBlockEvents();
   };
 }

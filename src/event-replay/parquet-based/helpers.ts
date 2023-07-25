@@ -1,3 +1,8 @@
+import * as fs from 'fs';
+
+import { logger } from '../../logger';
+import { DatasetStore } from './dataset/store';
+
 interface TimeTracker {
   track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
   trackSync<T = void>(name: string, fn: () => T): T;
@@ -51,40 +56,6 @@ const createTimeTracker = (): TimeTracker => {
   };
 };
 
-interface Stopwatch {
-  /** Milliseconds since stopwatch was created. */
-  getElapsed: () => number;
-  /** Seconds since stopwatch was created. */
-  getElapsedSeconds: (roundDecimals?: number) => number;
-  getElapsedAndRestart: () => number;
-  restart(): void;
-}
-
-function stopwatch(): Stopwatch {
-  let start = process.hrtime.bigint();
-  const result: Stopwatch = {
-    getElapsedSeconds: (roundDecimals?: number) => {
-      const elapsedMs = result.getElapsed();
-      const seconds = elapsedMs / 1000;
-      return roundDecimals === undefined ? seconds : +seconds.toFixed(roundDecimals);
-    },
-    getElapsed: () => {
-      const end = process.hrtime.bigint();
-      return Number((end - start) / 1_000_000n);
-    },
-    getElapsedAndRestart: () => {
-      const end = process.hrtime.bigint();
-      const result = Number((end - start) / 1_000_000n);
-      start = process.hrtime.bigint();
-      return result;
-    },
-    restart: () => {
-      start = process.hrtime.bigint();
-    },
-  };
-  return result;
-}
-
 function* chunks<T>(arr: T[], n: number): Generator<T[], void> {
   for (let i = 0; i < arr.length; i += n) {
     yield arr.slice(i, i + n);
@@ -95,4 +66,38 @@ const splitIntoChunks = (data: number[], chunk_size: number) => {
   return [...chunks(data, chunk_size)];
 };
 
-export { createTimeTracker, splitIntoChunks };
+const genIdsFiles = async (dataset: DatasetStore) => {
+  const args = process.argv.slice(2);
+  const workers: number = Number(args[1].split('=')[1]);
+
+  logger.info({ component: 'event-replay' }, `Generating ID files for ${workers} parallel workers`);
+
+  const dir = './events/new_block';
+
+  const ids: number[] = await dataset.newBlockEventsIds();
+  const batchSize = Math.ceil(ids.length / workers);
+  const chunks = splitIntoChunks(ids, batchSize);
+
+  const files = fs.readdirSync(dir).filter(f => f.endsWith('txt'));
+
+  // delete previous files
+  files.map(file => {
+    try {
+      fs.unlinkSync(`${dir}/${file}`);
+    } catch (err) {
+      throw err;
+    }
+  });
+
+  // create id files
+  chunks.forEach((chunk, idx) => {
+    const filename = `./events/new_block/ids_${idx + 1}.txt`;
+    chunk.forEach(id => {
+      fs.writeFileSync(filename, id.toString() + '\n', { flag: 'a' });
+    });
+  });
+
+  return fs.readdirSync(dir).filter(f => f.endsWith('txt'));
+};
+
+export { createTimeTracker, splitIntoChunks, genIdsFiles };

@@ -1558,3 +1558,8 @@ export interface DbChainTip {
   indexBlockHash: string;
   burnBlockHeight: number;
 }
+
+export enum IndexesState {
+  Off = 0,
+  On = 1,
+}

@@ -64,6 +64,7 @@ import {
   DbChainTip,
   DbPox3Event,
   RawEventRequestInsertValues,
+  IndexesState,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -95,6 +96,8 @@ import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
 import { logger } from '../logger';
+
+const MIGRATIONS_TABLE = 'pgmigrations';
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -3273,13 +3276,26 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * (event-replay) Enable or disable indexes for the provided set of tables.
+   * (event-replay) Enable or disable indexes for all DB tables.
    */
-  async toggleTableIndexes(sql: PgSqlClient, tables: string[], enabled: boolean): Promise<void> {
-    const tableSchema = this.sql.options.connection.search_path ?? 'public';
+  async toggleAllTableIndexes(sql: PgSqlClient, state: IndexesState): Promise<void> {
+    const enable: boolean = Boolean(state);
+    const dbName = sql.options.database;
+    const tableSchema = sql.options.connection.search_path ?? 'public';
+    const tablesQuery = await sql<{ tablename: string }[]>`
+      SELECT tablename FROM pg_catalog.pg_tables
+      WHERE tablename != ${MIGRATIONS_TABLE}
+      AND schemaname = ${tableSchema}`;
+    if (tablesQuery.length === 0) {
+      const errorMsg = `No tables found in database '${dbName}', schema '${tableSchema}'`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
+
     const result = await sql`
       UPDATE pg_index
-      SET ${sql({ indisready: enabled, indisvalid: enabled })}
+      SET ${sql({ indisready: enable, indisvalid: enable })}
       WHERE indrelid = ANY (
         SELECT oid FROM pg_class
         WHERE relname IN ${sql(tables)}

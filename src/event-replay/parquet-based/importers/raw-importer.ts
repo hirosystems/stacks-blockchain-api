@@ -50,13 +50,13 @@ function createBatchInserter<T>({
 
 const insertInBatch = (db: PgWriteStore) => {
   const dbRawEventBatchInserter = createBatchInserter<RawEventRequestInsertValues>({
-    batchSize: 500,
+    batchSize: 200,
     insertFn: async entries => {
       logger.debug(
         { component: 'event-replay' },
         'Inserting into event_observer_requests table...'
       );
-      return db.insertRawEventRequestBatch(db.sql, entries);
+      return await db.insertRawEventRequestBatch(db.sql, entries);
     },
   });
   batchInserters.push(dbRawEventBatchInserter);
@@ -64,11 +64,7 @@ const insertInBatch = (db: PgWriteStore) => {
   return new Writable({
     objectMode: true,
     write: async (data, _encoding, next) => {
-      const insertRawEvents = async (data: any) => {
-        await dbRawEventBatchInserter.push([{ event_path: data.event, payload: data.payload }]);
-      };
-
-      await insertRawEvents(data);
+      await dbRawEventBatchInserter.push([{ event_path: data.method, payload: data.payload }]);
 
       next();
     },
@@ -78,7 +74,7 @@ const insertInBatch = (db: PgWriteStore) => {
 export const processRawEvents = async (db: PgWriteStore, dataset: DatasetStore) => {
   logger.info({ component: 'event-replay' }, 'RAW events process started');
 
-  const payload = await dataset.rawEventsStream();
+  const payload = await dataset.rawEvents();
   const insert = insertInBatch(db);
 
   await pipeline(
