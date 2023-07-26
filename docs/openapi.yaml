@@ -976,52 +976,25 @@ paths:
       tags:
         - Smart Contracts
       operationId: get_contracts_by_trait
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:  # The request schema
-              type: object  # JSON object type
-              properties:
-                functions:
-                  type: array
-                  items:
-                    type: object
-                    properties:
-                      access:
-                        type: string
-                      args:
-                        type: array
-                        items: {}
-                      name:
-                        type: string
-                      outputs:
-                        type: object
-                        properties:
-                          type:
-                            type: object
-                            properties:
-                              response:
-                                type: object
-                                properties:
-                                  ok:
-                                    type: string
-                                    format: uint128
-                                  error:
-                                    type: string
-                                    format: uint128
-                variables:
-                  type: array
-                  items: {}
-                maps:
-                  type: array
-                  items: {}
-                fungible_tokens:
-                  type: array
-                  items: {}
-                non_fungible_tokens:
-                  type: array
-                  items: {}
+      parameters:
+        - in: query
+          name: by_trait
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  functions:
+                      type: object
+                  variables:
+                      type: object
+                  maps:
+                      type: object
+                  fungible_token:
+                      type: object
+                  non_fungible_tokens:
+                      type: object
+                  
       responses:
         200:
           description: List of contracts implement given trait
