@@ -124,4 +124,15 @@ export class DatasetStore {
       );
     });
   };
+
+  rawEventsByIds = (ids: number[]): Promise<QueryResult> => {
+    return new Promise(resolve => {
+      const con = this.db.connect();
+      const res = con.stream(
+        `SELECT method, payload FROM READ_PARQUET('events/new_block/canonical/*.parquet') WHERE id IN (${ids}) ORDER BY id`
+      );
+
+      resolve(res);
+    });
+  };
 }

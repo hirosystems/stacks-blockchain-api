@@ -106,6 +106,43 @@ export class ReplayController {
     }
   };
 
+  ingestRawNewBlockEvents = async () => {
+    return new Promise(async resolve => {
+      cluster.setupPrimary({
+        exec: __dirname + '/workers/raw-worker',
+      });
+
+      let workersReady = 0;
+      const idFiles = await genIdsFiles(this.dataset);
+      for (const idFile of idFiles) {
+        cluster.fork().send(idFile);
+        workersReady++;
+      }
+
+      for (const id in cluster.workers) {
+        const worker: _cluster.Worker | undefined = cluster.workers[id];
+        worker?.on('message', (msg, _handle) => {
+          switch (msg.msgType) {
+            case 'FINISH':
+              logger.info({ component: 'event-replay' }, `${msg.msg}`);
+              workersReady--;
+              worker.disconnect();
+              break;
+            default:
+              // default action
+              break;
+          }
+        });
+
+        worker?.on('disconnect', () => {
+          if (workersReady === 0) {
+            resolve(true);
+          }
+        });
+      }
+    });
+  };
+
   /**
    *
    */
@@ -188,12 +225,8 @@ export class ReplayController {
    *
    */
   do = async () => {
-    await Promise.all([
-      this.ingestNewBurnBlockEvents(),
-      this.ingestAttachmentNewEvents(),
-      this.ingestRawEvents(),
-    ]);
-
+    await Promise.all([this.ingestNewBurnBlockEvents(), this.ingestAttachmentNewEvents()]);
+    await Promise.all([this.ingestRawEvents(), this.ingestRawNewBlockEvents()]);
     await this.ingestNewBlockEvents();
   };
 }

@@ -86,3 +86,23 @@ export const processRawEvents = async (db: PgWriteStore, dataset: DatasetStore) 
     })
   );
 };
+
+export const processRawEventsInParallel = async (
+  db: PgWriteStore,
+  dataset: DatasetStore,
+  ids: any
+) => {
+  logger.info({ component: 'event-replay' }, 'RAW events parallel processing started');
+
+  const payload = await dataset.rawEventsByIds(ids);
+  const insert = insertInBatch(db);
+
+  await pipeline(
+    Readable.from(payload),
+    insert.on('finish', async () => {
+      for (const batchInserter of batchInserters) {
+        await batchInserter.flush();
+      }
+    })
+  );
+};
