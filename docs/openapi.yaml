@@ -988,23 +988,10 @@ paths:
       parameters:
         - name: trait_abi
           in: query
-          description: JSON abi of the trait.
+          description: JSON stringified ABI object e.g. `JSON.stringify(abi)`.
           required: true
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  functions:
-                    type: object
-                  variables:
-                    type: object
-                  maps:
-                    type: object
-                  fungible_token:
-                    type: object
-                  non_fungible_tokens:
-                    type: object
+          schema:
+            type: string
         - name: limit
           in: query
           description: max number of contracts fetch
