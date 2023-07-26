@@ -976,25 +976,6 @@ paths:
       tags:
         - Smart Contracts
       operationId: get_contracts_by_trait
-      parameters:
-        - in: query
-          name: by_trait
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  functions:
-                      type: object
-                  variables:
-                      type: object
-                  maps:
-                      type: object
-                  fungible_token:
-                      type: object
-                  non_fungible_tokens:
-                      type: object
-                  
       responses:
         200:
           description: List of contracts implement given trait
@@ -1009,8 +990,21 @@ paths:
           in: query
           description: JSON abi of the trait.
           required: true
-          schema:
-            type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  functions:
+                    type: object
+                  variables:
+                    type: object
+                  maps:
+                    type: object
+                  fungible_token:
+                    type: object
+                  non_fungible_tokens:
+                    type: object
         - name: limit
           in: query
           description: max number of contracts fetch
