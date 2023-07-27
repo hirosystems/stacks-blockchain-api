@@ -14,6 +14,9 @@ import { IndexesState } from '../../datastore/common';
 import * as _cluster from 'cluster';
 const cluster = (_cluster as unknown) as _cluster.Cluster; // typings fix
 
+import { FILE_PATH as raw_worker_path } from './workers/raw-worker'
+import { FILE_PATH as new_block_worker_path } from './workers/new-block-worker'
+
 export class ReplayController {
   private readonly db;
   private readonly dataset;
@@ -110,7 +113,7 @@ export class ReplayController {
   ingestRawNewBlockEvents = async () => {
     return new Promise(async resolve => {
       cluster.setupPrimary({
-        exec: __dirname + '/workers/raw-worker',
+        exec: raw_worker_path,
       });
 
       let workersReady = 0;
@@ -150,7 +153,7 @@ export class ReplayController {
   ingestNewBlockEvents = (): Promise<boolean> => {
     return new Promise(async resolve => {
       cluster.setupPrimary({
-        exec: __dirname + '/workers/new-block-worker',
+        exec: new_block_worker_path,
       });
 
       let workersReady = 0;

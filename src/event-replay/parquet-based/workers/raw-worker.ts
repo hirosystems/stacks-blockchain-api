@@ -7,6 +7,8 @@ import { logger } from '../../../logger';
 import { createTimeTracker } from '../helpers';
 import { processRawEventsInParallel } from '../importers/raw-importer';
 
+export const FILE_PATH = __filename;
+
 const ingestNewBlock = async (idFile?: string) => {
   const db = await PgWriteStore.connect({
     usageName: `${idFile}`,

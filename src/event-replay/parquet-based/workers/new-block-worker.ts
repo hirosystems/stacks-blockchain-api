@@ -7,6 +7,8 @@ import { DatasetStore } from '../dataset/store';
 import { logger } from '../../../logger';
 import { createTimeTracker } from '../helpers';
 
+export const FILE_PATH = __filename;
+
 const ingestNewBlock = async (idFile?: string) => {
   const db = await PgWriteStore.connect({
     usageName: `${idFile}`,
