@@ -6,6 +6,7 @@ import { createTimeTracker, genIdsFiles } from './helpers';
 import { processNewBurnBlockEvents } from './importers/new-burn-block-importer';
 import { processAttachmentNewEvents } from './importers/attachment-new-importer';
 import { processRawEvents } from './importers/raw-importer';
+import { processRemainderEvents } from './importers/remainder-importer';
 import { DatasetStore } from './dataset/store';
 import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
 import { IndexesState } from '../../datastore/common';
@@ -186,6 +187,28 @@ export class ReplayController {
   /**
    *
    */
+  private ingestRemainderEvents = async () => {
+    const timeTracker = createTimeTracker();
+
+    try {
+      await timeTracker.track('REMAINDER_EVENTS', async () => {
+        await processRemainderEvents(this.db, this.dataset);
+      });
+    } catch (err) {
+      throw err;
+    } finally {
+      if (true || tty.isatty(1)) {
+        console.log('Tracked function times:');
+        console.table(timeTracker.getDurations(3));
+      } else {
+        logger.info(`Tracked function times`, timeTracker.getDurations(3));
+      }
+    }
+  };
+
+  /**
+   *
+   */
   prepare = async () => {
     logger.info({ component: 'event-replay' }, 'Cleaning up the Database');
     await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
@@ -209,24 +232,38 @@ export class ReplayController {
   /**
    *
    */
-  teardown = async () => {
+  finalize = async () => {
     // Re-enabling indexes
     logger.info({ component: 'event-replay' }, 'Re-enabling indexes and constraints on tables');
     await this.db.toggleAllTableIndexes(this.db.sql, IndexesState.On);
+
+    // to be replayed with regular HTTP POSTs
+    await this.ingestRemainderEvents();
 
     // Refreshing materialized views
     logger.info({ component: 'event-replay' }, `Refreshing materialized views`);
     await this.db.finishEventReplay();
 
+    // Close DB
+    logger.info({ component: 'event-replay' }, 'Closing DB connection');
     await this.db.close();
+
+    // Exit with success
+    logger.info({ component: 'event-replay' }, 'Finishing event-replay with success');
+    process.exit(0);
   };
 
   /**
    *
    */
   do = async () => {
+    // NEW_BURN_BLOCK and ATTACHMENTS/NEW events
     await Promise.all([this.ingestNewBurnBlockEvents(), this.ingestAttachmentNewEvents()]);
+
+    // RAW events to event_observer_requests table
     await Promise.all([this.ingestRawEvents(), this.ingestRawNewBlockEvents()]);
+
+    // NEW_BLOCK events
     await this.ingestNewBlockEvents();
   };
 }

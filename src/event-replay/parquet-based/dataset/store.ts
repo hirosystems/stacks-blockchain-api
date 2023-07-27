@@ -135,4 +135,24 @@ export class DatasetStore {
       resolve(res);
     });
   };
+
+  //
+  // REMAINDER EVENTS
+  //
+
+  remainderEvents = (): Promise<QueryResult> => {
+    return new Promise(resolve => {
+      const con = this.db.connect();
+      con.all(
+        `SELECT method, payload FROM READ_PARQUET('events/remainder/*.parquet') ORDER BY id`,
+        (err: any, res: any) => {
+          if (err) {
+            throw err;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  };
 }

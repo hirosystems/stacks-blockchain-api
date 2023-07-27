@@ -304,7 +304,7 @@ async function handleProgramArgs() {
     const replay = await ReplayController.init();
     await replay.prepare();
     await replay.do();
-    await replay.teardown();
+    await replay.finalize();
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {

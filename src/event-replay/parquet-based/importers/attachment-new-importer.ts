@@ -42,22 +42,25 @@ export const processAttachmentNewEvents = async (db: PgWriteStore, dataset: Data
       blockHeights.push(el.attachment!.blockHeight);
     }
   }
-  // get events from block heights
-  const blockEvents = await dataset.getNewBlockEventsInBlockHeights(blockHeights);
 
-  for (const event of blockEvents) {
-    for (const ds of ary) {
-      if (ds.blockData?.index_block_hash === event.index_block_hash) {
-        const txs = JSON.parse(event.payload).transactions;
-        for (const tx of txs) {
-          if (ds.attachment!.txId === tx.txid) {
-            ds.blockData!.microblock_hash = tx.microblock_hash || '';
-            ds.blockData!.microblock_sequence = tx.microblock_sequence || I32_MAX;
+  if (blockHeights.length > 0) {
+    // get events from block heights
+    const blockEvents = await dataset.getNewBlockEventsInBlockHeights(blockHeights);
+
+    for (const event of blockEvents) {
+      for (const ds of ary) {
+        if (ds.blockData?.index_block_hash === event.index_block_hash) {
+          const txs = JSON.parse(event.payload).transactions;
+          for (const tx of txs) {
+            if (ds.attachment!.txId === tx.txid) {
+              ds.blockData!.microblock_hash = tx.microblock_hash || '';
+              ds.blockData!.microblock_sequence = tx.microblock_sequence || I32_MAX;
+            }
           }
-        }
 
-        ds.blockData!.index_block_hash = event.index_block_hash;
-        ds.blockData!.parent_index_block_hash = event.parent_index_block_hash;
+          ds.blockData!.index_block_hash = event.index_block_hash;
+          ds.blockData!.parent_index_block_hash = event.parent_index_block_hash;
+        }
       }
     }
   }
