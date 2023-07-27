@@ -514,7 +514,7 @@ paths:
             schema:
               type: string
               format: binary
-              example: binary format of 00000000010400bed38c2aadffa348931bcb542880ff79d607afec000000000000000000000000000000c800012b0b1fff6cccd0974966dcd665835838f0985be508e1322e09fb3d751eca132c492bda720f9ef1768d14fdabed6127560ba52d5e3ac470dcb60b784e97dc88c9030200000000000516df0ba3e79792be7be5e50a370289accfc8c9e032000000000000303974657374206d656d6f00000000000000000000000000000000000000000000000000
+              example: binary format of f00000000010400bed38c2aadffa348931bcb542880ff79d607afec000000000000000000000000000000c800012b0b1fff6cccd0974966dcd665835838f0985be508e1322e09fb3d751eca132c492bda720f9ef1768d14fdabed6127560ba52d5e3ac470dcb60b784e97dc88c9030200000000000516df0ba3e79792be7be5e50a370289accfc8c9e032000000000000303974657374206d656d6f00000000000000000000000000000000000000000000000000
       responses:
         200:
           description: Transaction id of successful post of a raw tx to the node's mempool
@@ -1229,7 +1229,7 @@ paths:
           description: Stacks address
           schema:
             type: string
-            example: "SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7"
+          example: "SP187Y7NRSG3T9Z9WTSWNEN3XRV1YSJWS81C7JKV7" 
         - name: contract_name
           in: path
           required: true
