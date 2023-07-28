@@ -68,9 +68,13 @@ const splitIntoChunks = (data: number[], chunk_size: number) => {
 
 const genIdsFiles = async (dataset: DatasetStore) => {
   const args = process.argv.slice(2);
-  const workers: number = Number(args[1].split('=')[1]);
 
-  logger.info({ component: 'event-replay' }, `Generating ID files for ${workers} parallel workers`);
+  let workers: number = 1;
+  if(args.length > 1) {
+    workers = Number(args[1].split('=')[1]);
+  }
+
+  logger.info({ component: 'event-replay' }, `Generating ID files for ${workers} workers`);
 
   const dir = './events/new_block';
 
