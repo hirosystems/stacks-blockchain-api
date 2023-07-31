@@ -3308,4 +3308,30 @@ export class PgWriteStore extends PgStore {
       throw new Error(`No updates made while toggling table indexes`);
     }
   }
+
+  /**
+   * (event-replay) Reindex all DB tables.
+   */
+  async reindexAllTables(sql: PgSqlClient): Promise<void> {
+    const dbName = sql.options.database;
+    const tableSchema = sql.options.connection.search_path ?? 'public';
+    const tablesQuery = await sql<{ tablename: string }[]>`
+      SELECT tablename FROM pg_catalog.pg_tables
+      WHERE tablename != ${MIGRATIONS_TABLE}
+      AND schemaname = ${tableSchema}`;
+    if (tablesQuery.length === 0) {
+      const errorMsg = `No tables found in database '${dbName}', schema '${tableSchema}'`;
+      console.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+    const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
+
+    for (const table of tables) {
+      console.log(table)
+      const result = await sql`REINDEX TABLE ${sql(table)}`;
+      if (result.count === 0) {
+        throw new Error(`No updates made while toggling table indexes`);
+      }
+    }
+  }
 }

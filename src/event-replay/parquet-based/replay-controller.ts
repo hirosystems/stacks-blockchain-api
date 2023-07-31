@@ -240,7 +240,11 @@ export class ReplayController {
     logger.info({ component: 'event-replay' }, 'Re-enabling indexes and constraints on tables');
     await this.db.toggleAllTableIndexes(this.db.sql, IndexesState.On);
 
-    // to be replayed with regular HTTP POSTs
+    // Re-indexing tables
+    logger.info({ component: 'event-replay' }, 'Re-indexing tables');
+    await this.db.reindexAllTables(this.db.sql);
+
+    // Remainder events to be replayed with regular HTTP POSTs
     await this.ingestRemainderEvents();
 
     // Refreshing materialized views
@@ -260,13 +264,23 @@ export class ReplayController {
    *
    */
   do = async () => {
-    // NEW_BURN_BLOCK and ATTACHMENTS/NEW events
-    await Promise.all([this.ingestNewBurnBlockEvents(), this.ingestAttachmentNewEvents()]);
-
-    // RAW events to event_observer_requests table
-    await Promise.all([this.ingestRawEvents(), this.ingestRawNewBlockEvents()]);
-
     // NEW_BLOCK events
     await this.ingestNewBlockEvents();
+
+    // RAW events to event_observer_requests table
+    await Promise.all(
+      [
+        this.ingestRawEvents(),
+        this.ingestRawNewBlockEvents()
+      ]
+    );
+
+    // NEW_BURN_BLOCK and ATTACHMENTS/NEW events
+    await Promise.all(
+      [
+        this.ingestNewBurnBlockEvents(),
+        this.ingestAttachmentNewEvents()
+      ]
+    );
   };
 }

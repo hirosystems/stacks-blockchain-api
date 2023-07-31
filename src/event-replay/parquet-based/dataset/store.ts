@@ -87,7 +87,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       con.all(
-        "SELECT payload FROM READ_PARQUET('events/attachments/new/*.parquet')",
+        "SELECT payload FROM READ_PARQUET('events/attachments/new/canonical/*.parquet')",
         (err: any, result: any) => {
           if (err) {
             throw err;
@@ -109,7 +109,7 @@ export class DatasetStore {
       con.all(
         `SELECT method, payload FROM READ_PARQUET([
           'events/new_burn_block/canonical/*.parquet',
-          'events/attachments/new/*.parquet',
+          'events/attachments/new/canonical/*.parquet',
           'events/new_microblocks/*.parquet',
           'events/drop_mempool_tx/*.parquet',
           'events/new_mempool_tx/*.parquet',
