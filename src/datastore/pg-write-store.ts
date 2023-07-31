@@ -3327,7 +3327,6 @@ export class PgWriteStore extends PgStore {
     const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
 
     for (const table of tables) {
-      console.log(table)
       const result = await sql`REINDEX TABLE ${sql(table)}`;
       if (result.count === 0) {
         throw new Error(`No updates made while toggling table indexes`);

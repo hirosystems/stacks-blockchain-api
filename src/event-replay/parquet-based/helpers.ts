@@ -70,7 +70,7 @@ const genIdsFiles = async (dataset: DatasetStore) => {
   const args = process.argv.slice(2);
 
   let workers: number = 1;
-  if(args.length > 1) {
+  if (args.length > 1) {
     workers = Number(args[1].split('=')[1]);
   }
 
