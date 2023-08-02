@@ -83,19 +83,14 @@ export class DatasetStore {
   // ATTACHMENTS_NEW EVENTS
   //
 
-  attachmentsNewEvents = (): Promise<TableData> => {
+  attachmentsCanonicalEvents = (): Promise<QueryResult> => {
     const con = this.db.connect();
     return new Promise(resolve => {
-      con.all(
-        "SELECT payload FROM READ_PARQUET('events/attachments/new/canonical/*.parquet')",
-        (err: any, result: any) => {
-          if (err) {
-            throw err;
-          }
-
-          resolve(result);
-        }
+      const res = con.stream(
+        "SELECT payload FROM READ_PARQUET('events/attachments/new/canonical/*.parquet') ORDER BY id"
       );
+
+      resolve(res);
     });
   };
 
@@ -145,6 +140,26 @@ export class DatasetStore {
       const con = this.db.connect();
       con.all(
         `SELECT method, payload FROM READ_PARQUET('events/remainder/*.parquet') ORDER BY id`,
+        (err: any, res: any) => {
+          if (err) {
+            throw err;
+          }
+
+          resolve(res);
+        }
+      );
+    });
+  };
+
+  //
+  // CANONICAL BLOCK_HASHES
+  //
+
+  canonicalBlockHashes = (): Promise<QueryResult> => {
+    return new Promise(resolve => {
+      const con = this.db.connect();
+      con.all(
+        "SELECT * FROM READ_PARQUET('events/canonical/block_hashes/*.parquet')",
         (err: any, res: any) => {
           if (err) {
             throw err;

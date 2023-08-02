@@ -1081,26 +1081,9 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
   return dbData;
 }
 
-export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
+export function parseAttachment(msg: CoreNodeAttachmentMessage[]) {
   const zoneFiles: { zonefile: string; zonefileHash: string; txId: string }[] = [];
-
-  const subdomainObj: {
-    attachmentData: DataStoreAttachmentData;
-    dbBnsSubdomain: DbBnsSubdomain[];
-  } = {
-    attachmentData: {
-      op: '',
-      name: '',
-      namespace: '',
-      zonefile: '',
-      zonefileHash: '',
-      txId: '',
-      indexBlockHash: '',
-      blockHeight: 0,
-    },
-    dbBnsSubdomain: [],
-  };
-
+  const subdomains: DbBnsSubdomain[] = [];
   for (const attachment of msg) {
     if (
       attachment.contract_id === BnsContractIdentifier.mainnet ||
@@ -1149,25 +1132,11 @@ export function parseAttachmentMessage(msg: CoreNodeAttachmentMessage[]) {
               resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
               index_block_hash: attachment.index_block_hash,
             };
-
-            const attachmentData: DataStoreAttachmentData = {
-              op: op,
-              name: subdomain.name,
-              namespace: '',
-              zonefile: subdomain.zonefile,
-              zonefileHash: subdomain.zonefile_hash,
-              txId: subdomain.tx_id,
-              indexBlockHash: subdomain.index_block_hash || '',
-              blockHeight: subdomain.block_height,
-            };
-
-            subdomainObj.dbBnsSubdomain.push(subdomain);
-            subdomainObj.attachmentData = attachmentData;
+            subdomains.push(subdomain);
           }
         }
       }
     }
   }
-
-  return { zoneFiles, subdomainObj };
+  return { zoneFiles, subdomains };
 }

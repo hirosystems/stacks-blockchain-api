@@ -267,7 +267,7 @@ export class ReplayController {
     // NEW_BLOCK events
     await this.ingestNewBlockEvents();
 
-    // RAW events to event_observer_requests table
+    // // RAW events to event_observer_requests table
     await Promise.all([this.ingestRawEvents(), this.ingestRawNewBlockEvents()]);
 
     // NEW_BURN_BLOCK and ATTACHMENTS/NEW events

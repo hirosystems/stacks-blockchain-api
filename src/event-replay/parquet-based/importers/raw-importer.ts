@@ -1,12 +1,10 @@
-import { Readable, Writable, Transform } from 'stream';
+import { Readable, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
 import { RawEventRequestInsertValues } from '../../../datastore/common';
 import { logger } from '../../../logger';
-import { getApiConfiguredChainID, batchIterate } from '../../../helpers';
+import { batchIterate } from '../../../helpers';
 import { DatasetStore } from '../dataset/store';
-
-const chainID = getApiConfiguredChainID();
 
 const batchInserters: BatchInserter[] = [];
 

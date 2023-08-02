@@ -3224,48 +3224,6 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async updateBatchSubdomainsEventReplay(
-    sql: PgSqlClient,
-    data: DataStoreAttachmentSubdomainData[]
-  ): Promise<void> {
-    const subdomainValues: BnsSubdomainInsertValues[] = [];
-    for (const dataItem of data) {
-      if (dataItem.subdomains && dataItem.blockData) {
-        for (const subdomain of dataItem.subdomains) {
-          subdomainValues.push({
-            name: subdomain.name,
-            namespace_id: subdomain.namespace_id,
-            fully_qualified_subdomain: subdomain.fully_qualified_subdomain,
-            owner: subdomain.owner,
-            zonefile_hash: validateZonefileHash(subdomain.zonefile_hash),
-            parent_zonefile_hash: subdomain.parent_zonefile_hash,
-            parent_zonefile_index: subdomain.parent_zonefile_index,
-            block_height: subdomain.block_height,
-            tx_index: subdomain.tx_index,
-            zonefile_offset: subdomain.zonefile_offset,
-            resolver: subdomain.resolver,
-            canonical: subdomain.canonical,
-            tx_id: subdomain.tx_id,
-            index_block_hash: dataItem.blockData.index_block_hash,
-            parent_index_block_hash: dataItem.blockData.parent_index_block_hash,
-            microblock_hash: dataItem.blockData.microblock_hash,
-            microblock_sequence: dataItem.blockData.microblock_sequence,
-            microblock_canonical: dataItem.blockData.microblock_canonical,
-          });
-        }
-      }
-    }
-    if (subdomainValues.length === 0) {
-      return;
-    }
-    const result = await sql`
-      INSERT INTO subdomains ${sql(subdomainValues)}
-    `;
-    if (result.count !== subdomainValues.length) {
-      throw new Error(`Expected ${subdomainValues.length} subdomain inserts, got ${result.count}`);
-    }
-  }
-
   async insertRawEventRequestBatch(
     sql: PgSqlClient,
     events: RawEventRequestInsertValues[]
@@ -3276,7 +3234,7 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * (event-replay) Enable or disable indexes for all DB tables.
+   * (event-replay) Enable or disable indexes for DB tables.
    */
   async toggleAllTableIndexes(sql: PgSqlClient, state: IndexesState): Promise<void> {
     const enable: boolean = Boolean(state);
@@ -3293,12 +3251,16 @@ export class PgWriteStore extends PgStore {
     }
     const tables: string[] = tablesQuery.map((r: { tablename: string }) => r.tablename);
 
+    // Exclude subdomains table since its constraints
+    // are need to handle the ingestion of attachments_new events.
+    const filtered = tables.filter(item => item !== 'subdomains');
+
     const result = await sql`
       UPDATE pg_index
       SET ${sql({ indisready: enable, indisvalid: enable })}
       WHERE indrelid = ANY (
         SELECT oid FROM pg_class
-        WHERE relname IN ${sql(tables)}
+        WHERE relname IN ${sql(filtered)}
         AND relnamespace = (
           SELECT oid FROM pg_namespace WHERE nspname = ${tableSchema}
         )
