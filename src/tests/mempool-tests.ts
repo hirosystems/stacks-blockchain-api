@@ -983,6 +983,58 @@ describe('mempool tests', () => {
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
 
+    const searchResult5Address = await supertest(api.server).get(
+      `/extended/v1/address/${contractCallId}/mempool`
+    );
+    expect(searchResult5Address.status).toBe(200);
+    expect(searchResult5Address.type).toBe('application/json');
+    const expectedResp5Address = {
+      limit: getPagingQueryLimit(ResourceType.Tx),
+      offset: 0,
+      total: 2,
+      results: [
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307650,
+          receipt_time_iso: '2020-07-09T15:14:10.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          token_transfer: {
+            amount: '1234',
+            memo: '0x',
+            recipient_address: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          },
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000010',
+          tx_status: 'pending',
+          tx_type: 'token_transfer',
+        },
+        {
+          fee_rate: '1234',
+          nonce: 0,
+          anchor_mode: 'any',
+          post_condition_mode: 'allow',
+          post_conditions: [],
+          receipt_time: 1594307648,
+          receipt_time_iso: '2020-07-09T15:14:08.000Z',
+          sender_address: 'testSend1',
+          sponsored: false,
+          tx_id: '0x8912000000000000000000000000000000000000000000000000000000000008',
+          tx_status: 'pending',
+          tx_type: 'contract_call',
+          contract_call: {
+            contract_id: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+            function_name: 'mint',
+            function_signature: '',
+          },
+        },
+      ],
+    };
+    expect(JSON.parse(searchResult5Address.text)).toEqual(expectedResp5Address);
+
     const searchResult6 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?address=${contractAddr}`
     );

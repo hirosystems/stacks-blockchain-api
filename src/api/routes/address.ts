@@ -543,9 +543,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
       const address = req.params['address'];
-      if (!isValidC32Address(address)) {
+      if (!isValidPrincipal(address)) {
         throw new InvalidRequestError(
-          `Invalid query parameter for "${address}"`,
+          `Invalid query parameter for "${address}", not a valid principal`,
           InvalidRequestErrorType.invalid_param
         );
       }
