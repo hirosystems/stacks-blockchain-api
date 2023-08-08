@@ -8,6 +8,12 @@ The Stacks blockchain API allows you to query the Stacks blockchain and interact
 
 The Stacks Blockchain API is hosted by Hiro. Using it requires you to trust the hosted server, but this API also provides a faster development experience. You may wish to consider running your own API instance to create a fully trustless architecture for your app.
 
+> **_NOTE:_**
+>
+> To explore the detailed documentation for the API endpoints, request and response formats, you can refer to the [OpenAPI specification](https://docs.hiro.so/api).
+>
+> The source code for this project is available in our [GitHub repository](https://github.com/hirosystems/stacks-blockchain-api). You can explore the codebase, [contribute](https://docs.hiro.so/contributors-guide), and raise [issues](https://github.com/hirosystems/stacks-blockchain-api/issues) or [pull requests](https://github.com/hirosystems/stacks-blockchain-api/pulls).
+
 ## Architecture
 
 ![API architecture!](images/api-architecture.png)
