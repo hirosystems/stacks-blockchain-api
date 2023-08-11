@@ -20,7 +20,7 @@ const ingestNewBlock = async (idFile?: string) => {
 
   const timeTracker = createTimeTracker();
 
-  const dir = './events/new_block';
+  const dir = `${process.env.STACKS_EVENTS_DIR}/new_block`;
 
   try {
     const idsFileContent = fs.readFileSync(`${dir}/${idFile}`, 'utf-8');

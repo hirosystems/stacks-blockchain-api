@@ -1,4 +1,9 @@
+import { loadDotEnv } from '../../../helpers';
 import { Database, QueryResult, TableData } from 'duckdb';
+
+loadDotEnv();
+
+const EVENTS_DIR = process.env.STACKS_EVENTS_DIR;
 
 export class DatasetStore {
   private readonly db;
@@ -19,7 +24,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       con.all(
-        "SELECT id FROM READ_PARQUET('events/new_block/canonical/*.parquet')",
+       `SELECT id FROM READ_PARQUET('${EVENTS_DIR}/new_block/canonical/*.parquet')`,
         (err: any, result: any) => {
           if (err) {
             throw err;
@@ -36,7 +41,7 @@ export class DatasetStore {
     return new Promise(resolve => {
       const con = this.db.connect();
       const res = con.stream(
-        `SELECT payload FROM READ_PARQUET('events/new_block/canonical/*.parquet') WHERE id IN (${ids}) ORDER BY id`
+        `SELECT payload FROM READ_PARQUET('${EVENTS_DIR}/new_block/canonical/*.parquet') WHERE id IN (${ids}) ORDER BY id`
       );
 
       resolve(res);
@@ -47,7 +52,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       con.all(
-        `SELECT * FROM READ_PARQUET('events/new_block/*.parquet') WHERE block_height IN (${blockHeights})`,
+        `SELECT * FROM READ_PARQUET('${EVENTS_DIR}/new_block/*.parquet') WHERE block_height IN (${blockHeights})`,
         (err: any, res: any) => {
           if (err) {
             throw err;
@@ -67,7 +72,7 @@ export class DatasetStore {
     return new Promise(resolve => {
       const con = this.db.connect();
       con.all(
-        "SELECT * FROM READ_PARQUET('events/new_burn_block/canonical/*.parquet') ORDER BY id",
+        `SELECT * FROM READ_PARQUET('${EVENTS_DIR}/new_burn_block/canonical/*.parquet') ORDER BY id`,
         (err: any, result: any) => {
           if (err) {
             throw err;
@@ -87,7 +92,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       const res = con.stream(
-        "SELECT payload FROM READ_PARQUET('events/attachments/new/canonical/*.parquet') ORDER BY id"
+        `SELECT payload FROM READ_PARQUET('${EVENTS_DIR}/attachments/new/canonical/*.parquet') ORDER BY id`
       );
 
       resolve(res);
@@ -103,11 +108,11 @@ export class DatasetStore {
       const con = this.db.connect();
       con.all(
         `SELECT method, payload FROM READ_PARQUET([
-          'events/new_burn_block/canonical/*.parquet',
-          'events/attachments/new/canonical/*.parquet',
-          'events/new_microblocks/*.parquet',
-          'events/drop_mempool_tx/*.parquet',
-          'events/new_mempool_tx/*.parquet',
+          '${EVENTS_DIR}/new_burn_block/canonical/*.parquet',
+          '${EVENTS_DIR}/attachments/new/canonical/*.parquet',
+          '${EVENTS_DIR}/new_microblocks/*.parquet',
+          '${EVENTS_DIR}/drop_mempool_tx/*.parquet',
+          '${EVENTS_DIR}/new_mempool_tx/*.parquet',
         ]) ORDER BY id`,
         (err: any, result: any) => {
           if (err) {
@@ -124,7 +129,7 @@ export class DatasetStore {
     return new Promise(resolve => {
       const con = this.db.connect();
       const res = con.stream(
-        `SELECT method, payload FROM READ_PARQUET('events/new_block/canonical/*.parquet') WHERE id IN (${ids}) ORDER BY id`
+        `SELECT method, payload FROM READ_PARQUET('${EVENTS_DIR}/new_block/canonical/*.parquet') WHERE id IN (${ids}) ORDER BY id`
       );
 
       resolve(res);
@@ -139,7 +144,7 @@ export class DatasetStore {
     return new Promise(resolve => {
       const con = this.db.connect();
       con.all(
-        `SELECT method, payload FROM READ_PARQUET('events/remainder/*.parquet') ORDER BY id`,
+        `SELECT method, payload FROM READ_PARQUET('${EVENTS_DIR}/remainder/*.parquet') ORDER BY id`,
         (err: any, res: any) => {
           if (err) {
             throw err;
@@ -159,7 +164,7 @@ export class DatasetStore {
     return new Promise(resolve => {
       const con = this.db.connect();
       con.all(
-        "SELECT * FROM READ_PARQUET('events/canonical/block_hashes/*.parquet')",
+        `SELECT * FROM READ_PARQUET('${EVENTS_DIR}/canonical/block_hashes/*.parquet')`,
         (err: any, res: any) => {
           if (err) {
             throw err;

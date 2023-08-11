@@ -76,7 +76,7 @@ const genIdsFiles = async (dataset: DatasetStore) => {
 
   logger.info({ component: 'event-replay' }, `Generating ID files for ${workers} workers`);
 
-  const dir = './events/new_block';
+  const dir = `${process.env.STACKS_EVENTS_DIR}/new_block`;
 
   const ids: number[] = await dataset.newBlockEventsIds();
   const batchSize = Math.ceil(ids.length / workers);
@@ -95,7 +95,7 @@ const genIdsFiles = async (dataset: DatasetStore) => {
 
   // create id files
   chunks.forEach((chunk, idx) => {
-    const filename = `./events/new_block/ids_${idx + 1}.txt`;
+    const filename = `${dir}/ids_${idx + 1}.txt`;
     chunk.forEach(id => {
       fs.writeFileSync(filename, id.toString() + '\n', { flag: 'a' });
     });
