@@ -24,7 +24,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       con.all(
-       `SELECT id FROM READ_PARQUET('${EVENTS_DIR}/new_block/canonical/*.parquet')`,
+        `SELECT id FROM READ_PARQUET('${EVENTS_DIR}/new_block/canonical/*.parquet')`,
         (err: any, result: any) => {
           if (err) {
             throw err;
