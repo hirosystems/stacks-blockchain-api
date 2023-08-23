@@ -10,6 +10,7 @@ import { processRemainderEvents } from './importers/remainder-importer';
 import { DatasetStore } from './dataset/store';
 import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
 import { IndexesState } from '../../datastore/common';
+import { importV1TokenOfferingData } from '../../import-v1';
 
 import * as _cluster from 'cluster';
 const cluster = (_cluster as unknown) as _cluster.Cluster; // typings fix
@@ -236,6 +237,9 @@ export class ReplayController {
    *
    */
   finalize = async () => {
+    logger.info({ component: 'event-replay' }, 'Importing Token Offering Data');
+    importV1TokenOfferingData(this.db)
+
     // Re-enabling indexes
     logger.info({ component: 'event-replay' }, 'Re-enabling indexes and constraints on tables');
     await this.db.toggleAllTableIndexes(this.db.sql, IndexesState.On);
