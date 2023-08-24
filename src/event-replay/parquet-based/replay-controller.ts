@@ -238,7 +238,7 @@ export class ReplayController {
    */
   finalize = async () => {
     logger.info({ component: 'event-replay' }, 'Importing Token Offering Data');
-    importV1TokenOfferingData(this.db)
+    await importV1TokenOfferingData(this.db);
 
     // Re-enabling indexes
     logger.info({ component: 'event-replay' }, 'Re-enabling indexes and constraints on tables');
@@ -271,8 +271,9 @@ export class ReplayController {
     // NEW_BLOCK events
     await this.ingestNewBlockEvents();
 
-    // // RAW events to event_observer_requests table
-    await Promise.all([this.ingestRawEvents(), this.ingestRawNewBlockEvents()]);
+    // RAW events to event_observer_requests table
+    await this.ingestRawEvents();
+    await this.ingestRawNewBlockEvents();
 
     // NEW_BURN_BLOCK and ATTACHMENTS/NEW events
     await Promise.all([this.ingestNewBurnBlockEvents(), this.ingestAttachmentNewEvents()]);

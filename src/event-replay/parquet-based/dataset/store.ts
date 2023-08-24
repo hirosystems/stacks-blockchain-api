@@ -48,22 +48,6 @@ export class DatasetStore {
     });
   };
 
-  getNewBlockEventsInBlockHeights = (blockHeights: number[]): Promise<TableData> => {
-    const con = this.db.connect();
-    return new Promise(resolve => {
-      con.all(
-        `SELECT * FROM READ_PARQUET('${EVENTS_DIR}/new_block/*.parquet') WHERE block_height IN (${blockHeights})`,
-        (err: any, res: any) => {
-          if (err) {
-            throw err;
-          }
-
-          resolve(res);
-        }
-      );
-    });
-  };
-
   //
   // NEW_BURN_BLOCK EVENTS
   //
@@ -92,7 +76,7 @@ export class DatasetStore {
     const con = this.db.connect();
     return new Promise(resolve => {
       const res = con.stream(
-        `SELECT payload FROM READ_PARQUET('${EVENTS_DIR}/attachments/new/canonical/*.parquet') ORDER BY id`
+        `SELECT payload FROM READ_PARQUET('${EVENTS_DIR}/attachments_new/canonical/*.parquet') ORDER BY id`
       );
 
       resolve(res);
@@ -109,7 +93,7 @@ export class DatasetStore {
       con.all(
         `SELECT method, payload FROM READ_PARQUET([
           '${EVENTS_DIR}/new_burn_block/canonical/*.parquet',
-          '${EVENTS_DIR}/attachments/new/canonical/*.parquet',
+          '${EVENTS_DIR}/attachments_new/canonical/*.parquet',
           '${EVENTS_DIR}/new_microblocks/*.parquet',
           '${EVENTS_DIR}/drop_mempool_tx/*.parquet',
           '${EVENTS_DIR}/new_mempool_tx/*.parquet',

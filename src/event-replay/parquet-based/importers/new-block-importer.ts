@@ -103,7 +103,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
   const dbPrincipalStxTxBatchInserter = createBatchInserter<PrincipalStxTxsInsertValues>({
     batchSize: 500,
     insertFn: entries => {
-      logger.debug({ component: 'event-replay' }, 'Inserting into stx_events table...');
+      logger.debug({ component: 'event-replay' }, 'Inserting into principal_stx_txs table...');
       return db.insertPrincipalStxTxsBatch(db.sql, entries);
     },
   });
@@ -383,24 +383,46 @@ const populateBatchInserters = (db: PgWriteStore) => {
         }
       };
 
+      const insertMinerRewards = async (dbData: DataStoreBlockUpdateData) => {
+        for (const minerReward of dbData.minerRewards) {
+          await db.updateMinerReward(db.sql, minerReward);
+        }
+      };
+
+      const insertPox2Events = async (dbData: DataStoreBlockUpdateData) => {
+        for (const entry of dbData.txs) {
+          for (const pox2Event of entry.pox2Events) {
+            await db.updatePox2Event(db.sql, entry.tx, pox2Event);
+          }
+        }
+      };
+
+      const insertPox3Events = async (dbData: DataStoreBlockUpdateData) => {
+        for (const entry of dbData.txs) {
+          for (const pox3Event of entry.pox3Events) {
+            await db.updatePox3Event(db.sql, entry.tx, pox3Event);
+          }
+        }
+      };
+
       await Promise.all([
         // Insert blocks
         dbBlockBatchInserter.push([dbData.block]),
-        // // Insert microblocks
+        // Insert microblocks
         dbMicroblockBatchInserter.push(dbData.microblocks),
-        // // Insert txs
+        // Insert txs
         insertTxs(dbData),
-        // // Insert stx_events
+        // Insert stx_events
         insertStxEvents(dbData),
-        // // Insert principal_stx_txs
+        // Insert principal_stx_txs
         insertPrincipalStxTxs(dbData),
-        // // Insert contract_logs
+        // Insert contract_logs
         insertContractLogs(dbData),
-        // // Insert ft_events
+        // Insert ft_events
         insertFTEvents(dbData),
-        // // Insert nft_events
+        // Insert nft_events
         insertNFTEvents(dbData),
-        // // Insert names
+        // Insert names
         insertNames(dbData),
         // Insert zonefiles
         insertZoneFiles(dbData),
@@ -410,6 +432,12 @@ const populateBatchInserters = (db: PgWriteStore) => {
         insertNamespaces(dbData),
         // Insert stx_lock_events
         insertStxLockEvents(dbData),
+        // Insert miner_rewards
+        insertMinerRewards(dbData),
+        // Insert pox2_events
+        insertPox2Events(dbData),
+        // Insert pox3_events
+        insertPox3Events(dbData),
       ]);
 
       next();
