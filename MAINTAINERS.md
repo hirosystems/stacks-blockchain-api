@@ -56,12 +56,7 @@ managing this repository. At a glance, this means:
     - If instead the PR author took the time to craft individual, informative messages for each commit, then use the `Rebase and merge` method,to honor that work and preserve the history of the changes.
     - For less clear-cut cases, a simple heuristic you can follow is that if there are more "dirty" commits than "clean" commits,then prefer squash, else do a rebase.
 
-  2. Update the [changelog](https://github.com/hirosystems/stacks-blockchain-api/blob/master/CHANGELOG.md) directly via the [GitHub website](https://github.com/stylelint/stylelint/edit/master/CHANGELOG.mdhttps://github.com/hirosystems/stacks-blockchain-api/edit/master/CHANGELOG.md)
-    1. Group the item under and in the following order: "Features", "Bug Fixes", "Reverts", "Chores", "Documentation", 
-    2. All Breaking Changes **must** be listed at the top of the changelog under "⚠ BREAKING CHANGES", followed by any "Compatibility Issues" or "Known Limitations". This section serves as a notification that this isn't a straightforward upgrade.
-    3. Order the item within the group by the most-significant first to the smallest, and then alphabetically by item name.
-    4. Suffix the item with the relevant issue number and pull request number, 
-  3. Post this update as a comment to the pull request.
+  2. Ensure [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/) are used in the PR. When properly annotated, the commit messages will automatically update the changelog.
   
 
 - If a PR fails to get a review from a second maintainer after a few days, the first maintainer should ping others for review. If it still lingers around for **over a week without a second maintainer’s approval**,the first maintainer can go ahead and merge it.
