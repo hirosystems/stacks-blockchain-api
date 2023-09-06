@@ -19,4 +19,4 @@ You can refer to the rate limit for each endpoint in the table below:
 
 ## STX faucet
 
-The Stacks faucet rate limits depend on the type of request. For stacking requests, there is a limit of **1 request per 2 days**. In case of regular Stacks faucet requests, the limits are set to **1 request per minute**.
+The Stacks faucet rate limits depend on the type of request. For stacking requests, there is a limit of **1 request per 2 days**. In case of regular Stacks faucet requests, the limits are set to **1 request per day**.
