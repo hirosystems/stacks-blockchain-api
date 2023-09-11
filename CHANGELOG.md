@@ -1,3 +1,10 @@
+## [7.3.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.0...v7.3.1) (2023-09-11)
+
+
+### Bug Fixes
+
+* allow more than one Rosetta `stx_unlock` operation per block ([#1712](https://github.com/hirosystems/stacks-blockchain-api/issues/1712)) ([81221c8](https://github.com/hirosystems/stacks-blockchain-api/commit/81221c8c1388d4e2d92cebce85311b7941e15be1))
+
 ## [7.3.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.2...v7.3.0) (2023-07-12)
 
 
