@@ -4228,7 +4228,6 @@ export class PgStore {
           )
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
       `;
       poxV2Unlocks = pox2EventQuery.map(row => {
         const pox2Event = parseDbPox2Event(row);
@@ -4306,7 +4305,6 @@ export class PgStore {
           )
         )
         ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
-        LIMIT 1
       `;
     poxV3Unlocks = pox3EventQuery.map(row => {
       const pox3Event = parseDbPox2Event(row) as DbPox3Event;
