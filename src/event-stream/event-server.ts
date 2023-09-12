@@ -697,10 +697,10 @@ function createMessageProcessorQueue(): EventMessageHandler {
   const processorQueue = new PQueue({ concurrency: 1 });
 
   const eventTimer = new prom.Histogram({
-    name: 'event_ingestion_timers',
+    name: 'stacks_event_ingestion_timers',
     help: 'Event ingestion timers',
     labelNames: ['event'],
-    buckets: prom.exponentialBuckets(1, 2, 22), // 22 buckets, from 1ms to 35minutes
+    buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
   });
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
