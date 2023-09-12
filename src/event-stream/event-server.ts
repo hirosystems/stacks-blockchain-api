@@ -6,7 +6,14 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer, stopwatch } from '../helpers';
+import {
+  ChainID,
+  getChainIDNetwork,
+  getIbdBlockHeight,
+  hexToBuffer,
+  isProdEnv,
+  stopwatch,
+} from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -696,12 +703,15 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
 
-  const eventTimer = new prom.Histogram({
-    name: 'stacks_event_ingestion_timers',
-    help: 'Event ingestion timers',
-    labelNames: ['event'],
-    buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
-  });
+  let eventTimer: prom.Histogram<'event'> | undefined;
+  if (isProdEnv) {
+    eventTimer = new prom.Histogram({
+      name: 'stacks_event_ingestion_timers',
+      help: 'Event ingestion timers',
+      labelNames: ['event'],
+      buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
+    });
+  }
 
   const observeEvent = async (event: string, fn: () => Promise<void>) => {
     const timer = stopwatch();
@@ -709,7 +719,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       await fn();
     } finally {
       const elapsedMs = timer.getElapsed();
-      eventTimer.observe({ event }, elapsedMs);
+      eventTimer?.observe({ event }, elapsedMs);
     }
   };
 
