@@ -5,7 +5,7 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer } from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer, stopwatch } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -223,6 +223,7 @@ async function handleBlockMessage(
   msg: CoreNodeBlockMessage,
   db: PgWriteStore
 ): Promise<void> {
+  const ingestionTimer = stopwatch();
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
@@ -318,6 +319,8 @@ async function handleBlockMessage(
   };
 
   await db.update(dbData);
+  const ingestionTime = ingestionTimer.getElapsed();
+  logger.info(`Ingested block ${msg.block_height} (${msg.block_hash}) in ${ingestionTime}ms`);
 }
 
 function parseDataStoreTxEventData(
