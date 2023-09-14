@@ -1,3 +1,10 @@
+## [7.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.1...v7.3.2) (2023-09-14)
+
+
+### Bug Fixes
+
+* log block ingestion time ([#1713](https://github.com/hirosystems/stacks-blockchain-api/issues/1713)) ([e7c01a8](https://github.com/hirosystems/stacks-blockchain-api/commit/e7c01a8b5c1fb8c3fbd3eeb4795be8b35c1bcbcd))
+
 ## [7.3.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.0...v7.3.1) (2023-09-11)
 
 
