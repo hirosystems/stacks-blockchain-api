@@ -5,7 +5,15 @@ import * as express from 'express';
 import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer } from '../helpers';
+import * as prom from 'prom-client';
+import {
+  ChainID,
+  getChainIDNetwork,
+  getIbdBlockHeight,
+  hexToBuffer,
+  isProdEnv,
+  stopwatch,
+} from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -223,6 +231,7 @@ async function handleBlockMessage(
   msg: CoreNodeBlockMessage,
   db: PgWriteStore
 ): Promise<void> {
+  const ingestionTimer = stopwatch();
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
@@ -318,6 +327,8 @@ async function handleBlockMessage(
   };
 
   await db.update(dbData);
+  const ingestionTime = ingestionTimer.getElapsed();
+  logger.info(`Ingested block ${msg.block_height} (${msg.block_hash}) in ${ingestionTime}ms`);
 }
 
 function parseDataStoreTxEventData(
@@ -692,10 +703,30 @@ function createMessageProcessorQueue(): EventMessageHandler {
   // Create a promise queue so that only one message is handled at a time.
   const processorQueue = new PQueue({ concurrency: 1 });
 
+  let eventTimer: prom.Histogram<'event'> | undefined;
+  if (isProdEnv) {
+    eventTimer = new prom.Histogram({
+      name: 'stacks_event_ingestion_timers',
+      help: 'Event ingestion timers',
+      labelNames: ['event'],
+      buckets: prom.exponentialBuckets(50, 3, 10), // 10 buckets, from 50 ms to 15 minutes
+    });
+  }
+
+  const observeEvent = async (event: string, fn: () => Promise<void>) => {
+    const timer = stopwatch();
+    try {
+      await fn();
+    } finally {
+      const elapsedMs = timer.getElapsed();
+      eventTimer?.observe({ event }, elapsedMs);
+    }
+  };
+
   const handler: EventMessageHandler = {
     handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleRawEventRequest(eventPath, payload, db))
+        .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
         .catch(e => {
           logger.error(e, 'Error storing raw core node request data');
           throw e;
@@ -703,7 +734,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBlockMessage: (chainId: ChainID, msg: CoreNodeBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleBlockMessage(chainId, msg, db))
+        .add(() => observeEvent('block', () => handleBlockMessage(chainId, msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node block message');
           throw e;
@@ -715,7 +746,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
       db: PgWriteStore
     ) => {
       return processorQueue
-        .add(() => handleMicroblockMessage(chainId, msg, db))
+        .add(() => observeEvent('microblock', () => handleMicroblockMessage(chainId, msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node microblock message');
           throw e;
@@ -723,7 +754,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleBurnBlock: (msg: CoreNodeBurnBlockMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleBurnBlockMessage(msg, db))
+        .add(() => observeEvent('burn_block', () => handleBurnBlockMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node burn block message');
           throw e;
@@ -731,7 +762,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleMempoolTxs: (rawTxs: string[], db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleMempoolTxsMessage(rawTxs, db))
+        .add(() => observeEvent('mempool_txs', () => handleMempoolTxsMessage(rawTxs, db)))
         .catch(e => {
           logger.error(e, 'Error processing core node mempool message');
           throw e;
@@ -739,7 +770,9 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleDroppedMempoolTxs: (msg: CoreNodeDropMempoolTxMessage, db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleDroppedMempoolTxsMessage(msg, db))
+        .add(() =>
+          observeEvent('dropped_mempool_txs', () => handleDroppedMempoolTxsMessage(msg, db))
+        )
         .catch(e => {
           logger.error(e, 'Error processing core node dropped mempool txs message');
           throw e;
@@ -747,7 +780,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
     },
     handleNewAttachment: (msg: CoreNodeAttachmentMessage[], db: PgWriteStore) => {
       return processorQueue
-        .add(() => handleNewAttachmentMessage(msg, db))
+        .add(() => observeEvent('new_attachment', () => handleNewAttachmentMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing new attachment message');
           throw e;
