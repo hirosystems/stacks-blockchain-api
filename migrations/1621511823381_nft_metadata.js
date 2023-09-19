@@ -1,7 +1,4 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
-
-const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
-
 exports.up = pgm => {
   pgm.createTable('nft_metadata', {
     id: {
@@ -43,5 +40,5 @@ exports.up = pgm => {
     }
   });
 
-  pgm.createIndex('nft_metadata', 'contract_id', { method: INDEX_METHOD });
+  pgm.createIndex('nft_metadata', 'contract_id', { method: 'hash' });
 }

@@ -1,7 +1,4 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
-
-const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
-
 exports.up = pgm => {
   pgm.createTable('namespaces', {
     id: {
@@ -91,7 +88,7 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('namespaces', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('namespaces', 'index_block_hash');
   pgm.createIndex('namespaces', [
     { name: 'ready_block', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },

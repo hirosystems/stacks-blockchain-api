@@ -1,7 +1,4 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
-
-const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
-
 exports.up = pgm => {
   pgm.createTable('blocks', {
     index_block_hash: {
@@ -74,9 +71,9 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('blocks', 'block_hash', { method: INDEX_METHOD });
-  pgm.createIndex('blocks', 'burn_block_hash', { method: INDEX_METHOD });
-  pgm.createIndex('blocks', 'index_block_hash', { method: INDEX_METHOD });
+  pgm.createIndex('blocks', 'block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', 'burn_block_hash', { method: 'hash' });
+  pgm.createIndex('blocks', 'index_block_hash', { method: 'hash' });
   pgm.createIndex('blocks', [{ name: 'block_height', sort: 'DESC' }]);
   pgm.createIndex('blocks', [{ name: 'burn_block_height', sort: 'DESC' }]);
 }

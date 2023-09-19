@@ -1,7 +1,4 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
-
-const INDEX_METHOD = process.env.PG_IDENT_INDEX_TYPE;
-
 exports.up = pgm => {
   /**
    * Stores all `tx_id`s of transactions that affect a principal's STX balance since that cannot be
@@ -50,8 +47,8 @@ exports.up = pgm => {
     },
   });
 
-  pgm.createIndex('principal_stx_txs', 'tx_id', { method: INDEX_METHOD });
-  pgm.createIndex('principal_stx_txs', 'principal', { method: INDEX_METHOD });
+  pgm.createIndex('principal_stx_txs', 'tx_id', { method: 'hash' });
+  pgm.createIndex('principal_stx_txs', 'principal', { method: 'hash' });
   pgm.createIndex('principal_stx_txs', [
     { name: 'block_height', sort: 'DESC' },
     { name: 'microblock_sequence', sort: 'DESC' },
