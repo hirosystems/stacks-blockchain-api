@@ -9,7 +9,7 @@ import {
   standByForPoxCycle,
   standByForPoxCycleEnd,
   standByForTxSuccess,
-  standByUntilBlock,
+  standByForAccountUnlock,
   testEnv,
 } from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
@@ -428,9 +428,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
   });
 
   test('Validate account balances are unlocked', async () => {
-    // wait another block to ensure next pox cycle is returned after
-    const curBlock = await testEnv.client.getInfo();
-    await standByUntilBlock(curBlock.stacks_tip_height + 1);
+    await standByForAccountUnlock(delegateeAccount.stxAddr);
 
     // validate stacks-node balance
     const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
