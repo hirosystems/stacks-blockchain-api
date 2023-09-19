@@ -8,9 +8,8 @@ import {
   standByForNextPoxCycle,
   standByForPoxCycle,
   standByForPoxCycleEnd,
-  standByForTx,
   standByForTxSuccess,
-  standByUntilBurnBlock,
+  standByUntilBlock,
   testEnv,
 } from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
@@ -32,7 +31,6 @@ import {
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
-import { DbTxStatus } from '../datastore/common';
 
 describe('PoX-3 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -430,6 +428,10 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
   });
 
   test('Validate account balances are unlocked', async () => {
+    // wait another block to ensure next pox cycle is returned after
+    const curBlock = await testEnv.client.getInfo();
+    await standByUntilBlock(curBlock.stacks_tip_height + 1);
+
     // validate stacks-node balance
     const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(coreBalanceInfo.locked)).toBe(0n);
