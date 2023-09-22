@@ -26,7 +26,7 @@ exports.up = pgm => {
       type: 'integer',
       notNull: true,
     },
-    // For the first microblock (sequence number 0), this points to the parent/anchor block hash, 
+    // For the first microblock (sequence number 0), this points to the parent/anchor block hash,
     // for subsequent microblocks it points to the previous microblock's hash.
     microblock_parent_hash: {
       type: 'bytea',

@@ -36,6 +36,8 @@ import {
   DataStoreAttachmentData,
   DbPox2Event,
   DbTxStatus,
+  DbBnsSubdomain,
+  DataStoreBnsBlockData,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -58,6 +60,8 @@ import {
   parseNameFromContractEvent,
   parseNameRenewalWithNoZonefileHashFromContractCall,
   parseNamespaceFromContractEvent,
+  parseZoneFileTxt,
+  parseResolver,
 } from './bns/bns-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import {
@@ -69,6 +73,7 @@ import { handleBnsImport } from '../import-v1';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
+import * as zoneFileParser from 'zone-file';
 
 export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -969,4 +974,169 @@ export async function startEventServer(opts: {
     closeAsync: closeFn,
   });
   return eventStreamServer;
+}
+
+export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage) {
+  const parsedTxs: CoreNodeParsedTxMessage[] = [];
+  const blockData: CoreNodeMsgBlockData = {
+    ...msg,
+  };
+  msg.transactions.forEach(item => {
+    const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
+    if (parsedTx) {
+      parsedTxs.push(parsedTx);
+    }
+  });
+
+  // calculate total execution cost of the block
+  const totalCost = msg.transactions.reduce(
+    (prev, cur) => {
+      return {
+        execution_cost_read_count: prev.execution_cost_read_count + cur.execution_cost.read_count,
+        execution_cost_read_length:
+          prev.execution_cost_read_length + cur.execution_cost.read_length,
+        execution_cost_runtime: prev.execution_cost_runtime + cur.execution_cost.runtime,
+        execution_cost_write_count:
+          prev.execution_cost_write_count + cur.execution_cost.write_count,
+        execution_cost_write_length:
+          prev.execution_cost_write_length + cur.execution_cost.write_length,
+      };
+    },
+    {
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    }
+  );
+
+  const dbBlock: DbBlock = {
+    canonical: true,
+    block_hash: msg.block_hash,
+    index_block_hash: msg.index_block_hash,
+    parent_index_block_hash: msg.parent_index_block_hash,
+    parent_block_hash: msg.parent_block_hash,
+    parent_microblock_hash: msg.parent_microblock,
+    parent_microblock_sequence: msg.parent_microblock_sequence,
+    block_height: msg.block_height,
+    burn_block_time: msg.burn_block_time,
+    burn_block_hash: msg.burn_block_hash,
+    burn_block_height: msg.burn_block_height,
+    miner_txid: msg.miner_txid,
+    execution_cost_read_count: totalCost.execution_cost_read_count,
+    execution_cost_read_length: totalCost.execution_cost_read_length,
+    execution_cost_runtime: totalCost.execution_cost_runtime,
+    execution_cost_write_count: totalCost.execution_cost_write_count,
+    execution_cost_write_length: totalCost.execution_cost_write_length,
+  };
+
+  const dbMinerRewards: DbMinerReward[] = [];
+  for (const minerReward of msg.matured_miner_rewards) {
+    const dbMinerReward: DbMinerReward = {
+      canonical: true,
+      block_hash: minerReward.from_stacks_block_hash,
+      index_block_hash: msg.index_block_hash,
+      from_index_block_hash: minerReward.from_index_consensus_hash,
+      mature_block_height: msg.block_height,
+      recipient: minerReward.recipient,
+      miner_address: minerReward.miner_address ?? minerReward.recipient,
+      coinbase_amount: BigInt(minerReward.coinbase_amount),
+      tx_fees_anchored: BigInt(minerReward.tx_fees_anchored),
+      tx_fees_streamed_confirmed: BigInt(minerReward.tx_fees_streamed_confirmed),
+      tx_fees_streamed_produced: BigInt(minerReward.tx_fees_streamed_produced),
+    };
+    dbMinerRewards.push(dbMinerReward);
+  }
+
+  const dbMicroblocks = parseMicroblocksFromTxs({
+    parentIndexBlockHash: msg.parent_index_block_hash,
+    txs: msg.transactions,
+    parentBurnBlock: {
+      height: msg.parent_burn_block_height,
+      hash: msg.parent_burn_block_hash,
+      time: msg.parent_burn_block_timestamp,
+    },
+  }).map(mb => {
+    const microblock: DbMicroblock = {
+      ...mb,
+      canonical: true,
+      microblock_canonical: true,
+      block_height: msg.block_height,
+      parent_block_height: msg.block_height - 1,
+      parent_block_hash: msg.parent_block_hash,
+      index_block_hash: msg.index_block_hash,
+      block_hash: msg.block_hash,
+    };
+    return microblock;
+  });
+
+  const dbData: DataStoreBlockUpdateData = {
+    block: dbBlock,
+    microblocks: dbMicroblocks,
+    minerRewards: dbMinerRewards,
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
+  };
+
+  return dbData;
+}
+
+export function parseAttachment(msg: CoreNodeAttachmentMessage[]) {
+  const zoneFiles: { zonefile: string; zonefileHash: string; txId: string }[] = [];
+  const subdomains: DbBnsSubdomain[] = [];
+  for (const attachment of msg) {
+    if (
+      attachment.contract_id === BnsContractIdentifier.mainnet ||
+      attachment.contract_id === BnsContractIdentifier.testnet
+    ) {
+      const metadataCV = decodeClarityValue<
+        ClarityValueTuple<{
+          op: ClarityValueStringAscii;
+          name: ClarityValueBuffer;
+          namespace: ClarityValueBuffer;
+        }>
+      >(attachment.metadata);
+      const op = metadataCV.data['op'].data;
+      const zonefile = Buffer.from(attachment.content.slice(2), 'hex').toString();
+      const zonefileHash = attachment.content_hash;
+      zoneFiles.push({
+        zonefile,
+        zonefileHash,
+        txId: attachment.tx_id,
+      });
+      if (op === 'name-update') {
+        const name = hexToBuffer(metadataCV.data['name'].buffer).toString('utf8');
+        const namespace = hexToBuffer(metadataCV.data['namespace'].buffer).toString('utf8');
+        const zoneFileContents = zoneFileParser.parseZoneFile(zonefile);
+        const zoneFileTxt = zoneFileContents.txt;
+        // Case for subdomain
+        if (zoneFileTxt) {
+          for (let i = 0; i < zoneFileTxt.length; i++) {
+            const zoneFile = zoneFileTxt[i];
+            const parsedTxt = parseZoneFileTxt(zoneFile.txt);
+            if (parsedTxt.owner === '') continue; //if txt has no owner , skip it
+            const subdomain: DbBnsSubdomain = {
+              name: name.concat('.', namespace),
+              namespace_id: namespace,
+              fully_qualified_subdomain: zoneFile.name.concat('.', name, '.', namespace),
+              owner: parsedTxt.owner,
+              zonefile_hash: parsedTxt.zoneFileHash,
+              zonefile: parsedTxt.zoneFile,
+              tx_id: attachment.tx_id,
+              tx_index: -1,
+              canonical: true,
+              parent_zonefile_hash: attachment.content_hash.slice(2),
+              parent_zonefile_index: 0, // TODO need to figure out this field
+              block_height: Number.parseInt(attachment.block_height, 10),
+              zonefile_offset: 1,
+              resolver: zoneFileContents.uri ? parseResolver(zoneFileContents.uri) : '',
+              index_block_hash: attachment.index_block_hash,
+            };
+            subdomains.push(subdomain);
+          }
+        }
+      }
+    }
+  }
+  return { zoneFiles, subdomains };
 }
