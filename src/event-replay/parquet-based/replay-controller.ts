@@ -18,6 +18,12 @@ const cluster = (_cluster as unknown) as _cluster.Cluster; // typings fix
 import { FILE_PATH as raw_worker_path } from './workers/raw-worker';
 import { FILE_PATH as new_block_worker_path } from './workers/new-block-worker';
 
+/**
+ * This class is an entry point for the event-replay based on parquet files,
+ * being responsible to start the replay process (check "do" method).
+ *
+ * It also has functions to prepare and finalize the database for an event-replay.
+ */
 export class ReplayController {
   private readonly db;
   private readonly dataset;
@@ -265,7 +271,7 @@ export class ReplayController {
   };
 
   /**
-   *
+   * This funtion is responsible to initialize the event-replay process.
    */
   do = async () => {
     // NEW_BLOCK events
