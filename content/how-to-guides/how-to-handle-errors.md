@@ -1,5 +1,5 @@
 ---
-Title: Error Handling
+Title: Use Error Handling
 ---
 
 #  Error Handling
