@@ -4,6 +4,10 @@ Title: Run a Stacks Blockchain API instance with Docker
 
 # Run a Stacks Blockchain API instance with Docker
 
+>  **_NOTE:_**
+>
+> For a faster way to deploy the Stacks Blockchain and Stacks Blockchain API with Docker, see the [Stacks Blockchain Docker](https://github.com/stacks-network/stacks-blockchain-docker) repository.
+
 On this page, you will learn how to run a [stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api) instance. There are several components involved here to have a working setup, and descriptions will be given for each of these components.  
 
 This page will also focus on the **easy** path to get the services running, which is currently Docker.  
