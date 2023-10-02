@@ -23,4 +23,4 @@ To start the API server:
 
 `Run npm run dev:integrated`
 
-4. Verify the server has started successfully by going to http://localhost:3999/extended/v1/status.
+4. Verify the server has started successfully by going to (http://localhost:3999/extended/v1/status).
