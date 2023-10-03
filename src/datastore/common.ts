@@ -704,6 +704,7 @@ export interface DbBnsSubdomain {
   tx_id: string;
   tx_index: number;
   canonical: boolean;
+  index_block_hash?: string;
 }
 
 export interface DbConfigState {
@@ -1219,6 +1220,11 @@ export interface StxLockEventInsertValues {
   contract_name: string;
 }
 
+export interface RawEventRequestInsertValues {
+  event_path: string;
+  payload: string;
+}
+
 export interface Pox2EventQueryResult {
   event_index: number;
   tx_id: string;
@@ -1551,4 +1557,9 @@ export interface DbChainTip {
   blockHash: string;
   indexBlockHash: string;
   burnBlockHeight: number;
+}
+
+export enum IndexesState {
+  Off = 0,
+  On = 1,
 }
