@@ -9,7 +9,7 @@ Some endpoints, like the [read-only function contract call](https://docs.hiro.so
 
 The example shown below illustrates Clarity value usage in combination with the API.
 
-The `@stacks/transactions` library supports typed contract calls and makes [response value utilization much simpler](https://docs.stacks.co/docs/write-smart-contracts/values#utilizing-clarity-values-from-transaction-responses)
+The `@stacks/transactions` library supports typed contract calls and makes [response value utilization much simpler](https://docs.stacks.co/docs/write-smart-contracts/values#utilizing-clarity-values-from-transaction-responses).
 
 ```ts
 import {
