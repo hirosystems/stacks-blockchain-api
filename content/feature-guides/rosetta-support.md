@@ -55,5 +55,5 @@ rosetta-cli \
 
 `rosetta-cli` will then sync with the blockchain until it reaches the tip, and then exit, displaying the test results.
 Currently, account reconciliation is disabled; proper testing of that feature requires token transfer transactions while `rosetta-cli` is running.
-Documentation for the Rosetta APIs can be found [here](https://hirosystems.github.io/stacks-blockchain-api/)
+Documentation for the Rosetta APIs can be found [here](https://hirosystems.github.io/stacks-blockchain-api/).
 You may also review Data and Construction Rosetta endpoints [here](https://docs.hiro.so/api#tag/Rosetta)
