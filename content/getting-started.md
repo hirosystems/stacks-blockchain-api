@@ -8,7 +8,7 @@ This page describes how you can start the API server and service dependencies.
 
 ## Prerequisites
 
-Before you can start the API server and its dependencies, you must first ensure that Docker is already installed on your machine. If you do not aready have Docker installed, please install Docker.
+Before you can start the API server and its dependencies, you must first ensure that Docker is already installed on your machine. If you do not aready have Docker installed, please install Docker [here](https://www.docker.com/).
 
 ## Starting the API Server
 
