@@ -17,6 +17,8 @@ You can refer to the rate limit for each endpoint in the table below:
 | api.testnet.hiro.so/v2/ <br/>                                                 | 100 <br/>             |
 | api.testnet.hiro.so/extended/v1/faucets/ <br/>                                | 1 <br/>               |
 
+If you need a higher rate limit, you can apply for an API key [here](https://survey.hiro.so/hiroapi).
+
 ## STX faucet
 
 The Stacks faucet rate limits depend on the type of request. For stacking requests, there is a limit of **1 request per 2 days**. In case of regular Stacks faucet requests, the limits are set to **1 request per minute**.
