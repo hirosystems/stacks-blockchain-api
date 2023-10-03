@@ -1,23 +1,23 @@
 ---
-title: How to run API node
+title: How to Run an API Node
 ---
 
-This procedure demonstrates how to run a local API node using Docker images. There are several components that must be
+This guide shows you how to run a local API node using Docker images. There are several components that must be
 configured and run in a specific order for the local API node to work.
 
-For this procedure, the order in which the services are brought up is very important. In order to start the API node
+Note: the order in which the services are brought up is very important. In order to start the API node
 successfully, you need to bring up the services in the following order:
 
 1. `postgres`
 2. `stacks-blockchain-api`
 3. `stacks-blockchain`
 
-When bringing down the API node, you should bring the services down in the exact reverse order in which they were
-brought up, to avoid losing data.
+When bringing down the API node, you should bring the services down in the reverse order in which they were
+brought up in order to avoid losing data.
 
 :::note
 
-This procedure focuses on Unix-like operating systems (Linux and MacOS). This procedure has not been tested on
+This guide focuses on Unix-like operating systems (Linux and MacOS). This has not been tested on
 Windows.
 
 :::
@@ -25,7 +25,7 @@ Windows.
 ## Prerequisites
 
 Running a node has no specialized hardware requirements. Users have been successful in running nodes on Raspberry Pi
-boards and other system-on-chip architectures. In order to complete this procedure, you must have the following software
+boards and other system-on-chip architectures. However, in order to complete this guide, you do need the following software
 installed on the node host machine:
 
 - [Docker](https://docs.docker.com/get-docker/)
@@ -234,13 +234,13 @@ To verify the database is ready:
 2. List current databases with the command `\l`
 3. Disconnect from the database with the command `\q`
 
-To verify the `stacks-blockchain` tip height is progressing use the following command:
+To verify that the `stacks-blockchain` tip height is progressing, use the following command:
 
 ```sh
 curl -sL localhost:20443/v2/info | jq
 ```
 
-If the instance is running you should receive terminal output similar to the following:
+If the instance is running, you should receive terminal output similar to the following:
 
 ```json
 {
