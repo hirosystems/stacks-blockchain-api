@@ -3318,6 +3318,7 @@ export class PgStore {
         FROM ${nftCustody} AS nft
         WHERE nft.recipient = ${args.principal}
         ${assetIdFilter}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}
       )

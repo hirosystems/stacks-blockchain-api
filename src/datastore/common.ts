@@ -1357,6 +1357,20 @@ export interface NftEventInsertValues {
   value: PgBytea;
 }
 
+export interface NftCustodyInsertValues {
+  event_index: number;
+  tx_id: PgBytea;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
+  recipient: string | null;
+  asset_identifier: string;
+  value: PgBytea;
+}
+
 export interface FtEventInsertValues {
   event_index: number;
   tx_id: PgBytea;

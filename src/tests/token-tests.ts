@@ -3,7 +3,6 @@ import { ChainID } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
-import { hexToBuffer } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
 
