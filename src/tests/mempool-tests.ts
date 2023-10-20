@@ -1,9 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import {
   DbBlock,
   DbTxRaw,
@@ -19,6 +17,8 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -26,8 +26,7 @@ describe('mempool tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -40,7 +39,7 @@ describe('mempool tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('garbage collection', async () => {

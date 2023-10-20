@@ -3,13 +3,12 @@ import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
 import { DbBlock, DbMicroblockPartial, DbTxRaw, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PoolClient } from 'pg';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -17,8 +16,7 @@ describe('cache-control tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -26,6 +24,12 @@ describe('cache-control tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('parse if-none-match header', () => {
@@ -633,11 +637,5 @@ describe('cache-control tests', () => {
     expect(request11.headers['etag']).toBeTruthy();
     const etag5 = request11.headers['etag'];
     expect(etag2).not.toBe(etag5);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

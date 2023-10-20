@@ -40,10 +40,10 @@ import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -51,8 +51,7 @@ describe('tx tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -60,6 +59,12 @@ describe('tx tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('fetch tx list details', async () => {
@@ -3481,11 +3486,5 @@ describe('tx tests', () => {
         ]),
       })
     );
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

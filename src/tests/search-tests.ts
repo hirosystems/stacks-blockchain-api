@@ -16,8 +16,8 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('search tests', () => {
   let db: PgWriteStore;
@@ -25,8 +25,7 @@ describe('search tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -34,6 +33,12 @@ describe('search tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('search term - hash', async () => {
@@ -1626,11 +1631,5 @@ describe('search tests', () => {
         'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
     expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

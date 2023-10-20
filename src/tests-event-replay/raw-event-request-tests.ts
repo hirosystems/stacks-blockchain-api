@@ -6,7 +6,7 @@ import { httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { cycleMigrations } from '../datastore/migrations';
 import { PgSqlClient } from '../datastore/connection';
-import { getRawEventRequests } from '../datastore/event-requests';
+import { getRawEventRequests } from '../event-replay/event-requests';
 import { useWithCleanup } from '../tests/test-helpers';
 
 describe('Events table', () => {

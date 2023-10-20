@@ -14,9 +14,9 @@ import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES 
 import { FEE_RATE } from '../api/routes/fee-rate';
 import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -24,8 +24,7 @@ describe('other tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -33,6 +32,12 @@ describe('other tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('stx-supply', async () => {
@@ -304,11 +309,5 @@ describe('other tests', () => {
     await db.close();
     const result = await supertest(api.server).get(`/extended/v1/block/`);
     expect(result.body.error).toBe('The database service is unavailable');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -38,9 +38,9 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
 
 describe('address tests', () => {
   let db: PgWriteStore;
@@ -48,8 +48,7 @@ describe('address tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -57,6 +56,12 @@ describe('address tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('address transaction transfers', async () => {
@@ -2834,11 +2839,5 @@ describe('address tests', () => {
     expect(json6.total).toEqual(4);
     expect(json6.results.length).toEqual(4);
     expect(json6.results[0].tx_id).toEqual('0xffa1');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

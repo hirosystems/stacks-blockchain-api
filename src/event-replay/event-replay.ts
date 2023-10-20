@@ -1,17 +1,15 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  databaseHasData,
-  exportRawEventRequests,
-  getRawEventRequests,
-} from '../datastore/event-requests';
-import { cycleMigrations, dangerousDropAllTables } from '../datastore/migrations';
+import { exportRawEventRequests, getRawEventRequests } from './event-requests';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { startEventServer } from '../event-stream/event-server';
 import { getApiConfiguredChainID, HttpClientResponse, httpPostRequest } from '../helpers';
 import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { logger } from '../logger';
+import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgServer, getConnectionArgs } from 'src/datastore/connection';
 
 enum EventImportMode {
   /**
@@ -95,7 +93,10 @@ export async function importEventsFromTsv(
   }
 
   try {
-    await cycleMigrations({ dangerousAllowDataLoss: true, checkForEmptyData: true });
+    await cycleMigrations(MIGRATIONS_DIR, getConnectionArgs(PgServer.primary), {
+      dangerousAllowDataLoss: true,
+      checkForEmptyData: true,
+    });
   } catch (error) {
     logger.error(error);
     throw new Error(

@@ -18,20 +18,26 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { runMigrations } from '@hirosystems/api-toolkit';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
     });
+  });
+
+  afterEach(async () => {
+    await apiServer.terminate();
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('socket-io > block updates', async () => {
@@ -542,11 +548,5 @@ describe('socket-io', () => {
 
     await disconnectWaiter;
     expect(disconnectReason).toBe('ping timeout');
-  });
-
-  afterEach(async () => {
-    await apiServer.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

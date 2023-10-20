@@ -1,19 +1,24 @@
 import { importV1TokenOfferingData } from '../import-v1';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('import genesis data tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       skipMigrations: true,
     });
+  });
+
+  afterEach(async () => {
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('import token offering data', async () => {
@@ -38,11 +43,6 @@ describe('import genesis data tests', () => {
     const addr4 = 'SM260QHD6ZM2KKPBKZB8PFE5XWP0MHSKTD1B7BHYR';
     const res4 = await db.getTokenOfferingLocked(addr4, 0);
     expect(res4?.result?.total_locked).toEqual('1666666664');
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });
 

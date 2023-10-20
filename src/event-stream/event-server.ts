@@ -6,14 +6,7 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import {
-  ChainID,
-  getChainIDNetwork,
-  getIbdBlockHeight,
-  hexToBuffer,
-  isProdEnv,
-  stopwatch,
-} from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight, hexToBuffer, stopwatch } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -82,6 +75,7 @@ import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
 import * as zoneFileParser from 'zone-file';
+import { isProdEnv } from '@hirosystems/api-toolkit';
 
 export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 

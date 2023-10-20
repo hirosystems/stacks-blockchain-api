@@ -19,7 +19,6 @@ import {
   DbSmartContract,
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
-import { PgSqlClient } from '../datastore/connection';
 import { bufferToHexPrefixString, httpPostRequest, I32_MAX } from '../helpers';
 import {
   AddressStxBalanceResponse,
@@ -39,23 +38,28 @@ import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getRawEventRequests } from '../datastore/event-requests';
+import { getRawEventRequests } from '../event-replay/event-requests';
 import { logger } from '../logger';
+import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('microblock tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       skipMigrations: true,
     });
     client = db.sql;
+  });
+
+  afterEach(async () => {
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('microblock out of order events', async () => {
@@ -698,10 +702,5 @@ describe('microblock tests', () => {
         expect(addrStxInboundBody2.results[0].amount).toBe(mbTxStxEvent1.amount.toString());
       }
     );
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

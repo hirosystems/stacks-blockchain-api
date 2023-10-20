@@ -21,63 +21,22 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTx,
-  DataStoreTxEventData,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { sqlTransactionContext } from '../datastore/pg-store';
-
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => Promise<void>
-): Promise<void>;
-function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => void | Promise<void>
-): void | Promise<void> {
-  const existing = Object.fromEntries(
-    Object.keys(envVars)
-      .filter(k => k in process.env)
-      .map(k => [k, process.env[k]])
-  );
-  const added = Object.keys(envVars).filter(k => !(k in process.env));
-  Object.entries(envVars).forEach(([k, v]) => {
-    process.env[k] = v;
-    if (v === undefined) {
-      delete process.env[k];
-    }
-  });
-  const restoreEnvVars = () => {
-    added.forEach(k => delete process.env[k]);
-    Object.entries(existing).forEach(([k, v]) => (process.env[k] = v));
-  };
-  let runFn: void | Promise<void>;
-  try {
-    runFn = use();
-    if (runFn instanceof Promise) {
-      return runFn.finally(() => restoreEnvVars());
-    }
-  } finally {
-    if (!(runFn instanceof Promise)) {
-      restoreEnvVars();
-    }
-  }
-}
+import { PgSqlClient, cycleMigrations, runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await runMigrations(MIGRATIONS_DIR, 'up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -86,245 +45,9 @@ describe('postgres datastore', () => {
     client = db.sql;
   });
 
-  test('bytea column serialization', async () => {
-    const vectors = [
-      {
-        from: '0x0001',
-        to: '0x0001',
-      },
-      {
-        from: '0X0002',
-        to: '0x0002',
-      },
-      {
-        from: '0xFfF3',
-        to: '0xfff3',
-      },
-      {
-        from: Buffer.from('0004', 'hex'),
-        to: '0x0004',
-      },
-      {
-        from: new Uint16Array(new Uint8Array([0x00, 0x05]).buffer),
-        to: '0x0005',
-      },
-      {
-        from: '\\x0006',
-        to: '0x0006',
-      },
-      {
-        from: '\\xfFf7',
-        to: '0xfff7',
-      },
-      {
-        from: '\\x',
-        to: '0x',
-      },
-      {
-        from: '',
-        to: '0x',
-      },
-      {
-        from: Buffer.alloc(0),
-        to: '0x',
-      },
-    ];
-    await db.sql.begin(async sql => {
-      await sql`
-        CREATE TEMPORARY TABLE bytea_testing(
-          value bytea NOT NULL
-        ) ON COMMIT DROP
-      `;
-      for (const v of vectors) {
-        const query = await sql<{ value: string }[]>`
-          insert into bytea_testing (value) values (${v.from})
-          returning value
-        `;
-        expect(query[0].value).toBe(v.to);
-      }
-    });
-    const badInputs = ['0x123', '1234', '0xnoop', new Date(), 1234];
-    for (const input of badInputs) {
-      const query = async () =>
-        db.sql.begin(async sql => {
-          await sql`
-          CREATE TEMPORARY TABLE bytea_testing(
-            value bytea NOT NULL
-          ) ON COMMIT DROP
-        `;
-          return await sql`insert into bytea_testing (value) values (${input})`;
-        });
-      await expect(query()).rejects.toThrow();
-    }
-  });
-
-  test('postgres uri config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema&application_name=test-conn-str';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: undefined,
-        PG_USER: undefined,
-        PG_PASSWORD: undefined,
-        PG_HOST: undefined,
-        PG_PORT: undefined,
-        PG_SSL: undefined,
-        PG_SCHEMA: undefined,
-        PG_APPLICATION_NAME: undefined,
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests' });
-        expect(sql.options.database).toBe('test_db');
-        expect(sql.options.user).toBe('test_user');
-        expect(sql.options.pass).toBe('secret_password');
-        expect(sql.options.host).toStrictEqual(['database.server.com']);
-        expect(sql.options.port).toStrictEqual([3211]);
-        expect(sql.options.ssl).toBe('true');
-        expect(sql.options.connection.search_path).toBe('test_schema');
-        expect(sql.options.connection.application_name).toBe('test-conn-str:tests');
-      }
-    );
-  });
-
-  test('postgres env var config', () => {
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: undefined,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-        PG_APPLICATION_NAME: 'test-env-vars',
-        PG_MAX_LIFETIME: '5',
-        PG_IDLE_TIMEOUT: '1',
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests' });
-        expect(sql.options.database).toBe('pg_db_db1');
-        expect(sql.options.user).toBe('pg_user_user1');
-        expect(sql.options.pass).toBe('pg_password_password1');
-        expect(sql.options.host).toStrictEqual(['pg_host_host1']);
-        expect(sql.options.port).toStrictEqual([9876]);
-        expect(sql.options.ssl).toBe(true);
-        expect(sql.options.max_lifetime).toBe(5);
-        expect(sql.options.idle_timeout).toBe(1);
-        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
-        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
-      }
-    );
-  });
-
-  test('postgres primary env var config fallback', () => {
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: undefined,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-        PG_APPLICATION_NAME: 'test-env-vars',
-        PG_MAX_LIFETIME: '5',
-        PG_IDLE_TIMEOUT: '1',
-        // Primary values:
-        PG_PRIMARY_DATABASE: 'primary_db',
-        PG_PRIMARY_USER: 'primary_user',
-        PG_PRIMARY_PASSWORD: 'primary_password',
-        PG_PRIMARY_HOST: 'primary_host',
-        PG_PRIMARY_PORT: '9999',
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests', pgServer: PgServer.primary });
-        // Primary values take precedence.
-        expect(sql.options.database).toBe('primary_db');
-        expect(sql.options.user).toBe('primary_user');
-        expect(sql.options.pass).toBe('primary_password');
-        expect(sql.options.host).toStrictEqual(['primary_host']);
-        expect(sql.options.port).toStrictEqual([9999]);
-        // Other values come from defaults.
-        expect(sql.options.ssl).toBe(true);
-        expect(sql.options.max_lifetime).toBe(5);
-        expect(sql.options.idle_timeout).toBe(1);
-        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
-        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
-      }
-    );
-  });
-
-  test('postgres connection application_name', async () => {
-    await testEnvVars(
-      {
-        PG_APPLICATION_NAME: 'test-app-name',
-      },
-      async () => {
-        const testDb = await PgWriteStore.connect({
-          usageName: 'test-usage-name',
-          skipMigrations: true,
-        });
-        try {
-          const name = await testDb.getConnectionApplicationName();
-          expect(name).toStrictEqual('test-app-name:test-usage-name;datastore-crud');
-        } finally {
-          await testDb.close();
-        }
-      }
-    );
-  });
-
-  test('postgres conflicting config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-      },
-      () => {
-        expect(() => {
-          const config = getPostgres({ usageName: 'tests' });
-        }).toThrowError();
-      }
-    );
-  });
-
-  test('postgres transaction connection integrity', async () => {
-    const usageName = 'stacks-blockchain-api:tests;datastore-crud';
-    const obj = db.sql;
-
-    expect(sqlTransactionContext.getStore()).toBeUndefined();
-    await db.sqlTransaction(async sql => {
-      // Transaction flag is open.
-      expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
-      // New connection object.
-      const newObj = sql;
-      expect(obj).not.toEqual(newObj);
-      expect(sqlTransactionContext.getStore()?.sql).toEqual(newObj);
-
-      // Nested tx uses the same connection object.
-      await db.sqlTransaction(sql => {
-        expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
-        expect(newObj).toEqual(sql);
-      });
-
-      // Getter returns the same connection object too.
-      expect(db.sql).toEqual(newObj);
-    });
-
-    // Back to normal.
-    expect(sqlTransactionContext.getStore()).toBeUndefined();
-    expect(db.sql).toEqual(obj);
+  afterEach(async () => {
+    await db?.close();
+    await runMigrations(MIGRATIONS_DIR, 'down');
   });
 
   test('pg address STX balances', async () => {
@@ -5260,10 +4983,5 @@ describe('postgres datastore', () => {
     await expect(
       db.getTxListDetails({ txIds: [], includeUnanchored: true })
     ).resolves.not.toThrow();
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

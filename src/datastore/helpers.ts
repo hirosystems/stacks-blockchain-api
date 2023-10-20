@@ -1,4 +1,4 @@
-import { hexToBuffer, parseEnum, unwrapOptionalProp } from '../helpers';
+import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -57,12 +57,12 @@ import {
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import * as prom from 'prom-client';
-import { PgSqlClient } from './connection';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { Pox2EventName } from '../pox-helpers';
 import { logger } from '../logger';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
 
 export const TX_COLUMNS = [
   'tx_id',

@@ -413,36 +413,6 @@ export function unixEpochToIso(timestamp: number): string {
   }
 }
 
-export function getCurrentGitTag(): string {
-  const tagEnvVar = (process.env.GIT_TAG || '').trim();
-  if (tagEnvVar) {
-    return tagEnvVar;
-  }
-
-  if (!isDevEnv && !isTestEnv) {
-    if (!tagEnvVar) {
-      const error =
-        'Production requires the GIT_TAG env var to be set. Set `NODE_ENV=development` to use the current git tag';
-      console.error(error);
-      throw new Error(error);
-    }
-    return tagEnvVar;
-  }
-
-  try {
-    const gitTag = (execSync('git tag --points-at HEAD', { encoding: 'utf8' }) ?? '').trim();
-    const gitCommit = (execSync('git rev-parse --short HEAD', { encoding: 'utf8' }) ?? '').trim();
-    const result = gitTag || gitCommit;
-    if (!result) {
-      throw new Error('no git tag or commit hash available');
-    }
-    return result;
-  } catch (error) {
-    console.error(error);
-    throw error;
-  }
-}
-
 /**
  * Encodes a buffer as a `0x` prefixed lower-case hex string.
  * Returns an empty string if the buffer is zero length.
