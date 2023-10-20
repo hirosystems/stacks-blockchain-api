@@ -14,14 +14,8 @@ import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
 import { createHash } from 'node:crypto';
 import { logger } from './logger';
+import { isDevEnv, isTestEnv } from '@hirosystems/api-toolkit';
 
-export const isDevEnv = process.env.NODE_ENV === 'development';
-export const isTestEnv = process.env.NODE_ENV === 'test';
-export const isProdEnv =
-  process.env.NODE_ENV === 'production' ||
-  process.env.NODE_ENV === 'prod' ||
-  !process.env.NODE_ENV ||
-  (!isTestEnv && !isDevEnv);
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
 export const APP_DIR = __dirname;

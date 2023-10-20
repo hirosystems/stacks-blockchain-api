@@ -1,7 +1,6 @@
 import {
   loadDotEnv,
   timeout,
-  isProdEnv,
   numberToHex,
   parseArgBoolean,
   getApiConfiguredChainID,
@@ -14,7 +13,6 @@ import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
-import { registerShutdownConfig } from './shutdown-handler';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
@@ -28,6 +26,7 @@ import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
 import { ReplayController } from './event-replay/parquet-based/replay-controller';
+import { isProdEnv, registerShutdownConfig } from '@hirosystems/api-toolkit';
 
 enum StacksApiMode {
   /**
