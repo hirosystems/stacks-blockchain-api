@@ -1,8 +1,6 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import { DbBlock, DbTxRaw, DbTxStatus } from '../datastore/common';
+import { DbBlock } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -56,9 +54,9 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork } from '../rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '../datastore/migrations';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
+  migrate,
   standByForPoxCycle,
   standByForTx as standByForTxShared,
   standByUntilBurnBlock,
@@ -75,9 +73,13 @@ describe('Rosetta Construction', () => {
     process.env.PG_DATABASE = 'postgres';
     process.env.STACKS_CHAIN_ID = '0x80000000';
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    // eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     await new StacksCoreRpcClient().waitForConnection(60000);
+  });
+
+  afterAll(async () => {
+    await api.terminate();
+    await db?.close();
   });
 
   /* rosetta construction api tests below */
@@ -2575,12 +2577,5 @@ describe('Rosetta Construction', () => {
 
       expect(queryResult.genesis_block_identifier).toEqual(expectResponse.genesis_block_identifier);
     });
-  });
-
-  afterAll(async () => {
-    // await new Promise<void>(resolve => eventServer.close(() => resolve()));
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

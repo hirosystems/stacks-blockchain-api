@@ -8,8 +8,7 @@ import {
 } from '../event-stream/event-server';
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
-import { cycleMigrations, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from '../datastore/pg-store';
+import { migrate } from './test-helpers';
 
 interface GlobalTestEnv {
   db: PgWriteStore;
@@ -43,7 +42,7 @@ export async function defaultSetupInit(
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
-  await cycleMigrations(MIGRATIONS_DIR);
+  await migrate('up');
   const db = await PgWriteStore.connect({ usageName: 'tests' });
   const eventServer = await startEventServer({
     datastore: db,
@@ -65,7 +64,7 @@ export async function defaultSetupTeardown() {
   const testEnv: GlobalTestEnv = (global as any).globalTestEnv;
   await testEnv.eventServer.closeAsync();
   await testEnv.db.close();
-  await runMigrations('test-setup', 'down');
+  await migrate('down');
 
   // If running in CI setup the "why am I still running?" log to detect stuck Jest tests
   if (isCI) {

@@ -7,10 +7,6 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import * as supertest from 'supertest';
 import {
-  Account,
-  accountFromKey,
-  fetchGet,
-  readOnlyFnCall,
   standByForTxSuccess,
   standByUntilBlock,
   standByUntilBurnBlock,
@@ -23,7 +19,6 @@ import {
   contractPrincipalCV,
   makeContractCall,
   makeContractDeploy,
-  StacksTransaction,
   serializeCV,
   standardPrincipalCV,
   uintCV,
@@ -34,7 +29,6 @@ import {
   cvToString,
   noneCV,
 } from '@stacks/transactions';
-import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { StacksTestnet } from '@stacks/network';
 import { timeout } from '../helpers';

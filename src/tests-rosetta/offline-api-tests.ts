@@ -12,7 +12,6 @@ import {
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
   MessageSignature,
-  noneCV,
   pubKeyfromPrivKey,
   publicKeyToString,
   SignedTokenTransferOptions,
@@ -52,7 +51,6 @@ import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
 import * as nock from 'nock';
-import * as poxHelpers from '../pox-helpers';
 import { PgStore } from '../datastore/pg-store';
 import { decodeBtcAddress } from '@stacks/stacking';
 
@@ -65,6 +63,12 @@ describe('Rosetta offline API', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     nock.disableNetConnect();
     nock.enableNetConnect('127.0.0.1:3999');
+  });
+
+  afterAll(async () => {
+    await api.terminate();
+    nock.cleanAll();
+    nock.enableNetConnect()
   });
 
   test('Success: offline - network/list', async () => {
@@ -1209,13 +1213,5 @@ describe('Rosetta offline API', () => {
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
-  });
-
-  /* rosetta construction end */
-
-  afterAll(async () => {
-    await api.terminate();
-    nock.cleanAll();
-    nock.enableNetConnect()
   });
 });
