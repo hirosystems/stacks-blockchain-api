@@ -9,7 +9,7 @@ import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { logger } from '../logger';
 import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
-import { PgServer, getConnectionArgs } from 'src/datastore/connection';
+import { PgServer, getConnectionArgs } from '../datastore/connection';
 
 enum EventImportMode {
   /**
@@ -84,16 +84,19 @@ export async function importEventsFromTsv(
     default:
       throw new Error(`Invalid event import mode: ${importMode}`);
   }
-  const hasData = await databaseHasData();
+  const connectionArgs = getConnectionArgs(PgServer.primary);
+  const hasData = await databaseHasData(connectionArgs);
   if (!wipeDb && hasData) {
     throw new Error(`Database contains existing data. Add --wipe-db to drop the existing tables.`);
   }
   if (force) {
-    await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
+    await dangerousDropAllTables(connectionArgs, {
+      acknowledgePotentialCatastrophicConsequences: 'yes',
+    });
   }
 
   try {
-    await cycleMigrations(MIGRATIONS_DIR, getConnectionArgs(PgServer.primary), {
+    await cycleMigrations(MIGRATIONS_DIR, connectionArgs, {
       dangerousAllowDataLoss: true,
       checkForEmptyData: true,
     });
