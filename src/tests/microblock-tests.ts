@@ -40,15 +40,15 @@ import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getRawEventRequests } from '../event-replay/event-requests';
 import { logger } from '../logger';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('microblock tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -59,7 +59,7 @@ describe('microblock tests', () => {
 
   afterEach(async () => {
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('microblock out of order events', async () => {
@@ -686,17 +686,15 @@ describe('microblock tests', () => {
         const addrStxInbound1 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx_inbound`
         );
-        const {
-          body: addrStxInboundBody1,
-        }: { body: AddressStxInboundListResponse } = addrStxInbound1;
+        const { body: addrStxInboundBody1 }: { body: AddressStxInboundListResponse } =
+          addrStxInbound1;
         expect(addrStxInboundBody1.results).toHaveLength(0);
 
         const addrStxInbound2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx_inbound?unanchored`
         );
-        const {
-          body: addrStxInboundBody2,
-        }: { body: AddressStxInboundListResponse } = addrStxInbound2;
+        const { body: addrStxInboundBody2 }: { body: AddressStxInboundListResponse } =
+          addrStxInbound2;
         expect(addrStxInboundBody2.results).toHaveLength(1);
         expect(addrStxInboundBody2.results[0].tx_id).toBe(mbTx1.tx_id);
         expect(addrStxInboundBody2.results[0].amount).toBe(mbTxStxEvent1.amount.toString());

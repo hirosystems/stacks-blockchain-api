@@ -15,8 +15,8 @@ import { FEE_RATE } from '../api/routes/fee-rate';
 import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -24,7 +24,7 @@ describe('other tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -37,7 +37,7 @@ describe('other tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('stx-supply', async () => {

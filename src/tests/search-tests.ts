@@ -16,8 +16,8 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('search tests', () => {
   let db: PgWriteStore;
@@ -25,7 +25,7 @@ describe('search tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -38,7 +38,7 @@ describe('search tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('search term - hash', async () => {

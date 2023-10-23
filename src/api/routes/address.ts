@@ -14,8 +14,6 @@ import {
   formatMapToObject,
   getSendManyContract,
   has0xPrefix,
-  isProdEnv,
-  isValidC32Address,
   isValidPrincipal,
 } from '../../helpers';
 import {
@@ -50,6 +48,7 @@ import {
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
+import { isProdEnv } from '@hirosystems/api-toolkit';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,

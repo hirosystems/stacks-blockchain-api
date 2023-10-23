@@ -31,20 +31,25 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
     });
+  });
+
+  afterEach(async () => {
+    await apiServer.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('websocket rpc - tx subscription updates', async () => {
@@ -726,11 +731,5 @@ describe('websocket notifications', () => {
     } finally {
       client.webSocket.close();
     }
-  });
-
-  afterEach(async () => {
-    await apiServer.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

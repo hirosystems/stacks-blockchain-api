@@ -19,7 +19,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { ChainID, apiDocumentationUrl, getChainIDNetwork, isProdEnv, waiter } from '../helpers';
+import { ChainID, apiDocumentationUrl, getChainIDNetwork, waiter } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
@@ -45,6 +45,7 @@ import { createPox3EventsRouter } from './routes/pox3';
 import { isPgConnectionError } from '../datastore/helpers';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
+import { isProdEnv } from '@hirosystems/api-toolkit';
 
 export interface ApiServer {
   expressApp: express.Express;

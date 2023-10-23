@@ -17,8 +17,8 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -26,7 +26,7 @@ describe('mempool tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -39,7 +39,7 @@ describe('mempool tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('garbage collection', async () => {

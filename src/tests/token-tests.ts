@@ -4,15 +4,14 @@ import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -24,7 +23,7 @@ describe('/extended/v1/tokens tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('/nft/holdings', async () => {

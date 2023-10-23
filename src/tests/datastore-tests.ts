@@ -28,15 +28,15 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { PgSqlClient, cycleMigrations, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -47,7 +47,7 @@ describe('postgres datastore', () => {
 
   afterEach(async () => {
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('pg address STX balances', async () => {

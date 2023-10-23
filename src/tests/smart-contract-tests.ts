@@ -11,8 +11,8 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX, waiter } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -20,7 +20,7 @@ describe('smart contract tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: true,
@@ -33,7 +33,7 @@ describe('smart contract tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('list contract log events', async () => {

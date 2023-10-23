@@ -1,14 +1,13 @@
 import { importV1TokenOfferingData } from '../import-v1';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('import genesis data tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -18,7 +17,7 @@ describe('import genesis data tests', () => {
 
   afterEach(async () => {
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('import token offering data', async () => {

@@ -18,15 +18,14 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
-import { runMigrations } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
@@ -37,7 +36,7 @@ describe('socket-io', () => {
   afterEach(async () => {
     await apiServer.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('socket-io > block updates', async () => {

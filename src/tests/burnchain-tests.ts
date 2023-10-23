@@ -3,8 +3,8 @@ import { ChainID } from '@stacks/transactions';
 import { DbBurnchainReward, DbRewardSlotHolder } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('burnchain tests', () => {
   let db: PgWriteStore;
@@ -12,7 +12,7 @@ describe('burnchain tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -25,7 +25,7 @@ describe('burnchain tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('fetch reward slot holders', async () => {

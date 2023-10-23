@@ -8,14 +8,13 @@ import * as os from 'os';
 import * as nock from 'nock';
 import { DbBlock } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -25,7 +24,7 @@ describe('v2-proxy tests', () => {
 
   afterEach(async () => {
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('tx post multicast', async () => {

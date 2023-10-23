@@ -7,8 +7,8 @@ import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -16,7 +16,7 @@ describe('cache-control tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -29,7 +29,7 @@ describe('cache-control tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('parse if-none-match header', () => {

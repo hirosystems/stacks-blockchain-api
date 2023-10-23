@@ -49,8 +49,15 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { I32_MAX, coerceToBuffer, hexToBuffer, timeout } from '../helpers';
+import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
 import { b58ToC32 } from 'c32check';
+import { runMigrations } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from '../datastore/pg-store';
+import { getConnectionArgs } from '../datastore/connection';
+
+export async function migrate(direction: 'up' | 'down') {
+  await runMigrations(MIGRATIONS_DIR, direction, getConnectionArgs());
+}
 
 export interface TestEnvContext {
   db: PgWriteStore;
@@ -594,9 +601,7 @@ export async function stackStxWithRosetta(opts: {
   };
 }
 
-export function decodePoxAddrArg(
-  argHex: string
-): {
+export function decodePoxAddrArg(argHex: string): {
   btcAddr: string;
   stxAddr: string;
   hash160: string;

@@ -8,7 +8,7 @@ import { importV1TokenOfferingData } from '../import-v1';
 import { findTsvBlockHeight, getDbBlockHeight } from './helpers';
 import { logger } from '../logger';
 import { cycleMigrations, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { PgServer, getConnectionArgs } from 'src/datastore/connection';
 
 enum EventImportMode {

@@ -42,8 +42,8 @@ import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -51,7 +51,7 @@ describe('tx tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -64,7 +64,7 @@ describe('tx tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('fetch tx list details', async () => {

@@ -9,7 +9,7 @@ import {
 import { ChainID } from '@stacks/common';
 import * as isCI from 'is-ci';
 import { cycleMigrations, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { MIGRATIONS_DIR } from '../datastore/pg-store';
 
 interface GlobalTestEnv {
   db: PgWriteStore;

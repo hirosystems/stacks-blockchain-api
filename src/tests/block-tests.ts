@@ -12,8 +12,8 @@ import { startApiServer, ApiServer } from '../api/init';
 import { bufferToHexPrefixString, I32_MAX } from '../helpers';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient, runMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from 'src/datastore/pg-store';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -21,7 +21,7 @@ describe('block tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    await runMigrations(MIGRATIONS_DIR, 'up');
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -34,7 +34,7 @@ describe('block tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(MIGRATIONS_DIR, 'down');
+    await migrate('down');
   });
 
   test('info block time', async () => {

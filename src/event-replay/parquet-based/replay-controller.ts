@@ -8,7 +8,6 @@ import { processAttachmentNewEvents } from './importers/attachment-new-importer'
 import { processRawEvents } from './importers/raw-importer';
 import { processRemainderEvents } from './importers/remainder-importer';
 import { DatasetStore } from './dataset/store';
-import { cycleMigrations, dangerousDropAllTables } from '../../datastore/migrations';
 import { IndexesState } from '../../datastore/common';
 import { importV1TokenOfferingData } from '../../import-v1';
 
@@ -17,6 +16,9 @@ const cluster = (_cluster as unknown) as _cluster.Cluster; // typings fix
 
 import { FILE_PATH as raw_worker_path } from './workers/raw-worker';
 import { FILE_PATH as new_block_worker_path } from './workers/new-block-worker';
+import { cycleMigrations, dangerousDropAllTables } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from '../datastore/pg-store';
+import { PgServer, getConnectionArgs } from 'src/datastore/connection';
 
 /**
  * This class is an entry point for the event-replay based on parquet files,
@@ -225,7 +227,10 @@ export class ReplayController {
 
     logger.info({ component: 'event-replay' }, 'Migrating tables');
     try {
-      await cycleMigrations({ dangerousAllowDataLoss: true, checkForEmptyData: true });
+      await cycleMigrations(MIGRATIONS_DIR, getConnectionArgs(PgServer.primary), {
+        dangerousAllowDataLoss: true,
+        checkForEmptyData: true,
+      });
     } catch (error) {
       logger.error(error);
       throw new Error('DB migration cycle failed');
