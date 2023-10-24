@@ -39,9 +39,9 @@ export function sha256(content: string) {
   return createHash('sha256').update(content).digest('hex');
 }
 
-function createEnumChecker<T extends string, TEnumValue extends number>(
-  enumVariable: { [key in T]: TEnumValue }
-): (value: number) => value is TEnumValue {
+function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
+  [key in T]: TEnumValue;
+}): (value: number) => value is TEnumValue {
   // Create a set of valid enum number values.
   const enumValues = Object.values<number>(enumVariable).filter(v => typeof v === 'number');
   const enumValueSet = new Set<number>(enumValues);
@@ -883,7 +883,8 @@ export function parseDataUrl(
     if (url.protocol !== 'data:') {
       return false;
     }
-    const validDataUrlRegex = /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
+    const validDataUrlRegex =
+      /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
     const parts = validDataUrlRegex.exec(s.trim());
     if (parts === null) {
       return false;

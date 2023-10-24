@@ -208,9 +208,7 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getChainTip(
-    sql: PgSqlClient
-  ): Promise<{
+  async getChainTip(sql: PgSqlClient): Promise<{
     blockHeight: number;
     blockHash: string;
     indexBlockHash: string;
@@ -680,9 +678,7 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getAddressNonces(args: {
-    stxAddress: string;
-  }): Promise<{
+  async getAddressNonces(args: { stxAddress: string }): Promise<{
     lastExecutedTxNonce: number | null;
     lastMempoolTxNonce: number | null;
     possibleNextNonce: number;
