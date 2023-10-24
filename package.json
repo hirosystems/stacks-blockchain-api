@@ -36,7 +36,7 @@
     "test:integration:rpc": "concurrently \"npm:devenv:deploy-krypton\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.rpc.js --no-cache --runInBand; npm run devenv:stop-krypton\"",
     "test:integration:event-replay": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml up --force-recreate -V\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.event-replay.js --no-cache --runInBand; npm run devenv:stop\"",
     "test:integration:btc-faucet": "concurrently \"docker compose -f docker/docker-compose.dev.postgres.yml -f docker/docker-compose.dev.bitcoind.yml up --force-recreate -V\" \"cross-env NODE_ENV=development jest --config ./tests/jest.config.btc-faucet.js --no-cache --runInBand; npm run devenv:stop\"",
-    "generate:git-info": "node ./git-info-generator.mjs",
+    "generate:git-info": "rimraf .git-info && node_modules/.bin/api-toolkit-git-info",
     "build": "npm run generate:git-info && rimraf ./lib && tsc -p tsconfig.build.json",
     "build:tests": "tsc -p tsconfig.json",
     "build:docs": "npm ci --prefix docs && npm run build --prefix docs && npm ci --prefix client && npm run generate:docs --prefix client",
