@@ -1,10 +1,4 @@
-import { PgWriteStore } from '../datastore/pg-write-store';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ApiServer, startApiServer } from '../api/init';
-import { startEventServer } from '../event-stream/event-server';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { Server } from 'net';
-import { ChainID } from '@stacks/transactions';
 
 describe('core RPC tests', () => {
   let client: StacksCoreRpcClient;
@@ -37,9 +31,5 @@ describe('core RPC tests', () => {
   test('get estimated transfer fee', async () => {
     const fee = await client.getEstimatedTransferFee();
     expect(fee).toBeTruthy();
-  });
-
-  afterAll(async () => {
-    await runMigrations(undefined, 'down');
   });
 });

@@ -3,8 +3,7 @@ import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
-import { cycleMigrations } from '@hirosystems/api-toolkit';
-import { MIGRATIONS_DIR } from '../datastore/pg-store';
+import { migrate } from '../test-utils/test-helpers';
 
 export interface GlobalTestEnv {
   db: PgWriteStore;
@@ -40,7 +39,7 @@ export default async (): Promise<void> => {
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
-  await cycleMigrations(MIGRATIONS_DIR);
+  await migrate('up');
   const db = await PgWriteStore.connect({ usageName: 'tests' });
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 

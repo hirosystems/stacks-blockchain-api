@@ -17,7 +17,6 @@ import {
 import { logger } from '../logger';
 import { testnetKeys } from '../api/routes/debug';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '../datastore/migrations';
 import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 function hash160(bfr: Buffer): Buffer {
@@ -599,6 +598,5 @@ describe('BNS integration tests', () => {
   afterAll(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

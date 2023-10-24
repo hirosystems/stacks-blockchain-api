@@ -15,7 +15,6 @@ import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '
 import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
-  standByForNextPoxCycle,
   standByForPoxCycle,
   standByForTxSuccess,
   standByUntilBurnBlock,

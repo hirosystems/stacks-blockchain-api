@@ -11,8 +11,8 @@ import { DbTxTypeId } from '../datastore/common';
 import { stringCV } from '@stacks/transactions/dist/clarity/types/stringCV';
 import { getTokenMetadataFetchTimeoutMs } from '../token-metadata/helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
+import { migrate } from '../test-utils/test-helpers';
 
 const NFT_CONTRACT_ABI: ClarityAbi = {
   maps: [],
@@ -112,8 +112,7 @@ describe('token metadata strict mode', () => {
   const contractTxId = '0x1f1f';
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
@@ -137,6 +136,12 @@ describe('token metadata strict mode', () => {
       })
       .build();
     await db.update(block);
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('retryable error increases retry_count', async () => {
@@ -379,11 +384,5 @@ describe('token metadata strict mode', () => {
     const metadata = await db.getNftMetadata(contractId);
     expect(metadata.found).toBe(true);
     expect(metadata.result?.token_uri).toBe('http://indigo.com/nft.jpeg');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

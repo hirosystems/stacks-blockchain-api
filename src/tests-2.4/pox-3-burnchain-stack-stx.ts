@@ -13,7 +13,6 @@ import { BootContractAddress, timeout } from '../helpers';
 import {
   Account,
   accountFromKey,
-  decodePoxAddrArg,
   fetchGet,
   getRosettaAccountBalance,
   standByForTxSuccess,
@@ -29,7 +28,6 @@ import { ApiServer } from '../api/init';
 import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
-import { Pox2ContractIdentifer } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress } from '@stacks/stacking';
 

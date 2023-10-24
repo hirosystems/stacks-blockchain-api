@@ -66,12 +66,10 @@ describe('PoX-3 - Stack extend and increase operations', () => {
       label: btcRegtestAccount.address,
       rescan: false,
     });
-    const btcWalletAddrs: Record<
-      string,
-      unknown
-    > = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-      label: btcRegtestAccount.address,
-    });
+    const btcWalletAddrs: Record<string, unknown> =
+      await testEnv.bitcoinRpcClient.getaddressesbylabel({
+        label: btcRegtestAccount.address,
+      });
 
     const expectedAddrs = {
       P2PKH: getBitcoinAddressFromKey({
