@@ -9,7 +9,6 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DataStoreBlockUpdateData,
-  DbMempoolTx,
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
@@ -63,6 +62,7 @@ import {
   DbMempoolTxRaw,
   DbChainTip,
   DbPox3Event,
+  NftCustodyInsertValues,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -407,7 +407,7 @@ export class PgWriteStore extends PgStore {
             await this.updateFtEvent(sql, entry.tx, ftEvent);
           }
           for (const nftEvent of entry.nftEvents) {
-            await this.updateNftEvent(sql, entry.tx, nftEvent);
+            await this.updateNftEvent(sql, entry.tx, nftEvent, false);
           }
           deployedSmartContracts.push(...entry.smartContracts);
           for (const smartContract of entry.smartContracts) {
@@ -466,7 +466,6 @@ export class PgWriteStore extends PgStore {
     const ibdHeight = getIbdBlockHeight();
     this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
 
-    await this.refreshNftCustody(batchedTxData);
     await this.refreshMaterializedView('chain_tip');
     await this.refreshMaterializedView('mempool_digest');
 
@@ -746,7 +745,6 @@ export class PgWriteStore extends PgStore {
       }
     });
 
-    await this.refreshNftCustody(txData, true);
     await this.refreshMaterializedView('chain_tip');
     await this.refreshMaterializedView('mempool_digest');
 
@@ -1313,27 +1311,65 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent) {
-    const values: NftEventInsertValues = {
+  async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent, microblock: boolean) {
+    const custody: NftCustodyInsertValues = {
+      asset_identifier: event.asset_identifier,
+      value: event.value,
       tx_id: event.tx_id,
       index_block_hash: tx.index_block_hash,
       parent_index_block_hash: tx.parent_index_block_hash,
       microblock_hash: tx.microblock_hash,
       microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      sender: event.sender ?? null,
       recipient: event.recipient ?? null,
       event_index: event.event_index,
       tx_index: event.tx_index,
       block_height: event.block_height,
+    };
+    const values: NftEventInsertValues = {
+      ...custody,
+      microblock_canonical: tx.microblock_canonical,
       canonical: event.canonical,
+      sender: event.sender ?? null,
       asset_event_type_id: event.asset_event_type_id,
-      asset_identifier: event.asset_identifier,
-      value: event.value,
     };
     await sql`
       INSERT INTO nft_events ${sql(values)}
     `;
+    if (tx.canonical && tx.microblock_canonical && event.canonical) {
+      const table = microblock ? sql`nft_custody_unanchored` : sql`nft_custody`;
+      await sql`
+        INSERT INTO ${table} ${sql(custody)}
+        ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
+          tx_id = EXCLUDED.tx_id,
+          index_block_hash = EXCLUDED.index_block_hash,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_hash = EXCLUDED.microblock_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          recipient = EXCLUDED.recipient,
+          event_index = EXCLUDED.event_index,
+          tx_index = EXCLUDED.tx_index,
+          block_height = EXCLUDED.block_height
+        WHERE
+          (
+            EXCLUDED.block_height > ${table}.block_height
+          )
+          OR (
+            EXCLUDED.block_height = ${table}.block_height
+            AND EXCLUDED.microblock_sequence > ${table}.microblock_sequence
+          )
+          OR (
+            EXCLUDED.block_height = ${table}.block_height
+            AND EXCLUDED.microblock_sequence = ${table}.microblock_sequence
+            AND EXCLUDED.tx_index > ${table}.tx_index
+          )
+          OR (
+            EXCLUDED.block_height = ${table}.block_height
+            AND EXCLUDED.microblock_sequence = ${table}.microblock_sequence
+            AND EXCLUDED.tx_index = ${table}.tx_index
+            AND EXCLUDED.event_index > ${table}.event_index
+          )
+      `;
+    }
   }
 
   async updateBatchSmartContractEvent(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
@@ -2206,7 +2242,7 @@ export class PgWriteStore extends PgStore {
         await this.updateFtEvent(sql, entry.tx, ftEvent);
       }
       for (const nftEvent of entry.nftEvents) {
-        await this.updateNftEvent(sql, entry.tx, nftEvent);
+        await this.updateNftEvent(sql, entry.tx, nftEvent, true);
       }
       for (const smartContract of entry.smartContracts) {
         await this.updateSmartContract(sql, entry.tx, smartContract);
@@ -2288,9 +2324,72 @@ export class PgWriteStore extends PgStore {
           AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
           AND tx_id IN ${sql(txIds)}
       `;
+      await this.updateNftCustodyFromReOrg(sql, {
+        index_block_hash: args.indexBlockHash,
+        microblocks: args.microblocks,
+      });
     }
 
     return { updatedTxs: updatedMbTxs };
+  }
+
+  /**
+   * Refreshes NFT custody data for events within a block or series of microblocks.
+   * @param sql - SQL client
+   * @param args - Block and microblock hashes
+   */
+  async updateNftCustodyFromReOrg(
+    sql: PgSqlClient,
+    args: {
+      index_block_hash: string;
+      microblocks: string[];
+    }
+  ): Promise<void> {
+    for (const table of [sql`nft_custody`, sql`nft_custody_unanchored`]) {
+      await sql`
+        INSERT INTO ${table}
+        (asset_identifier, value, tx_id, index_block_hash, parent_index_block_hash, microblock_hash,
+          microblock_sequence, recipient, event_index, tx_index, block_height)
+        (
+          SELECT
+            DISTINCT ON(asset_identifier, value) asset_identifier, value, tx_id, txs.index_block_hash,
+            txs.parent_index_block_hash, txs.microblock_hash, txs.microblock_sequence, recipient,
+            nft.event_index, txs.tx_index, txs.block_height
+          FROM
+            nft_events AS nft
+          INNER JOIN
+            txs USING (tx_id)
+          WHERE
+            txs.canonical = true
+            AND txs.microblock_canonical = true
+            AND nft.canonical = true
+            AND nft.microblock_canonical = true
+            AND nft.index_block_hash = ${args.index_block_hash}
+            ${
+              args.microblocks.length > 0
+                ? sql`AND nft.microblock_hash IN ${sql(args.microblocks)}`
+                : sql``
+            }
+          ORDER BY
+            asset_identifier,
+            value,
+            txs.block_height DESC,
+            txs.microblock_sequence DESC,
+            txs.tx_index DESC,
+            nft.event_index DESC
+        )
+        ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
+          tx_id = EXCLUDED.tx_id,
+          index_block_hash = EXCLUDED.index_block_hash,
+          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+          microblock_hash = EXCLUDED.microblock_hash,
+          microblock_sequence = EXCLUDED.microblock_sequence,
+          recipient = EXCLUDED.recipient,
+          event_index = EXCLUDED.event_index,
+          tx_index = EXCLUDED.tx_index,
+          block_height = EXCLUDED.block_height
+      `;
+    }
   }
 
   /**
@@ -2554,6 +2653,10 @@ export class PgWriteStore extends PgStore {
     } else {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
     }
+    await this.updateNftCustodyFromReOrg(sql, {
+      index_block_hash: indexBlockHash,
+      microblocks: [],
+    });
 
     // todo: do we still need pox2 marking here?
     const pox2Result = await sql`
@@ -2923,40 +3026,6 @@ export class PgWriteStore extends PgStore {
   }
 
   /**
-   * Refreshes the `nft_custody` and `nft_custody_unanchored` materialized views if necessary.
-   * @param sql - DB client
-   * @param txs - Transaction event data
-   * @param unanchored - If this refresh is requested from a block or microblock
-   */
-  async refreshNftCustody(txs: DataStoreTxEventData[], unanchored: boolean = false) {
-    await this.sqlWriteTransaction(async sql => {
-      const newNftEventCount = txs
-        .map(tx => tx.nftEvents.length)
-        .reduce((prev, cur) => prev + cur, 0);
-      if (newNftEventCount > 0) {
-        // Always refresh unanchored view since even if we're in a new anchored block we should update the
-        // unanchored state to the current one.
-        await this.refreshMaterializedView('nft_custody_unanchored', sql);
-        if (!unanchored) {
-          await this.refreshMaterializedView('nft_custody', sql);
-        }
-      } else if (!unanchored) {
-        // Even if we didn't receive new NFT events in a new anchor block, we should check if we need to
-        // update the anchored view to reflect any changes made by previous microblocks.
-        const result = await sql<{ outdated: boolean }[]>`
-          WITH anchored_height AS (SELECT MAX(block_height) AS anchored FROM nft_custody),
-            unanchored_height AS (SELECT MAX(block_height) AS unanchored FROM nft_custody_unanchored)
-          SELECT unanchored > anchored AS outdated
-          FROM anchored_height CROSS JOIN unanchored_height
-        `;
-        if (result.length > 0 && result[0].outdated) {
-          await this.refreshMaterializedView('nft_custody', sql);
-        }
-      }
-    });
-  }
-
-  /**
    * Called when a full event import is complete.
    */
   async finishEventReplay() {
@@ -2964,8 +3033,6 @@ export class PgWriteStore extends PgStore {
       return;
     }
     await this.sqlWriteTransaction(async sql => {
-      await this.refreshMaterializedView('nft_custody', sql, false);
-      await this.refreshMaterializedView('nft_custody_unanchored', sql, false);
       await this.refreshMaterializedView('chain_tip', sql, false);
       await this.refreshMaterializedView('mempool_digest', sql, false);
     });

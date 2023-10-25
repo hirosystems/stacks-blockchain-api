@@ -3318,6 +3318,7 @@ export class PgStore {
         FROM ${nftCustody} AS nft
         WHERE nft.recipient = ${args.principal}
         ${assetIdFilter}
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         LIMIT ${args.limit}
         OFFSET ${args.offset}
       )
@@ -3519,11 +3520,11 @@ export class PgStore {
         AND block_height <= ${args.blockHeight}
         ORDER BY asset_identifier, value, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
       )
-      SELECT sender, recipient, asset_identifier, value, event_index, asset_event_type_id, address_transfers.block_height, address_transfers.tx_id, (COUNT(*) OVER())::INTEGER AS count
-      FROM address_transfers
+      SELECT sender, recipient, asset_identifier, value, at.event_index, asset_event_type_id, at.block_height, at.tx_id, (COUNT(*) OVER())::INTEGER AS count
+      FROM address_transfers AS at
       INNER JOIN ${args.includeUnanchored ? this.sql`last_nft_transfers` : this.sql`nft_custody`}
         USING (asset_identifier, value, recipient)
-      ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+      ORDER BY at.block_height DESC, at.microblock_sequence DESC, at.tx_index DESC, event_index DESC
       LIMIT ${args.limit} OFFSET ${args.offset}
     `;
 
