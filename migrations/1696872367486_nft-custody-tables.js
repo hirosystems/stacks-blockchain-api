@@ -3,9 +3,7 @@
 exports.shorthands = undefined;
 
 exports.up = pgm => {
-  pgm.dropIndex('nft_custody', ['recipient', 'asset_identifier']);
-  pgm.dropIndex('nft_custody', 'value');
-  pgm.renameMaterializedView('nft_custody', 'nft_custody_old');
+  pgm.dropMaterializedView('nft_custody');
   pgm.createTable('nft_custody', {
     asset_identifier: {
       type: 'string',
@@ -83,11 +81,8 @@ exports.up = pgm => {
         nft.event_index DESC
     )
   `);
-  pgm.dropMaterializedView('nft_custody_old');
 
-  pgm.dropIndex('nft_custody_unanchored', ['recipient', 'asset_identifier']);
-  pgm.dropIndex('nft_custody_unanchored', 'value');
-  pgm.renameMaterializedView('nft_custody_unanchored', 'nft_custody_unanchored_old');
+  pgm.dropMaterializedView('nft_custody_unanchored');
   pgm.createTable('nft_custody_unanchored', {
     asset_identifier: {
       type: 'string',
@@ -165,7 +160,6 @@ exports.up = pgm => {
         nft.event_index DESC
     )
   `);
-  pgm.dropMaterializedView('nft_custody_unanchored_old');
 };
 
 exports.down = pgm => {
