@@ -1,10 +1,8 @@
 import { BufferCV, bufferCV, cvToHex, hexToCV, TupleCV, tupleCV } from '@stacks/transactions';
 import BigNumber from 'bignumber.js';
 import * as btc from 'bitcoinjs-lib';
-import { execSync } from 'child_process';
 import * as dotenv from 'dotenv-flow';
 import * as http from 'http';
-import { isArrayBufferView } from 'node:util/types';
 import * as path from 'path';
 import { isValidStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as stream from 'stream';
@@ -12,9 +10,8 @@ import * as ecc from 'tiny-secp256k1';
 import * as util from 'util';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { DbEventTypeId } from './datastore/common';
-import { createHash } from 'node:crypto';
 import { logger } from './logger';
-import { isDevEnv, isTestEnv } from '@hirosystems/api-toolkit';
+import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
@@ -33,10 +30,6 @@ export function getIbdBlockHeight(): number | undefined {
     const num = Number.parseInt(val);
     return !Number.isNaN(num) ? num : undefined;
   }
-}
-
-export function sha256(content: string) {
-  return createHash('sha256').update(content).digest('hex');
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
@@ -358,35 +351,6 @@ export async function httpGetRequest(url: string, opts?: http.RequestOptions) {
   });
 }
 
-/**
- * Parses a boolean string using conventions from CLI arguments, URL query params, and environmental variables.
- * If the input is defined but empty string then true is returned. If the input is undefined or null than false is returned.
- * For example, if the input comes from a CLI arg like `--enable_thing` or URL query param like `?enable_thing`, then
- * this function expects to receive a defined but empty string, and returns true.
- * Otherwise, it checks or values like `true`, `1`, `on`, `yes` (and the inverses).
- * Throws if an unexpected input value is provided.
- */
-export function parseArgBoolean(val: string | undefined | null): boolean {
-  if (typeof val === 'undefined' || val === null) {
-    return false;
-  }
-  switch (val.trim().toLowerCase()) {
-    case '':
-    case 'true':
-    case '1':
-    case 'on':
-    case 'yes':
-      return true;
-    case 'false':
-    case '0':
-    case 'off':
-    case 'no':
-      return false;
-    default:
-      throw new Error(`Cannot parse boolean from "${val}"`);
-  }
-}
-
 export function parsePort(portVal: number | string | undefined): number | undefined {
   if (portVal === undefined) {
     return undefined;
@@ -411,75 +375,6 @@ export function unixEpochToIso(timestamp: number): string {
   } catch (error) {
     throw error;
   }
-}
-
-/**
- * Encodes a buffer as a `0x` prefixed lower-case hex string.
- * Returns an empty string if the buffer is zero length.
- */
-export function bufferToHexPrefixString(buff: Buffer): string {
-  if (buff.length === 0) {
-    return '';
-  }
-  return '0x' + buff.toString('hex');
-}
-
-/**
- * Decodes a `0x` prefixed hex string to a buffer.
- * @param hex - A hex string with a `0x` prefix.
- */
-export function hexToBuffer(hex: string): Buffer {
-  if (hex.length === 0) {
-    return Buffer.alloc(0);
-  }
-  if (!hex.startsWith('0x')) {
-    throw new Error(`Hex string is missing the "0x" prefix: "${hex}"`);
-  }
-  if (hex.length % 2 !== 0) {
-    throw new Error(`Hex string is an odd number of digits: ${hex}`);
-  }
-  return Buffer.from(hex.substring(2), 'hex');
-}
-
-/**
- * Decodes a hex string to a Buffer, trims the 0x-prefix if exists.
- * If already a buffer, returns the input immediately.
- */
-export function coerceToBuffer(hex: string | Buffer | ArrayBufferView): Buffer {
-  if (typeof hex === 'string') {
-    if (hex.startsWith('0x')) {
-      hex = hex.substring(2);
-    }
-    if (hex.length % 2 !== 0) {
-      throw new Error(`Hex string is an odd number of characters: ${hex}`);
-    }
-    if (!/^[0-9a-fA-F]*$/.test(hex)) {
-      throw new Error(`Hex string contains non-hexadecimal characters: ${hex}`);
-    }
-    return Buffer.from(hex, 'hex');
-  } else if (Buffer.isBuffer(hex)) {
-    return hex;
-  } else if (isArrayBufferView(hex)) {
-    return Buffer.from(hex.buffer, hex.byteOffset, hex.byteLength);
-  } else {
-    throw new Error(`Cannot convert to Buffer, unexpected type: ${hex.constructor.name}`);
-  }
-}
-
-export function hexToUtf8String(hex: string): string {
-  const buffer = hexToBuffer(hex);
-  return buffer.toString('utf8');
-}
-
-export function numberToHex(number: number, paddingBytes: number = 4): string {
-  let result = number.toString(16);
-  if (result.length % 2 > 0) {
-    result = '0' + result;
-  }
-  if (paddingBytes && result.length / 2 < paddingBytes) {
-    result = '00'.repeat(paddingBytes - result.length / 2) + result;
-  }
-  return '0x' + result;
 }
 
 export function unwrapOptional<T>(
@@ -657,125 +552,6 @@ export async function getOrAddAsync<K, V>(
 
 export type FoundOrNot<T> = { found: true; result: T } | { found: false; result?: T };
 
-export function timeout(ms: number, abortController?: AbortController): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      resolve();
-    }, ms);
-    abortController?.signal.addEventListener(
-      'abort',
-      () => {
-        clearTimeout(timeout);
-        reject(new Error(`Timeout aborted`));
-      },
-      { once: true }
-    );
-  });
-}
-
-/**
- * Set an execution time limit for a promise.
- * @param promise - The promise being capped to `timeoutMs` max execution time
- * @param timeoutMs - Timeout limit in milliseconds
- * @param wait - If we should wait another `timeoutMs` period for `promise` to resolve
- * @param waitHandler - If `wait` is `true`, this closure will be executed before waiting another `timeoutMs` cycle
- * @returns `true` if `promise` ended gracefully, `false` if timeout was reached
- */
-export async function resolveOrTimeout(
-  promise: Promise<void>,
-  timeoutMs: number,
-  wait: boolean = false,
-  waitHandler?: () => void
-) {
-  let timer: NodeJS.Timeout;
-  const result = await Promise.race([
-    new Promise((resolve, reject) => {
-      promise
-        .then(() => resolve(true))
-        .catch(error => reject(error))
-        .finally(() => clearTimeout(timer));
-    }),
-    new Promise((resolve, _) => {
-      timer = setInterval(() => {
-        if (!wait) {
-          clearTimeout(timer);
-          resolve(false);
-          return;
-        }
-        if (waitHandler) {
-          waitHandler();
-        }
-      }, timeoutMs);
-    }),
-  ]);
-  return result;
-}
-
-export type Waiter<T> = Promise<T> & {
-  finish: (result: T) => void;
-  isFinished: boolean;
-};
-
-export function waiter<T = void>(): Waiter<T> {
-  let resolveFn: (result: T) => void;
-  const promise = new Promise<T>(resolve => {
-    resolveFn = resolve;
-  });
-  const completer = {
-    finish: (result: T) => {
-      completer.isFinished = true;
-      resolveFn(result);
-    },
-    isFinished: false,
-  };
-  return Object.assign(promise, completer);
-}
-
-export interface Stopwatch {
-  /** Milliseconds since stopwatch was created. */
-  getElapsed: () => number;
-  /** Seconds since stopwatch was created. */
-  getElapsedSeconds: () => number;
-  getElapsedAndRestart: () => number;
-  restart(): void;
-}
-
-export function stopwatch(): Stopwatch {
-  let start = process.hrtime.bigint();
-  const result: Stopwatch = {
-    getElapsedSeconds: () => {
-      const elapsedMs = result.getElapsed();
-      return elapsedMs / 1000;
-    },
-    getElapsed: () => {
-      const end = process.hrtime.bigint();
-      return Number((end - start) / 1_000_000n);
-    },
-    getElapsedAndRestart: () => {
-      const end = process.hrtime.bigint();
-      const result = Number((end - start) / 1_000_000n);
-      start = process.hrtime.bigint();
-      return result;
-    },
-    restart: () => {
-      start = process.hrtime.bigint();
-    },
-  };
-  return result;
-}
-
-export async function time<T>(
-  fn: () => Promise<T>,
-  onFinish: (elapsedMs: number) => void
-): Promise<T> {
-  const watch = stopwatch();
-  try {
-    return await fn();
-  } finally {
-    onFinish(watch.getElapsed());
-  }
-}
-
 /**
  * Escape a string for use as a css selector name.
  * From https://github.com/mathiasbynens/CSS.escape/blob/master/css.escape.js
@@ -850,8 +626,6 @@ export function cssEscape(value: string): string {
   }
   return result;
 }
-
-export const has0xPrefix = (id: string) => id.substr(0, 2).toLowerCase() === '0x';
 
 /**
  * Check if the input is a valid 32-byte hex string. If valid, returns a

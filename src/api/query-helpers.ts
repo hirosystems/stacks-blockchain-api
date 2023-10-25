@@ -1,8 +1,9 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
+import { parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);

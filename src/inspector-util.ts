@@ -4,13 +4,14 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { asyncHandler } from './api/async-handler';
-import { parsePort, stopwatch, timeout, pipelineAsync, Stopwatch } from './helpers';
+import { parsePort, pipelineAsync } from './helpers';
 import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { createProfiler, startProfiler, stopProfiler } from 'stacks-encoding-native-js';
+import { startProfiler, stopProfiler } from 'stacks-encoding-native-js';
 import { logger } from './logger';
+import { stopwatch, Stopwatch, timeout } from '@hirosystems/api-toolkit';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 

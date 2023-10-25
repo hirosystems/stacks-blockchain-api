@@ -1,9 +1,7 @@
 import {
   BurnchainOp,
-  CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
-  CoreNodeMicroblockTxMessage,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   FtMintEvent,
@@ -43,8 +41,6 @@ import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
   I32_MAX,
-  bufferToHexPrefixString,
-  hexToBuffer,
   SubnetContractIdentifer,
   getChainIDNetwork,
   ChainID,
@@ -53,15 +49,12 @@ import {
 import {
   TransactionVersion,
   uintCV,
-  tupleCV,
   bufferCV,
   serializeCV,
   noneCV,
   someCV,
   OptionalCV,
   TupleCV,
-  BufferCV,
-  SomeCV,
   NoneCV,
   UIntCV,
   stringAsciiCV,
@@ -70,9 +63,10 @@ import {
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
-import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
+import { Pox2EventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
+import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -128,9 +122,7 @@ function createSubnetTransactionFromL1RegisterAsset(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -190,9 +182,7 @@ function createSubnetTransactionFromL1NftDeposit(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -252,9 +242,7 @@ function createSubnetTransactionFromL1FtDeposit(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -402,9 +390,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -500,9 +486,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {

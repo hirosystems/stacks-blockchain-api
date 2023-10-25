@@ -13,8 +13,6 @@ import {
   DbPox2StackIncreaseEvent,
   DbPox2StackStxEvent,
 } from '../datastore/common';
-import { bufferToHexPrefixString, coerceToBuffer, has0xPrefix } from '../helpers';
-
 import {
   ClarityTypeID,
   ClarityValue,
@@ -33,6 +31,7 @@ import {
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { Pox2EventName } from '../pox-helpers';
 import { logger } from '../logger';
+import { bufferToHex, coerceToBuffer } from '@hirosystems/api-toolkit';
 
 function tryClarityPoxAddressToBtcAddress(
   poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
@@ -216,7 +215,7 @@ export function decodePox2PrintEvent(
       | ClarityValueOptionalNone;
     const encodedArr = tryClarityPoxAddressToBtcAddress(eventPoxAddr, network);
     baseEventData.pox_addr = encodedArr.btcAddr;
-    baseEventData.pox_addr_raw = bufferToHexPrefixString(encodedArr.raw);
+    baseEventData.pox_addr_raw = bufferToHex(encodedArr.raw);
   }
 
   switch (eventName) {

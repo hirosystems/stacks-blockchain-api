@@ -3,9 +3,10 @@ import * as c32check from 'c32check';
 import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
-import { has0xPrefix, isValidBitcoinAddress } from '../helpers';
+import { isValidBitcoinAddress } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {

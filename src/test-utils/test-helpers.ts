@@ -49,9 +49,8 @@ import { CoreRpcPoxInfo, StacksCoreRpcClient } from '../core-rpc/client';
 import { DbBlock, DbTx, DbTxStatus } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { BitcoinAddressFormat, ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { coerceToBuffer, hexToBuffer, timeout } from '../helpers';
 import { b58ToC32 } from 'c32check';
-import { runMigrations } from '@hirosystems/api-toolkit';
+import { coerceToBuffer, hexToBuffer, runMigrations, timeout } from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { getConnectionArgs } from '../datastore/connection';
 

@@ -1,8 +1,5 @@
 import {
   loadDotEnv,
-  timeout,
-  numberToHex,
-  parseArgBoolean,
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
@@ -26,7 +23,13 @@ import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
 import { ReplayController } from './event-replay/parquet-based/replay-controller';
-import { isProdEnv, registerShutdownConfig } from '@hirosystems/api-toolkit';
+import {
+  isProdEnv,
+  numberToHex,
+  parseBoolean,
+  registerShutdownConfig,
+  timeout,
+} from '@hirosystems/api-toolkit';
 
 enum StacksApiMode {
   /**
@@ -64,10 +67,10 @@ function getApiMode(): StacksApiMode {
       break;
   }
   // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
-  if (parseArgBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
+  if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
     return StacksApiMode.readOnly;
   }
-  if (parseArgBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
+  if (parseBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
     return StacksApiMode.offline;
   }
   return StacksApiMode.default;
@@ -143,7 +146,7 @@ async function init(): Promise<void> {
       forceKillable: false,
     });
 
-    const skipChainIdCheck = parseArgBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
+    const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
     if (!skipChainIdCheck) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {

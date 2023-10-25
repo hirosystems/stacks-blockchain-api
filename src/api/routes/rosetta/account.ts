@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
-import { has0xPrefix, FoundOrNot, ChainID } from '../../../helpers';
+import { FoundOrNot, ChainID } from '../../../helpers';
 import {
   RosettaAccount,
   RosettaBlockIdentifier,
@@ -15,6 +15,7 @@ import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../roset
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { getValidatedFtMetadata } from '../../../rosetta-helpers';
 import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

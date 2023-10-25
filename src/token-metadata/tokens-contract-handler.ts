@@ -11,7 +11,7 @@ import {
   uintCV,
   UIntCV,
 } from '@stacks/transactions';
-import { ChainID, getChainIDNetwork, parseDataUrl, REPO_DIR, stopwatch } from '../helpers';
+import { ChainID, getChainIDNetwork, parseDataUrl, REPO_DIR } from '../helpers';
 import * as querystring from 'querystring';
 import {
   getTokenMetadataFetchTimeoutMs,
@@ -25,6 +25,7 @@ import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/c
 import { FetchError } from 'node-fetch';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { logger } from '../logger';
+import { stopwatch } from '@hirosystems/api-toolkit';
 
 /**
  * The maximum number of bytes of metadata to fetch.

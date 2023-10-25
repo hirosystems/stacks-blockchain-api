@@ -9,13 +9,7 @@ import {
   parseUntilBlockQuery,
   validatePrincipal,
 } from '../query-helpers';
-import {
-  ChainID,
-  formatMapToObject,
-  getSendManyContract,
-  has0xPrefix,
-  isValidPrincipal,
-} from '../../helpers';
+import { ChainID, formatMapToObject, getSendManyContract, isValidPrincipal } from '../../helpers';
 import {
   getAssetEventTypeString,
   getTxFromDataStore,
@@ -48,7 +42,7 @@ import {
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
-import { isProdEnv } from '@hirosystems/api-toolkit';
+import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
