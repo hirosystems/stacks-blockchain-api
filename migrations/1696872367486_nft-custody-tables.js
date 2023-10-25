@@ -61,9 +61,26 @@ exports.up = pgm => {
     { name: 'event_index', sort: 'DESC' }
   ]);
   pgm.sql(`
-    INSERT INTO nft_custody (asset_identifier, value, recipient, tx_id, block_height) (
-      SELECT asset_identifier, value, recipient, tx_id, block_height
-      FROM nft_custody_old
+    INSERT INTO nft_custody (asset_identifier, value, recipient, tx_id, block_height, index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, tx_index, event_index) (
+      SELECT
+        DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, nft.block_height, 
+        nft.index_block_hash, nft.parent_index_block_hash, nft.microblock_hash, nft.microblock_sequence, nft.tx_index, nft.event_index
+      FROM
+        nft_events AS nft
+      INNER JOIN
+        txs USING (tx_id)
+      WHERE
+        txs.canonical = true
+        AND txs.microblock_canonical = true
+        AND nft.canonical = true
+        AND nft.microblock_canonical = true
+      ORDER BY
+        asset_identifier,
+        value,
+        txs.block_height DESC,
+        txs.microblock_sequence DESC,
+        txs.tx_index DESC,
+        nft.event_index DESC
     )
   `);
   pgm.dropMaterializedView('nft_custody_old');
@@ -126,9 +143,26 @@ exports.up = pgm => {
     { name: 'event_index', sort: 'DESC' }
   ]);
   pgm.sql(`
-    INSERT INTO nft_custody_unanchored (asset_identifier, value, recipient, tx_id, block_height) (
-      SELECT asset_identifier, value, recipient, tx_id, block_height
-      FROM nft_custody_unanchored_old
+    INSERT INTO nft_custody_unanchored (asset_identifier, value, recipient, tx_id, block_height, index_block_hash, parent_index_block_hash, microblock_hash, microblock_sequence, tx_index, event_index) (
+      SELECT
+        DISTINCT ON(asset_identifier, value) asset_identifier, value, recipient, tx_id, nft.block_height,
+        nft.index_block_hash, nft.parent_index_block_hash, nft.microblock_hash, nft.microblock_sequence, nft.tx_index, nft.event_index
+      FROM
+        nft_events AS nft
+      INNER JOIN
+        txs USING (tx_id)
+      WHERE
+        txs.canonical = true
+        AND txs.microblock_canonical = true
+        AND nft.canonical = true
+        AND nft.microblock_canonical = true
+      ORDER BY
+        asset_identifier,
+        value,
+        txs.block_height DESC,
+        txs.microblock_sequence DESC,
+        txs.tx_index DESC,
+        nft.event_index DESC
     )
   `);
   pgm.dropMaterializedView('nft_custody_unanchored_old');
