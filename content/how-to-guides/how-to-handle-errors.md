@@ -15,7 +15,7 @@ The Stacks 2.0 Blockchain API is centrally hosted. However, every running Stacks
 
 **Note:** The Stacks Blockchain API proxies to Node RPC endpoints.
 
-While the Node RPC API doe not provide the same functionality as the hosted Stacks 2.0 Blockchain API, you will have similar functionality in a way that is scoped to that specific node. The RPC API includes the following endpoints:
+While the Stacks Node RPC API does not provide the same functionality as the hosted Stacks Blockchain API, you will have similar functionality in a way that is scoped to that specific node.
 
 -  [POST /v2/transactions](https://docs.hiro.so/api/broadcast-raw-transaction)
 - [GET /v2/contracts/interface/{contract_address}/{contract_name}](https://docs.hiro.so/api/get-contract-interface)
