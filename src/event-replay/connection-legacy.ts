@@ -4,55 +4,11 @@
 import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
 import { PgServer } from '../datastore/connection';
 import { logger } from '../logger';
-import { parseBoolean, stopwatch, timeout } from '@hirosystems/api-toolkit';
+import { isPgConnectionError, parseBoolean, stopwatch, timeout } from '@hirosystems/api-toolkit';
 import { parsePort } from '../helpers';
 
-export type PgClientConfig = ClientConfig & { schema?: string };
+type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };
-
-/**
- * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
- * If true then returns a normalized error message, otherwise returns false.
- */
-export function isPgConnectionError(error: any): string | false {
-  if (error.code === 'ECONNREFUSED') {
-    return 'Postgres connection ECONNREFUSED';
-  } else if (error.code === 'ETIMEDOUT') {
-    return 'Postgres connection ETIMEDOUT';
-  } else if (error.code === 'ENOTFOUND') {
-    return 'Postgres connection ENOTFOUND';
-  } else if (error.code === 'ECONNRESET') {
-    return 'Postgres connection ECONNRESET';
-  } else if (error.code === 'CONNECTION_CLOSED') {
-    return 'Postgres connection CONNECTION_CLOSED';
-  } else if (error.code === 'CONNECTION_ENDED') {
-    return 'Postgres connection CONNECTION_ENDED';
-  } else if (error.code === 'CONNECTION_DESTROYED') {
-    return 'Postgres connection CONNECTION_DESTROYED';
-  } else if (error.code === 'CONNECTION_CONNECT_TIMEOUT') {
-    return 'Postgres connection CONNECTION_CONNECT_TIMEOUT';
-  } else if (error.code === 'CONNECT_TIMEOUT') {
-    return 'Postgres connection CONNECT_TIMEOUT';
-  } else if (error.message) {
-    const msg = (error as Error).message.toLowerCase();
-    if (msg.includes('database system is starting up')) {
-      return 'Postgres connection failed while database system is starting up';
-    } else if (msg.includes('database system is shutting down')) {
-      return 'Postgres connection failed while database system is shutting down';
-    } else if (msg.includes('connection terminated unexpectedly')) {
-      return 'Postgres connection terminated unexpectedly';
-    } else if (msg.includes('connection terminated')) {
-      return 'Postgres connection terminated';
-    } else if (msg.includes('connection error')) {
-      return 'Postgres client has encountered a connection error and is not queryable';
-    } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
-      return 'Postgres connection terminating due to unexpected postmaster exit';
-    } else if (msg.includes('getaddrinfo eai_again')) {
-      return 'Postgres connection failed due to a DNS lookup error';
-    }
-  }
-  return false;
-}
 
 /**
  * Connects to a Postgres pool. This function will also test the connection first to make sure
@@ -117,7 +73,7 @@ export async function connectPgPool({
 /**
  * @typeParam TGetPoolConfig - If specified as true, returns a PoolConfig object where max connections are configured. Otherwise, returns a regular ClientConfig.
  */
-export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
+function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   usageName,
   pgServer,
   getPoolConfig,

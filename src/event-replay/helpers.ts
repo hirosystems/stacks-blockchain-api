@@ -38,28 +38,6 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
   return blockHeight;
 }
 
-export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlockMessage> {
-  const rl = readline.createInterface({
-    input: fs.createReadStream(filePath),
-    crlfDelay: Infinity,
-  });
-  try {
-    for await (const line of rl) {
-      const columns = line.split('\t');
-      const eventName = columns[2];
-      if (eventName === '/new_block') {
-        const blockMessage = JSON.parse(columns[3]);
-        if (blockMessage.block_height === 0 || blockMessage.block_height === 1) {
-          return blockMessage as CoreNodeBlockMessage;
-        }
-      }
-    }
-  } finally {
-    rl.close();
-  }
-  throw new Error('Genesis block data not found');
-}
-
 export async function getBnsGenesisBlockFromBlockMessage(
   db: PgWriteStore
 ): Promise<BnsGenesisBlock> {

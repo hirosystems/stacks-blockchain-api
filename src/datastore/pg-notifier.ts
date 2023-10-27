@@ -47,7 +47,7 @@ type PgTokensNotificationPayload = {
   contractID: string;
 };
 
-export type PgConfigStateNotificationPayload = DbConfigState;
+type PgConfigStateNotificationPayload = DbConfigState;
 
 /**
  * API notifications to be sent via Postgres `NOTIFY` queries.

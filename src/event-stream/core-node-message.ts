@@ -80,7 +80,7 @@ export interface StxLockEvent extends CoreNodeEventBase {
   };
 }
 
-export interface NftTransferEvent extends CoreNodeEventBase {
+interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -199,7 +199,7 @@ export interface CoreNodeTxMessage {
   burnchain_op?: BurnchainOp | null;
 }
 
-export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
+interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
   microblock_sequence: number;
   microblock_hash: string;
   microblock_parent_hash: string;

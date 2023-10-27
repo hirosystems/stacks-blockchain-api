@@ -15,7 +15,6 @@ import { has0xPrefix, isDevEnv, numberToHex } from '@hirosystems/api-toolkit';
 
 export const apiDocumentationUrl = process.env.API_DOCS_URL;
 
-export const APP_DIR = __dirname;
 export const REPO_DIR = path.dirname(__dirname);
 
 export const I32_MAX = 0x7fffffff;
