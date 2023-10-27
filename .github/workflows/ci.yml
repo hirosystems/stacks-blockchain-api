@@ -1037,7 +1037,7 @@ jobs:
 
       - name: API Discord notification
         if: steps.semantic.outputs.new_release_version != ''
-        uses: Ilshidur/action-discord
+        uses: Ilshidur/action-discord@master
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_API_WEBHOOK }}
           DISCORD_USERNAME: Hiro Team
