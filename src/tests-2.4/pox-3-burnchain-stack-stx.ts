@@ -9,7 +9,7 @@ import { AnchorMode, makeSTXTokenTransfer } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ECPair } from '../ec-helpers';
-import { BootContractAddress, timeout } from '../helpers';
+import { BootContractAddress } from '../helpers';
 import {
   Account,
   accountFromKey,
@@ -30,6 +30,7 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { timeout } from '@hirosystems/api-toolkit';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin

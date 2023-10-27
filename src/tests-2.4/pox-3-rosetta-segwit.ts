@@ -13,7 +13,6 @@ import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
   getRosettaAccountBalance,
@@ -26,6 +25,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
+import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-3 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;

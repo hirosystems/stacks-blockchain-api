@@ -12,7 +12,6 @@ import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
 import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
-import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
   standByForPoxCycle,
@@ -20,6 +19,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
+import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-3 - Stack using supported bitcoin address formats', () => {
   test('Standby for next cycle', async () => {

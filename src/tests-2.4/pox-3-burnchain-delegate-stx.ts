@@ -15,7 +15,7 @@ import {
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ECPair } from '../ec-helpers';
-import { BootContractAddress, timeout } from '../helpers';
+import { BootContractAddress } from '../helpers';
 import {
   Account,
   accountFromKey,
@@ -38,6 +38,7 @@ import * as supertest from 'supertest';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { timeout } from '@hirosystems/api-toolkit';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx

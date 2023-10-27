@@ -31,8 +31,8 @@ import {
 } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { StacksTestnet } from '@stacks/network';
-import { timeout } from '../helpers';
 import { ClarityTypeID, decodeClarityValue } from 'stacks-encoding-native-js';
+import { timeout } from '@hirosystems/api-toolkit';
 
 describe('Subnets tests', () => {
   let l1Client: StacksCoreRpcClient;

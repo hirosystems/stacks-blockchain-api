@@ -12,7 +12,6 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
@@ -20,6 +19,7 @@ import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { migrate, standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 import { logger } from '../logger';
+import { Waiter, waiter, timeout } from '@hirosystems/api-toolkit';
 
 const deploymentAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
