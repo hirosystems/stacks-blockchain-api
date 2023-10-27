@@ -2,7 +2,6 @@ import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
 import { DbAssetEventTypeId, DbTxStatus } from '../datastore/common';
-import { waiter, Waiter } from '../helpers';
 import {
   Block,
   Microblock,
@@ -19,6 +18,7 @@ import {
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
+import { Waiter, waiter } from '@hirosystems/api-toolkit';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;

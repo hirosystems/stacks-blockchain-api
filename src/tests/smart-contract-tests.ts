@@ -9,9 +9,9 @@ import {
   DbSmartContractEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX, waiter } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { bufferToHex, PgSqlClient, waiter } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('smart contract tests', () => {
@@ -87,7 +87,7 @@ describe('smart contract tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -109,7 +109,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
@@ -443,7 +443,7 @@ describe('smart contract tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -465,7 +465,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const contractJsonAbi = {
       maps: [],

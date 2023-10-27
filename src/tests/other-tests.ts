@@ -10,12 +10,12 @@ import {
   DbMinerReward,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
+import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from '../api/routes/fee-rate';
 import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('other tests', () => {
@@ -73,7 +73,7 @@ describe('other tests', () => {
       burn_block_time: dbBlock1.burn_block_time,
       parent_burn_block_time: 0,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,

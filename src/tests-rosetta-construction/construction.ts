@@ -25,7 +25,6 @@ import {
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, FoundOrNot, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -56,11 +55,12 @@ import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
-  migrate,
   standByForPoxCycle,
   standByForTx as standByForTxShared,
   standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
+import { bufferToHex, timeout } from '@hirosystems/api-toolkit';
+import { FoundOrNot } from '../helpers';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
@@ -593,7 +593,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -638,7 +638,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);

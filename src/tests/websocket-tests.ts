@@ -1,7 +1,6 @@
 import * as WebSocket from 'ws';
 import { startApiServer, ApiServer } from '../api/init';
 import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../datastore/common';
-import { waiter, Waiter } from '../helpers';
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
@@ -32,6 +31,7 @@ import {
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
+import { Waiter, waiter } from '@hirosystems/api-toolkit';
 
 describe('websocket notifications', () => {
   let apiServer: ApiServer;

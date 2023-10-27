@@ -14,9 +14,9 @@ import {
   DataStoreBlockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('search tests', () => {
@@ -74,7 +74,7 @@ describe('search tests', () => {
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -103,10 +103,10 @@ describe('search tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
@@ -281,7 +281,7 @@ describe('search tests', () => {
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -309,10 +309,10 @@ describe('search tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
@@ -612,7 +612,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -663,7 +663,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      token_transfer_memo: bufferToHex(Buffer.from('test-raw-tx')),
       token_transfer_recipient_address: addr2,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -932,7 +932,7 @@ describe('search tests', () => {
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
@@ -1047,7 +1047,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1084,7 +1084,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: addr2,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1538,7 +1538,7 @@ describe('search tests', () => {
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',

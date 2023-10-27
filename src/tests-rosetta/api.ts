@@ -33,9 +33,8 @@ import {
   TestTxArgs,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { bufferToHexPrefixString } from '../helpers';
 import * as nock from 'nock';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('Rosetta API', () => {
@@ -385,7 +384,7 @@ describe('Rosetta API', () => {
       abi: undefined,
       token_transfer_recipient_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       token_transfer_amount: 3852n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test1234')).padEnd(70, '0'),
+      token_transfer_memo: bufferToHex(Buffer.from('test1234')).padEnd(70, '0'),
     }
     const data = new TestBlockBuilder(block).addTx(tx).build();
     await db.update(data);

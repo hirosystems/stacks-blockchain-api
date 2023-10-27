@@ -23,7 +23,6 @@ import {
   UnsignedContractCallOptions,
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import { bufferToHexPrefixString } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -53,6 +52,7 @@ import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../ro
 import * as nock from 'nock';
 import { PgStore } from '../datastore/pg-store';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { bufferToHex } from '@hirosystems/api-toolkit';
 
 describe('Rosetta offline API', () => {
   let db: PgStore;
@@ -521,7 +521,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -568,7 +568,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);

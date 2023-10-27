@@ -19,7 +19,7 @@ import {
   DbSmartContract,
 } from '../datastore/common';
 import { startApiServer } from '../api/init';
-import { bufferToHexPrefixString, httpPostRequest, I32_MAX } from '../helpers';
+import { httpPostRequest, I32_MAX } from '../helpers';
 import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
@@ -40,7 +40,7 @@ import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getRawEventRequests } from '../event-replay/event-requests';
 import { logger } from '../logger';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('microblock tests', () => {
@@ -305,7 +305,7 @@ describe('microblock tests', () => {
           sponsor_address: undefined,
           sender_address: addr1,
           origin_hash_mode: 1,
-          coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+          coinbase_payload: bufferToHex(Buffer.from('hi')),
           event_count: 1,
           parent_index_block_hash: block1.parent_index_block_hash,
           parent_block_hash: block1.parent_block_hash,
@@ -351,7 +351,7 @@ describe('microblock tests', () => {
           event_type: DbEventTypeId.SmartContractLog,
           contract_identifier: contractAddr,
           topic: 'some-topic',
-          value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+          value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
         };
         const smartContract1: DbSmartContract = {
           tx_id: tx1.tx_id,
@@ -419,7 +419,7 @@ describe('microblock tests', () => {
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+          token_transfer_memo: bufferToHex(Buffer.from('hi')),
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -459,7 +459,7 @@ describe('microblock tests', () => {
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+          token_transfer_memo: bufferToHex(Buffer.from('hi')),
           token_transfer_recipient_address: addr2,
           event_count: 1,
           parent_index_block_hash: block1.index_block_hash,
@@ -475,7 +475,7 @@ describe('microblock tests', () => {
           execution_cost_write_length: 0,
           contract_call_contract_id: contractAddr,
           contract_call_function_name: 'test-contract-fn',
-          contract_call_function_args: bufferToHexPrefixString(
+          contract_call_function_args: bufferToHex(
             createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
           ),
           abi: JSON.stringify(contractJsonAbi),

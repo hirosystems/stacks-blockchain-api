@@ -25,10 +25,10 @@ import {
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { bnsNameCV, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
 
 describe('postgres datastore', () => {
@@ -696,7 +696,7 @@ describe('postgres datastore', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -3162,7 +3162,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
       post_conditions: '0x',
@@ -3434,7 +3434,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3469,7 +3469,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3666,7 +3666,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3701,7 +3701,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       sponsor_address: undefined,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3932,7 +3932,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4249,7 +4249,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4314,7 +4314,7 @@ describe('postgres datastore', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('abc')),
+      raw_tx: bufferToHex(Buffer.from('abc')),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4330,7 +4330,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4410,7 +4410,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 4,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
