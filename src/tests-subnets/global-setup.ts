@@ -1,9 +1,9 @@
-import { loadDotEnv, timeout } from '../helpers';
+import { loadDotEnv } from '../helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { ChainID } from '@stacks/transactions';
-import { cycleMigrations } from '@hirosystems/api-toolkit';
+import { cycleMigrations, timeout } from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { getConnectionArgs } from '../datastore/connection';
 

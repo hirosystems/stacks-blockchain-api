@@ -11,11 +11,11 @@ import {
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { timeout } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { NonceJar, migrate, standByForTxSuccess } from '../test-utils/test-helpers';
+import { timeout } from '@hirosystems/api-toolkit';
 
 const sender1 = {
   address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',

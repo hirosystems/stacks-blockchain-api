@@ -16,12 +16,13 @@ import {
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import { timeout, unwrapOptional } from '../helpers';
+import { unwrapOptional } from '../helpers';
 import * as compose from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { NonceJar, migrate, standByForTxSuccess } from '../test-utils/test-helpers';
+import { timeout } from '@hirosystems/api-toolkit';
 
 const sender1 = {
   address: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
