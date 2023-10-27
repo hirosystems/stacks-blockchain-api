@@ -137,9 +137,7 @@ jobs:
         run: npm ci --audit=false
 
       - name: Setup env vars
-        run: |
-          echo "NODE_ENV=test" >> $GITHUB_ENV
-          echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 
       - name: Setup integration environment
         run: |
