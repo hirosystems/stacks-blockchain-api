@@ -96,7 +96,6 @@ $ sudo systemctl stop postgresql
 ```bash
 $ git clone https://github.com/hirosystems/stacks-blockchain-api /stacks-node/stacks-blockchain-api && cd /stacks-node/stacks-blockchain-api \
   && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
-  && npm config set unsafe-perm true \
   && npm install \
   && npm run build \
   && npm prune --production
