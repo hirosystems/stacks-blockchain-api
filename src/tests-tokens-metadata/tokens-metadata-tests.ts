@@ -12,21 +12,18 @@ import * as fs from 'fs';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
 import { getStacksTestnetNetwork } from '../rosetta-helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { timeout, waiter, Waiter } from '../helpers';
 import * as nock from 'nock';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { TokensProcessorQueue } from '../token-metadata/tokens-processor-queue';
 import { performFetch } from '../token-metadata/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
-import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
+import { migrate, standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 import { logger } from '../logger';
+import { Waiter, waiter, timeout } from '@hirosystems/api-toolkit';
 
 const deploymentAddr = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const pKey = 'cb3df38053d132895220b9ce471f6b676db5b9bf0b4adefb55f2118ece2478df01';
 const stacksNetwork = getStacksTestnetNetwork();
-const HOST = 'localhost';
-const PORT = 20443;
 
 describe('tokens metadata tests', () => {
   let db: PgWriteStore;
@@ -86,8 +83,7 @@ describe('tokens metadata tests', () => {
   }
 
   beforeAll(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
@@ -100,6 +96,14 @@ describe('tokens metadata tests', () => {
     process.env['STACKS_API_ENABLE_NFT_METADATA'] = '1';
     process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'] = '1';
     nock.cleanAll();
+  });
+
+  afterAll(async () => {
+    await eventServer.closeAsync();
+    tokensProcessorQueue.close();
+    await api.forceKill();
+    await db?.close();
+    await migrate('down');
   });
 
   test('metadata disabled', async () => {
@@ -396,13 +400,5 @@ describe('tokens metadata tests', () => {
         timeoutMs: responseTimeout,
       });
     }).rejects.toThrow(/network timeout/);
-  });
-
-  afterAll(async () => {
-    await eventServer.closeAsync();
-    tokensProcessorQueue.close();
-    await api.forceKill();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

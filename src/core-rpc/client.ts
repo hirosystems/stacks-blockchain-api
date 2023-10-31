@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import fetch, { RequestInit } from 'node-fetch';
-import { parsePort, stopwatch, timeout } from '../helpers';
+import { parsePort } from '../helpers';
 import { CoreNodeFeeResponse } from '@stacks/stacks-blockchain-api-types';
 import { ClarityValue, cvToHex } from '@stacks/transactions';
 import { logger } from '../logger';
+import { stopwatch, timeout } from '@hirosystems/api-toolkit';
 
 interface CoreRpcAccountInfo {
   /** Hex-prefixed uint128. */

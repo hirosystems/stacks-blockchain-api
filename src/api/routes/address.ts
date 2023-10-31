@@ -9,15 +9,7 @@ import {
   parseUntilBlockQuery,
   validatePrincipal,
 } from '../query-helpers';
-import {
-  ChainID,
-  formatMapToObject,
-  getSendManyContract,
-  has0xPrefix,
-  isProdEnv,
-  isValidC32Address,
-  isValidPrincipal,
-} from '../../helpers';
+import { ChainID, formatMapToObject, getSendManyContract, isValidPrincipal } from '../../helpers';
 import {
   getAssetEventTypeString,
   getTxFromDataStore,
@@ -50,6 +42,7 @@ import {
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
+import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -612,7 +605,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
           possible_next_nonce: nonceQuery.result.possibleNextNonce,
           // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
-          last_mempool_tx_nonce: (null as unknown) as number,
+          last_mempool_tx_nonce: null as unknown as number,
           detected_missing_nonces: [],
           detected_mempool_nonces: [],
         };

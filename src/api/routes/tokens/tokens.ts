@@ -14,12 +14,13 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from './../../pagination';
 import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
-import { has0xPrefix, isValidPrincipal } from '../../../helpers';
+import { isValidPrincipal } from '../../../helpers';
 import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { PgStore } from '../../../datastore/pg-store';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createTokenRouter(db: PgStore): express.Router {
   const router = express.Router();

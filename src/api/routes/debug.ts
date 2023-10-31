@@ -95,19 +95,17 @@ export const testnetKeys: SeededAccount[] = testnetAccounts.map(t => ({
   pubKey: publicKeyToString(pubKeyfromPrivKey(t.secretKey)),
 }));
 
-const testnetKeyMap: Record<
-  string,
-  { address: string; secretKey: string; pubKey: string }
-> = Object.fromEntries(
-  testnetKeys.map(t => [
-    t.stacksAddress,
-    {
-      address: t.stacksAddress,
-      secretKey: t.secretKey,
-      pubKey: t.pubKey,
-    },
-  ])
-);
+const testnetKeyMap: Record<string, { address: string; secretKey: string; pubKey: string }> =
+  Object.fromEntries(
+    testnetKeys.map(t => [
+      t.stacksAddress,
+      {
+        address: t.stacksAddress,
+        secretKey: t.secretKey,
+        pubKey: t.pubKey,
+      },
+    ])
+  );
 
 export function getStacksTestnetNetwork() {
   return new StacksTestnet({
@@ -135,7 +133,7 @@ export function createDebugRouter(db: PgStore): express.Router {
   }
 
   router.get('/broadcast', (req, res) => {
-    const endpoints = listEndpoints((router as unknown) as express.Express);
+    const endpoints = listEndpoints(router as unknown as express.Express);
     const paths: Set<string> = new Set();
     endpoints.forEach(e => {
       if (e.methods.includes('GET')) {

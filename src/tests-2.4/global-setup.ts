@@ -1,11 +1,10 @@
-import { loadDotEnv, timeout } from '../helpers';
+import { loadDotEnv } from '../helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { migrate } from '../test-utils/test-helpers';
+import { timeout } from '@hirosystems/api-toolkit';
 
 export interface GlobalTestEnv {
   db: PgWriteStore;
@@ -41,7 +40,7 @@ export default async (): Promise<void> => {
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
-  await cycleMigrations();
+  await migrate('up');
   const db = await PgWriteStore.connect({ usageName: 'tests' });
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 

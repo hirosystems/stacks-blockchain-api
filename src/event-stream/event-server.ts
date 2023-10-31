@@ -6,14 +6,7 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import {
-  ChainID,
-  getChainIDNetwork,
-  getIbdBlockHeight,
-  hexToBuffer,
-  isProdEnv,
-  stopwatch,
-} from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -45,7 +38,6 @@ import {
   DbPox2Event,
   DbTxStatus,
   DbBnsSubdomain,
-  DataStoreBnsBlockData,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -78,12 +70,12 @@ import {
   getTxDbStatus,
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
-import { Pox2ContractIdentifer } from '../pox-helpers';
 import { decodePox2PrintEvent } from './pox2-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
 import * as zoneFileParser from 'zone-file';
+import { hexToBuffer, isProdEnv, stopwatch } from '@hirosystems/api-toolkit';
 
-export const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
+const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
 async function handleRawEventRequest(
   eventPath: string,

@@ -164,8 +164,7 @@ describe('synthetic stx txs', () => {
             type_id: 1,
           },
           {
-            hex:
-              '0x0c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e020000000101',
+            hex: '0x0c00000002096861736862797465730200000014e725a898f9fe204da28afb5cf7766602d1b30ad90776657273696f6e020000000101',
             repr: '(tuple (hashbytes 0xe725a898f9fe204da28afb5cf7766602d1b30ad9) (version 0x01))',
             type_id: 12,
           },
@@ -241,8 +240,7 @@ describe('synthetic stx txs', () => {
             type_id: 1,
           },
           {
-            hex:
-              '0x0c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e020000000101',
+            hex: '0x0c00000002096861736862797465730200000014c23dc19a1ea61a205312b229c6bd4046bf15f3670776657273696f6e020000000101',
             repr: '(tuple (hashbytes 0xc23dc19a1ea61a205312b229c6bd4046bf15f367) (version 0x01))',
             type_id: 12,
           },

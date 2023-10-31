@@ -6,7 +6,6 @@ describe('poison microblock for height 80743', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,

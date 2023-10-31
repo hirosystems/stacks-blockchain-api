@@ -37,13 +37,13 @@ import {
   DbStxEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -51,8 +51,7 @@ describe('tx tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -62,17 +61,23 @@ describe('tx tests', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
+  });
+
   test('fetch tx list details', async () => {
     const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -89,7 +94,7 @@ describe('tx tests', () => {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -151,9 +156,9 @@ describe('tx tests', () => {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 1000,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: true,
@@ -195,7 +200,7 @@ describe('tx tests', () => {
       tx_id: versionedSmartContract1.tx_id,
       anchor_mode: 3,
       nonce: 1000,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.VersionedSmartContract,
       smart_contract_clarity_version: versionedSmartContract1.clarity_version ?? undefined,
       smart_contract_contract_id: versionedSmartContract1.contract_id,
@@ -344,7 +349,7 @@ describe('tx tests', () => {
     const txPayload = tx.payload as TxPayloadVersionedSmartContract;
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -362,7 +367,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -491,7 +496,7 @@ describe('tx tests', () => {
     const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -509,7 +514,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -628,7 +633,7 @@ describe('tx tests', () => {
     const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -646,7 +651,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -794,7 +799,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -1003,7 +1008,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: address,
       sponsor_address: sponsoredAddress,
@@ -1133,7 +1138,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -1154,7 +1159,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1379,7 +1384,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: undefined,
@@ -1600,7 +1605,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsor_address: undefined,
@@ -1744,7 +1749,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsor_address: undefined,
@@ -1862,7 +1867,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1883,7 +1888,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1917,7 +1922,7 @@ describe('tx tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1926,7 +1931,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -1935,9 +1940,9 @@ describe('tx tests', () => {
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
-    expect(searchResult1.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
+    expect(searchResult1.body.raw_tx).toEqual(bufferToHex(Buffer.from('test-raw-tx')));
     const expectedResponse1 = {
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResponse1);
 
@@ -1977,7 +1982,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: '0x1234',
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1998,7 +2003,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -2626,14 +2631,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -2757,7 +2762,7 @@ describe('tx tests', () => {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -2786,7 +2791,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
     };
@@ -2795,7 +2800,7 @@ describe('tx tests', () => {
       tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -2824,7 +2829,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP000000000000000000002Q6VF78.bns',
       contract_call_function_name: 'name-register',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
     };
@@ -3055,7 +3060,7 @@ describe('tx tests', () => {
       tx_id: '0x4413739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Success,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
@@ -3065,7 +3070,7 @@ describe('tx tests', () => {
       origin_hash_mode: 1,
       contract_call_contract_id: 'SP000000000000000000002Q6VF78.bns',
       contract_call_function_name: 'name-register',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       pruned: false,
@@ -3115,7 +3120,7 @@ describe('tx tests', () => {
       tx_id: '0x5513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Success,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
@@ -3125,7 +3130,7 @@ describe('tx tests', () => {
       origin_hash_mode: 1,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       pruned: false,
@@ -3197,14 +3202,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -3289,14 +3294,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -3481,11 +3486,5 @@ describe('tx tests', () => {
         ]),
       })
     );
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

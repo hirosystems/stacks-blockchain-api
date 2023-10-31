@@ -14,6 +14,7 @@ import {
   getBnsSmartContractId,
   bnsNameFromSubdomain,
   ChainID,
+  REPO_DIR,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -30,7 +31,6 @@ import {
   DbBnsZoneFile,
   DbBurnchainReward,
   DbChainTip,
-  DbConfigState,
   DbEvent,
   DbEventTypeId,
   DbFtBalance,
@@ -77,7 +77,6 @@ import {
   StxUnlockEvent,
   TransferQueryResult,
 } from './common';
-import { connectPostgres, getPgConnectionEnvValue, PgServer, PgSqlClient } from './connection';
 import {
   abiColumn,
   BLOCK_COLUMNS,
@@ -99,25 +98,18 @@ import {
   unsafeCols,
   validateZonefileHash,
 } from './helpers';
-import { PgConfigStateNotificationPayload, PgNotifier } from './pg-notifier';
-import { AsyncLocalStorage } from 'async_hooks';
+import { PgNotifier } from './pg-notifier';
 import { Pox2EventName } from '../pox-helpers';
+import { BasePgStore, PgSqlClient, connectPostgres } from '@hirosystems/api-toolkit';
+import {
+  PgServer,
+  getConnectionArgs,
+  getConnectionConfig,
+  getPgConnectionEnvValue,
+} from './connection';
+import * as path from 'path';
 
-export type UnwrapPromiseArray<T> = T extends any[]
-  ? {
-      [k in keyof T]: T[k] extends Promise<infer R> ? R : T[k];
-    }
-  : T;
-
-type SqlTransactionContext = {
-  usageName: string;
-  sql: PgSqlClient;
-};
-/**
- * AsyncLocalStorage which determines if the current async context is running inside a SQL
- * transaction.
- */
-export const sqlTransactionContext = new AsyncLocalStorage<SqlTransactionContext>();
+export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
 /**
  * This is the main interface between the API and the Postgres database. It contains all methods that
@@ -125,25 +117,12 @@ export const sqlTransactionContext = new AsyncLocalStorage<SqlTransactionContext
  * It also provides an `EventEmitter` to notify the rest of the API whenever an important DB write has
  * happened in the `PgServer.primary` server (see `.env`).
  */
-export class PgStore {
+export class PgStore extends BasePgStore {
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
-  protected get closeTimeout(): number {
-    return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5');
-  }
-
-  private readonly _sql: PgSqlClient;
-  /**
-   * Getter for a SQL client. If used inside `sqlTransaction`, the scoped client within the current
-   * async context will be returned to guarantee transaction consistency.
-   */
-  get sql(): PgSqlClient {
-    const sqlContext = sqlTransactionContext.getStore();
-    return sqlContext ? sqlContext.sql : this._sql;
-  }
 
   constructor(sql: PgSqlClient, notifier: PgNotifier | undefined = undefined) {
-    this._sql = sql;
+    super(sql);
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
   }
@@ -155,7 +134,11 @@ export class PgStore {
     usageName: string;
     withNotifier?: boolean;
   }): Promise<PgStore> {
-    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.default });
+    const sql = await connectPostgres({
+      usageName: usageName,
+      connectionArgs: getConnectionArgs(),
+      connectionConfig: getConnectionConfig(),
+    });
     const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgStore(sql, notifier);
     await store.connectPgNotifier();
@@ -164,42 +147,9 @@ export class PgStore {
 
   async close(): Promise<void> {
     await this.notifier?.close();
-    await this.sql.end({ timeout: this.closeTimeout });
-  }
-
-  /**
-   * Start a SQL transaction. If any SQL client used within the callback was already scoped inside a
-   * `BEGIN` transaction, no new transaction will be opened. This flexibility allows us to avoid
-   * repeating code while making sure we don't arrive at SQL errors such as
-   * `WARNING: there is already a transaction in progress` which may cause result inconsistencies.
-   * @param callback - Callback with a scoped SQL client
-   * @param readOnly - If a `BEGIN` transaction should be marked as `READ ONLY`
-   * @returns Transaction results
-   */
-  async sqlTransaction<T>(
-    callback: (sql: PgSqlClient) => T | Promise<T>,
-    readOnly = true
-  ): Promise<UnwrapPromiseArray<T>> {
-    // Do we have a scoped client already? Use it directly.
-    const sqlContext = sqlTransactionContext.getStore();
-    if (sqlContext) {
-      return callback(sqlContext.sql) as UnwrapPromiseArray<T>;
-    }
-    // Otherwise, start a transaction and store the scoped connection in the current async context.
-    const usageName = this._sql.options.connection.application_name ?? '';
-    return this._sql.begin(readOnly ? 'read only' : 'read write', sql => {
-      return sqlTransactionContext.run({ usageName, sql }, () => callback(sql));
+    await super.close({
+      timeout: parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5'),
     });
-  }
-
-  /**
-   * Get `application_name` for current connection (each connection has a unique PID)
-   */
-  async getConnectionApplicationName(): Promise<string> {
-    const result = await this.sql<{ application_name: string }[]>`
-      SELECT application_name FROM pg_stat_activity WHERE pid = pg_backend_pid()
-    `;
-    return result[0].application_name;
   }
 
   /**
@@ -258,9 +208,7 @@ export class PgStore {
     });
   }
 
-  async getChainTip(
-    sql: PgSqlClient
-  ): Promise<{
+  async getChainTip(sql: PgSqlClient): Promise<{
     blockHeight: number;
     blockHash: string;
     indexBlockHash: string;
@@ -730,9 +678,7 @@ export class PgStore {
     });
   }
 
-  async getAddressNonces(args: {
-    stxAddress: string;
-  }): Promise<{
+  async getAddressNonces(args: { stxAddress: string }): Promise<{
     lastExecutedTxNonce: number | null;
     lastMempoolTxNonce: number | null;
     possibleNextNonce: number;

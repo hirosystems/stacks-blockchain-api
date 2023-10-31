@@ -1,4 +1,4 @@
-import { getOrAdd, batchIterate, isProdEnv, I32_MAX, getIbdBlockHeight } from '../helpers';
+import { getOrAdd, batchIterate, I32_MAX, getIbdBlockHeight } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -9,7 +9,6 @@ import {
   DbSmartContractEvent,
   DbSmartContract,
   DataStoreBlockUpdateData,
-  DbMempoolTx,
   DbStxLockEvent,
   DbMinerReward,
   DbBurnchainReward,
@@ -81,21 +80,20 @@ import {
   validateZonefileHash,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
-import { PgStore, UnwrapPromiseArray } from './pg-store';
-import {
-  connectPostgres,
-  getPgConnectionEnvValue,
-  PgJsonb,
-  PgServer,
-  PgSqlClient,
-} from './connection';
-import { runMigrations } from './migrations';
-import { getPgClientConfig } from './connection-legacy';
+import { MIGRATIONS_DIR, PgStore } from './pg-store';
 import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
 import { logger } from '../logger';
+import {
+  PgJsonb,
+  PgSqlClient,
+  connectPostgres,
+  isProdEnv,
+  runMigrations,
+} from '@hirosystems/api-toolkit';
+import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 
@@ -115,9 +113,6 @@ class MicroblockGapError extends Error {
 export class PgWriteStore extends PgStore {
   readonly isEventReplay: boolean;
   protected isIbdBlockHeightReached = false;
-  protected get closeTimeout(): number {
-    return parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.primary) ?? '5');
-  }
 
   constructor(
     sql: PgSqlClient,
@@ -139,25 +134,18 @@ export class PgWriteStore extends PgStore {
     withNotifier?: boolean;
     isEventReplay?: boolean;
   }): Promise<PgWriteStore> {
-    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.primary });
+    const sql = await connectPostgres({
+      usageName: usageName,
+      connectionArgs: getConnectionArgs(PgServer.primary),
+      connectionConfig: getConnectionConfig(PgServer.primary),
+    });
     if (!skipMigrations) {
-      await runMigrations(
-        getPgClientConfig({
-          usageName: `${usageName}:schema-migrations`,
-          pgServer: PgServer.primary,
-        })
-      );
+      await runMigrations(MIGRATIONS_DIR, 'up', getConnectionArgs(PgServer.primary));
     }
     const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgWriteStore(sql, notifier, isEventReplay);
     await store.connectPgNotifier();
     return store;
-  }
-
-  async sqlWriteTransaction<T>(
-    callback: (sql: PgSqlClient) => T | Promise<T>
-  ): Promise<UnwrapPromiseArray<T>> {
-    return super.sqlTransaction(callback, false);
   }
 
   async getChainTip(sql: PgSqlClient, useMaterializedView = true): Promise<DbChainTip> {

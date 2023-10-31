@@ -8,7 +8,7 @@ import {
   parseDbTx,
   parseDbEvent,
 } from '../controllers/db-controller';
-import { has0xPrefix, isProdEnv, isValidC32Address, isValidPrincipal } from '../../helpers';
+import { isValidC32Address, isValidPrincipal } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   isUnanchoredRequest,
@@ -31,6 +31,7 @@ import {
   setETagCacheHeaders,
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
+import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
 
 export function createTxRouter(db: PgStore): express.Router {
   const router = express.Router();

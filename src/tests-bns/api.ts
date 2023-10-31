@@ -6,9 +6,9 @@ import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
+import { migrate } from '../test-utils/test-helpers';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -50,8 +50,7 @@ describe('BNS API tests', () => {
   let dbBlock: DbBlock;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
@@ -161,6 +160,12 @@ describe('BNS API tests', () => {
       },
       namespace2
     );
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('Success: namespaces', async () => {
@@ -1182,10 +1187,4 @@ describe('BNS API tests', () => {
     expect(query.body.address).toEqual(addr2);
     expect(query.body.last_txid).toEqual('0xf111');
   })
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
-  });
 });

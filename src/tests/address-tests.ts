@@ -31,16 +31,16 @@ import {
   DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('address tests', () => {
   let db: PgWriteStore;
@@ -48,8 +48,7 @@ describe('address tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -57,6 +56,12 @@ describe('address tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('address transaction transfers', async () => {
@@ -100,7 +105,7 @@ describe('address tests', () => {
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('')),
+        raw_tx: bufferToHex(Buffer.from('')),
         index_block_hash: block.index_block_hash,
         block_hash: block.block_hash,
         block_height: block.block_height,
@@ -108,7 +113,7 @@ describe('address tests', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -175,7 +180,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHexPrefixString(Buffer.from(serializeCV(uintCV(amount)))),
+          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)))),
           recipient,
           sender,
         };
@@ -876,7 +881,7 @@ describe('address tests', () => {
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('')),
+        raw_tx: bufferToHex(Buffer.from('')),
         index_block_hash: block.index_block_hash,
         block_hash: block.block_hash,
         block_height: block.block_height,
@@ -884,7 +889,7 @@ describe('address tests', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -926,14 +931,14 @@ describe('address tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -1145,7 +1150,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       contract_call_contract_id: testContractAddr,
       contract_call_function_name: 'test-contract-fn',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
       ),
       abi: JSON.stringify(contractJsonAbi),
@@ -2165,7 +2170,7 @@ describe('address tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 1,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -2175,7 +2180,7 @@ describe('address tests', () => {
       sender_address: senderAddress,
       sponsor_nonce: 3,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -2219,7 +2224,7 @@ describe('address tests', () => {
       tx_id: '0x52123456',
       anchor_mode: 3,
       nonce: 1,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -2229,7 +2234,7 @@ describe('address tests', () => {
       sender_address: senderAddress,
       sponsor_nonce: 6,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -2316,7 +2321,7 @@ describe('address tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2426,7 +2431,7 @@ describe('address tests', () => {
       parent_burn_block_time: 1626124935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -2578,7 +2583,7 @@ describe('address tests', () => {
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+          token_transfer_memo: bufferToHex(Buffer.from('hi')),
           token_transfer_recipient_address: contractId,
           event_count: 1,
           parent_index_block_hash: block2.block.index_block_hash,
@@ -2834,11 +2839,5 @@ describe('address tests', () => {
     expect(json6.total).toEqual(4);
     expect(json6.results.length).toEqual(4);
     expect(json6.results[0].tx_id).toEqual('0xffa1');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

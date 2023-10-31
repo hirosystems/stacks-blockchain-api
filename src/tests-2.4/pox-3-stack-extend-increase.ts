@@ -11,7 +11,6 @@ import {
 import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
-import { hexToBuffer } from '../helpers';
 import {
   fetchGet,
   standByForPoxCycle,
@@ -20,6 +19,7 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-3 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
@@ -66,12 +66,10 @@ describe('PoX-3 - Stack extend and increase operations', () => {
       label: btcRegtestAccount.address,
       rescan: false,
     });
-    const btcWalletAddrs: Record<
-      string,
-      unknown
-    > = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-      label: btcRegtestAccount.address,
-    });
+    const btcWalletAddrs: Record<string, unknown> =
+      await testEnv.bitcoinRpcClient.getaddressesbylabel({
+        label: btcRegtestAccount.address,
+      });
 
     const expectedAddrs = {
       P2PKH: getBitcoinAddressFromKey({

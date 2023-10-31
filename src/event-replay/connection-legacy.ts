@@ -1,10 +1,13 @@
-import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
-import { parseArgBoolean, parsePort, stopwatch, timeout } from '../helpers';
-import { PgServer } from './connection';
-import { isPgConnectionError } from './helpers';
-import { logger } from '../logger';
+// TODO: This file exists because we use the old `pg` library to stream node events during replays.
+// we should migrate replays into `postgres.js` and delete this file.
 
-export type PgClientConfig = ClientConfig & { schema?: string };
+import { Client, ClientConfig, Pool, PoolClient, PoolConfig } from 'pg';
+import { PgServer } from '../datastore/connection';
+import { logger } from '../logger';
+import { isPgConnectionError, parseBoolean, stopwatch, timeout } from '@hirosystems/api-toolkit';
+import { parsePort } from '../helpers';
+
+type PgClientConfig = ClientConfig & { schema?: string };
 type PgPoolConfig = PoolConfig & { schema?: string };
 
 /**
@@ -70,7 +73,7 @@ export async function connectPgPool({
 /**
  * @typeParam TGetPoolConfig - If specified as true, returns a PoolConfig object where max connections are configured. Otherwise, returns a regular ClientConfig.
  */
-export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
+function getPgClientConfig<TGetPoolConfig extends boolean = false>({
   usageName,
   pgServer,
   getPoolConfig,
@@ -131,7 +134,7 @@ export function getPgClientConfig<TGetPoolConfig extends boolean = false>({
       password: pgEnvVars.password,
       host: pgEnvVars.host,
       port: parsePort(pgEnvVars.port),
-      ssl: parseArgBoolean(pgEnvVars.ssl),
+      ssl: parseBoolean(pgEnvVars.ssl),
       schema: pgEnvVars.schema,
       application_name: appName,
     };

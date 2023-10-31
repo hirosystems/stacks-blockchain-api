@@ -5,7 +5,7 @@ import {
   TokenMetadataProcessingMode,
 } from './tokens-contract-handler';
 import fetch from 'node-fetch';
-import { parseArgBoolean } from '../helpers';
+import { parseBoolean } from '@hirosystems/api-toolkit';
 
 export function isFtMetadataEnabled() {
   const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
@@ -22,7 +22,7 @@ export function isNftMetadataEnabled() {
  * @returns TokenMetadataProcessingMode
  */
 export function getTokenMetadataProcessingMode(): TokenMetadataProcessingMode {
-  if (parseArgBoolean(process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'])) {
+  if (parseBoolean(process.env['STACKS_API_TOKEN_METADATA_STRICT_MODE'])) {
     return TokenMetadataProcessingMode.strict;
   }
   return TokenMetadataProcessingMode.default;

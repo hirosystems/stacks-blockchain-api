@@ -7,7 +7,7 @@ import {
   DbSearchResult,
   DbSearchResultWithMetadata,
 } from '../../datastore/common';
-import { isValidPrincipal, has0xPrefix, FoundOrNot } from '../../helpers';
+import { isValidPrincipal, FoundOrNot } from '../../helpers';
 import {
   Block,
   SearchResult,
@@ -27,6 +27,7 @@ import {
 } from '../controllers/db-controller';
 import { booleanValueForParam } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 const enum SearchResultType {
   TxId = 'tx_id',

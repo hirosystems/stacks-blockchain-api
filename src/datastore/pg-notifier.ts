@@ -1,7 +1,8 @@
 import * as postgres from 'postgres';
 import { logger } from '../logger';
 import { DbConfigState } from './common';
-import { connectPostgres, PgServer, PgSqlClient } from './connection';
+import { PgSqlClient, connectPostgres } from '@hirosystems/api-toolkit';
+import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 type PgTxNotificationPayload = {
   txId: string;
@@ -46,7 +47,7 @@ type PgTokensNotificationPayload = {
   contractID: string;
 };
 
-export type PgConfigStateNotificationPayload = DbConfigState;
+type PgConfigStateNotificationPayload = DbConfigState;
 
 /**
  * API notifications to be sent via Postgres `NOTIFY` queries.
@@ -77,7 +78,11 @@ export class PgNotifier {
   listener?: postgres.ListenMeta;
 
   static async create(usageName: string) {
-    const sql = await connectPostgres({ usageName: usageName, pgServer: PgServer.primary });
+    const sql = await connectPostgres({
+      usageName: usageName,
+      connectionArgs: getConnectionArgs(PgServer.primary),
+      connectionConfig: getConnectionConfig(PgServer.primary),
+    });
     return new PgNotifier(sql);
   }
 

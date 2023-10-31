@@ -1,9 +1,7 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer, ApiServer } from '../api/init';
-import { PgSqlClient } from '../datastore/connection';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import {
   DbBlock,
   DbTxRaw,
@@ -12,13 +10,15 @@ import {
   DbTxStatus,
   DataStoreBlockUpdateData,
 } from '../datastore/common';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('mempool tests', () => {
   let db: PgWriteStore;
@@ -26,8 +26,7 @@ describe('mempool tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -40,7 +39,7 @@ describe('mempool tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await migrate('down');
   });
 
   test('garbage collection', async () => {
@@ -152,11 +151,11 @@ describe('mempool tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -196,14 +195,14 @@ describe('mempool tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.VersionedSmartContract,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
       smart_contract_clarity_version: 2,
       smart_contract_contract_id: 'some-versioned-smart-contract',
       smart_contract_source_code: '(some-versioned-contract-src)',
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -247,11 +246,11 @@ describe('mempool tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: true,
@@ -292,11 +291,11 @@ describe('mempool tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: true,
@@ -582,10 +581,10 @@ describe('mempool tests', () => {
         tx_id: `0x891200000000000000000000000000000000000000000000000000000000000${i}`,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+        raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
         type_id: DbTxTypeId.Coinbase,
         receipt_time: (new Date(`2020-07-09T15:14:0${i}Z`).getTime() / 1000) | 0,
-        coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+        coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
         status: 1,
         post_conditions: '0x01f5',
         fee_rate: 1234n,
@@ -721,7 +720,7 @@ describe('mempool tests', () => {
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+        raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
         type_id: xfer.type_id,
         receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
@@ -1197,7 +1196,7 @@ describe('mempool tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1206,7 +1205,7 @@ describe('mempool tests', () => {
       sponsor_address: undefined,
       sender_address: senderAddress,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -1224,7 +1223,7 @@ describe('mempool tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1233,7 +1232,7 @@ describe('mempool tests', () => {
       sponsor_address: undefined,
       sender_address: senderAddress,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -1269,7 +1268,7 @@ describe('mempool tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1278,7 +1277,7 @@ describe('mempool tests', () => {
       sponsor_address: undefined,
       sender_address: senderAddress,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -1504,7 +1503,7 @@ describe('mempool tests', () => {
       tx_id: txId,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1513,7 +1512,7 @@ describe('mempool tests', () => {
       sponsor_address: undefined,
       sender_address: senderAddress,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };

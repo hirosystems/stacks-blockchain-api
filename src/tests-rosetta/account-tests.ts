@@ -1,21 +1,25 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
-import { PoolClient } from 'pg';
 import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('/account tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down')
   });
 
   test('/account/balance - returns ft balances', async () => {
@@ -94,11 +98,5 @@ describe('/account tests', () => {
         value: '7500'
       }
     ]);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

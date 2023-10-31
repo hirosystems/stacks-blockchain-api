@@ -5,19 +5,24 @@ import { TestBlockBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbFungibleTokenMetadata, DbTxTypeId } from '../datastore/common';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { bufferToHexPrefixString } from '../helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
+import { migrate } from '../test-utils/test-helpers';
+import { bufferToHex } from '@hirosystems/api-toolkit';
 
 describe('/block tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('block/transaction - contract_call contains parsed metadata', async () => {
@@ -68,7 +73,7 @@ describe('/block tests', () => {
         sender_address: testContractAddr,
         contract_call_contract_id: testContractAddr,
         contract_call_function_name: 'test-contract-fn',
-        contract_call_function_args: bufferToHexPrefixString(createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))),
+        contract_call_function_args: bufferToHex(createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))),
         abi: JSON.stringify(contractJsonAbi),
       })
       .build();
@@ -480,7 +485,7 @@ describe('/block tests', () => {
         sender_address: sendManyAddr,
         contract_call_contract_id: sendManyAddr,
         contract_call_function_name: 'send-many',
-        contract_call_function_args: bufferToHexPrefixString(
+        contract_call_function_args: bufferToHex(
           createClarityValueArray(
             listCV([
               tupleCV({
@@ -567,7 +572,7 @@ describe('/block tests', () => {
         sender_address: sendManyAddr,
         contract_call_contract_id: sendManyAddr,
         contract_call_function_name: 'send-stx-with-memo',
-        contract_call_function_args: bufferToHexPrefixString(
+        contract_call_function_args: bufferToHex(
           createClarityValueArray(
             uintCV(2000),
             principalCV('SPG7RD94XW8HN5NS7V68YDJAY4PJVZ2KNY79Z518'),
@@ -598,11 +603,5 @@ describe('/block tests', () => {
     expect(result2.transaction_identifier.hash).toEqual('0x1113');
     expect(result2.operations[2].metadata).toEqual({ memo: 'memo-1' });
     expect(result2.operations[3].metadata).toEqual({ memo: 'memo-1' });
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

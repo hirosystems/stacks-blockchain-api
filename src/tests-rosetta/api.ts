@@ -33,10 +33,9 @@ import {
   TestTxArgs,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
-import { bufferToHexPrefixString } from '../helpers';
 import * as nock from 'nock';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('Rosetta API', () => {
   let db: PgWriteStore;
@@ -44,12 +43,17 @@ describe('Rosetta API', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
     process.env.STACKS_CHAIN_ID = '0x80000000';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('network/list', async () => {
@@ -380,7 +384,7 @@ describe('Rosetta API', () => {
       abi: undefined,
       token_transfer_recipient_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
       token_transfer_amount: 3852n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test1234')).padEnd(70, '0'),
+      token_transfer_memo: bufferToHex(Buffer.from('test1234')).padEnd(70, '0'),
     }
     const data = new TestBlockBuilder(block).addTx(tx).build();
     await db.update(data);
@@ -1495,11 +1499,5 @@ describe('Rosetta API', () => {
       details: { message: "should have required property 'block_identifier'" }
     }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -6,9 +6,7 @@ import { DatasetStore } from './dataset/store';
 interface TimeTracker {
   track<T = void>(name: string, fn: () => Promise<T>): Promise<T>;
   trackSync<T = void>(name: string, fn: () => T): T;
-  getDurations: (
-    roundDecimals?: number
-  ) => {
+  getDurations: (roundDecimals?: number) => {
     name: string;
     seconds: string;
   }[];

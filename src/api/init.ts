@@ -19,7 +19,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { ChainID, apiDocumentationUrl, getChainIDNetwork, isProdEnv, waiter } from '../helpers';
+import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
@@ -42,9 +42,9 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPox2EventsRouter } from './routes/pox2';
 import { createPox3EventsRouter } from './routes/pox3';
-import { isPgConnectionError } from '../datastore/helpers';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
+import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -56,9 +56,6 @@ export interface ApiServer {
   forceKill: () => Promise<void>;
 }
 
-/** API version as given by .git-info */
-export const API_VERSION: { branch?: string; commit?: string; tag?: string } = {};
-
 export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
@@ -69,16 +66,6 @@ export async function startApiServer(opts: {
   serverPort?: number;
 }): Promise<ApiServer> {
   const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
-
-  try {
-    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
-    API_VERSION.branch = branch;
-    API_VERSION.commit = commit;
-    API_VERSION.tag = tag;
-  } catch (error) {
-    logger.error(error, `Unable to read API version from .git-info`);
-  }
-
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
@@ -93,9 +80,6 @@ export async function startApiServer(opts: {
       `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
     );
   }
-
-  // app.use(compression());
-  // app.disable('x-powered-by');
 
   let routes: {
     path: string;
@@ -141,7 +125,7 @@ export async function startApiServer(opts: {
   app.use((_, res, next) => {
     res.setHeader(
       'X-API-Version',
-      `${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`
+      `${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`
     );
     res.append('Access-Control-Expose-Headers', 'X-API-Version');
     next();

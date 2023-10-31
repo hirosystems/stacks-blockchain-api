@@ -55,7 +55,7 @@ import {
   StxUnlockEvent,
 } from './datastore/common';
 import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, hexToBuffer, getSendManyContract } from './helpers';
+import { unwrapOptional, getSendManyContract } from './helpers';
 
 import { getCoreNodeEndpoint } from './core-rpc/client';
 import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
@@ -81,6 +81,7 @@ import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/he
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
 import { logger } from './logger';
+import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',

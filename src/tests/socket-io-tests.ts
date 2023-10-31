@@ -2,7 +2,6 @@ import { io } from 'socket.io-client';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
 import { DbAssetEventTypeId, DbTxStatus } from '../datastore/common';
-import { waiter, Waiter } from '../helpers';
 import {
   Block,
   Microblock,
@@ -18,20 +17,26 @@ import {
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
+import { Waiter, waiter } from '@hirosystems/api-toolkit';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     apiServer = await startApiServer({
       datastore: db,
       chainId: ChainID.Testnet,
     });
+  });
+
+  afterEach(async () => {
+    await apiServer.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('socket-io > block updates', async () => {
@@ -542,11 +547,5 @@ describe('socket-io', () => {
 
     await disconnectWaiter;
     expect(disconnectReason).toBe('ping timeout');
-  });
-
-  afterEach(async () => {
-    await apiServer.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -1,9 +1,5 @@
 import {
   loadDotEnv,
-  timeout,
-  isProdEnv,
-  numberToHex,
-  parseArgBoolean,
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
@@ -14,7 +10,6 @@ import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
-import { registerShutdownConfig } from './shutdown-handler';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
@@ -28,6 +23,13 @@ import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
 import { ReplayController } from './event-replay/parquet-based/replay-controller';
+import {
+  isProdEnv,
+  numberToHex,
+  parseBoolean,
+  registerShutdownConfig,
+  timeout,
+} from '@hirosystems/api-toolkit';
 
 enum StacksApiMode {
   /**
@@ -65,10 +67,10 @@ function getApiMode(): StacksApiMode {
       break;
   }
   // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
-  if (parseArgBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
+  if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
     return StacksApiMode.readOnly;
   }
-  if (parseArgBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
+  if (parseBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
     return StacksApiMode.offline;
   }
   return StacksApiMode.default;
@@ -144,7 +146,7 @@ async function init(): Promise<void> {
       forceKillable: false,
     });
 
-    const skipChainIdCheck = parseArgBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
+    const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
     if (!skipChainIdCheck) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {

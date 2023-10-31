@@ -1,7 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
-import { PgBytea, PgJsonb, PgNumeric } from './connection';
 import { Pox2EventName } from '../pox-helpers';
+import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
 
 export interface DbBlock {
   block_hash: string;

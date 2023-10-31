@@ -14,8 +14,8 @@ import {
 } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
-import { BootContractAddress, timeout } from '../helpers';
+import { ECPair } from '../ec-helpers';
+import { BootContractAddress } from '../helpers';
 import {
   Account,
   accountFromKey,
@@ -37,7 +37,8 @@ import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { Pox2ContractIdentifer } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
-import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
+import { decodeBtcAddress } from '@stacks/stacking';
+import { timeout } from '@hirosystems/api-toolkit';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx
@@ -374,8 +375,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
           type: '(optional uint)',
         },
         {
-          hex:
-            '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
+          hex: '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
           repr: expectedPoxPayoutAddrRepr,
           name: 'pox-addr',
           type: '(optional (tuple (hashbytes (buff 32)) (version (buff 1))))',

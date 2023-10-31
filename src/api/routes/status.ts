@@ -2,7 +2,7 @@ import * as express from 'express';
 import { ServerStatusResponse } from '@stacks/stacks-blockchain-api-types';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
-import { API_VERSION } from '../init';
+import { SERVER_VERSION } from '@hirosystems/api-toolkit';
 
 export function createStatusRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -10,7 +10,7 @@ export function createStatusRouter(db: PgStore): express.Router {
   const statusHandler = async (_: Request, res: any) => {
     try {
       const response: ServerStatusResponse = {
-        server_version: `stacks-blockchain-api ${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`,
+        server_version: `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`,
         status: 'ready',
       };
       const poxForceUnlockHeights = await db.getPoxForceUnlockHeights();

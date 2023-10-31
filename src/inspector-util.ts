@@ -4,13 +4,14 @@ import { once } from 'events';
 import { createServer, Server } from 'http';
 import * as express from 'express';
 import { asyncHandler } from './api/async-handler';
-import { parsePort, stopwatch, timeout, pipelineAsync, Stopwatch } from './helpers';
+import { parsePort, pipelineAsync } from './helpers';
 import { Socket } from 'net';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { createProfiler, startProfiler, stopProfiler } from 'stacks-encoding-native-js';
+import { startProfiler, stopProfiler } from 'stacks-encoding-native-js';
 import { logger } from './logger';
+import { stopwatch, Stopwatch, timeout } from '@hirosystems/api-toolkit';
 
 type CpuProfileResult = inspector.Profiler.Profile;
 
@@ -283,9 +284,7 @@ function initHeapSnapshot(
   return { start, stop, dispose, session, sessionType: 'memory', stopwatch: sw };
 }
 
-export async function startProfilerServer(
-  httpServerPort?: number | string
-): Promise<{
+export async function startProfilerServer(httpServerPort?: number | string): Promise<{
   server: Server;
   address: string;
   close: () => Promise<void>;
@@ -443,7 +442,9 @@ export async function startProfilerServer(
         const elapsedSeconds = existingSession.instance.stopwatch.getElapsedSeconds();
         const timestampSeconds = Math.round(Date.now() / 1000);
         const filename = `cpu_${timestampSeconds}_${elapsedSeconds}-seconds.cpuprofile`;
-        const result = await (existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>).stop();
+        const result = await (
+          existingSession.instance as ProfilerInstance<inspector.Profiler.Profile>
+        ).stop();
         const resultString = JSON.stringify(result);
         logger.info(
           `[CpuProfiler] Completed, total profile report JSON string length: ${resultString.length}`

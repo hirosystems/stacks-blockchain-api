@@ -1,13 +1,13 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import { validate } from '../validate';
-import { isProdEnv } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import {
   NetworkBlockTimesResponse,
   NetworkBlockTimeResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { PgStore } from '../../datastore/pg-store';
+import { isProdEnv } from '@hirosystems/api-toolkit';
 
 const enum TargetBlockTime {
   /**
