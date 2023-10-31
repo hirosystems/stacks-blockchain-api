@@ -614,7 +614,7 @@ export function decodePoxAddrArg(argHex: string): {
   const btcAddr = poxAddressToBtcAddress(
     hexToBuffer(addressCV.data.version.buffer)[0],
     hexToBuffer(addressCV.data.hashbytes.buffer),
-    'regtest'
+    'mocknet'
   );
   const stxAddr = b58ToC32(btcAddr);
   return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };

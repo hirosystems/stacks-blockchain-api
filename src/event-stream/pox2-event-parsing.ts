@@ -35,7 +35,7 @@ import { bufferToHex, coerceToBuffer } from '@hirosystems/api-toolkit';
 
 function tryClarityPoxAddressToBtcAddress(
   poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
-  network: 'mainnet' | 'testnet' | 'regtest'
+  network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
 ): { btcAddr: string | null; raw: Buffer } {
   let btcAddr: string | null = null;
   if (poxAddr.type_id === ClarityTypeID.OptionalNone) {
@@ -165,7 +165,7 @@ const PATCH_EVENT_BALANCES = true;
 
 export function decodePox2PrintEvent(
   rawClarityData: string,
-  network: 'mainnet' | 'testnet' | 'regtest'
+  network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
 ): DbPox2EventData | null {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
   if (decoded.type_id === ClarityTypeID.ResponseError) {
