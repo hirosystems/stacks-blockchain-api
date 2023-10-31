@@ -41,10 +41,11 @@ export function getConnectionArgs(server: PgServer = PgServer.default): PgConnec
 }
 
 export function getConnectionConfig(server: PgServer = PgServer.default): PgConnectionOptions {
+  const statementTimeout = getPgConnectionEnvValue('STATEMENT_TIMEOUT', server);
   return {
     idleTimeout: parseInt(getPgConnectionEnvValue('IDLE_TIMEOUT', server) ?? '30'),
     maxLifetime: parseInt(getPgConnectionEnvValue('MAX_LIFETIME', server) ?? '60'),
     poolMax: parseInt(getPgConnectionEnvValue('CONNECTION_POOL_MAX', server) ?? '10'),
-    statementTimeout: parseInt(getPgConnectionEnvValue('STATEMENT_TIMEOUT', server) ?? '60'),
+    statementTimeout: statementTimeout ? parseInt(statementTimeout) : undefined,
   };
 }
