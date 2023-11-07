@@ -825,7 +825,7 @@ describe('search tests', () => {
       recipient: addr7,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent1);
+    await db.updateNftEvent(client, stxTx1, nftEvent1, false);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
@@ -853,7 +853,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr8,
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent2);
+    await db.updateNftEvent(client, stxTx1, nftEvent2, false);
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);
