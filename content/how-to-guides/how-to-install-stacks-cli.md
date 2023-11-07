@@ -2,7 +2,7 @@
 title: How to install Stacks CLI
 ---
 
-The Stacks CLI enables interactions with the Stacks 2.0 blockchain through a set of commands.
+The Stacks CLI enables interactions with the Stacks blockchain through a set of commands.
 
 ## Installation
 
@@ -18,7 +18,7 @@ The `-g` flag makes the CLI commands available globally
 
 ## Network selection
 
-By default, the CLI will attempt to interact with the mainnet of the Stacks 2.0 blockchain. However, it is possible to override the network and set it to the testnet:
+By default, the CLI will attempt to interact with Stacks mainnet. However, it is possible to override the network and set it to testnet:
 
 ```sh
 stx <command> -t
@@ -26,7 +26,7 @@ stx <command> -t
 
 :::info
 
-For account usage, that means addresses generated will _only_ be available for the specific network. An account generated for the testnet cannot be used on the mainnet.
+For account usage, that means addresses generated will _only_ be available for the specific network. An account generated for testnet cannot be used on mainnet.
 
 :::
 
@@ -42,7 +42,7 @@ This section describes how to use the CLI to manage an account.
 
 :::caution
 
-It is not recommended to use the CLI to handle accounts with real STX tokens on the mainnet. Using an appropriate wallet build to support secure token holding is recommended.
+We don't recommended you use the CLI to handle accounts with real STX tokens on the mainnet. Instead, use an appropriate wallet to support secure token holding.
 
 :::
 
@@ -68,14 +68,14 @@ Your response should look like this:
 }
 ```
 
-The mnemonic is your 24 word seed phrase which you should back up securely if you want access to this account again in the future. Once lost, it cannot be recovered.
+The mnemonic is your 24 word seed phrase, which you should back up securely if you want access to this account again in the future. Once lost, it cannot be recovered.
 
 The Stacks address associated with the newly generated account is:
 `ST1BG7MHW2R524WMF7X8PGG3V45ZN040EB9EW0GQJ`
 
 :::note
 
-The preceding address is a testnet address that can only be used on the testnet.
+The preceding address is a testnet address that can only be used on testnet.
 
 :::
 
@@ -115,10 +115,10 @@ This section describes how to use the CLI to generate and broadcast transactions
 In order to send tokens, the CLI command requires 5 parameters:
 
 - **Recipient Address**: The Stacks address of the recipient
-- **Amount**: The number of Stacks to send denoted in microstacks (1 STX = 1000000 microstacks)
-- **Fee Rate**: The transaction fee rate for this transaction. You can safely set a fee rate of 200 for Testnet
+- **Amount**: The number of Stacks to send denoted in microstacks (1 STX = 1,000,000 microstacks)
+- **Fee Rate**: The fee rate for this transaction. You can safely set a fee rate of 200 for testnet
 - **Nonce**: The nonce is a number that needs to be incremented monotonically for each transaction from the account. This ensures transactions are not duplicated
-- **Private Key**: This is the private key corresponding to your account that was generated when
+- **Private Key**: This is the private key corresponding to your account
 
 The CLI command to use with these parameters is `send_tokens`:
 
@@ -135,7 +135,7 @@ stx send_tokens ST2KMMVJAB00W5Z6XWTFPH6B13JE9RJ2DCSHYX0S7 1000 200 0 381314da39a
 
 With this command we’re sending 1000 microstacks to the Stacks address `ST2KMMVJAB00W5Z6XWTFPH6B13JE9RJ2DCSHYX0S7`.
 
-We set the fee rate to `200` microstacks. If you're not sure how much your transaction will cost.
+We set the fee rate to `200` microstacks.
 
 :::tip
 
@@ -147,9 +147,9 @@ The nonce is set to `0` for this transaction, since it will be the first transac
 
 Finally, the last parameter is the private key for the account. `381314da39a45f43f45ffd33b5d8767d1a38db0da71fea50ed9508e048765cf301`
 
-Once again, we’re using the `-t` option to indicate that this is a Testnet transaction, so it should be broadcasted to Testnet.
+Once again, we’re using the `-t` option to indicate that this is a testnet transaction, so it should be broadcast to testnet.
 
-If valid, the transaction will be broadcasted to the network and the command will respond with a transaction ID.
+If valid, the transaction will be broadcast to the network, and the command will respond with a transaction ID.
 
 :::tip
 
