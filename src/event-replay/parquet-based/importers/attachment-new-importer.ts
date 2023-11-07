@@ -3,7 +3,6 @@
 
 import { Readable, Writable } from 'stream';
 import { pipeline } from 'stream/promises';
-import { batchIterate } from '../../../helpers';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
 import { parseAttachment } from '../../../event-stream/event-server';
 import { logger } from '../../../logger';
@@ -11,6 +10,7 @@ import { CoreNodeAttachmentMessage } from '../../../event-stream/core-node-messa
 import { DataStoreAttachmentSubdomainData } from '../../../datastore/common';
 import { DatasetStore } from '../dataset/store';
 import { I32_MAX } from '../../../helpers';
+import { batchIterate } from '@hirosystems/api-toolkit';
 
 const batchInserters: BatchInserter[] = [];
 

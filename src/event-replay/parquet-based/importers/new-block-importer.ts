@@ -17,9 +17,10 @@ import {
 } from '../../../datastore/common';
 import { validateZonefileHash } from '../../../datastore/helpers';
 import { logger } from '../../../logger';
-import { getApiConfiguredChainID, batchIterate } from '../../../helpers';
+import { getApiConfiguredChainID } from '../../../helpers';
 import { CoreNodeBlockMessage } from '../../../event-stream/core-node-message';
 import { DatasetStore } from '../dataset/store';
+import { batchIterate } from '@hirosystems/api-toolkit';
 
 const chainID = getApiConfiguredChainID();
 
@@ -362,7 +363,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
       const insertSmartContracts = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const smartContract of entry.smartContracts) {
-            await db.updateSmartContract(db.sql, entry.tx, smartContract);
+            await db.updateSmartContracts(db.sql, entry.tx, smartContract);
           }
         }
       };
@@ -378,21 +379,21 @@ const populateBatchInserters = (db: PgWriteStore) => {
       const insertStxLockEvents = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const stxLockEvent of entry.stxLockEvents) {
-            await db.updateStxLockEvent(db.sql, entry.tx, stxLockEvent);
+            await db.updateStxLockEvents(db.sql, entry.tx, stxLockEvent);
           }
         }
       };
 
       const insertMinerRewards = async (dbData: DataStoreBlockUpdateData) => {
         for (const minerReward of dbData.minerRewards) {
-          await db.updateMinerReward(db.sql, minerReward);
+          await db.updateMinerRewards(db.sql, minerReward);
         }
       };
 
       const insertPox2Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const pox2Event of entry.pox2Events) {
-            await db.updatePox2Event(db.sql, entry.tx, pox2Event);
+            await db.updatePox2Events(db.sql, entry.tx, pox2Event);
           }
         }
       };
@@ -400,7 +401,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
       const insertPox3Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const pox3Event of entry.pox3Events) {
-            await db.updatePox3Event(db.sql, entry.tx, pox3Event);
+            await db.updatePox3Events(db.sql, entry.tx, pox3Event);
           }
         }
       };

@@ -182,7 +182,7 @@ describe('other tests', () => {
       tx_fees_streamed_confirmed: 2_000_000_000_000n,
       tx_fees_streamed_produced: 3_000_000_000_000n,
     };
-    await db.updateMinerReward(client, minerReward1);
+    await db.updateMinerRewards(client, minerReward1);
     const expectedTotalStx3 =
       stxMintEvent1.amount +
       stxMintEvent2.amount -

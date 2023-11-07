@@ -2,6 +2,7 @@ import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
+  DataStoreTxEventData,
   DbBlock,
   DbEvent,
   DbEventBase,
@@ -1154,4 +1155,45 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
     dbMempoolTxs.push(dbMempoolTx);
   }
   return dbMempoolTxs;
+}
+
+export type BlockExecutionCost = {
+  execution_cost_read_count: number;
+  execution_cost_read_length: number;
+  execution_cost_runtime: number;
+  execution_cost_write_count: number;
+  execution_cost_write_length: number;
+};
+
+export function calculateTotalBlockExecutionCost(txs: DataStoreTxEventData[]): BlockExecutionCost {
+  return txs.reduce(
+    (previousValue, currentValue) => {
+      const {
+        execution_cost_read_count,
+        execution_cost_read_length,
+        execution_cost_runtime,
+        execution_cost_write_count,
+        execution_cost_write_length,
+      } = previousValue;
+
+      return {
+        execution_cost_read_count:
+          execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+        execution_cost_read_length:
+          execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+        execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+        execution_cost_write_count:
+          execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+        execution_cost_write_length:
+          execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+      };
+    },
+    {
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    }
+  );
 }

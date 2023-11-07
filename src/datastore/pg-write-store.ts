@@ -1,4 +1,4 @@
-import { getOrAdd, batchIterate, I32_MAX, getIbdBlockHeight } from '../helpers';
+import { getOrAdd, I32_MAX, getIbdBlockHeight } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -68,6 +68,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
+  calculateTotalBlockExecutionCost,
   convertTxQueryResultToDbMempoolTx,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
@@ -89,6 +90,7 @@ import { logger } from '../logger';
 import {
   PgJsonb,
   PgSqlClient,
+  batchIterate,
   connectPostgres,
   isProdEnv,
   runMigrations,
@@ -96,6 +98,8 @@ import {
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
+const PG_PARAM_LIMIT = 65536;
+const INSERT_BATCH_SIZE = 500;
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -238,43 +242,12 @@ export class PgWriteStore extends PgStore {
         }
       }
 
-      //calculate total execution cost of the block
-      const totalCost = data.txs.reduce(
-        (previousValue, currentValue) => {
-          const {
-            execution_cost_read_count,
-            execution_cost_read_length,
-            execution_cost_runtime,
-            execution_cost_write_count,
-            execution_cost_write_length,
-          } = previousValue;
-
-          return {
-            execution_cost_read_count:
-              execution_cost_read_count + currentValue.tx.execution_cost_read_count,
-            execution_cost_read_length:
-              execution_cost_read_length + currentValue.tx.execution_cost_read_length,
-            execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
-            execution_cost_write_count:
-              execution_cost_write_count + currentValue.tx.execution_cost_write_count,
-            execution_cost_write_length:
-              execution_cost_write_length + currentValue.tx.execution_cost_write_length,
-          };
-        },
-        {
-          execution_cost_read_count: 0,
-          execution_cost_read_length: 0,
-          execution_cost_runtime: 0,
-          execution_cost_write_count: 0,
-          execution_cost_write_length: 0,
-        }
-      );
-
-      data.block.execution_cost_read_count = totalCost.execution_cost_read_count;
-      data.block.execution_cost_read_length = totalCost.execution_cost_read_length;
-      data.block.execution_cost_runtime = totalCost.execution_cost_runtime;
-      data.block.execution_cost_write_count = totalCost.execution_cost_write_count;
-      data.block.execution_cost_write_length = totalCost.execution_cost_write_length;
+      const totalBlockCost = calculateTotalBlockExecutionCost(data.txs);
+      data.block.execution_cost_read_count = totalBlockCost.execution_cost_read_count;
+      data.block.execution_cost_read_length = totalBlockCost.execution_cost_read_length;
+      data.block.execution_cost_runtime = totalBlockCost.execution_cost_runtime;
+      data.block.execution_cost_write_count = totalBlockCost.execution_cost_write_count;
+      data.block.execution_cost_write_length = totalBlockCost.execution_cost_write_length;
 
       batchedTxData = data.txs;
 
@@ -370,47 +343,24 @@ export class PgWriteStore extends PgStore {
           await this.fixBlockZeroData(sql, data.block);
         }
       }
-
-      // TODO(mb): sanity tests on tx_index on batchedTxData, re-normalize if necessary
-
-      // TODO(mb): copy the batchedTxData to outside the sql transaction fn so they can be emitted in txUpdate event below
-
       const blocksUpdated = await this.updateBlock(sql, data.block);
       if (blocksUpdated !== 0) {
-        for (const minerRewards of data.minerRewards) {
-          await this.updateMinerReward(sql, minerRewards);
-        }
+        await this.updateMinerRewards(sql, data.minerRewards);
         for (const entry of batchedTxData) {
           await this.updateTx(sql, entry.tx);
-          await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
-          await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
           contractLogEvents.push(...entry.contractLogEvents);
-          await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
-          for (const pox2Event of entry.pox2Events) {
-            await this.updatePox2Event(sql, entry.tx, pox2Event);
-          }
-          for (const pox3Event of entry.pox3Events) {
-            await this.updatePox3Event(sql, entry.tx, pox3Event);
-          }
-          for (const stxLockEvent of entry.stxLockEvents) {
-            await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
-          }
-          for (const ftEvent of entry.ftEvents) {
-            await this.updateFtEvent(sql, entry.tx, ftEvent);
-          }
-          for (const nftEvent of entry.nftEvents) {
-            await this.updateNftEvent(sql, entry.tx, nftEvent);
-          }
           deployedSmartContracts.push(...entry.smartContracts);
-          for (const smartContract of entry.smartContracts) {
-            await this.updateSmartContract(sql, entry.tx, smartContract);
-          }
-          for (const namespace of entry.namespaces) {
-            await this.updateNamespaces(sql, entry.tx, namespace);
-          }
-          for (const bnsName of entry.names) {
-            await this.updateNames(sql, entry.tx, bnsName);
-          }
+          await this.updateStxEvents(sql, entry.tx, entry.stxEvents);
+          await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
+          await this.updateSmartContractEvents(sql, entry.tx, entry.contractLogEvents);
+          await this.updatePox2Events(sql, entry.tx, entry.pox2Events);
+          await this.updatePox3Events(sql, entry.tx, entry.pox3Events);
+          await this.updateStxLockEvents(sql, entry.tx, entry.stxLockEvents);
+          await this.updateFtEvents(sql, entry.tx, entry.ftEvents);
+          await this.updateNftEvents(sql, entry.tx, entry.nftEvents);
+          await this.updateSmartContracts(sql, entry.tx, entry.smartContracts);
+          await this.updateNamespaces(sql, entry.tx, entry.namespaces);
+          await this.updateNames(sql, entry.tx, entry.names);
         }
         const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
         if (mempoolGarbageResults.deletedTxs.length > 0) {
@@ -496,25 +446,26 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateMinerReward(sql: PgSqlClient, minerReward: DbMinerReward): Promise<number> {
-    const values: MinerRewardInsertValues = {
-      block_hash: minerReward.block_hash,
-      index_block_hash: minerReward.index_block_hash,
-      from_index_block_hash: minerReward.from_index_block_hash,
-      mature_block_height: minerReward.mature_block_height,
-      canonical: minerReward.canonical,
-      recipient: minerReward.recipient,
-      // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
-      miner_address: minerReward.miner_address ?? minerReward.recipient,
-      coinbase_amount: minerReward.coinbase_amount.toString(),
-      tx_fees_anchored: minerReward.tx_fees_anchored.toString(),
-      tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed.toString(),
-      tx_fees_streamed_produced: minerReward.tx_fees_streamed_produced.toString(),
-    };
-    const result = await sql`
-      INSERT INTO miner_rewards ${sql(values)}
-    `;
-    return result.count;
+  async updateMinerRewards(sql: PgSqlClient, minerRewards: DbMinerReward[]): Promise<void> {
+    for (const batch of batchIterate(minerRewards, Math.floor(PG_PARAM_LIMIT / 11))) {
+      const values: MinerRewardInsertValues[] = batch.map(minerReward => ({
+        block_hash: minerReward.block_hash,
+        index_block_hash: minerReward.index_block_hash,
+        from_index_block_hash: minerReward.from_index_block_hash,
+        mature_block_height: minerReward.mature_block_height,
+        canonical: minerReward.canonical,
+        recipient: minerReward.recipient,
+        // If `miner_address` is null then it means pre-Stacks2.1 data, and the `recipient` can be accurately used
+        miner_address: minerReward.miner_address ?? minerReward.recipient,
+        coinbase_amount: minerReward.coinbase_amount.toString(),
+        tx_fees_anchored: minerReward.tx_fees_anchored.toString(),
+        tx_fees_streamed_confirmed: minerReward.tx_fees_streamed_confirmed.toString(),
+        tx_fees_streamed_produced: minerReward.tx_fees_streamed_produced.toString(),
+      }));
+      await sql`
+        INSERT INTO miner_rewards ${sql(values)}
+      `;
+    }
   }
 
   async updateBlock(sql: PgSqlClient, block: DbBlock): Promise<number> {
@@ -857,246 +808,256 @@ export class PgWriteStore extends PgStore {
     logger.info('Updated block zero boot data', tablesUpdates);
   }
 
-  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPox2Event) {
-    const values: Pox2EventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      stacker: event.stacker,
-      locked: event.locked.toString(),
-      balance: event.balance.toString(),
-      burnchain_unlock_height: event.burnchain_unlock_height.toString(),
-      name: event.name,
-      pox_addr: event.pox_addr,
-      pox_addr_raw: event.pox_addr_raw,
-      first_cycle_locked: null,
-      first_unlocked_cycle: null,
-      delegate_to: null,
-      lock_period: null,
-      lock_amount: null,
-      start_burn_height: null,
-      unlock_burn_height: null,
-      delegator: null,
-      increase_by: null,
-      total_locked: null,
-      extend_count: null,
-      reward_cycle: null,
-      amount_ustx: null,
-    };
-    // Set event-specific columns
-    switch (event.name) {
-      case Pox2EventName.HandleUnlock: {
-        values.first_cycle_locked = event.data.first_cycle_locked.toString();
-        values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
-        break;
-      }
-      case Pox2EventName.StackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.StackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        break;
-      }
-      case Pox2EventName.StackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.DelegateStx: {
-        values.amount_ustx = event.data.amount_ustx.toString();
-        values.delegate_to = event.data.delegate_to;
-        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
-        break;
-      }
-      case Pox2EventName.DelegateStackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.StackAggregationCommit: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationCommitIndexed: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationIncrease: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      default: {
-        throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
-      }
+  async updatePox2Events(sql: PgSqlClient, tx: DbTx, events: DbPox2Event[]) {
+    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 30))) {
+      const values: Pox2EventInsertValues[] = batch.map(event => {
+        const value: Pox2EventInsertValues = {
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          stacker: event.stacker,
+          locked: event.locked.toString(),
+          balance: event.balance.toString(),
+          burnchain_unlock_height: event.burnchain_unlock_height.toString(),
+          name: event.name,
+          pox_addr: event.pox_addr,
+          pox_addr_raw: event.pox_addr_raw,
+          first_cycle_locked: null,
+          first_unlocked_cycle: null,
+          delegate_to: null,
+          lock_period: null,
+          lock_amount: null,
+          start_burn_height: null,
+          unlock_burn_height: null,
+          delegator: null,
+          increase_by: null,
+          total_locked: null,
+          extend_count: null,
+          reward_cycle: null,
+          amount_ustx: null,
+        };
+        // Set event-specific columns
+        switch (event.name) {
+          case Pox2EventName.HandleUnlock: {
+            value.first_cycle_locked = event.data.first_cycle_locked.toString();
+            value.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
+            break;
+          }
+          case Pox2EventName.StackStx: {
+            value.lock_period = event.data.lock_period.toString();
+            value.lock_amount = event.data.lock_amount.toString();
+            value.start_burn_height = event.data.start_burn_height.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            break;
+          }
+          case Pox2EventName.StackIncrease: {
+            value.increase_by = event.data.increase_by.toString();
+            value.total_locked = event.data.total_locked.toString();
+            break;
+          }
+          case Pox2EventName.StackExtend: {
+            value.extend_count = event.data.extend_count.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            break;
+          }
+          case Pox2EventName.DelegateStx: {
+            value.amount_ustx = event.data.amount_ustx.toString();
+            value.delegate_to = event.data.delegate_to;
+            value.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
+            break;
+          }
+          case Pox2EventName.DelegateStackStx: {
+            value.lock_period = event.data.lock_period.toString();
+            value.lock_amount = event.data.lock_amount.toString();
+            value.start_burn_height = event.data.start_burn_height.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.DelegateStackIncrease: {
+            value.increase_by = event.data.increase_by.toString();
+            value.total_locked = event.data.total_locked.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.DelegateStackExtend: {
+            value.extend_count = event.data.extend_count.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.StackAggregationCommit: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          case Pox2EventName.StackAggregationCommitIndexed: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          case Pox2EventName.StackAggregationIncrease: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          default: {
+            throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
+          }
+        }
+        return value;
+      });
+      await sql`
+        INSERT INTO pox2_events ${sql(values)}
+      `;
     }
-    await sql`
-      INSERT INTO pox2_events ${sql(values)}
-    `;
   }
 
-  // todo: abstract or copy all types
-  async updatePox3Event(sql: PgSqlClient, tx: DbTx, event: DbPox3Event) {
-    const values: Pox2EventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      stacker: event.stacker,
-      locked: event.locked.toString(),
-      balance: event.balance.toString(),
-      burnchain_unlock_height: event.burnchain_unlock_height.toString(),
-      name: event.name,
-      pox_addr: event.pox_addr,
-      pox_addr_raw: event.pox_addr_raw,
-      first_cycle_locked: null,
-      first_unlocked_cycle: null,
-      delegate_to: null,
-      lock_period: null,
-      lock_amount: null,
-      start_burn_height: null,
-      unlock_burn_height: null,
-      delegator: null,
-      increase_by: null,
-      total_locked: null,
-      extend_count: null,
-      reward_cycle: null,
-      amount_ustx: null,
-    };
-    // Set event-specific columns
-    switch (event.name) {
-      case Pox2EventName.HandleUnlock: {
-        values.first_cycle_locked = event.data.first_cycle_locked.toString();
-        values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
-        break;
-      }
-      case Pox2EventName.StackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.StackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        break;
-      }
-      case Pox2EventName.StackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.DelegateStx: {
-        values.amount_ustx = event.data.amount_ustx.toString();
-        values.delegate_to = event.data.delegate_to;
-        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
-        break;
-      }
-      case Pox2EventName.DelegateStackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.StackAggregationCommit: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationCommitIndexed: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationIncrease: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      default: {
-        throw new Error(`Unexpected Pox3 event name: ${(event as DbPox2Event).name}`);
-      }
+  async updatePox3Events(sql: PgSqlClient, tx: DbTx, events: DbPox3Event[]) {
+    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 30))) {
+      const values = batch.map(event => {
+        const value: Pox2EventInsertValues = {
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          stacker: event.stacker,
+          locked: event.locked.toString(),
+          balance: event.balance.toString(),
+          burnchain_unlock_height: event.burnchain_unlock_height.toString(),
+          name: event.name,
+          pox_addr: event.pox_addr,
+          pox_addr_raw: event.pox_addr_raw,
+          first_cycle_locked: null,
+          first_unlocked_cycle: null,
+          delegate_to: null,
+          lock_period: null,
+          lock_amount: null,
+          start_burn_height: null,
+          unlock_burn_height: null,
+          delegator: null,
+          increase_by: null,
+          total_locked: null,
+          extend_count: null,
+          reward_cycle: null,
+          amount_ustx: null,
+        };
+        // Set event-specific columns
+        switch (event.name) {
+          case Pox2EventName.HandleUnlock: {
+            value.first_cycle_locked = event.data.first_cycle_locked.toString();
+            value.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
+            break;
+          }
+          case Pox2EventName.StackStx: {
+            value.lock_period = event.data.lock_period.toString();
+            value.lock_amount = event.data.lock_amount.toString();
+            value.start_burn_height = event.data.start_burn_height.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            break;
+          }
+          case Pox2EventName.StackIncrease: {
+            value.increase_by = event.data.increase_by.toString();
+            value.total_locked = event.data.total_locked.toString();
+            break;
+          }
+          case Pox2EventName.StackExtend: {
+            value.extend_count = event.data.extend_count.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            break;
+          }
+          case Pox2EventName.DelegateStx: {
+            value.amount_ustx = event.data.amount_ustx.toString();
+            value.delegate_to = event.data.delegate_to;
+            value.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
+            break;
+          }
+          case Pox2EventName.DelegateStackStx: {
+            value.lock_period = event.data.lock_period.toString();
+            value.lock_amount = event.data.lock_amount.toString();
+            value.start_burn_height = event.data.start_burn_height.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.DelegateStackIncrease: {
+            value.increase_by = event.data.increase_by.toString();
+            value.total_locked = event.data.total_locked.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.DelegateStackExtend: {
+            value.extend_count = event.data.extend_count.toString();
+            value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.delegator = event.data.delegator;
+            break;
+          }
+          case Pox2EventName.StackAggregationCommit: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          case Pox2EventName.StackAggregationCommitIndexed: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          case Pox2EventName.StackAggregationIncrease: {
+            value.reward_cycle = event.data.reward_cycle.toString();
+            value.amount_ustx = event.data.amount_ustx.toString();
+            break;
+          }
+          default: {
+            throw new Error(`Unexpected Pox3 event name: ${(event as DbPox2Event).name}`);
+          }
+        }
+        return value;
+      });
+      await sql`
+        INSERT INTO pox3_events ${sql(values)}
+      `;
     }
-    await sql`
-      INSERT INTO pox3_events ${sql(values)}
-    `;
   }
 
-  async updateStxLockEvent(sql: PgSqlClient, tx: DbTx, event: DbStxLockEvent) {
-    const values: StxLockEventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      locked_amount: event.locked_amount.toString(),
-      unlock_height: event.unlock_height,
-      locked_address: event.locked_address,
-      contract_name: event.contract_name,
-    };
-    await sql`
-      INSERT INTO stx_lock_events ${sql(values)}
-    `;
+  async updateStxLockEvents(sql: PgSqlClient, tx: DbTx, events: DbStxLockEvent[]) {
+    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 14))) {
+      const values: StxLockEventInsertValues[] = batch.map(event => ({
+        event_index: event.event_index,
+        tx_id: event.tx_id,
+        tx_index: event.tx_index,
+        block_height: event.block_height,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+        canonical: event.canonical,
+        locked_amount: event.locked_amount.toString(),
+        unlock_height: event.unlock_height,
+        locked_address: event.locked_address,
+        contract_name: event.contract_name,
+      }));
+      await sql`
+        INSERT INTO stx_lock_events ${sql(values)}
+      `;
+    }
   }
 
-  async updateBatchStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
-    for (const eventBatch of batchIterate(events, batchSize)) {
+  async updateStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
+    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
       const values: StxEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -1159,8 +1120,7 @@ export class PgWriteStore extends PgStore {
       ].filter((p): p is string => !!p) // Remove undefined
     );
     // Insert stx_event data
-    const batchSize = 500;
-    for (const eventBatch of batchIterate(events, batchSize)) {
+    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 9))) {
       const principals: string[] = [];
       for (const event of eventBatch) {
         if (event.sender) principals.push(event.sender);
@@ -1308,55 +1268,58 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async updateFtEvent(sql: PgSqlClient, tx: DbTx, event: DbFtEvent) {
-    const values: FtEventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      asset_event_type_id: event.asset_event_type_id,
-      sender: event.sender ?? null,
-      recipient: event.recipient ?? null,
-      asset_identifier: event.asset_identifier,
-      amount: event.amount.toString(),
-    };
-    await sql`
-      INSERT INTO ft_events ${sql(values)}
-    `;
+  async updateFtEvents(sql: PgSqlClient, tx: DbTx, events: DbFtEvent[]) {
+    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
+      const values: FtEventInsertValues[] = batch.map(event => ({
+        event_index: event.event_index,
+        tx_id: event.tx_id,
+        tx_index: event.tx_index,
+        block_height: event.block_height,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+        canonical: event.canonical,
+        asset_event_type_id: event.asset_event_type_id,
+        sender: event.sender ?? null,
+        recipient: event.recipient ?? null,
+        asset_identifier: event.asset_identifier,
+        amount: event.amount.toString(),
+      }));
+      await sql`
+        INSERT INTO ft_events ${sql(values)}
+      `;
+    }
   }
 
-  async updateNftEvent(sql: PgSqlClient, tx: DbTx, event: DbNftEvent) {
-    const values: NftEventInsertValues = {
-      tx_id: event.tx_id,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      sender: event.sender ?? null,
-      recipient: event.recipient ?? null,
-      event_index: event.event_index,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      canonical: event.canonical,
-      asset_event_type_id: event.asset_event_type_id,
-      asset_identifier: event.asset_identifier,
-      value: event.value,
-    };
-    await sql`
-      INSERT INTO nft_events ${sql(values)}
-    `;
+  async updateNftEvents(sql: PgSqlClient, tx: DbTx, events: DbNftEvent[]) {
+    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
+      const values: NftEventInsertValues[] = batch.map(event => ({
+        tx_id: event.tx_id,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+        sender: event.sender ?? null,
+        recipient: event.recipient ?? null,
+        event_index: event.event_index,
+        tx_index: event.tx_index,
+        block_height: event.block_height,
+        canonical: event.canonical,
+        asset_event_type_id: event.asset_event_type_id,
+        asset_identifier: event.asset_identifier,
+        value: event.value,
+      }));
+      await sql`
+        INSERT INTO nft_events ${sql(values)}
+      `;
+    }
   }
 
-  async updateBatchSmartContractEvent(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
-    const batchSize = 500; // (matt) benchmark: 21283 per second (15 seconds)
-    for (const eventBatch of batchIterate(events, batchSize)) {
+  async updateSmartContractEvents(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
+    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 13))) {
       const values: SmartContractEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -1826,202 +1789,189 @@ export class PgWriteStore extends PgStore {
     return result;
   }
 
-  async updateSmartContract(sql: PgSqlClient, tx: DbTx, smartContract: DbSmartContract) {
-    const values: SmartContractInsertValues = {
-      tx_id: smartContract.tx_id,
-      canonical: smartContract.canonical,
-      clarity_version: smartContract.clarity_version,
-      contract_id: smartContract.contract_id,
-      block_height: smartContract.block_height,
-      index_block_hash: tx.index_block_hash,
-      source_code: smartContract.source_code,
-      abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-    };
-    await sql`
-      INSERT INTO smart_contracts ${sql(values)}
-    `;
+  async updateSmartContracts(sql: PgSqlClient, tx: DbTx, smartContracts: DbSmartContract[]) {
+    for (const batch of batchIterate(smartContracts, Math.floor(PG_PARAM_LIMIT / 12))) {
+      const values: SmartContractInsertValues[] = batch.map(smartContract => ({
+        tx_id: smartContract.tx_id,
+        canonical: smartContract.canonical,
+        clarity_version: smartContract.clarity_version,
+        contract_id: smartContract.contract_id,
+        block_height: smartContract.block_height,
+        index_block_hash: tx.index_block_hash,
+        source_code: smartContract.source_code,
+        abi: smartContract.abi ? JSON.parse(smartContract.abi) ?? 'null' : 'null',
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+      }));
+      await sql`
+        INSERT INTO smart_contracts ${sql(values)}
+      `;
+    }
   }
 
-  async updateNames(
-    sql: PgSqlClient,
-    blockData: {
-      index_block_hash: string;
-      parent_index_block_hash: string;
-      microblock_hash: string;
-      microblock_sequence: number;
-      microblock_canonical: boolean;
-    },
-    bnsName: DbBnsName
-  ) {
-    const {
-      name,
-      address,
-      registered_at,
-      expire_block,
-      zonefile,
-      zonefile_hash,
-      namespace_id,
-      tx_id,
-      tx_index,
-      event_index,
-      status,
-      canonical,
-    } = bnsName;
-    // Try to figure out the name's expiration block based on its namespace's lifetime.
-    let expireBlock = expire_block;
-    const namespaceLifetime = await sql<{ lifetime: number }[]>`
-      SELECT lifetime
-      FROM namespaces
-      WHERE namespace_id = ${namespace_id}
-      AND canonical = true AND microblock_canonical = true
-      ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
-      LIMIT 1
-    `;
-    if (namespaceLifetime.length > 0) {
-      expireBlock = registered_at + namespaceLifetime[0].lifetime;
-    }
-    // If the name was transferred, keep the expiration from the last register/renewal we had (if
-    // any).
-    if (status === 'name-transfer') {
-      const prevExpiration = await sql<{ expire_block: number }[]>`
-        SELECT expire_block
-        FROM names
-        WHERE name = ${name}
-          AND canonical = TRUE AND microblock_canonical = TRUE
-        ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
+  async updateNames(sql: PgSqlClient, tx: DbTxRaw, names: DbBnsName[]) {
+    // TODO: Move these to CTE queries for optimization
+    for (const bnsName of names) {
+      const {
+        name,
+        address,
+        registered_at,
+        expire_block,
+        zonefile,
+        zonefile_hash,
+        namespace_id,
+        tx_id,
+        tx_index,
+        event_index,
+        status,
+        canonical,
+      } = bnsName;
+      // Try to figure out the name's expiration block based on its namespace's lifetime.
+      let expireBlock = expire_block;
+      const namespaceLifetime = await sql<{ lifetime: number }[]>`
+        SELECT lifetime
+        FROM namespaces
+        WHERE namespace_id = ${namespace_id}
+        AND canonical = true AND microblock_canonical = true
+        ORDER BY namespace_id, ready_block DESC, microblock_sequence DESC, tx_index DESC
         LIMIT 1
       `;
-      if (prevExpiration.length > 0) {
-        expireBlock = prevExpiration[0].expire_block;
+      if (namespaceLifetime.length > 0) {
+        expireBlock = registered_at + namespaceLifetime[0].lifetime;
       }
-    }
-    // If we didn't receive a zonefile, keep the last valid one.
-    let finalZonefile = zonefile;
-    let finalZonefileHash = zonefile_hash;
-    if (finalZonefileHash === '') {
-      const lastZonefile = await sql<{ zonefile: string; zonefile_hash: string }[]>`
-        SELECT z.zonefile, z.zonefile_hash
-        FROM zonefiles AS z
-        INNER JOIN names AS n USING (name, tx_id, index_block_hash)
-        WHERE z.name = ${name}
-          AND n.canonical = TRUE
-          AND n.microblock_canonical = TRUE
-        ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
-        LIMIT 1
+      // If the name was transferred, keep the expiration from the last register/renewal we had (if
+      // any).
+      if (status === 'name-transfer') {
+        const prevExpiration = await sql<{ expire_block: number }[]>`
+          SELECT expire_block
+          FROM names
+          WHERE name = ${name}
+            AND canonical = TRUE AND microblock_canonical = TRUE
+          ORDER BY registered_at DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT 1
+        `;
+        if (prevExpiration.length > 0) {
+          expireBlock = prevExpiration[0].expire_block;
+        }
+      }
+      // If we didn't receive a zonefile, keep the last valid one.
+      let finalZonefile = zonefile;
+      let finalZonefileHash = zonefile_hash;
+      if (finalZonefileHash === '') {
+        const lastZonefile = await sql<{ zonefile: string; zonefile_hash: string }[]>`
+          SELECT z.zonefile, z.zonefile_hash
+          FROM zonefiles AS z
+          INNER JOIN names AS n USING (name, tx_id, index_block_hash)
+          WHERE z.name = ${name}
+            AND n.canonical = TRUE
+            AND n.microblock_canonical = TRUE
+          ORDER BY n.registered_at DESC, n.microblock_sequence DESC, n.tx_index DESC
+          LIMIT 1
+        `;
+        if (lastZonefile.length > 0) {
+          finalZonefile = lastZonefile[0].zonefile;
+          finalZonefileHash = lastZonefile[0].zonefile_hash;
+        }
+      }
+      const validZonefileHash = validateZonefileHash(finalZonefileHash);
+      const zonefileValues: BnsZonefileInsertValues = {
+        name: name,
+        zonefile: finalZonefile,
+        zonefile_hash: validZonefileHash,
+        tx_id: tx_id,
+        index_block_hash: tx.index_block_hash,
+      };
+      await sql`
+        INSERT INTO zonefiles ${sql(zonefileValues)}
+        ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
+          UPDATE SET zonefile = EXCLUDED.zonefile
       `;
-      if (lastZonefile.length > 0) {
-        finalZonefile = lastZonefile[0].zonefile;
-        finalZonefileHash = lastZonefile[0].zonefile_hash;
-      }
+      const nameValues: BnsNameInsertValues = {
+        name: name,
+        address: address,
+        registered_at: registered_at,
+        expire_block: expireBlock,
+        zonefile_hash: validZonefileHash,
+        namespace_id: namespace_id,
+        tx_index: tx_index,
+        tx_id: tx_id,
+        event_index: event_index ?? null,
+        status: status ?? null,
+        canonical: canonical,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+      };
+      await sql`
+        INSERT INTO names ${sql(nameValues)}
+        ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash_event_index DO
+          UPDATE SET
+            address = EXCLUDED.address,
+            registered_at = EXCLUDED.registered_at,
+            expire_block = EXCLUDED.expire_block,
+            zonefile_hash = EXCLUDED.zonefile_hash,
+            namespace_id = EXCLUDED.namespace_id,
+            tx_index = EXCLUDED.tx_index,
+            event_index = EXCLUDED.event_index,
+            status = EXCLUDED.status,
+            canonical = EXCLUDED.canonical,
+            parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+            microblock_sequence = EXCLUDED.microblock_sequence,
+            microblock_canonical = EXCLUDED.microblock_canonical
+      `;
     }
-    const validZonefileHash = validateZonefileHash(finalZonefileHash);
-    const zonefileValues: BnsZonefileInsertValues = {
-      name: name,
-      zonefile: finalZonefile,
-      zonefile_hash: validZonefileHash,
-      tx_id: tx_id,
-      index_block_hash: blockData.index_block_hash,
-    };
-    await sql`
-      INSERT INTO zonefiles ${sql(zonefileValues)}
-      ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
-        UPDATE SET zonefile = EXCLUDED.zonefile
-    `;
-    const nameValues: BnsNameInsertValues = {
-      name: name,
-      address: address,
-      registered_at: registered_at,
-      expire_block: expireBlock,
-      zonefile_hash: validZonefileHash,
-      namespace_id: namespace_id,
-      tx_index: tx_index,
-      tx_id: tx_id,
-      event_index: event_index ?? null,
-      status: status ?? null,
-      canonical: canonical,
-      index_block_hash: blockData.index_block_hash,
-      parent_index_block_hash: blockData.parent_index_block_hash,
-      microblock_hash: blockData.microblock_hash,
-      microblock_sequence: blockData.microblock_sequence,
-      microblock_canonical: blockData.microblock_canonical,
-    };
-    await sql`
-      INSERT INTO names ${sql(nameValues)}
-      ON CONFLICT ON CONSTRAINT unique_name_tx_id_index_block_hash_microblock_hash_event_index DO
-        UPDATE SET
-          address = EXCLUDED.address,
-          registered_at = EXCLUDED.registered_at,
-          expire_block = EXCLUDED.expire_block,
-          zonefile_hash = EXCLUDED.zonefile_hash,
-          namespace_id = EXCLUDED.namespace_id,
-          tx_index = EXCLUDED.tx_index,
-          event_index = EXCLUDED.event_index,
-          status = EXCLUDED.status,
-          canonical = EXCLUDED.canonical,
-          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
-          microblock_sequence = EXCLUDED.microblock_sequence,
-          microblock_canonical = EXCLUDED.microblock_canonical
-    `;
   }
 
-  async updateNamespaces(
-    sql: PgSqlClient,
-    blockData: {
-      index_block_hash: string;
-      parent_index_block_hash: string;
-      microblock_hash: string;
-      microblock_sequence: number;
-      microblock_canonical: boolean;
-    },
-    bnsNamespace: DbBnsNamespace
-  ) {
-    const values: BnsNamespaceInsertValues = {
-      namespace_id: bnsNamespace.namespace_id,
-      launched_at: bnsNamespace.launched_at ?? null,
-      address: bnsNamespace.address,
-      reveal_block: bnsNamespace.reveal_block,
-      ready_block: bnsNamespace.ready_block,
-      buckets: bnsNamespace.buckets,
-      base: bnsNamespace.base.toString(),
-      coeff: bnsNamespace.coeff.toString(),
-      nonalpha_discount: bnsNamespace.nonalpha_discount.toString(),
-      no_vowel_discount: bnsNamespace.no_vowel_discount.toString(),
-      lifetime: bnsNamespace.lifetime,
-      status: bnsNamespace.status ?? null,
-      tx_index: bnsNamespace.tx_index,
-      tx_id: bnsNamespace.tx_id,
-      canonical: bnsNamespace.canonical,
-      index_block_hash: blockData.index_block_hash,
-      parent_index_block_hash: blockData.parent_index_block_hash,
-      microblock_hash: blockData.microblock_hash,
-      microblock_sequence: blockData.microblock_sequence,
-      microblock_canonical: blockData.microblock_canonical,
-    };
-    await sql`
-      INSERT INTO namespaces ${sql(values)}
-      ON CONFLICT ON CONSTRAINT unique_namespace_id_tx_id_index_block_hash_microblock_hash DO
-        UPDATE SET
-          launched_at = EXCLUDED.launched_at,
-          address = EXCLUDED.address,
-          reveal_block = EXCLUDED.reveal_block,
-          ready_block = EXCLUDED.ready_block,
-          buckets = EXCLUDED.buckets,
-          base = EXCLUDED.base,
-          coeff = EXCLUDED.coeff,
-          nonalpha_discount = EXCLUDED.nonalpha_discount,
-          no_vowel_discount = EXCLUDED.no_vowel_discount,
-          lifetime = EXCLUDED.lifetime,
-          status = EXCLUDED.status,
-          tx_index = EXCLUDED.tx_index,
-          canonical = EXCLUDED.canonical,
-          parent_index_block_hash = EXCLUDED.parent_index_block_hash,
-          microblock_sequence = EXCLUDED.microblock_sequence,
-          microblock_canonical = EXCLUDED.microblock_canonical
-    `;
+  async updateNamespaces(sql: PgSqlClient, tx: DbTxRaw, namespaces: DbBnsNamespace[]) {
+    for (const batch of batchIterate(namespaces, Math.floor(PG_PARAM_LIMIT / 20))) {
+      const values: BnsNamespaceInsertValues[] = batch.map(namespace => ({
+        namespace_id: namespace.namespace_id,
+        launched_at: namespace.launched_at ?? null,
+        address: namespace.address,
+        reveal_block: namespace.reveal_block,
+        ready_block: namespace.ready_block,
+        buckets: namespace.buckets,
+        base: namespace.base.toString(),
+        coeff: namespace.coeff.toString(),
+        nonalpha_discount: namespace.nonalpha_discount.toString(),
+        no_vowel_discount: namespace.no_vowel_discount.toString(),
+        lifetime: namespace.lifetime,
+        status: namespace.status ?? null,
+        tx_index: namespace.tx_index,
+        tx_id: namespace.tx_id,
+        canonical: namespace.canonical,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        microblock_canonical: tx.microblock_canonical,
+      }));
+      await sql`
+        INSERT INTO namespaces ${sql(values)}
+        ON CONFLICT ON CONSTRAINT unique_namespace_id_tx_id_index_block_hash_microblock_hash DO
+          UPDATE SET
+            launched_at = EXCLUDED.launched_at,
+            address = EXCLUDED.address,
+            reveal_block = EXCLUDED.reveal_block,
+            ready_block = EXCLUDED.ready_block,
+            buckets = EXCLUDED.buckets,
+            base = EXCLUDED.base,
+            coeff = EXCLUDED.coeff,
+            nonalpha_discount = EXCLUDED.nonalpha_discount,
+            no_vowel_discount = EXCLUDED.no_vowel_discount,
+            lifetime = EXCLUDED.lifetime,
+            status = EXCLUDED.status,
+            tx_index = EXCLUDED.tx_index,
+            canonical = EXCLUDED.canonical,
+            parent_index_block_hash = EXCLUDED.parent_index_block_hash,
+            microblock_sequence = EXCLUDED.microblock_sequence,
+            microblock_canonical = EXCLUDED.microblock_canonical
+      `;
+    }
   }
 
   async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
@@ -2247,33 +2197,17 @@ export class PgWriteStore extends PgStore {
         );
       }
 
-      await this.updateBatchStxEvents(sql, entry.tx, entry.stxEvents);
+      await this.updateStxEvents(sql, entry.tx, entry.stxEvents);
       await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
-      await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
-      for (const pox2Event of entry.pox2Events) {
-        await this.updatePox2Event(sql, entry.tx, pox2Event);
-      }
-      for (const pox3Event of entry.pox3Events) {
-        await this.updatePox3Event(sql, entry.tx, pox3Event);
-      }
-      for (const stxLockEvent of entry.stxLockEvents) {
-        await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
-      }
-      for (const ftEvent of entry.ftEvents) {
-        await this.updateFtEvent(sql, entry.tx, ftEvent);
-      }
-      for (const nftEvent of entry.nftEvents) {
-        await this.updateNftEvent(sql, entry.tx, nftEvent);
-      }
-      for (const smartContract of entry.smartContracts) {
-        await this.updateSmartContract(sql, entry.tx, smartContract);
-      }
-      for (const namespace of entry.namespaces) {
-        await this.updateNamespaces(sql, entry.tx, namespace);
-      }
-      for (const bnsName of entry.names) {
-        await this.updateNames(sql, entry.tx, bnsName);
-      }
+      await this.updateSmartContractEvents(sql, entry.tx, entry.contractLogEvents);
+      await this.updatePox2Events(sql, entry.tx, entry.pox2Events);
+      await this.updatePox3Events(sql, entry.tx, entry.pox3Events);
+      await this.updateStxLockEvents(sql, entry.tx, entry.stxLockEvents);
+      await this.updateFtEvents(sql, entry.tx, entry.ftEvents);
+      await this.updateNftEvents(sql, entry.tx, entry.nftEvents);
+      await this.updateSmartContracts(sql, entry.tx, entry.smartContracts);
+      await this.updateNamespaces(sql, entry.tx, entry.namespaces);
+      await this.updateNames(sql, entry.tx, entry.names);
     }
   }
 

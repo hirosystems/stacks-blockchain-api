@@ -98,7 +98,7 @@ describe('postgres datastore', () => {
       createMinerReward('addrB', 99999n, 92n, 93n, 0n, false),
     ];
     for (const reward of minerRewards) {
-      await db.updateMinerReward(client, reward);
+      await db.updateMinerRewards(client, reward);
     }
 
     const tx: DbTxRaw = {
@@ -199,7 +199,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrB', 333n, 1),
     ];
     for (const stxLockEvent of stxLockEvents) {
-      await db.updateStxLockEvent(client, tx, stxLockEvent);
+      await db.updateStxLockEvents(client, tx, stxLockEvent);
     }
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
@@ -3500,7 +3500,7 @@ describe('postgres datastore', () => {
 
     // insert miner rewards directly
     for (const minerReward of [minerReward1]) {
-      await db.updateMinerReward(client, minerReward);
+      await db.updateMinerRewards(client, minerReward);
     }
 
     // insert txs directly
@@ -3510,7 +3510,7 @@ describe('postgres datastore', () => {
 
     // insert stx lock events directly
     for (const event of [stxLockEvent1]) {
-      await db.updateStxLockEvent(client, tx1, event);
+      await db.updateStxLockEvents(client, tx1, event);
     }
 
     const block5: DbBlock = {

@@ -769,7 +769,7 @@ describe('search tests', () => {
       recipient: addr5,
       sender: 'none',
     };
-    await db.updateFtEvent(client, stxTx1, ftEvent1);
+    await db.updateFtEvents(client, stxTx1, ftEvent1);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
@@ -797,7 +797,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr6,
     };
-    await db.updateFtEvent(client, stxTx1, ftEvent2);
+    await db.updateFtEvents(client, stxTx1, ftEvent2);
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);
@@ -825,7 +825,7 @@ describe('search tests', () => {
       recipient: addr7,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent1);
+    await db.updateNftEvents(client, stxTx1, nftEvent1);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
@@ -853,7 +853,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr8,
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent2);
+    await db.updateNftEvents(client, stxTx1, nftEvent2);
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);

@@ -1038,7 +1038,7 @@ describe('tx tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(client, dbTx, {
+    await db.updateSmartContracts(client, dbTx, {
       tx_id: dbTx.tx_id,
       canonical: true,
       clarity_version: null,
