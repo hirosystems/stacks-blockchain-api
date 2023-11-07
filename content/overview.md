@@ -6,7 +6,7 @@ Title: Overview
 
 The Stacks blockchain API allows you to query the Stacks blockchain and interact with smart contracts. It was built to maintain paginated, materialized views of the Stacks Blockchain.
 
-The Stacks Blockchain API is hosted by Hiro. Using it requires you to trust the hosted server, but this API also provides a faster development experience. You may wish to consider running your own API instance to create a fully trustless architecture for your app.
+The Stacks Blockchain API is hosted by Hiro. Using it requires you to trust us as the hosted server, but in return we provide a faster development experience. If you want a fully trustless architecture for your app, you may wish to consider running your own API instance.
 
 > **_NOTE:_**
 >
@@ -18,14 +18,14 @@ The Stacks Blockchain API is hosted by Hiro. Using it requires you to trust the 
 
 ![API architecture!](images/api-architecture.png)
 
-* The `stacks-node` has it's own minimal set of http endpoints referred to as `RPC endpoints`
+* The `stacks-node` has its own minimal set of http endpoints referred to as `RPC endpoints`
   * The `stacks-blockchain-api` allows clients to access these endpoints by proxying them through to a load-balanced pool of `stacks-nodes`.
   * See: https://github.com/blockstack/stacks-blockchain/blob/master/docs/rpc-endpoints.md -- some common ones:
-    * `POST /v2/transactions` - broadcast a tx.
+    * `POST /v2/transactions` - broadcast a transaction.
     * `GET /v2/pox` - get current PoX-relevant information.
-    * `POST /v2/contracts/call-read/<contract>/<function>` - evaluates and returns the result of calling a Clarity function.
-    * `POST /v2/fees/transaction` - evaluates a given transaction and returns tx fee estimation data.
-    * `GET /v2/accounts/<address>` - used to get the current `nonce` required for creating transactions.
+    * `POST /v2/contracts/call-read/<contract>/<function>` - evaluate and return the result of calling a Clarity function.
+    * `POST /v2/fees/transaction` - evaluate a given transaction and return transaction fee estimation data.
+    * `GET /v2/accounts/<address>` - get the current `nonce` required for creating transactions.
 
 
 * The endpoints implemented by `stacks-blockchain-api` provide data that the `stacks-node` can't due to various constraints.
@@ -52,7 +52,7 @@ The Stacks Blockchain API is hosted by Hiro. Using it requires you to trust the 
   * ALSO the OpenAPI + JSONSchemas are used to generate a standalone `@stacks/blockchain-api-client`.
 
 
-* The easiest/quickest way to develop in this repo is using the vscode debugger. It uses docker-compose to setup a `stacks-node` and postgres instance.
+* The easiest/quickest way to develop in this repo is using the VS Code debugger. It uses docker-compose to setup a `stacks-node` and Postgres instance.
   * Alternatively, you can run `npm run dev:integrated` which does the same thing but without a debugger.
 
 
