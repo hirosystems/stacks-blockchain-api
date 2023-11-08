@@ -63,7 +63,7 @@ import {
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { Pox2EventName } from '../../pox-helpers';
 import { logger } from '../../logger';

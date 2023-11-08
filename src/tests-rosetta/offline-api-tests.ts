@@ -48,7 +48,7 @@ import {
 } from '../api/rosetta-constants';
 import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta-helpers';
+import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta/rosetta-helpers';
 import * as nock from 'nock';
 import { PgStore } from '../datastore/pg-store';
 import { decodeBtcAddress } from '@stacks/stacking';
