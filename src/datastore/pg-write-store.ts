@@ -69,8 +69,9 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
-  calculateTotalBlockExecutionCost,
+  setTotalBlockUpdateDataExecutionCost,
   convertTxQueryResultToDbMempoolTx,
+  markBlockUpdateDataAsNonCanonical,
   MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
@@ -97,6 +98,7 @@ import {
   runMigrations,
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { BnsGenesisBlock } from 'src/event-replay/helpers';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const PG_PARAM_LIMIT = 65536;
@@ -213,43 +215,23 @@ export class PgWriteStore extends PgStore {
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip(sql, false);
       await this.handleReorg(sql, data.block, chainTip.blockHeight);
-      // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
+
       const isCanonical = data.block.block_height > chainTip.blockHeight;
       if (!isCanonical) {
-        data.block = { ...data.block, canonical: false };
-        data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
-        data.txs = data.txs.map(tx => ({
-          tx: { ...tx.tx, canonical: false },
-          stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
-          stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
-          ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
-          nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
-          contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
-          smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
-          names: tx.names.map(e => ({ ...e, canonical: false })),
-          namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
-          pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
-          pox3Events: tx.pox3Events.map(e => ({ ...e, canonical: false })),
-        }));
-        data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
+        markBlockUpdateDataAsNonCanonical(data);
       } else {
         // When storing newly mined canonical txs, remove them from the mempool table.
-        const candidateTxIds = data.txs.map(d => d.tx.tx_id);
-        const removedTxsResult = await this.pruneMempoolTxs(sql, candidateTxIds);
-        if (removedTxsResult.removedTxs.length > 0) {
+        const pruneRes = await this.pruneMempoolTxs(
+          sql,
+          data.txs.map(d => d.tx.tx_id)
+        );
+        if (pruneRes.removedTxs.length > 0) {
           logger.debug(
-            `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during new block ingestion`
+            `Removed ${pruneRes.removedTxs.length} txs from mempool table during new block ingestion`
           );
         }
       }
-
-      const totalBlockCost = calculateTotalBlockExecutionCost(data.txs);
-      data.block.execution_cost_read_count = totalBlockCost.execution_cost_read_count;
-      data.block.execution_cost_read_length = totalBlockCost.execution_cost_read_length;
-      data.block.execution_cost_runtime = totalBlockCost.execution_cost_runtime;
-      data.block.execution_cost_write_count = totalBlockCost.execution_cost_write_count;
-      data.block.execution_cost_write_length = totalBlockCost.execution_cost_write_length;
-
+      setTotalBlockUpdateDataExecutionCost(data);
       batchedTxData = data.txs;
 
       // Find microblocks that weren't already inserted via the unconfirmed microblock event.
@@ -318,22 +300,7 @@ export class PgWriteStore extends PgStore {
         });
       }
 
-      if (isCanonical && data.pox_v1_unlock_height !== undefined) {
-        // update the pox_state.pox_v1_unlock_height singleton
-        await sql`
-          UPDATE pox_state
-          SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
-          WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
-        `;
-      }
-      if (isCanonical && data.pox_v2_unlock_height !== undefined) {
-        // update the pox_state.pox_v2_unlock_height singleton
-        await sql`
-          UPDATE pox_state
-          SET pox_v2_unlock_height = ${data.pox_v2_unlock_height}
-          WHERE pox_v2_unlock_height != ${data.pox_v2_unlock_height}
-        `;
-      }
+      if (isCanonical) await this.updatePoxStateUnlockHeight(sql, data);
 
       // When receiving first block, check if "block 0" boot data was received,
       // if so, update their properties to correspond to "block 1", since we treat
@@ -443,6 +410,25 @@ export class PgWriteStore extends PgStore {
       for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
         await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
       }
+    }
+  }
+
+  private async updatePoxStateUnlockHeight(sql: PgSqlClient, data: DataStoreBlockUpdateData) {
+    if (data.pox_v1_unlock_height !== undefined) {
+      // update the pox_state.pox_v1_unlock_height singleton
+      await sql`
+        UPDATE pox_state
+        SET pox_v1_unlock_height = ${data.pox_v1_unlock_height}
+        WHERE pox_v1_unlock_height != ${data.pox_v1_unlock_height}
+      `;
+    }
+    if (data.pox_v2_unlock_height !== undefined) {
+      // update the pox_state.pox_v2_unlock_height singleton
+      await sql`
+        UPDATE pox_state
+        SET pox_v2_unlock_height = ${data.pox_v2_unlock_height}
+        WHERE pox_v2_unlock_height != ${data.pox_v2_unlock_height}
+      `;
     }
   }
 
@@ -1299,8 +1285,8 @@ export class PgWriteStore extends PgStore {
     microblock: boolean = false
   ) {
     for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
-      const custody: NftCustodyInsertValues[] = [];
-      const values: NftEventInsertValues[] = [];
+      const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
+      const nftEventInserts: NftEventInsertValues[] = [];
       for (const event of batch) {
         const custodyItem: NftCustodyInsertValues = {
           asset_identifier: event.asset_identifier,
@@ -1315,7 +1301,28 @@ export class PgWriteStore extends PgStore {
           tx_index: event.tx_index,
           block_height: event.block_height,
         };
-        custody.push(custodyItem);
+        // Avoid duplicates on NFT custody inserts, because we could run into an `ON CONFLICT DO
+        // UPDATE command cannot affect row a second time` error otherwise.
+        const custodyKey = `${event.asset_identifier}_${event.value}`;
+        const currCustody = custodyInsertsMap.get(custodyKey);
+        if (currCustody) {
+          if (
+            custodyItem.block_height > currCustody.block_height ||
+            (custodyItem.block_height == currCustody.block_height &&
+              custodyItem.microblock_sequence > currCustody.microblock_sequence) ||
+            (custodyItem.block_height == currCustody.block_height &&
+              custodyItem.microblock_sequence == currCustody.microblock_sequence &&
+              custodyItem.tx_index > currCustody.tx_index) ||
+            (custodyItem.block_height == currCustody.block_height &&
+              custodyItem.microblock_sequence == currCustody.microblock_sequence &&
+              custodyItem.tx_index == currCustody.tx_index &&
+              custodyItem.event_index > currCustody.event_index)
+          ) {
+            custodyInsertsMap.set(custodyKey, custodyItem);
+          }
+        } else {
+          custodyInsertsMap.set(custodyKey, custodyItem);
+        }
         const valuesItem: NftEventInsertValues = {
           ...custodyItem,
           microblock_canonical: tx.microblock_canonical,
@@ -1323,15 +1330,15 @@ export class PgWriteStore extends PgStore {
           sender: event.sender ?? null,
           asset_event_type_id: event.asset_event_type_id,
         };
-        values.push(valuesItem);
+        nftEventInserts.push(valuesItem);
       }
       await sql`
-        INSERT INTO nft_events ${sql(values)}
+        INSERT INTO nft_events ${sql(nftEventInserts)}
       `;
       if (tx.canonical && tx.microblock_canonical) {
         const table = microblock ? sql`nft_custody_unanchored` : sql`nft_custody`;
         await sql`
-          INSERT INTO ${table} ${sql(custody)}
+          INSERT INTO ${table} ${sql(Array.from(custodyInsertsMap.values()))}
           ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
             tx_id = EXCLUDED.tx_id,
             index_block_hash = EXCLUDED.index_block_hash,
@@ -1859,7 +1866,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNames(sql: PgSqlClient, tx: DbTxRaw, names: DbBnsName[]) {
+  async updateNames(sql: PgSqlClient, tx: BnsGenesisBlock, names: DbBnsName[]) {
     // TODO: Move these to CTE queries for optimization
     for (const bnsName of names) {
       const {
@@ -1974,7 +1981,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNamespaces(sql: PgSqlClient, tx: DbTxRaw, namespaces: DbBnsNamespace[]) {
+  async updateNamespaces(sql: PgSqlClient, tx: BnsGenesisBlock, namespaces: DbBnsNamespace[]) {
     for (const batch of batchIterate(namespaces, Math.floor(PG_PARAM_LIMIT / 20))) {
       const values: BnsNamespaceInsertValues[] = batch.map(namespace => ({
         namespace_id: namespace.namespace_id,

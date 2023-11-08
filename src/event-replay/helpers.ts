@@ -1,9 +1,6 @@
 import { PgWriteStore } from '../datastore/pg-write-store';
-import * as fs from 'fs';
-import * as readline from 'readline';
 import { DataStoreBnsBlockData, DbTxTypeId } from '../datastore/common';
 import { readLinesReversed } from './reverse-file-stream';
-import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 export type BnsGenesisBlock = DataStoreBnsBlockData & {
   tx_id: string;

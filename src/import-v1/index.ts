@@ -159,7 +159,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.sql, this.genesisBlock, obj);
+          await this.db.updateNames(this.sql, this.genesisBlock, [obj]);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.debug(
@@ -186,7 +186,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.sql, this.genesisBlock, obj);
+          await this.db.updateNamespaces(this.sql, this.genesisBlock, [obj]);
           this.rowCount += 1;
         }
       }

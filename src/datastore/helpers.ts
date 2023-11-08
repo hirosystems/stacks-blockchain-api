@@ -2,6 +2,7 @@ import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
+  DataStoreBlockUpdateData,
   DataStoreTxEventData,
   DbBlock,
   DbEvent,
@@ -1157,16 +1158,8 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
   return dbMempoolTxs;
 }
 
-export type BlockExecutionCost = {
-  execution_cost_read_count: number;
-  execution_cost_read_length: number;
-  execution_cost_runtime: number;
-  execution_cost_write_count: number;
-  execution_cost_write_length: number;
-};
-
-export function calculateTotalBlockExecutionCost(txs: DataStoreTxEventData[]): BlockExecutionCost {
-  return txs.reduce(
+export function setTotalBlockUpdateDataExecutionCost(data: DataStoreBlockUpdateData) {
+  const cost = data.txs.reduce(
     (previousValue, currentValue) => {
       const {
         execution_cost_read_count,
@@ -1175,7 +1168,6 @@ export function calculateTotalBlockExecutionCost(txs: DataStoreTxEventData[]): B
         execution_cost_write_count,
         execution_cost_write_length,
       } = previousValue;
-
       return {
         execution_cost_read_count:
           execution_cost_read_count + currentValue.tx.execution_cost_read_count,
@@ -1196,4 +1188,28 @@ export function calculateTotalBlockExecutionCost(txs: DataStoreTxEventData[]): B
       execution_cost_write_length: 0,
     }
   );
+  data.block.execution_cost_read_count = cost.execution_cost_read_count;
+  data.block.execution_cost_read_length = cost.execution_cost_read_length;
+  data.block.execution_cost_runtime = cost.execution_cost_runtime;
+  data.block.execution_cost_write_count = cost.execution_cost_write_count;
+  data.block.execution_cost_write_length = cost.execution_cost_write_length;
+}
+
+export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
+  data.block = { ...data.block, canonical: false };
+  data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
+  data.txs = data.txs.map(tx => ({
+    tx: { ...tx.tx, canonical: false },
+    stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
+    stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
+    ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
+    nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
+    contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
+    smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+    names: tx.names.map(e => ({ ...e, canonical: false })),
+    namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+    pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
+    pox3Events: tx.pox3Events.map(e => ({ ...e, canonical: false })),
+  }));
+  data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
 }
