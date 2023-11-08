@@ -21,6 +21,7 @@ import {
   DbNonFungibleTokenMetadata,
   DbFungibleTokenMetadata,
   DbTx,
+  DataStoreBnsBlockTxData,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
@@ -30,7 +31,6 @@ import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
-import { BnsGenesisBlock } from 'src/event-replay/helpers';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
@@ -4563,7 +4563,7 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      } as BnsGenesisBlock,
+      } as DataStoreBnsBlockTxData,
       [namespace]
     );
     const { results } = await db.getNamespaceList({ includeUnanchored: false });
@@ -4619,7 +4619,7 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      } as BnsGenesisBlock,
+      } as DataStoreBnsBlockTxData,
       [name]
     );
     const { results } = await db.getNamespaceNamesList({

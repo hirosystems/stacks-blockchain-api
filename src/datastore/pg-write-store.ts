@@ -65,6 +65,7 @@ import {
   RawEventRequestInsertValues,
   IndexesState,
   NftCustodyInsertValues,
+  DataStoreBnsBlockTxData,
 } from './common';
 import { ClarityAbi } from '@stacks/transactions';
 import {
@@ -98,7 +99,6 @@ import {
   runMigrations,
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
-import { BnsGenesisBlock } from 'src/event-replay/helpers';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const PG_PARAM_LIMIT = 65536;
@@ -1866,7 +1866,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNames(sql: PgSqlClient, tx: BnsGenesisBlock, names: DbBnsName[]) {
+  async updateNames(sql: PgSqlClient, tx: DataStoreBnsBlockTxData, names: DbBnsName[]) {
     // TODO: Move these to CTE queries for optimization
     for (const bnsName of names) {
       const {
@@ -1981,7 +1981,11 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateNamespaces(sql: PgSqlClient, tx: BnsGenesisBlock, namespaces: DbBnsNamespace[]) {
+  async updateNamespaces(
+    sql: PgSqlClient,
+    tx: DataStoreBnsBlockTxData,
+    namespaces: DbBnsNamespace[]
+  ) {
     for (const batch of batchIterate(namespaces, Math.floor(PG_PARAM_LIMIT / 20))) {
       const values: BnsNamespaceInsertValues[] = batch.map(namespace => ({
         namespace_id: namespace.namespace_id,

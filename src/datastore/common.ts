@@ -599,6 +599,11 @@ export interface DataStoreBnsBlockData {
   microblock_canonical: boolean;
 }
 
+export type DataStoreBnsBlockTxData = DataStoreBnsBlockData & {
+  tx_id: string;
+  tx_index: number;
+};
+
 export interface DataStoreAttachmentSubdomainData {
   attachment?: DataStoreAttachmentData;
   blockData?: DataStoreBnsBlockData;
