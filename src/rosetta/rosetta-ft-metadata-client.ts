@@ -50,7 +50,9 @@ function tokenMetadataErrorMode(): RosettaTokenMetadataErrorMode {
  * LRU cache that keeps `RosettaFtMetadata` entries for FTs used in the Stacks chain and retrieved
  * by the Rosetta endpoints.
  */
-const ftMetadataCache = new LRUCache<string, RosettaFtMetadata>({ max: 5_000 });
+const ftMetadataCache = new LRUCache<string, Promise<RosettaFtMetadata | undefined>>({
+  max: 5_000,
+});
 
 /**
  * Retrieves FT metadata for tokens used by Rosetta. Keeps data in cache for faster future
@@ -65,10 +67,7 @@ export class RosettaFtMetadataClient {
     this.nodeRpcClient = new StacksCoreRpcClient();
   }
 
-  async getFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
-    const cachedMetadata = ftMetadataCache.get(assetIdentifier);
-    if (cachedMetadata) return cachedMetadata;
-
+  private async resolveFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
     const tokenContractId = assetIdentifier.split('::')[0];
     const [contractAddress, contractName] = tokenContractId.split('.');
     try {
@@ -92,7 +91,6 @@ export class RosettaFtMetadataClient {
       });
       if (symbol !== undefined && decimals !== undefined) {
         const metadata = { symbol, decimals: parseInt(decimals.toString()) };
-        ftMetadataCache.set(assetIdentifier, metadata);
         return metadata;
       }
     } catch (error) {
@@ -102,6 +100,19 @@ export class RosettaFtMetadataClient {
         throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
       }
     }
+  }
+
+  getFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
+    const cachedMetadata = ftMetadataCache.get(assetIdentifier);
+    if (cachedMetadata) return cachedMetadata;
+    const resolvePromise = this.resolveFtMetadata(assetIdentifier);
+    ftMetadataCache.set(assetIdentifier, resolvePromise);
+    // If the promise is rejected, remove the entry from the cache so that it can be retried later.
+    resolvePromise.catch(error => {
+      ftMetadataCache.del(assetIdentifier);
+      logger.warn(error, `FT metadata not found for token: ${assetIdentifier}`);
+    });
+    return resolvePromise;
   }
 
   private async readStringFromContract(
