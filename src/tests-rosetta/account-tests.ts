@@ -1,11 +1,11 @@
 import * as supertest from 'supertest';
-import { ChainID } from '@stacks/transactions';
-import { PoolClient } from 'pg';
+import { ChainID, cvToHex, stringUtf8CV, uintCV } from '@stacks/transactions';
 import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { DbAssetEventTypeId, DbFungibleTokenMetadata } from '../datastore/common';
+import { DbAssetEventTypeId } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import * as nock from 'nock';
 
 describe('/account tests', () => {
   let db: PgWriteStore;
@@ -23,20 +23,21 @@ describe('/account tests', () => {
     const addr1 = 'SP3WV3VC6GM1WF215SDHP0MESQ3BNXHB1N6TPB70S';
     const addr2 = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
 
-    // Declare fungible token
-    const ftMetadata: DbFungibleTokenMetadata = {
-      token_uri: 'https://cdn.citycoins.co/metadata/newyorkcitycoin.json',
-      name: 'newyorkcitycoin',
-      description: 'A CityCoin for New York City, ticker is NYC, Stack it to earn Stacks (STX)',
-      image_uri: 'https://stacks-api.imgix.net/https%3A%2F%2Fcdn.citycoins.co%2Flogos%2Fnewyorkcitycoin.png?s=38a8d89aa6b4ef3fcc9958da3eb34480',
-      image_canonical_uri: 'https://cdn.citycoins.co/logos/newyorkcitycoin.png',
-      symbol: 'NYC',
-      decimals: 0,
-      tx_id: '0x9c8ddc44fcfdfc67af5425c4174833fc5814627936d573fe38fc29a46ba746e6',
-      sender_address: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5',
-      contract_id: 'SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5.newyorkcitycoin-token'
-    };
-    await db.updateFtMetadata(ftMetadata, 1);
+    const nodeUrl = `http://${process.env['STACKS_CORE_RPC_HOST']}:${process.env['STACKS_CORE_RPC_PORT']}`;
+    nock(nodeUrl)
+      .persist()
+      .post('/v2/contracts/call-read/SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5/newyorkcitycoin-token/get-decimals')
+      .reply(200, {
+        okay: true,
+        result: cvToHex(uintCV(0)),
+      });
+    nock(nodeUrl)
+      .persist()
+      .post('/v2/contracts/call-read/SP2H8PY27SEZ03MWRKS5XABZYQN17ETGQS3527SA5/newyorkcitycoin-token/get-symbol')
+      .reply(200, {
+        okay: true,
+        result: cvToHex(stringUtf8CV('NYC')),
+      });
 
     // FT transfer
     const block1 = new TestBlockBuilder({
@@ -94,6 +95,7 @@ describe('/account tests', () => {
         value: '7500'
       }
     ]);
+    nock.cleanAll();
   });
 
   afterEach(async () => {

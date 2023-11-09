@@ -1,6 +1,5 @@
 import {
   ContractCallTransaction,
-  FungibleTokenMetadata,
   RosettaAccountIdentifier,
   RosettaCurrency,
   RosettaOperation,
@@ -25,40 +24,18 @@ import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { ec as EC } from 'elliptic';
 import * as btc from 'bitcoinjs-lib';
 import {
-  getAssetEventTypeString,
-  getEventTypeString,
   getTxFromDataStore,
   getTxStatus,
   getTxTypeString,
   parseContractCallMetadata,
-} from './api/controllers/db-controller';
+} from '../api/controllers/db-controller';
 import {
   PoxContractIdentifier,
   RosettaConstants,
   RosettaNetworks,
   RosettaOperationType,
-} from './api/rosetta-constants';
-import {
-  BaseTx,
-  DbAssetEventTypeId,
-  DbEvent,
-  DbEventTypeId,
-  DbFtEvent,
-  DbFungibleTokenMetadata,
-  DbMempoolTx,
-  DbMinerReward,
-  DbStxEvent,
-  DbStxLockEvent,
-  DbTx,
-  DbTxStatus,
-  DbTxTypeId,
-  StxUnlockEvent,
-} from './datastore/common';
-import { getTxSenderAddress, getTxSponsorAddress } from './event-stream/reader';
-import { unwrapOptional, hexToBuffer, getSendManyContract } from './helpers';
-
-import { getCoreNodeEndpoint } from './core-rpc/client';
-import { TokenMetadataErrorMode } from './token-metadata/tokens-contract-handler';
+} from '../api/rosetta-constants';
+import { getCoreNodeEndpoint } from '../core-rpc/client';
 import {
   ClarityTypeID,
   decodeClarityValue,
@@ -76,11 +53,28 @@ import {
   ClarityValue,
   ClarityValueList,
 } from 'stacks-encoding-native-js';
-import { PgStore } from './datastore/pg-store';
-import { isFtMetadataEnabled, tokenMetadataErrorMode } from './token-metadata/helpers';
+import { PgStore } from '../datastore/pg-store';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
-import { logger } from './logger';
+import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
+import {
+  DbTx,
+  DbMempoolTx,
+  BaseTx,
+  DbMinerReward,
+  DbEvent,
+  StxUnlockEvent,
+  DbEventTypeId,
+  DbAssetEventTypeId,
+  DbTxTypeId,
+  DbStxLockEvent,
+  DbTxStatus,
+  DbStxEvent,
+  DbFtEvent,
+} from '../datastore/common';
+import { getTxSenderAddress, getTxSponsorAddress } from '../event-stream/reader';
+import { hexToBuffer, getSendManyContract, unwrapOptional } from '../helpers';
+import { logger } from '../logger';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -242,6 +236,7 @@ async function processEvents(
   // match them by index.
   const sendManyMemos = decodeSendManyContractCallMemos(baseTx, chainID);
   let sendManyStxTransferEventIndex = 0;
+  const metadataClient = new RosettaFtMetadataClient(chainID);
 
   for (const event of events) {
     const txEventType = event.event_type;
@@ -297,7 +292,7 @@ async function processEvents(
       case DbEventTypeId.NonFungibleTokenAsset:
         break;
       case DbEventTypeId.FungibleTokenAsset:
-        const ftMetadata = await getValidatedFtMetadata(db, event.asset_identifier);
+        const ftMetadata = await metadataClient.getFtMetadata(event.asset_identifier);
         if (!ftMetadata) {
           break;
         }
@@ -434,7 +429,7 @@ function makeBurnOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
 
 function makeFtBurnOperation(
   ftEvent: DbFtEvent,
-  ftMetadata: FungibleTokenMetadata,
+  ftMetadata: RosettaFtMetadata,
   baseTx: BaseTx,
   index: number
 ): RosettaOperation {
@@ -481,7 +476,7 @@ function makeMintOperation(tx: DbStxEvent, baseTx: BaseTx, index: number): Roset
 
 function makeFtMintOperation(
   ftEvent: DbFtEvent,
-  ftMetadata: FungibleTokenMetadata,
+  ftMetadata: RosettaFtMetadata,
   baseTx: BaseTx,
   index: number
 ): RosettaOperation {
@@ -547,7 +542,7 @@ function makeSenderOperation(
 
 function makeFtSenderOperation(
   ftEvent: DbFtEvent,
-  ftMetadata: FungibleTokenMetadata,
+  ftMetadata: RosettaFtMetadata,
   tx: BaseTx,
   index: number
 ): RosettaOperation {
@@ -620,7 +615,7 @@ function makeReceiverOperation(
 
 function makeFtReceiverOperation(
   ftEvent: DbFtEvent,
-  ftMetadata: FungibleTokenMetadata,
+  ftMetadata: RosettaFtMetadata,
   tx: BaseTx,
   index: number
 ): RosettaOperation {
@@ -1147,28 +1142,6 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
   return dbTx;
 }
 
-export async function getValidatedFtMetadata(
-  db: PgStore,
-  assetIdentifier: string
-): Promise<DbFungibleTokenMetadata | undefined> {
-  if (!isFtMetadataEnabled()) {
-    return;
-  }
-  const tokenContractId = assetIdentifier.split('::')[0];
-  const ftMetadata = await db.getFtMetadata(tokenContractId);
-  if (!ftMetadata.found) {
-    if (tokenMetadataErrorMode() === TokenMetadataErrorMode.warning) {
-      logger.warn(`FT metadata not found for token: ${assetIdentifier}`);
-    } else {
-      // TODO: Check if the metadata wasn't found because the contract ABI is not SIP-010
-      // compliant or because there was a recoverable error that prevented the metadata
-      // from being processed.
-      throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
-    }
-  }
-  return ftMetadata.result;
-}
-
 export function getSigners(transaction: StacksTransaction): RosettaAccountIdentifier[] | undefined {
   let address;
   if (transaction.payload.payloadType == PayloadType.TokenTransfer) {
@@ -1217,7 +1190,7 @@ export function getSigners(transaction: StacksTransaction): RosettaAccountIdenti
   return account_identifier_signers;
 }
 
-export function getStacksTestnetNetwork() {
+function getStacksTestnetNetwork() {
   return new StacksTestnet({
     url: `http://${getCoreNodeEndpoint()}`,
   });

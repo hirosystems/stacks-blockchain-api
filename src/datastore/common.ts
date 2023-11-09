@@ -546,12 +546,6 @@ export interface AddressNftEventIdentifier {
   asset_event_type_id: number;
 }
 
-export interface TokenMetadataUpdateInfo {
-  queueId: number;
-  txId: string;
-  contractId: string;
-}
-
 export interface DataStoreBlockUpdateData {
   block: DbBlock;
   microblocks: DbMicroblock[];
@@ -748,40 +742,6 @@ export type BlockIdentifier =
   | { height: number }
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
-
-export interface DbNonFungibleTokenMetadata {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbFungibleTokenMetadata {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbTokenMetadataQueueEntry {
-  queueId: number;
-  txId: string;
-  contractId: string;
-  contractAbi: ClarityAbi;
-  blockHeight: number;
-  processed: boolean;
-  retry_count: number;
-}
 
 export interface DbChainTip {
   blockHeight: number;
@@ -1013,40 +973,6 @@ export interface BlocksWithMetadata {
     microblock_tx_count: Record<string, number>;
   }[];
   total: number;
-}
-
-export interface NonFungibleTokenMetadataQueryResult {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface FungibleTokenMetadataQueryResult {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbTokenMetadataQueueEntryQuery {
-  queue_id: number;
-  tx_id: string;
-  contract_id: string;
-  contract_abi: string;
-  block_height: number;
-  processed: boolean;
-  retry_count: number;
 }
 
 export interface RawTxQueryResult {
@@ -1511,38 +1437,6 @@ export interface RewardSlotHolderInsertValues {
   burn_block_height: number;
   address: string;
   slot_index: number;
-}
-
-export interface TokenMetadataQueueEntryInsertValues {
-  tx_id: PgBytea;
-  contract_id: string;
-  contract_abi: string;
-  block_height: number;
-  processed: boolean;
-}
-
-export interface NftMetadataInsertValues {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: PgBytea;
-  sender_address: string;
-}
-
-export interface FtMetadataInsertValues {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: PgBytea;
-  sender_address: string;
 }
 
 export interface SmartContractInsertValues {

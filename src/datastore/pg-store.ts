@@ -35,7 +35,6 @@ import {
   DbEventTypeId,
   DbFtBalance,
   DbFtEvent,
-  DbFungibleTokenMetadata,
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
   DbInboundStxTransfer,
@@ -44,7 +43,6 @@ import {
   DbMicroblock,
   DbMinerReward,
   DbNftEvent,
-  DbNonFungibleTokenMetadata,
   DbPox2Event,
   DbPox3Event,
   DbPox3Stacker,
@@ -55,8 +53,6 @@ import {
   DbStxBalance,
   DbStxEvent,
   DbStxLockEvent,
-  DbTokenMetadataQueueEntry,
-  DbTokenMetadataQueueEntryQuery,
   DbTokenOfferingLocked,
   DbTx,
   DbTxGlobalStatus,
@@ -64,13 +60,11 @@ import {
   DbTxTypeId,
   DbTxWithAssetTransfers,
   FaucetRequestQueryResult,
-  FungibleTokenMetadataQueryResult,
   MempoolTxQueryResult,
   MicroblockQueryResult,
   NftEventWithTxMetadata,
   NftHoldingInfo,
   NftHoldingInfoWithTxMetadata,
-  NonFungibleTokenMetadataQueryResult,
   Pox2EventQueryResult,
   Pox3EventQueryResult,
   RawTxQueryResult,
@@ -1901,63 +1895,6 @@ export class PgStore {
         results: events,
       };
     });
-  }
-
-  /**
-   * Returns a single entry from the `token_metadata_queue` table.
-   * @param queueId - queue entry id
-   */
-  async getTokenMetadataQueueEntry(
-    queueId: number
-  ): Promise<FoundOrNot<DbTokenMetadataQueueEntry>> {
-    const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
-      SELECT * FROM token_metadata_queue WHERE queue_id = ${queueId}
-    `;
-    if (result.length === 0) {
-      return { found: false };
-    }
-    const row = result[0];
-    const entry: DbTokenMetadataQueueEntry = {
-      queueId: row.queue_id,
-      txId: row.tx_id,
-      contractId: row.contract_id,
-      contractAbi: JSON.parse(row.contract_abi),
-      blockHeight: row.block_height,
-      processed: row.processed,
-      retry_count: row.retry_count,
-    };
-    return { found: true, result: entry };
-  }
-
-  async getTokenMetadataQueue(
-    limit: number,
-    excludingEntries: number[]
-  ): Promise<DbTokenMetadataQueueEntry[]> {
-    const result = await this.sql<DbTokenMetadataQueueEntryQuery[]>`
-      SELECT *
-      FROM token_metadata_queue
-      WHERE ${
-        excludingEntries.length
-          ? this.sql`NOT (queue_id IN ${this.sql(excludingEntries)})`
-          : this.sql`TRUE`
-      }
-      AND processed = false
-      ORDER BY block_height ASC, queue_id ASC
-      LIMIT ${limit}
-    `;
-    const entries = result.map(row => {
-      const entry: DbTokenMetadataQueueEntry = {
-        queueId: row.queue_id,
-        txId: row.tx_id,
-        contractId: row.contract_id,
-        contractAbi: JSON.parse(row.contract_abi),
-        blockHeight: row.block_height,
-        processed: row.processed,
-        retry_count: row.retry_count,
-      };
-      return entry;
-    });
-    return entries;
   }
 
   async getSmartContract(contractId: string) {
@@ -4346,133 +4283,5 @@ export class PgStore {
       });
     }
     return result;
-  }
-
-  async getFtMetadata(contractId: string): Promise<FoundOrNot<DbFungibleTokenMetadata>> {
-    const queryResult = await this.sql<FungibleTokenMetadataQueryResult[]>`
-      SELECT token_uri, name, description, image_uri, image_canonical_uri, symbol, decimals, contract_id, tx_id, sender_address
-      FROM ft_metadata
-      WHERE contract_id = ${contractId}
-      LIMIT 1
-    `;
-    if (queryResult.length > 0) {
-      const metadata: DbFungibleTokenMetadata = {
-        token_uri: queryResult[0].token_uri,
-        name: queryResult[0].name,
-        description: queryResult[0].description,
-        image_uri: queryResult[0].image_uri,
-        image_canonical_uri: queryResult[0].image_canonical_uri,
-        symbol: queryResult[0].symbol,
-        decimals: queryResult[0].decimals,
-        contract_id: queryResult[0].contract_id,
-        tx_id: queryResult[0].tx_id,
-        sender_address: queryResult[0].sender_address,
-      };
-      return {
-        found: true,
-        result: metadata,
-      };
-    } else {
-      return { found: false } as const;
-    }
-  }
-
-  async getNftMetadata(contractId: string): Promise<FoundOrNot<DbNonFungibleTokenMetadata>> {
-    const queryResult = await this.sql<NonFungibleTokenMetadataQueryResult[]>`
-      SELECT token_uri, name, description, image_uri, image_canonical_uri, contract_id, tx_id, sender_address
-      FROM nft_metadata
-      WHERE contract_id = ${contractId}
-      LIMIT 1
-    `;
-    if (queryResult.length > 0) {
-      const metadata: DbNonFungibleTokenMetadata = {
-        token_uri: queryResult[0].token_uri,
-        name: queryResult[0].name,
-        description: queryResult[0].description,
-        image_uri: queryResult[0].image_uri,
-        image_canonical_uri: queryResult[0].image_canonical_uri,
-        contract_id: queryResult[0].contract_id,
-        tx_id: queryResult[0].tx_id,
-        sender_address: queryResult[0].sender_address,
-      };
-      return {
-        found: true,
-        result: metadata,
-      };
-    } else {
-      return { found: false } as const;
-    }
-  }
-
-  async getFtMetadataList({
-    limit,
-    offset,
-  }: {
-    limit: number;
-    offset: number;
-  }): Promise<{ results: DbFungibleTokenMetadata[]; total: number }> {
-    return await this.sqlTransaction(async sql => {
-      const totalQuery = await sql<{ count: number }[]>`
-        SELECT COUNT(*)::integer
-        FROM ft_metadata
-      `;
-      const resultQuery = await sql<FungibleTokenMetadataQueryResult[]>`
-        SELECT *
-        FROM ft_metadata
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      const parsed = resultQuery.map(r => {
-        const metadata: DbFungibleTokenMetadata = {
-          name: r.name,
-          description: r.description,
-          token_uri: r.token_uri,
-          image_uri: r.image_uri,
-          image_canonical_uri: r.image_canonical_uri,
-          decimals: r.decimals,
-          symbol: r.symbol,
-          contract_id: r.contract_id,
-          tx_id: r.tx_id,
-          sender_address: r.sender_address,
-        };
-        return metadata;
-      });
-      return { results: parsed, total: totalQuery[0].count };
-    });
-  }
-
-  async getNftMetadataList({
-    limit,
-    offset,
-  }: {
-    limit: number;
-    offset: number;
-  }): Promise<{ results: DbNonFungibleTokenMetadata[]; total: number }> {
-    return await this.sqlTransaction(async sql => {
-      const totalQuery = await sql<{ count: number }[]>`
-        SELECT COUNT(*)::integer
-        FROM nft_metadata
-      `;
-      const resultQuery = await sql<FungibleTokenMetadataQueryResult[]>`
-        SELECT *
-        FROM nft_metadata
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      const parsed = resultQuery.map(r => {
-        const metadata: DbNonFungibleTokenMetadata = {
-          name: r.name,
-          description: r.description,
-          token_uri: r.token_uri,
-          image_uri: r.image_uri,
-          image_canonical_uri: r.image_canonical_uri,
-          contract_id: r.contract_id,
-          tx_id: r.tx_id,
-          sender_address: r.sender_address,
-        };
-        return metadata;
-      });
-      return { results: parsed, total: totalQuery[0].count };
-    });
   }
 }

@@ -909,6 +909,7 @@ export function normalizeHashString(input: string): string | false {
   return `0x${hashBuffer.toString('hex')}`;
 }
 
+<<<<<<< HEAD
 export function parseDataUrl(
   s: string
 ):
@@ -951,6 +952,8 @@ export function parseDataUrl(
   }
 }
 
+=======
+>>>>>>> a490d673f (refactor: remove old token metadata processor (#1747))
 /**
  * Unsigned 32-bit integer.
  *  - Mainnet: 0x00000001
