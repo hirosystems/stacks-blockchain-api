@@ -46,6 +46,11 @@ function tokenMetadataErrorMode(): RosettaTokenMetadataErrorMode {
   }
 }
 
+function isFtMetadataEnabled() {
+  const opt = process.env['STACKS_API_ENABLE_FT_METADATA']?.toLowerCase().trim();
+  return opt === '1' || opt === 'true';
+}
+
 /**
  * LRU cache that keeps `RosettaFtMetadata` entries for FTs used in the Stacks chain and retrieved
  * by the Rosetta endpoints.
@@ -65,6 +70,20 @@ export class RosettaFtMetadataClient {
   constructor(chainId: ChainID) {
     this.chainId = chainId;
     this.nodeRpcClient = new StacksCoreRpcClient();
+  }
+
+  getFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
+    if (!isFtMetadataEnabled()) return Promise.resolve(undefined);
+    const cachedMetadata = ftMetadataCache.get(assetIdentifier);
+    if (cachedMetadata) return cachedMetadata;
+
+    const resolvePromise = this.resolveFtMetadata(assetIdentifier);
+    ftMetadataCache.set(assetIdentifier, resolvePromise);
+    // If the promise is rejected, remove the entry from the cache so that it can be retried later.
+    resolvePromise.catch(_ => {
+      ftMetadataCache.del(assetIdentifier);
+    });
+    return resolvePromise;
   }
 
   private async resolveFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
@@ -100,18 +119,6 @@ export class RosettaFtMetadataClient {
         throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
       }
     }
-  }
-
-  getFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
-    const cachedMetadata = ftMetadataCache.get(assetIdentifier);
-    if (cachedMetadata) return cachedMetadata;
-    const resolvePromise = this.resolveFtMetadata(assetIdentifier);
-    ftMetadataCache.set(assetIdentifier, resolvePromise);
-    // If the promise is rejected, remove the entry from the cache so that it can be retried later.
-    resolvePromise.catch(_ => {
-      ftMetadataCache.del(assetIdentifier);
-    });
-    return resolvePromise;
   }
 
   private async readStringFromContract(
