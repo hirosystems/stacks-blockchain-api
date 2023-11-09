@@ -108,9 +108,8 @@ export class RosettaFtMetadataClient {
     const resolvePromise = this.resolveFtMetadata(assetIdentifier);
     ftMetadataCache.set(assetIdentifier, resolvePromise);
     // If the promise is rejected, remove the entry from the cache so that it can be retried later.
-    resolvePromise.catch(error => {
+    resolvePromise.catch(_ => {
       ftMetadataCache.del(assetIdentifier);
-      logger.warn(error, `FT metadata not found for token: ${assetIdentifier}`);
     });
     return resolvePromise;
   }
