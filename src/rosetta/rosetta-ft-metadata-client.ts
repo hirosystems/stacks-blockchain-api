@@ -10,6 +10,20 @@ import {
 import { ChainID, getChainIDNetwork } from '../helpers';
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { logger } from '../logger';
+import * as LRUCache from 'lru-cache';
+
+/** Fungible token metadata for Rosetta operations display */
+export interface RosettaFtMetadata {
+  symbol: string;
+  decimals: number;
+}
+
+interface RosettaFtContractCallParams {
+  address: string;
+  contractAddress: string;
+  contractName: string;
+  functionName: string;
+}
 
 enum RosettaTokenMetadataErrorMode {
   /** Default mode. If a required token metadata is not found when it is needed for a response, the
@@ -17,17 +31,6 @@ enum RosettaTokenMetadataErrorMode {
   warning,
   /** If a required token metadata is not found, the API will throw an error. */
   error,
-}
-
-export interface RosettaFtMetadata {
-  symbol: string;
-  decimals: number;
-}
-
-interface RosettaFtContractCallParams {
-  contractAddress: string;
-  contractName: string;
-  functionName: string;
 }
 
 /**
@@ -44,28 +47,22 @@ function tokenMetadataErrorMode(): RosettaTokenMetadataErrorMode {
 }
 
 /**
- * Cache
+ * LRU cache that keeps `RosettaFtMetadata` entries for FTs used in the Stacks chain and retrieved
+ * by the Rosetta endpoints.
  */
-const ftMetadataCache = new Map<string, RosettaFtMetadata>();
+const ftMetadataCache = new LRUCache<string, RosettaFtMetadata>({ max: 5_000 });
 
 /**
- * FT client
+ * Retrieves FT metadata for tokens used by Rosetta. Keeps data in cache for faster future
+ * retrieval.
  */
 export class RosettaFtMetadataClient {
-  private readonly randomPrivKey = makeRandomPrivKey();
   private readonly chainId: ChainID;
-  private readonly address: string;
   private readonly nodeRpcClient: StacksCoreRpcClient;
 
   constructor(chainId: ChainID) {
     this.chainId = chainId;
     this.nodeRpcClient = new StacksCoreRpcClient();
-    this.address = getAddressFromPrivateKey(
-      this.randomPrivKey.data,
-      getChainIDNetwork(this.chainId) === 'mainnet'
-        ? TransactionVersion.Mainnet
-        : TransactionVersion.Testnet
-    );
   }
 
   async getFtMetadata(assetIdentifier: string): Promise<RosettaFtMetadata | undefined> {
@@ -75,15 +72,23 @@ export class RosettaFtMetadataClient {
     const tokenContractId = assetIdentifier.split('::')[0];
     const [contractAddress, contractName] = tokenContractId.split('.');
     try {
+      const address = getAddressFromPrivateKey(
+        makeRandomPrivKey().data,
+        getChainIDNetwork(this.chainId) === 'mainnet'
+          ? TransactionVersion.Mainnet
+          : TransactionVersion.Testnet
+      );
       const symbol = await this.readStringFromContract({
         functionName: 'get-symbol',
         contractAddress,
         contractName,
+        address,
       });
       const decimals = await this.readUIntFromContract({
         functionName: 'get-decimals',
         contractAddress,
         contractName,
+        address,
       });
       if (symbol !== undefined && decimals !== undefined) {
         const metadata = { symbol, decimals: parseInt(decimals.toString()) };
@@ -97,32 +102,6 @@ export class RosettaFtMetadataClient {
         throw new Error(`FT metadata not found for token: ${assetIdentifier}`);
       }
     }
-  }
-
-  private async makeReadOnlyContractCall(args: RosettaFtContractCallParams): Promise<ClarityValue> {
-    let result: ReadOnlyContractCallResponse;
-    try {
-      result = await this.nodeRpcClient.sendReadOnlyContractCall(
-        args.contractAddress,
-        args.contractName,
-        args.functionName,
-        this.address,
-        []
-      );
-    } catch (error) {
-      throw new Error(`Error making read-only contract call: ${error}`);
-    }
-    if (!result.okay) {
-      // Only runtime errors reported by the Stacks node should be retryable.
-      if (
-        result.cause.startsWith('Runtime') ||
-        result.cause.startsWith('Unchecked(NoSuchContract')
-      ) {
-        throw new Error(`Runtime error while calling read-only function ${args.functionName}`);
-      }
-      throw new Error(`Error calling read-only function ${args.functionName}`);
-    }
-    return hexToCV(result.result);
   }
 
   private async readStringFromContract(
@@ -178,5 +157,31 @@ export class RosettaFtMetadataClient {
     throw new Error(
       `Unexpected Clarity type '${unwrappedClarityValue.type}' while unwrapping string`
     );
+  }
+
+  private async makeReadOnlyContractCall(args: RosettaFtContractCallParams): Promise<ClarityValue> {
+    let result: ReadOnlyContractCallResponse;
+    try {
+      result = await this.nodeRpcClient.sendReadOnlyContractCall(
+        args.contractAddress,
+        args.contractName,
+        args.functionName,
+        args.address,
+        []
+      );
+    } catch (error) {
+      throw new Error(`Error making read-only contract call: ${error}`);
+    }
+    if (!result.okay) {
+      // Only runtime errors reported by the Stacks node should be retryable.
+      if (
+        result.cause.startsWith('Runtime') ||
+        result.cause.startsWith('Unchecked(NoSuchContract')
+      ) {
+        throw new Error(`Runtime error while calling read-only function ${args.functionName}`);
+      }
+      throw new Error(`Error calling read-only function ${args.functionName}`);
+    }
+    return hexToCV(result.result);
   }
 }
