@@ -1801,28 +1801,6 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  // async updateTokenMetadataQueue(
-  //   sql: PgSqlClient,
-  //   entry: DbTokenMetadataQueueEntry
-  // ): Promise<DbTokenMetadataQueueEntry> {
-  //   const values: TokenMetadataQueueEntryInsertValues = {
-  //     tx_id: entry.txId,
-  //     contract_id: entry.contractId,
-  //     contract_abi: JSON.stringify(entry.contractAbi),
-  //     block_height: entry.blockHeight,
-  //     processed: false,
-  //   };
-  //   const queryResult = await sql<{ queue_id: number }[]>`
-  //     INSERT INTO token_metadata_queue ${sql(values)}
-  //     RETURNING queue_id
-  //   `;
-  //   const result: DbTokenMetadataQueueEntry = {
-  //     ...entry,
-  //     queueId: queryResult[0].queue_id,
-  //   };
-  //   return result;
-  // }
-
   async updateSmartContract(sql: PgSqlClient, tx: DbTx, smartContract: DbSmartContract) {
     const values: SmartContractInsertValues = {
       tx_id: smartContract.tx_id,
@@ -2020,87 +1998,6 @@ export class PgWriteStore extends PgStore {
           microblock_canonical = EXCLUDED.microblock_canonical
     `;
   }
-
-  // async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
-  //   const length = await this.sqlWriteTransaction(async sql => {
-  //     const values: FtMetadataInsertValues = {
-  //       token_uri: ftMetadata.token_uri,
-  //       name: ftMetadata.name,
-  //       description: ftMetadata.description,
-  //       image_uri: ftMetadata.image_uri,
-  //       image_canonical_uri: ftMetadata.image_canonical_uri,
-  //       contract_id: ftMetadata.contract_id,
-  //       symbol: ftMetadata.symbol,
-  //       decimals: ftMetadata.decimals,
-  //       tx_id: ftMetadata.tx_id,
-  //       sender_address: ftMetadata.sender_address,
-  //     };
-  //     const result = await sql`
-  //       INSERT INTO ft_metadata ${sql(values)}
-  //       ON CONFLICT (contract_id)
-  //       DO
-  //         UPDATE SET ${sql(values)}
-  //     `;
-  //     await sql`
-  //       UPDATE token_metadata_queue
-  //       SET processed = true
-  //       WHERE queue_id = ${dbQueueId}
-  //     `;
-  //     return result.count;
-  //   });
-  //   await this.notifier?.sendTokens({ contractID: ftMetadata.contract_id });
-  //   return length;
-  // }
-
-  // async updateNFtMetadata(
-  //   nftMetadata: DbNonFungibleTokenMetadata,
-  //   dbQueueId: number
-  // ): Promise<number> {
-  //   const length = await this.sqlWriteTransaction(async sql => {
-  //     const values: NftMetadataInsertValues = {
-  //       token_uri: nftMetadata.token_uri,
-  //       name: nftMetadata.name,
-  //       description: nftMetadata.description,
-  //       image_uri: nftMetadata.image_uri,
-  //       image_canonical_uri: nftMetadata.image_canonical_uri,
-  //       contract_id: nftMetadata.contract_id,
-  //       tx_id: nftMetadata.tx_id,
-  //       sender_address: nftMetadata.sender_address,
-  //     };
-  //     const result = await sql`
-  //       INSERT INTO nft_metadata ${sql(values)}
-  //       ON CONFLICT (contract_id)
-  //       DO
-  //         UPDATE SET ${sql(values)}
-  //     `;
-  //     await sql`
-  //       UPDATE token_metadata_queue
-  //       SET processed = true
-  //       WHERE queue_id = ${dbQueueId}
-  //     `;
-  //     return result.count;
-  //   });
-  //   await this.notifier?.sendTokens({ contractID: nftMetadata.contract_id });
-  //   return length;
-  // }
-
-  // async updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void> {
-  //   await this.sql`
-  //     UPDATE token_metadata_queue
-  //     SET processed = true
-  //     WHERE queue_id = ${queueId}
-  //   `;
-  // }
-
-  // async increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number> {
-  //   const result = await this.sql<{ retry_count: number }[]>`
-  //     UPDATE token_metadata_queue
-  //     SET retry_count = retry_count + 1
-  //     WHERE queue_id = ${queueId}
-  //     RETURNING retry_count
-  //   `;
-  //   return result[0].retry_count;
-  // }
 
   async updateBatchTokenOfferingLocked(sql: PgSqlClient, lockedInfos: DbTokenOfferingLocked[]) {
     try {
