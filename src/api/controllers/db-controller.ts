@@ -164,30 +164,6 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
   }
 }
 
-type EventTypeString =
-  | 'smart_contract_log'
-  | 'stx_asset'
-  | 'fungible_token_asset'
-  | 'non_fungible_token_asset'
-  | 'stx_lock';
-
-export function getEventTypeString(eventTypeId: DbEventTypeId): EventTypeString {
-  switch (eventTypeId) {
-    case DbEventTypeId.SmartContractLog:
-      return 'smart_contract_log';
-    case DbEventTypeId.StxAsset:
-      return 'stx_asset';
-    case DbEventTypeId.FungibleTokenAsset:
-      return 'fungible_token_asset';
-    case DbEventTypeId.NonFungibleTokenAsset:
-      return 'non_fungible_token_asset';
-    case DbEventTypeId.StxLock:
-      return 'stx_lock';
-    default:
-      throw new Error(`Unexpected DbEventTypeId: ${eventTypeId}`);
-  }
-}
-
 export function getAssetEventTypeString(
   assetEventTypeId: DbAssetEventTypeId
 ): 'transfer' | 'mint' | 'burn' {

@@ -11,7 +11,7 @@ import { ChainID, getChainIDNetwork } from '../helpers';
 import { ReadOnlyContractCallResponse, StacksCoreRpcClient } from '../core-rpc/client';
 import { logger } from '../logger';
 
-export enum RosettaTokenMetadataErrorMode {
+enum RosettaTokenMetadataErrorMode {
   /** Default mode. If a required token metadata is not found when it is needed for a response, the
    * API will issue a warning. */
   warning,
