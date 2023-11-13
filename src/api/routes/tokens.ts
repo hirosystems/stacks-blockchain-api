@@ -9,7 +9,7 @@ import {
   NonFungibleTokenMintList,
 } from '@stacks/stacks-blockchain-api-types';
 import { PgStore } from '../../datastore/pg-store';
-import { isValidPrincipal, has0xPrefix } from 'src/helpers';
+import { isValidPrincipal, has0xPrefix } from '../../helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { parseDbTx, getAssetEventTypeString } from '../controllers/db-controller';
