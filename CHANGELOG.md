@@ -1,3 +1,10 @@
+## [7.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.2...v7.3.3) (2023-11-13)
+
+
+### Bug Fixes
+
+* move nft custody view into a table ([#1741](https://github.com/hirosystems/stacks-blockchain-api/issues/1741)) ([fb0d0ea](https://github.com/hirosystems/stacks-blockchain-api/commit/fb0d0eaa93a0614c54cfa28464fe5df25ac9c7dd))
+
 ## [7.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.1...v7.3.2) (2023-09-14)
 
 
