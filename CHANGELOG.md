@@ -1,3 +1,10 @@
+## [7.3.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.3...v7.3.4) (2023-11-14)
+
+
+### Bug Fixes
+
+* release without token metadata processor ([b35be4f](https://github.com/hirosystems/stacks-blockchain-api/commit/b35be4f2dc6e98923063700839427afa5568389f))
+
 ## [7.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.2...v7.3.3) (2023-11-13)
 
 
