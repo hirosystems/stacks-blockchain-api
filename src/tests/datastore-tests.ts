@@ -18,8 +18,6 @@ import {
   DbBnsName,
   DbBnsSubdomain,
   DbTokenOfferingLocked,
-  DbNonFungibleTokenMetadata,
-  DbFungibleTokenMetadata,
   DbTx,
   DataStoreTxEventData,
 } from '../datastore/common';
@@ -5193,48 +5191,6 @@ describe('postgres datastore', () => {
       100
     );
     expect(results.found).toBe(false);
-  });
-
-  test('pg token nft-metadata', async () => {
-    const nftMetadata: DbNonFungibleTokenMetadata = {
-      token_uri: 'nft-tokenuri',
-      name: 'nft-metadata',
-      description: 'nft -metadata description',
-      image_uri: 'nft-metadata image uri example',
-      image_canonical_uri: 'nft-metadata image canonical uri example',
-      contract_id: 'ABCDEFGHIJ.nft-metadata',
-      tx_id: '0x1234',
-      sender_address: 'sender-addr-test',
-    };
-
-    const rowCount = await db.updateNFtMetadata(nftMetadata, 1);
-    expect(rowCount).toBe(1);
-
-    const query = await db.getNftMetadata(nftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(nftMetadata);
-  });
-
-  test('pg token ft-metadata', async () => {
-    const ftMetadata: DbFungibleTokenMetadata = {
-      token_uri: 'ft-token',
-      name: 'ft-metadata',
-      description: 'ft -metadata description',
-      symbol: 'stx',
-      decimals: 5,
-      image_uri: 'ft-metadata image uri example',
-      image_canonical_uri: 'ft-metadata image canonical uri example',
-      contract_id: 'ABCDEFGHIJ.ft-metadata',
-      tx_id: '0x1234',
-      sender_address: 'sender-addr-test',
-    };
-
-    const rowCount = await db.updateFtMetadata(ftMetadata, 1);
-    expect(rowCount).toBe(1);
-
-    const query = await db.getFtMetadata(ftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(ftMetadata);
   });
 
   test('empty parameter lists are handled correctly', async () => {

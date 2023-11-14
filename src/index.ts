@@ -23,8 +23,6 @@ import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
-import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
-import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
 
@@ -159,23 +157,6 @@ async function init(): Promise<void> {
     monitorCoreRpcConnection().catch(error => {
       logger.error(error, 'Error monitoring RPC connection');
     });
-
-    if (!isFtMetadataEnabled()) {
-      logger.warn('Fungible Token metadata processing is not enabled.');
-    }
-    if (!isNftMetadataEnabled()) {
-      logger.warn('Non-Fungible Token metadata processing is not enabled.');
-    }
-    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
-      const tokenMetadataProcessor = new TokensProcessorQueue(dbWriteStore, configuredChainID);
-      registerShutdownConfig({
-        name: 'Token Metadata Processor',
-        handler: () => tokenMetadataProcessor.close(),
-        forceKillable: true,
-      });
-      // Enqueue a batch of pending token metadata processors, if any.
-      await tokenMetadataProcessor.checkDbQueue();
-    }
   }
 
   if (

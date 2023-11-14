@@ -63,7 +63,7 @@ import {
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
-import { getOperations, parseTransactionMemo } from '../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
 import { Pox2EventName } from '../../pox-helpers';
 import { logger } from '../../logger';
@@ -161,30 +161,6 @@ export function getTxStatus(txStatus: DbTxStatus | string): string {
     return '';
   } else {
     return getTxStatusString(txStatus as DbTxStatus);
-  }
-}
-
-type EventTypeString =
-  | 'smart_contract_log'
-  | 'stx_asset'
-  | 'fungible_token_asset'
-  | 'non_fungible_token_asset'
-  | 'stx_lock';
-
-export function getEventTypeString(eventTypeId: DbEventTypeId): EventTypeString {
-  switch (eventTypeId) {
-    case DbEventTypeId.SmartContractLog:
-      return 'smart_contract_log';
-    case DbEventTypeId.StxAsset:
-      return 'stx_asset';
-    case DbEventTypeId.FungibleTokenAsset:
-      return 'fungible_token_asset';
-    case DbEventTypeId.NonFungibleTokenAsset:
-      return 'non_fungible_token_asset';
-    case DbEventTypeId.StxLock:
-      return 'stx_lock';
-    default:
-      throw new Error(`Unexpected DbEventTypeId: ${eventTypeId}`);
   }
 }
 

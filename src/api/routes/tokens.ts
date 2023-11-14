@@ -1,25 +1,20 @@
-import { asyncHandler } from '../../async-handler';
+import { asyncHandler } from '../async-handler';
 import * as express from 'express';
 import {
-  FungibleTokenMetadata,
-  FungibleTokensMetadataList,
   NonFungibleTokenHistoryEvent,
   NonFungibleTokenHistoryEventList,
   NonFungibleTokenHolding,
   NonFungibleTokenHoldingsList,
-  NonFungibleTokenMetadata,
   NonFungibleTokenMint,
   NonFungibleTokenMintList,
-  NonFungibleTokensMetadataList,
 } from '@stacks/stacks-blockchain-api-types';
-import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from './../../pagination';
-import { isFtMetadataEnabled, isNftMetadataEnabled } from '../../../token-metadata/helpers';
-import { has0xPrefix, isValidPrincipal } from '../../../helpers';
-import { booleanValueForParam, isUnanchoredRequest } from '../../../api/query-helpers';
+import { PgStore } from '../../datastore/pg-store';
+import { isValidPrincipal, has0xPrefix } from '../../helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
-import { getAssetEventTypeString, parseDbTx } from '../../controllers/db-controller';
-import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
-import { PgStore } from '../../../datastore/pg-store';
+import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
+import { parseDbTx, getAssetEventTypeString } from '../controllers/db-controller';
+import { getPagingQueryLimit, ResourceType, parsePagingQueryInput } from '../pagination';
+import { isUnanchoredRequest, booleanValueForParam } from '../query-helpers';
 
 export function createTokenRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -225,150 +220,6 @@ export function createTokenRouter(db: PgStore): express.Router {
         .catch(error => {
           res.status(400).json(error);
         });
-    })
-  );
-
-  router.get(
-    '/ft/metadata',
-    asyncHandler(async (req, res) => {
-      if (!isFtMetadataEnabled()) {
-        res.status(500).json({
-          error: 'FT metadata processing is not enabled on this server',
-        });
-        return;
-      }
-
-      const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
-
-      const { results, total } = await db.getFtMetadataList({ offset, limit });
-
-      const response: FungibleTokensMetadataList = {
-        limit: limit,
-        offset: offset,
-        total: total,
-        results: results,
-      };
-
-      res.status(200).json(response);
-    })
-  );
-
-  router.get(
-    '/nft/metadata',
-    asyncHandler(async (req, res) => {
-      if (!isNftMetadataEnabled()) {
-        res.status(500).json({
-          error: 'NFT metadata processing is not enabled on this server',
-        });
-        return;
-      }
-
-      let limit: number;
-      try {
-        limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
-      } catch (error: any) {
-        res.status(400).json({ error: error.message });
-        return;
-      }
-
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
-
-      const { results, total } = await db.getNftMetadataList({ offset, limit });
-
-      const response: NonFungibleTokensMetadataList = {
-        limit: limit,
-        offset: offset,
-        total: total,
-        results: results,
-      };
-
-      res.status(200).json(response);
-    })
-  );
-
-  router.get(
-    '/:contractId/ft/metadata',
-    asyncHandler(async (req, res) => {
-      if (!isFtMetadataEnabled()) {
-        res.status(500).json({
-          error: 'FT metadata processing is not enabled on this server',
-        });
-        return;
-      }
-
-      const { contractId } = req.params;
-
-      const metadata = await db.getFtMetadata(contractId);
-      if (!metadata.found) {
-        res.status(404).json({ error: 'tokens not found' });
-        return;
-      }
-
-      const {
-        token_uri,
-        name,
-        description,
-        image_uri,
-        image_canonical_uri,
-        symbol,
-        decimals,
-        tx_id,
-        sender_address,
-      } = metadata.result;
-
-      const response: FungibleTokenMetadata = {
-        token_uri: token_uri,
-        name: name,
-        description: description,
-        image_uri: image_uri,
-        image_canonical_uri: image_canonical_uri,
-        symbol: symbol,
-        decimals: decimals,
-        tx_id: tx_id,
-        sender_address: sender_address,
-      };
-      res.status(200).json(response);
-    })
-  );
-
-  router.get(
-    '/:contractId/nft/metadata',
-    asyncHandler(async (req, res) => {
-      if (!isNftMetadataEnabled()) {
-        res.status(500).json({
-          error: 'NFT metadata processing is not enabled on this server',
-        });
-        return;
-      }
-
-      const { contractId } = req.params;
-      const metadata = await db.getNftMetadata(contractId);
-
-      if (!metadata.found) {
-        res.status(404).json({ error: 'tokens not found' });
-        return;
-      }
-      const {
-        token_uri,
-        name,
-        description,
-        image_uri,
-        image_canonical_uri,
-        tx_id,
-        sender_address,
-      } = metadata.result;
-
-      const response: NonFungibleTokenMetadata = {
-        token_uri: token_uri,
-        name: name,
-        description: description,
-        image_uri: image_uri,
-        image_canonical_uri: image_canonical_uri,
-        tx_id: tx_id,
-        sender_address: sender_address,
-      };
-      res.status(200).json(response);
     })
   );
 

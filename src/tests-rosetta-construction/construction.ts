@@ -53,7 +53,7 @@ import {
   RosettaOperationTypes,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksNetwork } from '../rosetta-helpers';
+import { getSignature, getStacksNetwork } from '../rosetta/rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { runMigrations } from '../datastore/migrations';

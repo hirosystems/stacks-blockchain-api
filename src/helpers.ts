@@ -909,48 +909,6 @@ export function normalizeHashString(input: string): string | false {
   return `0x${hashBuffer.toString('hex')}`;
 }
 
-export function parseDataUrl(
-  s: string
-):
-  | { mediaType?: string; contentType?: string; charset?: string; base64: boolean; data: string }
-  | false {
-  try {
-    const url = new URL(s);
-    if (url.protocol !== 'data:') {
-      return false;
-    }
-    const validDataUrlRegex = /^data:([a-z]+\/[a-z0-9-+.]+(;[a-z0-9-.!#$%*+.{}|~`]+=[a-z0-9-.!#$%*+.{}()|~`]+)*)?(;base64)?,(.*)$/i;
-    const parts = validDataUrlRegex.exec(s.trim());
-    if (parts === null) {
-      return false;
-    }
-    const parsed: {
-      mediaType?: string;
-      contentType?: string;
-      charset?: string;
-      base64: boolean;
-      data: string;
-    } = {
-      base64: false,
-      data: '',
-    };
-    if (parts[1]) {
-      parsed.mediaType = parts[1].toLowerCase();
-      const mediaTypeParts = parts[1].split(';').map(x => x.toLowerCase());
-      parsed.contentType = mediaTypeParts[0];
-      mediaTypeParts.slice(1).forEach(attribute => {
-        const p = attribute.split('=');
-        Object.assign(parsed, { [p[0]]: p[1] });
-      });
-    }
-    parsed.base64 = !!parts[parts.length - 2];
-    parsed.data = parts[parts.length - 1] || '';
-    return parsed;
-  } catch (e) {
-    return false;
-  }
-}
-
 /**
  * Unsigned 32-bit integer.
  *  - Mainnet: 0x00000001

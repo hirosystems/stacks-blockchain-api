@@ -82,7 +82,7 @@ import {
   rawTxToBaseTx,
   rawTxToStacksTransaction,
   verifySignature,
-} from './../../../rosetta-helpers';
+} from '../../../rosetta/rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
