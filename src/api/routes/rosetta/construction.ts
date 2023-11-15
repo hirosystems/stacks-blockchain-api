@@ -80,7 +80,7 @@ import {
   rawTxToBaseTx,
   rawTxToStacksTransaction,
   verifySignature,
-} from './../../../rosetta-helpers';
+} from '../../../rosetta/rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 

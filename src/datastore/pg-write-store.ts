@@ -22,9 +22,6 @@ import {
   DataStoreMicroblockUpdateData,
   DbMicroblock,
   DataStoreTxEventData,
-  DbNonFungibleTokenMetadata,
-  DbFungibleTokenMetadata,
-  DbTokenMetadataQueueEntry,
   DbFaucetRequest,
   MinerRewardInsertValues,
   BlockInsertValues,
@@ -42,16 +39,13 @@ import {
   TxInsertValues,
   MempoolTxInsertValues,
   MempoolTxQueryResult,
-  TokenMetadataQueueEntryInsertValues,
   SmartContractInsertValues,
   BnsNameInsertValues,
   BnsNamespaceInsertValues,
-  FtMetadataInsertValues,
-  NftMetadataInsertValues,
   FaucetRequestInsertValues,
   MicroblockInsertValues,
   TxQueryResult,
-  UpdatedEntities,
+  ReOrgUpdatedEntities,
   BlockQueryResult,
   DataStoreAttachmentData,
   DataStoreAttachmentSubdomainData,
@@ -67,7 +61,6 @@ import {
   NftCustodyInsertValues,
   DataStoreBnsBlockTxData,
 } from './common';
-import { ClarityAbi } from '@stacks/transactions';
 import {
   BLOCK_COLUMNS,
   setTotalBlockUpdateDataExecutionCost,
@@ -82,10 +75,11 @@ import {
   TX_COLUMNS,
   TX_METADATA_TABLES,
   validateZonefileHash,
+  newReOrgUpdatedEntities,
+  logReorgResultInfo,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { MIGRATIONS_DIR, PgStore } from './pg-store';
-import { isProcessableTokenMetadata } from '../token-metadata/helpers';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
 import { Pox2EventName } from '../pox-helpers';
@@ -206,7 +200,6 @@ export class PgWriteStore extends PgStore {
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
-    const tokenMetadataQueueEntries: DbTokenMetadataQueueEntry[] = [];
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
     const deployedSmartContracts: DbSmartContract[] = [];
@@ -220,49 +213,20 @@ export class PgWriteStore extends PgStore {
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
-        // When storing newly mined canonical txs, remove them from the mempool table.
-        const pruneRes = await this.pruneMempoolTxs(
-          sql,
-          data.txs.map(d => d.tx.tx_id)
-        );
-        if (pruneRes.removedTxs.length > 0) {
+        const txIds = data.txs.map(d => d.tx.tx_id);
+        const pruneRes = await this.pruneMempoolTxs(sql, txIds);
+        if (pruneRes.removedTxs.length > 0)
           logger.debug(
             `Removed ${pruneRes.removedTxs.length} txs from mempool table during new block ingestion`
           );
-        }
       }
       setTotalBlockUpdateDataExecutionCost(data);
       batchedTxData = data.txs;
 
-      // Find microblocks that weren't already inserted via the unconfirmed microblock event.
-      // This happens when a stacks-node is syncing and receives confirmed microblocks with their anchor block at the same time.
-      if (data.microblocks.length > 0) {
-        const existingMicroblocksQuery = await sql<{ microblock_hash: string }[]>`
-          SELECT microblock_hash
-          FROM microblocks
-          WHERE parent_index_block_hash = ${data.block.parent_index_block_hash}
-            AND microblock_hash IN ${sql(data.microblocks.map(mb => mb.microblock_hash))}
-        `;
-        const existingMicroblockHashes = new Set(
-          existingMicroblocksQuery.map(r => r.microblock_hash)
-        );
-
-        const missingMicroblocks = data.microblocks.filter(
-          mb => !existingMicroblockHashes.has(mb.microblock_hash)
-        );
-        if (missingMicroblocks.length > 0) {
-          const missingMicroblockHashes = new Set(missingMicroblocks.map(mb => mb.microblock_hash));
-          const missingTxs = data.txs.filter(entry =>
-            missingMicroblockHashes.has(entry.tx.microblock_hash)
-          );
-          await this.insertMicroblockData(sql, missingMicroblocks, missingTxs);
-
-          // Clear already inserted microblock txs from the anchor-block update data to avoid duplicate inserts.
-          batchedTxData = batchedTxData.filter(entry => {
-            return !missingMicroblockHashes.has(entry.tx.microblock_hash);
-          });
-        }
-      }
+      // Find and insert microblocks that weren't already inserted via the unconfirmed
+      // `/new_microblock` event. This happens when a stacks-node is syncing and receives confirmed
+      // microblocks with their anchor block at the same time.
+      await this.insertMissingMicroblocksFromBlockUpdate(sql, data);
 
       // When processing an immediately-non-canonical block, do not orphan and possible existing microblocks
       // which may be still considered canonical by the canonical block at this height.
@@ -335,34 +299,6 @@ export class PgWriteStore extends PgStore {
           logger.debug(`Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`);
         }
         garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
-
-        const tokenContractDeployments = data.txs
-          .filter(
-            entry =>
-              entry.tx.type_id === DbTxTypeId.SmartContract ||
-              entry.tx.type_id === DbTxTypeId.VersionedSmartContract
-          )
-          .filter(entry => entry.tx.status === DbTxStatus.Success)
-          .filter(entry => entry.smartContracts[0].abi && entry.smartContracts[0].abi !== 'null')
-          .map(entry => {
-            const smartContract = entry.smartContracts[0];
-            const contractAbi: ClarityAbi = JSON.parse(smartContract.abi as string);
-            const queueEntry: DbTokenMetadataQueueEntry = {
-              queueId: -1,
-              txId: entry.tx.tx_id,
-              contractId: smartContract.contract_id,
-              contractAbi: contractAbi,
-              blockHeight: entry.tx.block_height,
-              processed: false,
-              retry_count: 0,
-            };
-            return queueEntry;
-          })
-          .filter(entry => isProcessableTokenMetadata(entry.contractAbi));
-        for (const pendingQueueEntry of tokenContractDeployments) {
-          const queueEntry = await this.updateTokenMetadataQueue(sql, pendingQueueEntry);
-          tokenMetadataQueueEntries.push(queueEntry);
-        }
       }
 
       if (!this.isEventReplay) {
@@ -407,10 +343,36 @@ export class PgWriteStore extends PgStore {
           eventIndex: nftEvent.event_index,
         });
       }
-      for (const tokenMetadataQueueEntry of tokenMetadataQueueEntries) {
-        await this.notifier.sendTokenMetadata({ queueId: tokenMetadataQueueEntry.queueId });
-      }
     }
+  }
+
+  private async insertMissingMicroblocksFromBlockUpdate(
+    sql: PgSqlClient,
+    data: DataStoreBlockUpdateData
+  ): Promise<DataStoreTxEventData[]> {
+    if (data.microblocks.length == 0) return data.txs;
+    const existingMicroblocksQuery = await sql<{ microblock_hash: string }[]>`
+      SELECT DISTINCT microblock_hash
+      FROM microblocks
+      WHERE parent_index_block_hash = ${data.block.parent_index_block_hash}
+        AND microblock_hash IN ${sql(data.microblocks.map(mb => mb.microblock_hash))}
+    `;
+    const missingMicroblocks = data.microblocks.filter(
+      mb => !existingMicroblocksQuery.has(mb.microblock_hash)
+    );
+    if (missingMicroblocks.length > 0) {
+      const missingMicroblockHashes = new Set(missingMicroblocks.map(mb => mb.microblock_hash));
+      const missingTxs = data.txs.filter(entry =>
+        missingMicroblockHashes.has(entry.tx.microblock_hash)
+      );
+      await this.insertMicroblockData(sql, missingMicroblocks, missingTxs);
+
+      // Clear already inserted microblock txs from the anchor-block update data to avoid duplicate inserts.
+      return data.txs.filter(entry => {
+        return !missingMicroblockHashes.has(entry.tx.microblock_hash);
+      });
+    }
+    return data.txs;
   }
 
   private async updatePoxStateUnlockHeight(sql: PgSqlClient, data: DataStoreBlockUpdateData) {
@@ -1822,28 +1784,6 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateTokenMetadataQueue(
-    sql: PgSqlClient,
-    entry: DbTokenMetadataQueueEntry
-  ): Promise<DbTokenMetadataQueueEntry> {
-    const values: TokenMetadataQueueEntryInsertValues = {
-      tx_id: entry.txId,
-      contract_id: entry.contractId,
-      contract_abi: JSON.stringify(entry.contractAbi),
-      block_height: entry.blockHeight,
-      processed: false,
-    };
-    const queryResult = await sql<{ queue_id: number }[]>`
-      INSERT INTO token_metadata_queue ${sql(values)}
-      RETURNING queue_id
-    `;
-    const result: DbTokenMetadataQueueEntry = {
-      ...entry,
-      queueId: queryResult[0].queue_id,
-    };
-    return result;
-  }
-
   async updateSmartContracts(sql: PgSqlClient, tx: DbTx, smartContracts: DbSmartContract[]) {
     for (const batch of batchIterate(smartContracts, Math.floor(PG_PARAM_LIMIT / 12))) {
       const values: SmartContractInsertValues[] = batch.map(smartContract => ({
@@ -2031,87 +1971,6 @@ export class PgWriteStore extends PgStore {
             microblock_canonical = EXCLUDED.microblock_canonical
       `;
     }
-  }
-
-  async updateFtMetadata(ftMetadata: DbFungibleTokenMetadata, dbQueueId: number): Promise<number> {
-    const length = await this.sqlWriteTransaction(async sql => {
-      const values: FtMetadataInsertValues = {
-        token_uri: ftMetadata.token_uri,
-        name: ftMetadata.name,
-        description: ftMetadata.description,
-        image_uri: ftMetadata.image_uri,
-        image_canonical_uri: ftMetadata.image_canonical_uri,
-        contract_id: ftMetadata.contract_id,
-        symbol: ftMetadata.symbol,
-        decimals: ftMetadata.decimals,
-        tx_id: ftMetadata.tx_id,
-        sender_address: ftMetadata.sender_address,
-      };
-      const result = await sql`
-        INSERT INTO ft_metadata ${sql(values)}
-        ON CONFLICT (contract_id)
-        DO
-          UPDATE SET ${sql(values)}
-      `;
-      await sql`
-        UPDATE token_metadata_queue
-        SET processed = true
-        WHERE queue_id = ${dbQueueId}
-      `;
-      return result.count;
-    });
-    await this.notifier?.sendTokens({ contractID: ftMetadata.contract_id });
-    return length;
-  }
-
-  async updateNFtMetadata(
-    nftMetadata: DbNonFungibleTokenMetadata,
-    dbQueueId: number
-  ): Promise<number> {
-    const length = await this.sqlWriteTransaction(async sql => {
-      const values: NftMetadataInsertValues = {
-        token_uri: nftMetadata.token_uri,
-        name: nftMetadata.name,
-        description: nftMetadata.description,
-        image_uri: nftMetadata.image_uri,
-        image_canonical_uri: nftMetadata.image_canonical_uri,
-        contract_id: nftMetadata.contract_id,
-        tx_id: nftMetadata.tx_id,
-        sender_address: nftMetadata.sender_address,
-      };
-      const result = await sql`
-        INSERT INTO nft_metadata ${sql(values)}
-        ON CONFLICT (contract_id)
-        DO
-          UPDATE SET ${sql(values)}
-      `;
-      await sql`
-        UPDATE token_metadata_queue
-        SET processed = true
-        WHERE queue_id = ${dbQueueId}
-      `;
-      return result.count;
-    });
-    await this.notifier?.sendTokens({ contractID: nftMetadata.contract_id });
-    return length;
-  }
-
-  async updateProcessedTokenMetadataQueueEntry(queueId: number): Promise<void> {
-    await this.sql`
-      UPDATE token_metadata_queue
-      SET processed = true
-      WHERE queue_id = ${queueId}
-    `;
-  }
-
-  async increaseTokenMetadataQueueEntryRetryCount(queueId: number): Promise<number> {
-    const result = await this.sql<{ retry_count: number }[]>`
-      UPDATE token_metadata_queue
-      SET retry_count = retry_count + 1
-      WHERE queue_id = ${queueId}
-      RETURNING retry_count
-    `;
-    return result[0].retry_count;
   }
 
   async updateBatchTokenOfferingLocked(sql: PgSqlClient, lockedInfos: DbTokenOfferingLocked[]) {
@@ -2537,10 +2396,7 @@ export class PgWriteStore extends PgStore {
    * @param txIds - List of transactions to update in the mempool
    */
   async pruneMempoolTxs(sql: PgSqlClient, txIds: string[]): Promise<{ removedTxs: string[] }> {
-    if (txIds.length === 0) {
-      // Avoid an unnecessary query.
-      return { removedTxs: [] };
-    }
+    if (txIds.length === 0) return { removedTxs: [] };
     for (const txId of txIds) {
       logger.debug(`Pruning mempool tx: ${txId}`);
     }
@@ -2587,7 +2443,7 @@ export class PgWriteStore extends PgStore {
     sql: PgSqlClient,
     indexBlockHash: string,
     canonical: boolean,
-    updatedEntities: UpdatedEntities
+    updatedEntities: ReOrgUpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
     const txResult = await sql<TxQueryResult[]>`
       UPDATE txs
@@ -2759,8 +2615,8 @@ export class PgWriteStore extends PgStore {
   async restoreOrphanedChain(
     sql: PgSqlClient,
     indexBlockHash: string,
-    updatedEntities: UpdatedEntities
-  ): Promise<UpdatedEntities> {
+    updatedEntities: ReOrgUpdatedEntities
+  ): Promise<ReOrgUpdatedEntities> {
     // Restore the previously orphaned block to canonical
     const restoredBlockResult = await sql<BlockQueryResult[]>`
       UPDATE blocks
@@ -2886,44 +2742,8 @@ export class PgWriteStore extends PgStore {
     sql: PgSqlClient,
     block: DbBlock,
     chainTipHeight: number
-  ): Promise<UpdatedEntities> {
-    const updatedEntities: UpdatedEntities = {
-      markedCanonical: {
-        blocks: 0,
-        microblocks: 0,
-        minerRewards: 0,
-        txs: 0,
-        stxLockEvents: 0,
-        stxEvents: 0,
-        ftEvents: 0,
-        nftEvents: 0,
-        pox2Events: 0,
-        pox3Events: 0,
-        contractLogs: 0,
-        smartContracts: 0,
-        names: 0,
-        namespaces: 0,
-        subdomains: 0,
-      },
-      markedNonCanonical: {
-        blocks: 0,
-        microblocks: 0,
-        minerRewards: 0,
-        txs: 0,
-        stxLockEvents: 0,
-        stxEvents: 0,
-        ftEvents: 0,
-        nftEvents: 0,
-        pox2Events: 0,
-        pox3Events: 0,
-        contractLogs: 0,
-        smartContracts: 0,
-        names: 0,
-        namespaces: 0,
-        subdomains: 0,
-      },
-    };
-
+  ): Promise<ReOrgUpdatedEntities> {
+    const updatedEntities = newReOrgUpdatedEntities();
     // Check if incoming block's parent is canonical
     if (block.block_height > 1) {
       const parentResult = await sql<
@@ -2938,91 +2758,26 @@ export class PgWriteStore extends PgStore {
         WHERE block_height = ${block.block_height - 1}
           AND index_block_hash = ${block.parent_index_block_hash}
       `;
-
-      if (parentResult.length > 1) {
+      if (parentResult.length > 1)
         throw new Error(
           `DB contains multiple blocks at height ${block.block_height - 1} and index_hash ${
             block.parent_index_block_hash
           }`
         );
-      }
-      if (parentResult.length === 0) {
+      if (parentResult.length === 0)
         throw new Error(
           `DB does not contain a parent block at height ${block.block_height - 1} with index_hash ${
             block.parent_index_block_hash
           }`
         );
-      }
-
-      // This blocks builds off a previously orphaned chain. Restore canonical status for this chain.
+      // This blocks builds off a previously orphaned chain. Restore canonical status for this
+      // chain.
       if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
         await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
-        this.logReorgResultInfo(updatedEntities);
+        logReorgResultInfo(updatedEntities);
       }
     }
     return updatedEntities;
-  }
-
-  logReorgResultInfo(updatedEntities: UpdatedEntities) {
-    const updates = [
-      ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
-      [
-        'microblocks',
-        updatedEntities.markedCanonical.microblocks,
-        updatedEntities.markedNonCanonical.microblocks,
-      ],
-      ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
-      [
-        'miner-rewards',
-        updatedEntities.markedCanonical.minerRewards,
-        updatedEntities.markedNonCanonical.minerRewards,
-      ],
-      [
-        'stx-lock events',
-        updatedEntities.markedCanonical.stxLockEvents,
-        updatedEntities.markedNonCanonical.stxLockEvents,
-      ],
-      [
-        'stx-token events',
-        updatedEntities.markedCanonical.stxEvents,
-        updatedEntities.markedNonCanonical.stxEvents,
-      ],
-      [
-        'non-fungible-token events',
-        updatedEntities.markedCanonical.nftEvents,
-        updatedEntities.markedNonCanonical.nftEvents,
-      ],
-      [
-        'fungible-token events',
-        updatedEntities.markedCanonical.ftEvents,
-        updatedEntities.markedNonCanonical.ftEvents,
-      ],
-      [
-        'contract logs',
-        updatedEntities.markedCanonical.contractLogs,
-        updatedEntities.markedNonCanonical.contractLogs,
-      ],
-      [
-        'smart contracts',
-        updatedEntities.markedCanonical.smartContracts,
-        updatedEntities.markedNonCanonical.smartContracts,
-      ],
-      ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
-      [
-        'namespaces',
-        updatedEntities.markedCanonical.namespaces,
-        updatedEntities.markedNonCanonical.namespaces,
-      ],
-      [
-        'subdomains',
-        updatedEntities.markedCanonical.subdomains,
-        updatedEntities.markedNonCanonical.subdomains,
-      ],
-    ];
-    const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
-    logger.debug(`Entities marked as canonical: ${markedCanonical}`);
-    const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
-    logger.debug(`Entities marked as non-canonical: ${markedNonCanonical}`);
   }
 
   /**
