@@ -221,12 +221,13 @@ export class PgWriteStore extends PgStore {
           );
       }
       setTotalBlockUpdateDataExecutionCost(data);
-      batchedTxData = data.txs;
 
-      // Find and insert microblocks that weren't already inserted via the unconfirmed
-      // `/new_microblock` event. This happens when a stacks-node is syncing and receives confirmed
-      // microblocks with their anchor block at the same time.
-      await this.insertMissingMicroblocksFromBlockUpdate(sql, data);
+      // Insert microblocks, if any. Clear already inserted microblock txs from the anchor-block
+      // update data to avoid duplicate inserts.
+      const insertedMicroblockHashes = await this.insertMicroblocksFromBlockUpdate(sql, data);
+      batchedTxData = data.txs.filter(entry => {
+        return !insertedMicroblockHashes.has(entry.tx.microblock_hash);
+      });
 
       // When processing an immediately-non-canonical block, do not orphan and possible existing microblocks
       // which may be still considered canonical by the canonical block at this height.
@@ -346,19 +347,28 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  private async insertMissingMicroblocksFromBlockUpdate(
+  /**
+   * Find and insert microblocks that weren't already inserted via the unconfirmed `/new_microblock`
+   * event. This happens when a stacks-node is syncing and receives confirmed microblocks with their
+   * anchor block at the same time.
+   * @param sql - SQL client
+   * @param data - Block data to insert
+   * @returns Set of microblock hashes that were inserted in this update
+   */
+  private async insertMicroblocksFromBlockUpdate(
     sql: PgSqlClient,
     data: DataStoreBlockUpdateData
-  ): Promise<DataStoreTxEventData[]> {
-    if (data.microblocks.length == 0) return data.txs;
+  ): Promise<Set<string>> {
+    if (data.microblocks.length == 0) return new Set();
     const existingMicroblocksQuery = await sql<{ microblock_hash: string }[]>`
       SELECT DISTINCT microblock_hash
       FROM microblocks
       WHERE parent_index_block_hash = ${data.block.parent_index_block_hash}
         AND microblock_hash IN ${sql(data.microblocks.map(mb => mb.microblock_hash))}
     `;
+    const existingHashes = existingMicroblocksQuery.map(i => i.microblock_hash);
     const missingMicroblocks = data.microblocks.filter(
-      mb => !existingMicroblocksQuery.has(mb.microblock_hash)
+      mb => !existingHashes.includes(mb.microblock_hash)
     );
     if (missingMicroblocks.length > 0) {
       const missingMicroblockHashes = new Set(missingMicroblocks.map(mb => mb.microblock_hash));
@@ -366,13 +376,9 @@ export class PgWriteStore extends PgStore {
         missingMicroblockHashes.has(entry.tx.microblock_hash)
       );
       await this.insertMicroblockData(sql, missingMicroblocks, missingTxs);
-
-      // Clear already inserted microblock txs from the anchor-block update data to avoid duplicate inserts.
-      return data.txs.filter(entry => {
-        return !missingMicroblockHashes.has(entry.tx.microblock_hash);
-      });
+      return missingMicroblockHashes;
     }
-    return data.txs;
+    return new Set();
   }
 
   private async updatePoxStateUnlockHeight(sql: PgSqlClient, data: DataStoreBlockUpdateData) {
