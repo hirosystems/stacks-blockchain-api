@@ -7,8 +7,8 @@
       "prerelease": true
     },
     {
-      "name": "stacks-2.4",
-      "channel": "stacks-2.4",
+      "name": "nakamoto",
+      "channel": "nakamoto",
       "prerelease": true
     }
   ],
