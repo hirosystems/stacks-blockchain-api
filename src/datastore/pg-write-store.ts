@@ -171,10 +171,10 @@ export class PgWriteStore extends PgStore {
     const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip(sql);
-      await this.handleReorg(sql, data.block, chainTip.blockHeight);
+      const chainTip = await this.getChainTip();
+      await this.handleReorg(sql, data.block, chainTip.block_height);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
-      const isCanonical = data.block.block_height > chainTip.blockHeight;
+      const isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         data.block = { ...data.block, canonical: false };
         data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
@@ -588,9 +588,9 @@ export class PgWriteStore extends PgStore {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the
       // API's current known canonical chain tip. We assume this holds true so incoming microblock
       // data is always treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip();
       const nonCanonicalMicroblock = data.microblocks.find(
-        mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
+        mb => mb.parent_index_block_hash !== chainTip.index_block_hash
       );
       // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
       // Log warning and return, nothing to do.
@@ -598,13 +598,13 @@ export class PgWriteStore extends PgStore {
         logger.info(
           `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
             `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
-            `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
+            `than the current canonical tip's index block hash ${chainTip.index_block_hash}.`
         );
         return;
       }
 
       // The block height is just one after the current chain tip height
-      const blockHeight = chainTip.blockHeight + 1;
+      const blockHeight = chainTip.block_height + 1;
       dbMicroblocks = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
           canonical: true,
@@ -617,8 +617,8 @@ export class PgWriteStore extends PgStore {
           parent_burn_block_hash: mb.parent_burn_block_hash,
           parent_burn_block_time: mb.parent_burn_block_time,
           block_height: blockHeight,
-          parent_block_height: chainTip.blockHeight,
-          parent_block_hash: chainTip.blockHash,
+          parent_block_height: chainTip.block_height,
+          parent_block_hash: chainTip.block_hash,
           index_block_hash: '', // Empty until microblock is confirmed in an anchor block
           block_hash: '', // Empty until microblock is confirmed in an anchor block
         };
@@ -630,7 +630,7 @@ export class PgWriteStore extends PgStore {
         // block with that data doesn't yet exist.
         const dbTx: DbTxRaw = {
           ...entry.tx,
-          parent_block_hash: chainTip.blockHash,
+          parent_block_hash: chainTip.block_hash,
           block_height: blockHeight,
         };
 
@@ -1659,7 +1659,7 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTxRaw, microblock: boolean = false): Promise<number> {
+  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
     const values: TxInsertValues = {
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
@@ -1727,7 +1727,7 @@ export class PgWriteStore extends PgStore {
       anchor_mode: tx.anchor_mode,
       status: tx.status,
       receipt_time: tx.receipt_time,
-      receipt_block_height: chainTip.blockHeight,
+      receipt_block_height: chainTip.block_height,
       post_conditions: tx.post_conditions,
       nonce: tx.nonce,
       fee_rate: tx.fee_rate,
@@ -1766,7 +1766,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip();
       for (const tx of txs) {
         const inserted = await this.insertDbMempoolTx(tx, chainTip, sql);
         if (inserted) {
@@ -2133,7 +2133,7 @@ export class PgWriteStore extends PgStore {
     }
 
     for (const entry of txs) {
-      const rowsUpdated = await this.updateTx(sql, entry.tx, true);
+      const rowsUpdated = await this.updateTx(sql, entry.tx);
       if (rowsUpdated !== 1) {
         throw new Error(
           `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
@@ -2243,6 +2243,12 @@ export class PgWriteStore extends PgStore {
         microblocks: args.microblocks,
       });
     }
+
+    // Update unanchored tx count in `chain_tip` table
+    const txCountDelta = updatedMbTxs.length * (args.isMicroCanonical ? 1 : -1);
+    await sql`
+      UPDATE chain_tip SET tx_count_unanchored = tx_count_unanchored + ${txCountDelta}
+    `;
 
     return { updatedTxs: updatedMbTxs };
   }
@@ -2859,6 +2865,14 @@ export class PgWriteStore extends PgStore {
         await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
         this.logReorgResultInfo(updatedEntities);
       }
+      // Reflect updated transaction totals in `chain_tip` table.
+      const txCountDelta =
+        updatedEntities.markedCanonical.txs - updatedEntities.markedNonCanonical.txs;
+      await sql`
+        UPDATE chain_tip SET
+          tx_count = tx_count + ${txCountDelta},
+          tx_count_unanchored = tx_count_unanchored + ${txCountDelta}
+      `;
     }
     return updatedEntities;
   }
