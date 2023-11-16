@@ -148,33 +148,6 @@ export class PgWriteStore extends PgStore {
     return super.sqlTransaction(callback, false);
   }
 
-  async getChainTip(sql: PgSqlClient, useMaterializedView = true): Promise<DbChainTip> {
-    if (!this.isEventReplay && useMaterializedView) {
-      return super.getChainTip(sql);
-    }
-    // The `chain_tip` materialized view is not available during event replay.
-    // Since `getChainTip()` is used heavily during event ingestion, we'll fall back to
-    // a classic query.
-    const currentTipBlock = await sql<
-      {
-        block_height: number;
-        block_hash: string;
-        index_block_hash: string;
-        burn_block_height: number;
-      }[]
-    >`
-      SELECT block_height, block_hash, index_block_hash, burn_block_height
-      FROM blocks
-      WHERE canonical = true AND block_height = (SELECT MAX(block_height) FROM blocks)
-    `;
-    return {
-      blockHeight: currentTipBlock[0]?.block_height ?? 0,
-      blockHash: currentTipBlock[0]?.block_hash ?? '',
-      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
-      burnBlockHeight: currentTipBlock[0]?.burn_block_height ?? 0,
-    };
-  }
-
   async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
@@ -205,10 +178,10 @@ export class PgWriteStore extends PgStore {
     const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip(sql, false);
-      await this.handleReorg(sql, data.block, chainTip.blockHeight);
+      const chainTip = await this.getChainTip();
+      await this.handleReorg(sql, data.block, chainTip.block_height);
       // If the incoming block is not of greater height than current chain tip, then store data as non-canonical.
-      const isCanonical = data.block.block_height > chainTip.blockHeight;
+      const isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         data.block = { ...data.block, canonical: false };
         data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
@@ -424,12 +397,27 @@ export class PgWriteStore extends PgStore {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
+      if (isCanonical)
+        await sql`
+          WITH new_tx_count AS (
+            SELECT tx_count + ${data.txs.length} AS tx_count FROM chain_tip
+          )
+          UPDATE chain_tip SET
+            block_height = ${data.block.block_height},
+            block_hash = ${data.block.block_hash},
+            index_block_hash = ${data.block.index_block_hash},
+            burn_block_height = ${data.block.burn_block_height},
+            microblock_hash = NULL,
+            microblock_sequence = NULL,
+            block_count = ${data.block.block_height},
+            tx_count = (SELECT tx_count FROM new_tx_count),
+            tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
+        `;
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
     this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
 
-    await this.refreshMaterializedView('chain_tip');
     await this.refreshMaterializedView('mempool_digest');
 
     // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
@@ -578,12 +566,12 @@ export class PgWriteStore extends PgStore {
     const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
-      // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the API's
-      // current known canonical chain tip. We assume this holds true so incoming microblock data is always
-      // treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip(sql, false);
+      // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the
+      // API's current known canonical chain tip. We assume this holds true so incoming microblock
+      // data is always treated as being built off the current canonical anchor block.
+      const chainTip = await this.getChainTip();
       const nonCanonicalMicroblock = data.microblocks.find(
-        mb => mb.parent_index_block_hash !== chainTip.indexBlockHash
+        mb => mb.parent_index_block_hash !== chainTip.index_block_hash
       );
       // Note: the stacks-node event emitter can send old microblocks that have already been processed by a previous anchor block.
       // Log warning and return, nothing to do.
@@ -591,13 +579,13 @@ export class PgWriteStore extends PgStore {
         logger.info(
           `Failure in microblock ingestion, microblock ${nonCanonicalMicroblock.microblock_hash} ` +
             `points to parent index block hash ${nonCanonicalMicroblock.parent_index_block_hash} rather ` +
-            `than the current canonical tip's index block hash ${chainTip.indexBlockHash}.`
+            `than the current canonical tip's index block hash ${chainTip.index_block_hash}.`
         );
         return;
       }
 
       // The block height is just one after the current chain tip height
-      const blockHeight = chainTip.blockHeight + 1;
+      const blockHeight = chainTip.block_height + 1;
       dbMicroblocks = data.microblocks.map(mb => {
         const dbMicroBlock: DbMicroblock = {
           canonical: true,
@@ -610,8 +598,8 @@ export class PgWriteStore extends PgStore {
           parent_burn_block_hash: mb.parent_burn_block_hash,
           parent_burn_block_time: mb.parent_burn_block_time,
           block_height: blockHeight,
-          parent_block_height: chainTip.blockHeight,
-          parent_block_hash: chainTip.blockHash,
+          parent_block_height: chainTip.block_height,
+          parent_block_hash: chainTip.block_hash,
           index_block_hash: '', // Empty until microblock is confirmed in an anchor block
           block_hash: '', // Empty until microblock is confirmed in an anchor block
         };
@@ -623,7 +611,7 @@ export class PgWriteStore extends PgStore {
         // block with that data doesn't yet exist.
         const dbTx: DbTxRaw = {
           ...entry.tx,
-          parent_block_hash: chainTip.blockHash,
+          parent_block_hash: chainTip.block_hash,
           block_height: blockHeight,
         };
 
@@ -703,9 +691,20 @@ export class PgWriteStore extends PgStore {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
+      if (currentMicroblockTip.microblock_canonical)
+        await sql`
+          UPDATE chain_tip SET
+            microblock_hash = ${currentMicroblockTip.microblock_hash},
+            microblock_sequence = ${currentMicroblockTip.microblock_sequence},
+            microblock_count = microblock_count + ${data.microblocks.length},
+            tx_count_unanchored = ${
+              currentMicroblockTip.microblock_sequence === 0
+                ? sql`tx_count + ${data.txs.length}`
+                : sql`tx_count_unanchored + ${data.txs.length}`
+            }
+        `;
     });
 
-    await this.refreshMaterializedView('chain_tip');
     await this.refreshMaterializedView('mempool_digest');
 
     if (this.notifier) {
@@ -1670,7 +1669,7 @@ export class PgWriteStore extends PgStore {
       anchor_mode: tx.anchor_mode,
       status: tx.status,
       receipt_time: tx.receipt_time,
-      receipt_block_height: chainTip.blockHeight,
+      receipt_block_height: chainTip.block_height,
       post_conditions: tx.post_conditions,
       nonce: tx.nonce,
       fee_rate: tx.fee_rate,
@@ -1709,7 +1708,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip(sql, false);
+      const chainTip = await this.getChainTip();
       for (const tx of txs) {
         const inserted = await this.insertDbMempoolTx(tx, chainTip, sql);
         if (inserted) {
@@ -2186,6 +2185,12 @@ export class PgWriteStore extends PgStore {
         microblocks: args.microblocks,
       });
     }
+
+    // Update unanchored tx count in `chain_tip` table
+    const txCountDelta = updatedMbTxs.length * (args.isMicroCanonical ? 1 : -1);
+    await sql`
+      UPDATE chain_tip SET tx_count_unanchored = tx_count_unanchored + ${txCountDelta}
+    `;
 
     return { updatedTxs: updatedMbTxs };
   }
@@ -2802,6 +2807,14 @@ export class PgWriteStore extends PgStore {
         await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
         this.logReorgResultInfo(updatedEntities);
       }
+      // Reflect updated transaction totals in `chain_tip` table.
+      const txCountDelta =
+        updatedEntities.markedCanonical.txs - updatedEntities.markedNonCanonical.txs;
+      await sql`
+        UPDATE chain_tip SET
+          tx_count = tx_count + ${txCountDelta},
+          tx_count_unanchored = tx_count_unanchored + ${txCountDelta}
+      `;
     }
     return updatedEntities;
   }
@@ -2886,12 +2899,7 @@ export class PgWriteStore extends PgStore {
    * Called when a full event import is complete.
    */
   async finishEventReplay() {
-    if (!this.isEventReplay) {
-      return;
-    }
-    await this.sqlWriteTransaction(async sql => {
-      await this.refreshMaterializedView('chain_tip', sql, false);
-      await this.refreshMaterializedView('mempool_digest', sql, false);
-    });
+    if (!this.isEventReplay) return;
+    await this.refreshMaterializedView('mempool_digest', this.sql, false);
   }
 }

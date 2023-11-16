@@ -1488,7 +1488,7 @@ describe('mempool tests', () => {
     // Simulate the bug with a txs being in the mempool at confirmed at the same time by
     // directly inserting the mempool-tx and mined-tx, bypassing the normal update functions.
     await db.updateBlock(db.sql, dbBlock1);
-    const chainTip = await db.getChainTip(db.sql);
+    const chainTip = await db.getChainTip();
     await db.insertDbMempoolTx(mempoolTx, chainTip, db.sql);
     await db.updateTx(db.sql, dbTx1);
 

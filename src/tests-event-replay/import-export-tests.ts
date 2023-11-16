@@ -30,13 +30,12 @@ describe('import/export tests', () => {
   test('event import and export cycle', async () => {
     // Import from mocknet TSV
     await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
-    const chainTip = await db.getUnanchoredChainTip();
-    expect(chainTip.found).toBe(true);
-    expect(chainTip.result?.blockHeight).toBe(28);
-    expect(chainTip.result?.indexBlockHash).toBe(
+    const chainTip = await db.getChainTip();
+    expect(chainTip.block_height).toBe(28);
+    expect(chainTip.index_block_hash).toBe(
       '0x76cd67a65c0dfd5ea450bb9efe30da89fa125bfc077c953802f718353283a533'
     );
-    expect(chainTip.result?.blockHash).toBe(
+    expect(chainTip.block_hash).toBe(
       '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
     );
 
@@ -53,13 +52,12 @@ describe('import/export tests', () => {
     // Re-import with exported TSV and check that chain tip matches.
     try {
       await importEventsFromTsv(`${tmpDir}/export.tsv`, 'archival', true, true);
-      const newChainTip = await db.getUnanchoredChainTip();
-      expect(newChainTip.found).toBe(true);
-      expect(newChainTip.result?.blockHeight).toBe(28);
-      expect(newChainTip.result?.indexBlockHash).toBe(
+      const newChainTip = await db.getChainTip();
+      expect(newChainTip.block_height).toBe(28);
+      expect(newChainTip.index_block_hash).toBe(
         '0x76cd67a65c0dfd5ea450bb9efe30da89fa125bfc077c953802f718353283a533'
       );
-      expect(newChainTip.result?.blockHash).toBe(
+      expect(newChainTip.block_hash).toBe(
         '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
       );
     } finally {
@@ -200,30 +198,14 @@ describe('IBD', () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1000';
     // TSV has 1 microblock message.
     await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(1);
-    await expect(db.getChainTip(client, false)).resolves.toHaveProperty('blockHeight', 28);
+    await expect(db.getChainTip()).resolves.toHaveProperty('block_height', 28);
   });
 
   test('IBD mode does NOT block certain API routes once the threshold number of blocks are ingested', async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = '1';
     // Microblock processed normally.
     await expect(getIbdInterceptCountFromTsvEvents()).resolves.toBe(0);
-    await expect(db.getChainTip(client, false)).resolves.toHaveProperty('blockHeight', 28);
-  });
-
-  test('IBD mode prevents refreshing materialized views', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '1000';
-    await getIbdInterceptCountFromTsvEvents();
-    await db.refreshMaterializedView('chain_tip', client);
-    const res = await db.sql<{ block_height: number }[]>`SELECT * FROM chain_tip`;
-    expect(res.count).toBe(0);
-  });
-
-  test('IBD mode allows refreshing materialized views after height has passed', async () => {
-    process.env.IBD_MODE_UNTIL_BLOCK = '10';
-    await getIbdInterceptCountFromTsvEvents();
-    await db.refreshMaterializedView('chain_tip', client);
-    const res = await db.sql<{ block_height: number }[]>`SELECT * FROM chain_tip`;
-    expect(res[0].block_height).toBe(28);
+    await expect(db.getChainTip()).resolves.toHaveProperty('block_height', 28);
   });
 
   test('IBD mode covers prune mode', async () => {

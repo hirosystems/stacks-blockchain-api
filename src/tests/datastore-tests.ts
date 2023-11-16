@@ -4010,6 +4010,7 @@ describe('postgres datastore', () => {
       contract_name: 'pox',
     };
 
+    // Start canonical chain
     await db.update({
       block: block1,
       microblocks: [],
@@ -4230,6 +4231,7 @@ describe('postgres datastore', () => {
       abi: '{"thing":1}',
     };
 
+    // Insert non-canonical block
     await db.update({
       block: block2b,
       microblocks: [],
@@ -4327,12 +4329,18 @@ describe('postgres datastore', () => {
 
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTip(client);
+    const chainTip1 = await db.getChainTip();
     expect(chainTip1).toEqual({
-      blockHash: '0x33',
-      blockHeight: 3,
-      indexBlockHash: '0xcc',
-      burnBlockHeight: 123,
+      block_hash: '0x33',
+      block_height: 3,
+      index_block_hash: '0xcc',
+      burn_block_height: 123,
+      block_count: 3,
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2, // Tx from block 2b does not count
+      tx_count_unanchored: 2,
     });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(1);
@@ -4386,12 +4394,19 @@ describe('postgres datastore', () => {
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
-    const chainTip2 = await db.getChainTip(client);
+    // Chain tip doesn't change yet.
+    const chainTip2 = await db.getChainTip();
     expect(chainTip2).toEqual({
-      blockHash: '0x33',
-      blockHeight: 3,
-      indexBlockHash: '0xcc',
-      burnBlockHeight: 123,
+      block_hash: '0x33',
+      block_height: 3,
+      index_block_hash: '0xcc',
+      burn_block_height: 123,
+      block_count: 3,
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2,
+      tx_count_unanchored: 2,
     });
 
     const block4b: DbBlock = {
@@ -4429,12 +4444,18 @@ describe('postgres datastore', () => {
 
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTip(client);
+    const chainTip3 = await db.getChainTip();
     expect(chainTip3).toEqual({
-      blockHash: '0x44bb',
-      blockHeight: 4,
-      indexBlockHash: '0xddbb',
-      burnBlockHeight: 123,
+      block_count: 4,
+      block_hash: '0x44bb',
+      block_height: 4,
+      burn_block_height: 123,
+      index_block_hash: '0xddbb',
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2, // Tx from block 2b now counts, but compensates with tx from block 2
+      tx_count_unanchored: 2,
     });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });

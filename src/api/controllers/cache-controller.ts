@@ -251,13 +251,13 @@ async function calculateETag(
   switch (etagType) {
     case ETagType.chainTip:
       try {
-        const chainTip = await db.getUnanchoredChainTip();
-        if (!chainTip.found) {
+        const chainTip = await db.getChainTip();
+        if (chainTip.block_height === 0) {
           // This should never happen unless the API is serving requests before it has synced any
           // blocks.
           return;
         }
-        return chainTip.result.microblockHash ?? chainTip.result.indexBlockHash;
+        return chainTip.microblock_hash ?? chainTip.index_block_hash;
       } catch (error) {
         logger.error(error, 'Unable to calculate chain_tip ETag');
         return;
