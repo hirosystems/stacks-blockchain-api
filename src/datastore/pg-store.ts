@@ -202,26 +202,20 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getChainTip(sql: PgSqlClient): Promise<{
-    blockHeight: number;
-    blockHash: string;
-    indexBlockHash: string;
-    burnBlockHeight: number;
-  }> {
-    const currentTipBlock = await sql<
-      {
-        block_height: number;
-        block_hash: string;
-        index_block_hash: string;
-        burn_block_height: number;
-      }[]
-    >`SELECT block_height, block_hash, index_block_hash, burn_block_height FROM chain_tip`;
-    const height = currentTipBlock[0]?.block_height ?? 0;
+  async getChainTip(): Promise<DbChainTip> {
+    const tipResult = await this.sql<DbChainTip[]>`SELECT * FROM chain_tip`;
+    const tip = tipResult[0];
     return {
-      blockHeight: height,
-      blockHash: currentTipBlock[0]?.block_hash ?? '',
-      indexBlockHash: currentTipBlock[0]?.index_block_hash ?? '',
-      burnBlockHeight: currentTipBlock[0]?.burn_block_height ?? 0,
+      block_height: tip?.block_height ?? 0,
+      block_count: tip?.block_count ?? 0,
+      block_hash: tip?.block_hash ?? '',
+      index_block_hash: tip?.index_block_hash ?? '',
+      burn_block_height: tip?.burn_block_height ?? 0,
+      microblock_hash: tip?.microblock_hash ?? undefined,
+      microblock_sequence: tip?.microblock_sequence ?? undefined,
+      microblock_count: tip?.microblock_count ?? 0,
+      tx_count: tip?.tx_count ?? 0,
+      tx_count_unanchored: tip?.tx_count_unanchored ?? 0,
     };
   }
 
@@ -314,33 +308,6 @@ export class PgStore extends BasePgStore {
 
   async getPoxForceUnlockHeights() {
     return this.getPoxForcedUnlockHeightsInternal(this.sql);
-  }
-
-  async getUnanchoredChainTip(): Promise<FoundOrNot<DbChainTip>> {
-    const result = await this.sql<
-      {
-        block_height: number;
-        index_block_hash: string;
-        block_hash: string;
-        microblock_hash: string | null;
-        microblock_sequence: number | null;
-        burn_block_height: number;
-      }[]
-    >`SELECT block_height, index_block_hash, block_hash, microblock_hash, microblock_sequence, burn_block_height
-      FROM chain_tip`;
-    if (result.length === 0) {
-      return { found: false } as const;
-    }
-    const row = result[0];
-    const chainTipResult: DbChainTip = {
-      blockHeight: row.block_height,
-      indexBlockHash: row.index_block_hash,
-      blockHash: row.block_hash,
-      microblockHash: row.microblock_hash === null ? undefined : row.microblock_hash,
-      microblockSequence: row.microblock_sequence === null ? undefined : row.microblock_sequence,
-      burnBlockHeight: row.burn_block_height,
-    };
-    return { found: true, result: chainTipResult };
   }
 
   async getBlock(blockIdentifer: BlockIdentifier): Promise<FoundOrNot<DbBlock>> {
@@ -626,8 +593,8 @@ export class PgStore extends BasePgStore {
 
   async getUnanchoredTxsInternal(sql: PgSqlClient): Promise<{ txs: DbTx[] }> {
     // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
-    const { blockHeight } = await this.getChainTip(sql);
-    const unanchoredBlockHeight = blockHeight + 1;
+    const { block_height } = await this.getChainTip();
+    const unanchoredBlockHeight = block_height + 1;
     const query = await sql<ContractTxQueryResult[]>`
       SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
       FROM txs
@@ -1372,11 +1339,11 @@ export class PgStore extends BasePgStore {
     sql: PgSqlClient,
     { includeUnanchored }: { includeUnanchored: boolean }
   ): Promise<number> {
-    const chainTip = await this.getChainTip(sql);
+    const chainTip = await this.getChainTip();
     if (includeUnanchored) {
-      return chainTip.blockHeight + 1;
+      return chainTip.block_height + 1;
     } else {
-      return chainTip.blockHeight;
+      return chainTip.block_height;
     }
   }
 
@@ -2159,9 +2126,9 @@ export class PgStore extends BasePgStore {
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     return await this.sqlTransaction(async sql => {
-      const chainTip = await this.getChainTip(sql);
+      const chainTip = await this.getChainTip();
       const blockHeightToQuery =
-        blockHeight > chainTip.blockHeight ? chainTip.blockHeight : blockHeight;
+        blockHeight > chainTip.block_height ? chainTip.block_height : blockHeight;
       const blockQuery = await this.getBlockByHeightInternal(sql, blockHeightToQuery);
       if (!blockQuery.found) {
         throw new Error(`Could not find block at height: ${blockHeight}`);
