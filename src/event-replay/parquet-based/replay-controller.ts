@@ -17,7 +17,7 @@ const cluster = _cluster as unknown as _cluster.Cluster; // typings fix
 import { FILE_PATH as raw_worker_path } from './workers/raw-worker';
 import { FILE_PATH as new_block_worker_path } from './workers/new-block-worker';
 import { cycleMigrations, dangerousDropAllTables } from '@hirosystems/api-toolkit';
-import { PgServer, getConnectionArgs } from 'src/datastore/connection';
+import { PgServer, getConnectionArgs } from '../../datastore/connection';
 import { MIGRATIONS_DIR } from '../../datastore/pg-store';
 
 /**
