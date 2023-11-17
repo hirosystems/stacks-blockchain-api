@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.1...v7.4.0-nakamoto.2) (2023-11-17)
+
+
+### Bug Fixes
+
+* import statement in replay controller ([7a10cd8](https://github.com/hirosystems/stacks-blockchain-api/commit/7a10cd8c4bb585c75a2437508802c7e5d908a564))
+
 ## [7.4.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.2...v7.4.0-nakamoto.1) (2023-11-16)
 
 
