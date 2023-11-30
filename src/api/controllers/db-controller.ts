@@ -26,6 +26,7 @@ import {
   RosettaParentBlockIdentifier,
   RosettaTransaction,
   SmartContractTransactionMetadata,
+  TenureChangeTransactionMetadata,
   TokenTransferTransactionMetadata,
   Transaction,
   TransactionAnchorModeType,
@@ -112,6 +113,19 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
       return 'any';
     default:
       throw new Error(`Unexpected anchor mode value ${anchorMode}`);
+  }
+}
+
+function getTxTenureChangeCauseString(cause: number) {
+  switch (cause) {
+    case 0:
+      return 'block_found';
+    case 1:
+      return 'no_block_found';
+    case 2:
+      return 'null_miner';
+    default:
+      throw new Error(`Unexpected tenure change cause value ${cause}`);
   }
 }
 
@@ -896,6 +910,48 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
           alt_recipient: unwrapOptional(
             dbTx.coinbase_alt_recipient,
             () => 'Unexpected nullish coinbase_alt_recipient'
+          ),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.NakamotoCoinbase: {
+      const metadata: CoinbaseTransactionMetadata = {
+        tx_type: 'coinbase',
+        coinbase_payload: {
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: dbTx.coinbase_alt_recipient ?? (null as any),
+          vrf_proof: unwrapOptional(dbTx.coinbase_vrf_proof, () => 'Unexpected nullish vrf_proof'),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.TenureChange: {
+      const metadata: TenureChangeTransactionMetadata = {
+        tx_type: 'tenure_change',
+        tenure_change_payload: {
+          previous_tenure_end: unwrapOptional(
+            dbTx.tenure_change_previous_tenure_end,
+            () => 'Unexpected nullish tenure_change_previous_tenure_end'
+          ),
+          previous_tenure_blocks: unwrapOptional(
+            dbTx.tenure_change_previous_tenure_blocks,
+            () => 'Unexpected nullish tenure_change_previous_tenure_blocks'
+          ),
+          cause: getTxTenureChangeCauseString(
+            unwrapOptional(dbTx.tenure_change_cause, () => 'Unexpected nullish tenure_change_cause')
+          ),
+          pubkey_hash: unwrapOptional(
+            dbTx.tenure_change_pubkey_hash,
+            () => 'Unexpected nullish tenure_change_pubkey_hash'
+          ),
+          signature: unwrapOptional(
+            dbTx.tenure_change_signature,
+            () => 'Unexpected nullish tenure_change_signature'
+          ),
+          signers: unwrapOptional(
+            dbTx.tenure_change_signers,
+            () => 'Unexpected nullish tenure_change_signers'
           ),
         },
       };

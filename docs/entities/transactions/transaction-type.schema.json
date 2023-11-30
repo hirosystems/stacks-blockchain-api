@@ -2,5 +2,5 @@
   "title": "TransactionType",
   "description": "String literal of all Stacks 2.0 transaction types",
   "type": "string",
-  "enum": ["token_transfer", "smart_contract", "contract_call", "poison_microblock", "coinbase"]
+  "enum": ["token_transfer", "smart_contract", "contract_call", "poison_microblock", "coinbase", "tenure_change"]
 }

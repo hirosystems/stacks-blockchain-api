@@ -773,6 +773,20 @@ export function parseMessageTransaction(
         }
         break;
       }
+      case TxPayloadTypeID.NakamotoCoinbase: {
+        if (payload.recipient?.type_id === PrincipalTypeID.Standard) {
+          logger.debug(
+            `NakamotoCoinbase to alt recipient, standard principal: ${payload.recipient.address}, vrf=${payload.vrf_proof}`
+          );
+        } else if (payload.recipient?.type_id === PrincipalTypeID.Contract) {
+          logger.debug(
+            `NakamotoCoinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}, vrf=${payload.vrf_proof}`
+          );
+        } else {
+          logger.debug(`NakamotoCoinbase (no alt recipient), vrf=${payload.vrf_proof}`);
+        }
+        break;
+      }
       case TxPayloadTypeID.SmartContract: {
         logger.debug(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
@@ -804,6 +818,12 @@ export function parseMessageTransaction(
       case TxPayloadTypeID.VersionedSmartContract: {
         logger.debug(
           `Versioned smart contract deployed: Clarity version ${payload.clarity_version}, ${parsedTx.sender_address}.${payload.contract_name}`
+        );
+        break;
+      }
+      case TxPayloadTypeID.TenureChange: {
+        logger.debug(
+          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end}, signers=${payload.signers},`
         );
         break;
       }
