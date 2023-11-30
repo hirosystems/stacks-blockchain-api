@@ -89,6 +89,8 @@ export enum DbTxTypeId {
   Coinbase = 0x04,
   CoinbaseToAltRecipient = 0x05,
   VersionedSmartContract = 0x06,
+  TenureChange = 0x07,
+  NakamotoCoinbase = 0x08,
 }
 
 export enum DbTxStatus {
@@ -138,6 +140,14 @@ export interface BaseTx {
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: string;
   abi?: string;
+
+  /** Only valid for `tenure-change` tx types. */
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash?: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -184,6 +194,9 @@ export interface DbTx extends BaseTx {
 
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
+
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
 
   event_count: number;
 
@@ -260,6 +273,9 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
+
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
 }
 
 export interface DbMempoolTxRaw extends DbMempoolTx {
@@ -836,6 +852,17 @@ export interface MempoolTxQueryResult {
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
 
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
+
+  // `tenure-change` tx types
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
+
   // sending abi in case tx is contract call
   abi: unknown | null;
 }
@@ -895,6 +922,17 @@ export interface TxQueryResult {
 
   // `coinbase-to-alt-recipient` tx types
   coinbase_alt_recipient?: string;
+
+  // `nakamoto-coinbase` tx types. Hex encoded 80-bytes.
+  coinbase_vrf_proof?: string;
+
+  // `tenure-change` tx types
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
 
   // events count
   event_count: number;
@@ -1018,6 +1056,13 @@ export interface TxInsertValues {
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
+  coinbase_vrf_proof: string | null;
+  tenure_change_previous_tenure_end: string | null;
+  tenure_change_previous_tenure_blocks: number | null;
+  tenure_change_cause: number | null;
+  tenure_change_pubkey_hash: string | null;
+  tenure_change_signature: string | null;
+  tenure_change_signers: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -1057,6 +1102,13 @@ export interface MempoolTxInsertValues {
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
+  coinbase_vrf_proof: string | null;
+  tenure_change_previous_tenure_end: string | null;
+  tenure_change_previous_tenure_blocks: number | null;
+  tenure_change_cause: number | null;
+  tenure_change_pubkey_hash: string | null;
+  tenure_change_signature: string | null;
+  tenure_change_signers: string | null;
 }
 
 export interface BlockInsertValues {

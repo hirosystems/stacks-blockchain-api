@@ -159,6 +159,7 @@ export interface TestTxArgs {
   canonical?: boolean;
   microblock_canonical?: boolean;
   coinbase_alt_recipient?: string;
+  coinbase_vrf_proof?: string;
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
   contract_call_function_args?: string;
@@ -213,6 +214,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       origin_hash_mode: 1,
       coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
       coinbase_alt_recipient: args?.coinbase_alt_recipient,
+      coinbase_vrf_proof: args?.coinbase_vrf_proof,
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,

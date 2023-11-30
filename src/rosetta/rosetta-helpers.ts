@@ -1119,6 +1119,12 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
     case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
       break;
+    case TxPayloadTypeID.TenureChange:
+      transactionType = DbTxTypeId.TenureChange;
+      break;
+    case TxPayloadTypeID.NakamotoCoinbase:
+      transactionType = DbTxTypeId.NakamotoCoinbase;
+      break;
   }
   const dbTx: BaseTx = {
     token_transfer_recipient_address: recipientAddr,

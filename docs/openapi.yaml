@@ -228,7 +228,7 @@ paths:
             example: coinbase
             items:
               type: string
-              enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
+              enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock, tenure_change]
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
