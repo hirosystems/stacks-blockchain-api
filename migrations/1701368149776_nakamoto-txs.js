@@ -1,5 +1,13 @@
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.up = pgm => {
+  pgm.addColumn('pox_state', { 
+    pox_v3_unlock_height: {
+      type: 'bigint',
+      notNull: true,
+      default: 0,
+    },
+  });
+
   pgm.addColumns('txs', {
     // `nakamoto-coinbase` tx types
     coinbase_vrf_proof: 'bytea',

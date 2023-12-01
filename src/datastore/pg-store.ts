@@ -287,11 +287,17 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getPoxForcedUnlockHeightsInternal(
-    sql: PgSqlClient
-  ): Promise<FoundOrNot<{ pox1UnlockHeight: number | null; pox2UnlockHeight: number | null }>> {
-    const query = await sql<{ pox_v1_unlock_height: string; pox_v2_unlock_height: string }[]>`
-      SELECT pox_v1_unlock_height, pox_v2_unlock_height
+  async getPoxForcedUnlockHeightsInternal(sql: PgSqlClient): Promise<
+    FoundOrNot<{
+      pox1UnlockHeight: number | null;
+      pox2UnlockHeight: number | null;
+      pox3UnlockHeight: number | null;
+    }>
+  > {
+    const query = await sql<
+      { pox_v1_unlock_height: string; pox_v2_unlock_height: string; pox_v3_unlock_height: string }[]
+    >`
+      SELECT pox_v1_unlock_height, pox_v2_unlock_height, pox_v3_unlock_height
       FROM pox_state
       LIMIt 1
     `;
@@ -300,10 +306,11 @@ export class PgStore extends BasePgStore {
     }
     const pox1UnlockHeight = parseInt(query[0].pox_v1_unlock_height) || null;
     const pox2UnlockHeight = parseInt(query[0].pox_v2_unlock_height) || null;
+    const pox3UnlockHeight = parseInt(query[0].pox_v3_unlock_height) || null;
     if (pox2UnlockHeight === 0) {
       return { found: false };
     }
-    return { found: true, result: { pox1UnlockHeight, pox2UnlockHeight } };
+    return { found: true, result: { pox1UnlockHeight, pox2UnlockHeight, pox3UnlockHeight } };
   }
 
   async getPoxForceUnlockHeights() {
