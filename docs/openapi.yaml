@@ -105,21 +105,6 @@ paths:
       tags:
         - Faucets
       operationId: run_faucet_stx
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                address:
-                  description: STX testnet address
-                  type: string
-                stacking:
-                  description: Use required number of tokens for stacking
-                  type: boolean
-              example:
-                address: ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
-                stacking: false
       responses:
         200:
           description: Success
