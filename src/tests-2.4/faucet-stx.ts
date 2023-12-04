@@ -30,6 +30,17 @@ describe('STX Faucet', () => {
     expect(reqTx.success).toBe(true);
   });
 
+  test('STX faucet http request post body', async () => {
+    const response = await supertest(testEnv.api.server)
+      .post(`/extended/v1/faucets/stx`)
+      .send({ address: reqAccount.stxAddr });
+    expect(response.status).toBe(200);
+    reqTx = response.body;
+    expect(typeof reqTx.txId).toBe('string');
+    expect(typeof reqTx.txRaw).toBe('string');
+    expect(reqTx.success).toBe(true);
+  });
+
   test('STX faucet tx mined successfully', async () => {
     const tx = await standByForTxSuccess(reqTx.txId!);
     expect(tx.token_transfer_recipient_address).toBe(reqAccount.stxAddr);
