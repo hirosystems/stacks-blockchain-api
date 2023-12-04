@@ -33,12 +33,13 @@ describe('STX Faucet', () => {
   test('STX faucet http request post body', async () => {
     const response = await supertest(testEnv.api.server)
       .post(`/extended/v1/faucets/stx`)
-      .send({ address: reqAccount.stxAddr });
-    expect(response.status).toBe(200);
-    reqTx = response.body;
-    expect(typeof reqTx.txId).toBe('string');
-    expect(typeof reqTx.txRaw).toBe('string');
-    expect(reqTx.success).toBe(true);
+      .send({ address: reqAccount.stxAddr, stacking: true });
+    expect(response.status).toBe(400);
+    const reqTx: any = response.body;
+    expect(reqTx.success).toBe(false);
+    expect(reqTx.error).toContain('POST body is no longer supported');
+    // check for helpful error message
+    expect(reqTx.error).toContain(`address=${reqAccount.stxAddr}`);
   });
 
   test('STX faucet tx mined successfully', async () => {
