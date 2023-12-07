@@ -362,9 +362,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
 
       const insertSmartContracts = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          for (const smartContract of entry.smartContracts) {
-            await db.updateSmartContracts(db.sql, entry.tx, smartContract);
-          }
+          await db.updateSmartContracts(db.sql, entry.tx, entry.smartContracts);
         }
       };
 
@@ -378,31 +376,23 @@ const populateBatchInserters = (db: PgWriteStore) => {
 
       const insertStxLockEvents = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          for (const stxLockEvent of entry.stxLockEvents) {
-            await db.updateStxLockEvents(db.sql, entry.tx, stxLockEvent);
-          }
+          await db.updateStxLockEvents(db.sql, entry.tx, entry.stxLockEvents);
         }
       };
 
       const insertMinerRewards = async (dbData: DataStoreBlockUpdateData) => {
-        for (const minerReward of dbData.minerRewards) {
-          await db.updateMinerRewards(db.sql, minerReward);
-        }
+        await db.updateMinerRewards(db.sql, dbData.minerRewards);
       };
 
       const insertPox2Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          for (const pox2Event of entry.pox2Events) {
-            await db.updatePox2Events(db.sql, entry.tx, pox2Event);
-          }
+          await db.updatePox2Events(db.sql, entry.tx, entry.pox2Events);
         }
       };
 
       const insertPox3Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          for (const pox3Event of entry.pox3Events) {
-            await db.updatePox3Events(db.sql, entry.tx, pox3Event);
-          }
+          await db.updatePox3Events(db.sql, entry.tx, entry.pox3Events);
         }
       };
 
