@@ -4,8 +4,7 @@ import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { DataStoreBlockUpdateData } from '../datastore/common';
-import { BnsGenesisBlock } from '../event-replay/helpers';
+import { DataStoreBlockUpdateData, DataStoreBnsBlockTxData } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
 
@@ -30,7 +29,7 @@ describe('BNS V1 import', () => {
   });
 
   test('v1-import', async () => {
-    const genesis: BnsGenesisBlock = {
+    const genesis: DataStoreBnsBlockTxData = {
       index_block_hash: block.block.index_block_hash,
       parent_index_block_hash: block.block.parent_index_block_hash,
       microblock_canonical: true,

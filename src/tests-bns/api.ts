@@ -129,8 +129,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      namespace
+      [namespace]
     );
     const namespace2: DbBnsNamespace = {
       namespace_id: 'blockstack',
@@ -157,8 +159,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      namespace2
+      [namespace2]
     );
   });
 
@@ -434,8 +438,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      dbName
+      [dbName]
     );
 
     const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
@@ -531,8 +537,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      dbName2
+      [dbName2]
     );
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
