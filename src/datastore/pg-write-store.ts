@@ -90,6 +90,7 @@ import {
   batchIterate,
   connectPostgres,
   isProdEnv,
+  isTestEnv,
   runMigrations,
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
@@ -175,8 +176,6 @@ export class PgWriteStore extends PgStore {
   async update(data: DataStoreBlockUpdateData): Promise<void> {
     let garbageCollectedMempoolTxs: string[] = [];
     let batchedTxData: DataStoreTxEventData[] = [];
-    const deployedSmartContracts: DbSmartContract[] = [];
-    const contractLogEvents: DbSmartContractEvent[] = [];
 
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip();
@@ -236,9 +235,9 @@ export class PgWriteStore extends PgStore {
           const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
           return !matchingTx;
         });
-      }
 
-      if (isCanonical) await this.updatePoxStateUnlockHeight(sql, data);
+        await this.updatePoxStateUnlockHeight(sql, data);
+      }
 
       // When receiving first block, check if "block 0" boot data was received,
       // if so, update their properties to correspond to "block 1", since we treat
@@ -249,13 +248,10 @@ export class PgWriteStore extends PgStore {
           await this.fixBlockZeroData(sql, data.block);
         }
       }
-      const blocksUpdated = await this.updateBlock(sql, data.block);
-      if (blocksUpdated !== 0) {
+      if ((await this.updateBlock(sql, data.block)) !== 0) {
         await this.updateMinerRewards(sql, data.minerRewards);
         for (const entry of batchedTxData) {
           await this.updateTx(sql, entry.tx);
-          contractLogEvents.push(...entry.contractLogEvents);
-          deployedSmartContracts.push(...entry.smartContracts);
           await this.updateStxEvents(sql, entry.tx, entry.stxEvents);
           await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
           await this.updateSmartContractEvents(sql, entry.tx, entry.contractLogEvents);
@@ -297,41 +293,52 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
+
+      await this.refreshMaterializedView('mempool_digest');
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
     this.isIbdBlockHeightReached = ibdHeight ? data.block.block_height > ibdHeight : true;
+    // Send block updates but don't block current execution unless we're testing.
+    if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
+    else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
+  }
 
-    await this.refreshMaterializedView('mempool_digest');
-
-    // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block is the
-    // event replay of the v1 blockchain.
-    if ((data.block.block_height > 1 || !isProdEnv) && this.notifier) {
-      await this.notifier.sendBlock({ blockHash: data.block.block_hash });
-      for (const tx of data.txs) {
-        await this.notifier.sendTx({ txId: tx.tx.tx_id });
-      }
-      for (const txId of garbageCollectedMempoolTxs) {
-        await this.notifier.sendTx({ txId: txId });
-      }
-      for (const smartContract of deployedSmartContracts) {
+  /**
+   * Send block update via Postgres NOTIFY
+   * @param args - Block data
+   */
+  private async sendBlockNotifications(args: {
+    data: DataStoreBlockUpdateData;
+    garbageCollectedMempoolTxs: string[];
+  }): Promise<void> {
+    // Skip sending `PgNotifier` updates altogether if we're in the genesis block since this block
+    // is the event replay of the v1 blockchain.
+    if (!this.notifier || !(args.data.block.block_height > 1 || !isProdEnv)) return;
+    await this.notifier.sendBlock({ blockHash: args.data.block.block_hash });
+    for (const tx of args.data.txs) {
+      await this.notifier.sendTx({ txId: tx.tx.tx_id });
+      for (const smartContract of tx.smartContracts) {
         await this.notifier.sendSmartContract({
           contractId: smartContract.contract_id,
         });
       }
-      for (const logEvent of contractLogEvents) {
+      for (const logEvent of tx.contractLogEvents) {
         await this.notifier.sendSmartContractLog({
           txId: logEvent.tx_id,
           eventIndex: logEvent.event_index,
         });
       }
-      await this.emitAddressTxUpdates(data.txs);
-      for (const nftEvent of data.txs.map(tx => tx.nftEvents).flat()) {
-        await this.notifier.sendNftEvent({
-          txId: nftEvent.tx_id,
-          eventIndex: nftEvent.event_index,
-        });
-      }
+    }
+    for (const txId of args.garbageCollectedMempoolTxs) {
+      await this.notifier.sendTx({ txId: txId });
+    }
+    await this.emitAddressTxUpdates(args.data.txs);
+    for (const nftEvent of args.data.txs.map(tx => tx.nftEvents).flat()) {
+      await this.notifier.sendNftEvent({
+        txId: nftEvent.tx_id,
+        eventIndex: nftEvent.event_index,
+      });
     }
   }
 
