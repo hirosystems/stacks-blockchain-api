@@ -127,6 +127,7 @@ export type SchemaMergeRootStub =
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
   | MempoolCoinbaseTransaction
+  | MempoolTenureChangeTransaction
   | MempoolTransactionStatus
   | MempoolTransaction
   | Microblock
@@ -209,6 +210,8 @@ export type SchemaMergeRootStub =
   | PoisonMicroblockTransaction
   | CoinbaseTransactionMetadata
   | CoinbaseTransaction
+  | TenureChangeTransactionMetadata
+  | TenureChangeTransaction
   | TransactionFound
   | TransactionList
   | TransactionMetadata
@@ -324,7 +327,8 @@ export type Transaction =
   | SmartContractTransaction
   | ContractCallTransaction
   | PoisonMicroblockTransaction
-  | CoinbaseTransaction;
+  | CoinbaseTransaction
+  | TenureChangeTransaction;
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
@@ -527,6 +531,10 @@ export type PoisonMicroblockTransaction = AbstractTransaction & PoisonMicroblock
  */
 export type CoinbaseTransaction = AbstractTransaction & CoinbaseTransactionMetadata;
 /**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export type TenureChangeTransaction = AbstractTransaction & TenureChangeTransactionMetadata;
+/**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
 export type MempoolTransaction =
@@ -534,7 +542,8 @@ export type MempoolTransaction =
   | MempoolSmartContractTransaction
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
-  | MempoolCoinbaseTransaction;
+  | MempoolCoinbaseTransaction
+  | MempoolTenureChangeTransaction;
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
@@ -578,6 +587,10 @@ export type MempoolPoisonMicroblockTransaction = AbstractMempoolTransaction & Po
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & CoinbaseTransactionMetadata;
+/**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export type MempoolTenureChangeTransaction = AbstractMempoolTransaction & TenureChangeTransactionMetadata;
 /**
  * Fetch a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
  */
@@ -705,11 +718,18 @@ export type TransactionMetadata =
   | SmartContractTransactionMetadata
   | ContractCallTransactionMetadata
   | PoisonMicroblockTransactionMetadata
-  | CoinbaseTransactionMetadata;
+  | CoinbaseTransactionMetadata
+  | TenureChangeTransactionMetadata;
 /**
  * String literal of all Stacks 2.0 transaction types
  */
-export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
+export type TransactionType =
+  | "token_transfer"
+  | "smart_contract"
+  | "contract_call"
+  | "poison_microblock"
+  | "coinbase"
+  | "tenure_change";
 export type RpcAddressBalanceNotificationParams = {
   address: string;
 } & AddressStxBalanceResponse;
@@ -1098,6 +1118,42 @@ export interface CoinbaseTransactionMetadata {
      * A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
      */
     alt_recipient?: string;
+    /**
+     * Hex encoded 80-byte VRF proof
+     */
+    vrf_proof?: string;
+  };
+}
+/**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export interface TenureChangeTransactionMetadata {
+  tx_type: "tenure_change";
+  tenure_change_payload?: {
+    /**
+     * (Hex string) Stacks Block hash
+     */
+    previous_tenure_end: string;
+    /**
+     * The number of blocks produced in the previous tenure.
+     */
+    previous_tenure_blocks: number;
+    /**
+     * Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.
+     */
+    cause: "block_found" | "no_block_found" | "null_miner";
+    /**
+     * (Hex string) The ECDSA public key hash of the current tenure.
+     */
+    pubkey_hash: string;
+    /**
+     * (Hex string) A Schnorr signature from the Stackers.
+     */
+    signature: string;
+    /**
+     * (Hex string) A bitmap of which Stackers signed.
+     */
+    signers: string;
   };
 }
 /**

@@ -17,6 +17,9 @@
     },
     {
       "$ref": "./transaction-4-coinbase.schema.json"
+    },
+    {
+      "$ref": "./transaction-7-tenure-change.schema.json"
     }
   ]
 }

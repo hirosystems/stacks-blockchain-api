@@ -51,6 +51,26 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Launch: w/ postgres",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
+      "outputCapture": "std",
+      "internalConsoleOptions": "openOnSessionStart",
+      "preLaunchTask": "deploy:pg",
+      "postDebugTask": "stop:pg",
+      "env": {
+        "STACKS_CHAIN_ID": "0x80000000",
+        "NODE_ENV": "development",
+        "TS_NODE_SKIP_IGNORE": "true"
+      },
+      "killBehavior": "polite",
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Launch: krypton 2.1",
       "skipFiles": [
         "<node_internals>/**"
