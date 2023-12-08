@@ -2276,6 +2276,8 @@ export class PgStore extends BasePgStore {
       }
     }
 
+    // TODO: implement includePox3State
+
     // == PoX-3 ================================================================
     // Assuming includePox3State = true; since there is no unlock height for pox3 (yet)
 
