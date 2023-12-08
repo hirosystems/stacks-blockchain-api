@@ -1,3 +1,10 @@
+## [7.3.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.4...v7.3.5) (2023-12-08)
+
+
+### Bug Fixes
+
+* disable stx faucet POST body ([#1759](https://github.com/hirosystems/stacks-blockchain-api/issues/1759)) ([4cb6b56](https://github.com/hirosystems/stacks-blockchain-api/commit/4cb6b5641fc7ea295fac029eee0d571226d21248))
+
 ## [7.3.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.3...v7.3.4) (2023-11-14)
 
 
