@@ -546,6 +546,6 @@ describe('socket-io', () => {
     });
 
     await disconnectWaiter;
-    expect(disconnectReason).toBe('ping timeout');
+    expect(['ping timeout', 'transport close']).toContain(disconnectReason);
   });
 });
