@@ -178,7 +178,7 @@ export function decodePoxSyntheticPrintEvent(
 ): DbPoxSyntheticEventData | null {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
   if (decoded.type_id === ClarityTypeID.ResponseError) {
-    logger.info(`Received ResponseError when decoding Pox2 print event: ${decoded.repr}`);
+    logger.info(`Received ResponseError when decoding Pox synthetic print event: ${decoded.repr}`);
     return null;
   }
   if (decoded.type_id !== ClarityTypeID.ResponseOk) {
@@ -206,14 +206,14 @@ export function decodePoxSyntheticPrintEvent(
   const eventName = opData.name.data as keyof PoxSyntheticPrintEventTypes;
   if (opData.name.type_id !== ClarityTypeID.StringAscii) {
     throw new Error(
-      `Unexpected PoX2 event name type, expected StringAscii, got ${opData.name.type_id}`
+      `Unexpected PoX synthetic event name type, expected StringAscii, got ${opData.name.type_id}`
     );
   }
 
   const eventData = opData.data.data;
   if (opData.data.type_id !== ClarityTypeID.Tuple) {
     throw new Error(
-      `Unexpected PoX2 event data payload type, expected Tuple, got ${opData.data.type_id}`
+      `Unexpected PoX synthetic event data payload type, expected Tuple, got ${opData.data.type_id}`
     );
   }
 

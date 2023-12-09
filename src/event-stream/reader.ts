@@ -652,7 +652,7 @@ export function parseMessageTransaction(
         (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
       );
 
-      // pox-2 and pox-3 compatible events
+      // pox-2, pox-3, and pox-4 compatible events
       const poxEvent = events
         .filter(
           (e): e is SmartContractEvent =>

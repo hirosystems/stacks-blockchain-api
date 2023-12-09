@@ -438,23 +438,37 @@ function parseDataStoreTxEventData(
         if (isPoxPrintEvent(event)) {
           const network = getChainIDNetwork(chainId) === 'mainnet' ? 'mainnet' : 'testnet';
           const [, contractName] = event.contract_event.contract_identifier.split('.');
-          switch (contractName) {
-            // pox-1 is handled in custom node events
-            case POX_2_CONTRACT_NAME:
-            case POX_3_CONTRACT_NAME:
-            case POX_4_CONTRACT_NAME: {
-              const poxEventData = decodePoxSyntheticPrintEvent(
-                event.contract_event.raw_value,
-                network
-              );
-              if (poxEventData === null) break;
+          // pox-1 is handled in custom node events
+          const processSyntheticEvent = [
+            POX_2_CONTRACT_NAME,
+            POX_3_CONTRACT_NAME,
+            POX_4_CONTRACT_NAME,
+          ].includes(contractName);
+          if (processSyntheticEvent) {
+            const poxEventData = decodePoxSyntheticPrintEvent(
+              event.contract_event.raw_value,
+              network
+            );
+            if (poxEventData !== null) {
               logger.debug(`Synthetic pox event data for ${contractName}:`, poxEventData);
               const dbPoxEvent: DbPoxSyntheticEvent = {
                 ...dbEvent,
                 ...poxEventData,
               };
-              dbTx.pox2Events.push(dbPoxEvent);
-              break;
+              switch (contractName) {
+                case POX_2_CONTRACT_NAME: {
+                  dbTx.pox2Events.push(dbPoxEvent);
+                  break;
+                }
+                case POX_3_CONTRACT_NAME: {
+                  dbTx.pox3Events.push(dbPoxEvent);
+                  break;
+                }
+                case POX_4_CONTRACT_NAME: {
+                  dbTx.pox4Events.push(dbPoxEvent);
+                  break;
+                }
+              }
             }
           }
         }
