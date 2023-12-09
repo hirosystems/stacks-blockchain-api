@@ -50,15 +50,15 @@ import {
   DataStoreAttachmentData,
   DataStoreAttachmentSubdomainData,
   DataStoreBnsBlockData,
-  DbPox2Event,
-  Pox2EventInsertValues,
+  PoxSyntheticEventInsertValues,
   DbTxRaw,
   DbMempoolTxRaw,
   DbChainTip,
-  DbPox3Event,
   RawEventRequestInsertValues,
   IndexesState,
   NftCustodyInsertValues,
+  DbPoxSyntheticEvent,
+  PoxSyntheticEventTable,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -77,7 +77,7 @@ import { PgNotifier } from './pg-notifier';
 import { MIGRATIONS_DIR, PgStore } from './pg-store';
 import * as zoneFileParser from 'zone-file';
 import { parseResolver, parseZoneFileTxt } from '../event-stream/bns/bns-helpers';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
 import {
   PgJsonb,
@@ -190,6 +190,7 @@ export class PgWriteStore extends PgStore {
           namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
           pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
           pox3Events: tx.pox3Events.map(e => ({ ...e, canonical: false })),
+          pox4Events: tx.pox4Events.map(e => ({ ...e, canonical: false })),
         }));
         data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
       } else {
@@ -360,10 +361,13 @@ export class PgWriteStore extends PgStore {
           contractLogEvents.push(...entry.contractLogEvents);
           await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
           for (const pox2Event of entry.pox2Events) {
-            await this.updatePox2Event(sql, entry.tx, pox2Event);
+            await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox2_events', pox2Event);
           }
           for (const pox3Event of entry.pox3Events) {
-            await this.updatePox3Event(sql, entry.tx, pox3Event);
+            await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox3_events', pox3Event);
+          }
+          for (const pox4Event of entry.pox4Events) {
+            await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox4_events', pox4Event);
           }
           for (const stxLockEvent of entry.stxLockEvents) {
             await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);
@@ -659,6 +663,7 @@ export class PgWriteStore extends PgStore {
           namespaces: entry.namespaces.map(e => ({ ...e, ready_block: blockHeight })),
           pox2Events: entry.pox2Events.map(e => ({ ...e, block_height: blockHeight })),
           pox3Events: entry.pox3Events.map(e => ({ ...e, block_height: blockHeight })),
+          pox4Events: entry.pox4Events.map(e => ({ ...e, block_height: blockHeight })),
         });
         deployedSmartContracts.push(...entry.smartContracts);
         contractLogEvents.push(...entry.contractLogEvents);
@@ -823,8 +828,13 @@ export class PgWriteStore extends PgStore {
     logger.info('Updated block zero boot data', tablesUpdates);
   }
 
-  async updatePox2Event(sql: PgSqlClient, tx: DbTx, event: DbPox2Event) {
-    const values: Pox2EventInsertValues = {
+  async updatePoxSyntheticEvent(
+    sql: PgSqlClient,
+    tx: DbTx,
+    poxTable: PoxSyntheticEventTable,
+    event: DbPoxSyntheticEvent
+  ) {
+    const values: PoxSyntheticEventInsertValues = {
       event_index: event.event_index,
       tx_id: event.tx_id,
       tx_index: event.tx_index,
@@ -858,35 +868,35 @@ export class PgWriteStore extends PgStore {
     };
     // Set event-specific columns
     switch (event.name) {
-      case Pox2EventName.HandleUnlock: {
+      case SyntheticPoxEventName.HandleUnlock: {
         values.first_cycle_locked = event.data.first_cycle_locked.toString();
         values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
         break;
       }
-      case Pox2EventName.StackStx: {
+      case SyntheticPoxEventName.StackStx: {
         values.lock_period = event.data.lock_period.toString();
         values.lock_amount = event.data.lock_amount.toString();
         values.start_burn_height = event.data.start_burn_height.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
         break;
       }
-      case Pox2EventName.StackIncrease: {
+      case SyntheticPoxEventName.StackIncrease: {
         values.increase_by = event.data.increase_by.toString();
         values.total_locked = event.data.total_locked.toString();
         break;
       }
-      case Pox2EventName.StackExtend: {
+      case SyntheticPoxEventName.StackExtend: {
         values.extend_count = event.data.extend_count.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
         break;
       }
-      case Pox2EventName.DelegateStx: {
+      case SyntheticPoxEventName.DelegateStx: {
         values.amount_ustx = event.data.amount_ustx.toString();
         values.delegate_to = event.data.delegate_to;
         values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
         break;
       }
-      case Pox2EventName.DelegateStackStx: {
+      case SyntheticPoxEventName.DelegateStackStx: {
         values.lock_period = event.data.lock_period.toString();
         values.lock_amount = event.data.lock_amount.toString();
         values.start_burn_height = event.data.start_burn_height.toString();
@@ -894,147 +904,44 @@ export class PgWriteStore extends PgStore {
         values.delegator = event.data.delegator;
         break;
       }
-      case Pox2EventName.DelegateStackIncrease: {
+      case SyntheticPoxEventName.DelegateStackIncrease: {
         values.increase_by = event.data.increase_by.toString();
         values.total_locked = event.data.total_locked.toString();
         values.delegator = event.data.delegator;
         break;
       }
-      case Pox2EventName.DelegateStackExtend: {
+      case SyntheticPoxEventName.DelegateStackExtend: {
         values.extend_count = event.data.extend_count.toString();
         values.unlock_burn_height = event.data.unlock_burn_height.toString();
         values.delegator = event.data.delegator;
         break;
       }
-      case Pox2EventName.StackAggregationCommit: {
+      case SyntheticPoxEventName.StackAggregationCommit: {
         values.reward_cycle = event.data.reward_cycle.toString();
         values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
-      case Pox2EventName.StackAggregationCommitIndexed: {
+      case SyntheticPoxEventName.StackAggregationCommitIndexed: {
         values.reward_cycle = event.data.reward_cycle.toString();
         values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
-      case Pox2EventName.StackAggregationIncrease: {
+      case SyntheticPoxEventName.StackAggregationIncrease: {
         values.reward_cycle = event.data.reward_cycle.toString();
         values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
-      default: {
-        throw new Error(`Unexpected Pox2 event name: ${(event as DbPox2Event).name}`);
-      }
-    }
-    await sql`
-      INSERT INTO pox2_events ${sql(values)}
-    `;
-  }
-
-  // todo: abstract or copy all types
-  async updatePox3Event(sql: PgSqlClient, tx: DbTx, event: DbPox3Event) {
-    const values: Pox2EventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      stacker: event.stacker,
-      locked: event.locked.toString(),
-      balance: event.balance.toString(),
-      burnchain_unlock_height: event.burnchain_unlock_height.toString(),
-      name: event.name,
-      pox_addr: event.pox_addr,
-      pox_addr_raw: event.pox_addr_raw,
-      first_cycle_locked: null,
-      first_unlocked_cycle: null,
-      delegate_to: null,
-      lock_period: null,
-      lock_amount: null,
-      start_burn_height: null,
-      unlock_burn_height: null,
-      delegator: null,
-      increase_by: null,
-      total_locked: null,
-      extend_count: null,
-      reward_cycle: null,
-      amount_ustx: null,
-    };
-    // Set event-specific columns
-    switch (event.name) {
-      case Pox2EventName.HandleUnlock: {
-        values.first_cycle_locked = event.data.first_cycle_locked.toString();
-        values.first_unlocked_cycle = event.data.first_unlocked_cycle.toString();
-        break;
-      }
-      case Pox2EventName.StackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.StackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        break;
-      }
-      case Pox2EventName.StackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        break;
-      }
-      case Pox2EventName.DelegateStx: {
+      case SyntheticPoxEventName.RevokeDelegateStx: {
         values.amount_ustx = event.data.amount_ustx.toString();
         values.delegate_to = event.data.delegate_to;
-        values.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
-        break;
-      }
-      case Pox2EventName.DelegateStackStx: {
-        values.lock_period = event.data.lock_period.toString();
-        values.lock_amount = event.data.lock_amount.toString();
-        values.start_burn_height = event.data.start_burn_height.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackIncrease: {
-        values.increase_by = event.data.increase_by.toString();
-        values.total_locked = event.data.total_locked.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.DelegateStackExtend: {
-        values.extend_count = event.data.extend_count.toString();
-        values.unlock_burn_height = event.data.unlock_burn_height.toString();
-        values.delegator = event.data.delegator;
-        break;
-      }
-      case Pox2EventName.StackAggregationCommit: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationCommitIndexed: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
-        break;
-      }
-      case Pox2EventName.StackAggregationIncrease: {
-        values.reward_cycle = event.data.reward_cycle.toString();
-        values.amount_ustx = event.data.amount_ustx.toString();
         break;
       }
       default: {
-        throw new Error(`Unexpected Pox3 event name: ${(event as DbPox2Event).name}`);
+        throw new Error(`Unexpected Pox3 event name: ${(event as DbPoxSyntheticEvent).name}`);
       }
     }
     await sql`
-      INSERT INTO pox3_events ${sql(values)}
+      INSERT INTO ${sql(poxTable)} ${sql(values)}
     `;
   }
 
@@ -2166,10 +2073,13 @@ export class PgWriteStore extends PgStore {
       await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
       await this.updateBatchSmartContractEvent(sql, entry.tx, entry.contractLogEvents);
       for (const pox2Event of entry.pox2Events) {
-        await this.updatePox2Event(sql, entry.tx, pox2Event);
+        await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox2_events', pox2Event);
       }
       for (const pox3Event of entry.pox3Events) {
-        await this.updatePox3Event(sql, entry.tx, pox3Event);
+        await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox3_events', pox3Event);
+      }
+      for (const pox4Event of entry.pox4Events) {
+        await this.updatePoxSyntheticEvent(sql, entry.tx, 'pox4_events', pox4Event);
       }
       for (const stxLockEvent of entry.stxLockEvents) {
         await this.updateStxLockEvent(sql, entry.tx, stxLockEvent);

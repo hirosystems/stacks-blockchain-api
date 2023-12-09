@@ -34,8 +34,8 @@ import {
 } from 'stacks-encoding-native-js';
 import {
   DbMicroblockPartial,
-  DbPox2DelegateStxEvent,
-  DbPox2StackStxEvent,
+  DbPoxSyntheticDelegateStxEvent,
+  DbPoxSyntheticStackStxEvent,
 } from '../datastore/common';
 import { NotImplementedError } from '../errors';
 import {
@@ -62,8 +62,8 @@ import {
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
-import { decodePox2PrintEvent } from './pox2-event-parsing';
-import { Pox2EventName } from '../pox-helpers';
+import { decodePoxSyntheticPrintEvent } from './pox2-event-parsing';
+import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
 import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
@@ -345,7 +345,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   txResult: string,
   txId: string,
   /** also pox-3 compatible */
-  stxStacksPox2Event: DbPox2StackStxEvent | undefined
+  stxStacksPox2Event: DbPoxSyntheticStackStxEvent | undefined
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
     ClarityValueResponse<
@@ -450,7 +450,7 @@ function createTransactionFromCoreBtcStxLockEvent(
 function createTransactionFromCoreBtcDelegateStxEvent(
   chainId: ChainID,
   contractEvent: SmartContractEvent,
-  decodedEvent: DbPox2DelegateStxEvent,
+  decodedEvent: DbPoxSyntheticDelegateStxEvent,
   txResult: string,
   txId: string
 ): DecodedTxResult {
@@ -660,7 +660,7 @@ export function parseMessageTransaction(
         )
         .map(e => {
           const network = getChainIDNetwork(chainId);
-          const decodedEvent = decodePox2PrintEvent(e.contract_event.raw_value, network);
+          const decodedEvent = decodePoxSyntheticPrintEvent(e.contract_event.raw_value, network);
           if (decodedEvent) {
             return {
               contractEvent: e,
@@ -683,7 +683,7 @@ export function parseMessageTransaction(
         txSender = stxTransferEvent.stx_transfer_event.sender;
       } else if (stxLockEvent) {
         const stxStacksPoxEvent =
-          poxEvent?.decodedEvent.name === Pox2EventName.StackStx
+          poxEvent?.decodedEvent.name === SyntheticPoxEventName.StackStx
             ? poxEvent.decodedEvent
             : undefined;
         rawTx = createTransactionFromCoreBtcStxLockEvent(
@@ -695,7 +695,7 @@ export function parseMessageTransaction(
           stxStacksPoxEvent
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
-      } else if (poxEvent && poxEvent.decodedEvent.name === Pox2EventName.DelegateStx) {
+      } else if (poxEvent && poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx) {
         rawTx = createTransactionFromCoreBtcDelegateStxEvent(
           chainId,
           poxEvent.contractEvent,
@@ -845,10 +845,5 @@ export function parseMessageTransaction(
 
 export function isPoxPrintEvent(event: SmartContractEvent): boolean {
   if (event.contract_event.topic !== 'print') return false;
-
-  const [address, name] = event.contract_event.contract_identifier.split('.');
-  return (
-    (address == BootContractAddress.mainnet || address == BootContractAddress.testnet) &&
-    name.startsWith('pox')
-  );
+  return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }

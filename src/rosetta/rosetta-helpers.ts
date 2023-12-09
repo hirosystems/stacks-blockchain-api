@@ -30,12 +30,7 @@ import {
   getTxTypeString,
   parseContractCallMetadata,
 } from '../api/controllers/db-controller';
-import {
-  PoxContractIdentifier,
-  RosettaConstants,
-  RosettaNetworks,
-  RosettaOperationType,
-} from '../api/rosetta-constants';
+import { RosettaConstants, RosettaNetworks, RosettaOperationType } from '../api/rosetta-constants';
 import {
   BaseTx,
   DbAssetEventTypeId,
@@ -78,6 +73,7 @@ import { parseRecoverableSignatureVrs } from '@stacks/common';
 import { logger } from '../logger';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
+import { PoxContractIdentifiers } from '../pox-helpers';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -692,14 +688,7 @@ async function makeCallContractOperation(
     case 'stack-stx':
     case 'delegate-stx':
     case 'revoke-delegate-stx':
-      if (
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.mainnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.mainnet
-      ) {
+      if (PoxContractIdentifiers.includes(stackContractCall.contract_call.contract_id)) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {
         parseGenericContractCall(contractCallOp, tx);

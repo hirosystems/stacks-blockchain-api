@@ -247,6 +247,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     namespaces: [],
     pox2Events: [],
     pox3Events: [],
+    pox4Events: [],
   };
   return data;
 }
