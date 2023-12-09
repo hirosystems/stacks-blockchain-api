@@ -35,7 +35,7 @@ import { ApiServer } from '../api/init';
 import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
-import { Pox2ContractIdentifer } from '../pox-helpers';
+import { PoxContractIdentifier } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
@@ -463,7 +463,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
     expect(txObj.tx_type).toBe('contract_call');
     expect(txObj.tx_status).toBe('success');
     expect(txObj.sender_address).toBe(account.stxAddr);
-    expect(txObj.contract_call.contract_id).toBe(Pox2ContractIdentifer.testnet);
+    expect(txObj.contract_call.contract_id).toBe(PoxContractIdentifier.pox2.testnet);
     expect(txObj.contract_call.function_name).toBe('stack-stx');
 
     const callArg1 = txObj.contract_call.function_args![0];
