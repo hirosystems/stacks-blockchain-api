@@ -971,6 +971,7 @@ export interface UpdatedEntities {
     nftEvents: number;
     pox2Events: number;
     pox3Events: number;
+    pox4Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -988,6 +989,7 @@ export interface UpdatedEntities {
     nftEvents: number;
     pox2Events: number;
     pox3Events: number;
+    pox4Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;

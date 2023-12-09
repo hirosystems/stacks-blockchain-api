@@ -201,6 +201,7 @@ export const TX_METADATA_TABLES = [
   'nft_events',
   'pox2_events',
   'pox3_events',
+  'pox4_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',

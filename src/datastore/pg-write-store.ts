@@ -937,7 +937,9 @@ export class PgWriteStore extends PgStore {
         break;
       }
       default: {
-        throw new Error(`Unexpected Pox3 event name: ${(event as DbPoxSyntheticEvent).name}`);
+        throw new Error(
+          `Unexpected Pox synthetic event name: ${(event as DbPoxSyntheticEvent).name}`
+        );
       }
     }
     await sql`
@@ -2510,7 +2512,6 @@ export class PgWriteStore extends PgStore {
       microblocks: [],
     });
 
-    // todo: do we still need pox2 marking here?
     const pox2Result = await sql`
       UPDATE pox2_events
       SET canonical = ${canonical}
@@ -2531,6 +2532,17 @@ export class PgWriteStore extends PgStore {
       updatedEntities.markedCanonical.pox3Events += pox3Result.count;
     } else {
       updatedEntities.markedNonCanonical.pox3Events += pox3Result.count;
+    }
+
+    const pox4Result = await sql`
+      UPDATE pox4_events
+      SET canonical = ${canonical}
+      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+    `;
+    if (canonical) {
+      updatedEntities.markedCanonical.pox4Events += pox4Result.count;
+    } else {
+      updatedEntities.markedNonCanonical.pox4Events += pox4Result.count;
     }
 
     const contractLogResult = await sql`
@@ -2737,6 +2749,7 @@ export class PgWriteStore extends PgStore {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -2754,6 +2767,7 @@ export class PgWriteStore extends PgStore {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
