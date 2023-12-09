@@ -42,9 +42,9 @@ import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPoxEventsRouter } from './routes/pox';
-import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
+import { getReqQuery } from './query-helpers';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -203,9 +203,8 @@ export async function startApiServer(opts: {
       const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
         // Redirect old pox routes paths to new one above
         const newPath = req.path === '/' ? '/events' : req.path;
-        const query = querystring.stringify(req.query as Record<string, string>);
         const baseUrl = req.baseUrl.replace(/(pox[23])_events/, '$1');
-        const redirectPath = `${baseUrl}${newPath}${query ? `?${query}` : ''}`;
+        const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
         return res.redirect(redirectPath);
       };
       router.use('/pox2_events', legacyPoxPathRouter);
@@ -218,20 +217,13 @@ export async function startApiServer(opts: {
     })()
   );
 
-  app.use(
-    '/extended/beta',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use('/stacking', createStackingRouter(datastore));
-      return router;
-    })()
-  );
+  // Redirect to new endpoint for backward compatibility.
+  // TODO: remove this in the future
+  app.use('/extended/beta/stacking/:pool_principal/delegations', (req, res) => {
+    const { pool_principal } = req.params;
+    const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
+    return res.redirect(newPath);
+  });
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   // pricing endpoint

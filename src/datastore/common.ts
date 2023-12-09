@@ -454,7 +454,7 @@ export type DbPoxSyntheticEventData =
 
 export type DbPoxSyntheticEvent = DbEventBase & DbPoxSyntheticEventData;
 
-export interface DbPox3Stacker {
+export interface DbPoxStacker {
   stacker: string;
   pox_addr?: string;
   amount_ustx: string;

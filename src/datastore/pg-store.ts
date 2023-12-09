@@ -44,7 +44,7 @@ import {
   DbMinerReward,
   DbNftEvent,
   DbPoxSyntheticEvent,
-  DbPox3Stacker,
+  DbPoxStacker,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -1905,15 +1905,15 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  // TODO: modify this function for pox4
-  async getPox3PoolDelegations(args: {
+  async getPoxPoolDelegations(args: {
     delegator: string;
     blockHeight: number;
     burnBlockHeight: number;
     afterBlockHeight: number;
     limit: number;
     offset: number;
-  }): Promise<FoundOrNot<{ stackers: DbPox3Stacker[]; total: number }>> {
+    poxTable: PoxSyntheticEventTable;
+  }): Promise<FoundOrNot<{ stackers: DbPoxStacker[]; total: number }>> {
     return await this.sqlTransaction(async sql => {
       const queryResults = await sql<
         {
@@ -1926,11 +1926,11 @@ export class PgStore extends BasePgStore {
           total_rows: number;
         }[]
       >`
-        WITH ordered_pox3_events AS (
+        WITH ordered_pox_events AS (
           SELECT
             stacker, pox_addr, amount_ustx, unlock_burn_height::integer, tx_id,
             block_height, microblock_sequence, tx_index, event_index
-          FROM pox3_events
+          FROM ${sql(args.poxTable)}
           WHERE
             canonical = true AND microblock_canonical = true AND
             name = ${SyntheticPoxEventName.DelegateStx} AND delegate_to = ${args.delegator} AND
@@ -1942,7 +1942,7 @@ export class PgStore extends BasePgStore {
           SELECT DISTINCT ON (stacker)
             stacker, pox_addr, amount_ustx, unlock_burn_height, tx_id,
             block_height, microblock_sequence, tx_index, event_index
-          FROM ordered_pox3_events
+          FROM ordered_pox_events
           ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT
@@ -1954,7 +1954,7 @@ export class PgStore extends BasePgStore {
         OFFSET ${args.offset}
       `;
       const total = queryResults[0]?.total_rows ?? 0;
-      const stackers: DbPox3Stacker[] = queryResults.map(result => ({
+      const stackers: DbPoxStacker[] = queryResults.map(result => ({
         stacker: result.stacker,
         pox_addr: result.pox_addr || undefined,
         amount_ustx: result.amount_ustx,
