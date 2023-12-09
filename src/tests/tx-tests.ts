@@ -249,6 +249,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx2,
@@ -262,6 +263,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx3,
@@ -275,6 +277,7 @@ describe('tx tests', () => {
           smartContracts: [versionedSmartContract1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -408,6 +411,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -546,6 +550,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -683,6 +688,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -854,6 +860,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1199,6 +1206,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1439,6 +1447,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1637,6 +1646,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1781,6 +1791,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1914,6 +1925,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2029,6 +2041,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2690,6 +2703,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2944,6 +2958,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -2957,6 +2972,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
@@ -3248,6 +3264,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
