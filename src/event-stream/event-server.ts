@@ -70,7 +70,7 @@ import {
   getTxDbStatus,
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
-import { decodePoxSyntheticPrintEvent } from './pox2-event-parsing';
+import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
 import * as zoneFileParser from 'zone-file';
 import { hexToBuffer, isProdEnv, stopwatch } from '@hirosystems/api-toolkit';
