@@ -216,7 +216,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
 
     const poxInfo = await client.getPox();
     const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-3');
+    expect(contractName).toBe('pox-4');
   });
 
   test('Fund STX to new account for testing', async () => {

@@ -57,7 +57,7 @@ describe.each(BTC_ADDRESS_CASES)(
         ustxAmount,
       });
       expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
-      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-3');
+      expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
     });
 
     test('Validate reward set received', async () => {

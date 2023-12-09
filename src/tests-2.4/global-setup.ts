@@ -17,14 +17,14 @@ async function standByForPox3ToBeReady(client: StacksCoreRpcClient): Promise<voi
     try {
       tries++;
       const poxInfo = await client.getPox();
-      if (poxInfo.contract_id.includes('pox-3')) {
-        console.log(`PoX-3 ready.`);
+      if (poxInfo.contract_id.includes('pox-4')) {
+        console.log(`PoX-4 ready.`);
         return;
       }
-      console.log(`Waiting on PoX-3 to be ready`);
+      console.log(`Waiting on PoX-4 to be ready`);
       await timeout(500);
     } catch (error) {
-      console.log(`Waiting on PoX-3 to be ready, retrying after ${error}`);
+      console.log(`Waiting on PoX-4 to be ready, retrying after ${error}`);
       await timeout(500);
     }
   }
