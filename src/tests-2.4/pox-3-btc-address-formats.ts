@@ -84,7 +84,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-3');
+      expect(contractName).toBe('pox-4');
     });
 
     test('stack-stx tx', async () => {
@@ -331,7 +331,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-3');
+      expect(contractName).toBe('pox-4');
     });
 
     test('stack-stx tx', async () => {
@@ -584,7 +584,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-3');
+      expect(contractName).toBe('pox-4');
     });
 
     test('stack-stx tx', async () => {
@@ -836,7 +836,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
 
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
-      expect(contractName).toBe('pox-3');
+      expect(contractName).toBe('pox-4');
     });
 
     test('stack-stx tx', async () => {

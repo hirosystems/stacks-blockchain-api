@@ -118,7 +118,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
     // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
     poxInfo = await standByForNextPoxCycle();
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-3');
+    expect(contractName).toBe('pox-4');
   });
 
   test('Perform delegate-stx operation', async () => {

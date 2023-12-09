@@ -131,7 +131,7 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
       ustxAmount: ustxAmount,
     });
 
-    expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-3');
+    expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
     expect(stackingResult.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(stackingResult.submitResult.transaction_identifier.hash).toBe(stackingResult.txId);
     expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-3');
@@ -249,7 +249,7 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
       ustxAmount,
     });
 
-    expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-3');
+    expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
     expect(rosettaStackStx.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
     expect(rosettaStackStx.tx.contract_call_contract_id).toBe(

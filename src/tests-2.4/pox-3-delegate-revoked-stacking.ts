@@ -113,7 +113,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     poxInfo = await standByForPoxCycle();
 
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-3');
+    expect(contractName).toBe('pox-4');
 
     const balanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
     expect(BigInt(balanceInfo.balance)).toBeGreaterThan(0n);
