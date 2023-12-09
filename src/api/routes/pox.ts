@@ -1,16 +1,26 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
-
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { PgStore } from '../../datastore/pg-store';
 import { parsePoxSyntheticEvent } from '../controllers/db-controller';
-import { ResourceType, getPagingQueryLimit, parsePagingQueryInput } from '../pagination';
 import { validatePrincipal, validateRequestHexInput } from '../query-helpers';
 
-export function createPox3EventsRouter(db: PgStore): express.Router {
+export function createPoxEventsRouter(
+  db: PgStore,
+  poxVersion: 'pox2' | 'pox3' | 'pox4'
+): express.Router {
   const router = express.Router();
 
+  const poxTable = (
+    {
+      pox2: 'pox2_events',
+      pox3: 'pox3_events',
+      pox4: 'pox4_events',
+    } as const
+  )[poxVersion];
+
   router.get(
-    '/',
+    '/events',
     asyncHandler(async (req, res) => {
       const limit = getPagingQueryLimit(ResourceType.Pox2Event, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
@@ -18,7 +28,7 @@ export function createPox3EventsRouter(db: PgStore): express.Router {
       const queryResults = await db.getPoxSyntheticEvents({
         offset,
         limit,
-        poxTable: 'pox3_events',
+        poxTable,
       });
       const parsedResult = queryResults.map(r => parsePoxSyntheticEvent(r));
       const response = {
@@ -37,7 +47,7 @@ export function createPox3EventsRouter(db: PgStore): express.Router {
       validateRequestHexInput(tx_id);
       const queryResults = await db.getPoxSyntheticEventsForTx({
         txId: tx_id,
-        poxTable: 'pox3_events',
+        poxTable,
       });
       if (!queryResults.found) {
         res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
@@ -58,7 +68,7 @@ export function createPox3EventsRouter(db: PgStore): express.Router {
       validatePrincipal(principal);
       const queryResults = await db.getPoxSyntheticEventsForStacker({
         principal,
-        poxTable: 'pox3_events',
+        poxTable,
       });
       if (!queryResults.found) {
         res.status(404).json({ error: `could not find principal ${principal}` });

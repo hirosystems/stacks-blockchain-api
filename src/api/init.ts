@@ -1,5 +1,6 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
+import * as querystring from 'querystring';
 import * as express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
@@ -40,8 +41,7 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { createPox2EventsRouter } from './routes/pox2';
-import { createPox3EventsRouter } from './routes/pox3';
+import { createPoxEventsRouter } from './routes/pox';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
@@ -195,8 +195,22 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
-      router.use('/pox2_events', createPox2EventsRouter(datastore));
-      router.use('/pox3_events', createPox3EventsRouter(datastore));
+
+      // These could be defined in one route but a url reporting library breaks with regex in middleware paths
+      router.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
+      router.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
+      router.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
+      const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
+        // Redirect old pox routes paths to new one above
+        const newPath = req.path === '/' ? '/events' : req.path;
+        const query = querystring.stringify(req.query as Record<string, string>);
+        const baseUrl = req.baseUrl.replace(/(pox[23])_events/, '$1');
+        const redirectPath = `${baseUrl}${newPath}${query ? `?${query}` : ''}`;
+        return res.redirect(redirectPath);
+      };
+      router.use('/pox2_events', legacyPoxPathRouter);
+      router.use('/pox3_events', legacyPoxPathRouter);
+
       if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
