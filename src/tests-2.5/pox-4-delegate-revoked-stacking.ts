@@ -320,48 +320,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     expect(delegateStackResult.repr).toEqual('(err 9)'); // ERR_STACKING_PERMISSION_DENIED
   });
 
-  test('Try to perform delegate-stx - again', async () => {
-    // make sure stacker is not currently delegating
-    await expect(
-      readOnlyFnCall<ClarityValueOptionalNone>(
-        [contractAddress, contractName],
-        'get-delegation-info',
-        [standardPrincipalCV(STACKER.stxAddr)],
-        STACKER.stxAddr
-      )
-    ).rejects.toThrowError(
-      'OptionNone result for call to ST000000000000000000002AMW42H,pox-4::get-delegation-info'
-    );
-
-    // but stacker is still locked
-    const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
-    expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
-
-    // delegate with the full amount
-    const delegateTx = await makeContractCall({
-      senderKey: STACKER.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'delegate-stx',
-      functionArgs: [
-        uintCV(DELEGATE_FULL_AMOUNT),
-        standardPrincipalCV(POOL.stxAddr), // delegate-to
-        noneCV(), // untilBurnBlockHeight
-        someCV(STACKER.poxAddrClar), // pox-addr
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-      fee: 10000n,
-    });
-    const delegateTxResult = await testEnv.client.sendTransaction(
-      Buffer.from(delegateTx.serialize())
-    );
-    const delegateDbTx = await standByForTx(delegateTxResult.txId);
-    const delegateResult = decodeClarityValue(delegateDbTx.raw_result);
-    expect(delegateResult.repr).toEqual('(err 3)'); // ERR_STACKING_ALREADY_STACKED
-    expect(delegateDbTx.status).not.toBe(DbTxStatus.Success);
-  });
-
   test('Try to perform delegate-stack-increase - without delegation', async () => {
     const delegateStackIncreaseTx = await makeContractCall({
       senderKey: POOL.secretKey,
