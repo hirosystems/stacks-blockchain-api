@@ -30,7 +30,7 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 
-describe('PoX-3 - Delegate Revoked Stacking', () => {
+describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;
   const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';

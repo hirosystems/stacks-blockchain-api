@@ -9,6 +9,7 @@ import {
   standByForPoxCycle,
   standByForPoxCycleEnd,
   standByForTxSuccess,
+  standByForAccountUnlock,
   testEnv,
 } from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
@@ -21,15 +22,20 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import { ClarityValueTuple, ClarityValueUInt } from 'stacks-encoding-native-js';
+import {
+  ClarityValueBoolTrue,
+  ClarityValuePrincipalStandard,
+  ClarityValueResponseOk,
+  ClarityValueTuple,
+  ClarityValueUInt,
+  decodeClarityValue,
+} from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 
-describe('PoX-3 - Delegate Stacking operations', () => {
+describe('PoX-4 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
-  const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
-  const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
-
-  const stxToDelegateIncrease = 2000n;
+  const delegatorKey = '04608922f3ce63971bb120fa9c9454c5bd06370f61414040a737a6ee8ef8a10f01';
+  const delegateeKey = 'b038e143cf4ee4c079b3c3605a8ed28732e5745c138b728408e80faf7a59b8c201';
 
   let seedAccount: Account;
   let delegatorAccount: Account;
@@ -39,8 +45,12 @@ describe('PoX-3 - Delegate Stacking operations', () => {
   let contractAddress: string;
   let contractName: string;
 
+  let poxCycleAddressIndex: bigint;
+
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
+    // delegatorKey = ECPair.makeRandom({ compressed: true }).privateKey!.toString('hex');
+    // delegateeKey = ECPair.makeRandom({ compressed: true }).privateKey!.toString('hex');
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
   });
@@ -75,7 +85,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     );
 
     // transfer pox "min_amount_ustx" from seed to delegatee account
-    const stackingAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
+    const stackingAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 2.1).toString());
     const stxXfer2 = await makeSTXTokenTransfer({
       senderKey: seedAccount.secretKey,
       recipient: delegateeAccount.stxAddr,
@@ -106,9 +116,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
 
   test('Get pox-info', async () => {
     // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
-    // poxInfo = await standByForPoxCycle();
     poxInfo = await standByForNextPoxCycle();
-
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
     expect(contractName).toBe('pox-4');
   });
@@ -120,7 +128,8 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     expect(balanceTotal).toBeGreaterThan(txFee);
     const balanceLocked = BigInt(balanceInfo.locked);
     expect(balanceLocked).toBe(0n);
-    const delegateAmount = balanceTotal - txFee * 2n;
+
+    const delegateAmount = 2n * BigInt(poxInfo.min_amount_ustx);
     const delegateStxTx = await makeContractCall({
       senderKey: delegateeAccount.secretKey,
       contractAddress,
@@ -142,24 +151,6 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
-    // validate delegate-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStxDbTx.tx_id}`);
-    expect(res).toBeDefined();
-    expect(res.results).toHaveLength(1);
-    expect(res.results[0]).toEqual(
-      expect.objectContaining({
-        name: 'delegate-stx',
-        pox_addr: delegateeAccount.btcTestnetAddr,
-        stacker: delegateeAccount.stxAddr,
-      })
-    );
-    expect(res.results[0].data).toEqual(
-      expect.objectContaining({
-        amount_ustx: delegateAmount.toString(),
-        delegate_to: delegatorAccount.stxAddr,
-      })
-    );
-
     // validate pool delegations
     const stackersRes: any = await fetchGet(
       `/extended/v1/pox4/${delegatorAccount.stxAddr}/delegations`
@@ -175,19 +166,13 @@ describe('PoX-3 - Delegate Stacking operations', () => {
       block_height: delegateStxDbTx.block_height,
     });
 
-    // validate pool delegations respects `after_block` limitter
-    const stackersRes2: any = await fetchGet(
-      `/extended/v1/pox4/${delegatorAccount.stxAddr}/delegations?after_block=${delegateStxDbTx.block_height}`
-    );
-    expect(stackersRes2).toBeDefined();
-    expect(stackersRes2.total).toBe(0);
-    expect(stackersRes2.results).toHaveLength(0);
-
     // check delegatee locked amount is still zero
     const balanceInfo2 = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(balanceInfo2.locked)).toBe(0n);
   });
 
+  let amountDelegated: bigint;
+  let amountStackedInitial: bigint;
   test('Perform delegate-stack-stx operation', async () => {
     // get amount delegated
     const getDelegationInfo1 = await readOnlyFnCall<
@@ -198,14 +183,13 @@ describe('PoX-3 - Delegate Stacking operations', () => {
       [standardPrincipalCV(delegateeAccount.stxAddr)],
       delegateeAccount.stxAddr
     );
-    const amountDelegated = BigInt(getDelegationInfo1.data['amount-ustx'].value);
+    amountDelegated = BigInt(getDelegationInfo1.data['amount-ustx'].value);
     expect(amountDelegated).toBeGreaterThan(0n);
 
-    const amountToDelegateInitial = amountDelegated - stxToDelegateIncrease;
-
     const poxInfo2 = await testEnv.client.getPox();
-
     const startBurnHt = poxInfo2.current_burnchain_block_height as number;
+
+    amountStackedInitial = amountDelegated - 2000n;
 
     const txFee = 10000n;
     const delegateStackStxTx = await makeContractCall({
@@ -215,7 +199,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
       functionName: 'delegate-stack-stx',
       functionArgs: [
         standardPrincipalCV(delegateeAccount.stxAddr), // stacker
-        uintCV(amountToDelegateInitial), // amount-ustx
+        uintCV(amountStackedInitial), // amount-ustx
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
@@ -232,7 +216,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
 
     // validate stacks-node balance
     const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
-    expect(BigInt(coreBalanceInfo.locked)).toBe(amountToDelegateInitial);
+    expect(BigInt(coreBalanceInfo.locked)).toBe(amountStackedInitial);
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
@@ -245,14 +229,14 @@ describe('PoX-3 - Delegate Stacking operations', () => {
         pox_addr: delegateeAccount.btcTestnetAddr,
         stacker: delegateeAccount.stxAddr,
         balance: BigInt(coreBalanceInfo.balance).toString(),
-        locked: amountToDelegateInitial.toString(),
+        locked: amountStackedInitial.toString(),
         burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
       })
     );
     expect(res.results[0].data).toEqual(
       expect.objectContaining({
         lock_period: '1',
-        lock_amount: amountToDelegateInitial.toString(),
+        lock_amount: amountStackedInitial.toString(),
       })
     );
 
@@ -260,14 +244,60 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     const apiBalance = await fetchGet<AddressStxBalanceResponse>(
       `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
     );
-    expect(BigInt(apiBalance.locked)).toBe(BigInt(amountToDelegateInitial));
+    expect(BigInt(apiBalance.locked)).toBe(BigInt(amountStackedInitial));
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
   });
 
-  test('Perform delegate-stack-increase', async () => {
-    const coreBalanceInfoPreIncrease = await testEnv.client.getAccount(delegateeAccount.stxAddr);
+  test('Perform stack-aggregation-commit-indexed - delegator commit to stacking operation', async () => {
+    const poxInfo2 = await testEnv.client.getPox();
+    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const stackAggrCommitTx = await makeContractCall({
+      senderKey: delegatorAccount.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-aggregation-commit-indexed',
+      functionArgs: [
+        delegateeAccount.poxAddrClar, // pox-addr
+        uintCV(rewardCycle), // reward-cycle
+      ],
+      network: testEnv.stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000,
+      validateWithAbi: false,
+    });
+    const { txId: stackAggrCommitTxId } = await testEnv.client.sendTransaction(
+      Buffer.from(stackAggrCommitTx.serialize())
+    );
+    const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId);
 
+    const commitIndexResult = decodeClarityValue<ClarityValueResponseOk<ClarityValueUInt>>(
+      stackAggrCommmitDbTx.raw_result
+    );
+    console.log('stack-aggregation-commit-indexed result:', commitIndexResult.repr);
+
+    // AKA `reward-cycle-index`, needs to be saved in order to use with the `stack-aggregation-increase` call
+    poxCycleAddressIndex = BigInt(commitIndexResult.value.value);
+    expect(poxCycleAddressIndex).toEqual(0n);
+
+    // validate stack-aggregation-commit pox2 event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
+    expect(res).toBeDefined();
+    expect(res.results).toHaveLength(1);
+    expect(res.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'stack-aggregation-commit-indexed',
+        pox_addr: delegateeAccount.btcTestnetAddr,
+        stacker: delegatorAccount.stxAddr,
+      })
+    );
+  });
+
+  test('Perform stack-aggregation-increase - delegator increase committed stacking amount', async () => {
+    const coreBalanceInfoPreIncrease = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     const txFee = 10000n;
+
+    // delegator must first lock increase amount with call to `delegate-stack-increase`
+    const stxToDelegateIncrease = 2000n;
     const delegateStackIncreaseTx = await makeContractCall({
       senderKey: delegatorAccount.secretKey,
       contractAddress,
@@ -286,10 +316,48 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     const { txId: delegateStackIncreaseTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackIncreaseTx.serialize())
     );
+
+    // then commit to increased amount with call to `stack-aggregation-increase`
+    const poxInfo2 = await testEnv.client.getPox();
+    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const stackAggrIncreaseTx = await makeContractCall({
+      senderKey: delegatorAccount.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-aggregation-increase',
+      functionArgs: [
+        delegateeAccount.poxAddrClar, // pox-addr
+        uintCV(rewardCycle), // reward-cycle
+        uintCV(poxCycleAddressIndex), // reward-cycle-index
+      ],
+      network: testEnv.stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: txFee,
+      validateWithAbi: false,
+      nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
+    });
+    const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
+      Buffer.from(stackAggrIncreaseTx.serialize())
+    );
+
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId);
+    const delegateStackIncreaseResult = decodeClarityValue<
+      ClarityValueResponseOk<
+        ClarityValueTuple<{
+          stacker: ClarityValuePrincipalStandard;
+          'total-locked': ClarityValueUInt;
+        }>
+      >
+    >(delegateStackIncreaseDbTx.raw_result);
+    const stackIncreaseTxTotalLocked = BigInt(
+      delegateStackIncreaseResult.value.data['total-locked'].value
+    );
+    expect(stackIncreaseTxTotalLocked).toBeGreaterThan(0n);
+    expect(delegateStackIncreaseResult.value.data.stacker.address).toBe(delegateeAccount.stxAddr);
 
     // validate stacks-node balance
     const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
+    expect(BigInt(coreBalanceInfo.locked)).toBe(stackIncreaseTxTotalLocked);
     expect(BigInt(coreBalanceInfo.locked)).toBe(
       BigInt(coreBalanceInfoPreIncrease.locked) + stxToDelegateIncrease
     );
@@ -299,12 +367,12 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(
+    const delegateStackIncreasePoxEvents: any = await fetchGet(
       `/extended/v1/pox4_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
-    expect(res).toBeDefined();
-    expect(res.results).toHaveLength(1);
-    expect(res.results[0]).toEqual(
+    expect(delegateStackIncreasePoxEvents).toBeDefined();
+    expect(delegateStackIncreasePoxEvents.results).toHaveLength(1);
+    expect(delegateStackIncreasePoxEvents.results[0]).toEqual(
       expect.objectContaining({
         name: 'delegate-stack-increase',
         pox_addr: delegateeAccount.btcTestnetAddr,
@@ -314,7 +382,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
         burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
       })
     );
-    expect(res.results[0].data).toEqual(
+    expect(delegateStackIncreasePoxEvents.results[0].data).toEqual(
       expect.objectContaining({
         delegator: delegatorAccount.stxAddr,
         increase_by: stxToDelegateIncrease.toString(),
@@ -328,111 +396,40 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
-  });
 
-  test('Perform delegate-stack-extend', async () => {
-    const coreBalanceInfoPreIncrease = await testEnv.client.getAccount(delegateeAccount.stxAddr);
-
-    const txFee = 10000n;
-    const extendCount = 1n;
-    const delegateStackExtendTx = await makeContractCall({
-      senderKey: delegatorAccount.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'delegate-stack-extend',
-      functionArgs: [
-        standardPrincipalCV(delegateeAccount.stxAddr), // stacker
-        delegateeAccount.poxAddrClar, // pox-addr
-        uintCV(extendCount), // extend-count
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-      fee: txFee,
-      validateWithAbi: false,
-    });
-    const { txId: delegateStackExtendTxId } = await testEnv.client.sendTransaction(
-      Buffer.from(delegateStackExtendTx.serialize())
+    const stackAggrIncreaseDbTx = await standByForTxSuccess(stackAggrIncreaseTxId);
+    const aggrIncreaseResult = decodeClarityValue<ClarityValueResponseOk<ClarityValueBoolTrue>>(
+      stackAggrIncreaseDbTx.raw_result
     );
-    const delegateStackExtendDbTx = await standByForTxSuccess(delegateStackExtendTxId);
-
-    // validate stacks-node balance
-    const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
-    expect(BigInt(coreBalanceInfo.locked)).toBeGreaterThan(0n);
-    expect(BigInt(coreBalanceInfo.balance)).toBeGreaterThan(0n);
-    expect(coreBalanceInfo.unlock_height).toBeGreaterThan(coreBalanceInfoPreIncrease.unlock_height);
-
-    // validate delegate-stack-extend pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackExtendTxId}`);
-    expect(res).toBeDefined();
-    expect(res.results).toHaveLength(1);
-    expect(res.results[0]).toEqual(
-      expect.objectContaining({
-        name: 'delegate-stack-extend',
-        pox_addr: delegateeAccount.btcTestnetAddr,
-        stacker: delegateeAccount.stxAddr,
-        balance: BigInt(coreBalanceInfo.balance).toString(),
-        locked: BigInt(coreBalanceInfo.locked).toString(),
-        burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
-      })
-    );
-    expect(res.results[0].data).toEqual(
-      expect.objectContaining({
-        delegator: delegatorAccount.stxAddr,
-        extend_count: extendCount.toString(),
-        unlock_burn_height: coreBalanceInfo.unlock_height.toString(),
-      })
-    );
-
-    // validate API endpoint balance state for account
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
-      `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
-    );
-    expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
-    expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
-  });
-
-  test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
-    const poxInfo2 = await testEnv.client.getPox();
-    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
-    const stackAggrCommitTx = await makeContractCall({
-      senderKey: delegatorAccount.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'stack-aggregation-commit',
-      functionArgs: [
-        delegateeAccount.poxAddrClar, // pox-addr
-        uintCV(rewardCycle), // reward-cycle
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-      fee: 10000,
-      validateWithAbi: false,
-    });
-    const { txId: stackAggrCommitTxId } = await testEnv.client.sendTransaction(
-      Buffer.from(stackAggrCommitTx.serialize())
-    );
-    const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId);
+    expect(aggrIncreaseResult.value.value).toBe(true);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
-    expect(res).toBeDefined();
-    expect(res.results).toHaveLength(1);
-    expect(res.results[0]).toEqual(
+    const stackAggreIncreasePoxEvents: any = await fetchGet(
+      `/extended/v1/pox4_events/tx/${stackAggrIncreaseTxId}`
+    );
+    expect(stackAggreIncreasePoxEvents).toBeDefined();
+    expect(stackAggreIncreasePoxEvents.results).toHaveLength(1);
+    expect(stackAggreIncreasePoxEvents.results[0]).toEqual(
       expect.objectContaining({
-        name: 'stack-aggregation-commit',
+        name: 'stack-aggregation-increase',
         pox_addr: delegateeAccount.btcTestnetAddr,
         stacker: delegatorAccount.stxAddr,
       })
     );
   });
 
-  test('Wait for current two pox cycles to complete', async () => {
-    await standByForPoxCycleEnd();
-    await standByForPoxCycle();
-    await standByForPoxCycle();
+  test('Wait for current pox cycle to complete', async () => {
+    const poxStatus1 = await standByForPoxCycleEnd();
+    const poxStatus2 = await standByForPoxCycle();
+    console.log('___Wait for current pox cycle to complete___', {
+      pox1: { height: poxStatus1.current_burnchain_block_height, ...poxStatus1.next_cycle },
+      pox2: { height: poxStatus2.current_burnchain_block_height, ...poxStatus2.next_cycle },
+    });
   });
 
   test('Validate account balances are unlocked', async () => {
+    await standByForAccountUnlock(delegateeAccount.stxAddr);
+
     // validate stacks-node balance
     const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
     expect(BigInt(coreBalanceInfo.locked)).toBe(0n);

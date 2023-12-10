@@ -27,7 +27,7 @@ import {
 } from '../test-utils/test-helpers';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 
-describe('PoX-3 - Rosetta - Stacking with segwit', () => {
+describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
   let btcAddrTestnet: string;
   const seedAccount = testnetKeys[0];
