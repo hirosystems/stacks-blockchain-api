@@ -15,7 +15,7 @@ describe('core RPC tests', () => {
 
   test('get pox info', async () => {
     const poxInfo = await client.getPox();
-    expect(poxInfo.contract_id).toBe(`ST000000000000000000002AMW42H.pox-3`);
+    expect(poxInfo.contract_id).toBe(`ST000000000000000000002AMW42H.pox-4`);
   });
 
   test('get account nonce', async () => {

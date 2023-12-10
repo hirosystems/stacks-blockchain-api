@@ -822,7 +822,7 @@ describe('Rosetta offline API', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
@@ -957,7 +957,7 @@ describe('Rosetta offline API', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height  = 200;
 

@@ -134,7 +134,7 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
     expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
     expect(stackingResult.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(stackingResult.submitResult.transaction_identifier.hash).toBe(stackingResult.txId);
-    expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-3');
+    expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-4');
   });
 
   test('Verify expected amount of STX are locked', async () => {
@@ -253,7 +253,7 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
     expect(rosettaStackStx.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
     expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
-      'ST000000000000000000002AMW42H.pox-3'
+      'ST000000000000000000002AMW42H.pox-4'
     );
 
     // ensure locked reported by stacks-node account RPC balance

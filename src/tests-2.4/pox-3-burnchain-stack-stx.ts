@@ -299,7 +299,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
     expect(txObj.tx_type).toBe('contract_call');
     expect(txObj.tx_status).toBe('success');
     expect(txObj.sender_address).toBe(account.stxAddr);
-    expect(txObj.contract_call.contract_id).toBe(`${BootContractAddress.testnet}.pox-3`);
+    expect(txObj.contract_call.contract_id).toBe(`${BootContractAddress.testnet}.pox-4`);
     expect(txObj.contract_call.function_name).toBe('stack-stx');
 
     const callArg1 = txObj.contract_call.function_args![0];
