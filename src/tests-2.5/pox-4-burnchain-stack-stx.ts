@@ -134,7 +134,7 @@ async function createPox2StackStx(args: {
   };
 }
 
-describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;

@@ -21,7 +21,7 @@ import {
 import { decodeBtcAddress } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 
-describe('PoX-3 - Stack extend and increase operations', () => {
+describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
   let btcAddr: string;
   let btcRegtestAccount: VerboseKeyOutput;

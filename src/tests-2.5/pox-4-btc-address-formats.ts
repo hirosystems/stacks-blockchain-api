@@ -21,13 +21,13 @@ import {
 } from '../test-utils/test-helpers';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 
-describe('PoX-3 - Stack using supported bitcoin address formats', () => {
+describe('PoX-4 - Stack using supported bitcoin address formats', () => {
   test('Standby for next cycle', async () => {
     const poxInfo = await testEnv.client.getPox();
     await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
   });
 
-  describe('PoX-3 - Stacking operations P2SH-P2WPKH', () => {
+  describe('PoX-4 - Stacking operations P2SH-P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAccount: VerboseKeyOutput;
@@ -276,7 +276,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-3 - Stacking operations P2WPKH', () => {
+  describe('PoX-4 - Stacking operations P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -524,7 +524,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-3 - Stacking operations P2WSH', () => {
+  describe('PoX-4 - Stacking operations P2WSH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
     let btcRegtestAddr: string;
@@ -776,7 +776,7 @@ describe('PoX-3 - Stack using supported bitcoin address formats', () => {
     });
   });
 
-  describe('PoX-3 - Stacking operations P2TR', () => {
+  describe('PoX-4 - Stacking operations P2TR', () => {
     const account = testnetKeys[2];
     let btcAddr: string;
     let btcRegtestAddr: string;
