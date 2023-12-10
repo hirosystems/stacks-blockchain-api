@@ -169,8 +169,8 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
-    // validate delegate-stx pox3 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStxDbTx.tx_id}`);
+    // validate delegate-stx pox4 event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStxDbTx.tx_id}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -234,7 +234,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -319,7 +319,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
         STACKER.stxAddr
       )
     ).rejects.toThrowError(
-      'OptionNone result for call to ST000000000000000000002AMW42H,pox-3::get-delegation-info'
+      'OptionNone result for call to ST000000000000000000002AMW42H,pox-4::get-delegation-info'
     );
 
     // but stacker is still locked
@@ -448,7 +448,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     await standByForTxSuccess(stackAggrCommitTxId);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

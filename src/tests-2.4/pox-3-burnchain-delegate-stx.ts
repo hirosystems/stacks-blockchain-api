@@ -332,7 +332,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
 
   test('Ensure delegate-stx BitcoinOp parsed', async () => {
     const pox2Txs = await supertest(api.server)
-      .get(`/extended/v1/address/${BootContractAddress.testnet}.pox-3/transactions`)
+      .get(`/extended/v1/address/${BootContractAddress.testnet}.pox-4/transactions`)
       .expect(200);
     const delegateStxTxResp = await supertest(api.server)
       .get(`/extended/v1/tx/${pox2Txs.body.results[0].tx_id}`)
@@ -351,7 +351,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
     )})))`;
 
     expect(delegateStxTx.contract_call).toEqual({
-      contract_id: 'ST000000000000000000002AMW42H.pox-3',
+      contract_id: 'ST000000000000000000002AMW42H.pox-4',
       function_name: 'delegate-stx',
       function_signature:
         '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
@@ -418,7 +418,7 @@ describe('PoX-3 - Stack using Bitcoin-chain ops', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

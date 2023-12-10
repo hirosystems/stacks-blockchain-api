@@ -143,7 +143,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
     // validate delegate-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStxDbTx.tx_id}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStxDbTx.tx_id}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -236,7 +236,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -300,7 +300,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
 
     // validate delegate-stack-stx pox2 event for this tx
     const res: any = await fetchGet(
-      `/extended/v1/pox3_events/tx/${delegateStackIncreaseDbTx.tx_id}`
+      `/extended/v1/pox4_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -362,7 +362,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(coreBalanceInfoPreIncrease.unlock_height);
 
     // validate delegate-stack-extend pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackExtendTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackExtendTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -414,7 +414,7 @@ describe('PoX-3 - Delegate Stacking operations', () => {
     const stackAggrCommmitDbTx = await standByForTxSuccess(stackAggrCommitTxId);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

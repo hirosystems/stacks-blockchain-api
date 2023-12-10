@@ -220,7 +220,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -280,7 +280,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
     expect(poxCycleAddressIndex).toEqual(0n);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -368,7 +368,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
 
     // validate delegate-stack-stx pox2 event for this tx
     const delegateStackIncreasePoxEvents: any = await fetchGet(
-      `/extended/v1/pox3_events/tx/${delegateStackIncreaseDbTx.tx_id}`
+      `/extended/v1/pox4_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
     expect(delegateStackIncreasePoxEvents).toBeDefined();
     expect(delegateStackIncreasePoxEvents.results).toHaveLength(1);
@@ -405,7 +405,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
 
     // validate stack-aggregation-commit pox2 event for this tx
     const stackAggreIncreasePoxEvents: any = await fetchGet(
-      `/extended/v1/pox3_events/tx/${stackAggrIncreaseTxId}`
+      `/extended/v1/pox4_events/tx/${stackAggrIncreaseTxId}`
     );
     expect(stackAggreIncreasePoxEvents).toBeDefined();
     expect(stackAggreIncreasePoxEvents.results).toHaveLength(1);

@@ -203,12 +203,13 @@ export async function startApiServer(opts: {
       const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
         // Redirect old pox routes paths to new one above
         const newPath = req.path === '/' ? '/events' : req.path;
-        const baseUrl = req.baseUrl.replace(/(pox[23])_events/, '$1');
+        const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
         const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
         return res.redirect(redirectPath);
       };
       router.use('/pox2_events', legacyPoxPathRouter);
       router.use('/pox3_events', legacyPoxPathRouter);
+      router.use('/pox4_events', legacyPoxPathRouter);
 
       if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));

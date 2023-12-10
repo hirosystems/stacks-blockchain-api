@@ -11,7 +11,7 @@ export interface GlobalTestEnv {
   eventServer: EventStreamServer;
 }
 
-async function standByForPox3ToBeReady(client: StacksCoreRpcClient): Promise<void> {
+async function standByForPox4ToBeReady(client: StacksCoreRpcClient): Promise<void> {
   let tries = 0;
   while (true) {
     try {
@@ -45,7 +45,7 @@ export default async (): Promise<void> => {
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 
   const client = new StacksCoreRpcClient();
-  await standByForPox3ToBeReady(client);
+  await standByForPox4ToBeReady(client);
 
   const testEnv: GlobalTestEnv = {
     db: db,
