@@ -153,7 +153,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
 
     // validate pool delegations
     const stackersRes: any = await fetchGet(
-      `/extended/beta/stacking/${delegatorAccount.stxAddr}/delegations`
+      `/extended/v1/pox4/${delegatorAccount.stxAddr}/delegations`
     );
     expect(stackersRes).toBeDefined();
     expect(stackersRes.total).toBe(1);
