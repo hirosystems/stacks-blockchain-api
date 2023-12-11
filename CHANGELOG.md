@@ -1,3 +1,10 @@
+## [7.3.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.5...v7.3.6) (2023-12-11)
+
+
+### Bug Fixes
+
+* use the mempool etag for the /nonces endpoint ([#1765](https://github.com/hirosystems/stacks-blockchain-api/issues/1765)) ([773c01b](https://github.com/hirosystems/stacks-blockchain-api/commit/773c01b21a7d4e830d7ed4e58716539c563fecdc))
+
 ## [7.3.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.4...v7.3.5) (2023-12-08)
 
 
