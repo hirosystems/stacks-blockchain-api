@@ -570,7 +570,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
 
   router.get(
     '/:stx_address/nonces',
-    cacheHandler,
+    mempoolCacheHandler,
     asyncHandler(async (req, res) => {
       // get recent asset event associated with address
       const stxAddress = req.params['stx_address'];
