@@ -13,6 +13,7 @@ export type SchemaMergeRootStub =
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | BlockListResponse
+  | BurnBlockListResponse
   | BnsError
   | BnsFetchFileZoneResponse
   | BnsGetAllNamesResponse
@@ -114,6 +115,7 @@ export type SchemaMergeRootStub =
   | NftBalance
   | StxBalance
   | Block
+  | BurnBlock
   | BurnchainRewardSlotHolder
   | BurnchainReward
   | BurnchainRewardsTotal
@@ -1273,6 +1275,49 @@ export interface Block {
   microblock_tx_count: {
     [k: string]: number | undefined;
   };
+}
+/**
+ * GET request that returns burn blocks
+ */
+export interface BurnBlockListResponse {
+  /**
+   * The number of burn blocks to return
+   */
+  limit: number;
+  /**
+   * The number to burn blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of burn blocks available (regardless of filter parameters)
+   */
+  total: number;
+  results: BurnBlock[];
+}
+/**
+ * A burn block
+ */
+export interface BurnBlock {
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Hashes of the Stacks blocks included in the burn block
+   */
+  stacks_blocks: string[];
 }
 /**
  * Error

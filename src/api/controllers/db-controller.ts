@@ -16,6 +16,7 @@ import {
   AbstractTransaction,
   BaseTransaction,
   Block,
+  BurnBlock,
   CoinbaseTransactionMetadata,
   ContractCallTransactionMetadata,
   MempoolTransaction,
@@ -527,6 +528,35 @@ export async function getMicroblockFromDataStore({
   return {
     found: true,
     result: microblock,
+  };
+}
+
+export async function getBurnBlocksFromDataStore(args: {
+  db: PgStore;
+  limit: number;
+  offset: number;
+  height: number | null;
+  hash: 'latest' | string | null;
+}): Promise<{ total: number; results: BurnBlock[] }> {
+  const query = await args.db.getBurnBlocks({
+    limit: args.limit,
+    offset: args.offset,
+    height: args.height,
+    hash: args.hash,
+  });
+  const results = query.results.map(r => {
+    const burnBlock: BurnBlock = {
+      burn_block_time: r.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(r.burn_block_time),
+      burn_block_hash: r.burn_block_hash,
+      burn_block_height: r.burn_block_height,
+      stacks_blocks: r.stacks_blocks,
+    };
+    return burnBlock;
+  });
+  return {
+    total: query.total,
+    results,
   };
 }
 

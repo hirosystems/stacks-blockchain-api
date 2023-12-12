@@ -45,6 +45,7 @@ import { createPox3EventsRouter } from './routes/pox3';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
+import { createBurnBlockRouter } from './routes/burn-block';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -184,6 +185,7 @@ export async function startApiServer(opts: {
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
       router.use('/microblock', createMicroblockRouter(datastore));
+      router.use('/burn_block', createBurnBlockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
       // same here, exclude account nonce route
