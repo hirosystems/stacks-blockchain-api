@@ -282,7 +282,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     const revokeStackDbTx = await standByForTxSuccess(revokeTxResult.txId);
 
     const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
-    expect(revokeStackResult.repr).toEqual('(ok true)'); // ERR_STACKING_PERMISSION_DENIED
+    expect(revokeStackResult.repr).toEqual('(ok true)');
     expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
 
     // revocation doesn't change anything for the previous delegate-stack-stx state
