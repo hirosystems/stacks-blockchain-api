@@ -417,13 +417,15 @@ export class PgStore extends BasePgStore {
           burn_block_hash,
           burn_block_height,
           ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height ORDER BY block_height DESC
+            PARTITION BY burn_block_height
+            ORDER BY block_height DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks
         FROM blocks
         WHERE canonical = true
         ${heightFilter}
         ${hashFilter}
-        ORDER BY burn_block_height DESC
+        ORDER BY burn_block_height DESC, block_height DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
