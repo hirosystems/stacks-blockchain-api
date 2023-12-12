@@ -612,6 +612,54 @@ paths:
               schema:
                 $ref: ./api/microblocks/get-unanchored-txs.schema.json
 
+  /extended/v1/burn_block:
+    get:
+      summary: Get recent burn blocks
+      description: |
+          Retrieves a list of recent burn blocks
+      tags:
+        - Blocks
+      operationId: get_burn_block_list
+      parameters:
+        - name: limit
+          in: query
+          description: max number of burn blocks to fetch
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 30
+        - name: offset
+          in: query
+          description: index of first burn block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 42000
+        - name: height
+          in: query
+          description: filter by burn block height
+          required: false
+          schema:
+            type: integer
+            example: 42000
+        - name: hash
+          in: query
+          description: filter by burn block hash or the constant 'latest' to filter for the most recent burn block
+          required: false
+          schema:
+            type: string
+            example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: List of burn blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-burn-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-burn-blocks.example.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks

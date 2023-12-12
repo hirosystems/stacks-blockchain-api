@@ -112,6 +112,53 @@ export function getBlockParams(
 }
 
 /**
+ * Parses a block hash value from a given request query param.
+ * If an error is encountered while parsing the param then a 400 response with an error message is sent and the function throws.
+ * @param queryParamName - name of the query param
+ * @param paramRequired - if true then the function will throw and return a 400 if the param is missing, if false then the function will return null if the param is missing
+ */
+export function getBlockHashQueryParam<TRequired extends boolean>(
+  queryParamName: string,
+  paramRequired: TRequired,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): TRequired extends true ? string | never : string | null {
+  if (!(queryParamName in req.query)) {
+    if (paramRequired) {
+      handleBadRequest(
+        res,
+        next,
+        `Request is missing required "${queryParamName}" query parameter`
+      );
+    } else {
+      return null as TRequired extends true ? string : string | null;
+    }
+  }
+  const hashParamVal = req.query[queryParamName];
+  if (typeof hashParamVal !== 'string') {
+    handleBadRequest(
+      res,
+      next,
+      `Unexpected type for block hash query parameter: ${JSON.stringify(hashParamVal)}`
+    );
+  }
+
+  // Extract the hash part, ignoring '0x' if present
+  const match = hashParamVal.match(/^(0x)?([a-fA-F0-9]{64})$/i);
+  if (!match) {
+    handleBadRequest(
+      res,
+      next,
+      "Invalid hash string. Ensure it is 64 hexadecimal characters long, with an optional '0x' prefix"
+    );
+  }
+
+  // Normalize the string
+  return '0x' + match[2].toLowerCase();
+}
+
+/**
  * Parses a block height value from a given request query param.
  * If an error is encountered while parsing the param then a 400 response with an error message is sent and the function throws.
  * @param queryParamName - name of the query param

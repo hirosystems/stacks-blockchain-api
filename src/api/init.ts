@@ -44,6 +44,7 @@ import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
+import { createBurnBlockRouter } from './routes/burn-block';
 import { getReqQuery } from './query-helpers';
 
 export interface ApiServer {
@@ -184,6 +185,7 @@ export async function startApiServer(opts: {
       router.use('/tx', createTxRouter(datastore));
       router.use('/block', createBlockRouter(datastore));
       router.use('/microblock', createMicroblockRouter(datastore));
+      router.use('/burn_block', createBurnBlockRouter(datastore));
       router.use('/burnchain', createBurnchainRouter(datastore));
       router.use('/contract', createContractRouter(datastore));
       // same here, exclude account nonce route

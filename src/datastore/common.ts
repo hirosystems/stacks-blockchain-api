@@ -46,6 +46,14 @@ export interface DbMicroblock extends DbMicroblockPartial {
   block_hash: string;
 }
 
+export interface DbBurnBlock {
+  block_hash: string;
+  burn_block_time: number;
+  burn_block_hash: string;
+  burn_block_height: number;
+  stacks_blocks: string[];
+}
+
 export interface DbBurnchainReward {
   canonical: boolean;
   burn_block_hash: string;

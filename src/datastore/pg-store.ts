@@ -29,6 +29,7 @@ import {
   DbBnsNamespace,
   DbBnsSubdomain,
   DbBnsZoneFile,
+  DbBurnBlock,
   DbBurnchainReward,
   DbChainTip,
   DbEvent,
@@ -389,6 +390,56 @@ export class PgStore extends BasePgStore {
     const row = result[0];
     const block = parseBlockQueryResult(row);
     return { found: true, result: block } as const;
+  }
+
+  async getBurnBlocks({
+    limit,
+    offset,
+    height,
+    hash,
+  }: {
+    limit: number;
+    offset: number;
+    height: number | null;
+    hash: 'latest' | string | null;
+  }): Promise<{ results: DbBurnBlock[]; total: number }> {
+    return await this.sqlTransaction(async sql => {
+      const countQuery = await sql<{ burn_block_height: number; count: number }[]>`
+        SELECT burn_block_height, block_count AS count FROM chain_tip
+      `;
+      const heightFilter = height ? sql`AND burn_block_height = ${height}` : sql``;
+      const hashFilter =
+        hash === 'latest'
+          ? sql`AND burn_block_height = ${countQuery[0].burn_block_height}`
+          : hash
+          ? sql`AND burn_block_hash = ${hash}`
+          : sql``;
+
+      const block_count = countQuery[0].count;
+      const blocksQuery = await sql<DbBurnBlock[]>`
+        SELECT DISTINCT ON (burn_block_height)
+          burn_block_time,
+          burn_block_hash,
+          burn_block_height,
+          ARRAY_AGG(block_hash) OVER (
+            PARTITION BY burn_block_height
+            ORDER BY block_height DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS stacks_blocks
+        FROM blocks
+        WHERE canonical = true
+        ${heightFilter}
+        ${hashFilter}
+        ORDER BY burn_block_height DESC, block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const blocks = blocksQuery.map(r => r);
+      return {
+        results: blocks,
+        total: block_count,
+      };
+    });
   }
 
   /**
