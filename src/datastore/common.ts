@@ -51,7 +51,7 @@ export interface DbBurnBlock {
   burn_block_time: number;
   burn_block_hash: string;
   burn_block_height: number;
-  stacks_blocks_count: number;
+  stacks_blocks: string[];
 }
 
 export interface DbBurnchainReward {

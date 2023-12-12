@@ -1315,9 +1315,9 @@ export interface BurnBlock {
    */
   burn_block_height: number;
   /**
-   * Number of Stacks blocks included in the burn block
+   * Hashes of the Stacks blocks included in the burn block
    */
-  stacks_blocks_count: number;
+  stacks_blocks: string[];
 }
 /**
  * Error

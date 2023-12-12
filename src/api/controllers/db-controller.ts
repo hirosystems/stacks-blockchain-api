@@ -550,7 +550,7 @@ export async function getBurnBlocksFromDataStore(args: {
       burn_block_time_iso: unixEpochToIso(r.burn_block_time),
       burn_block_hash: r.burn_block_hash,
       burn_block_height: r.burn_block_height,
-      stacks_blocks_count: r.stacks_blocks_count,
+      stacks_blocks: r.stacks_blocks,
     };
     return burnBlock;
   });

@@ -416,7 +416,9 @@ export class PgStore extends BasePgStore {
           burn_block_time,
           burn_block_hash,
           burn_block_height,
-          COUNT(block_height) OVER (PARTITION BY burn_block_height) AS stacks_blocks_count
+          ARRAY_AGG(block_hash) OVER (
+            PARTITION BY burn_block_height ORDER BY block_height DESC
+          ) AS stacks_blocks
         FROM blocks
         WHERE canonical = true
         ${heightFilter}
