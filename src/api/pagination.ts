@@ -37,7 +37,7 @@ export enum ResourceType {
   Stacker,
 }
 
-const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
+export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
   [ResourceType.Block]: {
     defaultLimit: 20,
     maxLimit: 30,

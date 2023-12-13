@@ -4942,7 +4942,7 @@ describe('postgres datastore', () => {
     await db.update(block);
 
     // Blocks with limit=0
-    await expect(getBlocksWithMetadata({ limit: 0, offset: 0, db: db })).resolves.not.toThrow();
+    await expect(getBlocksWithMetadata(db, { limit: 0, offset: 0 })).resolves.not.toThrow();
     // Mempool search with empty txIds
     await expect(db.getMempoolTxs({ txIds: [], includeUnanchored: true })).resolves.not.toThrow();
     // NFT holdings with empty asset identifier list

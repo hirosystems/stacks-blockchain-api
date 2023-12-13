@@ -994,14 +994,16 @@ export interface TransferQueryResult {
   amount: string;
 }
 
+export interface BlockWithMetadata {
+  block: DbBlock;
+  txs: string[];
+  microblocks_accepted: string[];
+  microblocks_streamed: string[];
+  microblock_tx_count: Record<string, number>;
+}
+
 export interface BlocksWithMetadata {
-  results: {
-    block: DbBlock;
-    txs: string[];
-    microblocks_accepted: string[];
-    microblocks_streamed: string[];
-    microblock_tx_count: Record<string, number>;
-  }[];
+  results: BlockWithMetadata[];
   total: number;
 }
 

@@ -68,6 +68,7 @@ import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpe
 import { PgStore } from '../../datastore/pg-store';
 import { Pox2EventName } from '../../pox-helpers';
 import { logger } from '../../logger';
+import { BlocksQueryParams } from '../routes/v2/schemas';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -546,11 +547,8 @@ export async function getMicroblocksFromDataStore(args: {
   };
 }
 
-export async function getBlocksWithMetadata(args: { limit: number; offset: number; db: PgStore }) {
-  const blocks = await args.db.getBlocksWithMetadata({
-    limit: args.limit,
-    offset: args.offset,
-  });
+export async function getBlocksWithMetadata(db: PgStore, args: BlocksQueryParams) {
+  const blocks = await db.getBlocksWithMetadata(args);
   const results = blocks.results.map(block =>
     parseDbBlock(
       block.block,

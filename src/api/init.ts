@@ -45,6 +45,7 @@ import { createPox3EventsRouter } from './routes/pox3';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
+import { createV2BlocksRouter } from './routes/v2/blocks';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -170,9 +171,9 @@ export async function startApiServer(opts: {
     res.send(errObj).status(404);
   });
 
-  // Setup extended API v1 routes
+  // Setup extended API routes
   app.use(
-    '/extended/v1',
+    '/extended',
     (() => {
       const router = express.Router();
       router.use(cors());
@@ -181,40 +182,47 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
-      router.use('/tx', createTxRouter(datastore));
-      router.use('/block', createBlockRouter(datastore));
-      router.use('/microblock', createMicroblockRouter(datastore));
-      router.use('/burnchain', createBurnchainRouter(datastore));
-      router.use('/contract', createContractRouter(datastore));
-      // same here, exclude account nonce route
-      router.use('/address', createAddressRouter(datastore, chainId));
-      router.use('/search', createSearchRouter(datastore));
-      router.use('/info', createInfoRouter(datastore));
-      router.use('/stx_supply', createStxSupplyRouter(datastore));
-      router.use('/debug', createDebugRouter(datastore));
-      router.use('/status', createStatusRouter(datastore));
-      router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/tokens', createTokenRouter(datastore));
-      router.use('/pox2_events', createPox2EventsRouter(datastore));
-      router.use('/pox3_events', createPox3EventsRouter(datastore));
-      if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
-        router.use('/faucets', createFaucetRouter(writeDatastore));
-      }
-      return router;
-    })()
-  );
-
-  app.use(
-    '/extended/beta',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use('/stacking', createStackingRouter(datastore));
+      router.use(
+        '/v1',
+        (() => {
+          const v1 = express.Router();
+          v1.use('/tx', createTxRouter(datastore));
+          v1.use('/block', createBlockRouter(datastore));
+          v1.use('/microblock', createMicroblockRouter(datastore));
+          v1.use('/burnchain', createBurnchainRouter(datastore));
+          v1.use('/contract', createContractRouter(datastore));
+          v1.use('/address', createAddressRouter(datastore, chainId));
+          v1.use('/search', createSearchRouter(datastore));
+          v1.use('/info', createInfoRouter(datastore));
+          v1.use('/stx_supply', createStxSupplyRouter(datastore));
+          v1.use('/debug', createDebugRouter(datastore));
+          v1.use('/status', createStatusRouter(datastore));
+          v1.use('/fee_rate', createFeeRateRouter(datastore));
+          v1.use('/tokens', createTokenRouter(datastore));
+          v1.use('/pox2_events', createPox2EventsRouter(datastore));
+          v1.use('/pox3_events', createPox3EventsRouter(datastore));
+          if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
+            v1.use('/faucets', createFaucetRouter(writeDatastore));
+          }
+          return v1;
+        })()
+      );
+      router.use(
+        '/v2',
+        (() => {
+          const v2 = express.Router();
+          v2.use('/blocks', createV2BlocksRouter(datastore));
+          return v2;
+        })()
+      );
+      router.use(
+        '/beta',
+        (() => {
+          const beta = express.Router();
+          beta.use('/stacking', createStackingRouter(datastore));
+          return beta;
+        })()
+      );
       return router;
     })()
   );

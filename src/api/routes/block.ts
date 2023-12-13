@@ -19,7 +19,7 @@ export function createBlockRouter(db: PgStore): express.Router {
       const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const { results, total } = await getBlocksWithMetadata({ offset, limit, db });
+      const { results, total } = await getBlocksWithMetadata(db, { offset, limit });
       setETagCacheHeaders(res);
       // TODO: block schema validation
       const response: BlockListResponse = { limit, offset, total, results };
