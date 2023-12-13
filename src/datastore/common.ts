@@ -994,16 +994,23 @@ export interface TransferQueryResult {
   amount: string;
 }
 
-export interface BlockWithMetadata {
-  block: DbBlock;
-  txs: string[];
-  microblocks_accepted: string[];
-  microblocks_streamed: string[];
-  microblock_tx_count: Record<string, number>;
-}
+export type DbPaginatedResult<T> = {
+  total: number;
+  results: T[];
+};
+
+export type BlockWithTransactionIds = DbBlock & {
+  tx_ids: string[];
+};
 
 export interface BlocksWithMetadata {
-  results: BlockWithMetadata[];
+  results: {
+    block: DbBlock;
+    txs: string[];
+    microblocks_accepted: string[];
+    microblocks_streamed: string[];
+    microblock_tx_count: Record<string, number>;
+  }[];
   total: number;
 }
 

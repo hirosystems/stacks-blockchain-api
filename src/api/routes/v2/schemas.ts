@@ -26,11 +26,10 @@ export const BurnBlockHashParam = Type.RegExp(/^[0]{8}[a-fA-F0-9]{56}$/, {
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
 });
 
-export const BurnBlockHeightParam = Type.Integer({
-  minimum: 1,
+export const BurnBlockHeightParam = Type.RegExp(/^[0-9]+$/, {
   title: 'Burn block height',
   description: 'Burn block height',
-  examples: [777678],
+  examples: ['777678'],
 });
 
 // ==========================
@@ -38,25 +37,34 @@ export const BurnBlockHeightParam = Type.Integer({
 // TODO: Migrate these to each endpoint after switching from Express to Fastify
 // ==========================
 
-const PaginationParamsSchema = Type.Object({
-  limit: Type.Optional(BlockLimitParam),
-  offset: Type.Optional(OffsetParam),
-});
+const PaginationParamsSchema = Type.Object(
+  {
+    limit: Type.Optional(BlockLimitParam),
+    offset: Type.Optional(OffsetParam),
+  },
+  { additionalProperties: false }
+);
 
 export const BlocksQueryParamsSchema = Type.Union([
   PaginationParamsSchema,
-  Type.Composite([
-    Type.Object({
-      burn_block_hash: Type.Union([Type.Literal('latest'), BurnBlockHashParam]),
-    }),
-    PaginationParamsSchema,
-  ]),
-  Type.Composite([
-    Type.Object({
-      burn_block_height: Type.Union([Type.Literal('latest'), BurnBlockHeightParam]),
-    }),
-    PaginationParamsSchema,
-  ]),
+  Type.Composite(
+    [
+      Type.Object({
+        burn_block_hash: Type.Union([Type.Literal('latest'), BurnBlockHashParam]),
+      }),
+      PaginationParamsSchema,
+    ],
+    { additionalProperties: false }
+  ),
+  Type.Composite(
+    [
+      Type.Object({
+        burn_block_height: Type.Union([Type.Literal('latest'), BurnBlockHeightParam]),
+      }),
+      PaginationParamsSchema,
+    ],
+    { additionalProperties: false }
+  ),
 ]);
 export type BlocksQueryParams = Static<typeof BlocksQueryParamsSchema>;
 export const CompiledBlocksQueryParams = TypeCompiler.Compile(BlocksQueryParamsSchema);

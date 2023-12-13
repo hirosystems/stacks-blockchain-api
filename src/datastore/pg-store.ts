@@ -15,13 +15,14 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
+  normalizeHashString,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
-  BlockWithMetadata,
+  BlockWithTransactionIds,
   BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
@@ -44,6 +45,7 @@ import {
   DbMicroblock,
   DbMinerReward,
   DbNftEvent,
+  DbPaginatedResult,
   DbPox2Event,
   DbPox3Event,
   DbPox3Stacker,
@@ -392,7 +394,115 @@ export class PgStore extends BasePgStore {
    * Returns Block information with metadata, including accepted and streamed microblocks hash
    * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
    */
-  async getBlocksWithMetadata(args: BlocksQueryParams): Promise<BlocksWithMetadata> {
+  async getBlocksWithMetadata({
+    limit,
+    offset,
+  }: {
+    limit: number;
+    offset: number;
+  }): Promise<BlocksWithMetadata> {
+    return await this.sqlTransaction(async sql => {
+      // Get blocks with count.
+      const countQuery = await sql<{ count: number }[]>`
+        SELECT block_count AS count FROM chain_tip
+      `;
+      const block_count = countQuery[0].count;
+      const blocksQuery = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE canonical = true
+        ORDER BY block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const blocks = blocksQuery.map(r => parseBlockQueryResult(r));
+      const blockHashValues: string[] = [];
+      const indexBlockHashValues: string[] = [];
+      blocks.forEach(block => {
+        const indexBytea = block.index_block_hash;
+        const parentBytea = block.parent_index_block_hash;
+        indexBlockHashValues.push(indexBytea, parentBytea);
+        blockHashValues.push(indexBytea);
+      });
+      if (blockHashValues.length === 0) {
+        return {
+          results: [],
+          total: block_count,
+        };
+      }
+
+      // get txs in those blocks
+      const txs = await sql<{ tx_id: string; index_block_hash: string }[]>`
+        SELECT tx_id, index_block_hash
+        FROM txs
+        WHERE index_block_hash IN ${sql(blockHashValues)}
+          AND canonical = true AND microblock_canonical = true
+        ORDER BY microblock_sequence DESC, tx_index DESC
+      `;
+
+      // get microblocks in those blocks
+      const microblocksQuery = await sql<
+        {
+          parent_index_block_hash: string;
+          index_block_hash: string;
+          microblock_hash: string;
+          transaction_count: number;
+        }[]
+      >`
+          SELECT parent_index_block_hash, index_block_hash, microblock_hash, (
+            SELECT COUNT(tx_id)::integer as transaction_count
+            FROM txs
+            WHERE txs.microblock_hash = microblocks.microblock_hash
+            AND canonical = true AND microblock_canonical = true
+          )
+          FROM microblocks
+          WHERE parent_index_block_hash IN ${sql(indexBlockHashValues)}
+          AND microblock_canonical = true
+          ORDER BY microblock_sequence DESC
+        `;
+      // parse data to return
+      const blocksMetadata = blocks.map(block => {
+        const transactions = txs
+          .filter(tx => tx.index_block_hash === block.index_block_hash)
+          .map(tx => tx.tx_id);
+        const microblocksAccepted = microblocksQuery
+          .filter(
+            microblock => block.parent_index_block_hash === microblock.parent_index_block_hash
+          )
+          .map(mb => {
+            return {
+              microblock_hash: mb.microblock_hash,
+              transaction_count: mb.transaction_count,
+            };
+          });
+        const microblocksStreamed = microblocksQuery
+          .filter(microblock => block.parent_index_block_hash === microblock.index_block_hash)
+          .map(mb => mb.microblock_hash);
+        const microblock_tx_count: Record<string, number> = {};
+        microblocksAccepted.forEach(mb => {
+          microblock_tx_count[mb.microblock_hash] = mb.transaction_count;
+        });
+        return {
+          block,
+          txs: transactions,
+          microblocks_accepted: microblocksAccepted.map(mb => mb.microblock_hash),
+          microblocks_streamed: microblocksStreamed,
+          microblock_tx_count,
+        };
+      });
+      const results: BlocksWithMetadata = {
+        results: blocksMetadata,
+        total: block_count,
+      };
+      return results;
+    });
+  }
+
+  /**
+   * Returns Block information with metadata, including accepted and streamed microblocks hash
+   * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   */
+  async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<BlockWithTransactionIds>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParam.default;
       const offset = args.offset ?? 0;
@@ -401,7 +511,7 @@ export class PgStore extends BasePgStore {
           ? sql`burn_block_hash = ${
               args.burn_block_hash == 'latest'
                 ? sql`(SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-                : sql`${args.burn_block_hash}`
+                : sql`${normalizeHashString(args.burn_block_hash)}`
             }`
           : undefined;
       const burnBlockHeightCond =
@@ -440,26 +550,6 @@ export class PgStore extends BasePgStore {
               AND canonical = true
               AND microblock_canonical = true
           ) AS tx_ids,
-          (
-            SELECT STRING_AGG(microblock_hash,',')
-            FROM microblocks
-            WHERE parent_index_block_hash = blocks.index_block_hash
-              AND parent_index_block_hash = blocks.parent_index_block_hash
-              AND microblock_canonical = true
-          ) AS microblocks_accepted,
-          (
-            SELECT STRING_AGG(
-              '0x' || ENCODE(microblock_hash, 'hex') || ':' || (
-                SELECT COUNT(tx_id)::text
-                FROM txs
-                WHERE microblock_hash = microblocks.microblock_hash
-                AND canonical = true AND microblock_canonical = true
-              ),','
-            )
-            FROM microblocks
-            WHERE parent_index_block_hash = blocks.index_block_hash
-              AND microblock_canonical = true
-          ) AS microblocks_streamed,
           (SELECT count FROM block_count)::int AS total
         FROM blocks
         WHERE canonical = true
@@ -479,29 +569,14 @@ export class PgStore extends BasePgStore {
           results: [],
           total: 0,
         };
-      const blocks = blocksQuery.map(b => {
-        const microblocks_streamed: string[] = [];
-        const microblock_tx_count: Record<string, number> = {};
-        if (b.microblocks_streamed)
-          for (const streamed of b.microblocks_streamed.split(',')) {
-            const [microblock_hash, tx_count] = streamed.split(':');
-            microblocks_streamed.push(microblock_hash);
-            microblock_tx_count[microblock_hash] = parseInt(tx_count);
-          }
-        const meta: BlockWithMetadata = {
-          block: parseBlockQueryResult(b),
-          txs: b.tx_ids ? b.tx_ids.split(',') : [],
-          microblocks_accepted: b.microblocks_accepted ? b.microblocks_accepted.split(',') : [],
-          microblocks_streamed,
-          microblock_tx_count,
-        };
-        return meta;
-      });
-      const results: BlocksWithMetadata = {
+      const blocks = blocksQuery.map(b => ({
+        ...parseBlockQueryResult(b),
+        tx_ids: b.tx_ids ? b.tx_ids.split(',') : [],
+      }));
+      return {
         results: blocks,
         total: blocksQuery[0].total,
       };
-      return results;
     });
   }
 
