@@ -23,7 +23,7 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
       const { results, total } = await db.getV2Blocks(query);
       const response: NakamotoBlockListResponse = {
         limit: query.limit ?? BlockLimitParam.default,
-        offset: 0,
+        offset: query.offset ?? 0,
         total,
         results: results.map(r => parseDbNakamotoBlock(r)),
       };
