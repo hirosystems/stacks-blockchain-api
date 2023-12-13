@@ -1,3 +1,12 @@
+## [7.4.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.2...v7.4.0-nakamoto.3) (2023-12-13)
+
+
+### Features
+
+* `GET /extended/v1/burn_block` ([#1766](https://github.com/hirosystems/stacks-blockchain-api/issues/1766)) ([cb38b68](https://github.com/hirosystems/stacks-blockchain-api/commit/cb38b6811c65aa700d4de527329216ba3c2ff6c9))
+* ingestion for `TenureChange` and `NakamotoCoinbase` tx types ([#1753](https://github.com/hirosystems/stacks-blockchain-api/issues/1753)) ([7c45f53](https://github.com/hirosystems/stacks-blockchain-api/commit/7c45f53622338170477948d38f549c2136d830c1))
+* pox-4 support ([#1754](https://github.com/hirosystems/stacks-blockchain-api/issues/1754)) ([285806f](https://github.com/hirosystems/stacks-blockchain-api/commit/285806f46cebd365cc424a7a0155a531f34d7438))
+
 ## [7.4.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.1...v7.4.0-nakamoto.2) (2023-11-17)
 
 
