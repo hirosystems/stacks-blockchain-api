@@ -523,7 +523,7 @@ export class PgStore extends BasePgStore {
             }`
           : undefined;
 
-      // Obtain blocks as well as microblock metadata and transaction counts in the same query.
+      // Obtain blocks and transaction counts in the same query.
       const blocksQuery = await sql<
         (BlockQueryResult & {
           tx_ids: string;

@@ -262,7 +262,7 @@ describe('block tests', () => {
           parent_microblock_sequence: 0,
           txs: [tx_id],
           microblocks_accepted: [],
-          microblocks_streamed: ['0x123466'],
+          microblocks_streamed: [microblock.microblocks[0].microblock_hash],
           execution_cost_read_count: 0,
           execution_cost_read_length: 0,
           execution_cost_runtime: 0,
