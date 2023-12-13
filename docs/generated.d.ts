@@ -13,6 +13,7 @@ export type SchemaMergeRootStub =
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | BlockListResponse
+  | NakamotoBlockListResponse
   | BnsError
   | BnsFetchFileZoneResponse
   | BnsGetAllNamesResponse
@@ -114,6 +115,7 @@ export type SchemaMergeRootStub =
   | NftBalance
   | StxBalance
   | Block
+  | NakamotoBlock
   | BurnchainRewardSlotHolder
   | BurnchainReward
   | BurnchainRewardsTotal
@@ -1273,6 +1275,97 @@ export interface Block {
   microblock_tx_count: {
     [k: string]: number | undefined;
   };
+}
+/**
+ * GET request that returns blocks
+ */
+export interface NakamotoBlockListResponse {
+  /**
+   * The number of blocks to return
+   */
+  limit: number;
+  /**
+   * The number to blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of blocks available
+   */
+  total: number;
+  results: NakamotoBlock[];
+}
+/**
+ * A block
+ */
+export interface NakamotoBlock {
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
+  canonical: boolean;
+  /**
+   * Height of the block
+   */
+  height: number;
+  /**
+   * Hash representing the block
+   */
+  hash: string;
+  /**
+   * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
+   */
+  index_block_hash: string;
+  /**
+   * Hash of the parent block
+   */
+  parent_block_hash: string;
+  /**
+   * Index block hash of the parent block
+   */
+  parent_index_block_hash: string;
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Anchor chain transaction ID
+   */
+  miner_txid: string;
+  /**
+   * List of transactions included in the block
+   */
+  txs: string[];
+  /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
 }
 /**
  * Error
