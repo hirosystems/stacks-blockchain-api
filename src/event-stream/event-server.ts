@@ -35,7 +35,7 @@ import {
   DataStoreTxEventData,
   DbMicroblock,
   DataStoreAttachmentData,
-  DbPox2Event,
+  DbPoxSyntheticEvent,
   DbTxStatus,
   DbBnsSubdomain,
 } from '../datastore/common';
@@ -70,10 +70,11 @@ import {
   getTxDbStatus,
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
-import { decodePox2PrintEvent } from './pox2-event-parsing';
+import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { logger, loggerMiddleware } from '../logger';
 import * as zoneFileParser from 'zone-file';
 import { hexToBuffer, isProdEnv, stopwatch } from '@hirosystems/api-toolkit';
+import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
 
 const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
 
@@ -321,6 +322,7 @@ async function handleBlockMessage(
     txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
     pox_v1_unlock_height: msg.pox_v1_unlock_height,
     pox_v2_unlock_height: msg.pox_v2_unlock_height,
+    pox_v3_unlock_height: msg.pox_v3_unlock_height,
   };
 
   await db.update(dbData);
@@ -350,6 +352,7 @@ function parseDataStoreTxEventData(
       namespaces: [],
       pox2Events: [],
       pox3Events: [],
+      pox4Events: [],
     };
     switch (tx.parsed_tx.payload.type_id) {
       case TxPayloadTypeID.VersionedSmartContract:
@@ -435,31 +438,37 @@ function parseDataStoreTxEventData(
         if (isPoxPrintEvent(event)) {
           const network = getChainIDNetwork(chainId) === 'mainnet' ? 'mainnet' : 'testnet';
           const [, contractName] = event.contract_event.contract_identifier.split('.');
-          // todo: switch could be abstracted more
-          switch (contractName) {
-            // pox-1 is handled in custom node events
-            case 'pox-2': {
-              const poxEventData = decodePox2PrintEvent(event.contract_event.raw_value, network);
-              if (poxEventData === null) break;
-              logger.debug(`Pox2 event data:`, poxEventData);
-              const dbPoxEvent: DbPox2Event = {
+          // pox-1 is handled in custom node events
+          const processSyntheticEvent = [
+            POX_2_CONTRACT_NAME,
+            POX_3_CONTRACT_NAME,
+            POX_4_CONTRACT_NAME,
+          ].includes(contractName);
+          if (processSyntheticEvent) {
+            const poxEventData = decodePoxSyntheticPrintEvent(
+              event.contract_event.raw_value,
+              network
+            );
+            if (poxEventData !== null) {
+              logger.debug(`Synthetic pox event data for ${contractName}:`, poxEventData);
+              const dbPoxEvent: DbPoxSyntheticEvent = {
                 ...dbEvent,
                 ...poxEventData,
               };
-              dbTx.pox2Events.push(dbPoxEvent);
-              break;
-            }
-            case 'pox-3': {
-              const decodePox3PrintEvent = decodePox2PrintEvent; // todo: do we want to copy all pox2 methods for pox3?
-              const poxEventData = decodePox3PrintEvent(event.contract_event.raw_value, network);
-              if (poxEventData === null) break;
-              logger.debug(`Pox3 event data:`, poxEventData);
-              const dbPoxEvent: DbPox2Event = {
-                ...dbEvent,
-                ...poxEventData,
-              };
-              dbTx.pox3Events.push(dbPoxEvent);
-              break;
+              switch (contractName) {
+                case POX_2_CONTRACT_NAME: {
+                  dbTx.pox2Events.push(dbPoxEvent);
+                  break;
+                }
+                case POX_3_CONTRACT_NAME: {
+                  dbTx.pox3Events.push(dbPoxEvent);
+                  break;
+                }
+                case POX_4_CONTRACT_NAME: {
+                  dbTx.pox4Events.push(dbPoxEvent);
+                  break;
+                }
+              }
             }
           }
         }
@@ -623,6 +632,7 @@ function parseDataStoreTxEventData(
       tx.stxLockEvents,
       tx.pox2Events,
       tx.pox3Events,
+      tx.pox4Events,
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);

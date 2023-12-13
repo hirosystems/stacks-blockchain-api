@@ -392,3 +392,13 @@ export function isValidTxId(tx_id: string) {
     return false;
   }
 }
+
+/**
+ * Returns the query string of a request, including the leading '?' character.
+ * If the request does not have a query string then an empty string is returned.
+ */
+export function getReqQuery(req: Request): string {
+  const fullUrl = `http://${req.headers.host}${req.originalUrl}`;
+  const urlObject = new URL(fullUrl);
+  return urlObject.search;
+}

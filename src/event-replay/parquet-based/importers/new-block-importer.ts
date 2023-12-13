@@ -392,7 +392,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
       const insertPox2Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const pox2Event of entry.pox2Events) {
-            await db.updatePox2Event(db.sql, entry.tx, pox2Event);
+            await db.updatePoxSyntheticEvent(db.sql, entry.tx, 'pox2_events', pox2Event);
           }
         }
       };
@@ -400,7 +400,15 @@ const populateBatchInserters = (db: PgWriteStore) => {
       const insertPox3Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
           for (const pox3Event of entry.pox3Events) {
-            await db.updatePox3Event(db.sql, entry.tx, pox3Event);
+            await db.updatePoxSyntheticEvent(db.sql, entry.tx, 'pox3_events', pox3Event);
+          }
+        }
+      };
+
+      const insertPox4Events = async (dbData: DataStoreBlockUpdateData) => {
+        for (const entry of dbData.txs) {
+          for (const pox4Event of entry.pox4Events) {
+            await db.updatePoxSyntheticEvent(db.sql, entry.tx, 'pox4_events', pox4Event);
           }
         }
       };
@@ -438,6 +446,8 @@ const populateBatchInserters = (db: PgWriteStore) => {
         insertPox2Events(dbData),
         // Insert pox3_events
         insertPox3Events(dbData),
+        // Insert pox4_events
+        insertPox4Events(dbData),
       ]);
 
       next();

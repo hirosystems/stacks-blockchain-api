@@ -60,14 +60,13 @@ import {
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
-  DbPox2Event,
-  DbPox3Event,
+  DbPoxSyntheticEvent,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
-import { Pox2EventName } from '../../pox-helpers';
+import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
@@ -194,7 +193,7 @@ export function getAssetEventTypeString(
   }
 }
 
-export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
+export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
   const baseInfo = {
     block_height: poxEvent.block_height,
     tx_id: poxEvent.tx_id,
@@ -209,7 +208,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
     name: poxEvent.name,
   };
   switch (poxEvent.name) {
-    case Pox2EventName.HandleUnlock: {
+    case SyntheticPoxEventName.HandleUnlock: {
       return {
         ...baseInfo,
         data: {
@@ -218,7 +217,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackStx: {
+    case SyntheticPoxEventName.StackStx: {
       return {
         ...baseInfo,
         data: {
@@ -229,7 +228,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackIncrease: {
+    case SyntheticPoxEventName.StackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -238,7 +237,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackExtend: {
+    case SyntheticPoxEventName.StackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -247,7 +246,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStx: {
+    case SyntheticPoxEventName.DelegateStx: {
       return {
         ...baseInfo,
         data: {
@@ -257,7 +256,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackStx: {
+    case SyntheticPoxEventName.DelegateStackStx: {
       return {
         ...baseInfo,
         data: {
@@ -269,7 +268,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackIncrease: {
+    case SyntheticPoxEventName.DelegateStackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -279,7 +278,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackExtend: {
+    case SyntheticPoxEventName.DelegateStackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -289,7 +288,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommit: {
+    case SyntheticPoxEventName.StackAggregationCommit: {
       return {
         ...baseInfo,
         data: {
@@ -298,7 +297,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
       return {
         ...baseInfo,
         data: {
@@ -307,17 +306,26 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationIncrease: {
+    case SyntheticPoxEventName.StackAggregationIncrease: {
       return {
         ...baseInfo,
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
         },
       };
     }
     default:
-      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
+      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPoxSyntheticEvent).name}`);
   }
 }
 

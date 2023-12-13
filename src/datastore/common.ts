@@ -1,6 +1,6 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
 
 export interface DbBlock {
@@ -329,7 +329,9 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
-export interface DbPox2BaseEventData {
+export type PoxSyntheticEventTable = 'pox2_events' | 'pox3_events' | 'pox4_events';
+
+export interface DbPoxSyntheticBaseEventData {
   stacker: string;
   locked: bigint;
   balance: bigint;
@@ -338,16 +340,16 @@ export interface DbPox2BaseEventData {
   pox_addr_raw: string | null;
 }
 
-export interface DbPox2HandleUnlockEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.HandleUnlock;
+export interface DbPoxSyntheticHandleUnlockEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.HandleUnlock;
   data: {
     first_cycle_locked: bigint;
     first_unlocked_cycle: bigint;
   };
 }
 
-export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackStx;
+export interface DbPoxSyntheticStackStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackStx;
   data: {
     lock_amount: bigint;
     lock_period: bigint;
@@ -356,24 +358,24 @@ export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2StackIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackIncrease;
+export interface DbPoxSyntheticStackIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackIncrease;
   data: {
     increase_by: bigint;
     total_locked: bigint;
   };
 }
 
-export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackExtend;
+export interface DbPoxSyntheticStackExtendEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackExtend;
   data: {
     extend_count: bigint;
     unlock_burn_height: bigint;
   };
 }
 
-export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStx;
+export interface DbPoxSyntheticDelegateStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStx;
   data: {
     amount_ustx: bigint;
     delegate_to: string;
@@ -381,8 +383,8 @@ export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackStx;
+export interface DbPoxSyntheticDelegateStackStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackStx;
   data: {
     lock_amount: bigint;
     unlock_burn_height: bigint;
@@ -392,8 +394,8 @@ export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackIncrease;
+export interface DbPoxSyntheticDelegateStackIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackIncrease;
   data: {
     increase_by: bigint;
     total_locked: bigint;
@@ -401,8 +403,8 @@ export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackExtend;
+export interface DbPoxSyntheticDelegateStackExtendEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackExtend;
   data: {
     unlock_burn_height: bigint;
     extend_count: bigint;
@@ -410,49 +412,57 @@ export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2StackAggregationCommitEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationCommit;
+export interface DbPoxSyntheticStackAggregationCommitEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationCommit;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export interface DbPox2StackAggregationCommitIndexedEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationCommitIndexed;
+export interface DbPoxSyntheticStackAggregationCommitIndexedEvent
+  extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationCommitIndexed;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export interface DbPox2StackAggregationIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationIncrease;
+export interface DbPoxSyntheticStackAggregationIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationIncrease;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export type DbPox2EventData =
-  | DbPox2HandleUnlockEvent
-  | DbPox2StackStxEvent
-  | DbPox2StackIncreaseEvent
-  | DbPox2StackExtendEvent
-  | DbPox2DelegateStxEvent
-  | DbPox2DelegateStackStxEvent
-  | DbPox2DelegateStackIncreaseEvent
-  | DbPox2DelegateStackExtendEvent
-  | DbPox2StackAggregationCommitEvent
-  | DbPox2StackAggregationCommitIndexedEvent
-  | DbPox2StackAggregationIncreaseEvent;
+export interface DbPoxSyntheticRevokeDelegateStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.RevokeDelegateStx;
+  data: {
+    // TODO: determine what data is available for this event type
+    amount_ustx: bigint;
+    delegate_to: string;
+  };
+}
 
-export type DbPox2Event = DbEventBase & DbPox2EventData;
+export type DbPoxSyntheticEventData =
+  | DbPoxSyntheticHandleUnlockEvent
+  | DbPoxSyntheticStackStxEvent
+  | DbPoxSyntheticStackIncreaseEvent
+  | DbPoxSyntheticStackExtendEvent
+  | DbPoxSyntheticDelegateStxEvent
+  | DbPoxSyntheticDelegateStackStxEvent
+  | DbPoxSyntheticDelegateStackIncreaseEvent
+  | DbPoxSyntheticDelegateStackExtendEvent
+  | DbPoxSyntheticStackAggregationCommitEvent
+  | DbPoxSyntheticStackAggregationCommitIndexedEvent
+  | DbPoxSyntheticStackAggregationIncreaseEvent
+  | DbPoxSyntheticRevokeDelegateStxEvent;
 
-// todo: should we copy DbPox2EventData for pox3?
-export type DbPox3Event = DbEventBase & DbPox2EventData;
+export type DbPoxSyntheticEvent = DbEventBase & DbPoxSyntheticEventData;
 
-export interface DbPox3Stacker {
+export interface DbPoxStacker {
   stacker: string;
   pox_addr?: string;
   amount_ustx: string;
@@ -577,6 +587,7 @@ export interface DataStoreBlockUpdateData {
   txs: DataStoreTxEventData[];
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
+  pox_v3_unlock_height?: number;
 }
 
 export interface DataStoreMicroblockUpdateData {
@@ -594,8 +605,9 @@ export interface DataStoreTxEventData {
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
-  pox2Events: DbPox2Event[];
-  pox3Events: DbPox3Event[];
+  pox2Events: DbPoxSyntheticEvent[];
+  pox3Events: DbPoxSyntheticEvent[];
+  pox4Events: DbPoxSyntheticEvent[];
 }
 
 export interface DataStoreAttachmentData {
@@ -967,6 +979,7 @@ export interface UpdatedEntities {
     nftEvents: number;
     pox2Events: number;
     pox3Events: number;
+    pox4Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -984,6 +997,7 @@ export interface UpdatedEntities {
     nftEvents: number;
     pox2Events: number;
     pox3Events: number;
+    pox4Events: number;
     contractLogs: number;
     smartContracts: number;
     names: number;
@@ -1202,7 +1216,7 @@ export interface RawEventRequestInsertValues {
   payload: string;
 }
 
-export interface Pox2EventQueryResult {
+export interface PoxSyntheticEventQueryResult {
   event_index: number;
   tx_id: string;
   tx_index: number;
@@ -1261,10 +1275,7 @@ export interface Pox2EventQueryResult {
   amount_ustx: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface Pox3EventQueryResult extends Pox2EventQueryResult {}
-
-export interface Pox2EventInsertValues {
+export interface PoxSyntheticEventInsertValues {
   event_index: number;
   tx_id: PgBytea;
   tx_index: number;

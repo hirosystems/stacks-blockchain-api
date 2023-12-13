@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "hirosystems/stacks-api-e2e:stacks2.4-f930deb"
+    image: "hirosystems/stacks-api-e2e:stacks3.0-800259e"
     ports:
       - "18443:18443" # bitcoin regtest JSON-RPC interface
       - "18444:18444" # bitcoin regtest p2p

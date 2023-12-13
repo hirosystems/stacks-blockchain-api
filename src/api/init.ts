@@ -1,5 +1,6 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
+import * as querystring from 'querystring';
 import * as express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
@@ -40,12 +41,11 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { createPox2EventsRouter } from './routes/pox2';
-import { createPox3EventsRouter } from './routes/pox3';
-import { createStackingRouter } from './routes/stacking';
+import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
 import { createBurnBlockRouter } from './routes/burn-block';
+import { getReqQuery } from './query-helpers';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -197,8 +197,22 @@ export async function startApiServer(opts: {
       router.use('/status', createStatusRouter(datastore));
       router.use('/fee_rate', createFeeRateRouter(datastore));
       router.use('/tokens', createTokenRouter(datastore));
-      router.use('/pox2_events', createPox2EventsRouter(datastore));
-      router.use('/pox3_events', createPox3EventsRouter(datastore));
+
+      // These could be defined in one route but a url reporting library breaks with regex in middleware paths
+      router.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
+      router.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
+      router.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
+      const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
+        // Redirect old pox routes paths to new one above
+        const newPath = req.path === '/' ? '/events' : req.path;
+        const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
+        const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
+        return res.redirect(redirectPath);
+      };
+      router.use('/pox2_events', legacyPoxPathRouter);
+      router.use('/pox3_events', legacyPoxPathRouter);
+      router.use('/pox4_events', legacyPoxPathRouter);
+
       if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
@@ -206,20 +220,13 @@ export async function startApiServer(opts: {
     })()
   );
 
-  app.use(
-    '/extended/beta',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use('/stacking', createStackingRouter(datastore));
-      return router;
-    })()
-  );
+  // Redirect to new endpoint for backward compatibility.
+  // TODO: remove this in the future
+  app.use('/extended/beta/stacking/:pool_principal/delegations', (req, res) => {
+    const { pool_principal } = req.params;
+    const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
+    return res.redirect(newPath);
+  });
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   // pricing endpoint

@@ -22,12 +22,12 @@ async function standByForPoxToBeReady(client: StacksCoreRpcClient): Promise<void
     try {
       tries++;
       const poxInfo = await client.getPox();
-      if (!poxInfo.contract_id.includes('pox-3')) {
+      if (!poxInfo.contract_id.includes('pox-4')) {
         throw new Error(`Unexpected PoX version: ${poxInfo.contract_id}`);
       }
       break;
     } catch (error) {
-      console.log(`Waiting on PoX-3 to be ready, retrying after ${error}`);
+      console.log(`Waiting on PoX-4 to be ready, retrying after ${error}`);
       await timeout(500);
     }
   }

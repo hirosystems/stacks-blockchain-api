@@ -17,6 +17,7 @@ export function createStatusRouter(db: PgStore): express.Router {
       if (poxForceUnlockHeights.found) {
         response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
         response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
+        response.pox_v3_unlock_height = poxForceUnlockHeights.result.pox3UnlockHeight as number;
       }
       const chainTip = await db.getChainTip();
       if (chainTip.block_height > 0) {
