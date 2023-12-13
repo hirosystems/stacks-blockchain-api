@@ -12,8 +12,20 @@
     "tenure_change_payload": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["previous_tenure_end", "previous_tenure_blocks", "cause", "pubkey_hash", "signature", "signers"],
+      "required": ["tenure_consensus_hash", "prev_tenure_consensus_hash", "burn_view_consensus_hash", "previous_tenure_end", "previous_tenure_blocks", "cause", "pubkey_hash", "signature", "signers"],
       "properties": {
+        "tenure_consensus_hash": {
+          "type": "string",
+          "description": "Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen."
+        },
+        "prev_tenure_consensus_hash": {
+          "type": "string",
+          "description": "Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit."
+        },
+        "burn_view_consensus_hash": {
+          "type": "string",
+          "description": "Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition."
+        },
         "previous_tenure_end": {
           "type": "string",
           "description": "(Hex string) Stacks Block hash"
@@ -24,7 +36,7 @@
         },
         "cause": {
           "type": "string",
-          "enum": ["block_found", "no_block_found", "null_miner"],
+          "enum": ["block_found", "extended"],
           "description": "Cause of change in mining tenure. Depending on cause, tenure can be ended or extended."
         },
         "pubkey_hash": {

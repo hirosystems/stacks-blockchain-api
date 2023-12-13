@@ -150,6 +150,9 @@ export interface BaseTx {
   abi?: string;
 
   /** Only valid for `tenure-change` tx types. */
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
   tenure_change_previous_tenure_end?: string;
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
@@ -868,6 +871,9 @@ export interface MempoolTxQueryResult {
   coinbase_vrf_proof?: string;
 
   // `tenure-change` tx types
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
   tenure_change_previous_tenure_end?: string;
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
@@ -939,6 +945,9 @@ export interface TxQueryResult {
   coinbase_vrf_proof?: string;
 
   // `tenure-change` tx types
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
   tenure_change_previous_tenure_end?: string;
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
@@ -1071,6 +1080,9 @@ export interface TxInsertValues {
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
   coinbase_vrf_proof: string | null;
+  tenure_change_tenure_consensus_hash: string | null;
+  tenure_change_prev_tenure_consensus_hash: string | null;
+  tenure_change_burn_view_consensus_hash: string | null;
   tenure_change_previous_tenure_end: string | null;
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;
@@ -1117,6 +1129,9 @@ export interface MempoolTxInsertValues {
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
   coinbase_vrf_proof: string | null;
+  tenure_change_tenure_consensus_hash: string | null;
+  tenure_change_prev_tenure_consensus_hash: string | null;
+  tenure_change_burn_view_consensus_hash: string | null;
   tenure_change_previous_tenure_end: string | null;
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;

@@ -1133,6 +1133,18 @@ export interface TenureChangeTransactionMetadata {
   tx_type: "tenure_change";
   tenure_change_payload?: {
     /**
+     * Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen.
+     */
+    tenure_consensus_hash: string;
+    /**
+     * Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit.
+     */
+    prev_tenure_consensus_hash: string;
+    /**
+     * Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition.
+     */
+    burn_view_consensus_hash: string;
+    /**
      * (Hex string) Stacks Block hash
      */
     previous_tenure_end: string;
@@ -1143,7 +1155,7 @@ export interface TenureChangeTransactionMetadata {
     /**
      * Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.
      */
-    cause: "block_found" | "no_block_found" | "null_miner";
+    cause: "block_found" | "extended";
     /**
      * (Hex string) The ECDSA public key hash of the current tenure.
      */

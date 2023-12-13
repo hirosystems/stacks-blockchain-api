@@ -121,9 +121,7 @@ function getTxTenureChangeCauseString(cause: number) {
     case 0:
       return 'block_found';
     case 1:
-      return 'no_block_found';
-    case 2:
-      return 'null_miner';
+      return 'extended';
     default:
       throw new Error(`Unexpected tenure change cause value ${cause}`);
   }
@@ -968,6 +966,18 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: TenureChangeTransactionMetadata = {
         tx_type: 'tenure_change',
         tenure_change_payload: {
+          tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_tenure_consensus_hash'
+          ),
+          prev_tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_prev_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_prev_tenure_consensus_hash'
+          ),
+          burn_view_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_burn_view_consensus_hash,
+            () => 'Unexpected nullish tenure_change_burn_view_consensus_hash'
+          ),
           previous_tenure_end: unwrapOptional(
             dbTx.tenure_change_previous_tenure_end,
             () => 'Unexpected nullish tenure_change_previous_tenure_end'
