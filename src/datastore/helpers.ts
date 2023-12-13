@@ -104,6 +104,9 @@ export const TX_COLUMNS = [
   'coinbase_payload',
   'coinbase_alt_recipient',
   'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
   'tenure_change_previous_tenure_end',
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
@@ -149,6 +152,9 @@ export const MEMPOOL_TX_COLUMNS = [
   'coinbase_payload',
   'coinbase_alt_recipient',
   'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
   'tenure_change_previous_tenure_end',
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
@@ -391,6 +397,10 @@ function parseTxTypeSpecificQueryResult(
     }
     target.coinbase_vrf_proof = result.coinbase_vrf_proof;
   } else if (target.type_id === DbTxTypeId.TenureChange) {
+    target.tenure_change_tenure_consensus_hash = result.tenure_change_tenure_consensus_hash;
+    target.tenure_change_prev_tenure_consensus_hash =
+      result.tenure_change_prev_tenure_consensus_hash;
+    target.tenure_change_burn_view_consensus_hash = result.tenure_change_burn_view_consensus_hash;
     target.tenure_change_previous_tenure_end = result.tenure_change_previous_tenure_end;
     target.tenure_change_previous_tenure_blocks = result.tenure_change_previous_tenure_blocks;
     target.tenure_change_cause = result.tenure_change_cause;
@@ -1047,6 +1057,9 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       break;
     }
     case TxPayloadTypeID.TenureChange: {
+      dbTx.tenure_change_tenure_consensus_hash = txData.payload.tenure_consensus_hash;
+      dbTx.tenure_change_prev_tenure_consensus_hash = txData.payload.prev_tenure_consensus_hash;
+      dbTx.tenure_change_burn_view_consensus_hash = txData.payload.burn_view_consensus_hash;
       dbTx.tenure_change_previous_tenure_end = txData.payload.previous_tenure_end;
       dbTx.tenure_change_previous_tenure_blocks = txData.payload.previous_tenure_blocks;
       dbTx.tenure_change_cause = txData.payload.cause;
