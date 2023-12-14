@@ -1,3 +1,11 @@
+## [7.4.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.3...v7.4.0-nakamoto.4) (2023-12-14)
+
+
+### Features
+
+* add `/extended/v2/blocks` endpoint with burn block filters ([#1769](https://github.com/hirosystems/stacks-blockchain-api/issues/1769)) ([ceb7be0](https://github.com/hirosystems/stacks-blockchain-api/commit/ceb7be08daa5ca2d9baaa1a3de9f6c0569987724))
+* update to latest TenureChange tx payload ([#1767](https://github.com/hirosystems/stacks-blockchain-api/issues/1767)) ([2afb65c](https://github.com/hirosystems/stacks-blockchain-api/commit/2afb65cbb821658416eb41197ce8b72f239970b4))
+
 ## [7.4.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.2...v7.4.0-nakamoto.3) (2023-12-13)
 
 
