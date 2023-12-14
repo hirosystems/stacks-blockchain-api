@@ -1,6 +1,5 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
-import * as querystring from 'querystring';
 import * as express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
@@ -199,6 +198,7 @@ export async function startApiServer(opts: {
           v1.use('/debug', createDebugRouter(datastore));
           v1.use('/status', createStatusRouter(datastore));
           v1.use('/fee_rate', createFeeRateRouter(datastore));
+          v1.use('/tokens', createTokenRouter(datastore));
           v1.use('/burn_block', createBurnBlockRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
