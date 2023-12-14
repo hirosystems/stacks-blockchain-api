@@ -612,10 +612,61 @@ paths:
               schema:
                 $ref: ./api/microblocks/get-unanchored-txs.schema.json
 
+  /extended/v2/blocks:
+    get:
+      summary: Get blocks
+      description: |
+          Retrieves a list of recently mined blocks
+      tags:
+        - Blocks
+      operationId: get_blocks
+      parameters:
+        - name: limit
+          in: query
+          description: max number of blocks to fetch
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 30
+        - name: offset
+          in: query
+          description: index of first block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 10
+        - name: burn_block_hash
+          in: query
+          description: filter blocks by burn block hash
+          required: false
+          schema:
+            type: string
+            example: "0xb154c008df2101023a6d0d54986b3964cee58119eed14f5bed98e15678e18fe2"
+        - name: burn_block_height
+          in: query
+          description: filter blocks by burn block height
+          required: false
+          schema:
+            type: integer
+            example: 810344
+      responses:
+        200:
+          description: List of blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-nakamoto-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-nakamoto-blocks.example.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
+      deprecated: true
       description: |
+          **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
           Retrieves a list of recently mined blocks
 
           If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
@@ -718,7 +769,11 @@ paths:
           example: "0x00000000000000000002bba732926cf68b6eda3e2cdbc2a85af79f10efeeeb10"
     get:
       summary: Get block by burnchain block hash
-      description: Retrieves block details of a specific block for a given burnchain block hash
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
+        Retrieves block details of a specific block for a given burnchain block hash
       tags:
         - Blocks
       operationId: get_block_by_burn_block_hash
@@ -749,7 +804,11 @@ paths:
           example: 744603
     get:
       summary: Get block by burnchain height
-      description: Retrieves block details of a specific block for a given burn chain height
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
+        Retrieves block details of a specific block for a given burn chain height
       tags:
         - Blocks
       operationId: get_block_by_burn_block_height
