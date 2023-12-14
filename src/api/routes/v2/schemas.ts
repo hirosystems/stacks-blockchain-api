@@ -25,7 +25,7 @@ const BurnBlockHashParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
 });
-export type BurnBlockHashParam = Static<typeof BurnBlockHashParamSchema>;
+type BurnBlockHashParam = Static<typeof BurnBlockHashParamSchema>;
 export const CompiledBurnBlockHashParam = TypeCompiler.Compile(BurnBlockHashParamSchema);
 
 const BurnBlockHeightParamSchema = Type.RegExp(/^[0-9]+$/, {
@@ -33,8 +33,8 @@ const BurnBlockHeightParamSchema = Type.RegExp(/^[0-9]+$/, {
   description: 'Burn block height',
   examples: ['777678'],
 });
-export type BurnBlockHeightParam = Static<typeof BurnBlockHeightParamSchema>;
-export const CompiledBurnBlockHeightParam = TypeCompiler.Compile(BurnBlockHeightParamSchema);
+type BurnBlockHeightParam = Static<typeof BurnBlockHeightParamSchema>;
+const CompiledBurnBlockHeightParam = TypeCompiler.Compile(BurnBlockHeightParamSchema);
 
 // ==========================
 // Query and path params
