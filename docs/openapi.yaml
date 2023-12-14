@@ -612,14 +612,14 @@ paths:
               schema:
                 $ref: ./api/microblocks/get-unanchored-txs.schema.json
 
-  /extended/v1/burn_block:
+  /extended/v2/burn-blocks:
     get:
-      summary: Get recent burn blocks
+      summary: Get burn blocks
       description: |
           Retrieves a list of recent burn blocks
       tags:
         - Blocks
-      operationId: get_burn_block_list
+      operationId: get_burn_blocks
       parameters:
         - name: limit
           in: query
@@ -636,20 +636,6 @@ paths:
           schema:
             type: integer
             example: 42000
-        - name: height
-          in: query
-          description: filter by burn block height
-          required: false
-          schema:
-            type: integer
-            example: 42000
-        - name: hash
-          in: query
-          description: filter by burn block hash or the constant 'latest' to filter for the most recent burn block
-          required: false
-          schema:
-            type: string
-            example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
       responses:
         200:
           description: List of burn blocks
@@ -659,6 +645,34 @@ paths:
                 $ref: ./api/blocks/get-burn-blocks.schema.json
               example:
                 $ref: ./api/blocks/get-burn-blocks.example.json
+
+  /extended/v2/burn-blocks/{height_or_hash}:
+    get:
+      summary: Get burn block
+      description: Retrieves a single burn block
+      tags:
+        - Blocks
+      operationId: get_burn_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by burn block height, hash, or the constant `latest` to filter for the most recent burn block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: Burn block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/burn-block.schema.json
+              example:
+                $ref: ./entities/blocks/burn-block.example.json
 
   /extended/v2/blocks:
     get:

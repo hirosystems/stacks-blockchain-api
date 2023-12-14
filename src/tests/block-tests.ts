@@ -340,7 +340,7 @@ describe('block tests', () => {
       await db.update(dbBlock);
     }
 
-    const result = await supertest(api.server).get(`/extended/v1/burn_block/`);
+    const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
     expect(result.body.results).toEqual([
       {
         burn_block_hash: burnBlock2.burn_block_hash,
@@ -359,44 +359,38 @@ describe('block tests', () => {
     ]);
 
     // test 'latest' filter
-    const result2 = await supertest(api.server).get(`/extended/v1/burn_block?hash=latest`);
-    expect(result2.body.results).toEqual([
-      {
-        burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
-        burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
-        burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
-        burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
-        stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
-      },
-    ]);
+    const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
+    expect(result2.body).toEqual({
+      burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
+      burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
+      burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
+      stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+    });
 
     // test hash filter
     const result3 = await supertest(api.server).get(
-      `/extended/v1/burn_block?hash=${stacksBlock1.burn_block_hash}`
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
     );
-    expect(result3.body.results).toEqual([
-      {
-        burn_block_hash: stacksBlock1.burn_block_hash,
-        burn_block_height: stacksBlock1.burn_block_height,
-        burn_block_time: stacksBlock1.burn_block_time,
-        burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
-        stacks_blocks: [stacksBlock1.block_hash],
-      },
-    ]);
+    expect(result3.body).toEqual({
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+    });
 
     // test height filter
     const result4 = await supertest(api.server).get(
-      `/extended/v1/burn_block?height=${stacksBlock1.burn_block_height}`
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
     );
-    expect(result4.body.results).toEqual([
-      {
-        burn_block_hash: stacksBlock1.burn_block_hash,
-        burn_block_height: stacksBlock1.burn_block_height,
-        burn_block_time: stacksBlock1.burn_block_time,
-        burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
-        stacks_blocks: [stacksBlock1.block_hash],
-      },
-    ]);
+    expect(result4.body).toEqual({
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+    });
   });
 
   test('block tx list excludes non-canonical', async () => {

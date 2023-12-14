@@ -104,7 +104,13 @@ import {
   getPgConnectionEnvValue,
 } from './connection';
 import * as path from 'path';
-import { BlockLimitParam, BlocksQueryParams } from '../api/routes/v2/schemas';
+import {
+  BlockLimitParamSchema,
+  BlockPaginationQueryParams,
+  BlocksQueryParams,
+  BurnBlockParams,
+  CompiledBurnBlockHashParam,
+} from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -396,31 +402,49 @@ export class PgStore extends BasePgStore {
     return { found: true, result: block } as const;
   }
 
-  async getBurnBlocks({
-    limit,
-    offset,
-    height,
-    hash,
-  }: {
-    limit: number;
-    offset: number;
-    height: number | null;
-    hash: 'latest' | string | null;
-  }): Promise<{ results: DbBurnBlock[]; total: number }> {
+  async getBurnBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBurnBlock>> {
     return await this.sqlTransaction(async sql => {
-      const countQuery = await sql<{ burn_block_height: number; count: number }[]>`
-        SELECT burn_block_height, block_count AS count FROM chain_tip
+      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const blocksQuery = await sql<(DbBurnBlock & { total: number })[]>`
+        WITH block_count AS (
+          SELECT burn_block_height, block_count AS count FROM chain_tip
+        )
+        SELECT DISTINCT ON (burn_block_height)
+          burn_block_time,
+          burn_block_hash,
+          burn_block_height,
+          ARRAY_AGG(block_hash) OVER (
+            PARTITION BY burn_block_height
+            ORDER BY block_height DESC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+          ) AS stacks_blocks,
+          (SELECT count FROM block_count)::int AS total
+        FROM blocks
+        WHERE canonical = true
+        ORDER BY burn_block_height DESC, block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
       `;
-      const heightFilter = height ? sql`AND burn_block_height = ${height}` : sql``;
-      const hashFilter =
-        hash === 'latest'
-          ? sql`AND burn_block_height = ${countQuery[0].burn_block_height}`
-          : hash
-          ? sql`AND burn_block_hash = ${hash}`
-          : sql``;
+      const blocks = blocksQuery.map(r => r);
+      return {
+        limit,
+        offset,
+        results: blocks,
+        total: blocks[0].total,
+      };
+    });
+  }
 
-      const block_count = countQuery[0].count;
-      const blocksQuery = await sql<DbBurnBlock[]>`
+  async getBurnBlock(args: BurnBlockParams): Promise<DbBurnBlock | undefined> {
+    return await this.sqlTransaction(async sql => {
+      const filter =
+        args.height_or_hash === 'latest'
+          ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+          : CompiledBurnBlockHashParam.Check(args.height_or_hash)
+          ? sql`burn_block_hash = ${args.height_or_hash}`
+          : sql`burn_block_height = ${args.height_or_hash}`;
+      const blockQuery = await sql<DbBurnBlock[]>`
         SELECT DISTINCT ON (burn_block_height)
           burn_block_time,
           burn_block_hash,
@@ -431,18 +455,10 @@ export class PgStore extends BasePgStore {
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks
         FROM blocks
-        WHERE canonical = true
-        ${heightFilter}
-        ${hashFilter}
-        ORDER BY burn_block_height DESC, block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
+        WHERE canonical = true AND ${filter} 
+        LIMIT 1
       `;
-      const blocks = blocksQuery.map(r => r);
-      return {
-        results: blocks,
-        total: block_count,
-      };
+      if (blockQuery.count > 0) return blockQuery[0];
     });
   }
 
@@ -560,7 +576,7 @@ export class PgStore extends BasePgStore {
    */
   async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<BlockWithTransactionIds>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParam.default;
+      const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const burnBlockHashCond =
         'burn_block_hash' in args
@@ -622,6 +638,8 @@ export class PgStore extends BasePgStore {
       `;
       if (blocksQuery.count === 0)
         return {
+          limit,
+          offset,
           results: [],
           total: 0,
         };
@@ -630,6 +648,8 @@ export class PgStore extends BasePgStore {
         tx_ids: b.tx_ids ? b.tx_ids.split(',') : [],
       }));
       return {
+        limit,
+        offset,
         results: blocks,
         total: blocksQuery[0].total,
       };
