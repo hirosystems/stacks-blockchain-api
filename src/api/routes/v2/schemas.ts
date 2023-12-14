@@ -6,7 +6,7 @@ import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
 // Parameters
 // ==========================
 
-export const OffsetParam = Type.Integer({
+const OffsetParam = Type.Integer({
   minimum: 0,
   title: 'Offset',
   description: 'Result offset',
@@ -20,13 +20,13 @@ export const BlockLimitParam = Type.Integer({
   description: 'Blocks per page',
 });
 
-export const BurnBlockHashParam = Type.RegExp(/^[0]{8}[a-fA-F0-9]{56}$/, {
+const BurnBlockHashParam = Type.RegExp(/^[0]{8}[a-fA-F0-9]{56}$/, {
   title: 'Burn block hash',
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
 });
 
-export const BurnBlockHeightParam = Type.RegExp(/^[0-9]+$/, {
+const BurnBlockHeightParam = Type.RegExp(/^[0-9]+$/, {
   title: 'Burn block height',
   description: 'Burn block height',
   examples: ['777678'],
@@ -45,7 +45,7 @@ const PaginationParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 
-export const BlocksQueryParamsSchema = Type.Union([
+const BlocksQueryParamsSchema = Type.Union([
   PaginationParamsSchema,
   Type.Composite(
     [
