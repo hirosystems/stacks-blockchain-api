@@ -16,6 +16,7 @@ import {
   AbstractTransaction,
   BaseTransaction,
   Block,
+  BurnBlock,
   CoinbaseTransactionMetadata,
   ContractCallTransactionMetadata,
   MempoolTransaction,
@@ -59,14 +60,13 @@ import {
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
-  DbPox2Event,
-  DbPox3Event,
+  DbPoxSyntheticEvent,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
-import { Pox2EventName } from '../../pox-helpers';
+import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
 import { BlocksQueryParams } from '../routes/v2/schemas';
 
@@ -122,9 +122,7 @@ function getTxTenureChangeCauseString(cause: number) {
     case 0:
       return 'block_found';
     case 1:
-      return 'no_block_found';
-    case 2:
-      return 'null_miner';
+      return 'extended';
     default:
       throw new Error(`Unexpected tenure change cause value ${cause}`);
   }
@@ -194,7 +192,7 @@ export function getAssetEventTypeString(
   }
 }
 
-export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
+export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
   const baseInfo = {
     block_height: poxEvent.block_height,
     tx_id: poxEvent.tx_id,
@@ -209,7 +207,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
     name: poxEvent.name,
   };
   switch (poxEvent.name) {
-    case Pox2EventName.HandleUnlock: {
+    case SyntheticPoxEventName.HandleUnlock: {
       return {
         ...baseInfo,
         data: {
@@ -218,7 +216,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackStx: {
+    case SyntheticPoxEventName.StackStx: {
       return {
         ...baseInfo,
         data: {
@@ -229,7 +227,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackIncrease: {
+    case SyntheticPoxEventName.StackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -238,7 +236,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackExtend: {
+    case SyntheticPoxEventName.StackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -247,7 +245,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStx: {
+    case SyntheticPoxEventName.DelegateStx: {
       return {
         ...baseInfo,
         data: {
@@ -257,7 +255,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackStx: {
+    case SyntheticPoxEventName.DelegateStackStx: {
       return {
         ...baseInfo,
         data: {
@@ -269,7 +267,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackIncrease: {
+    case SyntheticPoxEventName.DelegateStackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -279,7 +277,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackExtend: {
+    case SyntheticPoxEventName.DelegateStackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -289,7 +287,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommit: {
+    case SyntheticPoxEventName.StackAggregationCommit: {
       return {
         ...baseInfo,
         data: {
@@ -298,7 +296,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
       return {
         ...baseInfo,
         data: {
@@ -307,17 +305,26 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationIncrease: {
+    case SyntheticPoxEventName.StackAggregationIncrease: {
       return {
         ...baseInfo,
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
         },
       };
     }
     default:
-      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
+      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPoxSyntheticEvent).name}`);
   }
 }
 
@@ -528,6 +535,35 @@ export async function getMicroblockFromDataStore({
   return {
     found: true,
     result: microblock,
+  };
+}
+
+export async function getBurnBlocksFromDataStore(args: {
+  db: PgStore;
+  limit: number;
+  offset: number;
+  height: number | null;
+  hash: 'latest' | string | null;
+}): Promise<{ total: number; results: BurnBlock[] }> {
+  const query = await args.db.getBurnBlocks({
+    limit: args.limit,
+    offset: args.offset,
+    height: args.height,
+    hash: args.hash,
+  });
+  const results = query.results.map(r => {
+    const burnBlock: BurnBlock = {
+      burn_block_time: r.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(r.burn_block_time),
+      burn_block_hash: r.burn_block_hash,
+      burn_block_height: r.burn_block_height,
+      stacks_blocks: r.stacks_blocks,
+    };
+    return burnBlock;
+  });
+  return {
+    total: query.total,
+    results,
   };
 }
 
@@ -931,6 +967,18 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
       const metadata: TenureChangeTransactionMetadata = {
         tx_type: 'tenure_change',
         tenure_change_payload: {
+          tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_tenure_consensus_hash'
+          ),
+          prev_tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_prev_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_prev_tenure_consensus_hash'
+          ),
+          burn_view_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_burn_view_consensus_hash,
+            () => 'Unexpected nullish tenure_change_burn_view_consensus_hash'
+          ),
           previous_tenure_end: unwrapOptional(
             dbTx.tenure_change_previous_tenure_end,
             () => 'Unexpected nullish tenure_change_previous_tenure_end'

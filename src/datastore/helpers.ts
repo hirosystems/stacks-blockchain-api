@@ -14,19 +14,19 @@ import {
   DbMempoolTxRaw,
   DbMicroblock,
   DbNftEvent,
-  DbPox2BaseEventData,
-  DbPox2DelegateStackExtendEvent,
-  DbPox2DelegateStackIncreaseEvent,
-  DbPox2DelegateStackStxEvent,
-  DbPox2DelegateStxEvent,
-  DbPox2Event,
-  DbPox2HandleUnlockEvent,
-  DbPox2StackAggregationCommitEvent,
-  DbPox2StackAggregationCommitIndexedEvent,
-  DbPox2StackAggregationIncreaseEvent,
-  DbPox2StackExtendEvent,
-  DbPox2StackIncreaseEvent,
-  DbPox2StackStxEvent,
+  DbPoxSyntheticBaseEventData,
+  DbPoxSyntheticDelegateStackExtendEvent,
+  DbPoxSyntheticDelegateStackIncreaseEvent,
+  DbPoxSyntheticDelegateStackStxEvent,
+  DbPoxSyntheticDelegateStxEvent,
+  DbPoxSyntheticEvent,
+  DbPoxSyntheticHandleUnlockEvent,
+  DbPoxSyntheticStackAggregationCommitEvent,
+  DbPoxSyntheticStackAggregationCommitIndexedEvent,
+  DbPoxSyntheticStackAggregationIncreaseEvent,
+  DbPoxSyntheticStackExtendEvent,
+  DbPoxSyntheticStackIncreaseEvent,
+  DbPoxSyntheticStackStxEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
@@ -39,8 +39,9 @@ import {
   FaucetRequestQueryResult,
   MempoolTxQueryResult,
   MicroblockQueryResult,
-  Pox2EventQueryResult,
+  PoxSyntheticEventQueryResult,
   TxQueryResult,
+  DbPoxSyntheticRevokeDelegateStxEvent,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -60,7 +61,7 @@ import * as prom from 'prom-client';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
 import { PgSqlClient } from '@hirosystems/api-toolkit';
 
@@ -103,6 +104,9 @@ export const TX_COLUMNS = [
   'coinbase_payload',
   'coinbase_alt_recipient',
   'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
   'tenure_change_previous_tenure_end',
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
@@ -148,6 +152,9 @@ export const MEMPOOL_TX_COLUMNS = [
   'coinbase_payload',
   'coinbase_alt_recipient',
   'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
   'tenure_change_previous_tenure_end',
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
@@ -200,6 +207,7 @@ export const TX_METADATA_TABLES = [
   'nft_events',
   'pox2_events',
   'pox3_events',
+  'pox4_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',
@@ -208,7 +216,7 @@ export const TX_METADATA_TABLES = [
   'subdomains',
 ] as const;
 
-export const POX2_EVENT_COLUMNS = [
+export const POX_SYNTHETIC_EVENT_COLUMNS = [
   'event_index',
   'tx_id',
   'tx_index',
@@ -240,8 +248,6 @@ export const POX2_EVENT_COLUMNS = [
   'reward_cycle',
   'amount_ustx',
 ];
-
-export const POX3_EVENT_COLUMNS = POX2_EVENT_COLUMNS;
 
 /**
  * Adds a table name prefix to an array of column names.
@@ -391,6 +397,10 @@ function parseTxTypeSpecificQueryResult(
     }
     target.coinbase_vrf_proof = result.coinbase_vrf_proof;
   } else if (target.type_id === DbTxTypeId.TenureChange) {
+    target.tenure_change_tenure_consensus_hash = result.tenure_change_tenure_consensus_hash;
+    target.tenure_change_prev_tenure_consensus_hash =
+      result.tenure_change_prev_tenure_consensus_hash;
+    target.tenure_change_burn_view_consensus_hash = result.tenure_change_burn_view_consensus_hash;
     target.tenure_change_previous_tenure_end = result.tenure_change_previous_tenure_end;
     target.tenure_change_previous_tenure_blocks = result.tenure_change_previous_tenure_blocks;
     target.tenure_change_cause = result.tenure_change_cause;
@@ -606,7 +616,7 @@ export function parseDbEvents(
   return events;
 }
 
-export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
+export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbPoxSyntheticEvent {
   const baseEvent: DbEventBase = {
     event_index: row.event_index,
     tx_id: row.tx_id,
@@ -614,7 +624,7 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     block_height: row.block_height,
     canonical: row.canonical,
   };
-  const basePox2Event: DbPox2BaseEventData = {
+  const basePoxEvent: DbPoxSyntheticBaseEventData = {
     stacker: row.stacker,
     locked: BigInt(row.locked ?? 0),
     balance: BigInt(row.balance),
@@ -622,11 +632,11 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     pox_addr: row.pox_addr ?? null,
     pox_addr_raw: row.pox_addr_raw ?? null,
   };
-  const rowName = row.name as Pox2EventName;
+  const rowName = row.name as SyntheticPoxEventName;
   switch (rowName) {
-    case Pox2EventName.HandleUnlock: {
-      const eventData: DbPox2HandleUnlockEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.HandleUnlock: {
+      const eventData: DbPoxSyntheticHandleUnlockEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           first_cycle_locked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
@@ -638,9 +648,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackStx: {
-      const eventData: DbPox2StackStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackStx: {
+      const eventData: DbPoxSyntheticStackStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
@@ -654,9 +664,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackIncrease: {
-      const eventData: DbPox2StackIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackIncrease: {
+      const eventData: DbPoxSyntheticStackIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
@@ -668,9 +678,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackExtend: {
-      const eventData: DbPox2StackExtendEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackExtend: {
+      const eventData: DbPoxSyntheticStackExtendEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
@@ -682,9 +692,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStx: {
-      const eventData: DbPox2DelegateStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStx: {
+      const eventData: DbPoxSyntheticDelegateStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
@@ -699,9 +709,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackStx: {
-      const eventData: DbPox2DelegateStackStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackStx: {
+      const eventData: DbPoxSyntheticDelegateStackStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
@@ -716,9 +726,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackIncrease: {
-      const eventData: DbPox2DelegateStackIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackIncrease: {
+      const eventData: DbPoxSyntheticDelegateStackIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
@@ -731,9 +741,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackExtend: {
-      const eventData: DbPox2DelegateStackExtendEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackExtend: {
+      const eventData: DbPoxSyntheticDelegateStackExtendEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
@@ -746,9 +756,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationCommit: {
-      const eventData: DbPox2StackAggregationCommitEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationCommit: {
+      const eventData: DbPoxSyntheticStackAggregationCommitEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
@@ -760,9 +770,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
-      const eventData: DbPox2StackAggregationCommitIndexedEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
+      const eventData: DbPoxSyntheticStackAggregationCommitIndexedEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
@@ -774,13 +784,28 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationIncrease: {
-      const eventData: DbPox2StackAggregationIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationIncrease: {
+      const eventData: DbPoxSyntheticStackAggregationIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      const eventData: DbPoxSyntheticRevokeDelegateStxEvent = {
+        ...basePoxEvent,
+        name: rowName,
+        data: {
+          // TODO: figure out what data is available for this event
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          delegate_to: unwrapOptionalProp(row, 'delegate_to'),
         },
       };
       return {
@@ -1032,6 +1057,9 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       break;
     }
     case TxPayloadTypeID.TenureChange: {
+      dbTx.tenure_change_tenure_consensus_hash = txData.payload.tenure_consensus_hash;
+      dbTx.tenure_change_prev_tenure_consensus_hash = txData.payload.prev_tenure_consensus_hash;
+      dbTx.tenure_change_burn_view_consensus_hash = txData.payload.burn_view_consensus_hash;
       dbTx.tenure_change_previous_tenure_end = txData.payload.previous_tenure_end;
       dbTx.tenure_change_previous_tenure_blocks = txData.payload.previous_tenure_blocks;
       dbTx.tenure_change_cause = txData.payload.cause;

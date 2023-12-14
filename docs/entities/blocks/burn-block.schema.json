@@ -1,0 +1,38 @@
+{
+  "title": "BurnBlock",
+  "description": "A burn block",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "burn_block_time",
+    "burn_block_time_iso",
+    "burn_block_hash",
+    "burn_block_height",
+    "stacks_blocks"
+  ],
+  "properties": {
+    "burn_block_time": {
+      "type": "number",
+      "description": "Unix timestamp (in seconds) indicating when this block was mined."
+    },
+    "burn_block_time_iso": {
+      "type": "string",
+      "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined."
+    },
+    "burn_block_hash": {
+      "type": "string",
+      "description": "Hash of the anchor chain block"
+    },
+    "burn_block_height": {
+      "type": "integer",
+      "description": "Height of the anchor chain block"
+    },
+    "stacks_blocks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Hashes of the Stacks blocks included in the burn block"
+    }
+  }
+}

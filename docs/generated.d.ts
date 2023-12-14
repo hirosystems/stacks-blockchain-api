@@ -13,6 +13,7 @@ export type SchemaMergeRootStub =
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | BlockListResponse
+  | BurnBlockListResponse
   | NakamotoBlockListResponse
   | BnsError
   | BnsFetchFileZoneResponse
@@ -115,6 +116,7 @@ export type SchemaMergeRootStub =
   | NftBalance
   | StxBalance
   | Block
+  | BurnBlock
   | NakamotoBlock
   | BurnchainRewardSlotHolder
   | BurnchainReward
@@ -1133,6 +1135,18 @@ export interface TenureChangeTransactionMetadata {
   tx_type: "tenure_change";
   tenure_change_payload?: {
     /**
+     * Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen.
+     */
+    tenure_consensus_hash: string;
+    /**
+     * Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit.
+     */
+    prev_tenure_consensus_hash: string;
+    /**
+     * Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition.
+     */
+    burn_view_consensus_hash: string;
+    /**
      * (Hex string) Stacks Block hash
      */
     previous_tenure_end: string;
@@ -1143,7 +1157,7 @@ export interface TenureChangeTransactionMetadata {
     /**
      * Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.
      */
-    cause: "block_found" | "no_block_found" | "null_miner";
+    cause: "block_found" | "extended";
     /**
      * (Hex string) The ECDSA public key hash of the current tenure.
      */
@@ -1275,6 +1289,49 @@ export interface Block {
   microblock_tx_count: {
     [k: string]: number | undefined;
   };
+}
+/**
+ * GET request that returns burn blocks
+ */
+export interface BurnBlockListResponse {
+  /**
+   * The number of burn blocks to return
+   */
+  limit: number;
+  /**
+   * The number to burn blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of burn blocks available (regardless of filter parameters)
+   */
+  total: number;
+  results: BurnBlock[];
+}
+/**
+ * A burn block
+ */
+export interface BurnBlock {
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Hashes of the Stacks blocks included in the burn block
+   */
+  stacks_blocks: string[];
 }
 /**
  * GET request that returns blocks
@@ -1762,6 +1819,7 @@ export interface ServerStatusResponse {
   status: string;
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
+  pox_v3_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**

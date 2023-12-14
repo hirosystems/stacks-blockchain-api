@@ -1,17 +1,18 @@
 import {
-  DbPox2BaseEventData,
-  DbPox2DelegateStackExtendEvent,
-  DbPox2DelegateStackIncreaseEvent,
-  DbPox2DelegateStackStxEvent,
-  DbPox2DelegateStxEvent,
-  DbPox2EventData,
-  DbPox2HandleUnlockEvent,
-  DbPox2StackAggregationCommitEvent,
-  DbPox2StackAggregationCommitIndexedEvent,
-  DbPox2StackAggregationIncreaseEvent,
-  DbPox2StackExtendEvent,
-  DbPox2StackIncreaseEvent,
-  DbPox2StackStxEvent,
+  DbPoxSyntheticBaseEventData,
+  DbPoxSyntheticDelegateStackExtendEvent,
+  DbPoxSyntheticDelegateStackIncreaseEvent,
+  DbPoxSyntheticDelegateStackStxEvent,
+  DbPoxSyntheticDelegateStxEvent,
+  DbPoxSyntheticEventData,
+  DbPoxSyntheticHandleUnlockEvent,
+  DbPoxSyntheticRevokeDelegateStxEvent,
+  DbPoxSyntheticStackAggregationCommitEvent,
+  DbPoxSyntheticStackAggregationCommitIndexedEvent,
+  DbPoxSyntheticStackAggregationIncreaseEvent,
+  DbPoxSyntheticStackExtendEvent,
+  DbPoxSyntheticStackIncreaseEvent,
+  DbPoxSyntheticStackStxEvent,
 } from '../datastore/common';
 import {
   ClarityTypeID,
@@ -29,12 +30,15 @@ import {
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
 import { bufferToHex, coerceToBuffer } from '@hirosystems/api-toolkit';
 
 function tryClarityPoxAddressToBtcAddress(
-  poxAddr: Pox2Addr | ClarityValueOptionalSome<Pox2Addr> | ClarityValueOptionalNone,
+  poxAddr:
+    | PoxSyntheticEventAddr
+    | ClarityValueOptionalSome<PoxSyntheticEventAddr>
+    | ClarityValueOptionalNone,
   network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
 ): { btcAddr: string | null; raw: Buffer } {
   let btcAddr: string | null = null;
@@ -68,12 +72,12 @@ function tryClarityPoxAddressToBtcAddress(
   };
 }
 
-type Pox2Addr = ClarityValueTuple<{
+type PoxSyntheticEventAddr = ClarityValueTuple<{
   hashbytes: ClarityValueBuffer;
   version: ClarityValueBuffer;
 }>;
 
-type PoX2EventData = ClarityValueTuple<{
+type PoXSyntheticEventData = ClarityValueTuple<{
   name: ClarityValueStringAscii;
   balance: ClarityValueUInt;
   stacker: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
@@ -82,67 +86,72 @@ type PoX2EventData = ClarityValueTuple<{
   data: ClarityValueTuple;
 }>;
 
-interface Pox2PrintEventTypes {
-  [Pox2EventName.HandleUnlock]: {
+interface PoxSyntheticPrintEventTypes {
+  [SyntheticPoxEventName.HandleUnlock]: {
     'first-cycle-locked': ClarityValueUInt;
     'first-unlocked-cycle': ClarityValueUInt;
   };
-  [Pox2EventName.StackStx]: {
+  [SyntheticPoxEventName.StackStx]: {
     'lock-amount': ClarityValueUInt;
     'lock-period': ClarityValueUInt;
-    'pox-addr': Pox2Addr;
+    'pox-addr': PoxSyntheticEventAddr;
     'start-burn-height': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
   };
-  [Pox2EventName.StackIncrease]: {
+  [SyntheticPoxEventName.StackIncrease]: {
     'increase-by': ClarityValueUInt;
     'total-locked': ClarityValueUInt;
   };
-  [Pox2EventName.StackExtend]: {
+  [SyntheticPoxEventName.StackExtend]: {
     'extend-count': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
-    'pox-addr': Pox2Addr;
+    'pox-addr': PoxSyntheticEventAddr;
   };
-  [Pox2EventName.DelegateStx]: {
+  [SyntheticPoxEventName.DelegateStx]: {
     'amount-ustx': ClarityValueUInt;
     'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
     'unlock-burn-height': ClarityValueOptionalSome<ClarityValueUInt> | ClarityValueOptionalNone;
-    'pox-addr': Pox2Addr | ClarityValueOptionalNone;
+    'pox-addr': PoxSyntheticEventAddr | ClarityValueOptionalNone;
   };
-  [Pox2EventName.DelegateStackStx]: {
+  [SyntheticPoxEventName.DelegateStackStx]: {
     'lock-amount': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
-    'pox-addr': Pox2Addr;
+    'pox-addr': PoxSyntheticEventAddr;
     'start-burn-height': ClarityValueUInt;
     'lock-period': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
-  [Pox2EventName.DelegateStackIncrease]: {
-    'pox-addr': Pox2Addr;
+  [SyntheticPoxEventName.DelegateStackIncrease]: {
+    'pox-addr': PoxSyntheticEventAddr;
     'increase-by': ClarityValueUInt;
     'total-locked': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
-  [Pox2EventName.DelegateStackExtend]: {
-    'pox-addr': Pox2Addr;
+  [SyntheticPoxEventName.DelegateStackExtend]: {
+    'pox-addr': PoxSyntheticEventAddr;
     'unlock-burn-height': ClarityValueUInt;
     'extend-count': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
-  [Pox2EventName.StackAggregationCommit]: {
-    'pox-addr': Pox2Addr;
+  [SyntheticPoxEventName.StackAggregationCommit]: {
+    'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
   };
-  [Pox2EventName.StackAggregationCommitIndexed]: {
-    'pox-addr': Pox2Addr;
+  [SyntheticPoxEventName.StackAggregationCommitIndexed]: {
+    'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
   };
-  [Pox2EventName.StackAggregationIncrease]: {
-    'pox-addr': Pox2Addr;
+  [SyntheticPoxEventName.StackAggregationIncrease]: {
+    'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
+  };
+  [SyntheticPoxEventName.RevokeDelegateStx]: {
+    'amount-ustx': ClarityValueUInt;
+    'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'pox-addr': PoxSyntheticEventAddr | ClarityValueOptionalNone;
   };
 }
 
@@ -163,29 +172,29 @@ function clarityPrincipalToFullAddress(
 // https://github.com/stacks-network/stacks-blockchain/pull/3318
 const PATCH_EVENT_BALANCES = true;
 
-export function decodePox2PrintEvent(
+export function decodePoxSyntheticPrintEvent(
   rawClarityData: string,
   network: 'mainnet' | 'testnet' | 'devnet' | 'mocknet'
-): DbPox2EventData | null {
+): DbPoxSyntheticEventData | null {
   const decoded = decodeClarityValue<ClarityValueResponse>(rawClarityData);
   if (decoded.type_id === ClarityTypeID.ResponseError) {
-    logger.info(`Received ResponseError when decoding Pox2 print event: ${decoded.repr}`);
+    logger.info(`Received ResponseError when decoding Pox synthetic print event: ${decoded.repr}`);
     return null;
   }
   if (decoded.type_id !== ClarityTypeID.ResponseOk) {
     const valCommon: ClarityValueAbstract = decoded;
     throw new Error(
-      `Unexpected PoX2 event Clarity type ID, expected ResponseOk, got ${valCommon.type_id}: ${valCommon.repr}`
+      `Unexpected PoX synthetic event Clarity type ID, expected ResponseOk, got ${valCommon.type_id}: ${valCommon.repr}`
     );
   }
   if (decoded.value.type_id !== ClarityTypeID.Tuple) {
     throw new Error(
-      `Unexpected PoX2 event Clarity type ID, expected Tuple, got ${decoded.value.type_id}`
+      `Unexpected PoX synthetic event Clarity type ID, expected Tuple, got ${decoded.value.type_id}`
     );
   }
-  const opData = (decoded.value as PoX2EventData).data;
+  const opData = (decoded.value as PoXSyntheticEventData).data;
 
-  const baseEventData: DbPox2BaseEventData = {
+  const baseEventData: DbPoxSyntheticBaseEventData = {
     stacker: clarityPrincipalToFullAddress(opData.stacker),
     locked: BigInt(opData.locked.value),
     balance: BigInt(opData.balance.value),
@@ -194,24 +203,24 @@ export function decodePox2PrintEvent(
     pox_addr_raw: null,
   };
 
-  const eventName = opData.name.data as keyof Pox2PrintEventTypes;
+  const eventName = opData.name.data as keyof PoxSyntheticPrintEventTypes;
   if (opData.name.type_id !== ClarityTypeID.StringAscii) {
     throw new Error(
-      `Unexpected PoX2 event name type, expected StringAscii, got ${opData.name.type_id}`
+      `Unexpected PoX synthetic event name type, expected StringAscii, got ${opData.name.type_id}`
     );
   }
 
   const eventData = opData.data.data;
   if (opData.data.type_id !== ClarityTypeID.Tuple) {
     throw new Error(
-      `Unexpected PoX2 event data payload type, expected Tuple, got ${opData.data.type_id}`
+      `Unexpected PoX synthetic event data payload type, expected Tuple, got ${opData.data.type_id}`
     );
   }
 
   if ('pox-addr' in eventData) {
     const eventPoxAddr = eventData['pox-addr'] as
-      | Pox2Addr
-      | ClarityValueOptionalSome<Pox2Addr>
+      | PoxSyntheticEventAddr
+      | ClarityValueOptionalSome<PoxSyntheticEventAddr>
       | ClarityValueOptionalNone;
     const encodedArr = tryClarityPoxAddressToBtcAddress(eventPoxAddr, network);
     baseEventData.pox_addr = encodedArr.btcAddr;
@@ -219,9 +228,9 @@ export function decodePox2PrintEvent(
   }
 
   switch (eventName) {
-    case Pox2EventName.HandleUnlock: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2HandleUnlockEvent = {
+    case SyntheticPoxEventName.HandleUnlock: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticHandleUnlockEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -235,9 +244,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.StackStx: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackStxEvent = {
+    case SyntheticPoxEventName.StackStx: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackStxEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -254,9 +263,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.StackIncrease: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackIncreaseEvent = {
+    case SyntheticPoxEventName.StackIncrease: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -270,9 +279,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.StackExtend: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackExtendEvent = {
+    case SyntheticPoxEventName.StackExtend: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackExtendEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -285,9 +294,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.DelegateStx: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2DelegateStxEvent = {
+    case SyntheticPoxEventName.DelegateStx: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticDelegateStxEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -306,9 +315,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.DelegateStackStx: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2DelegateStackStxEvent = {
+    case SyntheticPoxEventName.DelegateStackStx: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticDelegateStackStxEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -326,9 +335,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.DelegateStackIncrease: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2DelegateStackIncreaseEvent = {
+    case SyntheticPoxEventName.DelegateStackIncrease: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticDelegateStackIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -343,9 +352,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.DelegateStackExtend: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2DelegateStackExtendEvent = {
+    case SyntheticPoxEventName.DelegateStackExtend: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticDelegateStackExtendEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -359,9 +368,9 @@ export function decodePox2PrintEvent(
       }
       return parsedData;
     }
-    case Pox2EventName.StackAggregationCommit: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackAggregationCommitEvent = {
+    case SyntheticPoxEventName.StackAggregationCommit: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackAggregationCommitEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -371,9 +380,9 @@ export function decodePox2PrintEvent(
       };
       return parsedData;
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackAggregationCommitIndexedEvent = {
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackAggregationCommitIndexedEvent = {
         ...baseEventData,
         name: eventName,
         data: {
@@ -383,19 +392,31 @@ export function decodePox2PrintEvent(
       };
       return parsedData;
     }
-    case Pox2EventName.StackAggregationIncrease: {
-      const d = eventData as Pox2PrintEventTypes[typeof eventName];
-      const parsedData: DbPox2StackAggregationIncreaseEvent = {
+    case SyntheticPoxEventName.StackAggregationIncrease: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticStackAggregationIncreaseEvent = {
         ...baseEventData,
         name: eventName,
         data: {
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
+        },
+      };
+      return parsedData;
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      const d = eventData as PoxSyntheticPrintEventTypes[typeof eventName];
+      const parsedData: DbPoxSyntheticRevokeDelegateStxEvent = {
+        ...baseEventData,
+        name: eventName,
+        data: {
+          amount_ustx: BigInt(d['amount-ustx'].value),
+          delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
         },
       };
       return parsedData;
     }
     default:
-      throw new Error(`Unexpected PoX-2 event data name: ${opData.name.data}`);
+      throw new Error(`Unexpected PoX synthetic event data name: ${opData.name.data}`);
   }
 }

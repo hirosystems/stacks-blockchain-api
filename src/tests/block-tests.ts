@@ -9,7 +9,7 @@ import {
   DataStoreBlockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { I32_MAX } from '../helpers';
+import { I32_MAX, unixEpochToIso } from '../helpers';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
@@ -276,6 +276,129 @@ describe('block tests', () => {
     expect(result.body).toEqual(expectedResp);
   });
 
+  test('/burn_block', async () => {
+    const burnBlock1 = {
+      burn_block_hash: '0x5678111111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 5,
+      burn_block_time: 1702386592,
+    };
+    const burnBlock2 = {
+      burn_block_hash: '0x5678211111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 7,
+      burn_block_time: 1702386678,
+    };
+
+    const stacksBlock1 = {
+      block_height: 1,
+      block_hash: '0x1234111111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd111111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      burn_block_hash: burnBlock1.burn_block_hash,
+      burn_block_height: burnBlock1.burn_block_height,
+      burn_block_time: burnBlock1.burn_block_time,
+    };
+    const stacksBlock2 = {
+      block_height: 2,
+      block_hash: '0x1234211111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd211111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock1.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock3 = {
+      block_height: 3,
+      block_hash: '0x1234311111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd311111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock2.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock4 = {
+      block_height: 4,
+      block_hash: '0x1234411111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd411111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock3.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+
+    const stacksBlocks = [stacksBlock1, stacksBlock2, stacksBlock3, stacksBlock4];
+
+    for (const block of stacksBlocks) {
+      const dbBlock = new TestBlockBuilder({
+        block_hash: block.block_hash,
+        index_block_hash: block.index_block_hash,
+        parent_index_block_hash: block.parent_index_block_hash,
+        block_height: block.block_height,
+        burn_block_hash: block.burn_block_hash,
+        burn_block_height: block.burn_block_height,
+        burn_block_time: block.burn_block_time,
+      }).build();
+      await db.update(dbBlock);
+    }
+
+    const result = await supertest(api.server).get(`/extended/v1/burn_block/`);
+    expect(result.body.results).toEqual([
+      {
+        burn_block_hash: burnBlock2.burn_block_hash,
+        burn_block_height: burnBlock2.burn_block_height,
+        burn_block_time: burnBlock2.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock2.burn_block_time),
+        stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      },
+      {
+        burn_block_hash: burnBlock1.burn_block_hash,
+        burn_block_height: burnBlock1.burn_block_height,
+        burn_block_time: burnBlock1.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock1.burn_block_time),
+        stacks_blocks: [stacksBlock1.block_hash],
+      },
+    ]);
+
+    // test 'latest' filter
+    const result2 = await supertest(api.server).get(`/extended/v1/burn_block?hash=latest`);
+    expect(result2.body.results).toEqual([
+      {
+        burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
+        burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
+        burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
+        stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      },
+    ]);
+
+    // test hash filter
+    const result3 = await supertest(api.server).get(
+      `/extended/v1/burn_block?hash=${stacksBlock1.burn_block_hash}`
+    );
+    expect(result3.body.results).toEqual([
+      {
+        burn_block_hash: stacksBlock1.burn_block_hash,
+        burn_block_height: stacksBlock1.burn_block_height,
+        burn_block_time: stacksBlock1.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+        stacks_blocks: [stacksBlock1.block_hash],
+      },
+    ]);
+
+    // test height filter
+    const result4 = await supertest(api.server).get(
+      `/extended/v1/burn_block?height=${stacksBlock1.burn_block_height}`
+    );
+    expect(result4.body.results).toEqual([
+      {
+        burn_block_hash: stacksBlock1.burn_block_hash,
+        burn_block_height: stacksBlock1.burn_block_height,
+        burn_block_time: stacksBlock1.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+        stacks_blocks: [stacksBlock1.block_hash],
+      },
+    ]);
+  });
+
   test('block tx list excludes non-canonical', async () => {
     const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
       .addTx({ tx_id: '0x0001' })
@@ -480,6 +603,7 @@ describe('block tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx2,
@@ -493,6 +617,7 @@ describe('block tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
