@@ -20,7 +20,7 @@ export const BlockLimitParam = Type.Integer({
   description: 'Blocks per page',
 });
 
-const BurnBlockHashParam = Type.RegExp(/^[0]{8}[a-fA-F0-9]{56}$/, {
+const BurnBlockHashParam = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
   title: 'Burn block hash',
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
