@@ -555,8 +555,8 @@ export class PgStore extends BasePgStore {
   }
 
   /**
-   * Returns Block information with metadata, including accepted and streamed microblocks hash
-   * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   * Returns Block information with transaction IDs
+   * @returns Paginated `BlockWithTransactionIds` array
    */
   async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<BlockWithTransactionIds>> {
     return await this.sqlTransaction(async sql => {
@@ -565,7 +565,7 @@ export class PgStore extends BasePgStore {
       const burnBlockHashCond =
         'burn_block_hash' in args
           ? sql`burn_block_hash = ${
-              args.burn_block_hash == 'latest'
+              args.burn_block_hash === 'latest'
                 ? sql`(SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
                 : sql`${normalizeHashString(args.burn_block_hash)}`
             }`
@@ -573,7 +573,7 @@ export class PgStore extends BasePgStore {
       const burnBlockHeightCond =
         'burn_block_height' in args
           ? sql`burn_block_height = ${
-              args.burn_block_height == 'latest'
+              args.burn_block_height === 'latest'
                 ? sql`(SELECT burn_block_height FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
                 : sql`${args.burn_block_height}`
             }`

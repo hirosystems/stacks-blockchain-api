@@ -46,6 +46,7 @@ import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
 import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
+import { createBurnBlockRouter } from './routes/burn-block';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -198,11 +199,12 @@ export async function startApiServer(opts: {
           v1.use('/debug', createDebugRouter(datastore));
           v1.use('/status', createStatusRouter(datastore));
           v1.use('/fee_rate', createFeeRateRouter(datastore));
+          v1.use('/burn_block', createBurnBlockRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
-          router.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
-          router.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
-          router.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
+          v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
+          v1.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
+          v1.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
           const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
             // Redirect old pox routes paths to new one above
             const newPath = req.path === '/' ? '/events' : req.path;
@@ -210,9 +212,9 @@ export async function startApiServer(opts: {
             const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
             return res.redirect(redirectPath);
           };
-          router.use('/pox2_events', legacyPoxPathRouter);
-          router.use('/pox3_events', legacyPoxPathRouter);
-          router.use('/pox4_events', legacyPoxPathRouter);
+          v1.use('/pox2_events', legacyPoxPathRouter);
+          v1.use('/pox3_events', legacyPoxPathRouter);
+          v1.use('/pox4_events', legacyPoxPathRouter);
 
           if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
             v1.use('/faucets', createFaucetRouter(writeDatastore));
