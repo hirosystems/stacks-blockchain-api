@@ -15,12 +15,14 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
+  normalizeHashString,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
   AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
+  BlockWithTransactionIds,
   BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
@@ -44,8 +46,7 @@ import {
   DbMicroblock,
   DbMinerReward,
   DbNftEvent,
-  DbPoxSyntheticEvent,
-  DbPoxStacker,
+  DbPaginatedResult,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -70,6 +71,8 @@ import {
   StxUnlockEvent,
   TransferQueryResult,
   PoxSyntheticEventTable,
+  DbPoxStacker,
+  DbPoxSyntheticEvent,
 } from './common';
 import {
   abiColumn,
@@ -101,6 +104,7 @@ import {
   getPgConnectionEnvValue,
 } from './connection';
 import * as path from 'path';
+import { BlockLimitParam, BlocksQueryParams } from '../api/routes/v2/schemas';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -547,6 +551,88 @@ export class PgStore extends BasePgStore {
         total: block_count,
       };
       return results;
+    });
+  }
+
+  /**
+   * Returns Block information with transaction IDs
+   * @returns Paginated `BlockWithTransactionIds` array
+   */
+  async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<BlockWithTransactionIds>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? BlockLimitParam.default;
+      const offset = args.offset ?? 0;
+      const burnBlockHashCond =
+        'burn_block_hash' in args
+          ? sql`burn_block_hash = ${
+              args.burn_block_hash === 'latest'
+                ? sql`(SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+                : sql`${normalizeHashString(args.burn_block_hash)}`
+            }`
+          : undefined;
+      const burnBlockHeightCond =
+        'burn_block_height' in args
+          ? sql`burn_block_height = ${
+              args.burn_block_height === 'latest'
+                ? sql`(SELECT burn_block_height FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+                : sql`${args.burn_block_height}`
+            }`
+          : undefined;
+
+      // Obtain blocks and transaction counts in the same query.
+      const blocksQuery = await sql<
+        (BlockQueryResult & {
+          tx_ids: string;
+          microblocks_accepted: string;
+          microblocks_streamed: string;
+          total: number;
+        })[]
+      >`
+        WITH block_count AS (
+          ${
+            'burn_block_hash' in args
+              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHashCond}`
+              : 'burn_block_height' in args
+              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHeightCond}`
+              : sql`SELECT block_count AS count FROM chain_tip`
+          }
+        )
+        SELECT
+          ${sql(BLOCK_COLUMNS)},
+          (
+            SELECT STRING_AGG(tx_id,',')
+            FROM txs
+            WHERE index_block_hash = blocks.index_block_hash
+              AND canonical = true
+              AND microblock_canonical = true
+          ) AS tx_ids,
+          (SELECT count FROM block_count)::int AS total
+        FROM blocks
+        WHERE canonical = true
+          AND ${
+            'burn_block_hash' in args
+              ? burnBlockHashCond
+              : 'burn_block_height' in args
+              ? burnBlockHeightCond
+              : sql`TRUE`
+          }
+        ORDER BY block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      if (blocksQuery.count === 0)
+        return {
+          results: [],
+          total: 0,
+        };
+      const blocks = blocksQuery.map(b => ({
+        ...parseBlockQueryResult(b),
+        tx_ids: b.tx_ids ? b.tx_ids.split(',') : [],
+      }));
+      return {
+        results: blocks,
+        total: blocksQuery[0].total,
+      };
     });
   }
 

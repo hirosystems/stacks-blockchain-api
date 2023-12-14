@@ -90,6 +90,7 @@
     "@promster/server": "6.0.6",
     "@promster/types": "3.2.3",
     "@scure/base": "1.1.1",
+    "@sinclair/typebox": "0.31.28",
     "@stacks/common": "6.8.1",
     "@stacks/network": "6.8.1",
     "@stacks/stacking": "6.9.0",

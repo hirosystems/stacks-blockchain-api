@@ -1,6 +1,5 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
-import * as querystring from 'querystring';
 import * as express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
@@ -44,8 +43,9 @@ import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
-import { createBurnBlockRouter } from './routes/burn-block';
+import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
+import { createBurnBlockRouter } from './routes/burn-block';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -171,9 +171,9 @@ export async function startApiServer(opts: {
     res.send(errObj).status(404);
   });
 
-  // Setup extended API v1 routes
+  // Setup extended API routes
   app.use(
-    '/extended/v1',
+    '/extended',
     (() => {
       const router = express.Router();
       router.use(cors());
@@ -182,51 +182,71 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
-      router.use('/tx', createTxRouter(datastore));
-      router.use('/block', createBlockRouter(datastore));
-      router.use('/microblock', createMicroblockRouter(datastore));
-      router.use('/burn_block', createBurnBlockRouter(datastore));
-      router.use('/burnchain', createBurnchainRouter(datastore));
-      router.use('/contract', createContractRouter(datastore));
-      // same here, exclude account nonce route
-      router.use('/address', createAddressRouter(datastore, chainId));
-      router.use('/search', createSearchRouter(datastore));
-      router.use('/info', createInfoRouter(datastore));
-      router.use('/stx_supply', createStxSupplyRouter(datastore));
-      router.use('/debug', createDebugRouter(datastore));
-      router.use('/status', createStatusRouter(datastore));
-      router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/tokens', createTokenRouter(datastore));
+      router.use(
+        '/v1',
+        (() => {
+          const v1 = express.Router();
+          v1.use('/tx', createTxRouter(datastore));
+          v1.use('/block', createBlockRouter(datastore));
+          v1.use('/microblock', createMicroblockRouter(datastore));
+          v1.use('/burnchain', createBurnchainRouter(datastore));
+          v1.use('/contract', createContractRouter(datastore));
+          v1.use('/address', createAddressRouter(datastore, chainId));
+          v1.use('/search', createSearchRouter(datastore));
+          v1.use('/info', createInfoRouter(datastore));
+          v1.use('/stx_supply', createStxSupplyRouter(datastore));
+          v1.use('/debug', createDebugRouter(datastore));
+          v1.use('/status', createStatusRouter(datastore));
+          v1.use('/fee_rate', createFeeRateRouter(datastore));
+          v1.use('/tokens', createTokenRouter(datastore));
+          v1.use('/burn_block', createBurnBlockRouter(datastore));
 
-      // These could be defined in one route but a url reporting library breaks with regex in middleware paths
-      router.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
-      router.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
-      router.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
-      const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
-        // Redirect old pox routes paths to new one above
-        const newPath = req.path === '/' ? '/events' : req.path;
-        const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
-        const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
-        return res.redirect(redirectPath);
-      };
-      router.use('/pox2_events', legacyPoxPathRouter);
-      router.use('/pox3_events', legacyPoxPathRouter);
-      router.use('/pox4_events', legacyPoxPathRouter);
+          // These could be defined in one route but a url reporting library breaks with regex in middleware paths
+          v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
+          v1.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
+          v1.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
+          const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
+            // Redirect old pox routes paths to new one above
+            const newPath = req.path === '/' ? '/events' : req.path;
+            const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
+            const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
+            return res.redirect(redirectPath);
+          };
+          v1.use('/pox2_events', legacyPoxPathRouter);
+          v1.use('/pox3_events', legacyPoxPathRouter);
+          v1.use('/pox4_events', legacyPoxPathRouter);
 
-      if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
-        router.use('/faucets', createFaucetRouter(writeDatastore));
-      }
+          if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
+            v1.use('/faucets', createFaucetRouter(writeDatastore));
+          }
+          return v1;
+        })()
+      );
+      router.use(
+        '/v2',
+        (() => {
+          const v2 = express.Router();
+          v2.use('/blocks', createV2BlocksRouter(datastore));
+          return v2;
+        })()
+      );
+      router.use(
+        '/beta',
+        (() => {
+          const beta = express.Router();
+          // Redirect to new endpoint for backward compatibility.
+          // TODO: remove this in the future
+          beta.use('/stacking/:pool_principal/delegations', (req, res) => {
+            const { pool_principal } = req.params;
+            const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
+            return res.redirect(newPath);
+          });
+          return beta;
+        })()
+      );
       return router;
     })()
   );
-
-  // Redirect to new endpoint for backward compatibility.
-  // TODO: remove this in the future
-  app.use('/extended/beta/stacking/:pool_principal/delegations', (req, res) => {
-    const { pool_principal } = req.params;
-    const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
-    return res.redirect(newPath);
-  });
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   // pricing endpoint

@@ -68,6 +68,7 @@ import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpe
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
+import { BlocksQueryParams } from '../routes/v2/schemas';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {

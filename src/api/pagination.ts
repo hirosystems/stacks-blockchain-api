@@ -38,7 +38,7 @@ export enum ResourceType {
   BurnBlock,
 }
 
-const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
+export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
   [ResourceType.Block]: {
     defaultLimit: 20,
     maxLimit: 30,

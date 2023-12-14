@@ -1025,6 +1025,15 @@ export interface TransferQueryResult {
   amount: string;
 }
 
+export type DbPaginatedResult<T> = {
+  total: number;
+  results: T[];
+};
+
+export type BlockWithTransactionIds = DbBlock & {
+  tx_ids: string[];
+};
+
 export interface BlocksWithMetadata {
   results: {
     block: DbBlock;
