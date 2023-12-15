@@ -7,7 +7,6 @@
 export type SchemaMergeRootStub =
   | AddressAssetsListResponse
   | AddressBalanceResponse
-  | AddressNftListResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
   | AddressTransactionsWithTransfersListResponse
@@ -97,11 +96,9 @@ export type SchemaMergeRootStub =
   | {
       [k: string]: unknown | undefined;
     }
-  | FungibleTokensMetadataList
   | NonFungibleTokenHistoryEventList
   | NonFungibleTokenHoldingsList
   | NonFungibleTokenMintList
-  | NonFungibleTokensMetadataList
   | MempoolTransactionStatsResponse
   | MempoolTransactionListResponse
   | GetRawTransactionResult
@@ -180,7 +177,6 @@ export type SchemaMergeRootStub =
   | TransactionIdentifier
   | RosettaTransaction
   | PoolDelegation
-  | FungibleTokenMetadata
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -190,7 +186,6 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenMintWithTxId
   | NonFungibleTokenMintWithTxMetadata
   | NonFungibleTokenMint
-  | NonFungibleTokenMetadata
   | AbstractTransactionEvent
   | TransactionEventAssetType
   | TransactionEventAsset
@@ -848,35 +843,6 @@ export interface AddressUnlockSchedule {
    */
   amount: string;
   block_height: number;
-}
-export interface AddressNftListResponse {
-  limit: number;
-  offset: number;
-  total: number;
-  nft_events: NftEvent[];
-}
-export interface NftEvent {
-  sender?: string;
-  recipient?: string;
-  asset_identifier: string;
-  asset_event_type: string;
-  /**
-   * Identifier of the NFT
-   */
-  value: {
-    /**
-     * Hex string representing the identifier of the NFT
-     */
-    hex: string;
-    /**
-     * Readable string of the NFT identifier
-     */
-    repr: string;
-  };
-  tx_id: string;
-  tx_index: number;
-  block_height: number;
-  event_index: number;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -3107,62 +3073,6 @@ export interface PoolDelegation {
   tx_id: string;
 }
 /**
- * List of fungible tokens metadata
- */
-export interface FungibleTokensMetadataList {
-  /**
-   * The number of tokens metadata to return
-   */
-  limit: number;
-  /**
-   * The number to tokens metadata to skip (starting at `0`)
-   */
-  offset: number;
-  /**
-   * The number of tokens metadata available
-   */
-  total: number;
-  results: FungibleTokenMetadata[];
-}
-export interface FungibleTokenMetadata {
-  /**
-   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
-   */
-  token_uri: string;
-  /**
-   * Identifies the asset to which this token represents
-   */
-  name: string;
-  /**
-   * Describes the asset to which this token represents
-   */
-  description: string;
-  /**
-   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
-   */
-  image_uri: string;
-  /**
-   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
-   */
-  image_canonical_uri: string;
-  /**
-   * A shorter representation of a token. This is sometimes referred to as a "ticker". Examples: "STX", "COOL", etc. Typically, a token could be referred to as $SYMBOL when referencing it in writing.
-   */
-  symbol: string;
-  /**
-   * The number of decimal places in a token.
-   */
-  decimals: number;
-  /**
-   * Tx id that deployed the contract
-   */
-  tx_id: string;
-  /**
-   * principle that deployed the contract
-   */
-  sender_address: string;
-}
-/**
  * List of Non-Fungible Token history events
  */
 export interface NonFungibleTokenHistoryEventList {
@@ -3319,54 +3229,6 @@ export interface NonFungibleTokenMintWithTxMetadata {
     repr: string;
   };
   tx: Transaction;
-}
-/**
- * List of non fungible tokens metadata
- */
-export interface NonFungibleTokensMetadataList {
-  /**
-   * The number of tokens metadata to return
-   */
-  limit: number;
-  /**
-   * The number to tokens metadata to skip (starting at `0`)
-   */
-  offset: number;
-  /**
-   * The number of tokens metadata available
-   */
-  total: number;
-  results: NonFungibleTokenMetadata[];
-}
-export interface NonFungibleTokenMetadata {
-  /**
-   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
-   */
-  token_uri: string;
-  /**
-   * Identifies the asset to which this token represents
-   */
-  name: string;
-  /**
-   * Describes the asset to which this token represents
-   */
-  description: string;
-  /**
-   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
-   */
-  image_uri: string;
-  /**
-   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
-   */
-  image_canonical_uri: string;
-  /**
-   * Tx id that deployed the contract
-   */
-  tx_id: string;
-  /**
-   * principle that deployed the contract
-   */
-  sender_address: string;
 }
 /**
  * GET request that returns stats on mempool transactions
@@ -3586,6 +3448,29 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
+}
+export interface NftEvent {
+  sender?: string;
+  recipient?: string;
+  asset_identifier: string;
+  asset_event_type: string;
+  /**
+   * Identifier of the NFT
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the NFT
+     */
+    hex: string;
+    /**
+     * Readable string of the NFT identifier
+     */
+    repr: string;
+  };
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  event_index: number;
 }
 /**
  * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.
