@@ -465,6 +465,7 @@ export class PgStore extends BasePgStore {
   /**
    * Returns Block information with metadata, including accepted and streamed microblocks hash
    * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
+   * @deprecated use `getV2Blocks`
    */
   async getBlocksWithMetadata({
     limit,
@@ -596,14 +597,7 @@ export class PgStore extends BasePgStore {
           : undefined;
 
       // Obtain blocks and transaction counts in the same query.
-      const blocksQuery = await sql<
-        (BlockQueryResult & {
-          tx_ids: string;
-          microblocks_accepted: string;
-          microblocks_streamed: string;
-          total: number;
-        })[]
-      >`
+      const blocksQuery = await sql<(BlockQueryResult & { tx_ids: string; total: number })[]>`
         WITH block_count AS (
           ${
             'burn_block_hash' in args
@@ -653,6 +647,39 @@ export class PgStore extends BasePgStore {
         results: blocks,
         total: blocksQuery[0].total,
       };
+    });
+  }
+
+  async getV2Block(args: BurnBlockParams): Promise<BlockWithTransactionIds | undefined> {
+    return await this.sqlTransaction(async sql => {
+      const filter =
+        args.height_or_hash === 'latest'
+          ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+          : CompiledBurnBlockHashParam.Check(args.height_or_hash)
+          ? sql`(
+              block_hash = ${normalizeHashString(args.height_or_hash)}
+              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
+            )`
+          : sql`block_height = ${args.height_or_hash}`;
+      const blockQuery = await sql<(BlockQueryResult & { tx_ids: string })[]>`
+        SELECT
+          ${sql(BLOCK_COLUMNS)},
+          (
+            SELECT STRING_AGG(tx_id,',')
+            FROM txs
+            WHERE index_block_hash = blocks.index_block_hash
+              AND canonical = true
+              AND microblock_canonical = true
+          ) AS tx_ids
+        FROM blocks
+        WHERE canonical = true AND ${filter}
+        LIMIT 1
+      `;
+      if (blockQuery.count > 0)
+        return {
+          ...parseBlockQueryResult(blockQuery[0]),
+          tx_ids: blockQuery[0].tx_ids ? blockQuery[0].tx_ids.split(',') : [],
+        };
     });
   }
 
