@@ -1,6 +1,5 @@
 import {
   ContractCallTransaction,
-  FungibleTokenMetadata,
   RosettaAccountIdentifier,
   RosettaCurrency,
   RosettaOperation,

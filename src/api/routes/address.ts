@@ -11,7 +11,6 @@ import {
 } from '../query-helpers';
 import { ChainID, formatMapToObject, getSendManyContract, isValidPrincipal } from '../../helpers';
 import {
-  getAssetEventTypeString,
   getTxFromDataStore,
   parseDbEvent,
   parseDbMempoolTx,
@@ -25,12 +24,10 @@ import {
   AddressStxBalanceResponse,
   AddressStxInboundListResponse,
   InboundStxTransfer,
-  AddressNftListResponse,
   MempoolTransactionListResponse,
   AddressTransactionWithTransfers,
   AddressTransactionsWithTransfersListResponse,
   AddressNonces,
-  NftEvent,
 } from '@stacks/stacks-blockchain-api-types';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { validate } from '../validate';
@@ -469,63 +466,6 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         logger.error(error, `Unable to get inbound transfers for ${stxAddress}`);
         throw error;
       }
-    })
-  );
-
-  /**
-   * @deprecated Use `/extended/v1/tokens/nft/holdings` instead.
-   */
-  router.get(
-    '/:stx_address/nft_events',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      // get recent asset event associated with address
-      const stxAddress = req.params['stx_address'];
-      validatePrincipal(stxAddress);
-
-      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const untilBlock = parseUntilBlockQuery(req, res, next);
-
-      const nftListResponse = await db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
-
-        const response = await db.getAddressNFTEvent({
-          stxAddress,
-          limit,
-          offset,
-          blockHeight,
-          includeUnanchored,
-        });
-        const nft_events = response.results.map(row => {
-          const parsedClarityValue = decodeClarityValueToRepr(row.value);
-          const r: NftEvent = {
-            sender: row.sender,
-            recipient: row.recipient,
-            asset_identifier: row.asset_identifier,
-            value: {
-              hex: row.value,
-              repr: parsedClarityValue,
-            },
-            tx_id: row.tx_id,
-            block_height: row.block_height,
-            event_index: row.event_index,
-            asset_event_type: getAssetEventTypeString(row.asset_event_type_id),
-            tx_index: row.tx_index,
-          };
-          return r;
-        });
-        const nftListResponse: AddressNftListResponse = {
-          nft_events: nft_events,
-          total: response.total,
-          limit: limit,
-          offset: offset,
-        };
-        return nftListResponse;
-      });
-      setETagCacheHeaders(res);
-      res.json(nftListResponse);
     })
   );
 

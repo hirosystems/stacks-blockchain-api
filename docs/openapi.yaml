@@ -25,11 +25,6 @@ tags:
     description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
     description: Read-only endpoints to obtain fee details
-  - name: Fungible Tokens
-    description: Read-only endpoints to obtain fungible token details
-    externalDocs:
-      description: Stacks Documentation - Tokens
-      url: https://docs.stacks.co/write-smart-contracts/tokens
   - name: Info
     description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
   - name: Microblocks
@@ -1815,63 +1810,6 @@ paths:
               example:
                 $ref: ./api/address/get-address-stx-inbound.example.json
 
-  /extended/v1/address/{principal}/nft_events:
-    get:
-      summary: Get nft events
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).
-
-        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
-      tags:
-        - Accounts
-      operationId: get_account_nft
-      parameters:
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier
-          required: true
-          schema:
-            type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
-        - name: limit
-          in: query
-          description: number of items to return
-          required: false
-          schema:
-            type: integer
-        - name: offset
-          in: query
-          description: number of items to skip
-          required: false
-          schema:
-            type: integer
-            example: 42000
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            example: true
-            default: false
-        - name: until_block
-          in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
-          required: false
-          schema:
-            type: string
-            example: 60000
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/address/get-address-nft-events.schema.json
-              example:
-                $ref: ./api/address/get-address-nft-events.example.json
-
   /v2/accounts/{principal}:
     get:
       summary: Get account info
@@ -3145,43 +3083,6 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
-  /extended/v1/tokens/ft/metadata:
-    get:
-      operationId: get_ft_metadata_list
-      summary: Fungible tokens metadata list
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves list of fungible tokens with their metadata. More information on Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
-      tags:
-        - Fungible Tokens
-      parameters:
-        - name: limit
-          in: query
-          description: max number of tokens to fetch.
-          required: false
-          schema:
-            type: integer
-            example: 100
-            maximum: 200
-        - name: offset
-          in: query
-          description: index of first tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 42000
-      responses:
-        200:
-          description: List of fungible tokens metadata
-          content:
-            application/json:
-              schema:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
-              example:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
-
   /extended/v1/tokens/nft/holdings:
     get:
       operationId: get_nft_holdings
@@ -3387,99 +3288,6 @@ paths:
                 with transaction metadata:
                   value:
                     $ref: ./api/tokens/get-non-fungible-token-mints-tx-metadata.example.schema.json
-
-  /extended/v1/tokens/nft/metadata:
-    get:
-      operationId: get_nft_metadata_list
-      summary: Non fungible tokens metadata list
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
-      tags:
-        - Non-Fungible Tokens
-      parameters:
-        - name: limit
-          in: query
-          description: max number of tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 1
-        - name: offset
-          in: query
-          description: index of first tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 42000
-      responses:
-        200:
-          description: List of non fungible tokens metadata
-          content:
-            application/json:
-              schema:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json
-              example:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json
-
-  /extended/v1/tokens/{contractId}/nft/metadata:
-    get:
-      operationId: get_contract_nft_metadata
-      summary: Non fungible tokens metadata for contract ID
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
-      tags:
-        - Non-Fungible Tokens
-      parameters:
-        - name: contractId
-          in: path
-          description: token's contract id
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Non fungible tokens metadata for contract id
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/tokens/non-fungible-token.schema.json
-              example:
-                $ref: ./entities/tokens/non-fungible-token.schema.example.json
-
-  /extended/v1/tokens/{contractId}/ft/metadata:
-    get:
-      operationId: get_contract_ft_metadata
-      summary: Fungible tokens metadata for contract id
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves the metadata for fungible tokens for a given contract id
-      tags:
-        - Fungible Tokens
-      parameters:
-        - name: contractId
-          in: path
-          description: token's contract id
-          required: true
-          schema:
-            type: string
-            example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2"
-      responses:
-        200:
-          description: Fungible tokens metadata for contract id
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/tokens/fungible-token.schema.json
-              example:
-                $ref: ./entities/tokens/fungible-token.schema.example.json
 
   /extended/v1/fee_rate:
     post:
