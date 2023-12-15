@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.5...v7.4.0-nakamoto.6) (2023-12-15)
+
+
+### Features
+
+* add `/extended/v2/blocks/:height_or_hash` ([#1774](https://github.com/hirosystems/stacks-blockchain-api/issues/1774)) ([e532a5e](https://github.com/hirosystems/stacks-blockchain-api/commit/e532a5e173340f732536b9236d60585501f2da5f))
+
 ## [7.4.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.4...v7.4.0-nakamoto.5) (2023-12-15)
 
 
