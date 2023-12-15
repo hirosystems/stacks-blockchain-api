@@ -6,8 +6,13 @@ import {
 } from '../../../api/controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
 import { NakamotoBlockListResponse } from 'docs/generated';
-import { BlockLimitParamSchema, BlocksQueryParams, CompiledBlocksQueryParams } from './schemas';
-import { parseDbNakamotoBlock, validRequestQuery } from './helpers';
+import {
+  BlocksQueryParams,
+  BurnBlockParams,
+  CompiledBlocksQueryParams,
+  CompiledBurnBlockParams,
+} from './schemas';
+import { parseDbNakamotoBlock, validRequestParams, validRequestQuery } from './helpers';
 
 export function createV2BlocksRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -31,5 +36,23 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
       res.json(response);
     })
   );
+
+  router.get(
+    '/:height_or_hash',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      if (!validRequestParams(req, res, CompiledBurnBlockParams)) return;
+      const params = req.params as BurnBlockParams;
+
+      const block = await db.getV2Block(params);
+      if (!block) {
+        res.status(404).json({ errors: 'Not found' });
+        return;
+      }
+      setETagCacheHeaders(res);
+      res.json(parseDbNakamotoBlock(block));
+    })
+  );
+
   return router;
 }

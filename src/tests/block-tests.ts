@@ -731,4 +731,72 @@ describe('block tests', () => {
     fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=testvalue`);
     expect(fetch.status).toBe(400);
   });
+
+  test('blocks v2 retrieved by hash or height', async () => {
+    for (let i = 1; i < 6; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i}`,
+        index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i}`,
+        parent_index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${
+          i - 1
+        }`,
+        parent_block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${
+          i - 1
+        }`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x000${i}` })
+        .build();
+      await db.update(block);
+    }
+
+    // Get latest
+    const block5 = {
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      burn_block_height: 700000,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0000000000000000000000000000000000000000000000000000000000000005',
+      height: 5,
+      index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000115',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
+      txs: ['0x0005'],
+    };
+    let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
+    let json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by height
+    fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000005`
+    );
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by index block hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000115`
+    );
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+  });
 });
