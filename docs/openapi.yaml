@@ -720,6 +720,35 @@ paths:
                 $ref: ./api/blocks/get-nakamoto-blocks.schema.json
               example:
                 $ref: ./api/blocks/get-nakamoto-blocks.example.json
+  
+  /extended/v2/blocks/{height_or_hash}:
+    get:
+      summary: Get block
+      description: |
+        Retrieves a single block
+      tags:
+        - Blocks
+      operationId: get_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by block height, hash, index block hash or the constant `latest` to filter for the most recent block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: Block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/nakamoto-block.schema.json
+              example:
+                $ref: ./entities/blocks/nakamoto-block.example.json
 
   /extended/v1/block:
     get:
@@ -769,8 +798,12 @@ paths:
           type: string
           example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
     get:
+      deprecated: true
       summary: Get block by hash
-      description: Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        
+        Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
       tags:
         - Blocks
       operationId: get_block_by_hash
@@ -799,8 +832,12 @@ paths:
           type: number
           example: 10000
     get:
+      deprecated: true
       summary: Get block by height
-      description: Retrieves block details of a specific block at a given block height
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+
+        Retrieves block details of a specific block at a given block height
       tags:
         - Blocks
       operationId: get_block_by_height
