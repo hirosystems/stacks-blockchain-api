@@ -25,11 +25,6 @@ tags:
     description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
     description: Read-only endpoints to obtain fee details
-  - name: Fungible Tokens
-    description: Read-only endpoints to obtain fungible token details
-    externalDocs:
-      description: Stacks Documentation - Tokens
-      url: https://docs.stacks.co/write-smart-contracts/tokens
   - name: Info
     description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
   - name: Microblocks
