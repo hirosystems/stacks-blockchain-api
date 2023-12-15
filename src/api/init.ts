@@ -45,7 +45,7 @@ import { logger, loggerMiddleware } from '../logger';
 import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
 import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
-import { createBurnBlockRouter } from './routes/burn-block';
+import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -199,7 +199,6 @@ export async function startApiServer(opts: {
           v1.use('/status', createStatusRouter(datastore));
           v1.use('/fee_rate', createFeeRateRouter(datastore));
           v1.use('/tokens', createTokenRouter(datastore));
-          v1.use('/burn_block', createBurnBlockRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
           v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
@@ -227,6 +226,7 @@ export async function startApiServer(opts: {
         (() => {
           const v2 = express.Router();
           v2.use('/blocks', createV2BlocksRouter(datastore));
+          v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
           return v2;
         })()
       );

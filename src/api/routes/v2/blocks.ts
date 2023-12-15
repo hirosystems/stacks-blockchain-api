@@ -6,7 +6,7 @@ import {
 } from '../../../api/controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
 import { NakamotoBlockListResponse } from 'docs/generated';
-import { BlockLimitParam, BlocksQueryParams, CompiledBlocksQueryParams } from './schemas';
+import { BlockLimitParamSchema, BlocksQueryParams, CompiledBlocksQueryParams } from './schemas';
 import { parseDbNakamotoBlock, validRequestQuery } from './helpers';
 
 export function createV2BlocksRouter(db: PgStore): express.Router {
@@ -20,10 +20,10 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
       if (!validRequestQuery(req, res, CompiledBlocksQueryParams)) return;
       const query = req.query as BlocksQueryParams;
 
-      const { results, total } = await db.getV2Blocks(query);
+      const { limit, offset, results, total } = await db.getV2Blocks(query);
       const response: NakamotoBlockListResponse = {
-        limit: query.limit ?? BlockLimitParam.default,
-        offset: query.offset ?? 0,
+        limit,
+        offset,
         total,
         results: results.map(r => parseDbNakamotoBlock(r)),
       };
