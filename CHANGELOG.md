@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.4...v7.4.0-nakamoto.5) (2023-12-15)
+
+
+### Bug Fixes
+
+* move `/extended/v1/burn_block` to `/extended/v2/burn-blocks` ([#1772](https://github.com/hirosystems/stacks-blockchain-api/issues/1772)) ([bf2ef0a](https://github.com/hirosystems/stacks-blockchain-api/commit/bf2ef0a1ba579ef4d1c6fdaa7be623fe71d812d5))
+
 ## [7.4.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.3...v7.4.0-nakamoto.4) (2023-12-14)
 
 
