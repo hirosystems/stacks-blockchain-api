@@ -20,7 +20,6 @@ import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
-import { ReplayController } from './event-replay/parquet-based/replay-controller';
 import {
   isProdEnv,
   numberToHex,
@@ -284,6 +283,7 @@ async function handleProgramArgs() {
       args.options.force
     );
   } else if (args.operand === 'from-parquet-events') {
+    const { ReplayController } = await import('./event-replay/parquet-based/replay-controller');
     const replay = await ReplayController.init();
     await replay.prepare();
     await replay.do();
