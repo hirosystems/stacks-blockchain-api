@@ -1,3 +1,34 @@
+## [7.4.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.5...v7.4.0-nakamoto.6) (2023-12-15)
+
+
+### Features
+
+* add `/extended/v2/blocks/:height_or_hash` ([#1774](https://github.com/hirosystems/stacks-blockchain-api/issues/1774)) ([e532a5e](https://github.com/hirosystems/stacks-blockchain-api/commit/e532a5e173340f732536b9236d60585501f2da5f))
+
+## [7.4.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.4...v7.4.0-nakamoto.5) (2023-12-15)
+
+
+### Bug Fixes
+
+* move `/extended/v1/burn_block` to `/extended/v2/burn-blocks` ([#1772](https://github.com/hirosystems/stacks-blockchain-api/issues/1772)) ([bf2ef0a](https://github.com/hirosystems/stacks-blockchain-api/commit/bf2ef0a1ba579ef4d1c6fdaa7be623fe71d812d5))
+
+## [7.4.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.3...v7.4.0-nakamoto.4) (2023-12-14)
+
+
+### Features
+
+* add `/extended/v2/blocks` endpoint with burn block filters ([#1769](https://github.com/hirosystems/stacks-blockchain-api/issues/1769)) ([ceb7be0](https://github.com/hirosystems/stacks-blockchain-api/commit/ceb7be08daa5ca2d9baaa1a3de9f6c0569987724))
+* update to latest TenureChange tx payload ([#1767](https://github.com/hirosystems/stacks-blockchain-api/issues/1767)) ([2afb65c](https://github.com/hirosystems/stacks-blockchain-api/commit/2afb65cbb821658416eb41197ce8b72f239970b4))
+
+## [7.4.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.2...v7.4.0-nakamoto.3) (2023-12-13)
+
+
+### Features
+
+* `GET /extended/v1/burn_block` ([#1766](https://github.com/hirosystems/stacks-blockchain-api/issues/1766)) ([cb38b68](https://github.com/hirosystems/stacks-blockchain-api/commit/cb38b6811c65aa700d4de527329216ba3c2ff6c9))
+* ingestion for `TenureChange` and `NakamotoCoinbase` tx types ([#1753](https://github.com/hirosystems/stacks-blockchain-api/issues/1753)) ([7c45f53](https://github.com/hirosystems/stacks-blockchain-api/commit/7c45f53622338170477948d38f549c2136d830c1))
+* pox-4 support ([#1754](https://github.com/hirosystems/stacks-blockchain-api/issues/1754)) ([285806f](https://github.com/hirosystems/stacks-blockchain-api/commit/285806f46cebd365cc424a7a0155a531f34d7438))
+
 ## [7.4.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.1...v7.4.0-nakamoto.2) (2023-11-17)
 
 

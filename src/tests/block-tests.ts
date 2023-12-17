@@ -9,7 +9,7 @@ import {
   DataStoreBlockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { I32_MAX } from '../helpers';
+import { I32_MAX, unixEpochToIso } from '../helpers';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
@@ -276,6 +276,123 @@ describe('block tests', () => {
     expect(result.body).toEqual(expectedResp);
   });
 
+  test('/burn_block', async () => {
+    const burnBlock1 = {
+      burn_block_hash: '0x5678111111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 5,
+      burn_block_time: 1702386592,
+    };
+    const burnBlock2 = {
+      burn_block_hash: '0x5678211111111111111111111111111111111111111111111111111111111111',
+      burn_block_height: 7,
+      burn_block_time: 1702386678,
+    };
+
+    const stacksBlock1 = {
+      block_height: 1,
+      block_hash: '0x1234111111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd111111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      burn_block_hash: burnBlock1.burn_block_hash,
+      burn_block_height: burnBlock1.burn_block_height,
+      burn_block_time: burnBlock1.burn_block_time,
+    };
+    const stacksBlock2 = {
+      block_height: 2,
+      block_hash: '0x1234211111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd211111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock1.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock3 = {
+      block_height: 3,
+      block_hash: '0x1234311111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd311111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock2.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+    const stacksBlock4 = {
+      block_height: 4,
+      block_hash: '0x1234411111111111111111111111111111111111111111111111111111111111',
+      index_block_hash: '0xabcd411111111111111111111111111111111111111111111111111111111111',
+      parent_index_block_hash: stacksBlock3.index_block_hash,
+      burn_block_hash: burnBlock2.burn_block_hash,
+      burn_block_height: burnBlock2.burn_block_height,
+      burn_block_time: burnBlock2.burn_block_time,
+    };
+
+    const stacksBlocks = [stacksBlock1, stacksBlock2, stacksBlock3, stacksBlock4];
+
+    for (const block of stacksBlocks) {
+      const dbBlock = new TestBlockBuilder({
+        block_hash: block.block_hash,
+        index_block_hash: block.index_block_hash,
+        parent_index_block_hash: block.parent_index_block_hash,
+        block_height: block.block_height,
+        burn_block_hash: block.burn_block_hash,
+        burn_block_height: block.burn_block_height,
+        burn_block_time: block.burn_block_time,
+      }).build();
+      await db.update(dbBlock);
+    }
+
+    const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
+    expect(result.body.results).toEqual([
+      {
+        burn_block_hash: burnBlock2.burn_block_hash,
+        burn_block_height: burnBlock2.burn_block_height,
+        burn_block_time: burnBlock2.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock2.burn_block_time),
+        stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      },
+      {
+        burn_block_hash: burnBlock1.burn_block_hash,
+        burn_block_height: burnBlock1.burn_block_height,
+        burn_block_time: burnBlock1.burn_block_time,
+        burn_block_time_iso: unixEpochToIso(burnBlock1.burn_block_time),
+        stacks_blocks: [stacksBlock1.block_hash],
+      },
+    ]);
+
+    // test 'latest' filter
+    const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
+    expect(result2.body).toEqual({
+      burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
+      burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
+      burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
+      stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+    });
+
+    // test hash filter
+    const result3 = await supertest(api.server).get(
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
+    );
+    expect(result3.body).toEqual({
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+    });
+
+    // test height filter
+    const result4 = await supertest(api.server).get(
+      `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
+    );
+    expect(result4.body).toEqual({
+      burn_block_hash: stacksBlock1.burn_block_hash,
+      burn_block_height: stacksBlock1.burn_block_height,
+      burn_block_time: stacksBlock1.burn_block_time,
+      burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
+      stacks_blocks: [stacksBlock1.block_hash],
+    });
+  });
+
   test('block tx list excludes non-canonical', async () => {
     const block1 = new TestBlockBuilder({ block_hash: '0x0001', index_block_hash: '0x0001' })
       .addTx({ tx_id: '0x0001' })
@@ -480,6 +597,7 @@ describe('block tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx2,
@@ -493,6 +611,7 @@ describe('block tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
@@ -504,5 +623,180 @@ describe('block tests', () => {
     expect(blockQuery.body.execution_cost_runtime).toBe(4);
     expect(blockQuery.body.execution_cost_write_count).toBe(3);
     expect(blockQuery.body.execution_cost_write_length).toBe(3);
+  });
+
+  test('blocks v2 filtered by burn block', async () => {
+    for (let i = 1; i < 6; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000${i}`,
+        index_block_hash: `0x000${i}`,
+        parent_index_block_hash: `0x000${i - 1}`,
+        parent_block_hash: `0x000${i - 1}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x000${i}` })
+        .build();
+      await db.update(block);
+    }
+    for (let i = 6; i < 9; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000${i}`,
+        index_block_hash: `0x000${i}`,
+        parent_index_block_hash: `0x000${i - 1}`,
+        parent_block_hash: `0x000${i - 1}`,
+        burn_block_height: 700001,
+        burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
+      })
+        .addTx({ tx_id: `0x001${i}` })
+        .build();
+      await db.update(block);
+    }
+
+    // Filter by burn hash
+    const block5 = {
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      burn_block_height: 700000,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0005',
+      height: 5,
+      index_block_hash: '0x0005',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0004',
+      parent_index_block_hash: '0x0004',
+      txs: ['0x0005'],
+    };
+    let fetch = await supertest(api.server).get(
+      `/extended/v2/blocks?burn_block_hash=00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8`
+    );
+    let json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json.total).toEqual(5);
+    expect(json.results[0]).toStrictEqual(block5);
+
+    // Filter by burn height
+    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_height=700000`);
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json.total).toEqual(5);
+    expect(json.results[0]).toStrictEqual(block5);
+
+    // Get latest block
+    const block8 = {
+      burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
+      burn_block_height: 700001,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0008',
+      height: 8,
+      index_block_hash: '0x0008',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0007',
+      parent_index_block_hash: '0x0007',
+      txs: ['0x0018'],
+    };
+    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=latest`);
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json.total).toEqual(3);
+    expect(json.results[0]).toStrictEqual(block8);
+    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_height=latest`);
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json.total).toEqual(3);
+    expect(json.results[0]).toStrictEqual(block8);
+
+    // Can't filter by both params
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks?burn_block_hash=latest&burn_block_height=latest`
+    );
+    expect(fetch.status).toBe(400);
+
+    // Block hashes are validated
+    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=testvalue`);
+    expect(fetch.status).toBe(400);
+  });
+
+  test('blocks v2 retrieved by hash or height', async () => {
+    for (let i = 1; i < 6; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${i}`,
+        index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${i}`,
+        parent_index_block_hash: `0x000000000000000000000000000000000000000000000000000000000000011${
+          i - 1
+        }`,
+        parent_block_hash: `0x000000000000000000000000000000000000000000000000000000000000000${
+          i - 1
+        }`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x000${i}` })
+        .build();
+      await db.update(block);
+    }
+
+    // Get latest
+    const block5 = {
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      burn_block_height: 700000,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      hash: '0x0000000000000000000000000000000000000000000000000000000000000005',
+      height: 5,
+      index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000115',
+      miner_txid: '0x4321',
+      parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
+      parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
+      txs: ['0x0005'],
+    };
+    let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
+    let json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by height
+    fetch = await supertest(api.server).get(`/extended/v2/blocks/5`);
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000005`
+    );
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
+
+    // Get by index block hash
+    fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/0x0000000000000000000000000000000000000000000000000000000000000115`
+    );
+    json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json).toStrictEqual(block5);
   });
 });

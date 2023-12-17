@@ -35,10 +35,15 @@ export enum ResourceType {
   Token,
   Pox2Event,
   Stacker,
+  BurnBlock,
 }
 
-const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
+export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
   [ResourceType.Block]: {
+    defaultLimit: 20,
+    maxLimit: 30,
+  },
+  [ResourceType.BurnBlock]: {
     defaultLimit: 20,
     maxLimit: 30,
   },

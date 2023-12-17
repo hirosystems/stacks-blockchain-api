@@ -27,7 +27,7 @@ import {
 } from '../test-utils/test-helpers';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 
-describe('PoX-3 - Rosetta - Stacking with segwit', () => {
+describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
   let btcAddrTestnet: string;
   const seedAccount = testnetKeys[0];
@@ -131,10 +131,10 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
       ustxAmount: ustxAmount,
     });
 
-    expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-3');
+    expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
     expect(stackingResult.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(stackingResult.submitResult.transaction_identifier.hash).toBe(stackingResult.txId);
-    expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-3');
+    expect(stackingResult.tx.contract_call_contract_id).toBe('ST000000000000000000002AMW42H.pox-4');
   });
 
   test('Verify expected amount of STX are locked', async () => {
@@ -249,11 +249,11 @@ describe('PoX-3 - Rosetta - Stacking with segwit', () => {
       ustxAmount,
     });
 
-    expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-3');
+    expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
     expect(rosettaStackStx.constructionMetadata.metadata.burn_block_height as number).toBeTruthy();
     expect(rosettaStackStx.submitResult.transaction_identifier.hash).toBe(rosettaStackStx.txId);
     expect(rosettaStackStx.tx.contract_call_contract_id).toBe(
-      'ST000000000000000000002AMW42H.pox-3'
+      'ST000000000000000000002AMW42H.pox-4'
     );
 
     // ensure locked reported by stacks-node account RPC balance

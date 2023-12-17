@@ -30,7 +30,7 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 
-describe('PoX-3 - Delegate Revoked Stacking', () => {
+describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;
   const delegatorKey = '72e8e3725324514c38c2931ed337ab9ab8d8abaae83ed2275456790194b1fd3101';
   const delegateeKey = '0d174cf0be276cedcf21727611ef2504aed093d8163f65985c07760fda12a7ea01';
@@ -74,6 +74,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       amount: gasAmount,
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: stxXferId1 } = await testEnv.client.sendTransaction(
       Buffer.from(stxXfer1.serialize())
@@ -88,6 +89,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       nonce: stxXfer1.auth.spendingCondition.nonce + 1n,
+      fee: 10000n,
     });
     const { txId: stxXferId2 } = await testEnv.client.sendTransaction(
       Buffer.from(stxXfer2.serialize())
@@ -113,7 +115,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     poxInfo = await standByForPoxCycle();
 
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
-    expect(contractName).toBe('pox-3');
+    expect(contractName).toBe('pox-4');
 
     const balanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
     expect(BigInt(balanceInfo.balance)).toBeGreaterThan(0n);
@@ -138,6 +140,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const delegateStackTxResult = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackTx.serialize())
@@ -163,14 +166,15 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: delegateStxTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStxTx.serialize())
     );
     const delegateStxDbTx = await standByForTxSuccess(delegateStxTxId);
 
-    // validate delegate-stx pox3 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStxDbTx.tx_id}`);
+    // validate delegate-stx pox4 event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStxDbTx.tx_id}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -222,6 +226,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: delegateStackStxTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackStxTx.serialize())
@@ -234,7 +239,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${delegateStackStxTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(
@@ -271,9 +276,14 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       functionArgs: [],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const revokeTxResult = await testEnv.client.sendTransaction(Buffer.from(revokeTx.serialize()));
-    await standByForTxSuccess(revokeTxResult.txId);
+    const revokeStackDbTx = await standByForTxSuccess(revokeTxResult.txId);
+
+    const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
+    expect(revokeStackResult.repr).toEqual('(ok true)');
+    expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
 
     // revocation doesn't change anything for the previous delegate-stack-stx state
     const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
@@ -299,6 +309,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const delegateStackTxResult = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackTx.serialize())
@@ -307,47 +318,6 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     expect(delegateStackDbTx.status).not.toBe(DbTxStatus.Success);
     const delegateStackResult = decodeClarityValue(delegateStackDbTx.raw_result);
     expect(delegateStackResult.repr).toEqual('(err 9)'); // ERR_STACKING_PERMISSION_DENIED
-  });
-
-  test('Try to perform delegate-stx - again', async () => {
-    // make sure stacker is not currently delegating
-    await expect(
-      readOnlyFnCall<ClarityValueOptionalNone>(
-        [contractAddress, contractName],
-        'get-delegation-info',
-        [standardPrincipalCV(STACKER.stxAddr)],
-        STACKER.stxAddr
-      )
-    ).rejects.toThrowError(
-      'OptionNone result for call to ST000000000000000000002AMW42H,pox-3::get-delegation-info'
-    );
-
-    // but stacker is still locked
-    const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
-    expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
-
-    // delegate with the full amount
-    const delegateTx = await makeContractCall({
-      senderKey: STACKER.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'delegate-stx',
-      functionArgs: [
-        uintCV(DELEGATE_FULL_AMOUNT),
-        standardPrincipalCV(POOL.stxAddr), // delegate-to
-        noneCV(), // untilBurnBlockHeight
-        someCV(STACKER.poxAddrClar), // pox-addr
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-    });
-    const delegateTxResult = await testEnv.client.sendTransaction(
-      Buffer.from(delegateTx.serialize())
-    );
-    const delegateDbTx = await standByForTx(delegateTxResult.txId);
-    expect(delegateDbTx.status).not.toBe(DbTxStatus.Success);
-    const delegateResult = decodeClarityValue(delegateDbTx.raw_result);
-    expect(delegateResult.repr).toEqual('(err 3)'); // ERR_STACKING_ALREADY_STACKED
   });
 
   test('Try to perform delegate-stack-increase - without delegation', async () => {
@@ -363,16 +333,17 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: delegateStackIncreaseTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackIncreaseTx.serialize())
     );
     const delegateStackIncreaseTxResult = await standByForTx(delegateStackIncreaseTxId);
-    expect(delegateStackIncreaseTxResult.status).not.toBe(DbTxStatus.Success);
     const delegateStackIncreaseResult = decodeClarityValue(
       delegateStackIncreaseTxResult.raw_result
     );
     expect(delegateStackIncreaseResult.repr).toEqual('(err 9)'); // ERR_STACKING_PERMISSION_DENIED
+    expect(delegateStackIncreaseTxResult.status).not.toBe(DbTxStatus.Success);
   });
 
   test('Try to perform delegate-stack-extend - without delegation', async () => {
@@ -388,14 +359,15 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: delegateStackextendTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackextendTx.serialize())
     );
     const delegateStackextendTxResult = await standByForTx(delegateStackextendTxId);
-    expect(delegateStackextendTxResult.status).not.toBe(DbTxStatus.Success);
     const delegateStackextendResult = decodeClarityValue(delegateStackextendTxResult.raw_result);
     expect(delegateStackextendResult.repr).toEqual('(err 9)'); // ERR_STACKING_PERMISSION_DENIED
+    expect(delegateStackextendTxResult.status).not.toBe(DbTxStatus.Success);
   });
 
   test('Try to perform delegate-stack-stx - without delegation', async () => {
@@ -416,6 +388,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: delegateStackStxTxId } = await testEnv.client.sendTransaction(
       Buffer.from(delegateStackStxTx.serialize())
@@ -441,6 +414,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000n,
     });
     const { txId: stackAggrCommitTxId } = await testEnv.client.sendTransaction(
       Buffer.from(stackAggrCommitTx.serialize())
@@ -448,7 +422,7 @@ describe('PoX-3 - Delegate Revoked Stacking', () => {
     await standByForTxSuccess(stackAggrCommitTxId);
 
     // validate stack-aggregation-commit pox2 event for this tx
-    const res: any = await fetchGet(`/extended/v1/pox3_events/tx/${stackAggrCommitTxId}`);
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
     expect(res.results[0]).toEqual(

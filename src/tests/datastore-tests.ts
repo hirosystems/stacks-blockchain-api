@@ -377,6 +377,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -544,6 +545,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -758,6 +760,7 @@ describe('postgres datastore', () => {
         smartContracts: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       })),
     });
 
@@ -955,6 +958,7 @@ describe('postgres datastore', () => {
         smartContracts: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       })),
     });
 
@@ -1232,6 +1236,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -1245,6 +1250,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx3,
@@ -1258,6 +1264,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2010,6 +2017,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2093,6 +2101,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2184,6 +2193,7 @@ describe('postgres datastore', () => {
           smartContracts: [contract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2279,6 +2289,7 @@ describe('postgres datastore', () => {
           smartContracts: [contract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2400,6 +2411,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2482,6 +2494,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2563,6 +2576,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2806,6 +2820,7 @@ describe('postgres datastore', () => {
           namespaces: [namespace1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: { ...tx2, raw_tx: '0x' },
@@ -2819,6 +2834,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3233,6 +3249,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3296,6 +3313,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3537,6 +3555,7 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3554,6 +3573,7 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3744,6 +3764,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3810,6 +3831,7 @@ describe('postgres datastore', () => {
           ],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4011,6 +4033,7 @@ describe('postgres datastore', () => {
           ],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4292,6 +4315,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4373,6 +4397,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4508,6 +4533,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -4521,6 +4547,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });

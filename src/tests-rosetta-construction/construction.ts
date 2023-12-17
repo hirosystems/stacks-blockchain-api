@@ -956,7 +956,7 @@ describe('Rosetta Construction', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
@@ -1634,7 +1634,7 @@ describe('Rosetta Construction', () => {
         delegate_to: testnetKeys[1].stacksAddress,
         size: 260,
         contract_address: 'ST000000000000000000002AMW42H',
-        contract_name: 'pox-3',
+        contract_name: 'pox-4',
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
       },
@@ -2220,7 +2220,7 @@ describe('Rosetta Construction', () => {
     // //metadata
 
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
 
     const metadataRequest: RosettaConstructionMetadataRequest = {
       network_identifier: {
