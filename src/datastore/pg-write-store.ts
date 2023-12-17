@@ -96,7 +96,6 @@ import {
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
-const PG_PARAM_LIMIT = 65536;
 const INSERT_BATCH_SIZE = 500;
 
 class MicroblockGapError extends Error {
@@ -405,7 +404,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateMinerRewards(sql: PgSqlClient, minerRewards: DbMinerReward[]): Promise<void> {
-    for (const batch of batchIterate(minerRewards, Math.floor(PG_PARAM_LIMIT / 11))) {
+    for (const batch of batchIterate(minerRewards, INSERT_BATCH_SIZE)) {
       const values: MinerRewardInsertValues[] = batch.map(minerReward => ({
         block_hash: minerReward.block_hash,
         index_block_hash: minerReward.index_block_hash,
@@ -783,7 +782,7 @@ export class PgWriteStore extends PgStore {
     poxTable: PoxSyntheticEventTable,
     events: DbPoxSyntheticEvent[]
   ) {
-    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 30))) {
+    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const values = batch.map(event => {
         const value: PoxSyntheticEventInsertValues = {
           event_index: event.event_index,
@@ -901,7 +900,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateStxLockEvents(sql: PgSqlClient, tx: DbTx, events: DbStxLockEvent[]) {
-    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 14))) {
+    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const values: StxLockEventInsertValues[] = batch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -925,7 +924,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
+    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const values: StxEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -988,7 +987,7 @@ export class PgWriteStore extends PgStore {
       ].filter((p): p is string => !!p) // Remove undefined
     );
     // Insert stx_event data
-    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 9))) {
+    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const principals: string[] = [];
       for (const event of eventBatch) {
         if (event.sender) principals.push(event.sender);
@@ -1137,7 +1136,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateFtEvents(sql: PgSqlClient, tx: DbTx, events: DbFtEvent[]) {
-    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
+    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const values: FtEventInsertValues[] = batch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -1167,7 +1166,7 @@ export class PgWriteStore extends PgStore {
     events: DbNftEvent[],
     microblock: boolean = false
   ) {
-    for (const batch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 15))) {
+    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
       const nftEventInserts: NftEventInsertValues[] = [];
       for (const event of batch) {
@@ -1257,7 +1256,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateSmartContractEvents(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
-    for (const eventBatch of batchIterate(events, Math.floor(PG_PARAM_LIMIT / 13))) {
+    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
       const values: SmartContractEventInsertValues[] = eventBatch.map(event => ({
         event_index: event.event_index,
         tx_id: event.tx_id,
@@ -1726,7 +1725,7 @@ export class PgWriteStore extends PgStore {
   }
 
   async updateSmartContracts(sql: PgSqlClient, tx: DbTx, smartContracts: DbSmartContract[]) {
-    for (const batch of batchIterate(smartContracts, Math.floor(PG_PARAM_LIMIT / 12))) {
+    for (const batch of batchIterate(smartContracts, INSERT_BATCH_SIZE)) {
       const values: SmartContractInsertValues[] = batch.map(smartContract => ({
         tx_id: smartContract.tx_id,
         canonical: smartContract.canonical,
@@ -1867,7 +1866,7 @@ export class PgWriteStore extends PgStore {
     tx: DataStoreBnsBlockTxData,
     namespaces: DbBnsNamespace[]
   ) {
-    for (const batch of batchIterate(namespaces, Math.floor(PG_PARAM_LIMIT / 20))) {
+    for (const batch of batchIterate(namespaces, INSERT_BATCH_SIZE)) {
       const values: BnsNamespaceInsertValues[] = batch.map(namespace => ({
         namespace_id: namespace.namespace_id,
         launched_at: namespace.launched_at ?? null,
