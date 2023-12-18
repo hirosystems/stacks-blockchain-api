@@ -892,6 +892,7 @@ export class PgWriteStore extends PgStore {
             );
           }
         }
+        return value;
       });
       await sql`
         INSERT INTO ${sql(poxTable)} ${sql(values)}
