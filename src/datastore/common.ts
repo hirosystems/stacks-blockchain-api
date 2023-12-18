@@ -632,6 +632,11 @@ export interface DataStoreBnsBlockData {
   microblock_canonical: boolean;
 }
 
+export type DataStoreBnsBlockTxData = DataStoreBnsBlockData & {
+  tx_id: string;
+  tx_index: number;
+};
+
 export interface DataStoreAttachmentSubdomainData {
   attachment?: DataStoreAttachmentData;
   blockData?: DataStoreBnsBlockData;
@@ -976,7 +981,7 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
-export interface UpdatedEntities {
+export interface ReOrgUpdatedEntities {
   markedCanonical: {
     blocks: number;
     microblocks: number;

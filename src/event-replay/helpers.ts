@@ -1,14 +1,6 @@
 import { PgWriteStore } from '../datastore/pg-write-store';
-import * as fs from 'fs';
-import * as readline from 'readline';
-import { DataStoreBnsBlockData, DbTxTypeId } from '../datastore/common';
+import { DataStoreBnsBlockTxData, DbTxTypeId } from '../datastore/common';
 import { readLinesReversed } from './reverse-file-stream';
-import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
-
-export type BnsGenesisBlock = DataStoreBnsBlockData & {
-  tx_id: string;
-  tx_index: number;
-};
 
 /**
  * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
@@ -40,7 +32,7 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
 
 export async function getBnsGenesisBlockFromBlockMessage(
   db: PgWriteStore
-): Promise<BnsGenesisBlock> {
+): Promise<DataStoreBnsBlockTxData> {
   const genesisBlock = await db.getBlock({ height: 1 });
   if (!genesisBlock.found) {
     throw new Error('Could not find genesis block');

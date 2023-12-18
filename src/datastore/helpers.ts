@@ -2,6 +2,7 @@ import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
+  DataStoreBlockUpdateData,
   DbBlock,
   DbEvent,
   DbEventBase,
@@ -42,6 +43,7 @@ import {
   PoxSyntheticEventQueryResult,
   TxQueryResult,
   DbPoxSyntheticRevokeDelegateStxEvent,
+  ReOrgUpdatedEntities,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -1228,4 +1230,164 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
     dbMempoolTxs.push(dbMempoolTx);
   }
   return dbMempoolTxs;
+}
+
+export function setTotalBlockUpdateDataExecutionCost(data: DataStoreBlockUpdateData) {
+  const cost = data.txs.reduce(
+    (previousValue, currentValue) => {
+      const {
+        execution_cost_read_count,
+        execution_cost_read_length,
+        execution_cost_runtime,
+        execution_cost_write_count,
+        execution_cost_write_length,
+      } = previousValue;
+      return {
+        execution_cost_read_count:
+          execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+        execution_cost_read_length:
+          execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+        execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+        execution_cost_write_count:
+          execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+        execution_cost_write_length:
+          execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+      };
+    },
+    {
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    }
+  );
+  data.block.execution_cost_read_count = cost.execution_cost_read_count;
+  data.block.execution_cost_read_length = cost.execution_cost_read_length;
+  data.block.execution_cost_runtime = cost.execution_cost_runtime;
+  data.block.execution_cost_write_count = cost.execution_cost_write_count;
+  data.block.execution_cost_write_length = cost.execution_cost_write_length;
+}
+
+export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
+  data.block = { ...data.block, canonical: false };
+  data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
+  data.txs = data.txs.map(tx => ({
+    tx: { ...tx.tx, canonical: false },
+    stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
+    stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
+    ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
+    nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
+    contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
+    smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+    names: tx.names.map(e => ({ ...e, canonical: false })),
+    namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+    pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
+    pox3Events: tx.pox3Events.map(e => ({ ...e, canonical: false })),
+    pox4Events: tx.pox4Events.map(e => ({ ...e, canonical: false })),
+  }));
+  data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
+}
+
+export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
+  return {
+    markedCanonical: {
+      blocks: 0,
+      microblocks: 0,
+      minerRewards: 0,
+      txs: 0,
+      stxLockEvents: 0,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      pox2Events: 0,
+      pox3Events: 0,
+      pox4Events: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+      names: 0,
+      namespaces: 0,
+      subdomains: 0,
+    },
+    markedNonCanonical: {
+      blocks: 0,
+      microblocks: 0,
+      minerRewards: 0,
+      txs: 0,
+      stxLockEvents: 0,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      pox2Events: 0,
+      pox3Events: 0,
+      pox4Events: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+      names: 0,
+      namespaces: 0,
+      subdomains: 0,
+    },
+  };
+}
+
+export function logReorgResultInfo(updatedEntities: ReOrgUpdatedEntities) {
+  const updates = [
+    ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
+    [
+      'microblocks',
+      updatedEntities.markedCanonical.microblocks,
+      updatedEntities.markedNonCanonical.microblocks,
+    ],
+    ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
+    [
+      'miner-rewards',
+      updatedEntities.markedCanonical.minerRewards,
+      updatedEntities.markedNonCanonical.minerRewards,
+    ],
+    [
+      'stx-lock events',
+      updatedEntities.markedCanonical.stxLockEvents,
+      updatedEntities.markedNonCanonical.stxLockEvents,
+    ],
+    [
+      'stx-token events',
+      updatedEntities.markedCanonical.stxEvents,
+      updatedEntities.markedNonCanonical.stxEvents,
+    ],
+    [
+      'non-fungible-token events',
+      updatedEntities.markedCanonical.nftEvents,
+      updatedEntities.markedNonCanonical.nftEvents,
+    ],
+    [
+      'fungible-token events',
+      updatedEntities.markedCanonical.ftEvents,
+      updatedEntities.markedNonCanonical.ftEvents,
+    ],
+    [
+      'contract logs',
+      updatedEntities.markedCanonical.contractLogs,
+      updatedEntities.markedNonCanonical.contractLogs,
+    ],
+    [
+      'smart contracts',
+      updatedEntities.markedCanonical.smartContracts,
+      updatedEntities.markedNonCanonical.smartContracts,
+    ],
+    ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
+    [
+      'namespaces',
+      updatedEntities.markedCanonical.namespaces,
+      updatedEntities.markedNonCanonical.namespaces,
+    ],
+    [
+      'subdomains',
+      updatedEntities.markedCanonical.subdomains,
+      updatedEntities.markedNonCanonical.subdomains,
+    ],
+  ];
+  const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
+  logger.debug(`Entities marked as canonical: ${markedCanonical}`);
+  const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
+  logger.debug(`Entities marked as non-canonical: ${markedNonCanonical}`);
 }

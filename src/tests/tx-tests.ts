@@ -1045,15 +1045,17 @@ describe('tx tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(client, dbTx, {
-      tx_id: dbTx.tx_id,
-      canonical: true,
-      clarity_version: null,
-      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
-      block_height: dbBlock.block_height,
-      source_code: '()',
-      abi: JSON.stringify(contractAbi),
-    });
+    await db.updateSmartContracts(client, dbTx, [
+      {
+        tx_id: dbTx.tx_id,
+        canonical: true,
+        clarity_version: null,
+        contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+        block_height: dbBlock.block_height,
+        source_code: '()',
+        abi: JSON.stringify(contractAbi),
+      },
+    ]);
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {

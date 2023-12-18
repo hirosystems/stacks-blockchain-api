@@ -19,6 +19,7 @@ import {
   DbBnsSubdomain,
   DbTokenOfferingLocked,
   DbTx,
+  DataStoreBnsBlockTxData,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
@@ -95,9 +96,7 @@ describe('postgres datastore', () => {
       createMinerReward('addrB', 0n, 30n, 40n, 7n),
       createMinerReward('addrB', 99999n, 92n, 93n, 0n, false),
     ];
-    for (const reward of minerRewards) {
-      await db.updateMinerReward(client, reward);
-    }
+    await db.updateMinerRewards(client, minerRewards);
 
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -196,9 +195,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrA', 222n, 1),
       createStxLockEvent('addrB', 333n, 1),
     ];
-    for (const stxLockEvent of stxLockEvents) {
-      await db.updateStxLockEvent(client, tx, stxLockEvent);
-    }
+    await db.updateStxLockEvents(client, tx, stxLockEvents);
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -3515,9 +3512,7 @@ describe('postgres datastore', () => {
     }
 
     // insert miner rewards directly
-    for (const minerReward of [minerReward1]) {
-      await db.updateMinerReward(client, minerReward);
-    }
+    await db.updateMinerRewards(client, [minerReward1]);
 
     // insert txs directly
     for (const tx of [tx1, tx2]) {
@@ -3525,9 +3520,7 @@ describe('postgres datastore', () => {
     }
 
     // insert stx lock events directly
-    for (const event of [stxLockEvent1]) {
-      await db.updateStxLockEvent(client, tx1, event);
-    }
+    await db.updateStxLockEvents(client, tx1, [stxLockEvent1]);
 
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -4616,8 +4609,8 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      },
-      namespace
+      } as DataStoreBnsBlockTxData,
+      [namespace]
     );
     const { results } = await db.getNamespaceList({ includeUnanchored: false });
     expect(results.length).toBe(1);
@@ -4672,8 +4665,8 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      },
-      name
+      } as DataStoreBnsBlockTxData,
+      [name]
     );
     const { results } = await db.getNamespaceNamesList({
       namespace: 'abc',
