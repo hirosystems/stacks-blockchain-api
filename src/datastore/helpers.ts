@@ -183,6 +183,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_runtime',
   'execution_cost_write_count',
   'execution_cost_write_length',
+  'tx_count',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -464,6 +465,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
     execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
+    tx_count: row.tx_count,
   };
   return block;
 }

@@ -8,9 +8,9 @@ import { asyncHandler } from '../../async-handler';
 import { NakamotoBlockListResponse } from 'docs/generated';
 import {
   BlocksQueryParams,
-  BurnBlockParams,
+  BlockParams,
   CompiledBlocksQueryParams,
-  CompiledBurnBlockParams,
+  CompiledBlockParams,
 } from './schemas';
 import { parseDbNakamotoBlock, validRequestParams, validRequestQuery } from './helpers';
 
@@ -41,8 +41,25 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
     '/:height_or_hash',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      if (!validRequestParams(req, res, CompiledBurnBlockParams)) return;
-      const params = req.params as BurnBlockParams;
+      if (!validRequestParams(req, res, CompiledBlockParams)) return;
+      const params = req.params as BlockParams;
+
+      const block = await db.getV2Block(params);
+      if (!block) {
+        res.status(404).json({ errors: 'Not found' });
+        return;
+      }
+      setETagCacheHeaders(res);
+      res.json(parseDbNakamotoBlock(block));
+    })
+  );
+
+  router.get(
+    '/:height_or_hash/transactions',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      if (!validRequestParams(req, res, CompiledBlockParams)) return;
+      const params = req.params as BlockParams;
 
       const block = await db.getV2Block(params);
       if (!block) {

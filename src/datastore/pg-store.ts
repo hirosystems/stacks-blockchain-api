@@ -19,10 +19,8 @@ import {
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
-  AddressNftEventIdentifier,
   BlockIdentifier,
   BlockQueryResult,
-  BlockWithTransactionIds,
   BlocksWithMetadata,
   ContractTxQueryResult,
   DbAssetEventTypeId,
@@ -108,7 +106,7 @@ import {
   BlockLimitParamSchema,
   BlockPaginationQueryParams,
   BlocksQueryParams,
-  BurnBlockParams,
+  BlockParams,
   CompiledBurnBlockHashParam,
 } from '../api/routes/v2/schemas';
 
@@ -389,7 +387,7 @@ export class PgStore extends BasePgStore {
 
   async getCurrentBlockInternal(sql: PgSqlClient): Promise<FoundOrNot<DbBlock>> {
     const result = await sql<BlockQueryResult[]>`
-      SELECT ${sql(BLOCK_COLUMNS)}
+      SELECT ${sql(BLOCK_COLUMNS.map(c => `b.${c}`))}
       FROM blocks b
       INNER JOIN chain_tip t USING (index_block_hash, block_hash, block_height, burn_block_height)
       LIMIT 1
@@ -436,7 +434,7 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getBurnBlock(args: BurnBlockParams): Promise<DbBurnBlock | undefined> {
+  async getBurnBlock(args: BlockParams): Promise<DbBurnBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
         args.height_or_hash === 'latest'
@@ -573,9 +571,9 @@ export class PgStore extends BasePgStore {
 
   /**
    * Returns Block information with transaction IDs
-   * @returns Paginated `BlockWithTransactionIds` array
+   * @returns Paginated `DbBlock` array
    */
-  async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<BlockWithTransactionIds>> {
+  async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
@@ -597,7 +595,7 @@ export class PgStore extends BasePgStore {
           : undefined;
 
       // Obtain blocks and transaction counts in the same query.
-      const blocksQuery = await sql<(BlockQueryResult & { tx_ids: string; total: number })[]>`
+      const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
         WITH block_count AS (
           ${
             'burn_block_hash' in args
@@ -609,13 +607,6 @@ export class PgStore extends BasePgStore {
         )
         SELECT
           ${sql(BLOCK_COLUMNS)},
-          (
-            SELECT STRING_AGG(tx_id,',')
-            FROM txs
-            WHERE index_block_hash = blocks.index_block_hash
-              AND canonical = true
-              AND microblock_canonical = true
-          ) AS tx_ids,
           (SELECT count FROM block_count)::int AS total
         FROM blocks
         WHERE canonical = true
@@ -637,10 +628,7 @@ export class PgStore extends BasePgStore {
           results: [],
           total: 0,
         };
-      const blocks = blocksQuery.map(b => ({
-        ...parseBlockQueryResult(b),
-        tx_ids: b.tx_ids ? b.tx_ids.split(',') : [],
-      }));
+      const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
       return {
         limit,
         offset,
@@ -650,7 +638,7 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getV2Block(args: BurnBlockParams): Promise<BlockWithTransactionIds | undefined> {
+  async getV2Block(args: BlockParams): Promise<DbBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
         args.height_or_hash === 'latest'
@@ -661,28 +649,19 @@ export class PgStore extends BasePgStore {
               OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
             )`
           : sql`block_height = ${args.height_or_hash}`;
-      const blockQuery = await sql<(BlockQueryResult & { tx_ids: string })[]>`
-        SELECT
-          ${sql(BLOCK_COLUMNS)},
-          (
-            SELECT STRING_AGG(tx_id,',')
-            FROM txs
-            WHERE index_block_hash = blocks.index_block_hash
-              AND canonical = true
-              AND microblock_canonical = true
-          ) AS tx_ids
+      const blockQuery = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
         WHERE canonical = true AND ${filter}
         LIMIT 1
       `;
-      if (blockQuery.count > 0)
-        return {
-          ...parseBlockQueryResult(blockQuery[0]),
-          tx_ids: blockQuery[0].tx_ids ? blockQuery[0].tx_ids.split(',') : [],
-        };
+      if (blockQuery.count > 0) return parseBlockQueryResult(blockQuery[0]);
     });
   }
 
+  /**
+   * @deprecated Only used in tests
+   */
   async getBlockTxs(indexBlockHash: string) {
     const result = await this.sql<{ tx_id: string; tx_index: number }[]>`
       SELECT tx_id, tx_index

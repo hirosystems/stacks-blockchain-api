@@ -78,7 +78,7 @@ const BlocksQueryParamsSchema = Type.Union([
 export type BlocksQueryParams = Static<typeof BlocksQueryParamsSchema>;
 export const CompiledBlocksQueryParams = TypeCompiler.Compile(BlocksQueryParamsSchema);
 
-const BurnBlockParamsSchema = Type.Object(
+const BlockParamsSchema = Type.Object(
   {
     height_or_hash: Type.Union([
       Type.Literal('latest'),
@@ -88,5 +88,5 @@ const BurnBlockParamsSchema = Type.Object(
   },
   { additionalProperties: false }
 );
-export type BurnBlockParams = Static<typeof BurnBlockParamsSchema>;
-export const CompiledBurnBlockParams = TypeCompiler.Compile(BurnBlockParamsSchema);
+export type BlockParams = Static<typeof BlockParamsSchema>;
+export const CompiledBlockParams = TypeCompiler.Compile(BlockParamsSchema);

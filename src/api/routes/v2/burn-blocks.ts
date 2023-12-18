@@ -6,9 +6,9 @@ import { PgStore } from '../../../datastore/pg-store';
 import { parseDbBurnBlock, validRequestParams, validRequestQuery } from './helpers';
 import {
   BlockPaginationQueryParams,
-  BurnBlockParams,
+  BlockParams,
   CompiledBlockPaginationParams,
-  CompiledBurnBlockParams,
+  CompiledBlockParams,
 } from './schemas';
 
 export function createV2BurnBlocksRouter(db: PgStore): express.Router {
@@ -38,8 +38,8 @@ export function createV2BurnBlocksRouter(db: PgStore): express.Router {
     '/:height_or_hash',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      if (!validRequestParams(req, res, CompiledBurnBlockParams)) return;
-      const params = req.params as BurnBlockParams;
+      if (!validRequestParams(req, res, CompiledBlockParams)) return;
+      const params = req.params as BlockParams;
 
       const block = await db.getBurnBlock(params);
       if (!block) {

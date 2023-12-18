@@ -1366,9 +1366,9 @@ export interface NakamotoBlock {
    */
   miner_txid: string;
   /**
-   * List of transactions included in the block
+   * Number of transactions included in the block
    */
-  txs: string[];
+  tx_count?: number;
   /**
    * Execution cost read count.
    */

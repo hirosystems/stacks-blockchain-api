@@ -67,13 +67,9 @@
       "type": "string",
       "description": "Anchor chain transaction ID"
     },
-    "txs": {
-      "type": "array",
-      "description": "List of transactions included in the block",
-      "items": {
-        "type": "string",
-        "description": "Transaction ID"
-      }
+    "tx_count": {
+      "type": "integer",
+      "description": "Number of transactions included in the block"
     },
     "execution_cost_read_count": {
       "type": "integer",

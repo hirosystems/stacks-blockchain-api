@@ -60,6 +60,7 @@ describe('other tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',

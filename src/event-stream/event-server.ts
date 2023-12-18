@@ -259,6 +259,7 @@ async function handleBlockMessage(
     execution_cost_runtime: 0,
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
+    tx_count: msg.transactions.length,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -1064,6 +1065,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     execution_cost_runtime: totalCost.execution_cost_runtime,
     execution_cost_write_count: totalCost.execution_cost_write_count,
     execution_cost_write_length: totalCost.execution_cost_write_length,
+    tx_count: msg.transactions.length,
   };
 
   const dbMinerRewards: DbMinerReward[] = [];
