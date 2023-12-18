@@ -710,7 +710,7 @@ describe('block tests', () => {
       miner_txid: '0x4321',
       parent_block_hash: '0x0007',
       parent_index_block_hash: '0x0007',
-      txs: ['0x0018'],
+      tx_count: 1,
     };
     fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=latest`);
     json = JSON.parse(fetch.text);

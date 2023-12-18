@@ -572,18 +572,6 @@ export interface NftEventWithTxMetadata {
   tx?: DbTx;
 }
 
-export interface AddressNftEventIdentifier {
-  sender: string;
-  recipient: string;
-  asset_identifier: string;
-  value: string;
-  block_height: number;
-  tx_id: string;
-  event_index: number;
-  tx_index: number;
-  asset_event_type_id: number;
-}
-
 export interface DataStoreBlockUpdateData {
   block: DbBlock;
   microblocks: DbMicroblock[];
