@@ -1,49 +1,6 @@
 import { BurnBlock, NakamotoBlock } from 'docs/generated';
 import { DbBlock, DbBurnBlock } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
-import { TypeCheck } from '@sinclair/typebox/compiler';
-import { Request, Response } from 'express';
-import { TSchema } from '@sinclair/typebox';
-
-/**
- * Validate request query parameters with a TypeBox compiled schema
- * @param req - Request
- * @param res - Response
- * @param compiledType - TypeBox compiled schema
- * @returns boolean
- */
-export function validRequestQuery(
-  req: Request,
-  res: Response,
-  compiledType: TypeCheck<TSchema>
-): boolean {
-  if (!compiledType.Check(req.query)) {
-    // TODO: Return a more user-friendly error
-    res.status(400).json({ errors: [...compiledType.Errors(req.query)] });
-    return false;
-  }
-  return true;
-}
-
-/**
- * Validate request path parameters with a TypeBox compiled schema
- * @param req - Request
- * @param res - Response
- * @param compiledType - TypeBox compiled schema
- * @returns boolean
- */
-export function validRequestParams(
-  req: Request,
-  res: Response,
-  compiledType: TypeCheck<TSchema>
-): boolean {
-  if (!compiledType.Check(req.params)) {
-    // TODO: Return a more user-friendly error
-    res.status(400).json({ errors: [...compiledType.Errors(req.params)] });
-    return false;
-  }
-  return true;
-}
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {

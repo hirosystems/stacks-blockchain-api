@@ -3,12 +3,14 @@ import { BurnBlockListResponse } from '@stacks/stacks-blockchain-api-types';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
-import { parseDbBurnBlock, validRequestParams, validRequestQuery } from './helpers';
+import { parseDbBurnBlock } from './helpers';
 import {
   BlockPaginationQueryParams,
   BlockParams,
-  CompiledBlockPaginationParams,
+  CompiledBlockPaginationQueryParams,
   CompiledBlockParams,
+  validRequestParams,
+  validRequestQuery,
 } from './schemas';
 
 export function createV2BurnBlocksRouter(db: PgStore): express.Router {
@@ -19,7 +21,7 @@ export function createV2BurnBlocksRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      if (!validRequestQuery(req, res, CompiledBlockPaginationParams)) return;
+      if (!validRequestQuery(req, res, CompiledBlockPaginationQueryParams)) return;
       const query = req.query as BlockPaginationQueryParams;
 
       const { limit, offset, results, total } = await db.getBurnBlocks(query);

@@ -5,14 +5,20 @@ import {
   setETagCacheHeaders,
 } from '../../../api/controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
-import { NakamotoBlockListResponse } from 'docs/generated';
+import { NakamotoBlockListResponse, TransactionResults } from 'docs/generated';
 import {
   BlocksQueryParams,
   BlockParams,
   CompiledBlocksQueryParams,
   CompiledBlockParams,
+  CompiledTransactionPaginationQueryParams,
+  TransactionPaginationQueryParams,
+  validRequestQuery,
+  validRequestParams,
 } from './schemas';
-import { parseDbNakamotoBlock, validRequestParams, validRequestQuery } from './helpers';
+import { parseDbNakamotoBlock } from './helpers';
+import { InvalidRequestError } from '../../../errors';
+import { parseDbTx } from '../../../api/controllers/db-controller';
 
 export function createV2BlocksRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -58,16 +64,34 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
     '/:height_or_hash/transactions',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      if (!validRequestParams(req, res, CompiledBlockParams)) return;
-      const params = req.params as BlockParams;
-
-      const block = await db.getV2Block(params);
-      if (!block) {
-        res.status(404).json({ errors: 'Not found' });
+      if (
+        !validRequestParams(req, res, CompiledBlockParams) ||
+        !validRequestQuery(req, res, CompiledTransactionPaginationQueryParams)
+      )
         return;
+      const params = req.params as BlockParams;
+      const query = req.query as TransactionPaginationQueryParams;
+
+      try {
+        const { limit, offset, results, total } = await db.getV2BlockTransactions({
+          ...params,
+          ...query,
+        });
+        const response: TransactionResults = {
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbTx(r)),
+        };
+        setETagCacheHeaders(res);
+        res.json(response);
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          res.status(404).json({ errors: error.message });
+          return;
+        }
+        throw error;
       }
-      setETagCacheHeaders(res);
-      res.json(parseDbNakamotoBlock(block));
     })
   );
 

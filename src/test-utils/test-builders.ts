@@ -744,7 +744,9 @@ export class TestBlockBuilder {
   }
 
   build(): DataStoreBlockUpdateData {
-    return this.data;
+    const data = this.data;
+    data.block.tx_count = this.txIndex + 1;
+    return data;
   }
 }
 

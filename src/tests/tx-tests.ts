@@ -3298,6 +3298,101 @@ describe('tx tests', () => {
     expect(result1.body.results[0].index_block_hash).toBe('0xdeadbeef');
   });
 
+  test('fetch transactions from v2 block', async () => {
+    await db.update(
+      new TestBlockBuilder({
+        block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+        index_block_hash: '0xdeadbeef',
+        parent_index_block_hash: '0x00',
+        parent_block_hash: '0xff0011',
+        parent_microblock_hash: '',
+        parent_microblock_sequence: 0,
+        block_height: 1,
+        burn_block_time: 94869286,
+        burn_block_hash: '0x1234',
+        burn_block_height: 123,
+        miner_txid: '0x4321',
+        canonical: true,
+      })
+        .addTx({
+          tx_id: '0x1234',
+          tx_index: 0,
+          nonce: 0,
+          type_id: DbTxTypeId.Coinbase,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          microblock_canonical: true,
+          microblock_sequence: I32_MAX,
+          microblock_hash: '',
+          fee_rate: 1234n,
+          sender_address: 'sender-addr',
+        })
+        .addTx({
+          tx_id: '0x1235',
+          tx_index: 1,
+          nonce: 0,
+          type_id: DbTxTypeId.Coinbase,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          microblock_canonical: true,
+          microblock_sequence: I32_MAX,
+          microblock_hash: '',
+          fee_rate: 1234n,
+          sender_address: 'sender-addr',
+        })
+        .build()
+    );
+    const result = await supertest(api.server).get(
+      `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/transactions?limit=20&offset=0`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    const json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
+    expect(json.results[0]).toStrictEqual({
+      anchor_mode: 'any',
+      block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      coinbase_payload: {
+        alt_recipient: null,
+        data: '0x6869',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      fee_rate: '1234',
+      is_unanchored: false,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: 2147483647,
+      nonce: 0,
+      parent_block_hash: '0x123456',
+      parent_burn_block_time: 94869286,
+      parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      sender_address: 'sender-addr',
+      sponsored: false,
+      tx_id: '0x1234',
+      tx_index: 0,
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001',
+        repr: 'u1',
+      },
+      tx_status: 'success',
+      tx_type: 'coinbase',
+    });
+  });
+
   test('fetch transactions from block', async () => {
     const not_updated_tx_id = '0x1111';
     const tx_not_found = {

@@ -1368,7 +1368,7 @@ export interface NakamotoBlock {
   /**
    * Number of transactions included in the block
    */
-  tx_count?: number;
+  tx_count: number;
   /**
    * Execution cost read count.
    */

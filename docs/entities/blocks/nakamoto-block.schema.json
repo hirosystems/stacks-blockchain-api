@@ -11,6 +11,7 @@
     "parent_block_hash",
     "parent_index_block_hash",
     "txs",
+    "tx_count",
     "burn_block_time",
     "burn_block_time_iso",
     "burn_block_hash",
