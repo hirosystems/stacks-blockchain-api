@@ -1,3 +1,16 @@
+## [7.4.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.6...v7.4.0-nakamoto.7) (2023-12-19)
+
+
+### Features
+
+* add `tx_count` property to `/extended/v2/blocks` ([#1778](https://github.com/hirosystems/stacks-blockchain-api/issues/1778)) ([da4cd56](https://github.com/hirosystems/stacks-blockchain-api/commit/da4cd569a5c5e0c9a6aefc2877d3d8ef8716425f))
+
+
+### Bug Fixes
+
+* insert block transaction data in batches ([#1760](https://github.com/hirosystems/stacks-blockchain-api/issues/1760)) ([bf99e90](https://github.com/hirosystems/stacks-blockchain-api/commit/bf99e90fa56ed04e6cb6bcc83559658f9e551183))
+* remove deprecated token endpoints ([#1775](https://github.com/hirosystems/stacks-blockchain-api/issues/1775)) ([18f74b7](https://github.com/hirosystems/stacks-blockchain-api/commit/18f74b7b77c95a81c2f6d47641af229c5c833b8f))
+
 ## [7.4.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.5...v7.4.0-nakamoto.6) (2023-12-15)
 
 
