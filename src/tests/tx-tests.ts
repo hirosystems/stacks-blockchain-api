@@ -3344,12 +3344,12 @@ describe('tx tests', () => {
         })
         .build()
     );
-    const result = await supertest(api.server).get(
+    let result = await supertest(api.server).get(
       `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/transactions?limit=20&offset=0`
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    const json = JSON.parse(result.text);
+    let json = JSON.parse(result.text);
     expect(json.total).toBe(2);
     expect(json.results[0]).toStrictEqual({
       anchor_mode: 'any',
@@ -3391,6 +3391,15 @@ describe('tx tests', () => {
       tx_status: 'success',
       tx_type: 'coinbase',
     });
+
+    // Try a non-existent block
+    result = await supertest(api.server).get(
+      `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee999999/transactions?limit=20&offset=0`
+    );
+    expect(result.status).toBe(404);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.errors).toBe('Block not found');
   });
 
   test('fetch transactions from block', async () => {
