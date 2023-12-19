@@ -83,6 +83,7 @@ describe('block tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -519,6 +520,7 @@ describe('block tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const dbTx1: DbTxRaw = {
       ...dbBlock,
@@ -673,7 +675,7 @@ describe('block tests', () => {
       miner_txid: '0x4321',
       parent_block_hash: '0x0004',
       parent_index_block_hash: '0x0004',
-      txs: ['0x0005'],
+      tx_count: 1,
     };
     let fetch = await supertest(api.server).get(
       `/extended/v2/blocks?burn_block_hash=00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8`
@@ -708,7 +710,7 @@ describe('block tests', () => {
       miner_txid: '0x4321',
       parent_block_hash: '0x0007',
       parent_index_block_hash: '0x0007',
-      txs: ['0x0018'],
+      tx_count: 1,
     };
     fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=latest`);
     json = JSON.parse(fetch.text);
@@ -770,7 +772,7 @@ describe('block tests', () => {
       miner_txid: '0x4321',
       parent_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000004',
       parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000114',
-      txs: ['0x0005'],
+      tx_count: 1,
     };
     let fetch = await supertest(api.server).get(`/extended/v2/blocks/latest`);
     let json = JSON.parse(fetch.text);

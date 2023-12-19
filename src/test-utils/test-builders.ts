@@ -122,6 +122,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     execution_cost_runtime: 0,
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
+    tx_count: 1,
   };
 }
 
@@ -743,7 +744,9 @@ export class TestBlockBuilder {
   }
 
   build(): DataStoreBlockUpdateData {
-    return this.data;
+    const data = this.data;
+    data.block.tx_count = this.txIndex + 1;
+    return data;
   }
 }
 

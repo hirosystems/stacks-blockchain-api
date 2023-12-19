@@ -1,51 +1,8 @@
 import { BurnBlock, NakamotoBlock } from 'docs/generated';
-import { BlockWithTransactionIds, DbBurnBlock } from '../../../datastore/common';
+import { DbBlock, DbBurnBlock } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
-import { TypeCheck } from '@sinclair/typebox/compiler';
-import { Request, Response } from 'express';
-import { TSchema } from '@sinclair/typebox';
 
-/**
- * Validate request query parameters with a TypeBox compiled schema
- * @param req - Request
- * @param res - Response
- * @param compiledType - TypeBox compiled schema
- * @returns boolean
- */
-export function validRequestQuery(
-  req: Request,
-  res: Response,
-  compiledType: TypeCheck<TSchema>
-): boolean {
-  if (!compiledType.Check(req.query)) {
-    // TODO: Return a more user-friendly error
-    res.status(400).json({ errors: [...compiledType.Errors(req.query)] });
-    return false;
-  }
-  return true;
-}
-
-/**
- * Validate request path parameters with a TypeBox compiled schema
- * @param req - Request
- * @param res - Response
- * @param compiledType - TypeBox compiled schema
- * @returns boolean
- */
-export function validRequestParams(
-  req: Request,
-  res: Response,
-  compiledType: TypeCheck<TSchema>
-): boolean {
-  if (!compiledType.Check(req.params)) {
-    // TODO: Return a more user-friendly error
-    res.status(400).json({ errors: [...compiledType.Errors(req.params)] });
-    return false;
-  }
-  return true;
-}
-
-export function parseDbNakamotoBlock(block: BlockWithTransactionIds): NakamotoBlock {
+export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
     canonical: block.canonical,
     height: block.block_height,
@@ -58,7 +15,7 @@ export function parseDbNakamotoBlock(block: BlockWithTransactionIds): NakamotoBl
     burn_block_hash: block.burn_block_hash,
     burn_block_height: block.burn_block_height,
     miner_txid: block.miner_txid,
-    txs: [...block.tx_ids],
+    tx_count: block.tx_count,
     execution_cost_read_count: block.execution_cost_read_count,
     execution_cost_read_length: block.execution_cost_read_length,
     execution_cost_runtime: block.execution_cost_runtime,

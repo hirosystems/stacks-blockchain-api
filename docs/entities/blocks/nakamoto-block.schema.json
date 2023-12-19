@@ -11,6 +11,7 @@
     "parent_block_hash",
     "parent_index_block_hash",
     "txs",
+    "tx_count",
     "burn_block_time",
     "burn_block_time_iso",
     "burn_block_hash",
@@ -67,13 +68,9 @@
       "type": "string",
       "description": "Anchor chain transaction ID"
     },
-    "txs": {
-      "type": "array",
-      "description": "List of transactions included in the block",
-      "items": {
-        "type": "string",
-        "description": "Transaction ID"
-      }
+    "tx_count": {
+      "type": "integer",
+      "description": "Number of transactions included in the block"
     },
     "execution_cost_read_count": {
       "type": "integer",

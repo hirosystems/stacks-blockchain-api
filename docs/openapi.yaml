@@ -745,6 +745,35 @@ paths:
               example:
                 $ref: ./entities/blocks/nakamoto-block.example.json
 
+  /extended/v2/blocks/{height_or_hash}/transactions:
+    get:
+      summary: Get block transactions
+      description: |
+        Retrieves transactions confirmed in a single block
+      tags:
+        - Blocks
+      operationId: get_block_transactions
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by block height, hash, index block hash or the constant `latest` to filter for the most recent block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions.example.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
