@@ -293,7 +293,6 @@ export class PgWriteStore extends PgStore {
             tx_count = (SELECT tx_count FROM new_tx_count),
             tx_count_unanchored = (SELECT tx_count FROM new_tx_count)
         `;
-      await this.recalculateMempoolDigest();
     });
     // Do we have an IBD height defined in ENV? If so, check if this block update reached it.
     const ibdHeight = getIbdBlockHeight();
@@ -301,19 +300,6 @@ export class PgWriteStore extends PgStore {
     // Send block updates but don't block current execution unless we're testing.
     if (isTestEnv) await this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
     else void this.sendBlockNotifications({ data, garbageCollectedMempoolTxs });
-  }
-
-  private async recalculateMempoolDigest(): Promise<void> {
-    await this.sql`
-      UPDATE mempool_digest SET digest = (
-        SELECT COALESCE(to_hex(bit_xor(tx_short_id)), '0') AS digest
-        FROM (
-          SELECT ('x' || encode(tx_id, 'hex'))::bit(64)::bigint tx_short_id
-          FROM mempool_txs
-          WHERE pruned = false
-        ) m
-      )
-    `;
   }
 
   /**
@@ -697,8 +683,6 @@ export class PgWriteStore extends PgStore {
             }
         `;
     });
-
-    await this.recalculateMempoolDigest();
 
     if (this.notifier) {
       for (const microblock of dbMicroblocks) {
@@ -1698,7 +1682,9 @@ export class PgWriteStore extends PgStore {
           RETURNING tx_id
         ),
         count_update AS (
-          UPDATE mempool_digest SET tx_count = tx_count + (SELECT COUNT(*) FROM inserted)
+          UPDATE chain_tip SET
+            mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM inserted),
+            mempool_updated_at = NOW()
         )
         SELECT tx_id FROM inserted
       `;
@@ -1717,7 +1703,6 @@ export class PgWriteStore extends PgStore {
         const mempoolStats = await this.getMempoolStatsInternal({ sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       }
-      await this.recalculateMempoolDigest();
     });
     for (const txId of updatedTxIds) {
       await this.notifier?.sendTx({ txId });
@@ -1725,24 +1710,21 @@ export class PgWriteStore extends PgStore {
   }
 
   async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
-    const updatedTxIds: string[] = [];
-    await this.sqlWriteTransaction(async sql => {
-      const updateResults = await this.sql<{ tx_id: string }[]>`
-        WITH pruned AS (
-          UPDATE mempool_txs
-          SET pruned = TRUE, status = ${status}
-          WHERE tx_id IN ${this.sql(txIds)} AND pruned = FALSE
-          RETURNING tx_id
-        ),
-        count_update AS (
-          UPDATE mempool_digest SET tx_count = tx_count - (SELECT COUNT(*) FROM pruned)
-        )
-        SELECT tx_id FROM pruned
-      `;
-      updatedTxIds.push(...updateResults.map(r => r.tx_id));
-      await this.recalculateMempoolDigest();
-    });
-    for (const txId of updatedTxIds) {
+    const updateResults = await this.sql<{ tx_id: string }[]>`
+      WITH pruned AS (
+        UPDATE mempool_txs
+        SET pruned = TRUE, status = ${status}
+        WHERE tx_id IN ${this.sql(txIds)} AND pruned = FALSE
+        RETURNING tx_id
+      ),
+      count_update AS (
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+          mempool_updated_at = NOW()
+      )
+      SELECT tx_id FROM pruned
+    `;
+    for (const txId of updateResults.map(r => r.tx_id)) {
       await this.notifier?.sendTx({ txId });
     }
   }
@@ -2320,7 +2302,9 @@ export class PgWriteStore extends PgStore {
         RETURNING tx_id
       ),
       count_update AS (
-        UPDATE mempool_digest SET tx_count = tx_count + (SELECT COUNT(*) FROM restored)
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM restored),
+          mempool_updated_at = NOW()
       )
       SELECT tx_id FROM restored
     `;
@@ -2381,7 +2365,9 @@ export class PgWriteStore extends PgStore {
         RETURNING tx_id
       ),
       count_update AS (
-        UPDATE mempool_digest SET tx_count = tx_count - (SELECT COUNT(*) FROM pruned)
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+          mempool_updated_at = NOW()
       )
       SELECT tx_id FROM pruned
     `;
@@ -2407,7 +2393,9 @@ export class PgWriteStore extends PgStore {
         RETURNING tx_id
       ),
       count_update AS (
-        UPDATE mempool_digest SET tx_count = tx_count - (SELECT COUNT(*) FROM pruned)
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+          mempool_updated_at = NOW()
       )
       SELECT tx_id FROM pruned
     `;
