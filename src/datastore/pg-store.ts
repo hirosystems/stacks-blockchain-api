@@ -1473,12 +1473,13 @@ export class PgStore extends BasePgStore {
       const unanchoredTxs: string[] = !includeUnanchored
         ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => tx.tx_id)
         : [];
+      // If caller is not filtering by any param, get the tx count from the `mempool_digest` table.
+      const count =
+        senderAddress || recipientAddress || address
+          ? sql`(COUNT(*) OVER())::int AS count`
+          : sql`(SELECT tx_count FROM mempool_digest) AS count`;
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
-        SELECT ${unsafeCols(sql, [
-          ...MEMPOOL_TX_COLUMNS,
-          abiColumn('mempool_txs'),
-          '(COUNT(*) OVER())::INTEGER AS count',
-        ])}
+        SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}, ${count}
         FROM mempool_txs
         WHERE ${
           address

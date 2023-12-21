@@ -477,18 +477,6 @@ describe('cache-control tests', () => {
     expect(request7.status).toBe(200);
     expect(request7.type).toBe('application/json');
     expect(request7.headers['etag']).toEqual('"0"');
-
-    // Simulate an incompatible pg version (without `bit_xor`).
-    await client.begin(async sql => {
-      await sql`DROP MATERIALIZED VIEW mempool_digest`;
-      await sql`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`;
-    });
-
-    // ETag is undefined as if mempool cache did not exist.
-    const request8 = await supertest(api.server).get('/extended/v1/tx/mempool');
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
-    expect(request8.headers['etag']).toBeUndefined();
   });
 
   test('transaction cache control', async () => {

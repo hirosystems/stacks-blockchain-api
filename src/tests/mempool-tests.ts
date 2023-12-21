@@ -1546,7 +1546,7 @@ describe('mempool tests', () => {
     // directly inserting the mempool-tx and mined-tx, bypassing the normal update functions.
     await db.updateBlock(db.sql, dbBlock1);
     const chainTip = await db.getChainTip();
-    await db.insertDbMempoolTx(mempoolTx, chainTip, db.sql);
+    await db.insertDbMempoolTxs([mempoolTx], chainTip, db.sql);
     await db.updateTx(db.sql, dbTx1);
 
     // Verify tx shows up in mempool (non-pruned)
