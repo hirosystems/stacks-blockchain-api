@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.7...v7.4.0-nakamoto.8) (2023-12-21)
+
+
+### Bug Fixes
+
+* do not load duckdb binary unless required ([#1776](https://github.com/hirosystems/stacks-blockchain-api/issues/1776)) ([db859ae](https://github.com/hirosystems/stacks-blockchain-api/commit/db859ae980368db22b9d1c4c7096918d5f7f4c4b))
+
 ## [7.4.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.6...v7.4.0-nakamoto.7) (2023-12-19)
 
 
