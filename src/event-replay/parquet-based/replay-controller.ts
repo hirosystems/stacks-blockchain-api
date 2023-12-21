@@ -26,6 +26,7 @@ import { MIGRATIONS_DIR } from '../../datastore/pg-store';
  *
  * It also has functions to prepare and finalize the database for an event-replay.
  */
+// ts-unused-exports:disable-next-line
 export class ReplayController {
   private readonly db;
   private readonly dataset;
