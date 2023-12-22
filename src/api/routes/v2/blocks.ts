@@ -7,14 +7,14 @@ import {
 import { asyncHandler } from '../../async-handler';
 import { NakamotoBlockListResponse, TransactionResults } from 'docs/generated';
 import {
-  BlocksQueryParams,
   BlockParams,
-  CompiledBlocksQueryParams,
   CompiledBlockParams,
   CompiledTransactionPaginationQueryParams,
   TransactionPaginationQueryParams,
   validRequestQuery,
   validRequestParams,
+  CompiledBlockPaginationQueryParams,
+  BlockPaginationQueryParams,
 } from './schemas';
 import { parseDbNakamotoBlock } from './helpers';
 import { InvalidRequestError } from '../../../errors';
@@ -28,8 +28,8 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
     '/',
     cacheHandler,
     asyncHandler(async (req, res) => {
-      if (!validRequestQuery(req, res, CompiledBlocksQueryParams)) return;
-      const query = req.query as BlocksQueryParams;
+      if (!validRequestQuery(req, res, CompiledBlockPaginationQueryParams)) return;
+      const query = req.query as BlockPaginationQueryParams;
 
       const { limit, offset, results, total } = await db.v2.getBlocks(query);
       const response: NakamotoBlockListResponse = {

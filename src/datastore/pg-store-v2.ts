@@ -1,6 +1,5 @@
 import { BasePgStoreModule } from '@hirosystems/api-toolkit';
 import {
-  BlocksQueryParams,
   BlockLimitParamSchema,
   CompiledBurnBlockHashParam,
   TransactionPaginationQueryParams,
@@ -21,54 +20,68 @@ import {
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
 export class PgStoreV2 extends BasePgStoreModule {
-  /**
-   * Returns Block information with transaction IDs
-   * @returns Paginated `DbBlock` array
-   */
-  async getBlocks(args: BlocksQueryParams): Promise<DbPaginatedResult<DbBlock>> {
+  async getBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
-      const burnBlockHashCond =
-        'burn_block_hash' in args
-          ? sql`burn_block_hash = ${
-              args.burn_block_hash === 'latest'
-                ? sql`(SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-                : sql`${normalizeHashString(args.burn_block_hash)}`
-            }`
-          : undefined;
-      const burnBlockHeightCond =
-        'burn_block_height' in args
-          ? sql`burn_block_height = ${
-              args.burn_block_height === 'latest'
-                ? sql`(SELECT burn_block_height FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-                : sql`${args.burn_block_height}`
-            }`
-          : undefined;
-
-      // Obtain blocks and transaction counts in the same query.
       const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
         WITH block_count AS (
-          ${
-            'burn_block_hash' in args
-              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHashCond}`
-              : 'burn_block_height' in args
-              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHeightCond}`
-              : sql`SELECT block_count AS count FROM chain_tip`
-          }
+          SELECT block_count AS count FROM chain_tip
         )
         SELECT
           ${sql(BLOCK_COLUMNS)},
           (SELECT count FROM block_count)::int AS total
         FROM blocks
         WHERE canonical = true
-          AND ${
-            'burn_block_hash' in args
-              ? burnBlockHashCond
-              : 'burn_block_height' in args
-              ? burnBlockHeightCond
-              : sql`TRUE`
-          }
+        ORDER BY block_height DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      if (blocksQuery.count === 0)
+        return {
+          limit,
+          offset,
+          results: [],
+          total: 0,
+        };
+      const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
+      return {
+        limit,
+        offset,
+        results: blocks,
+        total: blocksQuery[0].total,
+      };
+    });
+  }
+
+  async getBlocksByBurnBlock(
+    args: BlockParams & BlockPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbBlock>> {
+    return await this.sqlTransaction(async sql => {
+      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const filter =
+        args.height_or_hash === 'latest'
+          ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
+          : CompiledBurnBlockHashParam(args.height_or_hash)
+          ? sql`burn_block_hash = ${normalizeHashString(args.height_or_hash)}`
+          : sql`burn_block_height = ${args.height_or_hash}`;
+      const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
+      if (blockCheck.count === 0)
+        throw new InvalidRequestError(
+          `Burn block not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+
+      const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
+        WITH block_count AS (
+          SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${filter}
+        )
+        SELECT
+          ${sql(BLOCK_COLUMNS)},
+          (SELECT count FROM block_count)::int AS total
+        FROM blocks
+        WHERE canonical = true AND ${filter}
         ORDER BY block_height DESC
         LIMIT ${limit}
         OFFSET ${offset}

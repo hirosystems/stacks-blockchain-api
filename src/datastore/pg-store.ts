@@ -15,7 +15,6 @@ import {
   bnsNameFromSubdomain,
   ChainID,
   REPO_DIR,
-  normalizeHashString,
 } from '../helpers';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import {
@@ -29,7 +28,6 @@ import {
   DbBnsNamespace,
   DbBnsSubdomain,
   DbBnsZoneFile,
-  DbBurnBlock,
   DbBurnchainReward,
   DbChainTip,
   DbEvent,
@@ -44,7 +42,6 @@ import {
   DbMicroblock,
   DbMinerReward,
   DbNftEvent,
-  DbPaginatedResult,
   DbRewardSlotHolder,
   DbSearchResult,
   DbSmartContract,
@@ -71,7 +68,6 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
-  TxQueryResult,
 } from './common';
 import {
   abiColumn,
@@ -103,16 +99,6 @@ import {
   getPgConnectionEnvValue,
 } from './connection';
 import * as path from 'path';
-import {
-  BlockLimitParamSchema,
-  BlockPaginationQueryParams,
-  BlocksQueryParams,
-  BlockParams,
-  TransactionPaginationQueryParams,
-  TransactionLimitParamSchema,
-  CompiledBurnBlockHashParam,
-} from '../api/routes/v2/schemas';
-import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { PgStoreV2 } from './pg-store-v2';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');

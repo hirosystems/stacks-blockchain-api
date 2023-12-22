@@ -678,7 +678,7 @@ describe('block tests', () => {
       tx_count: 1,
     };
     let fetch = await supertest(api.server).get(
-      `/extended/v2/blocks?burn_block_hash=00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8`
+      `/extended/v2/burn-blocks/00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/blocks`
     );
     let json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
@@ -686,7 +686,7 @@ describe('block tests', () => {
     expect(json.results[0]).toStrictEqual(block5);
 
     // Filter by burn height
-    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_height=700000`);
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/700000/blocks`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(5);
@@ -712,25 +712,14 @@ describe('block tests', () => {
       parent_index_block_hash: '0x0007',
       tx_count: 1,
     };
-    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=latest`);
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/latest/blocks`);
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json.total).toEqual(3);
     expect(json.results[0]).toStrictEqual(block8);
-    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_height=latest`);
-    json = JSON.parse(fetch.text);
-    expect(fetch.status).toBe(200);
-    expect(json.total).toEqual(3);
-    expect(json.results[0]).toStrictEqual(block8);
-
-    // Can't filter by both params
-    fetch = await supertest(api.server).get(
-      `/extended/v2/blocks?burn_block_hash=latest&burn_block_height=latest`
-    );
-    expect(fetch.status).toBe(400);
 
     // Block hashes are validated
-    fetch = await supertest(api.server).get(`/extended/v2/blocks?burn_block_hash=testvalue`);
+    fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
     expect(fetch.status).toBe(400);
   });
 
