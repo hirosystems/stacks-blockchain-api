@@ -24,7 +24,7 @@ export function createV2BurnBlocksRouter(db: PgStore): express.Router {
       if (!validRequestQuery(req, res, CompiledBlockPaginationQueryParams)) return;
       const query = req.query as BlockPaginationQueryParams;
 
-      const { limit, offset, results, total } = await db.getBurnBlocks(query);
+      const { limit, offset, results, total } = await db.v2.getBurnBlocks(query);
       const response: BurnBlockListResponse = {
         limit,
         offset,
@@ -43,13 +43,44 @@ export function createV2BurnBlocksRouter(db: PgStore): express.Router {
       if (!validRequestParams(req, res, CompiledBlockParams)) return;
       const params = req.params as BlockParams;
 
-      const block = await db.getBurnBlock(params);
+      const block = await db.v2.getBurnBlock(params);
       if (!block) {
         res.status(404).json({ errors: 'Not found' });
         return;
       }
       setETagCacheHeaders(res);
       res.json(parseDbBurnBlock(block));
+    })
+  );
+
+  router.get(
+    '/:height_or_hash/blocks',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      if (
+        !validRequestParams(req, res, CompiledBlockParams) ||
+        !validRequestQuery(req, res, CompiledBlockPaginationQueryParams)
+      )
+        return;
+      const params = req.params as BlockParams;
+
+      const block = await db.v2.getBurnBlock(params);
+      if (!block) {
+        res.status(404).json({ errors: 'Not found' });
+        return;
+      }
+      setETagCacheHeaders(res);
+      res.json(parseDbBurnBlock(block));
+
+      // const { limit, offset, results, total } = await db.v2.getV2Blocks(query);
+      // const response: NakamotoBlockListResponse = {
+      //   limit,
+      //   offset,
+      //   total,
+      //   results: results.map(r => parseDbNakamotoBlock(r)),
+      // };
+      // setETagCacheHeaders(res);
+      // res.json(response);
     })
   );
 

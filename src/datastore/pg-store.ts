@@ -113,6 +113,7 @@ import {
   CompiledBurnBlockHashParam,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
+import { PgStoreV2 } from './pg-store-v2';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -123,6 +124,7 @@ export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
  * happened in the `PgServer.primary` server (see `.env`).
  */
 export class PgStore extends BasePgStore {
+  readonly v2: PgStoreV2;
   readonly eventEmitter: PgStoreEventEmitter;
   readonly notifier?: PgNotifier;
 
@@ -130,6 +132,7 @@ export class PgStore extends BasePgStore {
     super(sql);
     this.notifier = notifier;
     this.eventEmitter = new PgStoreEventEmitter();
+    this.v2 = new PgStoreV2(this);
   }
 
   static async connect({
@@ -404,66 +407,6 @@ export class PgStore extends BasePgStore {
     return { found: true, result: block } as const;
   }
 
-  async getBurnBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBurnBlock>> {
-    return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
-      const offset = args.offset ?? 0;
-      const blocksQuery = await sql<(DbBurnBlock & { total: number })[]>`
-        WITH block_count AS (
-          SELECT burn_block_height, block_count AS count FROM chain_tip
-        )
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
-            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-          ) AS stacks_blocks,
-          (SELECT count FROM block_count)::int AS total
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY burn_block_height DESC, block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      const blocks = blocksQuery.map(r => r);
-      return {
-        limit,
-        offset,
-        results: blocks,
-        total: blocks[0].total,
-      };
-    });
-  }
-
-  async getBurnBlock(args: BlockParams): Promise<DbBurnBlock | undefined> {
-    return await this.sqlTransaction(async sql => {
-      const filter =
-        args.height_or_hash === 'latest'
-          ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`burn_block_hash = ${args.height_or_hash}`
-          : sql`burn_block_height = ${args.height_or_hash}`;
-      const blockQuery = await sql<DbBurnBlock[]>`
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
-            ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-          ) AS stacks_blocks
-        FROM blocks
-        WHERE canonical = true AND ${filter} 
-        LIMIT 1
-      `;
-      if (blockQuery.count > 0) return blockQuery[0];
-    });
-  }
-
   /**
    * Returns Block information with metadata, including accepted and streamed microblocks hash
    * @returns `BlocksWithMetadata` object including list of Blocks with metadata and total count.
@@ -570,143 +513,6 @@ export class PgStore extends BasePgStore {
         total: block_count,
       };
       return results;
-    });
-  }
-
-  /**
-   * Returns Block information with transaction IDs
-   * @returns Paginated `DbBlock` array
-   */
-  async getV2Blocks(args: BlocksQueryParams): Promise<DbPaginatedResult<DbBlock>> {
-    return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
-      const offset = args.offset ?? 0;
-      const burnBlockHashCond =
-        'burn_block_hash' in args
-          ? sql`burn_block_hash = ${
-              args.burn_block_hash === 'latest'
-                ? sql`(SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-                : sql`${normalizeHashString(args.burn_block_hash)}`
-            }`
-          : undefined;
-      const burnBlockHeightCond =
-        'burn_block_height' in args
-          ? sql`burn_block_height = ${
-              args.burn_block_height === 'latest'
-                ? sql`(SELECT burn_block_height FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-                : sql`${args.burn_block_height}`
-            }`
-          : undefined;
-
-      // Obtain blocks and transaction counts in the same query.
-      const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
-        WITH block_count AS (
-          ${
-            'burn_block_hash' in args
-              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHashCond}`
-              : 'burn_block_height' in args
-              ? sql`SELECT COUNT(*) AS count FROM blocks WHERE canonical = TRUE AND ${burnBlockHeightCond}`
-              : sql`SELECT block_count AS count FROM chain_tip`
-          }
-        )
-        SELECT
-          ${sql(BLOCK_COLUMNS)},
-          (SELECT count FROM block_count)::int AS total
-        FROM blocks
-        WHERE canonical = true
-          AND ${
-            'burn_block_hash' in args
-              ? burnBlockHashCond
-              : 'burn_block_height' in args
-              ? burnBlockHeightCond
-              : sql`TRUE`
-          }
-        ORDER BY block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      if (blocksQuery.count === 0)
-        return {
-          limit,
-          offset,
-          results: [],
-          total: 0,
-        };
-      const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
-      return {
-        limit,
-        offset,
-        results: blocks,
-        total: blocksQuery[0].total,
-      };
-    });
-  }
-
-  async getV2Block(args: BlockParams): Promise<DbBlock | undefined> {
-    return await this.sqlTransaction(async sql => {
-      const filter =
-        args.height_or_hash === 'latest'
-          ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
-            )`
-          : sql`block_height = ${args.height_or_hash}`;
-      const blockQuery = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE canonical = true AND ${filter}
-        LIMIT 1
-      `;
-      if (blockQuery.count > 0) return parseBlockQueryResult(blockQuery[0]);
-    });
-  }
-
-  async getV2BlockTransactions(
-    args: BlockParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTx>> {
-    return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? TransactionLimitParamSchema.default;
-      const offset = args.offset ?? 0;
-      const filter =
-        args.height_or_hash === 'latest'
-          ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
-            )`
-          : sql`block_height = ${args.height_or_hash}`;
-      const blockCheck = await sql`SELECT index_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
-      if (blockCheck.count === 0)
-        throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
-      const txsQuery = await sql<(TxQueryResult & { total: number })[]>`
-        WITH tx_count AS (
-          SELECT tx_count AS total FROM blocks WHERE canonical = TRUE AND ${filter}
-        )
-        SELECT ${sql(TX_COLUMNS)}, (SELECT total FROM tx_count)::int AS total
-        FROM txs
-        WHERE canonical = true
-          AND microblock_canonical = true
-          AND ${filter}
-        ORDER BY microblock_sequence ASC, tx_index ASC
-        LIMIT ${limit}
-        OFFSET ${offset}
-      `;
-      if (txsQuery.count === 0)
-        return {
-          limit,
-          offset,
-          results: [],
-          total: 0,
-        };
-      return {
-        limit,
-        offset,
-        results: txsQuery.map(t => parseTxQueryResult(t)),
-        total: txsQuery[0].total,
-      };
     });
   }
 
