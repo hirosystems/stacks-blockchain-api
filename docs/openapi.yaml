@@ -778,12 +778,12 @@ paths:
 
   /extended/v2/blocks/{height_or_hash}/transactions:
     get:
-      summary: Get block transactions
+      summary: Get transactions by block
       description: |
         Retrieves transactions confirmed in a single block
       tags:
         - Transactions
-      operationId: get_block_transactions
+      operationId: get_transactions_by_block
       parameters:
         - name: height_or_hash
           in: path
@@ -2950,7 +2950,7 @@ paths:
       operationId: get_transactions_by_block_hash
       summary: Transactions by block hash
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block transactions](#operation/get_block_transactions).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
 
         Retrieves a list of all transactions within a block for a given block hash.
       tags:
@@ -2993,7 +2993,7 @@ paths:
       operationId: get_transactions_by_block_height
       summary: Transactions by block height
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block transactions](#operation/get_block_transactions).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
 
         Retrieves all transactions within a block at a given height
       tags:
