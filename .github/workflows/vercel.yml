@@ -43,9 +43,6 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      - name: Echo vars check false
-        run: echo ${{ github.ref_name == 'master' }}
-
       - name: Install deps
         run: npm ci --audit=false
 
