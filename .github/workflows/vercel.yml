@@ -46,6 +46,9 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
+      - name: Echo vars
+        run: echo ${{ env.PROD }}
+
       - name: Install deps
         run: npm ci --audit=false
 
