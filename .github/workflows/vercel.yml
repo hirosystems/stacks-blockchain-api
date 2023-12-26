@@ -46,8 +46,8 @@ jobs:
             ${{ runner.os }}-build-
             ${{ runner.os }}-
 
-      - name: Echo vars
-        run: echo ${{ env.PROD }}
+      - name: Echo vars check false
+        run: echo ${{ env.PROD == false }}
 
       - name: Install deps
         run: npm ci --audit=false
@@ -56,14 +56,14 @@ jobs:
         run: npm install --global vercel@latest
 
       - name: Pull Vercel environment information
-        run: vercel pull --yes --environment=${{ env.PROD && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel pull --yes --environment=${{ env.PROD == true && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Build project artifacts
-        run: vercel build ${{ env.PROD && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        run: vercel build ${{ env.PROD == true && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
 
       - name: Deploy project artifacts to Vercel
         id: deploy
-        run: vercel ${{ env.PROD && '--prod' || 'deploy' }} --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | awk '{print "deployment_url="$1}' >> $GITHUB_OUTPUT
+        run: vercel ${{ env.PROD == true && '--prod' || 'deploy' }} --prebuilt --token=${{ secrets.VERCEL_TOKEN }} | awk '{print "deployment_url="$1}' >> $GITHUB_OUTPUT
 
       - name: Add comment with Vercel deployment URL
         if: ${{ github.event_name == 'pull_request' }}
