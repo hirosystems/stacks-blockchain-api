@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.8...v7.4.0-nakamoto.9) (2023-12-26)
+
+
+### Bug Fixes
+
+* vercel preview builds ([#1783](https://github.com/hirosystems/stacks-blockchain-api/issues/1783)) ([d36b1c2](https://github.com/hirosystems/stacks-blockchain-api/commit/d36b1c2d37b050eb826e1c80e5ef4674ca0ea699))
+
 ## [7.4.0-nakamoto.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.7...v7.4.0-nakamoto.8) (2023-12-21)
 
 
