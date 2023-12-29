@@ -689,7 +689,9 @@ export class PgStore {
     });
   }
 
-  async getAddressNonces(args: { stxAddress: string }): Promise<{
+  async getAddressNonces(args: {
+    stxAddress: string;
+  }): Promise<{
     lastExecutedTxNonce: number | null;
     lastMempoolTxNonce: number | null;
     possibleNextNonce: number;
