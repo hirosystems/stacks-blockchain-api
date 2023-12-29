@@ -23,8 +23,6 @@ import { injectC32addressEncodeCache } from './c32-addr-cache';
 import { exportEventsAsTsv, importEventsFromTsv } from './event-replay/event-replay';
 import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
-import { isFtMetadataEnabled, isNftMetadataEnabled } from './token-metadata/helpers';
-import { TokensProcessorQueue } from './token-metadata/tokens-processor-queue';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
 
@@ -97,7 +95,10 @@ async function monitorCoreRpcConnection(): Promise<void> {
       previouslyConnected = true;
     } catch (error) {
       previouslyConnected = false;
-      logger.error(error, `Warning: failed to connect to node RPC server at ${client.endpoint}`);
+      logger.warn(
+        error,
+        `[Non-critical] notice: failed to connect to node RPC server at ${client.endpoint}`
+      );
     }
     await timeout(CORE_RPC_HEARTBEAT_INTERVAL);
   }
@@ -140,36 +141,22 @@ async function init(): Promise<void> {
       forceKillable: false,
     });
 
-    const networkChainId = await getStacksNodeChainID();
-    if (networkChainId !== configuredChainID) {
-      const chainIdConfig = numberToHex(configuredChainID);
-      const chainIdNode = numberToHex(networkChainId);
-      const error = new Error(
-        `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
-      );
-      logger.error(error, error.message);
-      throw error;
+    const skipChainIdCheck = parseArgBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
+    if (!skipChainIdCheck) {
+      const networkChainId = await getStacksNodeChainID();
+      if (networkChainId !== configuredChainID) {
+        const chainIdConfig = numberToHex(configuredChainID);
+        const chainIdNode = numberToHex(networkChainId);
+        const error = new Error(
+          `The configured STACKS_CHAIN_ID does not match, configured: ${chainIdConfig}, stacks-node: ${chainIdNode}`
+        );
+        logger.error(error, error.message);
+        throw error;
+      }
     }
     monitorCoreRpcConnection().catch(error => {
       logger.error(error, 'Error monitoring RPC connection');
     });
-
-    if (!isFtMetadataEnabled()) {
-      logger.warn('Fungible Token metadata processing is not enabled.');
-    }
-    if (!isNftMetadataEnabled()) {
-      logger.warn('Non-Fungible Token metadata processing is not enabled.');
-    }
-    if (isFtMetadataEnabled() || isNftMetadataEnabled()) {
-      const tokenMetadataProcessor = new TokensProcessorQueue(dbWriteStore, configuredChainID);
-      registerShutdownConfig({
-        name: 'Token Metadata Processor',
-        handler: () => tokenMetadataProcessor.close(),
-        forceKillable: true,
-      });
-      // Enqueue a batch of pending token metadata processors, if any.
-      await tokenMetadataProcessor.checkDbQueue();
-    }
   }
 
   if (

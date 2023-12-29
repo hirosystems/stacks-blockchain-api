@@ -474,6 +474,7 @@ describe('block tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
         {
           tx: dbTx2,
@@ -486,6 +487,7 @@ describe('block tests', () => {
           names: [],
           namespaces: [],
           pox2Events: [],
+          pox3Events: [],
         },
       ],
     };

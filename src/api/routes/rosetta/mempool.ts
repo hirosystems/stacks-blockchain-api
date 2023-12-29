@@ -8,7 +8,7 @@ import {
   RosettaMempoolTransactionResponse,
   RosettaTransaction,
 } from '@stacks/stacks-blockchain-api-types';
-import { getOperations, parseTransactionMemo } from '../../../rosetta-helpers';
+import { getOperations, parseTransactionMemo } from '../../../rosetta/rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 
 export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): express.Router {

@@ -1,12 +1,12 @@
 ---
-title: How to run mainnet node
+title: How to Run a Mainnet Node
 ---
 
-This procedure demonstrates how to run a local mainnet node using Docker images.
+This guide shows you how to run a local mainnet node using Docker images.
 
 :::note
 
-This procedure focuses on Unix-like operating systems (Linux and MacOS). This procedure has not been tested on
+This guide focuses on Unix-like operating systems (Linux and MacOS). This has not been tested on
 Windows.
 
 :::
@@ -14,7 +14,7 @@ Windows.
 ## Prerequisites
 
 Running a node has no specialized hardware requirements. Users have been successful in running nodes on Raspberry Pi
-boards and other system-on-chip architectures. In order to complete this procedure, you must have the following software
+boards and other system-on-chip architectures. However, in order to complete this guide, you do need the following software
 installed on the node host machine:
 
 - [Docker](https://docs.docker.com/get-docker/)
@@ -129,13 +129,13 @@ INFO [1626290748.103291] [src/burnchains/bitcoin/spv.rs:926] [main] Syncing Bitc
 INFO [1626290776.956535] [src/burnchains/bitcoin/spv.rs:926] [main] Syncing Bitcoin headers: 1.7% (12000 out of 691034)
 ```
 
-To verify the `stacks-blockchain` tip height is progressing use the following command:
+To verify that the `stacks-blockchain` tip height is progressing, use the following command:
 
 ```sh
 curl -sL localhost:20443/v2/info | jq
 ```
 
-If the instance is running you should receive terminal output similar to the following:
+If the instance is running, you should receive terminal output similar to the following:
 
 ```json
 {

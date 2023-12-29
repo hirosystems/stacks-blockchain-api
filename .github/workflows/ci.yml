@@ -7,10 +7,10 @@ on:
       - develop
       - beta
     tags-ignore:
-      - '**'
+      - "**"
     paths-ignore:
-      - '**/CHANGELOG.md'
-      - '**/package.json'
+      - "**/CHANGELOG.md"
+      - "**/package.json"
   pull_request:
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -64,7 +64,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -109,7 +109,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -162,7 +162,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -176,7 +176,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -218,7 +218,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -232,7 +232,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -257,8 +257,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run RPC tests
         run: npm run test:rpc
@@ -268,7 +268,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -277,7 +277,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -291,7 +291,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -336,7 +336,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -350,7 +350,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -375,8 +375,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run bns tests
         run: npm run test:bns
@@ -386,7 +386,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -395,7 +395,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -460,24 +460,7 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  test-2_1:
-    strategy:
-      fail-fast: false
-      matrix:
-        suite: [
-          block-zero-handling,
-          faucet-stx,
-          pox-2-auto-unlock,
-          pox-2-btc-address-formats,
-          pox-2-delegate-aggregation,
-          pox-2-delegate-stacking,
-          pox-2-stack-extend-increase,
-          pox-2-rosetta-btc-addr-types,
-          pox-2-rosetta-cycle-phases,
-          pox-2-rosetta-segwit,
-          pox-2-burnchain-stack-stx,
-          pox-2-burnchain-delegate-stx,
-        ]
+  test-bns-e2e:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -485,7 +468,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -510,18 +493,18 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy:2.1 -- -d
-          npm run devenv:logs:2.1 -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
-      - name: Run tests
-        run: npm run test:2.1 -- --testPathPattern "${{ matrix.suite }}"
+      - name: Run bns tests
+        run: npm run test:bns-e2e
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop:2.1
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -530,23 +513,30 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
           parallel: true
 
-  test-2_1-transition:
+  test-2_4:
     strategy:
       fail-fast: false
       matrix:
         suite:
           [
-            Stacking on pox-2 after pox-1 force unlock,
-            Consistent API and RPC account balances through pox transitions,
-            Rosetta - Stacked STX unlock during transition,
-            Rosetta - Transistion periods use correct contracts,
-            PoX Transition - Double stacking,
+            block-zero-handling,
+            faucet-stx,
+            pox-3-btc-address-formats,
+            pox-3-delegate-aggregation,
+            pox-3-delegate-stacking,
+            pox-3-delegate-revoked-stacking,
+            pox-3-stack-extend-increase,
+            pox-3-rosetta-btc-addr-types,
+            pox-3-rosetta-cycle-phases,
+            pox-3-rosetta-segwit,
+            pox-3-burnchain-stack-stx,
+            pox-3-burnchain-delegate-stx,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -555,7 +545,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -580,18 +570,18 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy:2.1-transition -- -d
-          npm run devenv:logs:2.1-transition -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.1-transition -- -t "${{ matrix.suite }}"
+        run: npm run test:2.4 -- --testPathPattern "${{ matrix.suite }}"
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop:2.1-transition
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -600,7 +590,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -614,7 +604,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -639,8 +629,8 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: npm run test:rosetta
@@ -650,7 +640,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -659,7 +649,66 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
+        if: ${{ false }}
+        with:
+          github-token: ${{ secrets.github_token }}
+          flag-name: run-${{ github.job }}
+          parallel: true
+
+  test-rosetta-construction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Use Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version-file: ".nvmrc"
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: |
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install deps
+        run: npm ci --audit=false
+
+      - name: Setup env vars
+        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
+
+      - name: Setup integration environment
+        run: |
+          sudo ufw disable
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
+
+      - name: Run tests
+        run: npm run test:rosetta-construction
+
+      - name: Print integration environment logs
+        run: cat docker-compose-logs.txt
+        if: failure()
+
+      - name: Teardown integration environment
+        run: npm run devenv:stop-krypton
         if: always()
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        if: always()
+
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@master
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -673,7 +722,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -700,14 +749,14 @@ jobs:
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
+          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env
           echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: sudo npm run test:rosetta-cli:data
@@ -717,7 +766,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -726,7 +775,7 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
@@ -740,7 +789,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -767,14 +816,14 @@ jobs:
           echo STACKS_BLOCKCHAIN_API_HOST=0.0.0.0>> .env
           echo STACKS_CORE_PROXY_HOST=0.0.0.0 >> .env
           echo STACKS_CORE_RPC_HOST=0.0.0.0 >> .env
-          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env 
+          echo STACKS_CORE_EVENT_HOST=0.0.0.0 >> .env
           echo BTC_RPC_HOST=http://0.0.0.0 >> .env
 
       - name: Setup integration environment
         run: |
           sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
+          npm run devenv:deploy-krypton -- -d
+          npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
         run: sudo npm run test:rosetta-cli:construction
@@ -784,7 +833,7 @@ jobs:
         if: failure()
 
       - name: Teardown integration environment
-        run: npm run devenv:stop
+        run: npm run devenv:stop-krypton
         if: always()
 
       - name: Upload coverage to Codecov
@@ -793,74 +842,11 @@ jobs:
 
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
-        if: always()
+        if: ${{ false }}
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}
           parallel: true
-
-  test-tokens:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: Use Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Install deps
-        run: npm ci
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy -- -d
-          npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tokens tests
-        run: npm run test:tokens
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  upload-coveralls:
-    runs-on: ubuntu-latest
-    needs:
-      - test
-      - test-2_1
-      - test-2_1-transition
-      - test-bns
-      - test-rosetta
-      - test-rosetta-cli-construction
-      - test-rosetta-cli-data
-      - test-tokens
-    steps:
-    - name: Coveralls Finished
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.github_token }}
-        parallel-finished: true
 
   build-publish:
     runs-on: ubuntu-latest
@@ -868,13 +854,10 @@ jobs:
       - lint
       - lint-docs
       - test
-      - test-2_1
-      - test-2_1-transition
+      - test-2_4
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction
-      - test-rosetta-cli-data
-      - test-tokens
     steps:
       - uses: actions/checkout@v2
         with:
@@ -884,7 +867,7 @@ jobs:
 
       - uses: actions/setup-node@v2
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: ".nvmrc"
 
       - name: Semantic Release
         uses: cycjimmy/semantic-release-action@v3
@@ -898,10 +881,10 @@ jobs:
         with:
           semantic_version: 19
           extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
-            @semantic-release/exec
-            conventional-changelog-conventionalcommits
+            @semantic-release/changelog@6.0.3
+            @semantic-release/git@10.0.1
+            @semantic-release/exec@6.0.3
+            conventional-changelog-conventionalcommits@6.1.0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
@@ -967,7 +950,7 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_API_WEBHOOK }}
           DISCORD_USERNAME: Hiro Team
-          DISCORD_AVATAR: 'https://i.imgur.com/z9Iy6ug.png'
+          DISCORD_AVATAR: "https://i.imgur.com/z9Iy6ug.png"
           DISCORD_EMBEDS: |
             [{
               "title": "API Release: ${{ steps.semantic.outputs.new_release_version }}",

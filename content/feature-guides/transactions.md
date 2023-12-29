@@ -4,18 +4,18 @@ title: Transactions
 
 # Transactions
 
-Transactions are the fundamental unit of execution in the Stacks blockchain. Each transaction is originated from a [Stacks 2.0 account](https://docs.stacks.co/understand-stacks/accounts), and is retained in the Stacks blockchain history. This guide helps you understand Stacks 2.0 transactions.
+Transactions are the fundamental unit of execution in the Stacks blockchain. Each transaction is originated from a [Stacks account](https://docs.stacks.co/understand-stacks/accounts), and is retained in the Stacks blockchain history. This guide helps you understand Stacks transactions.
 
 ## Lifecycle
 
-Transactions go through phases before being finally confirmed, and available for all, on the Stacks 2.0 network.
+Transactions go through phases before being finally confirmed and propagated on the Stacks network.
 
 - **Generate**: Transactions are assembled according to the encoding specification.
 - **Validate and sign**: Transactions are validated to confirm they are well-formed. Required signatures are filled in.
 - **Broadcast**: Transactions are sent to a node.
 - **Register**: A miner receives transactions, verifies, and adds them to the ["mempool"](https://academy.binance.com/en/glossary/mempool), a holding area for all the pending transactions.
 - **Process**: Miners review the mempool and select transactions for the next block to be mined. Depending on the transaction type, different actions can happen during this step. For example, post-conditions could be verified for a token transfer, smart-contract defined tokens could be minted, or an attempt to call an existing smart contract method could be made.
-- **Confirm**: Miners successfully mine blocks with a set of transactions. The transactions inside are successfully propagated to the network.
+- **Confirm**: Miners successfully mine blocks, with each block containing a set of transactions. The transactions inside are successfully propagated to the network.
 
 :::info
 
@@ -25,7 +25,7 @@ A transaction can have one of three states once it is registered: `pending`, `su
 
 ## Types
 
-The Stacks 2.0 supports a set of different transaction types:
+Stacks supports a set of different transaction types:
 
 | **Type**          | **Value**           | **Description**                                                                                                                                                                                       |
 | ----------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -82,8 +82,8 @@ Each transaction includes a field that describes zero or more post-conditions th
 
 | **Attribute**                                                        | **Sample**                                  | **Description**                                                                                  |
 | -------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| [Principal](https://docs.stacks.co/write-smart-contracts/principals) | `SP2ZD731ANQZT6J4K3F5N8A40ZXWXC1XFXHVVQFKE` | original owner of the asset, can be a Stacks address or a contract                               |
-| Asset id                                                             | `STX`                                       | Asset to apply conditions to (could be Stacks, fungible, or non-fungible tokens)                 |
+| [Principal](https://docs.stacks.co/write-smart-contracts/principals) | `SP2ZD731ANQZT6J4K3F5N8A40ZXWXC1XFXHVVQFKE` | Original owner of the asset, can be a Stacks address or a contract                               |
+| Asset id                                                             | `STX`                                       | Asset to apply conditions to (could be STX, fungible, or non-fungible tokens)                 |
 | Comparator                                                           | `>=`                                        | Compare operation to be applied (could define "how much" or "whether or not the asset is owned") |
 | Literal                                                              | `1000000`                                   | Integer or boolean value used to compare instances of the asset against via the condition        |
 
@@ -126,7 +126,7 @@ When constructing transactions, it is required to set the network the transactio
 
 :::info
 
-Transactions can be constructed and serialized offline. However, it is required to know the nonce and estimated fees ahead of time. Once internet access is available, the transaction can be broadcasted to the network. Keep in mind that the nonce and fee might change during offline activity, making the transaction invalid.
+Transactions can be constructed and serialized offline. However, it is required to know the nonce and estimated fees ahead of time. Once internet access is available, the transaction can be broadcast to the network. Keep in mind that the nonce and fee might change during offline activity, making the transaction invalid.
 
 :::
 
@@ -201,7 +201,7 @@ const transaction = await makeContractCall(txOptions);
 
 ### Clarity value types
 
-Building transactions that call functions in deployed clarity contracts requires you to construct valid Clarity Values to pass to the function as arguments. The [Clarity type system](https://github.com/stacksgov/sips/blob/main/sips/sip-002/sip-002-smart-contract-language.md#clarity-type-system) contains the following types:
+Building transactions that call functions in deployed clarity contracts requires you to construct valid Clarity values to pass to the function as arguments. The [Clarity type system](https://github.com/stacksgov/sips/blob/main/sips/sip-002/sip-002-smart-contract-language.md#clarity-type-system) contains the following types:
 
 | Type             | Declaration                                                  | Description                                                                                                                                                                         |
 | ---------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -259,7 +259,7 @@ const tupCV = tupleCV({
 const l = listCV([trueCV(), falseCV()]);
 ```
 
-If you develop in Typescript, the type checker can help prevent you from creating wrongly typed Clarity values. For example, the following code won't compile since in Clarity lists are homogeneous, meaning they can only contain values of a single type. It is important to include the type variable `BooleanCV` in this example, otherwise the typescript type checker won't know which type the list is of and won't enforce homogeneity.
+If you develop in Typescript, the type checker can help prevent you from creating wrongly-typed Clarity values. For example, the following code won't compile since lists are homogeneous in Clarity, meaning they can only contain values of a single type. It is important to include the type variable `BooleanCV` in this example; otherwise the typescript type checker won't know which type the list is of and won't enforce homogeneity.
 
 ```js
 const l = listCV < BooleanCV > [trueCV(), intCV(1)];
@@ -387,15 +387,11 @@ Below are the steps taken to generate the signature internal to the transaction 
 
 ### Signing steps
 
-Step 1: Generate a transaction hash for signing. This is the SHA512/256 digest of the serialized transaction before a signature is added.
-
-Step 2: Append the authorization type, fee amount and nonce to the transaction hash to create the signature hash.
-
-Step 3: Generate the SHA512/256 hash of the resulting string from the previous step.
-
-Step 4: Sign the hash using ECDSA and the origin private key.
-
-Step 5: Add the resulting recoverable ECDSA signature to the transaction spending condition.
+1: Generate a transaction hash for signing. This is the SHA512/256 digest of the serialized transaction before a signature is added.
+2: Append the authorization type, fee amount and nonce to the transaction hash to create the signature hash.
+3: Generate the SHA512/256 hash of the resulting string from the previous step.
+4: Sign the hash using ECDSA and the origin private key.
+5: Add the resulting recoverable ECDSA signature to the transaction spending condition.
 
 ### Single signature transaction
 
@@ -431,7 +427,9 @@ There is no explicit time constraint between the construction of a valid signed 
 
 Once a transaction has been successfully broadcast to the network, the transaction is added to the mempool of the node
 that received the broadcast. From the [Bitcoin wiki][]: "a node's memory pool contains all 0-confirmation transactions
-across the entire network that that particular node knows about." So, the set of transactions in the mempool might be
+across the entire network that that particular node knows about."
+
+So, the set of transactions in the mempool might be
 different for each node in the network. For example, when you query the mempool endpoints on
 `api.mainnet.hiro.so`, the response reflects the set of unconfirmed transactions known to the nodes that
 service that API.
@@ -439,7 +437,9 @@ service that API.
 Miners can employ different heuristics and strategies for deciding which transactions to admit into the mempool and
 which transactions to include from the mempool when mining a block. Some transactions may be rejected outright (for
 example, if there are insufficient funds at an address) while others might be accepted into the mempool, but not mined
-into a block indefinitely (for example if fees are too low). Transactions that are admitted in the mempool but not yet
+into a block indefinitely (for example if fees are too low).
+
+Transactions that are admitted in the mempool but not yet
 mined are said to be "pending." The current implementation of [stacks-blockchain][] discards pending mempool
 transactions after [256 blocks][].
 
@@ -596,7 +596,7 @@ Sample response:
 
 Broadcast transactions stay in the mempool for 256 blocks (~42 hours). If a transaction is not confirmed within that time, it is removed from the mempool.
 
-!> Most transactions stay in the mempool due to nonce issues. If you see a transaction pending for an unusual time, review the nonce of the account and the transaction.
+Most transactions stay in the mempool due to nonce issues. If you see a transaction pending for an unusual time, review the nonce of the account and the transaction.
 
 If a transaction is removed from the mempool, the transaction was not processed and no changes were made to the blockchain state.
 

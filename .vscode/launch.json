@@ -254,8 +254,8 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
     },
     {
       "type": "node",
@@ -279,38 +279,36 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: 2.1",
+      "name": "Jest: Rosetta-construction",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.2.1.js"
+        "${workspaceRoot}/tests/jest.config.rosetta-construction.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
       "postDebugTask": "stop:krypton",
-      "smartStep": false,
-      "sourceMaps": true,
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: 2.1 transition",
+      "name": "Jest: 2.4",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.2.1-transition.js",
+        "${workspaceRoot}/tests/jest.config.2.4.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "deploy:krypton-2.1-transition",
-      "postDebugTask": "stop:krypton-2.1-transition",
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
       "smartStep": false,
       "sourceMaps": true,
     },
@@ -324,29 +322,29 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.bns.js"
+        "${workspaceRoot}/tests/jest.config.bns.js",
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: Tokens",
+      "name": "Jest: BNS-e2e",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
         "--testTimeout=3600000",
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.tokens.js"
+        "${workspaceRoot}/tests/jest.config.bns-e2e.js",
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
     },
     {
       "type": "node",
@@ -362,8 +360,10 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev"
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
+      "smartStep": false,
+      "sourceMaps": true,
     },
     {
       "type": "node",
@@ -385,27 +385,6 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Jest: rosetta",
-      "program": "${workspaceFolder}/node_modules/.bin/jest",
-      "args": [
-        "--testTimeout=3600000",
-        "--runInBand",
-        "--no-cache",
-        "--config",
-        "${workspaceRoot}/tests/jest.config.rosetta.js"
-      ],
-      "outputCapture": "std",
-      "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
-      "env": {
-        "NODE_ENV": "development",
-        "STACKS_CHAIN_ID": "0x80000000"
-      }
-    },
-    {
-      "type": "node",
-      "request": "launch",
       "name": "Jest: rosetta-cli-data",
       "program": "${workspaceFolder}/node_modules/.bin/jest",
       "args": [
@@ -417,8 +396,10 @@
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
-      "preLaunchTask": "stacks-node:deploy-dev",
-      "postDebugTask": "stacks-node:stop-dev",
+      "preLaunchTask": "deploy:krypton",
+      "postDebugTask": "stop:krypton",
+      "smartStep": false,
+      "sourceMaps": true,
       "env": {
         "NODE_ENV": "development",
         "STACKS_CHAIN_ID": "0x80000000"
