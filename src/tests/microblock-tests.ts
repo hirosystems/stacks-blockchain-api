@@ -380,13 +380,12 @@ describe('microblock tests', () => {
           ],
         });
 
-        const chainTip1 = await db.getUnanchoredChainTip();
-        expect(chainTip1.found).toBeTruthy();
-        expect(chainTip1.result?.blockHash).toBe(block1.block_hash);
-        expect(chainTip1.result?.blockHeight).toBe(block1.block_height);
-        expect(chainTip1.result?.indexBlockHash).toBe(block1.index_block_hash);
-        expect(chainTip1.result?.microblockHash).toBeUndefined();
-        expect(chainTip1.result?.microblockSequence).toBeUndefined();
+        const chainTip1 = await db.getChainTip();
+        expect(chainTip1.block_hash).toBe(block1.block_hash);
+        expect(chainTip1.block_height).toBe(block1.block_height);
+        expect(chainTip1.index_block_hash).toBe(block1.index_block_hash);
+        expect(chainTip1.microblock_hash).toBeUndefined();
+        expect(chainTip1.microblock_sequence).toBeUndefined();
 
         const mb1: DbMicroblockPartial = {
           microblock_hash: '0xff01',
@@ -542,13 +541,12 @@ describe('microblock tests', () => {
           ],
         });
 
-        const chainTip2 = await db.getUnanchoredChainTip();
-        expect(chainTip2.found).toBeTruthy();
-        expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
-        expect(chainTip2.result?.blockHeight).toBe(block1.block_height);
-        expect(chainTip2.result?.indexBlockHash).toBe(block1.index_block_hash);
-        expect(chainTip2.result?.microblockHash).toBe(mb1.microblock_hash);
-        expect(chainTip2.result?.microblockSequence).toBe(mb1.microblock_sequence);
+        const chainTip2 = await db.getChainTip();
+        expect(chainTip2.block_hash).toBe(block1.block_hash);
+        expect(chainTip2.block_height).toBe(block1.block_height);
+        expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);
+        expect(chainTip2.microblock_hash).toBe(mb1.microblock_hash);
+        expect(chainTip2.microblock_sequence).toBe(mb1.microblock_sequence);
 
         const txListResult1 = await supertest(api.server).get(`/extended/v1/tx`);
         const { body: txListBody1 }: { body: TransactionResults } = txListResult1;

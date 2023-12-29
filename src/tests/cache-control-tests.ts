@@ -314,13 +314,12 @@ describe('cache-control tests', () => {
       ],
     });
 
-    const chainTip2 = await db.getUnanchoredChainTip();
-    expect(chainTip2.found).toBeTruthy();
-    expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
-    expect(chainTip2.result?.blockHeight).toBe(block1.block_height);
-    expect(chainTip2.result?.indexBlockHash).toBe(block1.index_block_hash);
-    expect(chainTip2.result?.microblockHash).toBe(mb1.microblock_hash);
-    expect(chainTip2.result?.microblockSequence).toBe(mb1.microblock_sequence);
+    const chainTip2 = await db.getChainTip();
+    expect(chainTip2.block_hash).toBe(block1.block_hash);
+    expect(chainTip2.block_height).toBe(block1.block_height);
+    expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);
+    expect(chainTip2.microblock_hash).toBe(mb1.microblock_hash);
+    expect(chainTip2.microblock_sequence).toBe(mb1.microblock_sequence);
 
     const expectedResp2 = {
       burn_block_time: 1594647996,
