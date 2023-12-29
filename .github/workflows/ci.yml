@@ -157,7 +157,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -213,7 +213,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -272,7 +272,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -331,7 +331,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -390,7 +390,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -449,7 +449,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -508,7 +508,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -585,7 +585,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -644,7 +644,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -703,7 +703,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -770,7 +770,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
@@ -837,7 +837,7 @@ jobs:
         if: always()
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         if: always()
 
       - name: Upload coverage to Coveralls
