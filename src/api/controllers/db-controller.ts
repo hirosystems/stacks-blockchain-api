@@ -161,6 +161,8 @@ function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTra
       return 'dropped_replace_across_fork';
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
+    case DbTxStatus.DroppedProblematic:
+      return 'dropped_problematic';
     case DbTxStatus.DroppedStaleGarbageCollect:
     case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';

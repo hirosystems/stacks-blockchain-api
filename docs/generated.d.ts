@@ -569,7 +569,8 @@ export type MempoolTransactionStatus =
   | "dropped_replace_by_fee"
   | "dropped_replace_across_fork"
   | "dropped_too_expensive"
-  | "dropped_stale_garbage_collect";
+  | "dropped_stale_garbage_collect"
+  | "dropped_problematic";
 /**
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
