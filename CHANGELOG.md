@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.9...v7.4.0-nakamoto.10) (2024-01-01)
+
+
+### Bug Fixes
+
+* handle `Problematic` status in `/drop_mempool_tx` event ([#1790](https://github.com/hirosystems/stacks-blockchain-api/issues/1790)) ([ce9b38f](https://github.com/hirosystems/stacks-blockchain-api/commit/ce9b38f051216d149375d64b3dfb90a75ab50fcd))
+
 ## [7.4.0-nakamoto.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.8...v7.4.0-nakamoto.9) (2023-12-26)
 
 
