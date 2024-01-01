@@ -301,7 +301,8 @@ export type CoreNodeDropMempoolTxReasonType =
   | 'ReplaceByFee'
   | 'ReplaceAcrossFork'
   | 'TooExpensive'
-  | 'StaleGarbageCollect';
+  | 'StaleGarbageCollect'
+  | 'Problematic';
 
 export interface CoreNodeDropMempoolTxMessage {
   dropped_txids: string[];

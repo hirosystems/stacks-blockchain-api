@@ -323,9 +323,14 @@ describe('mempool tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
       receipt_time: 1594307705,
     };
+    const mempoolTx6: DbMempoolTxRaw = {
+      ...mempoolTx1,
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+      receipt_time: 1594307706,
+    };
 
     await db.updateMempoolTxs({
-      mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3, mempoolTx4, mempoolTx5],
+      mempoolTxs: [mempoolTx1, mempoolTx2, mempoolTx3, mempoolTx4, mempoolTx5, mempoolTx6],
     });
     await db.dropMempoolTxs({
       status: DbTxStatus.DroppedReplaceAcrossFork,
@@ -450,6 +455,31 @@ describe('mempool tests', () => {
     };
     expect(JSON.parse(searchResult5.text)).toEqual(expectedResp5);
 
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedProblematic,
+      txIds: [mempoolTx6.tx_id],
+    });
+    const searchResult6 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx6.tx_id}`);
+    expect(searchResult6.status).toBe(200);
+    expect(searchResult6.type).toBe('application/json');
+    const expectedResp6 = {
+      tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+      tx_status: 'dropped_problematic',
+      tx_type: 'coinbase',
+      fee_rate: '1234',
+      nonce: 0,
+      anchor_mode: 'any',
+      sender_address: 'sender-addr',
+      sponsor_address: 'sponsor-addr',
+      sponsored: true,
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      receipt_time: 1594307706,
+      receipt_time_iso: '2020-07-09T15:15:06.000Z',
+      coinbase_payload: { data: '0x636f696e62617365206869', alt_recipient: null },
+    };
+    expect(JSON.parse(searchResult6.text)).toEqual(expectedResp6);
+
     const mempoolDroppedResult1 = await supertest(api.server).get(
       '/extended/v1/tx/mempool/dropped'
     );
@@ -458,6 +488,10 @@ describe('mempool tests', () => {
     expect(mempoolDroppedResult1.body).toEqual(
       expect.objectContaining({
         results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+            tx_status: 'dropped_problematic',
+          }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
             tx_status: 'dropped_stale_garbage_collect',
@@ -549,10 +583,14 @@ describe('mempool tests', () => {
     );
     expect(mempoolDroppedResult2.status).toBe(200);
     expect(mempoolDroppedResult2.type).toBe('application/json');
-    expect(mempoolDroppedResult2.body.results).toHaveLength(4);
+    expect(mempoolDroppedResult2.body.results).toHaveLength(5);
     expect(mempoolDroppedResult2.body).toEqual(
       expect.objectContaining({
         results: expect.arrayContaining([
+          expect.objectContaining({
+            tx_id: '0x8912000000000000000000000000000000000000000000000000000000000006',
+            tx_status: 'dropped_problematic',
+          }),
           expect.objectContaining({
             tx_id: '0x8912000000000000000000000000000000000000000000000000000000000005',
             tx_status: 'dropped_stale_garbage_collect',

@@ -1247,6 +1247,7 @@ export class PgStore extends BasePgStore {
         DbTxStatus.DroppedTooExpensive,
         DbTxStatus.DroppedStaleGarbageCollect,
         DbTxStatus.DroppedApiGarbageCollect,
+        DbTxStatus.DroppedProblematic,
       ];
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
         SELECT ${unsafeCols(sql, [

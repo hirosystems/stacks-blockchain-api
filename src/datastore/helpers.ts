@@ -990,6 +990,8 @@ export function getTxDbStatus(
       return DbTxStatus.DroppedTooExpensive;
     case 'StaleGarbageCollect':
       return DbTxStatus.DroppedStaleGarbageCollect;
+    case 'Problematic':
+      return DbTxStatus.DroppedProblematic;
     default:
       throw new Error(`Unexpected tx status: ${txCoreStatus}`);
   }

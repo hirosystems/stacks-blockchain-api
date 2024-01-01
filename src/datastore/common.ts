@@ -117,6 +117,8 @@ export enum DbTxStatus {
   DroppedStaleGarbageCollect = -13,
   /** Dropped by the API (even though the Stacks node hadn't dropped it) because it exceeded maximum mempool age */
   DroppedApiGarbageCollect = -14,
+  /** Transaction is problematic (e.g. a DDoS vector) and should be dropped. */
+  DroppedProblematic = -15,
 }
 
 export enum DbTxAnchorMode {
