@@ -713,20 +713,28 @@ export class PgWriteStore extends PgStore {
   // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
   async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
     const txsResult = await sql<{ tx_id: string }[]>`
-      UPDATE mempool_txs
-      SET pruned = true
-      FROM txs
-      WHERE
-        mempool_txs.tx_id = txs.tx_id AND
-        mempool_txs.pruned = false AND
-        txs.canonical = true AND
-        txs.microblock_canonical = true AND
-        txs.status IN ${sql([
-          DbTxStatus.Success,
-          DbTxStatus.AbortByResponse,
-          DbTxStatus.AbortByPostCondition,
-        ])}
-      RETURNING mempool_txs.tx_id
+      WITH pruned AS (
+        UPDATE mempool_txs
+        SET pruned = true
+        FROM txs
+        WHERE
+          mempool_txs.tx_id = txs.tx_id AND
+          mempool_txs.pruned = false AND
+          txs.canonical = true AND
+          txs.microblock_canonical = true AND
+          txs.status IN ${sql([
+            DbTxStatus.Success,
+            DbTxStatus.AbortByResponse,
+            DbTxStatus.AbortByPostCondition,
+          ])}
+        RETURNING mempool_txs.tx_id
+      )
+      count_update AS (
+        UPDATE chain_tip SET
+          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+          mempool_updated_at = NOW()
+      )
+      SELECT tx_id FROM pruned
     `;
     if (txsResult.length > 0) {
       const txs = txsResult.map(tx => tx.tx_id);
