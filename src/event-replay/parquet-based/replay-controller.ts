@@ -264,10 +264,6 @@ export class ReplayController {
     // Remainder events to be replayed with regular HTTP POSTs
     await this.ingestRemainderEvents();
 
-    // Refreshing materialized views
-    logger.info({ component: 'event-replay' }, `Refreshing materialized views`);
-    await this.db.finishEventReplay();
-
     // Close DB
     logger.info({ component: 'event-replay' }, 'Closing DB connection');
     await this.db.close();
