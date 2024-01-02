@@ -728,7 +728,7 @@ export class PgWriteStore extends PgStore {
             DbTxStatus.AbortByPostCondition,
           ])}
         RETURNING mempool_txs.tx_id
-      )
+      ),
       count_update AS (
         UPDATE chain_tip SET
           mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),

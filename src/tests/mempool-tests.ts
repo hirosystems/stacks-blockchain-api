@@ -1554,6 +1554,8 @@ describe('mempool tests', () => {
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
     expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
+    const mempoolCount1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount1.body.total).toBe(1);
     const mempoolResult2 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
@@ -1576,6 +1578,8 @@ describe('mempool tests', () => {
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
     expect(mempoolResult3.body.results).toHaveLength(0);
+    const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount2.body.total).toBe(0);
     const mempoolResult4 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
