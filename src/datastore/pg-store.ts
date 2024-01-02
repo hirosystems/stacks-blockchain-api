@@ -1306,12 +1306,13 @@ export class PgStore {
       const unanchoredTxs: string[] = !includeUnanchored
         ? (await this.getUnanchoredTxsInternal(sql)).txs.map(tx => tx.tx_id)
         : [];
+      // If caller is not filtering by any param, get the tx count from the `chain_tip` table.
+      const count =
+        senderAddress || recipientAddress || address
+          ? sql`(COUNT(*) OVER())::int AS count`
+          : sql`(SELECT mempool_tx_count FROM chain_tip) AS count`;
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
-        SELECT ${unsafeCols(sql, [
-          ...MEMPOOL_TX_COLUMNS,
-          abiColumn('mempool_txs'),
-          '(COUNT(*) OVER())::INTEGER AS count',
-        ])}
+        SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}, ${count}
         FROM mempool_txs
         WHERE ${
           address
@@ -1355,7 +1356,9 @@ export class PgStore {
    * @returns `FoundOrNot` object with a possible `digest` string.
    */
   async getMempoolTxDigest(): Promise<FoundOrNot<{ digest: string }>> {
-    const result = await this.sql<{ digest: string }[]>`SELECT digest FROM mempool_digest`;
+    const result = await this.sql<{ digest: string }[]>`
+      SELECT date_part('epoch', mempool_updated_at)::text AS digest FROM chain_tip
+    `;
     if (result.length === 0) {
       return { found: false } as const;
     }
