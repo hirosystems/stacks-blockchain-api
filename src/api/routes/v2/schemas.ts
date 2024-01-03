@@ -113,30 +113,6 @@ export const CompiledTransactionPaginationQueryParams = ajv.compile(
   TransactionPaginationQueryParamsSchema
 );
 
-const BlocksQueryParamsSchema = Type.Union([
-  BlockPaginationQueryParamsSchema,
-  Type.Composite(
-    [
-      Type.Object({
-        burn_block_hash: Type.Union([Type.Literal('latest'), BurnBlockHashParamSchema]),
-      }),
-      BlockPaginationQueryParamsSchema,
-    ],
-    { additionalProperties: false }
-  ),
-  Type.Composite(
-    [
-      Type.Object({
-        burn_block_height: Type.Union([Type.Literal('latest'), BurnBlockHeightParamSchema]),
-      }),
-      BlockPaginationQueryParamsSchema,
-    ],
-    { additionalProperties: false }
-  ),
-]);
-export type BlocksQueryParams = Static<typeof BlocksQueryParamsSchema>;
-export const CompiledBlocksQueryParams = ajv.compile(BlocksQueryParamsSchema);
-
 const BlockParamsSchema = Type.Object(
   {
     height_or_hash: Type.Union([

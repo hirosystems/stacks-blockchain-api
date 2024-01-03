@@ -21,6 +21,8 @@ tags:
       url: https://docs.stacks.co/understand-stacks/accounts
   - name: Blocks
     description: Read-only endpoints to obtain Stacks block details
+  - name: Burn Blocks
+    description: Read-only endpoints to obtain burn block details
   - name: Faucets
     description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
@@ -613,7 +615,7 @@ paths:
       description: |
           Retrieves a list of recent burn blocks
       tags:
-        - Blocks
+        - Burn Blocks
       operationId: get_burn_blocks
       parameters:
         - name: limit
@@ -646,7 +648,7 @@ paths:
       summary: Get burn block
       description: Retrieves a single burn block
       tags:
-        - Blocks
+        - Burn Blocks
       operationId: get_burn_block
       parameters:
         - name: height_or_hash
@@ -668,6 +670,49 @@ paths:
                 $ref: ./entities/blocks/burn-block.schema.json
               example:
                 $ref: ./entities/blocks/burn-block.example.json
+  
+  /extended/v2/burn-blocks/{height_or_hash}/blocks:
+    get:
+      summary: Get blocks by burn block
+      description: |
+        Retrieves a list of blocks confirmed by a specific burn block
+      tags:
+        - Blocks
+      operationId: get_blocks_by_burn_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by burn block height, hash, or the constant `latest` to filter for the most recent burn block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+        - name: limit
+          in: query
+          description: max number of blocks to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: index of first burn block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 0
+      responses:
+        200:
+          description: List of blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-nakamoto-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-nakamoto-blocks.example.json
 
   /extended/v2/blocks:
     get:
@@ -692,20 +737,6 @@ paths:
           schema:
             type: integer
             example: 0
-        - name: burn_block_hash
-          in: query
-          description: filter blocks by burn block hash
-          required: false
-          schema:
-            type: string
-            example: "0xb154c008df2101023a6d0d54986b3964cee58119eed14f5bed98e15678e18fe2"
-        - name: burn_block_height
-          in: query
-          description: filter blocks by burn block height
-          required: false
-          schema:
-            type: integer
-            example: 810344
       responses:
         200:
           description: List of blocks
@@ -747,12 +778,12 @@ paths:
 
   /extended/v2/blocks/{height_or_hash}/transactions:
     get:
-      summary: Get block transactions
+      summary: Get transactions by block
       description: |
         Retrieves transactions confirmed in a single block
       tags:
-        - Blocks
-      operationId: get_block_transactions
+        - Transactions
+      operationId: get_transactions_by_block
       parameters:
         - name: height_or_hash
           in: path
@@ -2913,77 +2944,15 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
-#  /v1/subdomains:
-#    get:
-#      summary: Get All Subdomains
-#      description: Retrieves a list of all subdomains known to the node.
-#      tags:
-#        - Names
-#      operationId: get_all_subdomains
-#      parameters:
-#        - name: page
-#          in: query
-#          description: names are returned in pages of size 100, so specify the page number.
-#          required: true
-#          example: 3
-#          schema:
-#            type: integer
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-page.example.json
-#
-#  /v1/subdomains/{txid}:
-#    get:
-#      summary: Get Subdomain at Transaction
-#      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
-#      tags:
-#        - Names
-#      operationId: get_subdomain_at_transaction
-#      parameters:
-#        - name: txid
-#          in: path
-#          description: transaction id
-#          required: true
-#          schema:
-#            type: string
-#            example: "d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe"
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
-
   /extended/v1/tx/block/{block_hash}:
     get:
+      deprecated: true
       operationId: get_transactions_by_block_hash
       summary: Transactions by block hash
-      description: Retrieves a list of all transactions within a block for a given block hash.
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+
+        Retrieves a list of all transactions within a block for a given block hash.
       tags:
         - Transactions
       parameters:
@@ -3020,9 +2989,13 @@ paths:
 
   /extended/v1/tx/block_height/{height}:
     get:
+      deprecated: true
       operationId: get_transactions_by_block_height
       summary: Transactions by block height
-      description: Retrieves all transactions within a block at a given height
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+
+        Retrieves all transactions within a block at a given height
       tags:
         - Transactions
       parameters:
