@@ -1603,7 +1603,7 @@ describe('mempool tests', () => {
     }
     await db.updateMempoolTxs({ mempoolTxs });
     const result = await supertest(api.server).get(`/extended/v2/mempool/fees`);
-    expect(result.body).toBe({
+    expect(result.body).toStrictEqual({
       all: {
         high_priority: 855000,
         low_priority: 450000,
