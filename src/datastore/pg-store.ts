@@ -38,6 +38,7 @@ import {
   DbGetBlockWithMetadataOpts,
   DbGetBlockWithMetadataResponse,
   DbInboundStxTransfer,
+  DbMempoolFeePriority,
   DbMempoolStats,
   DbMempoolTx,
   DbMicroblock,
@@ -1284,6 +1285,44 @@ export class PgStore {
       tx_ages: txAges,
       tx_byte_sizes: txSizes,
     };
+  }
+
+  async getMempoolFeePriority(): Promise<DbMempoolFeePriority[]> {
+    const txFeesQuery = await this.sql<DbMempoolFeePriority[]>`
+      WITH fees AS (
+        (
+          SELECT
+          NULL AS type_id,
+          ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY fee_rate ASC)) AS high_priority,
+          ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY fee_rate ASC)) AS medium_priority,
+          ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY fee_rate ASC)) AS low_priority,
+          ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY fee_rate ASC)) AS no_priority
+          FROM mempool_txs
+          WHERE pruned = FALSE
+        )
+        UNION
+        (
+          WITH txs_grouped AS (
+            SELECT
+              (CASE type_id WHEN 6 THEN 1 ELSE type_id END) AS type_id,
+              fee_rate
+            FROM mempool_txs
+            WHERE pruned = FALSE
+            AND type_id NOT IN (4, 5)
+          )
+          SELECT
+            type_id,
+            ROUND(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY fee_rate ASC)) AS high_priority,
+            ROUND(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY fee_rate ASC)) AS medium_priority,
+            ROUND(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY fee_rate ASC)) AS low_priority,
+            ROUND(PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY fee_rate ASC)) AS no_priority
+          FROM txs_grouped
+          GROUP BY type_id
+        )
+      )
+      SELECT * FROM fees ORDER BY type_id ASC NULLS FIRST
+    `;
+    return txFeesQuery;
   }
 
   async getMempoolTxList({

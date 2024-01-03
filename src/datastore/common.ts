@@ -235,6 +235,14 @@ export interface DbMempoolStats {
   >;
 }
 
+export interface DbMempoolFeePriority {
+  type_id: DbTxTypeId | null;
+  high_priority: number;
+  medium_priority: number;
+  low_priority: number;
+  no_priority: number;
+}
+
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
 
