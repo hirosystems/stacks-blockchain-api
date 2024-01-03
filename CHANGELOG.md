@@ -1,3 +1,15 @@
+## [7.4.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.7-beta.1...v7.4.0-beta.1) (2024-01-03)
+
+
+### Features
+
+* add `/extended/v2/mempool/fees` endpoint ([#1795](https://github.com/hirosystems/stacks-blockchain-api/issues/1795)) ([ea9c378](https://github.com/hirosystems/stacks-blockchain-api/commit/ea9c3783e62715747db06eea5dd837297271c21e))
+
+
+### Bug Fixes
+
+* optimize mempool transaction reads and writes ([#1781](https://github.com/hirosystems/stacks-blockchain-api/issues/1781)) ([#1792](https://github.com/hirosystems/stacks-blockchain-api/issues/1792)) ([2700642](https://github.com/hirosystems/stacks-blockchain-api/commit/2700642ed2225ce8598ee5fff833603007d5289f))
+
 ## [7.3.7-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.6...v7.3.7-beta.1) (2023-12-29)
 
 
