@@ -16,7 +16,6 @@ import {
   DbBnsNamespace,
   DbEventTypeId,
   DbFtEvent,
-  DbMempoolTx,
   DbMempoolTxRaw,
   DbMicroblockPartial,
   DbMinerReward,
@@ -259,6 +258,8 @@ interface TestMempoolTxArgs {
   smart_contract_contract_id?: string;
   status?: DbTxStatus;
   token_transfer_recipient_address?: string;
+  token_transfer_amount?: bigint;
+  token_transfer_memo?: string;
   tx_id?: string;
   type_id?: DbTxTypeId;
   nonce?: number;
@@ -287,8 +288,8 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     sponsor_address: undefined,
     origin_hash_mode: 1,
     sender_address: args?.sender_address ?? SENDER_ADDRESS,
-    token_transfer_amount: 1234n,
-    token_transfer_memo: '',
+    token_transfer_amount: args?.token_transfer_amount ?? 1234n,
+    token_transfer_memo: args?.token_transfer_memo ?? '',
     token_transfer_recipient_address: args?.token_transfer_recipient_address ?? RECIPIENT_ADDRESS,
     smart_contract_clarity_version: args?.smart_contract_clarity_version,
     smart_contract_contract_id: args?.smart_contract_contract_id ?? CONTRACT_ID,
