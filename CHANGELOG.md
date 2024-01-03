@@ -1,3 +1,15 @@
+## [7.4.0-nakamoto.11](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.10...v7.4.0-nakamoto.11) (2024-01-03)
+
+
+### Features
+
+* create `/extended/v2/burn-blocks/:height_or_hash/blocks` endpoint ([#1782](https://github.com/hirosystems/stacks-blockchain-api/issues/1782)) ([20466a1](https://github.com/hirosystems/stacks-blockchain-api/commit/20466a16573bff1634bc9b6ff1180bb8e0f620a0))
+
+
+### Bug Fixes
+
+* optimize mempool transaction reads and writes ([#1781](https://github.com/hirosystems/stacks-blockchain-api/issues/1781)) ([3a02f57](https://github.com/hirosystems/stacks-blockchain-api/commit/3a02f5741f4109c1e662b4e7014189ae95430df8))
+
 ## [7.4.0-nakamoto.10](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.9...v7.4.0-nakamoto.10) (2024-01-01)
 
 
