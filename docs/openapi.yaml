@@ -312,9 +312,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/transaction/get-mempool-transactions.schema.json
+                $ref: ./api/mempool/get-fee-priorities.schema.json
               example:
-                $ref: ./api/transaction/get-mempool-transactions.example.json
+                $ref: ./api/mempool/get-fee-priorities.example.json
 
   /extended/v1/tx/mempool/dropped:
     get:
