@@ -17,7 +17,7 @@
     "info": {
         "title": "Stacks Blockchain API",
         "version": "v7.3.2",
-        "description": "Welcome to the API reference overview for the <a href=\"https://docs.hiro.so/get-started/stacks-blockchain-api\">Stacks Blockchain API</a>.\n\n<a href=\"https://hirosystems.github.io/stacks-blockchain-api/collection.json\" download=\"stacks-api-collection.json\">Download Postman collection</a>\n"
+        "description": "Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/get-started/stacks-blockchain-api).\n\n[Download Postman collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json)\n"
     },
     "tags": [
         {
