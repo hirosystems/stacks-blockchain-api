@@ -314,13 +314,12 @@ describe('cache-control tests', () => {
       ],
     });
 
-    const chainTip2 = await db.getUnanchoredChainTip();
-    expect(chainTip2.found).toBeTruthy();
-    expect(chainTip2.result?.blockHash).toBe(block1.block_hash);
-    expect(chainTip2.result?.blockHeight).toBe(block1.block_height);
-    expect(chainTip2.result?.indexBlockHash).toBe(block1.index_block_hash);
-    expect(chainTip2.result?.microblockHash).toBe(mb1.microblock_hash);
-    expect(chainTip2.result?.microblockSequence).toBe(mb1.microblock_sequence);
+    const chainTip2 = await db.getChainTip();
+    expect(chainTip2.block_hash).toBe(block1.block_hash);
+    expect(chainTip2.block_height).toBe(block1.block_height);
+    expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);
+    expect(chainTip2.microblock_hash).toBe(mb1.microblock_hash);
+    expect(chainTip2.microblock_sequence).toBe(mb1.microblock_sequence);
 
     const expectedResp2 = {
       burn_block_time: 1594647996,
@@ -374,7 +373,7 @@ describe('cache-control tests', () => {
     const request1 = await supertest(api.server).get('/extended/v1/tx/mempool');
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
-    expect(request1.headers['etag']).toEqual('"0"');
+    const etag0 = request1.headers['etag'];
 
     // Add mempool txs.
     const mempoolTx1 = testMempoolTx({ tx_id: '0x1101' });
@@ -387,6 +386,7 @@ describe('cache-control tests', () => {
     expect(request2.type).toBe('application/json');
     expect(request2.headers['etag']).toBeTruthy();
     const etag1 = request2.headers['etag'];
+    expect(etag1).not.toEqual(etag0);
 
     // Cache works with valid ETag.
     const request3 = await supertest(api.server)
@@ -417,13 +417,12 @@ describe('cache-control tests', () => {
       .build();
     await db.update(block2);
 
-    // Cache is now a miss and ETag is zero because mempool is empty.
+    // Cache is now a miss.
     const request5 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag2);
     expect(request5.status).toBe(200);
     expect(request5.type).toBe('application/json');
-    expect(request5.headers['etag']).toEqual('"0"');
     const etag3 = request5.headers['etag'];
 
     // Restore a tx back into the mempool by making its anchor block non-canonical.
@@ -450,7 +449,7 @@ describe('cache-control tests', () => {
       .set('If-None-Match', etag3);
     expect(request6.status).toBe(200);
     expect(request6.type).toBe('application/json');
-    expect(request6.headers['etag']).toEqual(etag2);
+    expect(request6.headers['etag']).not.toEqual(etag3);
     const etag4 = request6.headers['etag'];
 
     // Garbage collect all txs.
@@ -464,25 +463,13 @@ describe('cache-control tests', () => {
       .build();
     await db.update(block4);
 
-    // ETag zero once again.
+    // ETag changes once again.
     const request7 = await supertest(api.server)
       .get('/extended/v1/tx/mempool')
       .set('If-None-Match', etag4);
     expect(request7.status).toBe(200);
     expect(request7.type).toBe('application/json');
-    expect(request7.headers['etag']).toEqual('"0"');
-
-    // Simulate an incompatible pg version (without `bit_xor`).
-    await client.begin(async sql => {
-      await sql`DROP MATERIALIZED VIEW mempool_digest`;
-      await sql`CREATE MATERIALIZED VIEW mempool_digest AS (SELECT NULL AS digest)`;
-    });
-
-    // ETag is undefined as if mempool cache did not exist.
-    const request8 = await supertest(api.server).get('/extended/v1/tx/mempool');
-    expect(request8.status).toBe(200);
-    expect(request8.type).toBe('application/json');
-    expect(request8.headers['etag']).toBeUndefined();
+    expect(request7.headers['etag']).not.toEqual(etag4);
   });
 
   test('transaction cache control', async () => {

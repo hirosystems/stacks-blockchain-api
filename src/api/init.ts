@@ -45,6 +45,7 @@ import { createPox3EventsRouter } from './routes/pox3';
 import { isPgConnectionError } from '../datastore/helpers';
 import { createStackingRouter } from './routes/stacking';
 import { logger, loggerMiddleware } from '../logger';
+import { createMempoolRouter } from './v2/mempool';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -216,6 +217,21 @@ export async function startApiServer(opts: {
       if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
         router.use('/faucets', createFaucetRouter(writeDatastore));
       }
+      return router;
+    })()
+  );
+
+  app.use(
+    '/extended/v2',
+    (() => {
+      const router = express.Router();
+      router.use(cors());
+      router.use((req, res, next) => {
+        // Set caching on all routes to be disabled by default, individual routes can override
+        res.set('Cache-Control', 'no-store');
+        next();
+      });
+      router.use('/mempool', createMempoolRouter(datastore));
       return router;
     })()
   );

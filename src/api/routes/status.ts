@@ -18,15 +18,15 @@ export function createStatusRouter(db: PgStore): express.Router {
         response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
         response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
       }
-      const chainTip = await db.getUnanchoredChainTip();
-      if (chainTip.found) {
+      const chainTip = await db.getChainTip();
+      if (chainTip.block_height > 0) {
         response.chain_tip = {
-          block_height: chainTip.result.blockHeight,
-          block_hash: chainTip.result.blockHash,
-          index_block_hash: chainTip.result.indexBlockHash,
-          microblock_hash: chainTip.result.microblockHash,
-          microblock_sequence: chainTip.result.microblockSequence,
-          burn_block_height: chainTip.result.burnBlockHeight,
+          block_height: chainTip.block_height,
+          block_hash: chainTip.block_hash,
+          index_block_hash: chainTip.index_block_hash,
+          microblock_hash: chainTip.microblock_hash,
+          microblock_sequence: chainTip.microblock_sequence,
+          burn_block_height: chainTip.burn_block_height,
         };
       }
       setETagCacheHeaders(res);

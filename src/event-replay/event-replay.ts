@@ -167,7 +167,6 @@ export async function importEventsFromTsv(
       responses.push(response);
     }
   }
-  await db.finishEventReplay();
   console.log(`Event import and playback successful.`);
   await eventServer.closeAsync();
   await db.close();

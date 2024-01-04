@@ -235,6 +235,14 @@ export interface DbMempoolStats {
   >;
 }
 
+export interface DbMempoolFeePriority {
+  type_id: DbTxTypeId | null;
+  high_priority: number;
+  medium_priority: number;
+  low_priority: number;
+  no_priority: number;
+}
+
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
 
@@ -742,15 +750,6 @@ export type BlockIdentifier =
   | { height: number }
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
-
-export interface DbChainTip {
-  blockHeight: number;
-  indexBlockHash: string;
-  blockHash: string;
-  microblockHash?: string;
-  microblockSequence?: number;
-  burnBlockHeight: number;
-}
 
 export interface BlockQueryResult {
   block_hash: string;
@@ -1455,8 +1454,14 @@ export interface SmartContractInsertValues {
 }
 
 export interface DbChainTip {
-  blockHeight: number;
-  blockHash: string;
-  indexBlockHash: string;
-  burnBlockHeight: number;
+  block_height: number;
+  block_count: number;
+  block_hash: string;
+  index_block_hash: string;
+  burn_block_height: number;
+  microblock_hash?: string;
+  microblock_sequence?: number;
+  microblock_count: number;
+  tx_count: number;
+  tx_count_unanchored: number;
 }

@@ -1488,8 +1488,8 @@ describe('mempool tests', () => {
     // Simulate the bug with a txs being in the mempool at confirmed at the same time by
     // directly inserting the mempool-tx and mined-tx, bypassing the normal update functions.
     await db.updateBlock(db.sql, dbBlock1);
-    const chainTip = await db.getChainTip(db.sql);
-    await db.insertDbMempoolTx(mempoolTx, chainTip, db.sql);
+    const chainTip = await db.getChainTip();
+    await db.insertDbMempoolTxs([mempoolTx], chainTip, db.sql);
     await db.updateTx(db.sql, dbTx1);
 
     // Verify tx shows up in mempool (non-pruned)
@@ -1497,6 +1497,8 @@ describe('mempool tests', () => {
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
     expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
+    const mempoolCount1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount1.body.total).toBe(1);
     const mempoolResult2 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
@@ -1519,6 +1521,8 @@ describe('mempool tests', () => {
       `/extended/v1/address/${mempoolTx.sender_address}/mempool`
     );
     expect(mempoolResult3.body.results).toHaveLength(0);
+    const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount2.body.total).toBe(0);
     const mempoolResult4 = await supertest(api.server).get(
       `/extended/v1/tx/mempool?sender_address=${senderAddress}`
     );
@@ -1527,5 +1531,103 @@ describe('mempool tests', () => {
     // Verify tx still shows up as confirmed
     const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
     expect(txResult2.body.tx_status).toBe('success');
+  });
+
+  test('returns fee priorities for mempool transactions', async () => {
+    const mempoolTxs: DbMempoolTxRaw[] = [];
+    for (let i = 0; i < 10; i++) {
+      const sender_address = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+      const tx_id = `0x00000${i}`;
+      const fee_rate = BigInt(100000 * i);
+      const nonce = i;
+      if (i < 3) {
+        mempoolTxs.push({
+          tx_id,
+          nonce,
+          fee_rate,
+          type_id: DbTxTypeId.ContractCall,
+          anchor_mode: 3,
+          raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+          status: 1,
+          post_conditions: '0x01f5',
+          sponsored: false,
+          sponsor_address: undefined,
+          contract_call_contract_id: 'SP32AEEF6WW5Y0NMJ1S8SBSZDAY8R5J32NBZFPKKZ.free-punks-v0',
+          contract_call_function_name: 'test-func',
+          contract_call_function_args: '0x00',
+          sender_address,
+          origin_hash_mode: 1,
+          pruned: false,
+          receipt_time: 1616063078,
+        });
+      } else if (i < 6) {
+        mempoolTxs.push({
+          tx_id,
+          nonce,
+          type_id: DbTxTypeId.SmartContract,
+          fee_rate,
+          anchor_mode: 3,
+          raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+          status: 1,
+          post_conditions: '0x01f5',
+          sponsored: false,
+          sponsor_address: undefined,
+          sender_address,
+          origin_hash_mode: 1,
+          pruned: false,
+          smart_contract_contract_id: 'some-versioned-smart-contract',
+          smart_contract_source_code: '(some-versioned-contract-src)',
+          receipt_time: 1616063078,
+        });
+      } else {
+        mempoolTxs.push({
+          tx_id,
+          nonce,
+          type_id: DbTxTypeId.TokenTransfer,
+          fee_rate,
+          anchor_mode: 3,
+          raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+          status: 1,
+          post_conditions: '0x01f5',
+          sponsored: false,
+          sponsor_address: undefined,
+          sender_address,
+          token_transfer_amount: 100n,
+          token_transfer_memo: '0x010101',
+          token_transfer_recipient_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
+          origin_hash_mode: 1,
+          pruned: false,
+          receipt_time: 1616063078,
+        });
+      }
+    }
+    await db.updateMempoolTxs({ mempoolTxs });
+    const result = await supertest(api.server).get(`/extended/v2/mempool/fees`);
+    expect(result.body).toStrictEqual({
+      all: {
+        high_priority: 855000,
+        low_priority: 450000,
+        medium_priority: 675000,
+        no_priority: 225000,
+      },
+      contract_call: {
+        high_priority: 190000,
+        low_priority: 100000,
+        medium_priority: 150000,
+        no_priority: 50000,
+      },
+      smart_contract: {
+        high_priority: 490000,
+        low_priority: 400000,
+        medium_priority: 450000,
+        no_priority: 350000,
+      },
+      token_transfer: {
+        high_priority: 885000,
+        low_priority: 750000,
+        medium_priority: 825000,
+        no_priority: 675000,
+      },
+    });
   });
 });
