@@ -1,3 +1,18 @@
+## [7.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.6...v7.4.0) (2024-01-04)
+
+
+### Features
+
+* add `/extended/v2/mempool/fees` endpoint ([#1795](https://github.com/hirosystems/stacks-blockchain-api/issues/1795)) ([ea9c378](https://github.com/hirosystems/stacks-blockchain-api/commit/ea9c3783e62715747db06eea5dd837297271c21e))
+
+
+### Bug Fixes
+
+* convert `chain_tip` materialized view into a table ([#1789](https://github.com/hirosystems/stacks-blockchain-api/issues/1789)) ([0211932](https://github.com/hirosystems/stacks-blockchain-api/commit/02119326993891cc586274fab0e0fc3f5fd15ef1)), closes [#1751](https://github.com/hirosystems/stacks-blockchain-api/issues/1751)
+* optimize mempool transaction reads and writes ([#1781](https://github.com/hirosystems/stacks-blockchain-api/issues/1781)) ([#1792](https://github.com/hirosystems/stacks-blockchain-api/issues/1792)) ([2700642](https://github.com/hirosystems/stacks-blockchain-api/commit/2700642ed2225ce8598ee5fff833603007d5289f))
+* release pino logger and mempool nonces ([16d3593](https://github.com/hirosystems/stacks-blockchain-api/commit/16d359370b413de36444d15a3a48cf479823367f))
+* update client code, fix mempool fee return type ([#1797](https://github.com/hirosystems/stacks-blockchain-api/issues/1797)) ([9853e29](https://github.com/hirosystems/stacks-blockchain-api/commit/9853e29d89b2846454197438c7d1b4b636384d6d))
+
 ## [7.4.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-beta.1...v7.4.0-beta.2) (2024-01-04)
 
 
