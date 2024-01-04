@@ -1,3 +1,10 @@
+## [7.4.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-beta.1...v7.4.0-beta.2) (2024-01-04)
+
+
+### Bug Fixes
+
+* update client code, fix mempool fee return type ([#1797](https://github.com/hirosystems/stacks-blockchain-api/issues/1797)) ([9853e29](https://github.com/hirosystems/stacks-blockchain-api/commit/9853e29d89b2846454197438c7d1b4b636384d6d))
+
 ## [7.4.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.7-beta.1...v7.4.0-beta.1) (2024-01-03)
 
 
