@@ -44,7 +44,7 @@ function createStacksApiSocket(opts?: StacksApiSocketConnectionOptions) {
       ...opts?.socketOpts?.query,
       // Subscriptions can be specified on init using this handshake query param.
       subscriptions: Array.from(new Set(opts?.subscriptions)).join(','),
-    }
+    },
   };
   const socket: StacksApiSocket = io(getWsUrl(opts?.url ?? BASE_PATH).href, socketOpts);
   return socket;
@@ -53,8 +53,8 @@ function createStacksApiSocket(opts?: StacksApiSocketConnectionOptions) {
 export class StacksApiSocketClient {
   readonly socket: StacksApiSocket;
 
-  constructor(socket: StacksApiSocket)
-  constructor(opts?: StacksApiSocketConnectionOptions)
+  constructor(socket: StacksApiSocket);
+  constructor(opts?: StacksApiSocketConnectionOptions);
   constructor(args?: StacksApiSocket | StacksApiSocketConnectionOptions) {
     if (args instanceof Socket) {
       this.socket = args;
@@ -68,7 +68,8 @@ export class StacksApiSocketClient {
   }
 
   handleSubscription(topic: Topic, subscribe = false, listener?: (...args: any[]) => void) {
-    const subscriptions = new Set(this.socket.io.opts.query?.subscriptions.split(',') ?? []);
+    const subsQuery = this.socket.io.opts.query?.subscriptions as string | undefined;
+    const subscriptions = new Set(subsQuery?.split(',') ?? []);
     if (subscribe) {
       this.socket.emit('subscribe', topic, error => {
         if (error) console.error(`Error subscribing: ${error}`);
@@ -120,7 +121,10 @@ export class StacksApiSocketClient {
     this.handleSubscription('mempool', false);
   }
 
-  subscribeAddressTransactions(address: string, listener?: (address: string, tx: AddressTransactionWithTransfers) => void) {
+  subscribeAddressTransactions(
+    address: string,
+    listener?: (address: string, tx: AddressTransactionWithTransfers) => void
+  ) {
     if (listener) this.socket.on(`address-transaction:${address}`, listener);
     return this.handleSubscription(`address-transaction:${address}`, true, listener);
   }
@@ -129,7 +133,10 @@ export class StacksApiSocketClient {
     this.handleSubscription(`address-transaction:${address}`, false);
   }
 
-  subscribeAddressStxBalance(address: string, listener?: (address: string, stxBalance: AddressStxBalanceResponse) => void) {
+  subscribeAddressStxBalance(
+    address: string,
+    listener?: (address: string, stxBalance: AddressStxBalanceResponse) => void
+  ) {
     if (listener) this.socket.on(`address-stx-balance:${address}`, listener);
     return this.handleSubscription(`address-stx-balance:${address}`, true, listener);
   }
@@ -156,7 +163,11 @@ export class StacksApiSocketClient {
     this.handleSubscription('nft-event', false);
   }
 
-  subscribeNftAssetEvent(assetIdentifier: string, value: string, listener?: (assetIdentifier: string, value: string, event: NftEvent) => void) {
+  subscribeNftAssetEvent(
+    assetIdentifier: string,
+    value: string,
+    listener?: (assetIdentifier: string, value: string, event: NftEvent) => void
+  ) {
     if (listener) this.socket.on(`nft-asset-event:${assetIdentifier}+${value}`, listener);
     return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, true, listener);
   }
@@ -165,7 +176,10 @@ export class StacksApiSocketClient {
     this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, false);
   }
 
-  subscribeNftCollectionEvent(assetIdentifier: string, listener?: (assetIdentifier: string, event: NftEvent) => void) {
+  subscribeNftCollectionEvent(
+    assetIdentifier: string,
+    listener?: (assetIdentifier: string, event: NftEvent) => void
+  ) {
     if (listener) this.socket.on(`nft-collection-event:${assetIdentifier}`, listener);
     return this.handleSubscription(`nft-collection-event:${assetIdentifier}`, true, listener);
   }
