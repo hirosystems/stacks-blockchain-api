@@ -427,6 +427,7 @@ describe('PoX-3 - Delegate aggregation increase operations', () => {
       pox1: { height: poxStatus1.current_burnchain_block_height, ...poxStatus1.next_cycle },
       pox2: { height: poxStatus2.current_burnchain_block_height, ...poxStatus2.next_cycle },
     });
+    await standByForPoxCycle();
   });
 
   test('Validate account balances are unlocked', async () => {

@@ -2,8 +2,11 @@ import {
   AddressStxBalanceTopic,
   AddressTransactionTopic,
   ClientToServerMessages,
+  NftAssetEventTopic,
+  NftCollectionEventTopic,
   ServerToClientMessages,
   Topic,
+  TransactionTopic,
 } from 'docs/socket-io';
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -63,8 +66,8 @@ export class SocketIOChannel extends WebSocketChannel {
         const topics = [...[subscriptions]].flat().flatMap(r => r.split(','));
         for (const topic of topics) {
           this.prometheus?.subscribe(socket, topic);
-          await socket.join(topic);
         }
+        await socket.join(topics);
       }
       socket.on('disconnect', reason => {
         logger.debug(`disconnected ${socket.id}: ${reason}`, component);
@@ -170,15 +173,7 @@ export class SocketIOChannel extends WebSocketChannel {
     if (!this.io) {
       return;
     }
-    const sockets = [];
-    const socketIds = await this.io.to(room).allSockets();
-    for (const id of socketIds) {
-      const socket = this.io.sockets.sockets.get(id);
-      if (socket) {
-        sockets.push(socket);
-      }
-    }
-    return sockets;
+    return await this.io.to(room).fetchSockets();
   }
 
   send<P extends keyof WebSocketPayload>(
@@ -225,9 +220,10 @@ export class SocketIOChannel extends WebSocketChannel {
       case 'transaction': {
         const [tx] = args as ListenerType<WebSocketPayload['transaction']>;
         this.prometheus?.sendEvent('transaction');
-        void this.getTopicSockets(`transaction:${tx.tx_id}`).then(sockets =>
+        const topic: TransactionTopic = `transaction:${tx.tx_id}`;
+        void this.getTopicSockets(topic).then(sockets =>
           sockets?.forEach(socket =>
-            socket.timeout(timeout).emit('transaction', tx, _ => socket.disconnect(true))
+            socket.timeout(timeout).emit(topic, tx, _ => socket.disconnect(true))
           )
         );
         break;
@@ -247,11 +243,12 @@ export class SocketIOChannel extends WebSocketChannel {
           WebSocketPayload['nftAssetEvent']
         >;
         this.prometheus?.sendEvent('nft-asset-event');
-        void this.getTopicSockets(`nft-event`).then(sockets =>
+        const topic: NftAssetEventTopic = `nft-asset-event:${assetIdentifier}+${value}`;
+        void this.getTopicSockets(topic).then(sockets =>
           sockets?.forEach(socket =>
             socket
               .timeout(timeout)
-              .emit('nft-asset-event', assetIdentifier, value, event, _ => socket.disconnect(true))
+              .emit(topic, assetIdentifier, value, event, _ => socket.disconnect(true))
           )
         );
         break;
@@ -261,11 +258,12 @@ export class SocketIOChannel extends WebSocketChannel {
           WebSocketPayload['nftCollectionEvent']
         >;
         this.prometheus?.sendEvent('nft-collection-event');
-        void this.getTopicSockets(`nft-event`).then(sockets =>
+        const topic: NftCollectionEventTopic = `nft-collection-event:${assetIdentifier}`;
+        void this.getTopicSockets(topic).then(sockets =>
           sockets?.forEach(socket =>
             socket
               .timeout(timeout)
-              .emit('nft-collection-event', assetIdentifier, event, _ => socket.disconnect(true))
+              .emit(topic, assetIdentifier, event, _ => socket.disconnect(true))
           )
         );
         break;
@@ -276,9 +274,6 @@ export class SocketIOChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('address-transaction');
         void this.getTopicSockets(topic).then(sockets =>
           sockets?.forEach(socket => {
-            socket
-              .timeout(timeout)
-              .emit('address-transaction', principal, tx, _ => socket.disconnect(true));
             socket.timeout(timeout).emit(topic, principal, tx, _ => socket.disconnect(true));
           })
         );
@@ -290,9 +285,6 @@ export class SocketIOChannel extends WebSocketChannel {
         this.prometheus?.sendEvent('address-stx-balance');
         void this.getTopicSockets(topic).then(sockets =>
           sockets?.forEach(socket => {
-            socket
-              .timeout(timeout)
-              .emit('address-stx-balance', principal, balance, _ => socket.disconnect(true));
             socket.timeout(timeout).emit(topic, principal, balance, _ => socket.disconnect(true));
           })
         );
