@@ -1,3 +1,10 @@
+## [7.5.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0...v7.5.0-beta.1) (2024-01-05)
+
+
+### Features
+
+* add listener callback to socket-io client subscription functions ([#1799](https://github.com/hirosystems/stacks-blockchain-api/issues/1799)) ([5634522](https://github.com/hirosystems/stacks-blockchain-api/commit/5634522132448fa480fcb18978a9cf2bf6f50a37))
+
 ## [7.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.6...v7.4.0) (2024-01-04)
 
 
