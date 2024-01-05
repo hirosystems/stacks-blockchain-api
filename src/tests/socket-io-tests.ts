@@ -293,12 +293,12 @@ describe('socket-io', () => {
     socket.on(`nft-event`, event => {
       nftEventWaiters[event.event_index].finish(event);
     });
-    socket.on(`nft-asset-event`, (assetIdentifier, value, event) => {
+    socket.on(`nft-asset-event:${crashPunks}+${valueHex1}`, (assetIdentifier, value, event) => {
       if (assetIdentifier == crashPunks && value == valueHex1) {
         crashPunksWaiter.finish(event);
       }
     });
-    socket.on(`nft-collection-event`, (assetIdentifier, event) => {
+    socket.on(`nft-collection-event:${wastelandApes}`, (assetIdentifier, event) => {
       if (assetIdentifier == wastelandApes) {
         if (event.event_index == 2) {
           apeWaiters[0].finish(event);

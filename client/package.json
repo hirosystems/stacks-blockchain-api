@@ -43,27 +43,28 @@
     "cross-fetch": "3.1.5",
     "eventemitter3": "4.0.7",
     "jsonrpc-lite": "2.2.0",
-    "socket.io-client": "4.6.1",
-    "ws": "7.5.6"
+    "socket.io-client": "4.7.3",
+    "ws": "8.16.0"
   },
   "devDependencies": {
     "@apidevtools/swagger-cli": "4.0.4",
     "@openapitools/openapi-generator-cli": "2.4.21",
-    "@stacks/eslint-config": "1.2.0",
-    "@stacks/prettier-config": "0.0.7",
-    "@typescript-eslint/eslint-plugin": "4.33.0",
-    "@typescript-eslint/parser": "4.33.0",
+    "@stacks/eslint-config": "2.0.0",
+    "@stacks/prettier-config": "0.0.10",
+    "@types/node": "20.10.6",
+    "@typescript-eslint/eslint-plugin": "6.17.0",
+    "@typescript-eslint/parser": "6.17.0",
     "concurrently": "7.6.0",
-    "eslint": "7.32.0",
-    "eslint-config-prettier": "8.3.0",
-    "eslint-plugin-prettier": "3.4.1",
+    "eslint": "8.56.0",
+    "eslint-config-prettier": "9.1.0",
+    "eslint-plugin-prettier": "5.1.2",
     "http-server": "14.0.0",
     "microbundle": "0.13.3",
-    "prettier": "2.8.6",
+    "prettier": "3.1.1",
     "rimraf": "5.0.0",
     "shx": "0.3.3",
-    "ts-node": "9.1.1",
-    "typedoc": "0.23.10",
-    "typescript": "4.6.2"
+    "ts-node": "10.9.2",
+    "typedoc": "0.25.6",
+    "typescript": "5.3.3"
   }
 }
