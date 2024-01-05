@@ -19,6 +19,7 @@ import {
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { StacksApiSocketClient } from '../../client/src/socket-io';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
@@ -32,6 +33,78 @@ describe('socket-io', () => {
       datastore: db,
       chainId: ChainID.Testnet,
     });
+  });
+
+  test('socket-io-client > block updates', async () => {
+    const client = new StacksApiSocketClient({
+      url: `http://${apiServer.address}`,
+      socketOpts: { reconnection: false },
+    });
+
+    const updateWaiter: Waiter<Block> = waiter();
+    const subResult = client.subscribeBlocks(block => updateWaiter.finish(block));
+
+    const block = new TestBlockBuilder({ block_hash: '0x1234', burn_block_hash: '0x5454' })
+      .addTx({ tx_id: '0x4321' })
+      .build();
+    await db.update(block);
+
+    const result = await updateWaiter;
+    try {
+      expect(result.hash).toEqual('0x1234');
+      expect(result.burn_block_hash).toEqual('0x5454');
+      expect(result.txs[0]).toEqual('0x4321');
+    } finally {
+      subResult.unsubscribe();
+      client.socket.close();
+    }
+  });
+
+  test('socket-io-client > tx updates', async () => {
+    const client = new StacksApiSocketClient({
+      url: `http://${apiServer.address}`,
+      socketOpts: { reconnection: false },
+    });
+
+    const mempoolWaiter: Waiter<MempoolTransaction> = waiter();
+    const txWaiters: Waiter<MempoolTransaction | Transaction>[] = [waiter(), waiter()];
+
+    const mempoolSub = client.subscribeMempool(tx => mempoolWaiter.finish(tx));
+    const txSub = client.subscribeTransaction('0x01', tx => {
+      if (tx.tx_status === 'pending') {
+        txWaiters[0].finish(tx);
+      } else {
+        txWaiters[1].finish(tx);
+      }
+    });
+
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
+
+    const mempoolTx = testMempoolTx({ tx_id: '0x01', status: DbTxStatus.Pending });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+    const mempoolResult = await mempoolWaiter;
+    const txResult = await txWaiters[0];
+
+    const microblock = new TestMicroblockStreamBuilder()
+      .addMicroblock()
+      .addTx({ tx_id: '0x01' })
+      .build();
+    await db.updateMicroblocks(microblock);
+    const txMicroblockResult = await txWaiters[1];
+
+    try {
+      expect(mempoolResult.tx_status).toEqual('pending');
+      expect(mempoolResult.tx_id).toEqual('0x01');
+      expect(txResult.tx_status).toEqual('pending');
+      expect(txResult.tx_id).toEqual('0x01');
+      expect(txMicroblockResult.tx_id).toEqual('0x01');
+      expect(txMicroblockResult.tx_status).toEqual('success');
+    } finally {
+      mempoolSub.unsubscribe();
+      txSub.unsubscribe();
+      client.socket.close();
+    }
   });
 
   test('socket-io > block updates', async () => {
@@ -106,7 +179,7 @@ describe('socket-io', () => {
     socket.on('mempool', tx => {
       mempoolWaiter.finish(tx);
     });
-    socket.on('transaction', tx => {
+    socket.on('transaction:0x01', tx => {
       if (tx.tx_status === 'pending') {
         txWaiters[0].finish(tx);
       } else {
@@ -293,12 +366,12 @@ describe('socket-io', () => {
     socket.on(`nft-event`, event => {
       nftEventWaiters[event.event_index].finish(event);
     });
-    socket.on(`nft-asset-event`, (assetIdentifier, value, event) => {
+    socket.on(`nft-asset-event:${crashPunks}+${valueHex1}`, (assetIdentifier, value, event) => {
       if (assetIdentifier == crashPunks && value == valueHex1) {
         crashPunksWaiter.finish(event);
       }
     });
-    socket.on(`nft-collection-event`, (assetIdentifier, event) => {
+    socket.on(`nft-collection-event:${wastelandApes}`, (assetIdentifier, event) => {
       if (assetIdentifier == wastelandApes) {
         if (event.event_index == 2) {
           apeWaiters[0].finish(event);
@@ -492,7 +565,8 @@ describe('socket-io', () => {
     }
   });
 
-  test('message timeout disconnects client', async () => {
+  // Per message timeout is not enabled (we don't want to require clients to explicitly reply to events)
+  test.skip('message timeout disconnects client', async () => {
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
       reconnection: false,
