@@ -1,5 +1,5 @@
-import { io } from 'socket.io-client';
-import type { Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
+import type { ManagerOptions, SocketOptions } from 'socket.io-client';
 import {
   ClientToServerMessages,
   Topic,
@@ -30,30 +30,41 @@ function getWsUrl(url: string): URL {
   return urlObj;
 }
 
-export interface StacksApiSocketConnectionOptions {
+export type StacksApiSocketConnectionOptions = {
   url?: string;
   /** Initial topics to subscribe to. */
   subscriptions?: Topic[];
+  socketOpts?: Partial<ManagerOptions & SocketOptions>;
+};
+
+function createStacksApiSocket(opts?: StacksApiSocketConnectionOptions) {
+  const socketOpts = {
+    ...opts?.socketOpts,
+    query: {
+      ...opts?.socketOpts?.query,
+      // Subscriptions can be specified on init using this handshake query param.
+      subscriptions: Array.from(new Set(opts?.subscriptions)).join(','),
+    }
+  };
+  const socket: StacksApiSocket = io(getWsUrl(opts?.url ?? BASE_PATH).href, socketOpts);
+  return socket;
 }
 
 export class StacksApiSocketClient {
   readonly socket: StacksApiSocket;
 
-  constructor(socket: StacksApiSocket) {
-    this.socket = socket;
+  constructor(socket: StacksApiSocket)
+  constructor(opts?: StacksApiSocketConnectionOptions)
+  constructor(args?: StacksApiSocket | StacksApiSocketConnectionOptions) {
+    if (args instanceof Socket) {
+      this.socket = args;
+    } else {
+      this.socket = createStacksApiSocket(args);
+    }
   }
 
-  public static connect({
-    url = BASE_PATH,
-    subscriptions = [],
-  }: StacksApiSocketConnectionOptions = {}) {
-    const socket: StacksApiSocket = io(getWsUrl(url).href, {
-      query: {
-        // Subscriptions can be specified on init using this handshake query param.
-        subscriptions: Array.from(new Set(subscriptions)).join(','),
-      },
-    });
-    return new StacksApiSocketClient(socket);
+  public static connect(opts?: StacksApiSocketConnectionOptions) {
+    return new StacksApiSocketClient(opts);
   }
 
   handleSubscription(topic: Topic, subscribe = false, listener?: (...args: any[]) => void) {
