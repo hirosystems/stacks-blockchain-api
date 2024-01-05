@@ -565,7 +565,8 @@ describe('socket-io', () => {
     }
   });
 
-  test('message timeout disconnects client', async () => {
+  // Per message timeout is not enabled (we don't want to require clients to explicitly reply to events)
+  test.skip('message timeout disconnects client', async () => {
     const address = apiServer.address;
     const socket = io(`http://${address}`, {
       reconnection: false,
