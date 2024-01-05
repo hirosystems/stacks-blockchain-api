@@ -106,7 +106,7 @@ describe('socket-io', () => {
     socket.on('mempool', tx => {
       mempoolWaiter.finish(tx);
     });
-    socket.on('transaction', tx => {
+    socket.on('transaction:0x01', tx => {
       if (tx.tx_status === 'pending') {
         txWaiters[0].finish(tx);
       } else {
