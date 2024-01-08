@@ -179,7 +179,6 @@ export class PgWriteStore extends PgStore {
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip();
       await this.handleReorg(sql, data.block, chainTip.block_height);
-
       const isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);

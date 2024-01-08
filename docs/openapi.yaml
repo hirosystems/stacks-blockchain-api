@@ -66,6 +66,8 @@ tags:
     externalDocs:
       description: Hiro Documentation - Transactions
       url: https://docs.hiro.so/get-started/transactions
+  - name: Mempool
+    description: Endpoints to obtain Mempool information
 
 paths:
   /extended/v1/faucets/stx:
@@ -102,21 +104,6 @@ paths:
       tags:
         - Faucets
       operationId: run_faucet_stx
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                address:
-                  description: STX testnet address
-                  type: string
-                stacking:
-                  description: Use required number of tokens for stacking
-                  type: boolean
-              example:
-                address: ST3M7N9Q9HDRM7RVP1Q26P0EE69358PZZAZD7KMXQ
-                stacking: false
       responses:
         200:
           description: Success
@@ -307,6 +294,24 @@ paths:
                 $ref: ./api/transaction/get-mempool-transactions.schema.json
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
+
+  /extended/v2/mempool/fees:
+    get:
+      summary: Get mempool transaction fee priorities
+      tags:
+        - Mempool
+      operationId: get_mempool_fee_priorities
+      description: |
+          Returns estimated fee priorities (in micro-STX) for all transactions that are currently in the mempool. Also returns priorities separated by transaction type.
+      responses:
+        200:
+          description: Mempool fee priorities
+          content:
+            application/json:
+              schema:
+                $ref: ./api/mempool/get-fee-priorities.schema.json
+              example:
+                $ref: ./api/mempool/get-fee-priorities.example.json
 
   /extended/v1/tx/mempool/dropped:
     get:

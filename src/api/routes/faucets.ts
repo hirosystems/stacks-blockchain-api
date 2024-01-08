@@ -151,15 +151,25 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
   router.post(
     '/stx',
     asyncHandler(async (req, res) => {
+      if (!req.query.address && req.body.address) {
+        // return error for no longer supported post body requests
+        const url = new URL(`${req.protocol}://${req.get('host')}${req.originalUrl}`);
+        url.search = new URLSearchParams(req.body).toString();
+        res.status(400).json({
+          error: `POST body is no longer supported, parameters must be passed as query parameters, e.g. ${url}`,
+          help: `Example curl request: curl -X POST '${url}'`,
+          success: false,
+        });
+        return;
+      }
       await stxFaucetRequestQueue.add(async () => {
-        const address: string = req.query.address || req.body.address;
+        const address: string = req.query.address as string;
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         const lastRequests = await db.getSTXFaucetRequests(address);
 
         const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
-        const isStackingReq =
-          req.query['stacking'] === 'true' || [true, 'true'].includes(req.body['stacking']);
+        const isStackingReq = req.query['stacking'] === 'true';
 
         // Guard condition: requests are limited to x times per y minutes.
         // Only based on address for now, but we're keeping the IP in case

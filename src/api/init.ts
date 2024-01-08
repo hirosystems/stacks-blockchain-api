@@ -52,6 +52,7 @@ import {
 import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
+import { createMempoolRouter } from './v2/mempool';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -233,6 +234,7 @@ export async function startApiServer(opts: {
           const v2 = express.Router();
           v2.use('/blocks', createV2BlocksRouter(datastore));
           v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
+          v2.use('/mempool', createMempoolRouter(datastore));
           return v2;
         })()
       );
