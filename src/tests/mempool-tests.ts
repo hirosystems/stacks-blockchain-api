@@ -1114,6 +1114,23 @@ describe('mempool tests', () => {
     expect(json.results[2].fee_rate).toBe('300');
     expect(json.results[3].fee_rate).toBe('400');
     expect(json.results[4].fee_rate).toBe('500');
+
+    // Newer transactions were set with higher fees.
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=desc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('500');
+    expect(json.results[1].fee_rate).toBe('400');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('200');
+    expect(json.results[4].fee_rate).toBe('100');
+
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=asc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('100');
+    expect(json.results[1].fee_rate).toBe('200');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('400');
+    expect(json.results[4].fee_rate).toBe('500');
   });
 
   test('mempool - contract_call tx abi details are retrieved', async () => {
