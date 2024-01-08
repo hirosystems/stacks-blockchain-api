@@ -42,7 +42,13 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
-import { SERVER_VERSION, isPgConnectionError, isProdEnv, waiter } from '@hirosystems/api-toolkit';
+import {
+  SERVER_VERSION,
+  isPgConnectionError,
+  isProdEnv,
+  parseBoolean,
+  waiter,
+} from '@hirosystems/api-toolkit';
 import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
@@ -263,19 +269,20 @@ export async function startApiServer(opts: {
   );
 
   // Rosetta API -- https://www.rosetta-api.org
-  app.use(
-    '/rosetta/v1',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
-      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
-      router.use('/block', createRosettaBlockRouter(datastore, chainId));
-      router.use('/account', createRosettaAccountRouter(datastore, chainId));
-      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
-      return router;
-    })()
-  );
+  if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1'))
+    app.use(
+      '/rosetta/v1',
+      (() => {
+        const router = express.Router();
+        router.use(cors());
+        router.use('/network', createRosettaNetworkRouter(datastore, chainId));
+        router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
+        router.use('/block', createRosettaBlockRouter(datastore, chainId));
+        router.use('/account', createRosettaAccountRouter(datastore, chainId));
+        router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
+        return router;
+      })()
+    );
 
   // Setup legacy API v1 and v2 routes
   app.use(
