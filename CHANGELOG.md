@@ -1,3 +1,10 @@
+## [7.4.0-nakamoto.12](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.11...v7.4.0-nakamoto.12) (2024-01-08)
+
+
+### Features
+
+* disable rosetta via an ENV var ([#1804](https://github.com/hirosystems/stacks-blockchain-api/issues/1804)) ([2d2aee3](https://github.com/hirosystems/stacks-blockchain-api/commit/2d2aee38263c3e457462ba5fd4cf4fd305178039))
+
 ## [7.4.0-nakamoto.11](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.10...v7.4.0-nakamoto.11) (2024-01-03)
 
 
