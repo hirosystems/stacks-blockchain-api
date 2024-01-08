@@ -152,10 +152,28 @@ export function createTxRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
+
+      const orderBy = req.query.order_by;
+      if (orderBy !== undefined && orderBy != 'fee' && orderBy != 'age' && orderBy != 'size') {
+        throw new InvalidRequestError(
+          `The "order_by" param can only be 'fee', 'age', or 'size'`,
+          InvalidRequestErrorType.invalid_param
+        );
+      }
+      const order = req.query.order;
+      if (order !== undefined && order != 'asc' && order != 'desc') {
+        throw new InvalidRequestError(
+          `The "order" param can only be 'asc' or 'desc'`,
+          InvalidRequestErrorType.invalid_param
+        );
+      }
+
       const { results: txResults, total } = await db.getMempoolTxList({
         offset,
         limit,
         includeUnanchored,
+        orderBy,
+        order,
         senderAddress,
         recipientAddress,
         address,
