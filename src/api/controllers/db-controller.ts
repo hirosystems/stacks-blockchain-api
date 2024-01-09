@@ -77,6 +77,7 @@ export function parseTxTypeStrings(values: string[]): TransactionType[] {
       case 'token_transfer':
       case 'coinbase':
       case 'poison_microblock':
+      case 'tenure_change':
         return v;
       default:
         throw new Error(`Unexpected tx type: ${JSON.stringify(v)}`);
@@ -98,6 +99,8 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
     case DbTxTypeId.Coinbase:
     case DbTxTypeId.CoinbaseToAltRecipient:
       return 'coinbase';
+    case DbTxTypeId.TenureChange:
+      return 'tenure_change';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
   }
@@ -139,6 +142,8 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
       return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
       return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient];
+    case 'tenure_change':
+      return [DbTxTypeId.TenureChange];
     default:
       throw new Error(`Unexpected tx type string: ${typeString}`);
   }
