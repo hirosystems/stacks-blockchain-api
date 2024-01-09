@@ -97,6 +97,7 @@ import {
 import { PgConfigStateNotificationPayload, PgNotifier } from './pg-notifier';
 import { AsyncLocalStorage } from 'async_hooks';
 import { Pox2EventName } from '../pox-helpers';
+import { MempoolOrderByParam, OrderParam } from 'src/api/query-helpers';
 
 export type UnwrapPromiseArray<T> = T extends any[]
   ? {
@@ -1338,8 +1339,8 @@ export class PgStore {
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-    orderBy?: 'fee' | 'size' | 'age';
-    order?: 'asc' | 'desc';
+    orderBy?: MempoolOrderByParam;
+    order?: OrderParam;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;

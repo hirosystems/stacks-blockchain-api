@@ -4,6 +4,17 @@ import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } fro
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
 
+export enum MempoolOrderByParam {
+  fee = 'fee',
+  size = 'size',
+  age = 'age',
+}
+
+export enum OrderParam {
+  asc = 'asc',
+  desc = 'desc',
+}
+
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
   res.status(400).json({ error: errorMessage });
