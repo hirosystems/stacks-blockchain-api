@@ -32,8 +32,17 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
       let assetIdentifiers: string[] | undefined;
-      if (req.query.asset_identifiers !== undefined) {
-        for (const assetIdentifier of [req.query.asset_identifiers].flat()) {
+      if (req.query.asset_identifiers) {
+        if (typeof req.query.asset_identifiers === 'string') {
+          if (req.query.asset_identifiers.includes(',')) {
+            assetIdentifiers = req.query.asset_identifiers.split(',');
+          } else {
+            assetIdentifiers = [req.query.asset_identifiers];
+          }
+        } else {
+          assetIdentifiers = req.query.asset_identifiers as string[];
+        }
+        for (const assetIdentifier of assetIdentifiers) {
           if (
             typeof assetIdentifier !== 'string' ||
             !isValidPrincipal(assetIdentifier.split('::')[0])

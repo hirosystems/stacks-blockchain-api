@@ -299,6 +299,13 @@ describe('tx tests', () => {
     expect(jsonRes[dbTx3.tx_id].result.tx_id).toEqual(dbTx3.tx_id);
     expect(jsonRes[dbTx3.tx_id].result.tx_type).toEqual('smart_contract');
     expect(jsonRes[dbTx3.tx_id].result.smart_contract.clarity_version).toEqual(2);
+
+    // test comma-separated tx_id list
+    const txIds = [mempoolTx.tx_id, tx1.tx_id, notFoundTxId, dbTx2.tx_id, dbTx3.tx_id].join(',');
+    const txsListDetail2 = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${txIds}`
+    );
+    expect(txsListDetail2.body).toEqual(txsListDetail.body);
   });
 
   test('getTxList returns object', async () => {
