@@ -1,9 +1,16 @@
-import { io } from 'socket.io-client';
-import type { Socket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
+import type { ManagerOptions, SocketOptions } from 'socket.io-client';
 import {
   ClientToServerMessages,
   Topic,
   ServerToClientMessages,
+  MempoolTransaction,
+  Transaction,
+  Block,
+  Microblock,
+  AddressTransactionWithTransfers,
+  NftEvent,
+  AddressStxBalanceResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { BASE_PATH } from '../generated/runtime';
 
@@ -23,34 +30,46 @@ function getWsUrl(url: string): URL {
   return urlObj;
 }
 
-export interface StacksApiSocketConnectionOptions {
+export type StacksApiSocketConnectionOptions = {
   url?: string;
   /** Initial topics to subscribe to. */
   subscriptions?: Topic[];
+  socketOpts?: Partial<ManagerOptions & SocketOptions>;
+};
+
+function createStacksApiSocket(opts?: StacksApiSocketConnectionOptions) {
+  const socketOpts = {
+    ...opts?.socketOpts,
+    query: {
+      ...opts?.socketOpts?.query,
+      // Subscriptions can be specified on init using this handshake query param.
+      subscriptions: Array.from(new Set(opts?.subscriptions)).join(','),
+    },
+  };
+  const socket: StacksApiSocket = io(getWsUrl(opts?.url ?? BASE_PATH).href, socketOpts);
+  return socket;
 }
 
 export class StacksApiSocketClient {
   readonly socket: StacksApiSocket;
 
-  constructor(socket: StacksApiSocket) {
-    this.socket = socket;
+  constructor(socket: StacksApiSocket);
+  constructor(opts?: StacksApiSocketConnectionOptions);
+  constructor(args?: StacksApiSocket | StacksApiSocketConnectionOptions) {
+    if (args instanceof Socket) {
+      this.socket = args;
+    } else {
+      this.socket = createStacksApiSocket(args);
+    }
   }
 
-  public static connect({
-    url = BASE_PATH,
-    subscriptions = [],
-  }: StacksApiSocketConnectionOptions = {}) {
-    const socket: StacksApiSocket = io(getWsUrl(url).href, {
-      query: {
-        // Subscriptions can be specified on init using this handshake query param.
-        subscriptions: Array.from(new Set(subscriptions)).join(','),
-      },
-    });
-    return new StacksApiSocketClient(socket);
+  public static connect(opts?: StacksApiSocketConnectionOptions) {
+    return new StacksApiSocketClient(opts);
   }
 
-  handleSubscription(topic: Topic, subscribe = false) {
-    const subscriptions = new Set(this.socket.io.opts.query?.subscriptions.split(',') ?? []);
+  handleSubscription(topic: Topic, subscribe = false, listener?: (...args: any[]) => void) {
+    const subsQuery = this.socket.io.opts.query?.subscriptions as string | undefined;
+    const subscriptions = new Set(subsQuery?.split(',') ?? []);
     if (subscribe) {
       this.socket.emit('subscribe', topic, error => {
         if (error) console.error(`Error subscribing: ${error}`);
@@ -67,81 +86,106 @@ export class StacksApiSocketClient {
     this.socket.io.opts.query.subscriptions = Array.from(subscriptions).join(',');
     return {
       unsubscribe: () => {
+        if (listener) {
+          this.socket.off(topic, listener);
+        }
         this.handleSubscription(topic, false);
       },
     };
   }
 
-  subscribeBlocks() {
-    return this.handleSubscription('block', true);
+  subscribeBlocks(listener?: (tx: Block) => void) {
+    if (listener) this.socket.on('block', listener);
+    return this.handleSubscription('block', true, listener);
   }
 
   unsubscribeBlocks() {
     this.handleSubscription('block', false);
   }
 
-  subscribeMicroblocks() {
-    return this.handleSubscription('microblock', true);
+  subscribeMicroblocks(listener?: (tx: Microblock) => void) {
+    if (listener) this.socket.on('microblock', listener);
+    return this.handleSubscription('microblock', true, listener);
   }
 
   unsubscribeMicroblocks() {
     this.handleSubscription('microblock', false);
   }
 
-  subscribeMempool() {
-    return this.handleSubscription('mempool', true);
+  subscribeMempool(listener?: (tx: MempoolTransaction) => void) {
+    if (listener) this.socket.on('mempool', listener);
+    return this.handleSubscription('mempool', true, listener);
   }
 
   unsubscribeMempool() {
     this.handleSubscription('mempool', false);
   }
 
-  subscribeAddressTransactions(address: string) {
-    return this.handleSubscription(`address-transaction:${address}` as const, true);
+  subscribeAddressTransactions(
+    address: string,
+    listener?: (address: string, tx: AddressTransactionWithTransfers) => void
+  ) {
+    if (listener) this.socket.on(`address-transaction:${address}`, listener);
+    return this.handleSubscription(`address-transaction:${address}`, true, listener);
   }
 
   unsubscribeAddressTransactions(address: string) {
-    this.handleSubscription(`address-transaction:${address}` as const, false);
+    this.handleSubscription(`address-transaction:${address}`, false);
   }
 
-  subscribeAddressStxBalance(address: string) {
-    return this.handleSubscription(`address-stx-balance:${address}` as const, true);
+  subscribeAddressStxBalance(
+    address: string,
+    listener?: (address: string, stxBalance: AddressStxBalanceResponse) => void
+  ) {
+    if (listener) this.socket.on(`address-stx-balance:${address}`, listener);
+    return this.handleSubscription(`address-stx-balance:${address}`, true, listener);
   }
 
   unsubscribeAddressStxBalance(address: string) {
-    this.handleSubscription(`address-stx-balance:${address}` as const, false);
+    this.handleSubscription(`address-stx-balance:${address}`, false);
   }
 
-  subscribeTransaction(txId: string) {
-    return this.handleSubscription(`transaction:${txId}` as const, true);
+  subscribeTransaction(txId: string, listener?: (tx: MempoolTransaction | Transaction) => void) {
+    if (listener) this.socket.on(`transaction:${txId}`, listener);
+    return this.handleSubscription(`transaction:${txId}`, true, listener);
   }
 
   unsubscribeTransaction(txId: string) {
-    this.handleSubscription(`transaction:${txId}` as const, false);
+    this.handleSubscription(`transaction:${txId}`, false);
   }
 
-  subscribeNftEvent() {
-    return this.handleSubscription('nft-event', true);
+  subscribeNftEvent(listener?: (event: NftEvent) => void) {
+    if (listener) this.socket.on('nft-event', listener);
+    return this.handleSubscription('nft-event', true, listener);
   }
 
   unsubscribeNftEvent() {
     this.handleSubscription('nft-event', false);
   }
 
-  subscribeNftAssetEvent(assetIdentifier: string, value: string) {
-    return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, true);
+  subscribeNftAssetEvent(
+    assetIdentifier: string,
+    value: string,
+    listener?: (assetIdentifier: string, value: string, event: NftEvent) => void
+  ) {
+    if (listener) this.socket.on(`nft-asset-event:${assetIdentifier}+${value}`, listener);
+    return this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, true, listener);
   }
 
   unsubscribeNftAssetEvent(assetIdentifier: string, value: string) {
-    this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}` as const, false);
+    this.handleSubscription(`nft-asset-event:${assetIdentifier}+${value}`, false);
   }
 
-  subscribeNftCollectionEvent(assetIdentifier: string) {
-    return this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, true);
+  subscribeNftCollectionEvent(
+    assetIdentifier: string,
+    listener?: (assetIdentifier: string, event: NftEvent) => void
+  ) {
+    if (listener) this.socket.on(`nft-collection-event:${assetIdentifier}`, listener);
+    return this.handleSubscription(`nft-collection-event:${assetIdentifier}`, true, listener);
   }
 
   unsubscribeNftCollectionEvent(assetIdentifier: string) {
-    this.handleSubscription(`nft-collection-event:${assetIdentifier}` as const, false);
+    this.handleSubscription(`nft-collection-event:${assetIdentifier}`, false);
   }
 
   logEvents() {
@@ -151,18 +195,6 @@ export class StacksApiSocketClient {
     this.socket.on('block', block => console.log('block', block));
     this.socket.on('microblock', microblock => console.log('microblock', microblock));
     this.socket.on('mempool', tx => console.log('mempool', tx));
-    this.socket.on('address-transaction', (address, data) =>
-      console.log('address-transaction', address, data)
-    );
-    this.socket.on('address-stx-balance', (address, data) =>
-      console.log('address-stx-balance', address, data)
-    );
     this.socket.on('nft-event', event => console.log('nft-event', event));
-    this.socket.on('nft-asset-event', (assetIdentifier, value, event) =>
-      console.log('nft-asset-event', assetIdentifier, value, event)
-    );
-    this.socket.on('nft-collection-event', (assetIdentifier, event) =>
-      console.log('nft-collection-event', assetIdentifier, event)
-    );
   }
 }

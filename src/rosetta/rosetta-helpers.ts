@@ -29,12 +29,25 @@ import {
   getTxTypeString,
   parseContractCallMetadata,
 } from '../api/controllers/db-controller';
+import { RosettaConstants, RosettaNetworks, RosettaOperationType } from '../api/rosetta-constants';
 import {
-  PoxContractIdentifier,
-  RosettaConstants,
-  RosettaNetworks,
-  RosettaOperationType,
-} from '../api/rosetta-constants';
+  BaseTx,
+  DbAssetEventTypeId,
+  DbEvent,
+  DbEventTypeId,
+  DbFtEvent,
+  DbMempoolTx,
+  DbMinerReward,
+  DbStxEvent,
+  DbStxLockEvent,
+  DbTx,
+  DbTxStatus,
+  DbTxTypeId,
+  StxUnlockEvent,
+} from '../datastore/common';
+import { getTxSenderAddress, getTxSponsorAddress } from '../event-stream/reader';
+import { unwrapOptional, getSendManyContract } from '../helpers';
+
 import { getCoreNodeEndpoint } from '../core-rpc/client';
 import {
   ClarityTypeID,
@@ -56,25 +69,10 @@ import {
 import { PgStore } from '../datastore/pg-store';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
-import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
-import {
-  DbTx,
-  DbMempoolTx,
-  BaseTx,
-  DbMinerReward,
-  DbEvent,
-  StxUnlockEvent,
-  DbEventTypeId,
-  DbAssetEventTypeId,
-  DbTxTypeId,
-  DbStxLockEvent,
-  DbTxStatus,
-  DbStxEvent,
-  DbFtEvent,
-} from '../datastore/common';
-import { getTxSenderAddress, getTxSponsorAddress } from '../event-stream/reader';
-import { hexToBuffer, getSendManyContract, unwrapOptional } from '../helpers';
 import { logger } from '../logger';
+import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
+import { PoxContractIdentifiers } from '../pox-helpers';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',
@@ -689,14 +687,7 @@ async function makeCallContractOperation(
     case 'stack-stx':
     case 'delegate-stx':
     case 'revoke-delegate-stx':
-      if (
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox1.mainnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox2.mainnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.testnet ||
-        stackContractCall.contract_call.contract_id === PoxContractIdentifier.pox3.mainnet
-      ) {
+      if (PoxContractIdentifiers.includes(stackContractCall.contract_call.contract_id)) {
         parseStackingContractCall(contractCallOp, stackContractCall);
       } else {
         parseGenericContractCall(contractCallOp, tx);
@@ -1118,6 +1109,12 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
       break;
     case TxPayloadTypeID.PoisonMicroblock:
       transactionType = DbTxTypeId.PoisonMicroblock;
+      break;
+    case TxPayloadTypeID.TenureChange:
+      transactionType = DbTxTypeId.TenureChange;
+      break;
+    case TxPayloadTypeID.NakamotoCoinbase:
+      transactionType = DbTxTypeId.NakamotoCoinbase;
       break;
   }
   const dbTx: BaseTx = {

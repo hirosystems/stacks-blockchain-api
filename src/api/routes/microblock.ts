@@ -10,10 +10,10 @@ import {
   getMicroblocksFromDataStore,
   getUnanchoredTxsFromDataStore,
 } from '../controllers/db-controller';
-import { has0xPrefix } from '../../helpers';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validateRequestHexInput } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createMicroblockRouter(db: PgStore): express.Router {
   const router = express.Router();

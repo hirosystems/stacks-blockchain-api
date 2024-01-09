@@ -1,7 +1,8 @@
-import { hexToBuffer, parseEnum, unwrapOptionalProp } from '../helpers';
+import { parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
+  DataStoreBlockUpdateData,
   DbBlock,
   DbEvent,
   DbEventBase,
@@ -14,19 +15,19 @@ import {
   DbMempoolTxRaw,
   DbMicroblock,
   DbNftEvent,
-  DbPox2BaseEventData,
-  DbPox2DelegateStackExtendEvent,
-  DbPox2DelegateStackIncreaseEvent,
-  DbPox2DelegateStackStxEvent,
-  DbPox2DelegateStxEvent,
-  DbPox2Event,
-  DbPox2HandleUnlockEvent,
-  DbPox2StackAggregationCommitEvent,
-  DbPox2StackAggregationCommitIndexedEvent,
-  DbPox2StackAggregationIncreaseEvent,
-  DbPox2StackExtendEvent,
-  DbPox2StackIncreaseEvent,
-  DbPox2StackStxEvent,
+  DbPoxSyntheticBaseEventData,
+  DbPoxSyntheticDelegateStackExtendEvent,
+  DbPoxSyntheticDelegateStackIncreaseEvent,
+  DbPoxSyntheticDelegateStackStxEvent,
+  DbPoxSyntheticDelegateStxEvent,
+  DbPoxSyntheticEvent,
+  DbPoxSyntheticHandleUnlockEvent,
+  DbPoxSyntheticStackAggregationCommitEvent,
+  DbPoxSyntheticStackAggregationCommitIndexedEvent,
+  DbPoxSyntheticStackAggregationIncreaseEvent,
+  DbPoxSyntheticStackExtendEvent,
+  DbPoxSyntheticStackIncreaseEvent,
+  DbPoxSyntheticStackStxEvent,
   DbSmartContract,
   DbSmartContractEvent,
   DbStxEvent,
@@ -39,8 +40,10 @@ import {
   FaucetRequestQueryResult,
   MempoolTxQueryResult,
   MicroblockQueryResult,
-  Pox2EventQueryResult,
+  PoxSyntheticEventQueryResult,
   TxQueryResult,
+  DbPoxSyntheticRevokeDelegateStxEvent,
+  ReOrgUpdatedEntities,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -57,12 +60,12 @@ import {
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import * as prom from 'prom-client';
-import { PgSqlClient } from './connection';
 import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -102,6 +105,16 @@ export const TX_COLUMNS = [
   'poison_microblock_header_2',
   'coinbase_payload',
   'coinbase_alt_recipient',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_cause',
+  'tenure_change_pubkey_hash',
+  'tenure_change_signature',
+  'tenure_change_signers',
   'raw_result',
   'event_count',
   'execution_cost_read_count',
@@ -140,6 +153,16 @@ export const MEMPOOL_TX_COLUMNS = [
   'poison_microblock_header_2',
   'coinbase_payload',
   'coinbase_alt_recipient',
+  'coinbase_vrf_proof',
+  'tenure_change_tenure_consensus_hash',
+  'tenure_change_prev_tenure_consensus_hash',
+  'tenure_change_burn_view_consensus_hash',
+  'tenure_change_previous_tenure_end',
+  'tenure_change_previous_tenure_blocks',
+  'tenure_change_cause',
+  'tenure_change_pubkey_hash',
+  'tenure_change_signature',
+  'tenure_change_signers',
 ];
 
 export const BLOCK_COLUMNS = [
@@ -160,6 +183,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_runtime',
   'execution_cost_write_count',
   'execution_cost_write_length',
+  'tx_count',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -186,6 +210,7 @@ export const TX_METADATA_TABLES = [
   'nft_events',
   'pox2_events',
   'pox3_events',
+  'pox4_events',
   'contract_logs',
   'stx_lock_events',
   'smart_contracts',
@@ -194,7 +219,7 @@ export const TX_METADATA_TABLES = [
   'subdomains',
 ] as const;
 
-export const POX2_EVENT_COLUMNS = [
+export const POX_SYNTHETIC_EVENT_COLUMNS = [
   'event_index',
   'tx_id',
   'tx_index',
@@ -226,52 +251,6 @@ export const POX2_EVENT_COLUMNS = [
   'reward_cycle',
   'amount_ustx',
 ];
-
-export const POX3_EVENT_COLUMNS = POX2_EVENT_COLUMNS;
-
-/**
- * Checks if a given error from the pg lib is a connection error (i.e. the query is retryable).
- * If true then returns a normalized error message, otherwise returns false.
- */
-export function isPgConnectionError(error: any): string | false {
-  if (error.code === 'ECONNREFUSED') {
-    return 'Postgres connection ECONNREFUSED';
-  } else if (error.code === 'ETIMEDOUT') {
-    return 'Postgres connection ETIMEDOUT';
-  } else if (error.code === 'ENOTFOUND') {
-    return 'Postgres connection ENOTFOUND';
-  } else if (error.code === 'ECONNRESET') {
-    return 'Postgres connection ECONNRESET';
-  } else if (error.code === 'CONNECTION_CLOSED') {
-    return 'Postgres connection CONNECTION_CLOSED';
-  } else if (error.code === 'CONNECTION_ENDED') {
-    return 'Postgres connection CONNECTION_ENDED';
-  } else if (error.code === 'CONNECTION_DESTROYED') {
-    return 'Postgres connection CONNECTION_DESTROYED';
-  } else if (error.code === 'CONNECTION_CONNECT_TIMEOUT') {
-    return 'Postgres connection CONNECTION_CONNECT_TIMEOUT';
-  } else if (error.code === 'CONNECT_TIMEOUT') {
-    return 'Postgres connection CONNECT_TIMEOUT';
-  } else if (error.message) {
-    const msg = (error as Error).message.toLowerCase();
-    if (msg.includes('database system is starting up')) {
-      return 'Postgres connection failed while database system is starting up';
-    } else if (msg.includes('database system is shutting down')) {
-      return 'Postgres connection failed while database system is shutting down';
-    } else if (msg.includes('connection terminated unexpectedly')) {
-      return 'Postgres connection terminated unexpectedly';
-    } else if (msg.includes('connection terminated')) {
-      return 'Postgres connection terminated';
-    } else if (msg.includes('connection error')) {
-      return 'Postgres client has encountered a connection error and is not queryable';
-    } else if (msg.includes('terminating connection due to unexpected postmaster exit')) {
-      return 'Postgres connection terminating due to unexpected postmaster exit';
-    } else if (msg.includes('getaddrinfo eai_again')) {
-      return 'Postgres connection failed due to a DNS lookup error';
-    }
-  }
-  return false;
-}
 
 /**
  * Adds a table name prefix to an array of column names.
@@ -414,6 +393,23 @@ function parseTxTypeSpecificQueryResult(
   } else if (target.type_id === DbTxTypeId.CoinbaseToAltRecipient) {
     target.coinbase_payload = result.coinbase_payload;
     target.coinbase_alt_recipient = result.coinbase_alt_recipient;
+  } else if (target.type_id === DbTxTypeId.NakamotoCoinbase) {
+    target.coinbase_payload = result.coinbase_payload;
+    if (result.coinbase_alt_recipient) {
+      target.coinbase_alt_recipient = result.coinbase_alt_recipient;
+    }
+    target.coinbase_vrf_proof = result.coinbase_vrf_proof;
+  } else if (target.type_id === DbTxTypeId.TenureChange) {
+    target.tenure_change_tenure_consensus_hash = result.tenure_change_tenure_consensus_hash;
+    target.tenure_change_prev_tenure_consensus_hash =
+      result.tenure_change_prev_tenure_consensus_hash;
+    target.tenure_change_burn_view_consensus_hash = result.tenure_change_burn_view_consensus_hash;
+    target.tenure_change_previous_tenure_end = result.tenure_change_previous_tenure_end;
+    target.tenure_change_previous_tenure_blocks = result.tenure_change_previous_tenure_blocks;
+    target.tenure_change_cause = result.tenure_change_cause;
+    target.tenure_change_pubkey_hash = result.tenure_change_pubkey_hash;
+    target.tenure_change_signature = result.tenure_change_signature;
+    target.tenure_change_signers = result.tenure_change_signers;
   } else {
     throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
   }
@@ -469,6 +465,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_runtime: Number.parseInt(row.execution_cost_runtime),
     execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
+    tx_count: row.tx_count,
   };
   return block;
 }
@@ -623,7 +620,7 @@ export function parseDbEvents(
   return events;
 }
 
-export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
+export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbPoxSyntheticEvent {
   const baseEvent: DbEventBase = {
     event_index: row.event_index,
     tx_id: row.tx_id,
@@ -631,7 +628,7 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     block_height: row.block_height,
     canonical: row.canonical,
   };
-  const basePox2Event: DbPox2BaseEventData = {
+  const basePoxEvent: DbPoxSyntheticBaseEventData = {
     stacker: row.stacker,
     locked: BigInt(row.locked ?? 0),
     balance: BigInt(row.balance),
@@ -639,11 +636,11 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
     pox_addr: row.pox_addr ?? null,
     pox_addr_raw: row.pox_addr_raw ?? null,
   };
-  const rowName = row.name as Pox2EventName;
+  const rowName = row.name as SyntheticPoxEventName;
   switch (rowName) {
-    case Pox2EventName.HandleUnlock: {
-      const eventData: DbPox2HandleUnlockEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.HandleUnlock: {
+      const eventData: DbPoxSyntheticHandleUnlockEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           first_cycle_locked: BigInt(unwrapOptionalProp(row, 'first_unlocked_cycle')),
@@ -655,9 +652,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackStx: {
-      const eventData: DbPox2StackStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackStx: {
+      const eventData: DbPoxSyntheticStackStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
@@ -671,9 +668,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackIncrease: {
-      const eventData: DbPox2StackIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackIncrease: {
+      const eventData: DbPoxSyntheticStackIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
@@ -685,9 +682,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackExtend: {
-      const eventData: DbPox2StackExtendEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackExtend: {
+      const eventData: DbPoxSyntheticStackExtendEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
@@ -699,9 +696,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStx: {
-      const eventData: DbPox2DelegateStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStx: {
+      const eventData: DbPoxSyntheticDelegateStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
@@ -716,9 +713,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackStx: {
-      const eventData: DbPox2DelegateStackStxEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackStx: {
+      const eventData: DbPoxSyntheticDelegateStackStxEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           lock_amount: BigInt(unwrapOptionalProp(row, 'lock_amount')),
@@ -733,9 +730,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackIncrease: {
-      const eventData: DbPox2DelegateStackIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackIncrease: {
+      const eventData: DbPoxSyntheticDelegateStackIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
@@ -748,9 +745,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.DelegateStackExtend: {
-      const eventData: DbPox2DelegateStackExtendEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.DelegateStackExtend: {
+      const eventData: DbPoxSyntheticDelegateStackExtendEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
@@ -763,9 +760,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationCommit: {
-      const eventData: DbPox2StackAggregationCommitEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationCommit: {
+      const eventData: DbPoxSyntheticStackAggregationCommitEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
@@ -777,9 +774,9 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
-      const eventData: DbPox2StackAggregationCommitIndexedEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
+      const eventData: DbPoxSyntheticStackAggregationCommitIndexedEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
@@ -791,13 +788,28 @@ export function parseDbPox2Event(row: Pox2EventQueryResult): DbPox2Event {
         ...eventData,
       };
     }
-    case Pox2EventName.StackAggregationIncrease: {
-      const eventData: DbPox2StackAggregationIncreaseEvent = {
-        ...basePox2Event,
+    case SyntheticPoxEventName.StackAggregationIncrease: {
+      const eventData: DbPoxSyntheticStackAggregationIncreaseEvent = {
+        ...basePoxEvent,
         name: rowName,
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+        },
+      };
+      return {
+        ...baseEvent,
+        ...eventData,
+      };
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      const eventData: DbPoxSyntheticRevokeDelegateStxEvent = {
+        ...basePoxEvent,
+        name: rowName,
+        data: {
+          // TODO: figure out what data is available for this event
+          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          delegate_to: unwrapOptionalProp(row, 'delegate_to'),
         },
       };
       return {
@@ -978,6 +990,8 @@ export function getTxDbStatus(
       return DbTxStatus.DroppedTooExpensive;
     case 'StaleGarbageCollect':
       return DbTxStatus.DroppedStaleGarbageCollect;
+    case 'Problematic':
+      return DbTxStatus.DroppedProblematic;
     default:
       throw new Error(`Unexpected tx status: ${txCoreStatus}`);
   }
@@ -1036,6 +1050,28 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       } else {
         dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
       }
+      break;
+    }
+    case TxPayloadTypeID.NakamotoCoinbase: {
+      dbTx.coinbase_payload = txData.payload.payload_buffer;
+      if (txData.payload.recipient?.type_id === PrincipalTypeID.Standard) {
+        dbTx.coinbase_alt_recipient = txData.payload.recipient.address;
+      } else if (txData.payload.recipient?.type_id === PrincipalTypeID.Contract) {
+        dbTx.coinbase_alt_recipient = `${txData.payload.recipient.address}.${txData.payload.recipient.contract_name}`;
+      }
+      dbTx.coinbase_vrf_proof = txData.payload.vrf_proof;
+      break;
+    }
+    case TxPayloadTypeID.TenureChange: {
+      dbTx.tenure_change_tenure_consensus_hash = txData.payload.tenure_consensus_hash;
+      dbTx.tenure_change_prev_tenure_consensus_hash = txData.payload.prev_tenure_consensus_hash;
+      dbTx.tenure_change_burn_view_consensus_hash = txData.payload.burn_view_consensus_hash;
+      dbTx.tenure_change_previous_tenure_end = txData.payload.previous_tenure_end;
+      dbTx.tenure_change_previous_tenure_blocks = txData.payload.previous_tenure_blocks;
+      dbTx.tenure_change_cause = txData.payload.cause;
+      dbTx.tenure_change_pubkey_hash = txData.payload.pubkey_hash;
+      dbTx.tenure_change_signature = txData.payload.signature;
+      dbTx.tenure_change_signers = txData.payload.signers;
       break;
     }
     default:
@@ -1198,4 +1234,164 @@ export function convertTxQueryResultToDbMempoolTx(txs: TxQueryResult[]): DbMempo
     dbMempoolTxs.push(dbMempoolTx);
   }
   return dbMempoolTxs;
+}
+
+export function setTotalBlockUpdateDataExecutionCost(data: DataStoreBlockUpdateData) {
+  const cost = data.txs.reduce(
+    (previousValue, currentValue) => {
+      const {
+        execution_cost_read_count,
+        execution_cost_read_length,
+        execution_cost_runtime,
+        execution_cost_write_count,
+        execution_cost_write_length,
+      } = previousValue;
+      return {
+        execution_cost_read_count:
+          execution_cost_read_count + currentValue.tx.execution_cost_read_count,
+        execution_cost_read_length:
+          execution_cost_read_length + currentValue.tx.execution_cost_read_length,
+        execution_cost_runtime: execution_cost_runtime + currentValue.tx.execution_cost_runtime,
+        execution_cost_write_count:
+          execution_cost_write_count + currentValue.tx.execution_cost_write_count,
+        execution_cost_write_length:
+          execution_cost_write_length + currentValue.tx.execution_cost_write_length,
+      };
+    },
+    {
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    }
+  );
+  data.block.execution_cost_read_count = cost.execution_cost_read_count;
+  data.block.execution_cost_read_length = cost.execution_cost_read_length;
+  data.block.execution_cost_runtime = cost.execution_cost_runtime;
+  data.block.execution_cost_write_count = cost.execution_cost_write_count;
+  data.block.execution_cost_write_length = cost.execution_cost_write_length;
+}
+
+export function markBlockUpdateDataAsNonCanonical(data: DataStoreBlockUpdateData): void {
+  data.block = { ...data.block, canonical: false };
+  data.microblocks = data.microblocks.map(mb => ({ ...mb, canonical: false }));
+  data.txs = data.txs.map(tx => ({
+    tx: { ...tx.tx, canonical: false },
+    stxLockEvents: tx.stxLockEvents.map(e => ({ ...e, canonical: false })),
+    stxEvents: tx.stxEvents.map(e => ({ ...e, canonical: false })),
+    ftEvents: tx.ftEvents.map(e => ({ ...e, canonical: false })),
+    nftEvents: tx.nftEvents.map(e => ({ ...e, canonical: false })),
+    contractLogEvents: tx.contractLogEvents.map(e => ({ ...e, canonical: false })),
+    smartContracts: tx.smartContracts.map(e => ({ ...e, canonical: false })),
+    names: tx.names.map(e => ({ ...e, canonical: false })),
+    namespaces: tx.namespaces.map(e => ({ ...e, canonical: false })),
+    pox2Events: tx.pox2Events.map(e => ({ ...e, canonical: false })),
+    pox3Events: tx.pox3Events.map(e => ({ ...e, canonical: false })),
+    pox4Events: tx.pox4Events.map(e => ({ ...e, canonical: false })),
+  }));
+  data.minerRewards = data.minerRewards.map(mr => ({ ...mr, canonical: false }));
+}
+
+export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
+  return {
+    markedCanonical: {
+      blocks: 0,
+      microblocks: 0,
+      minerRewards: 0,
+      txs: 0,
+      stxLockEvents: 0,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      pox2Events: 0,
+      pox3Events: 0,
+      pox4Events: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+      names: 0,
+      namespaces: 0,
+      subdomains: 0,
+    },
+    markedNonCanonical: {
+      blocks: 0,
+      microblocks: 0,
+      minerRewards: 0,
+      txs: 0,
+      stxLockEvents: 0,
+      stxEvents: 0,
+      ftEvents: 0,
+      nftEvents: 0,
+      pox2Events: 0,
+      pox3Events: 0,
+      pox4Events: 0,
+      contractLogs: 0,
+      smartContracts: 0,
+      names: 0,
+      namespaces: 0,
+      subdomains: 0,
+    },
+  };
+}
+
+export function logReorgResultInfo(updatedEntities: ReOrgUpdatedEntities) {
+  const updates = [
+    ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
+    [
+      'microblocks',
+      updatedEntities.markedCanonical.microblocks,
+      updatedEntities.markedNonCanonical.microblocks,
+    ],
+    ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
+    [
+      'miner-rewards',
+      updatedEntities.markedCanonical.minerRewards,
+      updatedEntities.markedNonCanonical.minerRewards,
+    ],
+    [
+      'stx-lock events',
+      updatedEntities.markedCanonical.stxLockEvents,
+      updatedEntities.markedNonCanonical.stxLockEvents,
+    ],
+    [
+      'stx-token events',
+      updatedEntities.markedCanonical.stxEvents,
+      updatedEntities.markedNonCanonical.stxEvents,
+    ],
+    [
+      'non-fungible-token events',
+      updatedEntities.markedCanonical.nftEvents,
+      updatedEntities.markedNonCanonical.nftEvents,
+    ],
+    [
+      'fungible-token events',
+      updatedEntities.markedCanonical.ftEvents,
+      updatedEntities.markedNonCanonical.ftEvents,
+    ],
+    [
+      'contract logs',
+      updatedEntities.markedCanonical.contractLogs,
+      updatedEntities.markedNonCanonical.contractLogs,
+    ],
+    [
+      'smart contracts',
+      updatedEntities.markedCanonical.smartContracts,
+      updatedEntities.markedNonCanonical.smartContracts,
+    ],
+    ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
+    [
+      'namespaces',
+      updatedEntities.markedCanonical.namespaces,
+      updatedEntities.markedNonCanonical.namespaces,
+    ],
+    [
+      'subdomains',
+      updatedEntities.markedCanonical.subdomains,
+      updatedEntities.markedNonCanonical.subdomains,
+    ],
+  ];
+  const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
+  logger.debug(`Entities marked as canonical: ${markedCanonical}`);
+  const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
+  logger.debug(`Entities marked as non-canonical: ${markedNonCanonical}`);
 }

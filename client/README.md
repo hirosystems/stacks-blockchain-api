@@ -51,12 +51,13 @@ import * as stacks from '@stacks/blockchain-api-client';
 // for testnet, replace with https://api.testnet.hiro.so/
 const socketUrl = "https://api.mainnet.hiro.so/";
 
-const socket = io(socketUrl, {
-  transports: [ "websocket" ]
-});
+const socket = io(socketUrl);
 const sc = new stacks.StacksApiSocketClient(socket);
 
-sc.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA');
+sc.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', (address, tx) => {
+  console.log('address:', address);
+  console.log('tx:', tx);
+});
 ```
 
 ## Available Updates
@@ -108,7 +109,7 @@ client.subscribeBlocks(event => {});
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeBlocks();
+sc.subscribeBlocks(block => {});
 ```
 
 ### Microblock Updates
@@ -149,7 +150,7 @@ client.subscribeMicroblocks(event => {});
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeMicroblocks();
+sc.subscribeMicroblocks(microblock => {});
 ```
 
 ### Mempool Updates
@@ -210,7 +211,7 @@ client.subscribeMempool(event => {});
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeMempool();
+sc.subscribeMempool(mempoolTx => {});
 ```
 
 ### Transaction Updates
@@ -277,7 +278,7 @@ client.subscribeTxUpdates('0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a8
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeTransaction('0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3');
+sc.subscribeTransaction('0xd78988664aaa9a1b751cd58c55b253914f790e95ca6f3d402a866559e1cbe0b3', tx => {});
 ```
 
 ### Address Transaction Updates
@@ -366,7 +367,7 @@ client.subscribeAddressTransactions('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q',
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeAddressTransactions('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
+sc.subscribeAddressTransactions('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q', (address, tx) => {});
 ```
 
 ### Address Balance Updates
@@ -412,7 +413,7 @@ client.subscribeAddressBalanceUpdates('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q');
+sc.subscribeAddressStxBalance('SP3C5SSYVKPAWTR8Y63CVYBR65GD3MG7K80526D1Q', (addr, balance) => {});
 ```
 
 ### NFT event updates
@@ -451,13 +452,15 @@ client.subscribeNftCollectionEventUpdates(
 ```
 Subscribe via Socket.io:
 ```js
-sc.subscribeNftEventUpdates();
-sc.subscribeNftAssetEventUpdates(
+sc.subscribeNftEvent(nftEvent => {});
+sc.subscribeNftAssetEvent(
   'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
   '0x0100000000000000000000000000000095',
+  (assetId, value, nftEvent) => {}
 );
-sc.subscribeNftCollectionEventUpdates(
+sc.subscribeNftCollectionEvent(
   'SP176ZMV706NZGDDX8VSQRGMB7QN33BBDVZ6BMNHD.project-indigo-act1::Project-Indigo-Act1',
+  (assetId, nftEvent) => {}
 );
 ```
 

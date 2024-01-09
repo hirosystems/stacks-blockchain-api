@@ -6,9 +6,9 @@ import * as StacksTransactions from '@stacks/transactions';
 import { ChainID } from '@stacks/transactions';
 import { bnsNameCV, I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
+import { migrate } from '../test-utils/test-helpers';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
 
 const nameSpaceExpected = {
   type: StacksTransactions.ClarityType.ResponseOk,
@@ -50,8 +50,7 @@ describe('BNS API tests', () => {
   let dbBlock: DbBlock;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
@@ -130,8 +129,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      namespace
+      [namespace]
     );
     const namespace2: DbBnsNamespace = {
       namespace_id: 'blockstack',
@@ -158,9 +159,17 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      namespace2
+      [namespace2]
     );
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('Success: namespaces', async () => {
@@ -429,8 +438,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      dbName
+      [dbName]
     );
 
     const query1 = await supertest(api.server).get(`/v1/names/invalid/zonefile/${zonefileHash}`);
@@ -526,8 +537,10 @@ describe('BNS API tests', () => {
         microblock_hash: '',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
+        tx_id: '',
+        tx_index: 0,
       },
-      dbName2
+      [dbName2]
     );
 
     const query1 = await supertest(api.server).get(`/v1/addresses/${blockchain}/${address}`);
@@ -1182,10 +1195,4 @@ describe('BNS API tests', () => {
     expect(query.body.address).toEqual(addr2);
     expect(query.body.last_txid).toEqual('0xf111');
   })
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
-  });
 });

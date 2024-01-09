@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "title": "MempoolTenureChangeTransaction",
+  "description": "Describes representation of a Type 7 Stacks transaction: Tenure Change",
+  "allOf": [
+    {
+      "$ref": "./abstract-transaction.schema.json"
+    },
+    {
+      "$ref": "../transactions/transaction-7-tenure-change-metadata.schema.json"
+    }
+  ]
+}

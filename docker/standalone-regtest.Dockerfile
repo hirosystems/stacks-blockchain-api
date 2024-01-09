@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:16-bullseye as api-builder
+FROM node:18-bullseye as api-builder
 
 ARG API_GIT_COMMIT
 ARG STACKS_API_VERSION
@@ -25,7 +25,6 @@ RUN rm ".env" && \
     git describe --tags --abbrev=0 || git -c user.name='user' -c user.email='email' tag "${STACKS_API_VERSION:-vNext}" && \
     echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env && \
     npm config set update-notifier false && \
-    npm config set unsafe-perm true && \
     npm ci --audit=false && \
     npm run build && \
     npm prune --production

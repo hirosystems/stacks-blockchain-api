@@ -20,14 +20,14 @@ exports.up = pgm => {
     image_uri: {
       type: 'string',
       notNull: true,
-    }, 
+    },
     image_canonical_uri: {
-      type: 'string', 
+      type: 'string',
       notNull: true,
-    }, 
+    },
     contract_id: {
-      type: 'string', 
-      notNull: true, 
+      type: 'string',
+      notNull: true,
       unique: true,
     },
     tx_id: {
@@ -35,8 +35,8 @@ exports.up = pgm => {
       notNull: true,
     },
     sender_address: {
-      type: 'string', 
-      notNull: true, 
+      type: 'string',
+      notNull: true,
     }
   });
 

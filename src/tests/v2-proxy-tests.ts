@@ -1,7 +1,6 @@
 import * as supertest from 'supertest';
 import { ChainID } from '@stacks/transactions';
 import { startApiServer } from '../api/init';
-import { PoolClient } from 'pg';
 import { useWithCleanup, withEnvVars } from './test-helpers';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -9,19 +8,23 @@ import * as os from 'os';
 import * as nock from 'nock';
 import { DbBlock } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('v2-proxy tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       skipMigrations: true,
     });
+  });
+
+  afterEach(async () => {
+    await db?.close();
+    await migrate('down');
   });
 
   test('tx post multicast', async () => {
@@ -71,6 +74,7 @@ describe('v2-proxy tests', () => {
           execution_cost_runtime: 0,
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
+          tx_count: 1,
         };
 
         // Ensure db has a block so that current block height queries return a found result
@@ -107,10 +111,5 @@ describe('v2-proxy tests', () => {
         expect(mockedRequestBody).toBe(testRequest);
       }
     );
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

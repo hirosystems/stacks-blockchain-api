@@ -31,16 +31,16 @@ import {
   DbTx,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
 } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('address tests', () => {
   let db: PgWriteStore;
@@ -48,8 +48,7 @@ describe('address tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -57,6 +56,12 @@ describe('address tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('address transaction transfers', async () => {
@@ -84,6 +89,7 @@ describe('address tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     let indexIdIndex = 0;
     const createStxTx = (
@@ -100,7 +106,7 @@ describe('address tests', () => {
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('')),
+        raw_tx: bufferToHex(Buffer.from('')),
         index_block_hash: block.index_block_hash,
         block_hash: block.block_hash,
         block_height: block.block_height,
@@ -108,7 +114,7 @@ describe('address tests', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -175,7 +181,7 @@ describe('address tests', () => {
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
-          value: bufferToHexPrefixString(Buffer.from(serializeCV(uintCV(amount)))),
+          value: bufferToHex(Buffer.from(serializeCV(uintCV(amount)))),
           recipient,
           sender,
         };
@@ -207,6 +213,7 @@ describe('address tests', () => {
         smartContracts: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       })),
     });
 
@@ -861,6 +868,7 @@ describe('address tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     let indexIdIndex = 0;
@@ -876,7 +884,7 @@ describe('address tests', () => {
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('')),
+        raw_tx: bufferToHex(Buffer.from('')),
         index_block_hash: block.index_block_hash,
         block_hash: block.block_hash,
         block_height: block.block_height,
@@ -884,7 +892,7 @@ describe('address tests', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -926,14 +934,14 @@ describe('address tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -1145,7 +1153,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
       contract_call_contract_id: testContractAddr,
       contract_call_function_name: 'test-contract-fn',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
       ),
       abi: JSON.stringify(contractJsonAbi),
@@ -1164,6 +1172,7 @@ describe('address tests', () => {
         namespaces: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       } as DataStoreTxEventData;
     });
     dataStoreTxs.push({
@@ -1178,6 +1187,7 @@ describe('address tests', () => {
       namespaces: [],
       pox2Events: [],
       pox3Events: [],
+      pox4Events: [],
     });
     dataStoreTxs.push({
       tx: { ...contractCall, raw_tx: '0x' },
@@ -1204,6 +1214,7 @@ describe('address tests', () => {
       namespaces: [],
       pox2Events: [],
       pox3Events: [],
+      pox4Events: [],
     });
     await db.update({
       block: block,
@@ -2029,6 +2040,7 @@ describe('address tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -2124,6 +2136,7 @@ describe('address tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2165,7 +2178,7 @@ describe('address tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 1,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -2175,7 +2188,7 @@ describe('address tests', () => {
       sender_address: senderAddress,
       sponsor_nonce: 3,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -2219,7 +2232,7 @@ describe('address tests', () => {
       tx_id: '0x52123456',
       anchor_mode: 3,
       nonce: 1,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -2229,7 +2242,7 @@ describe('address tests', () => {
       sender_address: senderAddress,
       sponsor_nonce: 6,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -2258,7 +2271,6 @@ describe('address tests', () => {
       '/transactions_with_transfers',
       '/assets',
       '/stx_inbound',
-      '/nft_events',
     ];
 
     //check for mutually exclusive unachored and and until_block
@@ -2278,237 +2290,6 @@ describe('address tests', () => {
       );
       expect(response1.status).toBe(400);
     }
-  });
-
-  test('Success: nft events for address', async () => {
-    const addr1 = 'ST3J8EVYHVKH6XXPD61EE8XEHW4Y2K83861225AB1';
-    const addr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
-
-    const dbBlock: DbBlock = {
-      block_hash: '0xff',
-      index_block_hash: '0x1234',
-      parent_index_block_hash: '0x5678',
-      parent_block_hash: '0x5678',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 1,
-      burn_block_time: 1594647995,
-      burn_block_hash: '0x1234',
-      burn_block_height: 123,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const stxTx: DbTxRaw = {
-      tx_id: '0x1111000000000000000000000000000000000000000000000000000000000000',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: '0x',
-      index_block_hash: dbBlock.index_block_hash,
-      block_hash: dbBlock.block_hash,
-      block_height: dbBlock.block_height,
-      burn_block_time: dbBlock.burn_block_time,
-      parent_burn_block_time: 1626122935,
-      type_id: DbTxTypeId.TokenTransfer,
-      token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
-      token_transfer_recipient_address: 'none',
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: dbBlock.parent_index_block_hash,
-      parent_block_hash: dbBlock.parent_block_hash,
-      post_conditions: '0x01f5',
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: addr1,
-      origin_hash_mode: 1,
-      event_count: 10,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const nftEvents: DbNftEvent[] = [];
-    for (let i = 0; i < 10; i++) {
-      nftEvents.push({
-        canonical: true,
-        event_type: DbEventTypeId.NonFungibleTokenAsset,
-        asset_event_type_id: DbAssetEventTypeId.Transfer,
-        event_index: 0,
-        tx_id: stxTx.tx_id,
-        tx_index: 1,
-        block_height: dbBlock.block_height,
-        asset_identifier: 'some-asset',
-        value: '0x0000000000000000000000000000000000',
-        recipient: addr1,
-        sender: 'none',
-      });
-    }
-
-    await db.update({
-      block: dbBlock,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx: stxTx,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: nftEvents,
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-          pox2Events: [],
-          pox3Events: [],
-        },
-      ],
-    });
-
-    const limit = 2;
-    const offset = 0;
-    // test nft for given addresses
-    const result = await supertest(api.server).get(
-      `/extended/v1/address/${addr1}/nft_events?limit=${limit}&offset=${offset}`
-    );
-    expect(result.status).toBe(200);
-    expect(result.type).toBe('application/json');
-    expect(result.body.total).toEqual(10);
-    expect(result.body.nft_events.length).toEqual(2);
-    expect(result.body.nft_events[0].recipient).toBe(addr1);
-    expect(result.body.nft_events[0].tx_id).toBe(
-      '0x1111000000000000000000000000000000000000000000000000000000000000'
-    );
-    expect(result.body.nft_events[0].block_height).toBe(1);
-    expect(result.body.nft_events[0].value.repr).toBe('0');
-
-    const dbBlock2: DbBlock = {
-      block_hash: '0xffff',
-      index_block_hash: '0x123466',
-      parent_index_block_hash: '0x1234',
-      parent_block_hash: '0xff',
-      parent_microblock_hash: '',
-      parent_microblock_sequence: 0,
-      block_height: 2,
-      burn_block_time: 1594649995,
-      burn_block_hash: '0x123456',
-      burn_block_height: 124,
-      miner_txid: '0x4321',
-      canonical: true,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const stxTx1: DbTxRaw = {
-      tx_id: '0x1111100000000000000000000000000000000000000000000000000000000001',
-      tx_index: 0,
-      anchor_mode: 3,
-      nonce: 0,
-      raw_tx: '0x',
-      index_block_hash: dbBlock2.index_block_hash,
-      block_hash: dbBlock2.block_hash,
-      block_height: dbBlock2.block_height,
-      burn_block_time: dbBlock2.burn_block_time,
-      parent_burn_block_time: 1626124935,
-      type_id: DbTxTypeId.TokenTransfer,
-      token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
-      token_transfer_recipient_address: 'none',
-      status: 1,
-      raw_result: '0x0100000000000000000000000000000001', // u1
-      canonical: true,
-      microblock_canonical: true,
-      microblock_sequence: I32_MAX,
-      microblock_hash: '',
-      parent_index_block_hash: dbBlock2.parent_index_block_hash,
-      parent_block_hash: dbBlock2.parent_block_hash,
-      post_conditions: '0x01f5',
-      fee_rate: 1234n,
-      sponsored: false,
-      sponsor_address: undefined,
-      sender_address: addr2,
-      origin_hash_mode: 1,
-      event_count: 1,
-      execution_cost_read_count: 0,
-      execution_cost_read_length: 0,
-      execution_cost_runtime: 0,
-      execution_cost_write_count: 0,
-      execution_cost_write_length: 0,
-    };
-    const nftEvent2: DbNftEvent = {
-      canonical: true,
-      event_type: DbEventTypeId.NonFungibleTokenAsset,
-      asset_event_type_id: DbAssetEventTypeId.Transfer,
-      event_index: 1,
-      tx_id: stxTx1.tx_id,
-      tx_index: 2,
-      block_height: dbBlock2.block_height,
-      asset_identifier: 'some-asset',
-      value: '0x0000000000000000000000000000000000',
-      recipient: addr2,
-      sender: 'none',
-    };
-    await db.update({
-      block: dbBlock2,
-      microblocks: [],
-      minerRewards: [],
-      txs: [
-        {
-          tx: stxTx1,
-          stxLockEvents: [],
-          stxEvents: [],
-          ftEvents: [],
-          nftEvents: [nftEvent2],
-          contractLogEvents: [],
-          smartContracts: [],
-          names: [],
-          namespaces: [],
-          pox2Events: [],
-          pox3Events: [],
-        },
-      ],
-    });
-
-    const result1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/nft_events`);
-    expect(result1.status).toBe(200);
-    expect(result1.type).toBe('application/json');
-    expect(result1.body.total).toEqual(1);
-    expect(result1.body.nft_events.length).toEqual(1);
-    expect(result1.body.nft_events[0].recipient).toBe(addr2);
-    expect(result1.body.nft_events[0].tx_id).toBe(
-      '0x1111100000000000000000000000000000000000000000000000000000000001'
-    );
-    expect(result1.body.nft_events[0].block_height).toBe(2);
-    expect(result.body.nft_events[0].value.repr).toBe('0');
-
-    //check ownership for addr
-    const result2 = await supertest(api.server).get(`/extended/v1/address/${addr1}/nft_events`);
-    expect(result2.status).toBe(200);
-    expect(result2.type).toBe('application/json');
-    expect(result2.body.nft_events.length).toEqual(0);
-    expect(result2.body.total).toEqual(0);
-  });
-
-  test('nft invalid address', async () => {
-    const result = await supertest(api.server).get(
-      `/extended/v1/address/invalid-address/nft_events`
-    );
-    expect(result.status).toBe(400);
-    expect(result.type).toBe('application/json');
   });
 
   test('/transactions materialized view separates anchored and unanchored counts correctly', async () => {
@@ -2578,7 +2359,7 @@ describe('address tests', () => {
           sponsor_address: undefined,
           origin_hash_mode: 1,
           token_transfer_amount: 50n,
-          token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+          token_transfer_memo: bufferToHex(Buffer.from('hi')),
           token_transfer_recipient_address: contractId,
           event_count: 1,
           parent_index_block_hash: block2.block.index_block_hash,
@@ -2608,6 +2389,7 @@ describe('address tests', () => {
         namespaces: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       });
     }
     await db.updateMicroblocks(mbData);
@@ -2834,11 +2616,5 @@ describe('address tests', () => {
     expect(json6.total).toEqual(4);
     expect(json6.results.length).toEqual(4);
     expect(json6.results[0].tx_id).toEqual('0xffa1');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

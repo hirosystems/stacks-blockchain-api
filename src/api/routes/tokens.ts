@@ -8,13 +8,14 @@ import {
   NonFungibleTokenMint,
   NonFungibleTokenMintList,
 } from '@stacks/stacks-blockchain-api-types';
-import { PgStore } from '../../datastore/pg-store';
-import { isValidPrincipal, has0xPrefix } from '../../helpers';
+import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
+import { isValidPrincipal } from '../../helpers';
+import { booleanValueForParam, isUnanchoredRequest } from '../query-helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
-import { parseDbTx, getAssetEventTypeString } from '../controllers/db-controller';
-import { getPagingQueryLimit, ResourceType, parsePagingQueryInput } from '../pagination';
-import { isUnanchoredRequest, booleanValueForParam } from '../query-helpers';
+import { PgStore } from '../../datastore/pg-store';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createTokenRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -32,18 +33,22 @@ export function createTokenRouter(db: PgStore): express.Router {
       }
       let assetIdentifiers: string[] | undefined;
       if (req.query.asset_identifiers !== undefined) {
-        for (const assetIdentifier of [req.query.asset_identifiers].flat()) {
+        if (typeof req.query.asset_identifiers === 'string') {
+          if (req.query.asset_identifiers.includes(',')) {
+            assetIdentifiers = req.query.asset_identifiers.split(',');
+          } else {
+            assetIdentifiers = [req.query.asset_identifiers];
+          }
+        } else {
+          assetIdentifiers = req.query.asset_identifiers as string[];
+        }
+        for (const assetIdentifier of assetIdentifiers) {
           if (
             typeof assetIdentifier !== 'string' ||
             !isValidPrincipal(assetIdentifier.split('::')[0])
           ) {
             res.status(400).json({ error: `Invalid asset identifier ${assetIdentifier}` });
             return;
-          } else {
-            if (!assetIdentifiers) {
-              assetIdentifiers = [];
-            }
-            assetIdentifiers?.push(assetIdentifier);
           }
         }
       }

@@ -6,6 +6,7 @@ on:
       - master
       - develop
       - beta
+      - nakamoto
     tags-ignore:
       - "**"
     paths-ignore:
@@ -519,7 +520,7 @@ jobs:
           flag-name: run-${{ github.job }}
           parallel: true
 
-  test-2_4:
+  test-2_5:
     strategy:
       fail-fast: false
       matrix:
@@ -527,16 +528,16 @@ jobs:
           [
             block-zero-handling,
             faucet-stx,
-            pox-3-btc-address-formats,
-            pox-3-delegate-aggregation,
-            pox-3-delegate-stacking,
-            pox-3-delegate-revoked-stacking,
-            pox-3-stack-extend-increase,
-            pox-3-rosetta-btc-addr-types,
-            pox-3-rosetta-cycle-phases,
-            pox-3-rosetta-segwit,
-            pox-3-burnchain-stack-stx,
-            pox-3-burnchain-delegate-stx,
+            pox-4-btc-address-formats,
+            pox-4-delegate-aggregation,
+            pox-4-delegate-stacking,
+            pox-4-delegate-revoked-stacking,
+            pox-4-stack-extend-increase,
+            pox-4-rosetta-btc-addr-types,
+            pox-4-rosetta-cycle-phases,
+            pox-4-rosetta-segwit,
+            pox-4-burnchain-stack-stx,
+            pox-4-burnchain-delegate-stx,
           ]
     runs-on: ubuntu-latest
     steps:
@@ -574,7 +575,7 @@ jobs:
           npm run devenv:logs-krypton -- --no-color &> docker-compose-logs.txt &
 
       - name: Run tests
-        run: npm run test:2.4 -- --testPathPattern "${{ matrix.suite }}"
+        run: npm run test:2.5 -- --testPathPattern "${{ matrix.suite }}"
 
       - name: Print integration environment logs
         run: cat docker-compose-logs.txt
@@ -854,7 +855,7 @@ jobs:
       - lint
       - lint-docs
       - test
-      - test-2_4
+      - test-2_5
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction

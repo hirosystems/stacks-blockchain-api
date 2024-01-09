@@ -9,10 +9,10 @@ import {
   DbSmartContractEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX, waiter } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { bufferToHex, PgSqlClient, waiter } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -20,8 +20,7 @@ describe('smart contract tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: true,
@@ -29,6 +28,12 @@ describe('smart contract tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('list contract log events', async () => {
@@ -55,6 +60,7 @@ describe('smart contract tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -82,7 +88,7 @@ describe('smart contract tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -104,7 +110,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const smartContract1: DbSmartContract = {
       tx_id: '0x421234',
@@ -132,6 +138,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -145,6 +152,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -201,6 +209,7 @@ describe('smart contract tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const txId1 = '0x421234';
     const smartContract1: DbSmartContract = {
@@ -265,6 +274,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -307,6 +317,7 @@ describe('smart contract tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const txId1 = '0x421234';
     const smartContract1: DbSmartContract = {
@@ -372,6 +383,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -411,6 +423,7 @@ describe('smart contract tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421235',
@@ -438,7 +451,7 @@ describe('smart contract tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -460,7 +473,7 @@ describe('smart contract tests', () => {
       event_type: DbEventTypeId.SmartContractLog,
       contract_identifier: 'some-contract-id',
       topic: 'some-topic',
-      value: bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+      value: bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
     };
     const contractJsonAbi = {
       maps: [],
@@ -1555,6 +1568,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -1568,6 +1582,7 @@ describe('smart contract tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1699,11 +1714,5 @@ describe('smart contract tests', () => {
       `/extended/v1/contract/by_trait?trait_abi=${randomData}`
     );
     expect(query.status).toBe(431);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

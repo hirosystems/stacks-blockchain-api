@@ -8,7 +8,7 @@ Rate limiting will be applied to all API endpoints and [faucet requests](https:/
 
 You can refer to the rate limit for each endpoint in the table below:
 
-| **Endpoint**                                                                                | **Rate-Limit (RPM)**  |
+| **Endpoint**                                                                                | **Rate Per Minute(RPM) limit** |
 | ------------------------------------------------------------------------------------------- |-----------------------|
 | api.mainnet.hiro.so/extended/ <br/> api.hiro.so/extended/ <br/> | <br/> 500 <br/> <br/> |
 | api.mainnet.hiro.so/rosetta/ <br/> api.hiro.so/rosetta/<br/>    | <br/> 200 <br/> <br/> |

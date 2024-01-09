@@ -4,10 +4,9 @@ import { ChainID } from '@stacks/transactions';
 import { importV1BnsNames, importV1BnsSubdomains } from '../import-v1';
 import * as assert from 'assert';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { DataStoreBlockUpdateData } from '../datastore/common';
-import { BnsGenesisBlock } from '../event-replay/helpers';
+import { DataStoreBlockUpdateData, DataStoreBnsBlockTxData } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('BNS V1 import', () => {
   let db: PgWriteStore;
@@ -15,8 +14,7 @@ describe('BNS V1 import', () => {
   let block: DataStoreBlockUpdateData;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests' });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
 
@@ -27,11 +25,11 @@ describe('BNS V1 import', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await migrate('down');
   });
 
   test('v1-import', async () => {
-    const genesis: BnsGenesisBlock = {
+    const genesis: DataStoreBnsBlockTxData = {
       index_block_hash: block.block.index_block_hash,
       parent_index_block_hash: block.block.parent_index_block_hash,
       microblock_canonical: true,

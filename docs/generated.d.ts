@@ -7,12 +7,13 @@
 export type SchemaMergeRootStub =
   | AddressAssetsListResponse
   | AddressBalanceResponse
-  | AddressNftListResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | BlockListResponse
+  | BurnBlockListResponse
+  | NakamotoBlockListResponse
   | BnsError
   | BnsFetchFileZoneResponse
   | BnsGetAllNamesResponse
@@ -96,11 +97,9 @@ export type SchemaMergeRootStub =
   | {
       [k: string]: unknown | undefined;
     }
-  | FungibleTokensMetadataList
   | NonFungibleTokenHistoryEventList
   | NonFungibleTokenHoldingsList
   | NonFungibleTokenMintList
-  | NonFungibleTokensMetadataList
   | MempoolTransactionStatsResponse
   | MempoolTransactionListResponse
   | GetRawTransactionResult
@@ -115,6 +114,8 @@ export type SchemaMergeRootStub =
   | NftBalance
   | StxBalance
   | Block
+  | BurnBlock
+  | NakamotoBlock
   | BurnchainRewardSlotHolder
   | BurnchainReward
   | BurnchainRewardsTotal
@@ -128,6 +129,7 @@ export type SchemaMergeRootStub =
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
   | MempoolCoinbaseTransaction
+  | MempoolTenureChangeTransaction
   | MempoolTransactionStatus
   | MempoolTransaction
   | Microblock
@@ -176,7 +178,6 @@ export type SchemaMergeRootStub =
   | TransactionIdentifier
   | RosettaTransaction
   | PoolDelegation
-  | FungibleTokenMetadata
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -186,7 +187,6 @@ export type SchemaMergeRootStub =
   | NonFungibleTokenMintWithTxId
   | NonFungibleTokenMintWithTxMetadata
   | NonFungibleTokenMint
-  | NonFungibleTokenMetadata
   | AbstractTransactionEvent
   | TransactionEventAssetType
   | TransactionEventAsset
@@ -210,6 +210,8 @@ export type SchemaMergeRootStub =
   | PoisonMicroblockTransaction
   | CoinbaseTransactionMetadata
   | CoinbaseTransaction
+  | TenureChangeTransactionMetadata
+  | TenureChangeTransaction
   | TransactionFound
   | TransactionList
   | TransactionMetadata
@@ -325,7 +327,8 @@ export type Transaction =
   | SmartContractTransaction
   | ContractCallTransaction
   | PoisonMicroblockTransaction
-  | CoinbaseTransaction;
+  | CoinbaseTransaction
+  | TenureChangeTransaction;
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
@@ -528,6 +531,10 @@ export type PoisonMicroblockTransaction = AbstractTransaction & PoisonMicroblock
  */
 export type CoinbaseTransaction = AbstractTransaction & CoinbaseTransactionMetadata;
 /**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export type TenureChangeTransaction = AbstractTransaction & TenureChangeTransactionMetadata;
+/**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
 export type MempoolTransaction =
@@ -535,7 +542,8 @@ export type MempoolTransaction =
   | MempoolSmartContractTransaction
   | MempoolContractCallTransaction
   | MempoolPoisonMicroblockTransaction
-  | MempoolCoinbaseTransaction;
+  | MempoolCoinbaseTransaction
+  | MempoolTenureChangeTransaction;
 /**
  * Describes representation of a Type-0 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-0-transferring-an-asset
  */
@@ -562,7 +570,8 @@ export type MempoolTransactionStatus =
   | "dropped_replace_by_fee"
   | "dropped_replace_across_fork"
   | "dropped_too_expensive"
-  | "dropped_stale_garbage_collect";
+  | "dropped_stale_garbage_collect"
+  | "dropped_problematic";
 /**
  * Describes representation of a Type-1 Stacks 2.0 transaction. https://github.com/blockstack/stacks-blockchain/blob/master/sip/sip-005-blocks-and-transactions.md#type-1-instantiating-a-smart-contract
  */
@@ -579,6 +588,10 @@ export type MempoolPoisonMicroblockTransaction = AbstractMempoolTransaction & Po
  * Describes representation of a Type 3 Stacks 2.0 transaction: Poison Microblock
  */
 export type MempoolCoinbaseTransaction = AbstractMempoolTransaction & CoinbaseTransactionMetadata;
+/**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export type MempoolTenureChangeTransaction = AbstractMempoolTransaction & TenureChangeTransactionMetadata;
 /**
  * Fetch a user's raw zone file. This only works for RFC-compliant zone files. This method returns an error for names that have non-standard zone files.
  */
@@ -706,11 +719,18 @@ export type TransactionMetadata =
   | SmartContractTransactionMetadata
   | ContractCallTransactionMetadata
   | PoisonMicroblockTransactionMetadata
-  | CoinbaseTransactionMetadata;
+  | CoinbaseTransactionMetadata
+  | TenureChangeTransactionMetadata;
 /**
  * String literal of all Stacks 2.0 transaction types
  */
-export type TransactionType = "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "coinbase";
+export type TransactionType =
+  | "token_transfer"
+  | "smart_contract"
+  | "contract_call"
+  | "poison_microblock"
+  | "coinbase"
+  | "tenure_change";
 export type RpcAddressBalanceNotificationParams = {
   address: string;
 } & AddressStxBalanceResponse;
@@ -825,35 +845,6 @@ export interface AddressUnlockSchedule {
    */
   amount: string;
   block_height: number;
-}
-export interface AddressNftListResponse {
-  limit: number;
-  offset: number;
-  total: number;
-  nft_events: NftEvent[];
-}
-export interface NftEvent {
-  sender?: string;
-  recipient?: string;
-  asset_identifier: string;
-  asset_event_type: string;
-  /**
-   * Identifier of the NFT
-   */
-  value: {
-    /**
-     * Hex string representing the identifier of the NFT
-     */
-    hex: string;
-    /**
-     * Readable string of the NFT identifier
-     */
-    repr: string;
-  };
-  tx_id: string;
-  tx_index: number;
-  block_height: number;
-  event_index: number;
 }
 /**
  * GET request that returns a list of inbound STX transfers with a memo
@@ -1099,6 +1090,54 @@ export interface CoinbaseTransactionMetadata {
      * A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null.
      */
     alt_recipient?: string;
+    /**
+     * Hex encoded 80-byte VRF proof
+     */
+    vrf_proof?: string;
+  };
+}
+/**
+ * Describes representation of a Type 7 Stacks transaction: Tenure Change
+ */
+export interface TenureChangeTransactionMetadata {
+  tx_type: "tenure_change";
+  tenure_change_payload?: {
+    /**
+     * Consensus hash of this tenure. Corresponds to the sortition in which the miner of this block was chosen.
+     */
+    tenure_consensus_hash: string;
+    /**
+     * Consensus hash of the previous tenure. Corresponds to the sortition of the previous winning block-commit.
+     */
+    prev_tenure_consensus_hash: string;
+    /**
+     * Current consensus hash on the underlying burnchain. Corresponds to the last-seen sortition.
+     */
+    burn_view_consensus_hash: string;
+    /**
+     * (Hex string) Stacks Block hash
+     */
+    previous_tenure_end: string;
+    /**
+     * The number of blocks produced in the previous tenure.
+     */
+    previous_tenure_blocks: number;
+    /**
+     * Cause of change in mining tenure. Depending on cause, tenure can be ended or extended.
+     */
+    cause: "block_found" | "extended";
+    /**
+     * (Hex string) The ECDSA public key hash of the current tenure.
+     */
+    pubkey_hash: string;
+    /**
+     * (Hex string) A Schnorr signature from the Stackers.
+     */
+    signature: string;
+    /**
+     * (Hex string) A bitmap of which Stackers signed.
+     */
+    signers: string;
   };
 }
 /**
@@ -1218,6 +1257,140 @@ export interface Block {
   microblock_tx_count: {
     [k: string]: number | undefined;
   };
+}
+/**
+ * GET request that returns burn blocks
+ */
+export interface BurnBlockListResponse {
+  /**
+   * The number of burn blocks to return
+   */
+  limit: number;
+  /**
+   * The number to burn blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of burn blocks available (regardless of filter parameters)
+   */
+  total: number;
+  results: BurnBlock[];
+}
+/**
+ * A burn block
+ */
+export interface BurnBlock {
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Hashes of the Stacks blocks included in the burn block
+   */
+  stacks_blocks: string[];
+}
+/**
+ * GET request that returns blocks
+ */
+export interface NakamotoBlockListResponse {
+  /**
+   * The number of blocks to return
+   */
+  limit: number;
+  /**
+   * The number to blocks to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of blocks available
+   */
+  total: number;
+  results: NakamotoBlock[];
+}
+/**
+ * A block
+ */
+export interface NakamotoBlock {
+  /**
+   * Set to `true` if block corresponds to the canonical chain tip
+   */
+  canonical: boolean;
+  /**
+   * Height of the block
+   */
+  height: number;
+  /**
+   * Hash representing the block
+   */
+  hash: string;
+  /**
+   * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
+   */
+  index_block_hash: string;
+  /**
+   * Hash of the parent block
+   */
+  parent_block_hash: string;
+  /**
+   * Index block hash of the parent block
+   */
+  parent_index_block_hash: string;
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  burn_block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  burn_block_time_iso: string;
+  /**
+   * Hash of the anchor chain block
+   */
+  burn_block_hash: string;
+  /**
+   * Height of the anchor chain block
+   */
+  burn_block_height: number;
+  /**
+   * Anchor chain transaction ID
+   */
+  miner_txid: string;
+  /**
+   * Number of transactions included in the block
+   */
+  tx_count: number;
+  /**
+   * Execution cost read count.
+   */
+  execution_cost_read_count: number;
+  /**
+   * Execution cost read length.
+   */
+  execution_cost_read_length: number;
+  /**
+   * Execution cost runtime.
+   */
+  execution_cost_runtime: number;
+  /**
+   * Execution cost write count.
+   */
+  execution_cost_write_count: number;
+  /**
+   * Execution cost write length.
+   */
+  execution_cost_write_length: number;
 }
 /**
  * Error
@@ -1614,6 +1787,7 @@ export interface ServerStatusResponse {
   status: string;
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
+  pox_v3_unlock_height?: number;
   chain_tip?: ChainTip;
 }
 /**
@@ -2930,62 +3104,6 @@ export interface PoolDelegation {
   tx_id: string;
 }
 /**
- * List of fungible tokens metadata
- */
-export interface FungibleTokensMetadataList {
-  /**
-   * The number of tokens metadata to return
-   */
-  limit: number;
-  /**
-   * The number to tokens metadata to skip (starting at `0`)
-   */
-  offset: number;
-  /**
-   * The number of tokens metadata available
-   */
-  total: number;
-  results: FungibleTokenMetadata[];
-}
-export interface FungibleTokenMetadata {
-  /**
-   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
-   */
-  token_uri: string;
-  /**
-   * Identifies the asset to which this token represents
-   */
-  name: string;
-  /**
-   * Describes the asset to which this token represents
-   */
-  description: string;
-  /**
-   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
-   */
-  image_uri: string;
-  /**
-   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
-   */
-  image_canonical_uri: string;
-  /**
-   * A shorter representation of a token. This is sometimes referred to as a "ticker". Examples: "STX", "COOL", etc. Typically, a token could be referred to as $SYMBOL when referencing it in writing.
-   */
-  symbol: string;
-  /**
-   * The number of decimal places in a token.
-   */
-  decimals: number;
-  /**
-   * Tx id that deployed the contract
-   */
-  tx_id: string;
-  /**
-   * principle that deployed the contract
-   */
-  sender_address: string;
-}
-/**
  * List of Non-Fungible Token history events
  */
 export interface NonFungibleTokenHistoryEventList {
@@ -3142,54 +3260,6 @@ export interface NonFungibleTokenMintWithTxMetadata {
     repr: string;
   };
   tx: Transaction;
-}
-/**
- * List of non fungible tokens metadata
- */
-export interface NonFungibleTokensMetadataList {
-  /**
-   * The number of tokens metadata to return
-   */
-  limit: number;
-  /**
-   * The number to tokens metadata to skip (starting at `0`)
-   */
-  offset: number;
-  /**
-   * The number of tokens metadata available
-   */
-  total: number;
-  results: NonFungibleTokenMetadata[];
-}
-export interface NonFungibleTokenMetadata {
-  /**
-   * An optional string that is a valid URI which resolves to this token's metadata. Can be empty.
-   */
-  token_uri: string;
-  /**
-   * Identifies the asset to which this token represents
-   */
-  name: string;
-  /**
-   * Describes the asset to which this token represents
-   */
-  description: string;
-  /**
-   * A URI pointing to a resource with mime type image/* representing the asset to which this token represents. The API may provide a URI to a cached resource, dependending on configuration. Otherwise, this can be the same value as the canonical image URI.
-   */
-  image_uri: string;
-  /**
-   * The original image URI specified by the contract. A URI pointing to a resource with mime type image/* representing the asset to which this token represents. Consider making any images at a width between 320 and 1080 pixels and aspect ratio between 1.91:1 and 4:5 inclusive.
-   */
-  image_canonical_uri: string;
-  /**
-   * Tx id that deployed the contract
-   */
-  tx_id: string;
-  /**
-   * principle that deployed the contract
-   */
-  sender_address: string;
 }
 /**
  * GET request that returns stats on mempool transactions
@@ -3409,6 +3479,29 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
+}
+export interface NftEvent {
+  sender?: string;
+  recipient?: string;
+  asset_identifier: string;
+  asset_event_type: string;
+  /**
+   * Identifier of the NFT
+   */
+  value: {
+    /**
+     * Hex string representing the identifier of the NFT
+     */
+    hex: string;
+    /**
+     * Readable string of the NFT identifier
+     */
+    repr: string;
+  };
+  tx_id: string;
+  tx_index: number;
+  block_height: number;
+  event_index: number;
 }
 /**
  * Instead of utilizing HTTP status codes to describe node errors (which often do not have a good analog), rich errors are returned using this object. Both the code and message fields can be individually used to correctly identify an error. Implementations MUST use unique values for both fields.

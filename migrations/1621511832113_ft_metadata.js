@@ -20,31 +20,31 @@ exports.up = pgm => {
     image_uri: {
       type: 'string',
       notNull: true,
-    }, 
+    },
     image_canonical_uri: {
-      type: 'string', 
+      type: 'string',
       notNull: true,
-    }, 
+    },
     contract_id: {
-      type: 'string', 
-      notNull: true, 
+      type: 'string',
+      notNull: true,
       unique: true,
     },
     symbol: {
-      type: 'string', 
-      notNull: true, 
+      type: 'string',
+      notNull: true,
     },
     decimals: {
-      type: 'integer', 
-      notNull: true, 
+      type: 'integer',
+      notNull: true,
     },
     tx_id: {
       type: 'bytea',
       notNull: true,
     },
     sender_address: {
-      type: 'string', 
-      notNull: true, 
+      type: 'string',
+      notNull: true,
     }
   });
 

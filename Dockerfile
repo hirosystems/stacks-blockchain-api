@@ -1,11 +1,14 @@
-FROM node:16-alpine
+FROM node:18-bullseye
 
 WORKDIR /app
 COPY . .
+COPY --from=qldrsc/duckdb /usr/local/bin/duckdb /bin/duckdb
 
-RUN apk add --no-cache --virtual .build-deps alpine-sdk python3 git openjdk8-jre cmake
+RUN apt-get update && \
+    apt-get install -y git openjdk-11-jre && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
-RUN npm config set unsafe-perm true && npm ci && npm run build && npm run build:docs && npm prune --production
-RUN apk del .build-deps
+RUN npm ci && npm run build && npm run build:docs && npm prune --production
 
 CMD ["node", "./lib/index.js"]

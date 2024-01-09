@@ -22,6 +22,11 @@
           "type": "string",
           "nullable": true,
           "description": "A principal that will receive the miner rewards for this coinbase transaction. Can be either a standard principal or contract principal. Only specified for `coinbase-to-alt-recipient` transaction types, otherwise null."
+        },
+        "vrf_proof": {
+          "type": "string",
+          "nullable": true,
+          "description": "Hex encoded 80-byte VRF proof"
         }
       }
     }

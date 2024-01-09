@@ -12,7 +12,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 async function getBalanceWithWalletImport(address: string): Promise<number> {
   const client = getRpcClient();
@@ -107,9 +107,9 @@ describe('btc faucet', () => {
     let db: PgStore;
     let writeDb: PgWriteStore;
     const OLD_ENV = process.env;
+
     beforeAll(async () => {
-      process.env.PG_DATABASE = 'postgres';
-      await cycleMigrations();
+      await migrate('up');
       db = await PgStore.connect({ usageName: 'tests', withNotifier: false });
       writeDb = await PgWriteStore.connect({
         usageName: 'tests',
@@ -121,6 +121,14 @@ describe('btc faucet', () => {
         writeDatastore: writeDb,
         chainId: ChainID.Testnet,
       });
+    });
+
+    afterAll(async () => {
+      process.env = OLD_ENV;
+      await apiServer.terminate();
+      await db?.close();
+      await writeDb?.close();
+      await migrate('down');
     });
 
     test('faucet http receive endpoint', async () => {
@@ -160,14 +168,6 @@ describe('btc faucet', () => {
       expect(response.status).toBe(403);
       const resJson = JSON.parse(response.text);
       expect(resJson.error).toBe('BTC Faucet is not configured.');
-    });
-
-    afterAll(async () => {
-      process.env = OLD_ENV;
-      await apiServer.terminate();
-      await db?.close();
-      await writeDb?.close();
-      await runMigrations(undefined, 'down');
     });
   });
 });

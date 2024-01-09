@@ -1,9 +1,5 @@
 import {
   loadDotEnv,
-  timeout,
-  isProdEnv,
-  numberToHex,
-  parseArgBoolean,
   getApiConfiguredChainID,
   getStacksNodeChainID,
   chainIdConfigurationCheck,
@@ -14,7 +10,6 @@ import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { createServer as createPrometheusServer } from '@promster/server';
-import { registerShutdownConfig } from './shutdown-handler';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
@@ -25,6 +20,13 @@ import { PgStore } from './datastore/pg-store';
 import { PgWriteStore } from './datastore/pg-write-store';
 import { registerMempoolPromStats } from './datastore/helpers';
 import { logger } from './logger';
+import {
+  isProdEnv,
+  numberToHex,
+  parseBoolean,
+  registerShutdownConfig,
+  timeout,
+} from '@hirosystems/api-toolkit';
 
 enum StacksApiMode {
   /**
@@ -62,10 +64,10 @@ function getApiMode(): StacksApiMode {
       break;
   }
   // Make sure we're backwards compatible if `STACKS_API_MODE` is not specified.
-  if (parseArgBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
+  if (parseBoolean(process.env['STACKS_READ_ONLY_MODE'])) {
     return StacksApiMode.readOnly;
   }
-  if (parseArgBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
+  if (parseBoolean(process.env['STACKS_API_OFFLINE_MODE'])) {
     return StacksApiMode.offline;
   }
   return StacksApiMode.default;
@@ -141,7 +143,7 @@ async function init(): Promise<void> {
       forceKillable: false,
     });
 
-    const skipChainIdCheck = parseArgBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
+    const skipChainIdCheck = parseBoolean(process.env['SKIP_STACKS_CHAIN_ID_CHECK']);
     if (!skipChainIdCheck) {
       const networkChainId = await getStacksNodeChainID();
       if (networkChainId !== configuredChainID) {
@@ -256,6 +258,15 @@ function getProgramArgs() {
           ['wipe-db']?: boolean;
           ['force']?: boolean;
         };
+      }
+    | {
+        operand: 'from-parquet-events';
+        options: {
+          ['new-burn-block']?: boolean;
+          ['attachment-new']?: boolean;
+          ['new-block']?: boolean;
+          ['ids-path']?: string;
+        };
       };
   return { args, parsedOpts };
 }
@@ -271,6 +282,12 @@ async function handleProgramArgs() {
       args.options['wipe-db'],
       args.options.force
     );
+  } else if (args.operand === 'from-parquet-events') {
+    const { ReplayController } = await import('./event-replay/parquet-based/replay-controller');
+    const replay = await ReplayController.init();
+    await replay.prepare();
+    await replay.do();
+    await replay.finalize();
   } else if (parsedOpts._[0]) {
     throw new Error(`Unexpected program argument: ${parsedOpts._[0]}`);
   } else {

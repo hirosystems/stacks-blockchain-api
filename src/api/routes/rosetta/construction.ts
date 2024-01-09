@@ -57,8 +57,6 @@ import {
   doesThrow,
   FoundOrNot,
   getChainIDNetwork,
-  has0xPrefix,
-  hexToBuffer,
   isValidC32Address,
 } from '../../../helpers';
 import { asyncHandler } from '../../async-handler';
@@ -84,6 +82,7 @@ import {
   verifySignature,
 } from '../../../rosetta/rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

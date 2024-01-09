@@ -16,6 +16,7 @@ import {
   AbstractTransaction,
   BaseTransaction,
   Block,
+  BurnBlock,
   CoinbaseTransactionMetadata,
   ContractCallTransactionMetadata,
   MempoolTransaction,
@@ -26,6 +27,7 @@ import {
   RosettaParentBlockIdentifier,
   RosettaTransaction,
   SmartContractTransactionMetadata,
+  TenureChangeTransactionMetadata,
   TokenTransferTransactionMetadata,
   Transaction,
   TransactionAnchorModeType,
@@ -58,14 +60,13 @@ import {
   BaseTx,
   DbMinerReward,
   StxUnlockEvent,
-  DbPox2Event,
-  DbPox3Event,
+  DbPoxSyntheticEvent,
 } from '../../datastore/common';
 import { unwrapOptional, FoundOrNot, unixEpochToIso, EMPTY_HASH_256, ChainID } from '../../helpers';
 import { serializePostCondition, serializePostConditionMode } from '../serializers/post-conditions';
 import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpers';
 import { PgStore } from '../../datastore/pg-store';
-import { Pox2EventName } from '../../pox-helpers';
+import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
@@ -76,6 +77,7 @@ export function parseTxTypeStrings(values: string[]): TransactionType[] {
       case 'token_transfer':
       case 'coinbase':
       case 'poison_microblock':
+      case 'tenure_change':
         return v;
       default:
         throw new Error(`Unexpected tx type: ${JSON.stringify(v)}`);
@@ -97,6 +99,8 @@ export function getTxTypeString(typeId: DbTxTypeId): Transaction['tx_type'] {
     case DbTxTypeId.Coinbase:
     case DbTxTypeId.CoinbaseToAltRecipient:
       return 'coinbase';
+    case DbTxTypeId.TenureChange:
+      return 'tenure_change';
     default:
       throw new Error(`Unexpected DbTxTypeId: ${typeId}`);
   }
@@ -115,6 +119,17 @@ function getTxAnchorModeString(anchorMode: number): TransactionAnchorModeType {
   }
 }
 
+function getTxTenureChangeCauseString(cause: number) {
+  switch (cause) {
+    case 0:
+      return 'block_found';
+    case 1:
+      return 'extended';
+    default:
+      throw new Error(`Unexpected tenure change cause value ${cause}`);
+  }
+}
+
 export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
   switch (typeString) {
     case 'token_transfer':
@@ -127,6 +142,8 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
       return [DbTxTypeId.PoisonMicroblock];
     case 'coinbase':
       return [DbTxTypeId.Coinbase, DbTxTypeId.CoinbaseToAltRecipient];
+    case 'tenure_change':
+      return [DbTxTypeId.TenureChange];
     default:
       throw new Error(`Unexpected tx type string: ${typeString}`);
   }
@@ -148,6 +165,8 @@ function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTra
       return 'dropped_replace_across_fork';
     case DbTxStatus.DroppedTooExpensive:
       return 'dropped_too_expensive';
+    case DbTxStatus.DroppedProblematic:
+      return 'dropped_problematic';
     case DbTxStatus.DroppedStaleGarbageCollect:
     case DbTxStatus.DroppedApiGarbageCollect:
       return 'dropped_stale_garbage_collect';
@@ -179,7 +198,7 @@ export function getAssetEventTypeString(
   }
 }
 
-export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
+export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
   const baseInfo = {
     block_height: poxEvent.block_height,
     tx_id: poxEvent.tx_id,
@@ -194,7 +213,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
     name: poxEvent.name,
   };
   switch (poxEvent.name) {
-    case Pox2EventName.HandleUnlock: {
+    case SyntheticPoxEventName.HandleUnlock: {
       return {
         ...baseInfo,
         data: {
@@ -203,7 +222,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackStx: {
+    case SyntheticPoxEventName.StackStx: {
       return {
         ...baseInfo,
         data: {
@@ -214,7 +233,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackIncrease: {
+    case SyntheticPoxEventName.StackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -223,7 +242,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackExtend: {
+    case SyntheticPoxEventName.StackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -232,7 +251,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStx: {
+    case SyntheticPoxEventName.DelegateStx: {
       return {
         ...baseInfo,
         data: {
@@ -242,7 +261,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackStx: {
+    case SyntheticPoxEventName.DelegateStackStx: {
       return {
         ...baseInfo,
         data: {
@@ -254,7 +273,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackIncrease: {
+    case SyntheticPoxEventName.DelegateStackIncrease: {
       return {
         ...baseInfo,
         data: {
@@ -264,7 +283,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.DelegateStackExtend: {
+    case SyntheticPoxEventName.DelegateStackExtend: {
       return {
         ...baseInfo,
         data: {
@@ -274,7 +293,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommit: {
+    case SyntheticPoxEventName.StackAggregationCommit: {
       return {
         ...baseInfo,
         data: {
@@ -283,7 +302,7 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationCommitIndexed: {
+    case SyntheticPoxEventName.StackAggregationCommitIndexed: {
       return {
         ...baseInfo,
         data: {
@@ -292,17 +311,26 @@ export function parsePox2Event(poxEvent: DbPox2Event | DbPox3Event) {
         },
       };
     }
-    case Pox2EventName.StackAggregationIncrease: {
+    case SyntheticPoxEventName.StackAggregationIncrease: {
       return {
         ...baseInfo,
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+        },
+      };
+    }
+    case SyntheticPoxEventName.RevokeDelegateStx: {
+      return {
+        ...baseInfo,
+        data: {
+          amount_ustx: poxEvent.data.amount_ustx.toString(),
+          delegate_to: poxEvent.data.delegate_to,
         },
       };
     }
     default:
-      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPox2Event).name}`);
+      throw new Error(`Unexpected Pox2 event name ${(poxEvent as DbPoxSyntheticEvent).name}`);
   }
 }
 
@@ -896,6 +924,60 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
           alt_recipient: unwrapOptional(
             dbTx.coinbase_alt_recipient,
             () => 'Unexpected nullish coinbase_alt_recipient'
+          ),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.NakamotoCoinbase: {
+      const metadata: CoinbaseTransactionMetadata = {
+        tx_type: 'coinbase',
+        coinbase_payload: {
+          data: unwrapOptional(dbTx.coinbase_payload, () => 'Unexpected nullish coinbase_payload'),
+          alt_recipient: dbTx.coinbase_alt_recipient ?? (null as any),
+          vrf_proof: unwrapOptional(dbTx.coinbase_vrf_proof, () => 'Unexpected nullish vrf_proof'),
+        },
+      };
+      return metadata;
+    }
+    case DbTxTypeId.TenureChange: {
+      const metadata: TenureChangeTransactionMetadata = {
+        tx_type: 'tenure_change',
+        tenure_change_payload: {
+          tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_tenure_consensus_hash'
+          ),
+          prev_tenure_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_prev_tenure_consensus_hash,
+            () => 'Unexpected nullish tenure_change_prev_tenure_consensus_hash'
+          ),
+          burn_view_consensus_hash: unwrapOptional(
+            dbTx.tenure_change_burn_view_consensus_hash,
+            () => 'Unexpected nullish tenure_change_burn_view_consensus_hash'
+          ),
+          previous_tenure_end: unwrapOptional(
+            dbTx.tenure_change_previous_tenure_end,
+            () => 'Unexpected nullish tenure_change_previous_tenure_end'
+          ),
+          previous_tenure_blocks: unwrapOptional(
+            dbTx.tenure_change_previous_tenure_blocks,
+            () => 'Unexpected nullish tenure_change_previous_tenure_blocks'
+          ),
+          cause: getTxTenureChangeCauseString(
+            unwrapOptional(dbTx.tenure_change_cause, () => 'Unexpected nullish tenure_change_cause')
+          ),
+          pubkey_hash: unwrapOptional(
+            dbTx.tenure_change_pubkey_hash,
+            () => 'Unexpected nullish tenure_change_pubkey_hash'
+          ),
+          signature: unwrapOptional(
+            dbTx.tenure_change_signature,
+            () => 'Unexpected nullish tenure_change_signature'
+          ),
+          signers: unwrapOptional(
+            dbTx.tenure_change_signers,
+            () => 'Unexpected nullish tenure_change_signers'
           ),
         },
       };

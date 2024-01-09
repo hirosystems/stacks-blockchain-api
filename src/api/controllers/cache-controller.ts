@@ -1,9 +1,10 @@
 import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
-import { normalizeHashString, sha256 } from '../../helpers';
+import { normalizeHashString } from '../../helpers';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
+import { sha256 } from '@hirosystems/api-toolkit';
 
 const CACHE_OK = Symbol('cache_ok');
 

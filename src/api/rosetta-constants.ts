@@ -476,18 +476,3 @@ export const RosettaSchemas: Record<string, SchemaFiles> = {
       '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-response.schema.json',
   },
 };
-
-export const PoxContractIdentifier = {
-  pox1: {
-    mainnet: 'SP000000000000000000002Q6VF78.pox',
-    testnet: 'ST000000000000000000002AMW42H.pox',
-  },
-  pox2: {
-    mainnet: 'SP000000000000000000002Q6VF78.pox-2',
-    testnet: 'ST000000000000000000002AMW42H.pox-2',
-  },
-  pox3: {
-    mainnet: 'SP000000000000000000002Q6VF78.pox-3',
-    testnet: 'ST000000000000000000002AMW42H.pox-3',
-  },
-} as const;
