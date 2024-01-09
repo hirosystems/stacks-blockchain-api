@@ -1155,7 +1155,7 @@ describe('mempool tests', () => {
         tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
         anchor_mode: 3,
         nonce: 0,
-        raw_tx: bufferToHexPrefixString(Buffer.from('x'.repeat(index + 1))),
+        raw_tx: bufferToHex(Buffer.from('x'.repeat(index + 1))),
         type_id: DbTxTypeId.TokenTransfer,
         receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
         status: 1,
