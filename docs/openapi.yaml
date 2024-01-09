@@ -212,6 +212,8 @@ paths:
           required: false
           schema:
             type: array
+            style: form
+            explode: true
             example: coinbase
             items:
               type: string
@@ -382,6 +384,8 @@ paths:
         required: true
         schema:
           type: array
+          style: form
+          explode: true
           example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
           items:
             type: string
@@ -3055,6 +3059,8 @@ paths:
           required: false
           schema:
             type: array
+            style: form
+            explode: true
             example: "SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy"
             items:
               type: string
@@ -3481,6 +3487,8 @@ paths:
           required: false
           schema:
             type: array
+            style: form
+            explode: true
             example: stx_lock
             items:
               type: string
