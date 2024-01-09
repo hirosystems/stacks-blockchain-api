@@ -32,7 +32,7 @@ export function createTokenRouter(db: PgStore): express.Router {
         return;
       }
       let assetIdentifiers: string[] | undefined;
-      if (req.query.asset_identifiers) {
+      if (req.query.asset_identifiers !== undefined) {
         if (typeof req.query.asset_identifiers === 'string') {
           if (req.query.asset_identifiers.includes(',')) {
             assetIdentifiers = req.query.asset_identifiers.split(',');
@@ -49,11 +49,6 @@ export function createTokenRouter(db: PgStore): express.Router {
           ) {
             res.status(400).json({ error: `Invalid asset identifier ${assetIdentifier}` });
             return;
-          } else {
-            if (!assetIdentifiers) {
-              assetIdentifiers = [];
-            }
-            assetIdentifiers?.push(assetIdentifier);
           }
         }
       }
