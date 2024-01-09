@@ -1,3 +1,10 @@
+## [7.6.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.6.0-nakamoto.2...v7.6.0-nakamoto.3) (2024-01-09)
+
+
+### Features
+
+* add `order_by` and `order` params to `/extended/v1/tx/mempool` ([#1810](https://github.com/hirosystems/stacks-blockchain-api/issues/1810)) ([2d45b2e](https://github.com/hirosystems/stacks-blockchain-api/commit/2d45b2eafdec0ca478de65237de953d7bc63e827))
+
 ## [7.6.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.6.0-nakamoto.1...v7.6.0-nakamoto.2) (2024-01-09)
 
 
