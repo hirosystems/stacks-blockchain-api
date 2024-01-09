@@ -1,8 +1,6 @@
 import { ApiServer, startApiServer } from '../api/init';
 import * as supertest from 'supertest';
-import { startEventServer } from '../event-stream/event-server';
-import { Server } from 'net';
-import { DbBlock, DbTxRaw, DbTxStatus } from '../datastore/common';
+import { DbBlock } from '../datastore/common';
 import * as assert from 'assert';
 import {
   AnchorMode,
@@ -27,7 +25,6 @@ import {
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
 import { StacksCoreRpcClient } from '../core-rpc/client';
-import { bufferToHexPrefixString, FoundOrNot, timeout } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -56,13 +53,14 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork } from '../rosetta/rosetta-helpers';
 import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '../datastore/migrations';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
   standByForPoxCycle,
   standByForTx as standByForTxShared,
   standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
+import { bufferToHex, timeout } from '@hirosystems/api-toolkit';
+import { FoundOrNot } from '../helpers';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
@@ -75,9 +73,13 @@ describe('Rosetta Construction', () => {
     process.env.PG_DATABASE = 'postgres';
     process.env.STACKS_CHAIN_ID = '0x80000000';
     db = await PgWriteStore.connect({ usageName: 'tests' });
-    // eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     await new StacksCoreRpcClient().waitForConnection(60000);
+  });
+
+  afterAll(async () => {
+    await api.terminate();
+    await db?.close();
   });
 
   /* rosetta construction api tests below */
@@ -591,7 +593,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -636,7 +638,7 @@ describe('Rosetta Construction', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -954,7 +956,7 @@ describe('Rosetta Construction', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
@@ -1632,7 +1634,7 @@ describe('Rosetta Construction', () => {
         delegate_to: testnetKeys[1].stacksAddress,
         size: 260,
         contract_address: 'ST000000000000000000002AMW42H',
-        contract_name: 'pox-3',
+        contract_name: 'pox-4',
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
       },
@@ -2218,7 +2220,7 @@ describe('Rosetta Construction', () => {
     // //metadata
 
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
 
     const metadataRequest: RosettaConstructionMetadataRequest = {
       network_identifier: {
@@ -2575,12 +2577,5 @@ describe('Rosetta Construction', () => {
 
       expect(queryResult.genesis_block_identifier).toEqual(expectResponse.genesis_block_identifier);
     });
-  });
-
-  afterAll(async () => {
-    // await new Promise<void>(resolve => eventServer.close(() => resolve()));
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -19,7 +19,7 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { ChainID, apiDocumentationUrl, getChainIDNetwork, isProdEnv, waiter } from '../helpers';
+import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { createBurnchainRouter } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
@@ -40,12 +40,19 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { createPox2EventsRouter } from './routes/pox2';
-import { createPox3EventsRouter } from './routes/pox3';
-import { isPgConnectionError } from '../datastore/helpers';
-import { createStackingRouter } from './routes/stacking';
+import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
-import { createMempoolRouter } from './v2/mempool';
+import {
+  SERVER_VERSION,
+  isPgConnectionError,
+  isProdEnv,
+  parseBoolean,
+  waiter,
+} from '@hirosystems/api-toolkit';
+import { createV2BlocksRouter } from './routes/v2/blocks';
+import { getReqQuery } from './query-helpers';
+import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
+import { createMempoolRouter } from './routes/v2/mempool';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -57,9 +64,6 @@ export interface ApiServer {
   forceKill: () => Promise<void>;
 }
 
-/** API version as given by .git-info */
-export const API_VERSION: { branch?: string; commit?: string; tag?: string } = {};
-
 export async function startApiServer(opts: {
   datastore: PgStore;
   writeDatastore?: PgWriteStore;
@@ -70,16 +74,6 @@ export async function startApiServer(opts: {
   serverPort?: number;
 }): Promise<ApiServer> {
   const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
-
-  try {
-    const [branch, commit, tag] = fs.readFileSync('.git-info', 'utf-8').split('\n');
-    API_VERSION.branch = branch;
-    API_VERSION.commit = commit;
-    API_VERSION.tag = tag;
-  } catch (error) {
-    logger.error(error, `Unable to read API version from .git-info`);
-  }
-
   const app = express();
   const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
   const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
@@ -94,9 +88,6 @@ export async function startApiServer(opts: {
       `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
     );
   }
-
-  // app.use(compression());
-  // app.disable('x-powered-by');
 
   let routes: {
     path: string;
@@ -142,7 +133,7 @@ export async function startApiServer(opts: {
   app.use((_, res, next) => {
     res.setHeader(
       'X-API-Version',
-      `${API_VERSION.tag} (${API_VERSION.branch}:${API_VERSION.commit})`
+      `${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`
     );
     res.append('Access-Control-Expose-Headers', 'X-API-Version');
     next();
@@ -187,9 +178,9 @@ export async function startApiServer(opts: {
     res.send(errObj).status(404);
   });
 
-  // Setup extended API v1 routes
+  // Setup extended API routes
   app.use(
-    '/extended/v1',
+    '/extended',
     (() => {
       const router = express.Router();
       router.use(cors());
@@ -198,55 +189,69 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
-      router.use('/tx', createTxRouter(datastore));
-      router.use('/block', createBlockRouter(datastore));
-      router.use('/microblock', createMicroblockRouter(datastore));
-      router.use('/burnchain', createBurnchainRouter(datastore));
-      router.use('/contract', createContractRouter(datastore));
-      // same here, exclude account nonce route
-      router.use('/address', createAddressRouter(datastore, chainId));
-      router.use('/search', createSearchRouter(datastore));
-      router.use('/info', createInfoRouter(datastore));
-      router.use('/stx_supply', createStxSupplyRouter(datastore));
-      router.use('/debug', createDebugRouter(datastore));
-      router.use('/status', createStatusRouter(datastore));
-      router.use('/fee_rate', createFeeRateRouter(datastore));
-      router.use('/tokens', createTokenRouter(datastore));
-      router.use('/pox2_events', createPox2EventsRouter(datastore));
-      router.use('/pox3_events', createPox3EventsRouter(datastore));
-      if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
-        router.use('/faucets', createFaucetRouter(writeDatastore));
-      }
-      return router;
-    })()
-  );
+      router.use(
+        '/v1',
+        (() => {
+          const v1 = express.Router();
+          v1.use('/tx', createTxRouter(datastore));
+          v1.use('/block', createBlockRouter(datastore));
+          v1.use('/microblock', createMicroblockRouter(datastore));
+          v1.use('/burnchain', createBurnchainRouter(datastore));
+          v1.use('/contract', createContractRouter(datastore));
+          v1.use('/address', createAddressRouter(datastore, chainId));
+          v1.use('/search', createSearchRouter(datastore));
+          v1.use('/info', createInfoRouter(datastore));
+          v1.use('/stx_supply', createStxSupplyRouter(datastore));
+          v1.use('/debug', createDebugRouter(datastore));
+          v1.use('/status', createStatusRouter(datastore));
+          v1.use('/fee_rate', createFeeRateRouter(datastore));
+          v1.use('/tokens', createTokenRouter(datastore));
 
-  app.use(
-    '/extended/v2',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use('/mempool', createMempoolRouter(datastore));
-      return router;
-    })()
-  );
+          // These could be defined in one route but a url reporting library breaks with regex in middleware paths
+          v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
+          v1.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
+          v1.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
+          const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
+            // Redirect old pox routes paths to new one above
+            const newPath = req.path === '/' ? '/events' : req.path;
+            const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
+            const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
+            return res.redirect(redirectPath);
+          };
+          v1.use('/pox2_events', legacyPoxPathRouter);
+          v1.use('/pox3_events', legacyPoxPathRouter);
+          v1.use('/pox4_events', legacyPoxPathRouter);
 
-  app.use(
-    '/extended/beta',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use('/stacking', createStackingRouter(datastore));
+          if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
+            v1.use('/faucets', createFaucetRouter(writeDatastore));
+          }
+          return v1;
+        })()
+      );
+      router.use(
+        '/v2',
+        (() => {
+          const v2 = express.Router();
+          v2.use('/blocks', createV2BlocksRouter(datastore));
+          v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
+          v2.use('/mempool', createMempoolRouter(datastore));
+          return v2;
+        })()
+      );
+      router.use(
+        '/beta',
+        (() => {
+          const beta = express.Router();
+          // Redirect to new endpoint for backward compatibility.
+          // TODO: remove this in the future
+          beta.use('/stacking/:pool_principal/delegations', (req, res) => {
+            const { pool_principal } = req.params;
+            const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
+            return res.redirect(newPath);
+          });
+          return beta;
+        })()
+      );
       return router;
     })()
   );
@@ -266,19 +271,20 @@ export async function startApiServer(opts: {
   );
 
   // Rosetta API -- https://www.rosetta-api.org
-  app.use(
-    '/rosetta/v1',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
-      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
-      router.use('/block', createRosettaBlockRouter(datastore, chainId));
-      router.use('/account', createRosettaAccountRouter(datastore, chainId));
-      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
-      return router;
-    })()
-  );
+  if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1'))
+    app.use(
+      '/rosetta/v1',
+      (() => {
+        const router = express.Router();
+        router.use(cors());
+        router.use('/network', createRosettaNetworkRouter(datastore, chainId));
+        router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
+        router.use('/block', createRosettaBlockRouter(datastore, chainId));
+        router.use('/account', createRosettaAccountRouter(datastore, chainId));
+        router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
+        return router;
+      })()
+    );
 
   // Setup legacy API v1 and v2 routes
   app.use(

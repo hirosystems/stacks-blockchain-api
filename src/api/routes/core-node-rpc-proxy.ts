@@ -43,7 +43,7 @@ export function createCoreNodeRpcProxyRouter(db: PgStore): express.Router {
   const PROXY_CACHE_CONTROL_FILE_ENV_VAR = 'STACKS_API_PROXY_CACHE_CONTROL_FILE';
   let proxyCacheControlFile = '.proxy-cache-control.json';
   if (process.env[PROXY_CACHE_CONTROL_FILE_ENV_VAR]) {
-    proxyCacheControlFile = process.env[PROXY_CACHE_CONTROL_FILE_ENV_VAR] as string;
+    proxyCacheControlFile = process.env[PROXY_CACHE_CONTROL_FILE_ENV_VAR];
     logger.info(`Using ${proxyCacheControlFile}`);
   }
   const cacheControlFileWatcher = chokidar.watch(proxyCacheControlFile, {

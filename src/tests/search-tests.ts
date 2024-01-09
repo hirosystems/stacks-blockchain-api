@@ -14,10 +14,10 @@ import {
   DataStoreBlockUpdateData,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('search tests', () => {
   let db: PgWriteStore;
@@ -25,8 +25,7 @@ describe('search tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -34,6 +33,12 @@ describe('search tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('search term - hash', async () => {
@@ -55,6 +60,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -69,7 +75,7 @@ describe('search tests', () => {
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -98,10 +104,10 @@ describe('search tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
@@ -262,6 +268,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const tx: DbTxRaw = {
@@ -276,7 +283,7 @@ describe('search tests', () => {
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -304,10 +311,10 @@ describe('search tests', () => {
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
@@ -335,6 +342,7 @@ describe('search tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
@@ -591,6 +599,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
 
@@ -607,7 +616,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -658,7 +667,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      token_transfer_memo: bufferToHex(Buffer.from('test-raw-tx')),
       token_transfer_recipient_address: addr2,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -764,7 +773,7 @@ describe('search tests', () => {
       recipient: addr5,
       sender: 'none',
     };
-    await db.updateFtEvent(client, stxTx1, ftEvent1);
+    await db.updateFtEvents(client, stxTx1, [ftEvent1]);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
@@ -792,7 +801,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr6,
     };
-    await db.updateFtEvent(client, stxTx1, ftEvent2);
+    await db.updateFtEvents(client, stxTx1, [ftEvent2]);
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);
@@ -820,7 +829,7 @@ describe('search tests', () => {
       recipient: addr7,
       sender: 'none',
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent1, false);
+    await db.updateNftEvents(client, stxTx1, [nftEvent1], false);
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(`/extended/v1/search/${addr7}`);
@@ -848,7 +857,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr8,
     };
-    await db.updateNftEvent(client, stxTx1, nftEvent2, false);
+    await db.updateNftEvents(client, stxTx1, [nftEvent2], false);
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(`/extended/v1/search/${addr8}`);
@@ -927,7 +936,7 @@ describe('search tests', () => {
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
@@ -1027,6 +1036,7 @@ describe('search tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const stxTx1: DbTxRaw = {
@@ -1042,7 +1052,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'none',
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1079,7 +1089,7 @@ describe('search tests', () => {
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: addr2,
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1248,6 +1258,7 @@ describe('search tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: stxTx2,
@@ -1261,6 +1272,7 @@ describe('search tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: smartContractTx,
@@ -1274,6 +1286,7 @@ describe('search tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
@@ -1533,7 +1546,7 @@ describe('search tests', () => {
       tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
@@ -1626,11 +1639,5 @@ describe('search tests', () => {
         'The term "bogus123" is not a valid block hash, transaction ID, contract principal, or account address principal',
     };
     expect(JSON.parse(searchResult13.text)).toEqual(expectedResp13);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

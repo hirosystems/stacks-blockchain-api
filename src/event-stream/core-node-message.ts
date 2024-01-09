@@ -80,7 +80,7 @@ export interface StxLockEvent extends CoreNodeEventBase {
   };
 }
 
-export interface NftTransferEvent extends CoreNodeEventBase {
+interface NftTransferEvent extends CoreNodeEventBase {
   type: CoreNodeEventType.NftTransferEvent;
   nft_transfer_event: {
     /** Fully qualified asset ID, e.g. "ST2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7G9Y0X1MH.contract-name.asset-name" */
@@ -199,7 +199,7 @@ export interface CoreNodeTxMessage {
   burnchain_op?: BurnchainOp | null;
 }
 
-export interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
+interface CoreNodeMicroblockTxMessage extends CoreNodeTxMessage {
   microblock_sequence: number;
   microblock_hash: string;
   microblock_parent_hash: string;
@@ -254,6 +254,7 @@ export interface CoreNodeBlockMessage {
   }[];
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
+  pox_v3_unlock_height?: number;
 }
 
 export interface CoreNodeParsedTxMessage {
@@ -300,7 +301,8 @@ export type CoreNodeDropMempoolTxReasonType =
   | 'ReplaceByFee'
   | 'ReplaceAcrossFork'
   | 'TooExpensive'
-  | 'StaleGarbageCollect';
+  | 'StaleGarbageCollect'
+  | 'Problematic';
 
 export interface CoreNodeDropMempoolTxMessage {
   dropped_txids: string[];

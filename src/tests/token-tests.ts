@@ -4,21 +4,26 @@ import { ApiServer, startApiServer } from '../api/init';
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
       skipMigrations: true,
     });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('/nft/holdings', async () => {
@@ -1005,11 +1010,5 @@ describe('/extended/v1/tokens tests', () => {
     expect(result11.total).toEqual(7);
     expect(result11.results[0].value.hex).toEqual('0x01000000000000000000000000000009cb');
     expect(result11.results[1].value.hex).toEqual('0x01000000000000000000000000000009ca');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

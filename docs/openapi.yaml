@@ -21,15 +21,12 @@ tags:
       url: https://docs.stacks.co/understand-stacks/accounts
   - name: Blocks
     description: Read-only endpoints to obtain Stacks block details
+  - name: Burn Blocks
+    description: Read-only endpoints to obtain burn block details
   - name: Faucets
     description: Endpoints to request STX or BTC tokens (not possible on Mainnet)
   - name: Fees
     description: Read-only endpoints to obtain fee details
-  - name: Fungible Tokens
-    description: Read-only endpoints to obtain fungible token details
-    externalDocs:
-      description: Stacks Documentation - Tokens
-      url: https://docs.stacks.co/write-smart-contracts/tokens
   - name: Info
     description: Read-only endpoints to obtain network, Proof-of-Transfer, Stacking, STX token, and node information
   - name: Microblocks
@@ -210,12 +207,14 @@ paths:
           in: query
           description: Filter by transaction type
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: coinbase
             items:
               type: string
-              enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock]
+              enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock, tenure_change]
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -264,6 +263,22 @@ paths:
           required: false
           schema:
             type: string
+        - name: order_by
+          in: query
+          description: Option to sort results by transaction age, size, or fee rate.
+          required: false
+          schema:
+            type: string
+            enum: [age, size, fee]
+            example: fee
+        - name: order
+          in: query
+          description: Option to sort results in ascending or descending order.
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            example: asc
         - name: limit
           in: query
           description: max number of mempool transactions to fetch
@@ -380,9 +395,15 @@ paths:
         in: query
         description: Array of transaction ids
         required: true
+        style: form
+        explode: true
         schema:
           type: array
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: [
+            "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0",
+            "0xfbe6412b46e9db87df991a0d043ff47eb58019f770208cf48e2380337cc31785",
+            "0x178b77678a758d9f29a147d6399315c83d0f1baf114431fbe4d3587aa5fbba6f"
+          ]
           items:
             type: string
       - name: event_offset
@@ -617,10 +638,209 @@ paths:
               schema:
                 $ref: ./api/microblocks/get-unanchored-txs.schema.json
 
+  /extended/v2/burn-blocks:
+    get:
+      summary: Get burn blocks
+      description: |
+          Retrieves a list of recent burn blocks
+      tags:
+        - Burn Blocks
+      operationId: get_burn_blocks
+      parameters:
+        - name: limit
+          in: query
+          description: max number of burn blocks to fetch
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 30
+        - name: offset
+          in: query
+          description: index of first burn block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 42000
+      responses:
+        200:
+          description: List of burn blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-burn-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-burn-blocks.example.json
+
+  /extended/v2/burn-blocks/{height_or_hash}:
+    get:
+      summary: Get burn block
+      description: Retrieves a single burn block
+      tags:
+        - Burn Blocks
+      operationId: get_burn_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by burn block height, hash, or the constant `latest` to filter for the most recent burn block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: Burn block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/burn-block.schema.json
+              example:
+                $ref: ./entities/blocks/burn-block.example.json
+  
+  /extended/v2/burn-blocks/{height_or_hash}/blocks:
+    get:
+      summary: Get blocks by burn block
+      description: |
+        Retrieves a list of blocks confirmed by a specific burn block
+      tags:
+        - Blocks
+      operationId: get_blocks_by_burn_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by burn block height, hash, or the constant `latest` to filter for the most recent burn block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+        - name: limit
+          in: query
+          description: max number of blocks to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: index of first burn block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 0
+      responses:
+        200:
+          description: List of blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-nakamoto-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-nakamoto-blocks.example.json
+
+  /extended/v2/blocks:
+    get:
+      summary: Get blocks
+      description: |
+        Retrieves a list of recently mined blocks
+      tags:
+        - Blocks
+      operationId: get_blocks
+      parameters:
+        - name: limit
+          in: query
+          description: max number of blocks to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: index of first burn block to fetch
+          required: false
+          schema:
+            type: integer
+            example: 0
+      responses:
+        200:
+          description: List of blocks
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-nakamoto-blocks.schema.json
+              example:
+                $ref: ./api/blocks/get-nakamoto-blocks.example.json
+  
+  /extended/v2/blocks/{height_or_hash}:
+    get:
+      summary: Get block
+      description: |
+        Retrieves a single block
+      tags:
+        - Blocks
+      operationId: get_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by block height, hash, index block hash or the constant `latest` to filter for the most recent block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: Block
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/blocks/nakamoto-block.schema.json
+              example:
+                $ref: ./entities/blocks/nakamoto-block.example.json
+
+  /extended/v2/blocks/{height_or_hash}/transactions:
+    get:
+      summary: Get transactions by block
+      description: |
+        Retrieves transactions confirmed in a single block
+      tags:
+        - Transactions
+      operationId: get_transactions_by_block
+      parameters:
+        - name: height_or_hash
+          in: path
+          description: filter by block height, hash, index block hash or the constant `latest` to filter for the most recent block
+          required: true
+          schema:
+            oneOf:
+              - type: integer
+                example: 42000
+              - type: string
+                example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
+      responses:
+        200:
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                $ref: ./api/transaction/get-transactions.schema.json
+              example:
+                $ref: ./api/transaction/get-transactions.example.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
+      deprecated: true
       description: |
+          **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
           Retrieves a list of recently mined blocks
 
           If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
@@ -662,8 +882,12 @@ paths:
           type: string
           example: "0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79"
     get:
+      deprecated: true
       summary: Get block by hash
-      description: Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        
+        Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
       tags:
         - Blocks
       operationId: get_block_by_hash
@@ -692,8 +916,12 @@ paths:
           type: number
           example: 10000
     get:
+      deprecated: true
       summary: Get block by height
-      description: Retrieves block details of a specific block at a given block height
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+
+        Retrieves block details of a specific block at a given block height
       tags:
         - Blocks
       operationId: get_block_by_height
@@ -723,7 +951,11 @@ paths:
           example: "0x00000000000000000002bba732926cf68b6eda3e2cdbc2a85af79f10efeeeb10"
     get:
       summary: Get block by burnchain block hash
-      description: Retrieves block details of a specific block for a given burnchain block hash
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
+        Retrieves block details of a specific block for a given burnchain block hash
       tags:
         - Blocks
       operationId: get_block_by_burn_block_hash
@@ -754,7 +986,11 @@ paths:
           example: 744603
     get:
       summary: Get block by burnchain height
-      description: Retrieves block details of a specific block for a given burn chain height
+      deprecated: true
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+
+        Retrieves block details of a specific block for a given burn chain height
       tags:
         - Blocks
       operationId: get_block_by_burn_block_height
@@ -1662,63 +1898,6 @@ paths:
                 $ref: ./api/address/get-address-stx-inbound.schema.json
               example:
                 $ref: ./api/address/get-address-stx-inbound.example.json
-
-  /extended/v1/address/{principal}/nft_events:
-    get:
-      summary: Get nft events
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).
-
-        Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft.
-      tags:
-        - Accounts
-      operationId: get_account_nft
-      parameters:
-        - name: principal
-          in: path
-          description: Stacks address or a Contract identifier
-          required: true
-          schema:
-            type: string
-            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
-        - name: limit
-          in: query
-          description: number of items to return
-          required: false
-          schema:
-            type: integer
-        - name: offset
-          in: query
-          description: number of items to skip
-          required: false
-          schema:
-            type: integer
-            example: 42000
-        - name: unanchored
-          in: query
-          description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
-          required: false
-          schema:
-            type: boolean
-            example: true
-            default: false
-        - name: until_block
-          in: query
-          description: returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
-          required: false
-          schema:
-            type: string
-            example: 60000
-      responses:
-        200:
-          description: Success
-          content:
-            application/json:
-              schema:
-                $ref: ./api/address/get-address-nft-events.schema.json
-              example:
-                $ref: ./api/address/get-address-nft-events.example.json
 
   /v2/accounts/{principal}:
     get:
@@ -2794,77 +2973,15 @@ paths:
               example:
                 $ref: ./api/bns/errors/bns-unsupported-blockchain.example.json
 
-#  /v1/subdomains:
-#    get:
-#      summary: Get All Subdomains
-#      description: Retrieves a list of all subdomains known to the node.
-#      tags:
-#        - Names
-#      operationId: get_all_subdomains
-#      parameters:
-#        - name: page
-#          in: query
-#          description: names are returned in pages of size 100, so specify the page number.
-#          required: true
-#          example: 3
-#          schema:
-#            type: integer
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-all-subdomains-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-page.example.json
-#
-#  /v1/subdomains/{txid}:
-#    get:
-#      summary: Get Subdomain at Transaction
-#      description: Retrieves the list of subdomain operations processed by a given transaction. The returned array includes subdomain operations that have not yet been accepted as part of any subdomain’s history (checkable via the accepted field). If the given transaction ID does not correspond to a Stacks transaction that introduced new subdomain operations, and empty array will be returned.
-#      tags:
-#        - Names
-#      operationId: get_subdomain_at_transaction
-#      parameters:
-#        - name: txid
-#          in: path
-#          description: transaction id
-#          required: true
-#          schema:
-#            type: string
-#            example: "d04d708472ea3c147f50e43264efdb1535f71974053126dc4db67b3ac19d41fe"
-#      responses:
-#        200:
-#          description: Success
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.schema.json
-#              example:
-#                $ref: ./api/bns/name-querying/bns-get-subdomain-at-tx-response.example.json
-#        400:
-#          description: Error
-#          content:
-#            application/json:
-#              schema:
-#                $ref: ./api/bns/errors/bns-error.schema.json
-#              example:
-#                $ref: ./api/bns/errors/bns-invalid-tx-id.example.json
-
   /extended/v1/tx/block/{block_hash}:
     get:
+      deprecated: true
       operationId: get_transactions_by_block_hash
       summary: Transactions by block hash
-      description: Retrieves a list of all transactions within a block for a given block hash.
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+
+        Retrieves a list of all transactions within a block for a given block hash.
       tags:
         - Transactions
       parameters:
@@ -2901,9 +3018,13 @@ paths:
 
   /extended/v1/tx/block_height/{height}:
     get:
+      deprecated: true
       operationId: get_transactions_by_block_height
       summary: Transactions by block height
-      description: Retrieves all transactions within a block at a given height
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+
+        Retrieves all transactions within a block at a given height
       tags:
         - Transactions
       parameters:
@@ -2993,43 +3114,6 @@ paths:
               example:
                 $ref: ./api/transaction/get-mempool-transactions.example.json
 
-  /extended/v1/tokens/ft/metadata:
-    get:
-      operationId: get_ft_metadata_list
-      summary: Fungible tokens metadata list
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves list of fungible tokens with their metadata. More information on Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#fungible-tokens).
-      tags:
-        - Fungible Tokens
-      parameters:
-        - name: limit
-          in: query
-          description: max number of tokens to fetch.
-          required: false
-          schema:
-            type: integer
-            example: 100
-            maximum: 200
-        - name: offset
-          in: query
-          description: index of first tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 42000
-      responses:
-        200:
-          description: List of fungible tokens metadata
-          content:
-            application/json:
-              schema:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.schema.json
-              example:
-                $ref: ./api/tokens/get-fungible-tokens-metadata-list.example.schema.json
-
   /extended/v1/tokens/nft/holdings:
     get:
       operationId: get_nft_holdings
@@ -3053,6 +3137,8 @@ paths:
           in: query
           description: identifiers of the token asset classes to filter for
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: "SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy"
@@ -3236,99 +3322,6 @@ paths:
                   value:
                     $ref: ./api/tokens/get-non-fungible-token-mints-tx-metadata.example.schema.json
 
-  /extended/v1/tokens/nft/metadata:
-    get:
-      operationId: get_nft_metadata_list
-      summary: Non fungible tokens metadata list
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
-      tags:
-        - Non-Fungible Tokens
-      parameters:
-        - name: limit
-          in: query
-          description: max number of tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 1
-        - name: offset
-          in: query
-          description: index of first tokens to fetch
-          required: false
-          schema:
-            type: integer
-            example: 42000
-      responses:
-        200:
-          description: List of non fungible tokens metadata
-          content:
-            application/json:
-              schema:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.schema.json
-              example:
-                $ref: ./api/tokens/get-non-fungible-tokens-metadata-list.example.schema.json
-
-  /extended/v1/tokens/{contractId}/nft/metadata:
-    get:
-      operationId: get_contract_nft_metadata
-      summary: Non fungible tokens metadata for contract ID
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).
-      tags:
-        - Non-Fungible Tokens
-      parameters:
-        - name: contractId
-          in: path
-          description: token's contract id
-          required: true
-          schema:
-            type: string
-      responses:
-        200:
-          description: Non fungible tokens metadata for contract id
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/tokens/non-fungible-token.schema.json
-              example:
-                $ref: ./entities/tokens/non-fungible-token.schema.example.json
-
-  /extended/v1/tokens/{contractId}/ft/metadata:
-    get:
-      operationId: get_contract_ft_metadata
-      summary: Fungible tokens metadata for contract id
-      deprecated: true
-      description: |
-        **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).
-
-        Retrieves the metadata for fungible tokens for a given contract id
-      tags:
-        - Fungible Tokens
-      parameters:
-        - name: contractId
-          in: path
-          description: token's contract id
-          required: true
-          schema:
-            type: string
-            example: "SPSCWDV3RKV5ZRN1FQD84YE1NQFEDJ9R1F4DYQ11.newyorkcitycoin-token-v2"
-      responses:
-        200:
-          description: Fungible tokens metadata for contract id
-          content:
-            application/json:
-              schema:
-                $ref: ./entities/tokens/fungible-token.schema.json
-              example:
-                $ref: ./entities/tokens/fungible-token.schema.example.json
-
   /extended/v1/fee_rate:
     post:
       operationId: fetch_fee_rate
@@ -3479,6 +3472,8 @@ paths:
           in: query
           description: Filter the events on event type
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: stx_lock

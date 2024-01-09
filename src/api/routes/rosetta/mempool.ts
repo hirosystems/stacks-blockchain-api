@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
-import { ChainID, has0xPrefix } from '../../../helpers';
+import { ChainID } from '../../../helpers';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import {
   RosettaMempoolResponse,
@@ -10,6 +10,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getOperations, parseTransactionMemo } from '../../../rosetta/rosetta-helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createRosettaMempoolRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

@@ -236,7 +236,11 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           try {
             return await makeSTXTokenTransfer(txOpts);
           } catch (error: any) {
-            if (fee === undefined && (error as Error).message?.includes('NoEstimateAvailable')) {
+            if (
+              fee === undefined &&
+              (error as Error).message &&
+              /estimating transaction fee|NoEstimateAvailable/.test(error.message)
+            ) {
               const defaultFee = 200n;
               return await generateTx(network, nonce, defaultFee);
             }

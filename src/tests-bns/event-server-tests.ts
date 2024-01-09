@@ -4,10 +4,8 @@ import { EventStreamServer, startEventServer } from '../event-stream/event-serve
 import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/test-builders';
 import { DbAssetEventTypeId, DbBnsZoneFile } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
-import { getGenesisBlockData } from '../event-replay/helpers';
-import { NextFunction } from 'express';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('BNS event server tests', () => {
   let db: PgWriteStore;
@@ -15,8 +13,7 @@ describe('BNS event server tests', () => {
   let eventServer: EventStreamServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: true });
     client = db.sql;
     eventServer = await startEventServer({
@@ -30,7 +27,7 @@ describe('BNS event server tests', () => {
   afterEach(async () => {
     await eventServer.closeAsync();
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await migrate('down');
   });
 
   test('namespace-ready called by a contract other than BNS', async () => {

@@ -29,7 +29,7 @@ import {
 } from '../datastore/common';
 import { bufferCV, bufferCVFromString, serializeCV, uintCV } from '@stacks/transactions';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
-import { bufferToHexPrefixString } from '../helpers';
+import { bufferToHex } from '@hirosystems/api-toolkit';
 
 // Default values when none given. Useful when they are irrelevant for a particular test.
 const BLOCK_HEIGHT = 1;
@@ -121,6 +121,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     execution_cost_runtime: 0,
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
+    tx_count: 1,
   };
 }
 
@@ -158,6 +159,7 @@ export interface TestTxArgs {
   canonical?: boolean;
   microblock_canonical?: boolean;
   coinbase_alt_recipient?: string;
+  coinbase_vrf_proof?: string;
   contract_call_contract_id?: string;
   contract_call_function_name?: string;
   contract_call_function_args?: string;
@@ -210,8 +212,9 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       sponsor_address: undefined,
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       coinbase_alt_recipient: args?.coinbase_alt_recipient,
+      coinbase_vrf_proof: args?.coinbase_vrf_proof,
       event_count: 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
       parent_block_hash: BLOCK_HASH,
@@ -244,6 +247,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     namespaces: [],
     pox2Events: [],
     pox3Events: [],
+    pox4Events: [],
   };
   return data;
 }
@@ -296,8 +300,7 @@ export function testMempoolTx(args?: TestMempoolTxArgs): DbMempoolTxRaw {
     contract_call_contract_id: args?.contract_call_contract_id ?? CONTRACT_ID,
     contract_call_function_name: args?.contract_call_function_name ?? CONTRACT_CALL_FUNCTION_NAME,
     contract_call_function_args:
-      args?.contract_call_function_args ??
-      bufferToHexPrefixString(createClarityValueArray(uintCV(123456))),
+      args?.contract_call_function_args ?? bufferToHex(createClarityValueArray(uintCV(123456))),
   };
 }
 
@@ -363,9 +366,7 @@ function testNftEvent(args?: TestNftEventArgs): DbNftEvent {
     sender: args?.sender, // No default as this can be undefined.
     tx_id: args?.tx_id ?? TX_ID,
     tx_index: args?.tx_index ?? 0,
-    value:
-      args?.value ??
-      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCV(Buffer.from([2051]))))),
+    value: args?.value ?? bufferToHex(Buffer.from(serializeCV(bufferCV(Buffer.from([2051]))))),
   };
 }
 
@@ -429,9 +430,7 @@ function testSmartContractLogEvent(args?: TestSmartContractLogEventArgs): DbSmar
     event_type: DbEventTypeId.SmartContractLog,
     contract_identifier: args?.contract_identifier ?? CONTRACT_ID,
     topic: args?.topic ?? 'some-topic',
-    value:
-      args?.value ??
-      bufferToHexPrefixString(Buffer.from(serializeCV(bufferCVFromString('some val')))),
+    value: args?.value ?? bufferToHex(Buffer.from(serializeCV(bufferCVFromString('some val')))),
   };
 }
 
@@ -746,7 +745,9 @@ export class TestBlockBuilder {
   }
 
   build(): DataStoreBlockUpdateData {
-    return this.data;
+    const data = this.data;
+    data.block.tx_count = this.txIndex + 1;
+    return data;
   }
 }
 

@@ -3,13 +3,12 @@ import { ChainID } from '@stacks/transactions';
 import { getBlockFromDataStore } from '../api/controllers/db-controller';
 import { DbBlock, DbMicroblockPartial, DbTxRaw, DbTxStatus, DbTxTypeId } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { PoolClient } from 'pg';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { parseIfNoneMatchHeader } from '../api/controllers/cache-controller';
 import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('cache-control tests', () => {
   let db: PgWriteStore;
@@ -17,8 +16,7 @@ describe('cache-control tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -26,6 +24,12 @@ describe('cache-control tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('parse if-none-match header', () => {
@@ -91,6 +95,7 @@ describe('cache-control tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -104,7 +109,7 @@ describe('cache-control tests', () => {
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -143,6 +148,7 @@ describe('cache-control tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -271,7 +277,7 @@ describe('cache-control tests', () => {
       sponsor_address: undefined,
       origin_hash_mode: 1,
       token_transfer_amount: 50n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: addr2,
       event_count: 1,
       parent_index_block_hash: block1.index_block_hash,
@@ -310,6 +316,7 @@ describe('cache-control tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -620,11 +627,5 @@ describe('cache-control tests', () => {
     expect(request11.headers['etag']).toBeTruthy();
     const etag5 = request11.headers['etag'];
     expect(etag2).not.toBe(etag5);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

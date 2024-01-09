@@ -7,5 +7,6 @@ export default (): void => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
+  process.env.PG_DATABASE = 'postgres';
   console.log('Jest - setup done');
 };

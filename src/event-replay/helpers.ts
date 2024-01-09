@@ -1,14 +1,6 @@
 import { PgWriteStore } from '../datastore/pg-write-store';
-import * as fs from 'fs';
-import * as readline from 'readline';
-import { DataStoreBnsBlockData, DbTxTypeId } from '../datastore/common';
+import { DataStoreBnsBlockTxData, DbTxTypeId } from '../datastore/common';
 import { readLinesReversed } from './reverse-file-stream';
-import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
-
-export type BnsGenesisBlock = DataStoreBnsBlockData & {
-  tx_id: string;
-  tx_index: number;
-};
 
 /**
  * Traverse a TSV file in reverse to find the last received `/new_block` node message and return
@@ -38,31 +30,9 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
   return blockHeight;
 }
 
-export async function getGenesisBlockData(filePath: string): Promise<CoreNodeBlockMessage> {
-  const rl = readline.createInterface({
-    input: fs.createReadStream(filePath),
-    crlfDelay: Infinity,
-  });
-  try {
-    for await (const line of rl) {
-      const columns = line.split('\t');
-      const eventName = columns[2];
-      if (eventName === '/new_block') {
-        const blockMessage = JSON.parse(columns[3]);
-        if (blockMessage.block_height === 0 || blockMessage.block_height === 1) {
-          return blockMessage as CoreNodeBlockMessage;
-        }
-      }
-    }
-  } finally {
-    rl.close();
-  }
-  throw new Error('Genesis block data not found');
-}
-
 export async function getBnsGenesisBlockFromBlockMessage(
   db: PgWriteStore
-): Promise<BnsGenesisBlock> {
+): Promise<DataStoreBnsBlockTxData> {
   const genesisBlock = await db.getBlock({ height: 1 });
   if (!genesisBlock.found) {
     throw new Error('Could not find genesis block');

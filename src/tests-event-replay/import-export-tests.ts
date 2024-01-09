@@ -1,21 +1,19 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
-import { getBnsGenesisBlockFromBlockMessage, getGenesisBlockData } from '../event-replay/helpers';
-import { PgSqlClient } from '../datastore/connection';
-import { getPgClientConfig } from '../datastore/connection-legacy';
-import { databaseHasData, getRawEventRequests } from '../datastore/event-requests';
-import { cycleMigrations, dangerousDropAllTables, runMigrations } from '../datastore/migrations';
+import { getRawEventRequests } from '../event-replay/event-requests';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
-import { IBD_PRUNABLE_ROUTES, startEventServer } from '../event-stream/event-server';
-import { getIbdBlockHeight, httpPostRequest } from '../helpers';
+import { startEventServer } from '../event-stream/event-server';
+import { httpPostRequest } from '../helpers';
 import { useWithCleanup } from '../tests/test-helpers';
+import { migrate } from '../test-utils/test-helpers';
+import { PgSqlClient, dangerousDropAllTables, databaseHasData } from '@hirosystems/api-toolkit';
+import { getConnectionArgs } from '../datastore/connection';
 
 describe('import/export tests', () => {
   let db: PgWriteStore;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -67,8 +65,7 @@ describe('import/export tests', () => {
 
   test('import with db wipe options', async () => {
     // Migrate first so we have some data.
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
+    await migrate('up');
     await expect(
       importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', false, false)
     ).rejects.toThrowError('contains existing data');
@@ -86,21 +83,23 @@ describe('import/export tests', () => {
   });
 
   test('db contains data', async () => {
-    const clientConfig = getPgClientConfig({ usageName: 'cycle-migrations' });
-    await runMigrations(clientConfig, 'up', {});
+    const args = getConnectionArgs();
+    await migrate('up');
 
     // Having tables counts as having data as this may change across major versions.
-    await expect(databaseHasData()).resolves.toBe(true);
+    await expect(databaseHasData(args)).resolves.toBe(true);
 
     // Dropping all tables removes everything.
-    await dangerousDropAllTables({ acknowledgePotentialCatastrophicConsequences: 'yes' });
-    await expect(databaseHasData()).resolves.toBe(false);
+    await dangerousDropAllTables(args, {
+      acknowledgePotentialCatastrophicConsequences: 'yes',
+    });
+    await expect(databaseHasData(args)).resolves.toBe(false);
 
     // Cycling migrations leaves the `pgmigrations` table.
-    await runMigrations(clientConfig, 'up', {});
-    await runMigrations(clientConfig, 'down', {});
-    await expect(databaseHasData()).resolves.toBe(true);
-    await expect(databaseHasData({ ignoreMigrationTables: true })).resolves.toBe(false);
+    await migrate('up');
+    await migrate('down');
+    await expect(databaseHasData(args)).resolves.toBe(true);
+    await expect(databaseHasData(args, { ignoreMigrationTables: true })).resolves.toBe(false);
   });
 
   test('Bns import occurs (block 1 genesis)', async () => {
@@ -139,8 +138,7 @@ describe('IBD', () => {
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -152,7 +150,7 @@ describe('IBD', () => {
   afterEach(async () => {
     process.env.IBD_MODE_UNTIL_BLOCK = undefined;
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await migrate('down');
   });
 
   const getIbdInterceptCountFromTsvEvents = async (): Promise<number> => {

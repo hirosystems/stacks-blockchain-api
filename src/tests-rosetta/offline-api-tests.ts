@@ -12,7 +12,6 @@ import {
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
   MessageSignature,
-  noneCV,
   pubKeyfromPrivKey,
   publicKeyToString,
   SignedTokenTransferOptions,
@@ -24,7 +23,6 @@ import {
   UnsignedContractCallOptions,
   UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
-import { bufferToHexPrefixString } from '../helpers';
 import {
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
@@ -52,9 +50,9 @@ import { OfflineDummyStore } from '../datastore/offline-dummy-store';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta/rosetta-helpers';
 import * as nock from 'nock';
-import * as poxHelpers from '../pox-helpers';
 import { PgStore } from '../datastore/pg-store';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { bufferToHex } from '@hirosystems/api-toolkit';
 
 describe('Rosetta offline API', () => {
   let db: PgStore;
@@ -65,6 +63,12 @@ describe('Rosetta offline API', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
     nock.disableNetConnect();
     nock.enableNetConnect('127.0.0.1:3999');
+  });
+
+  afterAll(async () => {
+    await api.terminate();
+    nock.cleanAll();
+    nock.enableNetConnect()
   });
 
   test('Success: offline - network/list', async () => {
@@ -517,7 +521,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: true,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -564,7 +568,7 @@ describe('Rosetta offline API', () => {
         network: 'testnet',
       },
       signed: false,
-      transaction: bufferToHexPrefixString(Buffer.from(testTransaction.serialize())),
+      transaction: bufferToHex(Buffer.from(testTransaction.serialize())),
     };
 
     const result = await supertest(api.server).post(`/rosetta/v1/construction/parse`).send(request);
@@ -818,7 +822,7 @@ describe('Rosetta offline API', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
@@ -953,7 +957,7 @@ describe('Rosetta offline API', () => {
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
     const contract_address = 'ST000000000000000000002AMW42H';
-    const contract_name = 'pox-3';
+    const contract_name = 'pox-4';
     const stacking_amount = 5000;
     const burn_block_height  = 200;
 
@@ -1209,13 +1213,5 @@ describe('Rosetta offline API', () => {
     const expectedResponse = RosettaErrors[RosettaErrorsTypes.needOnlyOneSignature];
 
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
-  });
-
-  /* rosetta construction end */
-
-  afterAll(async () => {
-    await api.terminate();
-    nock.cleanAll();
-    nock.enableNetConnect()
   });
 });

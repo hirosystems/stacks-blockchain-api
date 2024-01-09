@@ -12,7 +12,7 @@ ARG ARCHIVE_VERSION=latest
 
 #######################################################################
 ## Build the stacks-blockchain-api
-FROM node:16-buster as stacks-blockchain-api-build
+FROM node:18-buster as stacks-blockchain-api-build
 ARG STACKS_API_VERSION
 ENV STACKS_API_REPO=hirosystems/stacks-blockchain-api
 ENV STACKS_API_VERSION=${STACKS_API_VERSION}
@@ -26,7 +26,6 @@ RUN apt-get update -y \
         cmake \
     && git clone -b ${STACKS_API_VERSION} https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
-    && npm config set unsafe-perm true \
     && npm ci \
     && npm run build \
     && npm prune --production

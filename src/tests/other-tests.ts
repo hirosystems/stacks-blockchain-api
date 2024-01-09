@@ -10,13 +10,13 @@ import {
   DbMinerReward,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
+import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from '../api/routes/fee-rate';
 import { FeeRateRequest } from 'docs/generated';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('other tests', () => {
   let db: PgWriteStore;
@@ -24,8 +24,7 @@ describe('other tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -33,6 +32,12 @@ describe('other tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('stx-supply', async () => {
@@ -55,6 +60,7 @@ describe('other tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -68,7 +74,7 @@ describe('other tests', () => {
       burn_block_time: dbBlock1.burn_block_time,
       parent_burn_block_time: 0,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -122,6 +128,7 @@ describe('other tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -177,7 +184,7 @@ describe('other tests', () => {
       tx_fees_streamed_confirmed: 2_000_000_000_000n,
       tx_fees_streamed_produced: 3_000_000_000_000n,
     };
-    await db.updateMinerReward(client, minerReward1);
+    await db.updateMinerRewards(client, [minerReward1]);
     const expectedTotalStx3 =
       stxMintEvent1.amount +
       stxMintEvent2.amount -
@@ -304,11 +311,5 @@ describe('other tests', () => {
     await db.close();
     const result = await supertest(api.server).get(`/extended/v1/block/`);
     expect(result.body.error).toBe('The database service is unavailable');
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

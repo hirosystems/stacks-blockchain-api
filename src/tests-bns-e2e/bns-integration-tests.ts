@@ -17,7 +17,6 @@ import {
 import { logger } from '../logger';
 import { testnetKeys } from '../api/routes/debug';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '../datastore/migrations';
 import { standByForTx as standByForTxShared } from '../test-utils/test-helpers';
 
 function hash160(bfr: Buffer): Buffer {
@@ -27,7 +26,9 @@ function hash160(bfr: Buffer): Buffer {
   return Buffer.from(hash160, 'hex');
 }
 
-const network = new StacksMocknet();
+const network = new StacksMocknet({
+  url: `http://${process.env['STACKS_BLOCKCHAIN_API_HOST']}:${process.env['STACKS_BLOCKCHAIN_API_PORT']}`,
+});
 
 const deployedTo = 'ST000000000000000000002AMW42H';
 const deployedName = 'bns';
@@ -331,9 +332,13 @@ describe('BNS integration tests', () => {
   }
 
   beforeAll(async () => {
-    process.env.PG_DATABASE = 'postgres';
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterAll(async () => {
+    await api.terminate();
+    await db?.close();
   });
 
   test('name-import/ready/update contract call', async () => {
@@ -594,11 +599,5 @@ describe('BNS integration tests', () => {
     expect(query3.status).toBe(200);
     expect(query3.type).toBe('application/json');
     expect(query3.body.expire_block > prevExpiration).toBe(true);
-  });
-
-  afterAll(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

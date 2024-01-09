@@ -37,13 +37,13 @@ import {
   DbStxEvent,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
-import { bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { I32_MAX } from '../helpers';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { createDbTxFromCoreMsg } from '../datastore/helpers';
-import { PgSqlClient } from '../datastore/connection';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -51,8 +51,7 @@ describe('tx tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -62,17 +61,23 @@ describe('tx tests', () => {
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
   });
 
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
+  });
+
   test('fetch tx list details', async () => {
     const mempoolTx: DbMempoolTxRaw = {
       pruned: false,
       tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: DbTxStatus.Pending,
       receipt_time: 1594307695,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -89,7 +94,7 @@ describe('tx tests', () => {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -140,6 +145,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
       burn_block_height: 1,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 1210,
       execution_cost_read_length: 1919542,
@@ -151,9 +157,9 @@ describe('tx tests', () => {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
       anchor_mode: 3,
       nonce: 1000,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: true,
@@ -195,7 +201,7 @@ describe('tx tests', () => {
       tx_id: versionedSmartContract1.tx_id,
       anchor_mode: 3,
       nonce: 1000,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       type_id: DbTxTypeId.VersionedSmartContract,
       smart_contract_clarity_version: versionedSmartContract1.clarity_version ?? undefined,
       smart_contract_contract_id: versionedSmartContract1.contract_id,
@@ -244,6 +250,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx2,
@@ -257,6 +264,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: dbTx3,
@@ -270,6 +278,7 @@ describe('tx tests', () => {
           smartContracts: [versionedSmartContract1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -290,6 +299,13 @@ describe('tx tests', () => {
     expect(jsonRes[dbTx3.tx_id].result.tx_id).toEqual(dbTx3.tx_id);
     expect(jsonRes[dbTx3.tx_id].result.tx_type).toEqual('smart_contract');
     expect(jsonRes[dbTx3.tx_id].result.smart_contract.clarity_version).toEqual(2);
+
+    // test comma-separated tx_id list
+    const txIds = [mempoolTx.tx_id, tx1.tx_id, notFoundTxId, dbTx2.tx_id, dbTx3.tx_id].join(',');
+    const txsListDetail2 = await supertest(api.server).get(
+      `/extended/v1/tx/multiple?tx_id=${txIds}`
+    );
+    expect(txsListDetail2.body).toEqual(txsListDetail.body);
   });
 
   test('getTxList returns object', async () => {
@@ -320,6 +336,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -344,7 +361,7 @@ describe('tx tests', () => {
     const txPayload = tx.payload as TxPayloadVersionedSmartContract;
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -362,7 +379,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -403,6 +420,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -474,6 +492,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -491,7 +510,7 @@ describe('tx tests', () => {
     const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -509,7 +528,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -541,6 +560,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -611,6 +631,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -628,7 +649,7 @@ describe('tx tests', () => {
     const tx = decodeTransaction(versionedSmartContractTx);
     const dbTx = createDbTxFromCoreMsg({
       core_tx: {
-        raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+        raw_tx: bufferToHex(versionedSmartContractTx),
         status: 'success',
         raw_result: '0x0100000000000000000000000000000001', // u1
         txid: tx.tx_id,
@@ -646,7 +667,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(versionedSmartContractTx),
+      raw_tx: bufferToHex(versionedSmartContractTx),
       parsed_tx: tx,
       sender_address: tx.auth.origin_condition.signer.address,
       sponsor_address: undefined,
@@ -678,6 +699,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -748,6 +770,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -794,7 +817,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
@@ -849,6 +872,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -937,6 +961,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({
       block: dbBlock,
@@ -1003,7 +1028,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: address,
       sponsor_address: sponsoredAddress,
@@ -1033,15 +1058,17 @@ describe('tx tests', () => {
       fungible_tokens: [],
       non_fungible_tokens: [],
     };
-    await db.updateSmartContract(client, dbTx, {
-      tx_id: dbTx.tx_id,
-      canonical: true,
-      clarity_version: null,
-      contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
-      block_height: dbBlock.block_height,
-      source_code: '()',
-      abi: JSON.stringify(contractAbi),
-    });
+    await db.updateSmartContracts(client, dbTx, [
+      {
+        tx_id: dbTx.tx_id,
+        canonical: true,
+        clarity_version: null,
+        contract_id: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y.hello-world',
+        block_height: dbBlock.block_height,
+        source_code: '()',
+        abi: JSON.stringify(contractAbi),
+      },
+    ]);
     const txQuery = await getTxFromDataStore(db, { txId: dbTx.tx_id, includeUnanchored: false });
     expect(txQuery.found).toBe(true);
     if (!txQuery.found) {
@@ -1121,6 +1148,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1133,7 +1161,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
@@ -1154,7 +1182,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1194,6 +1222,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1318,6 +1347,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1379,7 +1409,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
       sponsor_address: undefined,
@@ -1434,6 +1464,7 @@ describe('tx tests', () => {
           smartContracts: [smartContract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1562,6 +1593,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1600,7 +1632,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsor_address: undefined,
@@ -1632,6 +1664,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1706,6 +1739,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1744,7 +1778,7 @@ describe('tx tests', () => {
         },
       },
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       parsed_tx: tx,
       sender_address: 'SP2ZRX0K27GW0SP3GJCEMHD95TQGJMKB7GB36ZAR0',
       sponsor_address: undefined,
@@ -1776,6 +1810,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1850,6 +1885,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1862,7 +1898,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1883,7 +1919,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1909,6 +1945,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -1917,7 +1954,7 @@ describe('tx tests', () => {
       tx_id: '0x521234',
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-mempool-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
       status: 1,
       post_conditions: '0x01f5',
@@ -1926,7 +1963,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       pruned: false,
       receipt_time: 1616063078,
     };
@@ -1935,9 +1972,9 @@ describe('tx tests', () => {
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx.tx_id}/raw`);
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
-    expect(searchResult1.body.raw_tx).toEqual(bufferToHexPrefixString(Buffer.from('test-raw-tx')));
+    expect(searchResult1.body.raw_tx).toEqual(bufferToHex(Buffer.from('test-raw-tx')));
     const expectedResponse1 = {
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
     };
     expect(JSON.parse(searchResult1.text)).toEqual(expectedResponse1);
 
@@ -1964,6 +2001,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -1977,7 +2015,7 @@ describe('tx tests', () => {
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('test-raw-tx')),
+      raw_tx: bufferToHex(Buffer.from('test-raw-tx')),
       index_block_hash: '0x1234',
       block_hash: block.block_hash,
       block_height: block.block_height,
@@ -1998,7 +2036,7 @@ describe('tx tests', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -2024,6 +2062,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2614,6 +2653,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -2626,14 +2666,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -2685,6 +2725,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2757,7 +2798,7 @@ describe('tx tests', () => {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -2786,7 +2827,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
     };
@@ -2795,7 +2836,7 @@ describe('tx tests', () => {
       tx_id: '0x1513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       canonical: true,
       microblock_canonical: true,
       microblock_sequence: 2147483647,
@@ -2824,7 +2865,7 @@ describe('tx tests', () => {
       execution_cost_write_length: 339,
       contract_call_contract_id: 'SP000000000000000000002Q6VF78.bns',
       contract_call_function_name: 'name-register',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
     };
@@ -2858,6 +2899,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
       burn_block_height: 1,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 1210,
       execution_cost_read_length: 1919542,
@@ -2939,6 +2981,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -2952,6 +2995,7 @@ describe('tx tests', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     };
@@ -3055,7 +3099,7 @@ describe('tx tests', () => {
       tx_id: '0x4413739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Success,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
@@ -3065,7 +3109,7 @@ describe('tx tests', () => {
       origin_hash_mode: 1,
       contract_call_contract_id: 'SP000000000000000000002Q6VF78.bns',
       contract_call_function_name: 'name-register',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       pruned: false,
@@ -3115,7 +3159,7 @@ describe('tx tests', () => {
       tx_id: '0x5513739d6a3f86d4597f5296cc536f6890e2affff9aece285e37399be697b43f',
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       status: DbTxStatus.Success,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
@@ -3125,7 +3169,7 @@ describe('tx tests', () => {
       origin_hash_mode: 1,
       contract_call_contract_id: 'SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8.pg-mdomains-v1',
       contract_call_function_name: 'bns-name-preorder',
-      contract_call_function_args: bufferToHexPrefixString(
+      contract_call_function_args: bufferToHex(
         createClarityValueArray(bufferCV(Buffer.from('test')), uintCV(1234n))
       ),
       pruned: false,
@@ -3185,6 +3229,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -3197,14 +3242,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -3243,6 +3288,7 @@ describe('tx tests', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3257,6 +3303,110 @@ describe('tx tests', () => {
     expect(result1.body.total).toBe(1);
     expect(result1.body.results[0].hash).toBe('0x1234');
     expect(result1.body.results[0].index_block_hash).toBe('0xdeadbeef');
+  });
+
+  test('fetch transactions from v2 block', async () => {
+    await db.update(
+      new TestBlockBuilder({
+        block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+        index_block_hash: '0xdeadbeef',
+        parent_index_block_hash: '0x00',
+        parent_block_hash: '0xff0011',
+        parent_microblock_hash: '',
+        parent_microblock_sequence: 0,
+        block_height: 1,
+        burn_block_time: 94869286,
+        burn_block_hash: '0x1234',
+        burn_block_height: 123,
+        miner_txid: '0x4321',
+        canonical: true,
+      })
+        .addTx({
+          tx_id: '0x1234',
+          tx_index: 0,
+          nonce: 0,
+          type_id: DbTxTypeId.Coinbase,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          microblock_canonical: true,
+          microblock_sequence: I32_MAX,
+          microblock_hash: '',
+          fee_rate: 1234n,
+          sender_address: 'sender-addr',
+        })
+        .addTx({
+          tx_id: '0x1235',
+          tx_index: 1,
+          nonce: 0,
+          type_id: DbTxTypeId.Coinbase,
+          status: 1,
+          raw_result: '0x0100000000000000000000000000000001', // u1
+          canonical: true,
+          microblock_canonical: true,
+          microblock_sequence: I32_MAX,
+          microblock_hash: '',
+          fee_rate: 1234n,
+          sender_address: 'sender-addr',
+        })
+        .build()
+    );
+    let result = await supertest(api.server).get(
+      `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8/transactions?limit=20&offset=0`
+    );
+    expect(result.status).toBe(200);
+    expect(result.type).toBe('application/json');
+    let json = JSON.parse(result.text);
+    expect(json.total).toBe(2);
+    expect(json.results[0]).toStrictEqual({
+      anchor_mode: 'any',
+      block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      block_height: 1,
+      burn_block_time: 94869286,
+      burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      canonical: true,
+      coinbase_payload: {
+        alt_recipient: null,
+        data: '0x6869',
+      },
+      event_count: 0,
+      events: [],
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      fee_rate: '1234',
+      is_unanchored: false,
+      microblock_canonical: true,
+      microblock_hash: '0x',
+      microblock_sequence: 2147483647,
+      nonce: 0,
+      parent_block_hash: '0x123456',
+      parent_burn_block_time: 94869286,
+      parent_burn_block_time_iso: '1973-01-03T00:34:46.000Z',
+      post_condition_mode: 'allow',
+      post_conditions: [],
+      sender_address: 'sender-addr',
+      sponsored: false,
+      tx_id: '0x1234',
+      tx_index: 0,
+      tx_result: {
+        hex: '0x0100000000000000000000000000000001',
+        repr: 'u1',
+      },
+      tx_status: 'success',
+      tx_type: 'coinbase',
+    });
+
+    // Try a non-existent block
+    result = await supertest(api.server).get(
+      `/extended/v2/blocks/0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee999999/transactions?limit=20&offset=0`
+    );
+    expect(result.status).toBe(404);
+    expect(result.type).toBe('application/json');
+    json = JSON.parse(result.text);
+    expect(json.errors).toBe('Block not found');
   });
 
   test('fetch transactions from block', async () => {
@@ -3276,6 +3426,7 @@ describe('tx tests', () => {
       burn_block_hash: '0x1234',
       burn_block_height: 123,
       miner_txid: '0x4321',
+      tx_count: 1,
       canonical: true,
       execution_cost_read_count: 0,
       execution_cost_read_length: 0,
@@ -3289,14 +3440,14 @@ describe('tx tests', () => {
       tx_index: 4,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('')),
+      raw_tx: bufferToHex(Buffer.from('')),
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('coinbase hi')),
+      coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
       status: 1,
       raw_result: '0x0100000000000000000000000000000001', // u1
       canonical: true,
@@ -3481,11 +3632,5 @@ describe('tx tests', () => {
         ]),
       })
     );
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

@@ -5,11 +5,11 @@ Title: Use Clarity Values
 
 # Using Clarity Values
 
-Some endpoints, like the [read-only function contract call](https://docs.hiro.so/api#operation/call_read_only_function), require input to a serialized [Clarity value](https://docs.stacks.co/docs/write-smart-contracts/values). Other endpoints return serialized values that need to be deserialized.
+Some endpoints, like the [read-only function contract call](https://docs.hiro.so/api/call-read-only-function), require input to be a serialized [Clarity value](https://docs.hiro.so/stacks-blockchain-api/feature-guides/transactions#clarity-value-types). Other endpoints return serialized values that need to be deserialized.
 
 The example shown below illustrates Clarity value usage in combination with the API.
 
-The `@stacks/transactions` library supports typed contract calls and makes [response value utilization much simpler](https://docs.stacks.co/docs/write-smart-contracts/values#utilizing-clarity-values-from-transaction-responses).
+The `@stacks/transactions` library supports typed contract calls and makes response value utilization much simpler.
 
 ```ts
 import {
