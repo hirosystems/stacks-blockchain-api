@@ -263,6 +263,22 @@ paths:
           required: false
           schema:
             type: string
+        - name: order_by
+          in: query
+          description: Option to sort results by transaction age, size, or fee rate.
+          required: false
+          schema:
+            type: string
+            enum: [age, size, fee]
+            example: fee
+        - name: order
+          in: query
+          description: Option to sort results in ascending or descending order.
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            example: asc
         - name: limit
           in: query
           description: max number of mempool transactions to fetch

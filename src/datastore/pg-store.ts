@@ -101,6 +101,7 @@ import {
 } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
+import { MempoolOrderByParam, OrderParam } from '../api/query-helpers';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -1289,6 +1290,8 @@ export class PgStore extends BasePgStore {
     limit,
     offset,
     includeUnanchored,
+    orderBy,
+    order,
     senderAddress,
     recipientAddress,
     address,
@@ -1296,6 +1299,8 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
     includeUnanchored: boolean;
+    orderBy?: MempoolOrderByParam;
+    order?: OrderParam;
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
@@ -1310,6 +1315,9 @@ export class PgStore extends BasePgStore {
         senderAddress || recipientAddress || address
           ? sql`(COUNT(*) OVER())::int AS count`
           : sql`(SELECT mempool_tx_count FROM chain_tip) AS count`;
+      const orderBySql =
+        orderBy == 'fee' ? sql`fee_rate` : orderBy == 'size' ? sql`tx_size` : sql`receipt_time`;
+      const orderSql = order == 'asc' ? sql`ASC` : sql`DESC`;
       const resultQuery = await sql<(MempoolTxQueryResult & { count: number })[]>`
         SELECT ${unsafeCols(sql, [...MEMPOOL_TX_COLUMNS, abiColumn('mempool_txs')])}, ${count}
         FROM mempool_txs
@@ -1333,7 +1341,7 @@ export class PgStore extends BasePgStore {
               ? sql`OR tx_id IN ${sql(unanchoredTxs)}`
               : sql``
           })
-        ORDER BY receipt_time DESC
+        ORDER BY ${orderBySql} ${orderSql}
         LIMIT ${limit}
         OFFSET ${offset}
       `;

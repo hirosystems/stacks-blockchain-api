@@ -1,13 +1,13 @@
 import * as express from 'express';
-import { asyncHandler } from '../async-handler';
+import { asyncHandler } from '../../async-handler';
 import {
   ETagType,
   getETagCacheHandler,
   setETagCacheHeaders,
-} from '../controllers/cache-controller';
-import { PgStore } from '../../datastore/pg-store';
-import { DbMempoolFeePriority, DbTxTypeId } from '../../datastore/common';
-import { MempoolFeePriorities } from '../../../docs/generated';
+} from '../../controllers/cache-controller';
+import { PgStore } from '../../../datastore/pg-store';
+import { DbMempoolFeePriority, DbTxTypeId } from '../../../datastore/common';
+import { MempoolFeePriorities } from '../../../../docs/generated';
 
 function parseMempoolFeePriority(fees: DbMempoolFeePriority[]): MempoolFeePriorities {
   const out: MempoolFeePriorities = {

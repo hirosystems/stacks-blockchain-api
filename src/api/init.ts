@@ -52,7 +52,7 @@ import {
 import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
-import { createMempoolRouter } from './v2/mempool';
+import { createMempoolRouter } from './routes/v2/mempool';
 
 export interface ApiServer {
   expressApp: express.Express;

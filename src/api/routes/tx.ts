@@ -16,6 +16,8 @@ import {
   validateRequestHexInput,
   parseAddressOrTxId,
   parseEventTypeFilter,
+  MempoolOrderByParam,
+  OrderParam,
 } from '../query-helpers';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { validate } from '../validate';
@@ -162,10 +164,33 @@ export function createTxRouter(db: PgStore): express.Router {
           InvalidRequestErrorType.invalid_param
         );
       }
+
+      const orderBy = req.query.order_by;
+      if (
+        orderBy !== undefined &&
+        orderBy != MempoolOrderByParam.fee &&
+        orderBy != MempoolOrderByParam.age &&
+        orderBy != MempoolOrderByParam.size
+      ) {
+        throw new InvalidRequestError(
+          `The "order_by" param can only be 'fee', 'age', or 'size'`,
+          InvalidRequestErrorType.invalid_param
+        );
+      }
+      const order = req.query.order;
+      if (order !== undefined && order != OrderParam.asc && order != OrderParam.desc) {
+        throw new InvalidRequestError(
+          `The "order" param can only be 'asc' or 'desc'`,
+          InvalidRequestErrorType.invalid_param
+        );
+      }
+
       const { results: txResults, total } = await db.getMempoolTxList({
         offset,
         limit,
         includeUnanchored,
+        orderBy,
+        order,
         senderAddress,
         recipientAddress,
         address,

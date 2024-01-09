@@ -1141,6 +1141,89 @@ describe('mempool tests', () => {
     expect(JSON.parse(searchResult7.text)).toEqual(expectedResp7);
   });
 
+  test('fetch mempool-tx list sorted', async () => {
+    const sendAddr = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const recvAddr = 'SP10EZK56MB87JYF5A704K7N18YAT6G6M09HY22GC';
+
+    const block = new TestBlockBuilder().addTx().build();
+    await db.update(block);
+    const txs: DbMempoolTxRaw[] = [];
+    for (let index = 0; index < 5; index++) {
+      const paddedIndex = ('00' + index).slice(-2);
+      const mempoolTx: DbMempoolTxRaw = {
+        pruned: false,
+        tx_id: `0x89120000000000000000000000000000000000000000000000000000000000${paddedIndex}`,
+        anchor_mode: 3,
+        nonce: 0,
+        raw_tx: bufferToHex(Buffer.from('x'.repeat(index + 1))),
+        type_id: DbTxTypeId.TokenTransfer,
+        receipt_time: (new Date(`2020-07-09T15:14:${paddedIndex}Z`).getTime() / 1000) | 0,
+        status: 1,
+        post_conditions: '0x01f5',
+        fee_rate: 100n * BigInt(index + 1),
+        sponsored: false,
+        sponsor_address: undefined,
+        origin_hash_mode: 1,
+        sender_address: sendAddr,
+        token_transfer_recipient_address: recvAddr,
+        token_transfer_amount: 1234n,
+        token_transfer_memo: '',
+      };
+      txs.push(mempoolTx);
+    }
+    await db.updateMempoolTxs({ mempoolTxs: txs });
+
+    let result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=fee&order=desc`);
+    let json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('500');
+    expect(json.results[1].fee_rate).toBe('400');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('200');
+    expect(json.results[4].fee_rate).toBe('100');
+
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=fee&order=asc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('100');
+    expect(json.results[1].fee_rate).toBe('200');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('400');
+    expect(json.results[4].fee_rate).toBe('500');
+
+    // Larger transactions were set with higher fees.
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=size&order=desc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('500');
+    expect(json.results[1].fee_rate).toBe('400');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('200');
+    expect(json.results[4].fee_rate).toBe('100');
+
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=size&order=asc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('100');
+    expect(json.results[1].fee_rate).toBe('200');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('400');
+    expect(json.results[4].fee_rate).toBe('500');
+
+    // Newer transactions were set with higher fees.
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=desc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('500');
+    expect(json.results[1].fee_rate).toBe('400');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('200');
+    expect(json.results[4].fee_rate).toBe('100');
+
+    result = await supertest(api.server).get(`/extended/v1/tx/mempool?order_by=age&order=asc`);
+    json = JSON.parse(result.text);
+    expect(json.results[0].fee_rate).toBe('100');
+    expect(json.results[1].fee_rate).toBe('200');
+    expect(json.results[2].fee_rate).toBe('300');
+    expect(json.results[3].fee_rate).toBe('400');
+    expect(json.results[4].fee_rate).toBe('500');
+  });
+
   test('mempool - contract_call tx abi details are retrieved', async () => {
     const block1 = new TestBlockBuilder()
       .addTx()
