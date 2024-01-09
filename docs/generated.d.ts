@@ -50,6 +50,7 @@ export type SchemaMergeRootStub =
   | GetStxSupplyLegacyFormatResponse
   | GetStxTotalSupplyPlainResponse
   | GetStxSupplyResponse
+  | MempoolFeePriorities
   | MicroblockListResponse
   | UnanchoredTransactionListResponse
   | RosettaAccountBalanceRequest
@@ -1867,6 +1868,35 @@ export interface GetStxSupplyResponse {
    * The block height at which this information was queried
    */
   block_height: number;
+}
+/**
+ * GET request that returns fee priorities from mempool transactions
+ */
+export interface MempoolFeePriorities {
+  all: {
+    no_priority: number;
+    low_priority: number;
+    medium_priority: number;
+    high_priority: number;
+  };
+  token_transfer?: {
+    no_priority: number;
+    low_priority: number;
+    medium_priority: number;
+    high_priority: number;
+  };
+  smart_contract?: {
+    no_priority: number;
+    low_priority: number;
+    medium_priority: number;
+    high_priority: number;
+  };
+  contract_call?: {
+    no_priority: number;
+    low_priority: number;
+    medium_priority: number;
+    high_priority: number;
+  };
 }
 /**
  * GET request that returns microblocks

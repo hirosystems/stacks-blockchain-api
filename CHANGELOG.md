@@ -1,3 +1,29 @@
+## [7.5.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0...v7.5.0) (2024-01-05)
+
+
+### Features
+
+* add listener callback to socket-io client subscription functions ([#1799](https://github.com/hirosystems/stacks-blockchain-api/issues/1799)) ([5634522](https://github.com/hirosystems/stacks-blockchain-api/commit/5634522132448fa480fcb18978a9cf2bf6f50a37))
+
+
+### Bug Fixes
+
+* socket-io client should not disconnect with no event reply ([#1800](https://github.com/hirosystems/stacks-blockchain-api/issues/1800)) ([d596fd5](https://github.com/hirosystems/stacks-blockchain-api/commit/d596fd5cc7efe588983d8a902771cc38c21fee82))
+
+## [7.5.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.5.0-beta.1...v7.5.0-beta.2) (2024-01-05)
+
+
+### Bug Fixes
+
+* socket-io client should not disconnect with no event reply ([#1800](https://github.com/hirosystems/stacks-blockchain-api/issues/1800)) ([d596fd5](https://github.com/hirosystems/stacks-blockchain-api/commit/d596fd5cc7efe588983d8a902771cc38c21fee82))
+
+## [7.5.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0...v7.5.0-beta.1) (2024-01-05)
+
+
+### Features
+
+* add listener callback to socket-io client subscription functions ([#1799](https://github.com/hirosystems/stacks-blockchain-api/issues/1799)) ([5634522](https://github.com/hirosystems/stacks-blockchain-api/commit/5634522132448fa480fcb18978a9cf2bf6f50a37))
+
 ## [7.4.0-nakamoto.12](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-nakamoto.11...v7.4.0-nakamoto.12) (2024-01-08)
 
 
@@ -126,6 +152,76 @@
 * revert configurable DB index type ([86154b2](https://github.com/hirosystems/stacks-blockchain-api/commit/86154b29e4e4af530da162133c99ebd609fab0e1))
 * upgrade semver package to fix ReDoS vulnerability ([6b1605b](https://github.com/hirosystems/stacks-blockchain-api/commit/6b1605b74d7c1bad39fcb491caf4ed51426b7618))
 
+## [7.4.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.6...v7.4.0) (2024-01-04)
+
+
+### Features
+
+* add `/extended/v2/mempool/fees` endpoint ([#1795](https://github.com/hirosystems/stacks-blockchain-api/issues/1795)) ([ea9c378](https://github.com/hirosystems/stacks-blockchain-api/commit/ea9c3783e62715747db06eea5dd837297271c21e))
+
+
+### Bug Fixes
+
+* convert `chain_tip` materialized view into a table ([#1789](https://github.com/hirosystems/stacks-blockchain-api/issues/1789)) ([0211932](https://github.com/hirosystems/stacks-blockchain-api/commit/02119326993891cc586274fab0e0fc3f5fd15ef1)), closes [#1751](https://github.com/hirosystems/stacks-blockchain-api/issues/1751)
+* optimize mempool transaction reads and writes ([#1781](https://github.com/hirosystems/stacks-blockchain-api/issues/1781)) ([#1792](https://github.com/hirosystems/stacks-blockchain-api/issues/1792)) ([2700642](https://github.com/hirosystems/stacks-blockchain-api/commit/2700642ed2225ce8598ee5fff833603007d5289f))
+* release pino logger and mempool nonces ([16d3593](https://github.com/hirosystems/stacks-blockchain-api/commit/16d359370b413de36444d15a3a48cf479823367f))
+* update client code, fix mempool fee return type ([#1797](https://github.com/hirosystems/stacks-blockchain-api/issues/1797)) ([9853e29](https://github.com/hirosystems/stacks-blockchain-api/commit/9853e29d89b2846454197438c7d1b4b636384d6d))
+
+## [7.4.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.4.0-beta.1...v7.4.0-beta.2) (2024-01-04)
+
+
+### Bug Fixes
+
+* update client code, fix mempool fee return type ([#1797](https://github.com/hirosystems/stacks-blockchain-api/issues/1797)) ([9853e29](https://github.com/hirosystems/stacks-blockchain-api/commit/9853e29d89b2846454197438c7d1b4b636384d6d))
+
+## [7.4.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.7-beta.1...v7.4.0-beta.1) (2024-01-03)
+
+
+### Features
+
+* add `/extended/v2/mempool/fees` endpoint ([#1795](https://github.com/hirosystems/stacks-blockchain-api/issues/1795)) ([ea9c378](https://github.com/hirosystems/stacks-blockchain-api/commit/ea9c3783e62715747db06eea5dd837297271c21e))
+
+
+### Bug Fixes
+
+* optimize mempool transaction reads and writes ([#1781](https://github.com/hirosystems/stacks-blockchain-api/issues/1781)) ([#1792](https://github.com/hirosystems/stacks-blockchain-api/issues/1792)) ([2700642](https://github.com/hirosystems/stacks-blockchain-api/commit/2700642ed2225ce8598ee5fff833603007d5289f))
+
+## [7.3.7-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.6...v7.3.7-beta.1) (2023-12-29)
+
+
+### Bug Fixes
+
+* convert `chain_tip` materialized view into a table ([#1789](https://github.com/hirosystems/stacks-blockchain-api/issues/1789)) ([0211932](https://github.com/hirosystems/stacks-blockchain-api/commit/02119326993891cc586274fab0e0fc3f5fd15ef1)), closes [#1751](https://github.com/hirosystems/stacks-blockchain-api/issues/1751)
+* release pino logger and mempool nonces ([16d3593](https://github.com/hirosystems/stacks-blockchain-api/commit/16d359370b413de36444d15a3a48cf479823367f))
+
+## [7.3.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.5...v7.3.6) (2023-12-11)
+
+
+### Bug Fixes
+
+* use the mempool etag for the /nonces endpoint ([#1765](https://github.com/hirosystems/stacks-blockchain-api/issues/1765)) ([773c01b](https://github.com/hirosystems/stacks-blockchain-api/commit/773c01b21a7d4e830d7ed4e58716539c563fecdc))
+
+## [7.3.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.4...v7.3.5) (2023-12-08)
+
+
+### Bug Fixes
+
+* disable stx faucet POST body ([#1759](https://github.com/hirosystems/stacks-blockchain-api/issues/1759)) ([4cb6b56](https://github.com/hirosystems/stacks-blockchain-api/commit/4cb6b5641fc7ea295fac029eee0d571226d21248))
+
+## [7.3.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.3...v7.3.4) (2023-11-14)
+
+
+### Bug Fixes
+
+* release without token metadata processor ([b35be4f](https://github.com/hirosystems/stacks-blockchain-api/commit/b35be4f2dc6e98923063700839427afa5568389f))
+
+## [7.3.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.2...v7.3.3) (2023-11-13)
+
+
+### Bug Fixes
+
+* move nft custody view into a table ([#1741](https://github.com/hirosystems/stacks-blockchain-api/issues/1741)) ([fb0d0ea](https://github.com/hirosystems/stacks-blockchain-api/commit/fb0d0eaa93a0614c54cfa28464fe5df25ac9c7dd))
+
 ## [7.3.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.3.1...v7.3.2) (2023-09-14)
 
 
@@ -186,6 +282,50 @@
 ### Features
 
 * Stacks 2.4 / `pox-3` ([#1650](https://github.com/hirosystems/stacks-blockchain-api/issues/1650)) ([30922c8](https://github.com/hirosystems/stacks-blockchain-api/commit/30922c8a7375e454871bf6b114c0be7ec8a0dfab))
+
+## [7.2.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.3...v7.2.0-beta.4) (2023-06-10)
+
+
+### Features
+
+* support custom chain_id (e.g. for subnets) ([#1669](https://github.com/hirosystems/stacks-blockchain-api/issues/1669)) ([1c6e35a](https://github.com/hirosystems/stacks-blockchain-api/commit/1c6e35a2dc0b5c161d35f291220a0bef6c6f5d28))
+
+## [7.2.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.2...v7.2.0-beta.3) (2023-05-12)
+
+
+### Bug Fixes
+
+* enable requests auto logging ([#1656](https://github.com/hirosystems/stacks-blockchain-api/issues/1656)) ([2015b9c](https://github.com/hirosystems/stacks-blockchain-api/commit/2015b9c8805c189ebd80dfe16b775f805810a63f))
+
+## [7.2.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.2.0-beta.1...v7.2.0-beta.2) (2023-05-11)
+
+
+### Bug Fixes
+
+* release pino logger and mempool nonces ([16d3593](https://github.com/hirosystems/stacks-blockchain-api/commit/16d359370b413de36444d15a3a48cf479823367f))
+
+## [7.2.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.7...v7.2.0-beta.1) (2023-04-20)
+
+
+### Features
+
+* stacking pool members endpoint ([#1592](https://github.com/hirosystems/stacks-blockchain-api/issues/1592)) ([3cd6023](https://github.com/hirosystems/stacks-blockchain-api/commit/3cd6023e895c964ed3d744652b169d51254ea6ed)), closes [#465](https://github.com/hirosystems/stacks-blockchain-api/issues/465)
+* support for subnets ([#1549](https://github.com/hirosystems/stacks-blockchain-api/issues/1549)) ([5d7056c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d7056c1ba0aa0b202f341a83adf0f6bd2d13c71))
+* support for subnets ([#1625](https://github.com/hirosystems/stacks-blockchain-api/issues/1625)) ([bfac932](https://github.com/hirosystems/stacks-blockchain-api/commit/bfac932f098f0311c9cf180b87724f871d1df82b)), closes [#1549](https://github.com/hirosystems/stacks-blockchain-api/issues/1549) [#1528](https://github.com/hirosystems/stacks-blockchain-api/issues/1528) [#1583](https://github.com/hirosystems/stacks-blockchain-api/issues/1583) [#1583](https://github.com/hirosystems/stacks-blockchain-api/issues/1583)
+
+
+### Bug Fixes
+
+* disabled BTC faucet endpoint ([#1530](https://github.com/hirosystems/stacks-blockchain-api/issues/1530)) ([ce55212](https://github.com/hirosystems/stacks-blockchain-api/commit/ce55212f95fc52a3e890e78681e89682079c8f0f))
+* domain migration ([#1596](https://github.com/hirosystems/stacks-blockchain-api/issues/1596)) ([2769e68](https://github.com/hirosystems/stacks-blockchain-api/commit/2769e684688f6d6c049baabc1d7777a330bc3f40))
+* fixed the order of microblocks_streamed returned in reverse order in block endpoint ([#1528](https://github.com/hirosystems/stacks-blockchain-api/issues/1528)) ([764f64a](https://github.com/hirosystems/stacks-blockchain-api/commit/764f64a538c88a17c381eccb867ed3032e73bea1))
+* log cleanup ([#1613](https://github.com/hirosystems/stacks-blockchain-api/issues/1613)) ([a067e39](https://github.com/hirosystems/stacks-blockchain-api/commit/a067e3906b89f9e1b40adb98072927d977f870d2))
+* log level issues ([#1605](https://github.com/hirosystems/stacks-blockchain-api/issues/1605)) ([c3a2377](https://github.com/hirosystems/stacks-blockchain-api/commit/c3a237709a241eef4867258c8aac79dfdf4569e3)), closes [#1603](https://github.com/hirosystems/stacks-blockchain-api/issues/1603) [#1603](https://github.com/hirosystems/stacks-blockchain-api/issues/1603) [#1604](https://github.com/hirosystems/stacks-blockchain-api/issues/1604) [#1604](https://github.com/hirosystems/stacks-blockchain-api/issues/1604) [#1452](https://github.com/hirosystems/stacks-blockchain-api/issues/1452)
+* npm publish step ([#1617](https://github.com/hirosystems/stacks-blockchain-api/issues/1617)) ([c9cdbb6](https://github.com/hirosystems/stacks-blockchain-api/commit/c9cdbb693eb95cc0048041339ef3f0a7c2f5219f))
+* optimize queries to retrieve BNS names ([#1581](https://github.com/hirosystems/stacks-blockchain-api/issues/1581)) ([1a6fde1](https://github.com/hirosystems/stacks-blockchain-api/commit/1a6fde145bd979614c614af95cd38d08a022ea3d))
+* use chaintip-cache-control in `/stx_supply` endpoints [#1590](https://github.com/hirosystems/stacks-blockchain-api/issues/1590) ([#1594](https://github.com/hirosystems/stacks-blockchain-api/issues/1594)) ([a47f153](https://github.com/hirosystems/stacks-blockchain-api/commit/a47f1530a24da18bdcd9e6da64076a722e76af20))
+* warning logger level for RPC proxy errors ([#1612](https://github.com/hirosystems/stacks-blockchain-api/issues/1612)) ([2454932](https://github.com/hirosystems/stacks-blockchain-api/commit/24549328d2e5ae974b7beb18baaccaa5e9d6685e))
+
 
 ## [7.1.11-stacks-2.4.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.1.10...v7.1.11-stacks-2.4.1) (2023-05-09)
 

@@ -74,7 +74,7 @@ export class StacksApiWebSocketClient {
   constructor(webSocket: IWebSocket) {
     this.webSocket = webSocket;
     (webSocket as WebSocket).addEventListener('message', event => {
-      const parsed = JsonRpcLite.parse(event.data);
+      const parsed = JsonRpcLite.parse(event.data as string);
       const rpcObjects = Array.isArray(parsed) ? parsed : [parsed];
       rpcObjects.forEach(obj => {
         if (obj.type === JsonRpcLite.RpcStatusType.notification) {
@@ -100,11 +100,10 @@ export class StacksApiWebSocketClient {
     const method = data.method as RpcSubscriptionType;
     switch (method) {
       case 'tx_update':
-        this.eventEmitter.emit('txUpdate', data.params as (Transaction | MempoolTransaction));
+        this.eventEmitter.emit('txUpdate', data.params as Transaction | MempoolTransaction);
         break;
       case 'address_tx_update':
-        this.eventEmitter.emit('addressTxUpdate',
-          data.params as RpcAddressTxNotificationParams);
+        this.eventEmitter.emit('addressTxUpdate', data.params as RpcAddressTxNotificationParams);
         break;
       case 'address_balance_update':
         this.eventEmitter.emit(
@@ -134,7 +133,7 @@ export class StacksApiWebSocketClient {
   }
 
   private rpcCall<TResult = void>(method: string, params: any): Promise<TResult> {
-    const rpcReq = JsonRpcLite.request(++this.idCursor, method, params);
+    const rpcReq = JsonRpcLite.request(++this.idCursor, method, params as JsonRpcLite.RpcParams);
     return new Promise<TResult>((resolve, reject) => {
       this.pendingRequests.set(rpcReq.id, { resolve, reject });
       this.webSocket.send(rpcReq.serialize());
@@ -276,9 +275,15 @@ export class StacksApiWebSocketClient {
       asset_identifier: assetIdentifier,
       value,
     };
-    const subscribed = await this.rpcCall<{ asset_identifier: string, value: string }>('subscribe', params);
+    const subscribed = await this.rpcCall<{ asset_identifier: string; value: string }>(
+      'subscribe',
+      params
+    );
     const listener = (event: NftEvent) => {
-      if (event.asset_identifier === subscribed.asset_identifier && event.value.hex === subscribed.value) {
+      if (
+        event.asset_identifier === subscribed.asset_identifier &&
+        event.value.hex === subscribed.value
+      ) {
         update(event);
       }
     };
