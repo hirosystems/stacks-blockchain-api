@@ -386,7 +386,11 @@ paths:
           type: array
           style: form
           explode: true
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: [
+            "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0",
+            "0xfbe6412b46e9db87df991a0d043ff47eb58019f770208cf48e2380337cc31785",
+            "0x178b77678a758d9f29a147d6399315c83d0f1baf114431fbe4d3587aa5fbba6f"
+          ]
           items:
             type: string
       - name: event_offset
