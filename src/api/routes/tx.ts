@@ -52,7 +52,11 @@ export function createTxRouter(db: PgStore): express.Router {
       if (Array.isArray(typeQuery)) {
         txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
       } else if (typeof typeQuery === 'string') {
-        txTypeFilter = parseTxTypeStrings([typeQuery]);
+        if (typeQuery.includes(',')) {
+          txTypeFilter = parseTxTypeStrings(typeQuery.split(','));
+        } else {
+          txTypeFilter = parseTxTypeStrings([typeQuery]);
+        }
       } else if (typeQuery) {
         throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
       } else {
@@ -82,8 +86,13 @@ export function createTxRouter(db: PgStore): express.Router {
     '/multiple',
     asyncHandler(async (req, res, next) => {
       if (typeof req.query.tx_id === 'string') {
-        // in case req.query.tx_id is a single tx_id string and not an array
-        req.query.tx_id = [req.query.tx_id];
+        // check if tx_id is a comma-seperated list of tx_ids
+        if (req.query.tx_id.includes(',')) {
+          req.query.tx_id = req.query.tx_id.split(',');
+        } else {
+          // in case req.query.tx_id is a single tx_id string and not an array
+          req.query.tx_id = [req.query.tx_id];
+        }
       }
       const txList: string[] = req.query.tx_id as string[];
 

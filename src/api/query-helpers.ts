@@ -319,7 +319,11 @@ export function parseEventTypeFilter(
     }
   } else if (typeof typeQuery === 'string') {
     try {
-      eventTypeFilter = parseEventTypeStrings([typeQuery]);
+      if (typeQuery.includes(',')) {
+        eventTypeFilter = parseEventTypeStrings(typeQuery.split(','));
+      } else {
+        eventTypeFilter = parseEventTypeStrings([typeQuery]);
+      }
     } catch (error) {
       handleBadRequest(res, next, `invalid 'event type'`);
     }
