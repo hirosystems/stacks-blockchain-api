@@ -207,6 +207,8 @@ paths:
           in: query
           description: Filter by transaction type
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: coinbase
@@ -377,9 +379,15 @@ paths:
         in: query
         description: Array of transaction ids
         required: true
+        style: form
+        explode: true
         schema:
           type: array
-          example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+          example: [
+            "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0",
+            "0xfbe6412b46e9db87df991a0d043ff47eb58019f770208cf48e2380337cc31785",
+            "0x178b77678a758d9f29a147d6399315c83d0f1baf114431fbe4d3587aa5fbba6f"
+          ]
           items:
             type: string
       - name: event_offset
@@ -3113,6 +3121,8 @@ paths:
           in: query
           description: identifiers of the token asset classes to filter for
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: "SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy::candy"
@@ -3446,6 +3456,8 @@ paths:
           in: query
           description: Filter the events on event type
           required: false
+          style: form
+          explode: true
           schema:
             type: array
             example: stx_lock
