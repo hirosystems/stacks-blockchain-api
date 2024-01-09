@@ -1,3 +1,16 @@
+## [7.6.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.6.0-nakamoto.1...v7.6.0-nakamoto.2) (2024-01-09)
+
+
+### Features
+
+* support tenure_change in tx type filter queries ([#1808](https://github.com/hirosystems/stacks-blockchain-api/issues/1808)) ([0831393](https://github.com/hirosystems/stacks-blockchain-api/commit/083139316350650c6cc97af377a6ae1cf6006be8))
+
+
+### Bug Fixes
+
+* **docs:** URL query arrays should be formatted with `form` rather than comma-separated ([#1807](https://github.com/hirosystems/stacks-blockchain-api/issues/1807)) ([e184fb5](https://github.com/hirosystems/stacks-blockchain-api/commit/e184fb59d0c21d56bced1f5d53c29f1dbedbed51))
+* support comma-separated strings in array query params ([#1809](https://github.com/hirosystems/stacks-blockchain-api/issues/1809)) ([c9a4df8](https://github.com/hirosystems/stacks-blockchain-api/commit/c9a4df8f43f56a0d9ebbc4a065c54cb32bae350a))
+
 ## [7.6.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.5.0...v7.6.0-nakamoto.1) (2024-01-09)
 
 
