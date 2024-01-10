@@ -1,4 +1,4 @@
-import { getOrAdd, I32_MAX, getIbdBlockHeight } from '../helpers';
+import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -97,8 +97,13 @@ import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
-const MEMPOOL_STATS_DEBOUNCE_INTERVAL = Number(
-  BigInt(process.env['MEMPOOL_STATS_DEBOUNCE_INTERVAL'] ?? 1000)
+const MEMPOOL_STATS_DEBOUNCE_INTERVAL = getUintEnvOrDefault(
+  'MEMPOOL_STATS_DEBOUNCE_INTERVAL',
+  1000
+);
+const MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL = getUintEnvOrDefault(
+  'MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL',
+  10000
 );
 
 class MicroblockGapError extends Error {
@@ -1718,7 +1723,7 @@ export class PgWriteStore extends PgStore {
   }
 
   private _debounceMempoolStat: {
-    lastTrigger?: number | null;
+    triggeredAt?: number | null;
     debounce?: NodeJS.Timeout | null;
     running: boolean;
   } = { running: false };
@@ -1726,15 +1731,21 @@ export class PgWriteStore extends PgStore {
    * Debounce the mempool stat process in case new transactions pour in.
    */
   private debounceMempoolStat() {
-    this._debounceMempoolStat.lastTrigger = Date.now();
+    if (this._debounceMempoolStat.triggeredAt == null) {
+      this._debounceMempoolStat.triggeredAt = Date.now();
+    }
     if (this._debounceMempoolStat.running) return;
+    const waited = Date.now() - this._debounceMempoolStat.triggeredAt;
+    const delay = Math.max(
+      0,
+      Math.min(MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL - waited, MEMPOOL_STATS_DEBOUNCE_INTERVAL)
+    );
     if (this._debounceMempoolStat.debounce != null) {
       clearTimeout(this._debounceMempoolStat.debounce);
-      this._debounceMempoolStat.debounce = null;
     }
     this._debounceMempoolStat.debounce = setTimeout(async () => {
       this._debounceMempoolStat.running = true;
-      this._debounceMempoolStat.lastTrigger = null;
+      this._debounceMempoolStat.triggeredAt = null;
       try {
         const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
@@ -1742,11 +1753,13 @@ export class PgWriteStore extends PgStore {
         logger.error(e, `failed to reconcile mempool`);
       } finally {
         this._debounceMempoolStat.running = false;
-        if (this._debounceMempoolStat.lastTrigger != null) {
+        if (this._debounceMempoolStat.triggeredAt != null) {
           this.debounceMempoolStat();
+        } else {
+          this._debounceMempoolStat.debounce = null;
         }
       }
-    }, MEMPOOL_STATS_DEBOUNCE_INTERVAL);
+    }, delay);
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
