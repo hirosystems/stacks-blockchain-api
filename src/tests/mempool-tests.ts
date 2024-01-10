@@ -1693,7 +1693,6 @@ describe('mempool tests', () => {
       minerRewards: [],
       txs: [],
     });
-    await db.waitForNextMempoolReconcile();
 
     // Verify tx pruned from mempool
     const mempoolResult3 = await supertest(api.server).get(

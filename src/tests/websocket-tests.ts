@@ -111,7 +111,6 @@ describe('websocket notifications', () => {
         .addTx({ tx_id: txId })
         .build();
       await db.updateMicroblocks(microblock);
-      await db.waitForNextMempoolReconcile();
 
       // check for tx update notification
       const txStatus1 = await txUpdates[0];
