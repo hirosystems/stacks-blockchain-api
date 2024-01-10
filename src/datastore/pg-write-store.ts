@@ -96,7 +96,10 @@ import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
-const INSERT_CONCURRENCY = getUintEnvOrDefault('INSERT_CONCURRENCY', 4);
+const STACKS_BLOCK_DATA_INSERT_CONCURRENCY = Math.max(
+  1,
+  getUintEnvOrDefault('STACKS_BLOCK_DATA_INSERT_CONCURRENCY', 4)
+);
 const MEMPOOL_STATS_DEBOUNCE_INTERVAL = getUintEnvOrDefault(
   'MEMPOOL_STATS_DEBOUNCE_INTERVAL',
   1000
@@ -257,7 +260,7 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         await this.updateMinerRewards(sql, data.minerRewards);
         if (batchedTxData.length > 0) {
-          const q = new PQueue({ concurrency: INSERT_CONCURRENCY });
+          const q = new PQueue({ concurrency: STACKS_BLOCK_DATA_INSERT_CONCURRENCY });
           const enqueue = (task: Parameters<PQueue['add']>[0]) => void q.add(task);
           enqueue(() =>
             this.updateTx(
@@ -2164,7 +2167,7 @@ export class PgWriteStore extends PgStore {
           `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}, expecting ${txs.length}`
         );
       }
-      const q = new PQueue({ concurrency: INSERT_CONCURRENCY });
+      const q = new PQueue({ concurrency: STACKS_BLOCK_DATA_INSERT_CONCURRENCY });
       const enqueue = (task: Parameters<PQueue['add']>[0]) => void q.add(task);
       enqueue(() => this.updateStxEvents(sql, txs));
       enqueue(() => this.updatePrincipalStxTxs(sql, txs));
