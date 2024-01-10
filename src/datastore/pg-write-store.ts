@@ -1698,7 +1698,13 @@ export class PgWriteStore extends PgStore {
     lastTrigger?: number | null;
     debounce?: NodeJS.Timeout | null;
     running: boolean;
-  } = { running: false };
+    listeners: (() => unknown)[];
+  } = { running: false, listeners: [] };
+  public waitForNextReconcileMempool() {
+    return new Promise<void>(f => {
+      this._debounceReconcileMempool.listeners.push(f);
+    });
+  }
   private debounceReconcileMempool() {
     this._debounceReconcileMempool.lastTrigger = Date.now();
     if (this._debounceReconcileMempool.running) return;
@@ -1720,8 +1726,11 @@ export class PgWriteStore extends PgStore {
         if (this._debounceReconcileMempool.lastTrigger != null) {
           this.debounceReconcileMempool();
         }
+        const listeners = this._debounceReconcileMempool.listeners;
+        this._debounceReconcileMempool.listeners = [];
+        listeners.forEach(l => l());
       }
-    }, 3000);
+    }, 1000);
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
