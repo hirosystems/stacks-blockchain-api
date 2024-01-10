@@ -1,3 +1,10 @@
+## [7.7.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.6.0...v7.7.0) (2024-01-10)
+
+
+### Features
+
+* remove reconcile mempool & debounce stats ([#1815](https://github.com/hirosystems/stacks-blockchain-api/issues/1815)) ([c5a7a8c](https://github.com/hirosystems/stacks-blockchain-api/commit/c5a7a8ca5289cdc3eeb0de5bb7d43c05ab960439))
+
 ## [7.6.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.5.0...v7.6.0) (2024-01-09)
 
 
