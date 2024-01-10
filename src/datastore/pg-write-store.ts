@@ -271,10 +271,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+        this.debounceReconcileMempool();
       }
       if (isCanonical)
         await sql`
@@ -664,10 +661,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+        this.debounceReconcileMempool();
       }
       if (currentMicroblockTip.microblock_canonical)
         await sql`
@@ -1700,17 +1694,45 @@ export class PgWriteStore extends PgStore {
     return txIds;
   }
 
+  private _debounceReconcileMempool: {
+    lastTrigger?: number | null;
+    debounce?: NodeJS.Timeout | null;
+    running: boolean;
+  } = { running: false };
+  private debounceReconcileMempool() {
+    this._debounceReconcileMempool.lastTrigger = Date.now();
+    if (this._debounceReconcileMempool.running) return;
+    if (this._debounceReconcileMempool.debounce != null) {
+      clearTimeout(this._debounceReconcileMempool.debounce);
+      this._debounceReconcileMempool.debounce = null;
+    }
+    this._debounceReconcileMempool.debounce = setTimeout(async () => {
+      this._debounceReconcileMempool.running = true;
+      this._debounceReconcileMempool.lastTrigger = null;
+      try {
+        await this.reconcileMempoolStatus(this.sql);
+        const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      } catch (e) {
+        logger.error(e, `failed to reconcile mempool`);
+      } finally {
+        this._debounceReconcileMempool.running = false;
+        if (this._debounceReconcileMempool.lastTrigger != null) {
+          this.debounceReconcileMempool();
+        }
+      }
+    }, 3000);
+  }
+
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip();
       updatedTxIds.push(...(await this.insertDbMempoolTxs(txs, chainTip, sql)));
-      if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
-      }
     });
+    if (!this.isEventReplay) {
+      this.debounceReconcileMempool();
+    }
     for (const txId of updatedTxIds) {
       await this.notifier?.sendTx({ txId });
     }
