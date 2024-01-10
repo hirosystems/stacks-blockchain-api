@@ -1700,11 +1700,15 @@ export class PgWriteStore extends PgStore {
     running: boolean;
     listeners: (() => unknown)[];
   } = { running: false, listeners: [] };
-  public waitForNextReconcileMempool() {
+  // for testing purposes: wait for the next debounced process to complete.
+  public waitForNextMempoolReconcile() {
     return new Promise<void>(f => {
       this._debounceReconcileMempool.listeners.push(f);
     });
   }
+  /**
+   * Debounce the process in case new transactions pour in.
+   */
   private debounceReconcileMempool() {
     this._debounceReconcileMempool.lastTrigger = Date.now();
     if (this._debounceReconcileMempool.running) return;
