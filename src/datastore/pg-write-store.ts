@@ -97,6 +97,9 @@ import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
+const MEMPOOL_STATS_DEBOUNCE_INTERVAL = Number(
+  BigInt(process.env['MEMPOOL_STATS_DEBOUNCE_INTERVAL'] ?? 1000)
+);
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -1743,7 +1746,7 @@ export class PgWriteStore extends PgStore {
           this.debounceMempoolStat();
         }
       }
-    }, 1000);
+    }, MEMPOOL_STATS_DEBOUNCE_INTERVAL);
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
