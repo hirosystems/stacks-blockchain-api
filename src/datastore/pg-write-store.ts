@@ -1750,13 +1750,12 @@ export class PgWriteStore extends PgStore {
         const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       } catch (e) {
-        logger.error(e, `failed to reconcile mempool`);
+        logger.error(e, `failed to run mempool stats update`);
       } finally {
         this._debounceMempoolStat.running = false;
+        this._debounceMempoolStat.debounce = null;
         if (this._debounceMempoolStat.triggeredAt != null) {
           this.debounceMempoolStat();
-        } else {
-          this._debounceMempoolStat.debounce = null;
         }
       }
     }, delay);
