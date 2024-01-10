@@ -764,3 +764,13 @@ export enum BootContractAddress {
   mainnet = 'SP000000000000000000002Q6VF78',
   testnet = 'ST000000000000000000002AMW42H',
 }
+
+export function getUintEnvOrDefault(envName: string, defaultValue = 0) {
+  const v = BigInt(process.env[envName] ?? defaultValue);
+  if (v < 0n) {
+    throw new Error(
+      `Expecting ENV ${envName} to be non-negative number but it is configured as ${process.env[envName]}`
+    );
+  }
+  return Number(v);
+}

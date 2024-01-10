@@ -1,4 +1,4 @@
-import { getOrAdd, I32_MAX, getIbdBlockHeight } from '../helpers';
+import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -97,6 +97,14 @@ import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
+const MEMPOOL_STATS_DEBOUNCE_INTERVAL = getUintEnvOrDefault(
+  'MEMPOOL_STATS_DEBOUNCE_INTERVAL',
+  1000
+);
+const MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL = getUintEnvOrDefault(
+  'MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL',
+  10000
+);
 
 class MicroblockGapError extends Error {
   constructor(message: string) {
@@ -271,10 +279,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+        this.debounceMempoolStat();
       }
       if (isCanonical)
         await sql`
@@ -664,10 +669,7 @@ export class PgWriteStore extends PgStore {
       }
 
       if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+        this.debounceMempoolStat();
       }
       if (currentMicroblockTip.microblock_canonical)
         await sql`
@@ -702,42 +704,6 @@ export class PgWriteStore extends PgStore {
         });
       }
       await this.emitAddressTxUpdates(txData);
-    }
-  }
-
-  // Find any transactions that are erroneously still marked as both `pending` in the mempool table
-  // and also confirmed in the mined txs table. Mark these as pruned in the mempool and log warning.
-  // This must be called _after_ any writes to txs/mempool tables during block and microblock ingestion,
-  // but _before_ any reads or view refreshes that depend on the mempool table.
-  // NOTE: this is essentially a work-around for whatever bug is causing the underlying problem.
-  async reconcileMempoolStatus(sql: PgSqlClient): Promise<void> {
-    const txsResult = await sql<{ tx_id: string }[]>`
-      WITH pruned AS (
-        UPDATE mempool_txs
-        SET pruned = true
-        FROM txs
-        WHERE
-          mempool_txs.tx_id = txs.tx_id AND
-          mempool_txs.pruned = false AND
-          txs.canonical = true AND
-          txs.microblock_canonical = true AND
-          txs.status IN ${sql([
-            DbTxStatus.Success,
-            DbTxStatus.AbortByResponse,
-            DbTxStatus.AbortByPostCondition,
-          ])}
-        RETURNING mempool_txs.tx_id
-      ),
-      count_update AS (
-        UPDATE chain_tip SET
-          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
-          mempool_updated_at = NOW()
-      )
-      SELECT tx_id FROM pruned
-    `;
-    if (txsResult.length > 0) {
-      const txs = txsResult.map(tx => tx.tx_id);
-      logger.warn(`Reconciled mempool txs as pruned for ${txsResult.length} txs`, { txs });
     }
   }
 
@@ -1696,8 +1662,73 @@ export class PgWriteStore extends PgStore {
         SELECT tx_id FROM inserted
       `;
       txIds.push(...result.map(r => r.tx_id));
+      // The incoming mempool transactions might have already been settled
+      // We need to mark them as pruned to avoid inconsistent tx state
+      const pruned_tx = await sql<{ tx_id: string }[]>`
+        SELECT tx_id
+        FROM txs
+        WHERE
+          tx_id IN ${sql(batch.map(b => b.tx_id))} AND
+          canonical = true AND
+          microblock_canonical = true`;
+      if (pruned_tx.length > 0) {
+        await sql<{ tx_id: string }[]>`
+          WITH pruned AS (
+            UPDATE mempool_txs
+            SET pruned = true
+            WHERE
+              tx_id IN ${sql(pruned_tx.map(t => t.tx_id))} AND
+              pruned = false
+            RETURNING tx_id
+          ),
+          count_update AS (
+            UPDATE chain_tip SET
+              mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+              mempool_updated_at = NOW()
+          )
+          SELECT tx_id FROM pruned`;
+      }
     }
     return txIds;
+  }
+
+  private _debounceMempoolStat: {
+    triggeredAt?: number | null;
+    debounce?: NodeJS.Timeout | null;
+    running: boolean;
+  } = { running: false };
+  /**
+   * Debounce the mempool stat process in case new transactions pour in.
+   */
+  private debounceMempoolStat() {
+    if (this._debounceMempoolStat.triggeredAt == null) {
+      this._debounceMempoolStat.triggeredAt = Date.now();
+    }
+    if (this._debounceMempoolStat.running) return;
+    const waited = Date.now() - this._debounceMempoolStat.triggeredAt;
+    const delay = Math.max(
+      0,
+      Math.min(MEMPOOL_STATS_DEBOUNCE_MAX_INTERVAL - waited, MEMPOOL_STATS_DEBOUNCE_INTERVAL)
+    );
+    if (this._debounceMempoolStat.debounce != null) {
+      clearTimeout(this._debounceMempoolStat.debounce);
+    }
+    this._debounceMempoolStat.debounce = setTimeout(async () => {
+      this._debounceMempoolStat.running = true;
+      this._debounceMempoolStat.triggeredAt = null;
+      try {
+        const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
+        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
+      } catch (e) {
+        logger.error(e, `failed to run mempool stats update`);
+      } finally {
+        this._debounceMempoolStat.running = false;
+        this._debounceMempoolStat.debounce = null;
+        if (this._debounceMempoolStat.triggeredAt != null) {
+          this.debounceMempoolStat();
+        }
+      }
+    }, delay);
   }
 
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
@@ -1705,12 +1736,10 @@ export class PgWriteStore extends PgStore {
     await this.sqlWriteTransaction(async sql => {
       const chainTip = await this.getChainTip();
       updatedTxIds.push(...(await this.insertDbMempoolTxs(txs, chainTip, sql)));
-      if (!this.isEventReplay) {
-        await this.reconcileMempoolStatus(sql);
-        const mempoolStats = await this.getMempoolStatsInternal({ sql });
-        this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
-      }
     });
+    if (!this.isEventReplay) {
+      this.debounceMempoolStat();
+    }
     for (const txId of updatedTxIds) {
       await this.notifier?.sendTx({ txId });
     }
