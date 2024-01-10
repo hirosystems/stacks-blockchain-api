@@ -766,10 +766,10 @@ export enum BootContractAddress {
 }
 
 export function getUintEnvOrDefault(envName: string, defaultValue = 0) {
-  const v = BigInt(process.env['MEMPOOL_STATS_DEBOUNCE_INTERVAL'] ?? defaultValue);
+  const v = BigInt(process.env[envName] ?? defaultValue);
   if (v < 0n) {
     throw new Error(
-      `Expecting ENV ${envName} to be non-negative number but it is configured as ${process.env['MEMPOOL_STATS_DEBOUNCE_INTERVAL']}`
+      `Expecting ENV ${envName} to be non-negative number but it is configured as ${process.env[envName]}`
     );
   }
   return Number(v);
