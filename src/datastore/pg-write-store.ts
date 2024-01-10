@@ -900,9 +900,7 @@ export class PgWriteStore extends PgStore {
       const res = await sql`
         INSERT INTO ${sql(String(poxTable))} ${sql(batch)}
       `;
-      if (res.count !== batch.length) {
-        throw new Error(`Expected ${batch.length} inserts, got ${res.count}`);
-      }
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -935,9 +933,7 @@ export class PgWriteStore extends PgStore {
       const res = await sql`
         INSERT INTO stx_lock_events ${sql(batch)}
       `;
-      if (res.count !== batch.length) {
-        throw new Error(`Expected ${batch.length} inserts, got ${res.count}`);
-      }
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -964,13 +960,11 @@ export class PgWriteStore extends PgStore {
         });
       }
     }
-    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       const res = await sql`
-        INSERT INTO stx_events ${sql(eventBatch)}
+        INSERT INTO stx_events ${sql(batch)}
       `;
-      if (res.count !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
-      }
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -1053,9 +1047,10 @@ export class PgWriteStore extends PgStore {
       ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
         UPDATE SET zonefile = EXCLUDED.zonefile
     `;
-    if (result.count !== zonefileValues.length) {
-      throw new Error(`Expected ${result.count} zonefile inserts, got ${zonefileValues.length}`);
-    }
+    assert(
+      result.count === zonefileValues.length,
+      `Expecting ${result.count} zonefile inserts, got ${zonefileValues.length}`
+    );
   }
 
   async updateBatchSubdomains(
@@ -1111,9 +1106,10 @@ export class PgWriteStore extends PgStore {
           microblock_sequence = EXCLUDED.microblock_sequence,
           microblock_canonical = EXCLUDED.microblock_canonical
     `;
-    if (result.count !== subdomainValues.length) {
-      throw new Error(`Expected ${subdomainValues.length} subdomain inserts, got ${result.count}`);
-    }
+    assert(
+      result.count === subdomainValues.length,
+      `Expecting ${subdomainValues.length} subdomain inserts, got ${result.count}`
+    );
   }
 
   async resolveBnsSubdomains(
@@ -1183,9 +1179,7 @@ export class PgWriteStore extends PgStore {
       const res = await sql`
         INSERT INTO ft_events ${sql(batch)}
       `;
-      if (res.count !== batch.length) {
-        throw new Error(`Expected ${batch.length} inserts, got ${res.count}`);
-      }
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -1308,13 +1302,11 @@ export class PgWriteStore extends PgStore {
         });
       }
     }
-    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
       const res = await sql`
-        INSERT INTO contract_logs ${sql(eventBatch)}
+        INSERT INTO contract_logs ${sql(batch)}
       `;
-      if (res.count !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
-      }
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -2031,9 +2023,10 @@ export class PgWriteStore extends PgStore {
       const res = await sql`
         INSERT INTO token_offering_locked ${sql(lockedInfos, 'address', 'value', 'block')}
       `;
-      if (res.count !== lockedInfos.length) {
-        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.count}`);
-      }
+      assert(
+        res.count === lockedInfos.length,
+        `Expecting ${lockedInfos.length} inserts, got ${res.count}`
+      );
     } catch (e: any) {
       logger.error(e, `Locked Info errors ${e.message}`);
       throw e;
