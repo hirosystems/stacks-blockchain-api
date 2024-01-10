@@ -773,7 +773,7 @@ describe('search tests', () => {
       recipient: addr5,
       sender: 'none',
     };
-    await db.updateFtEvents(client, stxTx1, [ftEvent1]);
+    await db.updateFtEvents(client, [{ tx: stxTx1, ftEvents: [ftEvent1] }]);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
@@ -801,7 +801,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr6,
     };
-    await db.updateFtEvents(client, stxTx1, [ftEvent2]);
+    await db.updateFtEvents(client, [{ tx: stxTx1, ftEvents: [ftEvent2] }]);
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);
