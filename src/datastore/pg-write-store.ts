@@ -1678,51 +1678,38 @@ export class PgWriteStore extends PgStore {
         tenure_change_signature: tx.tenure_change_signature ?? null,
         tenure_change_signers: tx.tenure_change_signers ?? null,
       }));
+      // The incoming mempool transactions might have already been settled
+      // We need to mark them as pruned to avoid inconsistent tx state
       const result = await sql<{ tx_id: string }[]>`
         WITH inserted AS (
           INSERT INTO mempool_txs ${sql(values)}
           ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
           RETURNING tx_id
         ),
+        settled AS (
+          SELECT tx_id
+          FROM txs
+          WHERE
+            tx_id IN ${sql(values.map(b => b.tx_id))} AND
+            canonical = true AND
+            microblock_canonical = true
+        ),
+        pruned AS (
+          UPDATE mempool_txs
+          SET pruned = true
+          WHERE
+            tx_id IN (SELECT tx_id FROM settled) AND
+            pruned = false
+          RETURNING tx_id
+        ),
         count_update AS (
           UPDATE chain_tip SET
-            mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM inserted),
+            mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM inserted) - (SELECT COUNT(*) FROM pruned),
             mempool_updated_at = NOW()
         )
         SELECT tx_id FROM inserted
       `;
       txIds.push(...result.map(r => r.tx_id));
-      // The incoming mempool tx might have already been settled
-      // We need to mark them as pruned to avoid inconsistent tx state
-      const pruned_tx = await sql<{ tx_id: string }[]>`
-        SELECT tx_id
-        FROM txs
-        WHERE
-          tx_id IN ${sql(batch.map(b => b.tx_id))} AND
-          canonical = true AND
-          microblock_canonical = true AND
-          status IN ${sql([
-            DbTxStatus.Success,
-            DbTxStatus.AbortByResponse,
-            DbTxStatus.AbortByPostCondition,
-          ])}`;
-      if (pruned_tx.length > 0) {
-        await sql<{ tx_id: string }[]>`
-          WITH pruned AS (
-            UPDATE mempool_txs
-            SET pruned = true
-            WHERE
-              tx_id IN ${sql(pruned_tx.map(t => t.tx_id))} AND
-              pruned = false
-            RETURNING tx_id
-          ),
-          count_update AS (
-            UPDATE chain_tip SET
-              mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
-              mempool_updated_at = NOW()
-          )
-          SELECT tx_id FROM pruned`;
-      }
     }
     return txIds;
   }
