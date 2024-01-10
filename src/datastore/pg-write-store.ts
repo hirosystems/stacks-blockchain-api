@@ -776,18 +776,20 @@ export class PgWriteStore extends PgStore {
         case 'pox2_events':
           assert('pox2Events' in entry);
           events = entry.pox2Events;
+          break;
         case 'pox3_events':
           assert('pox3Events' in entry);
           events = entry.pox3Events;
+          break;
         case 'pox4_events':
           assert('pox4Events' in entry);
           events = entry.pox4Events;
-      }
-      if (events == null) {
-        throw new Error(`unknown pox table: ${poxTable}`);
+          break;
+        default:
+          throw new Error(`unknown pox table: ${poxTable}`);
       }
       const tx = entry.tx;
-      for (const event of events) {
+      for (const event of events ?? []) {
         const value: PoxSyntheticEventInsertValues = {
           event_index: event.event_index,
           tx_id: event.tx_id,
