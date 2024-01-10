@@ -1691,7 +1691,22 @@ describe('mempool tests', () => {
       block: dbBlock2,
       microblocks: [],
       minerRewards: [],
-      txs: [],
+      txs: [
+        {
+          tx: dbTx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+      ],
     });
 
     // Verify tx pruned from mempool
