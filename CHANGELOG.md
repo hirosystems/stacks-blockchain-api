@@ -1,3 +1,15 @@
+## [7.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.1...v7.8.0-beta.1) (2024-01-11)
+
+
+### Features
+
+* run inserts in batch and in parallel when processing new block ([#1818](https://github.com/hirosystems/stacks-blockchain-api/issues/1818)) ([86dfdb5](https://github.com/hirosystems/stacks-blockchain-api/commit/86dfdb5d536fee8d7490ca5213f7005a8800f9fa))
+
+
+### Bug Fixes
+
+* log block event counts after processing ([#1820](https://github.com/hirosystems/stacks-blockchain-api/issues/1820)) ([9c39743](https://github.com/hirosystems/stacks-blockchain-api/commit/9c397439e6eb2830186cda90a213b3ab3d5a4301)), closes [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819) [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819)
+
 ## [7.7.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.0...v7.7.1) (2024-01-11)
 
 
