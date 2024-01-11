@@ -3607,6 +3607,8 @@ describe('postgres datastore', () => {
         namespaces: 0,
         subdomains: 0,
       },
+      prunedMempoolTxs: 0,
+      restoredMempoolTxs: 0,
     });
 
     const blockQuery1 = await db.getBlock({ hash: block1.block_hash });

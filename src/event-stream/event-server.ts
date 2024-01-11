@@ -46,6 +46,7 @@ import {
   CoreNodeMsgBlockData,
   parseMicroblocksFromTxs,
   isPoxPrintEvent,
+  newCoreNoreBlockEventCounts,
 } from './reader';
 import {
   decodeTransaction,
@@ -230,6 +231,7 @@ async function handleBlockMessage(
   db: PgWriteStore
 ): Promise<void> {
   const ingestionTimer = stopwatch();
+  const counts = newCoreNoreBlockEventCounts();
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
@@ -238,8 +240,42 @@ async function handleBlockMessage(
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
     if (parsedTx) {
       parsedTxs.push(parsedTx);
+      counts.tx_total += 1;
+      switch (parsedTx.parsed_tx.payload.type_id) {
+        case TxPayloadTypeID.Coinbase:
+          counts.txs.coinbase += 1;
+          break;
+        case TxPayloadTypeID.CoinbaseToAltRecipient:
+          counts.txs.coinbase_to_alt_recipient += 1;
+          break;
+        case TxPayloadTypeID.ContractCall:
+          counts.txs.contract_call += 1;
+          break;
+        case TxPayloadTypeID.NakamotoCoinbase:
+          counts.txs.nakamoto_coinbase += 1;
+          break;
+        case TxPayloadTypeID.PoisonMicroblock:
+          counts.txs.poison_microblock += 1;
+          break;
+        case TxPayloadTypeID.SmartContract:
+          counts.txs.smart_contract += 1;
+          break;
+        case TxPayloadTypeID.TenureChange:
+          counts.txs.tenure_change += 1;
+          break;
+        case TxPayloadTypeID.TokenTransfer:
+          counts.txs.token_transfer += 1;
+          break;
+        case TxPayloadTypeID.VersionedSmartContract:
+          counts.txs.versioned_smart_contract += 1;
+          break;
+      }
     }
   });
+  for (const event of msg.events) {
+    counts.event_total += 1;
+    counts.events[event.type] += 1;
+  }
 
   const dbBlock: DbBlock = {
     canonical: true,
@@ -281,6 +317,7 @@ async function handleBlockMessage(
       tx_fees_streamed_produced: BigInt(minerReward.tx_fees_streamed_produced),
     };
     dbMinerRewards.push(dbMinerReward);
+    counts.miner_rewards += 1;
   }
 
   logger.debug(`Received ${dbMinerRewards.length} matured miner rewards`);
@@ -304,16 +341,8 @@ async function handleBlockMessage(
       index_block_hash: msg.index_block_hash,
       block_hash: msg.block_hash,
     };
+    counts.microblocks += 1;
     return microblock;
-  });
-
-  parsedTxs.forEach(tx => {
-    logger.debug(`Received anchor block mined tx: ${tx.core_tx.txid}`);
-    logger.info('Transaction confirmed', {
-      txid: tx.core_tx.txid,
-      in_microblock: tx.microblock_hash != '',
-      stacks_height: dbBlock.block_height,
-    });
   });
 
   const dbData: DataStoreBlockUpdateData = {
@@ -328,7 +357,10 @@ async function handleBlockMessage(
 
   await db.update(dbData);
   const ingestionTime = ingestionTimer.getElapsed();
-  logger.info(`Ingested block ${msg.block_height} (${msg.block_hash}) in ${ingestionTime}ms`);
+  logger.info(
+    counts,
+    `Ingested block ${msg.block_height} (${msg.block_hash}) in ${ingestionTime}ms`
+  );
 }
 
 function parseDataStoreTxEventData(

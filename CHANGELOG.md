@@ -1,3 +1,10 @@
+## [7.7.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.0...v7.7.1) (2024-01-11)
+
+
+### Bug Fixes
+
+* log re-orgs at `INFO` level ([#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819)) ([3b502f7](https://github.com/hirosystems/stacks-blockchain-api/commit/3b502f73149c185265fc8948e75ba064892ce6d2))
+
 ## [7.7.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.6.0...v7.7.0) (2024-01-10)
 
 
