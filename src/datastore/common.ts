@@ -981,43 +981,30 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
+interface ReOrgEntities {
+  blocks: number;
+  microblocks: number;
+  minerRewards: number;
+  txs: number;
+  stxLockEvents: number;
+  stxEvents: number;
+  ftEvents: number;
+  nftEvents: number;
+  pox2Events: number;
+  pox3Events: number;
+  pox4Events: number;
+  contractLogs: number;
+  smartContracts: number;
+  names: number;
+  namespaces: number;
+  subdomains: number;
+}
+
 export interface ReOrgUpdatedEntities {
-  markedCanonical: {
-    blocks: number;
-    microblocks: number;
-    minerRewards: number;
-    txs: number;
-    stxLockEvents: number;
-    stxEvents: number;
-    ftEvents: number;
-    nftEvents: number;
-    pox2Events: number;
-    pox3Events: number;
-    pox4Events: number;
-    contractLogs: number;
-    smartContracts: number;
-    names: number;
-    namespaces: number;
-    subdomains: number;
-  };
-  markedNonCanonical: {
-    blocks: number;
-    microblocks: number;
-    minerRewards: number;
-    txs: number;
-    stxLockEvents: number;
-    stxEvents: number;
-    ftEvents: number;
-    nftEvents: number;
-    pox2Events: number;
-    pox3Events: number;
-    pox4Events: number;
-    contractLogs: number;
-    smartContracts: number;
-    names: number;
-    namespaces: number;
-    subdomains: number;
-  };
+  markedCanonical: ReOrgEntities;
+  markedNonCanonical: ReOrgEntities;
+  prunedMempoolTxs: number;
+  restoredMempoolTxs: number;
 }
 
 export interface TransferQueryResult {

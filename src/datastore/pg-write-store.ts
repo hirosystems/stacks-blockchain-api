@@ -38,7 +38,6 @@ import {
   BurnchainRewardInsertValues,
   TxInsertValues,
   MempoolTxInsertValues,
-  MempoolTxQueryResult,
   SmartContractInsertValues,
   BnsNameInsertValues,
   BnsNamespaceInsertValues,
@@ -66,17 +65,14 @@ import {
   setTotalBlockUpdateDataExecutionCost,
   convertTxQueryResultToDbMempoolTx,
   markBlockUpdateDataAsNonCanonical,
-  MEMPOOL_TX_COLUMNS,
   MICROBLOCK_COLUMNS,
   parseBlockQueryResult,
-  parseMempoolTxQueryResult,
   parseMicroblockQueryResult,
   parseTxQueryResult,
   TX_COLUMNS,
   TX_METADATA_TABLES,
   validateZonefileHash,
   newReOrgUpdatedEntities,
-  logReorgResultInfo,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { MIGRATIONS_DIR, PgStore } from './pg-store';
@@ -2684,12 +2680,16 @@ export class PgWriteStore extends PgStore {
         false,
         updatedEntities
       );
-      await this.restoreMempoolTxs(sql, markNonCanonicalResult.txsMarkedNonCanonical);
+      const restoredMempoolTxs = await this.restoreMempoolTxs(
+        sql,
+        markNonCanonicalResult.txsMarkedNonCanonical
+      );
+      updatedEntities.restoredMempoolTxs += restoredMempoolTxs.restoredTxs.length;
     }
 
-    // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a given height,
-    // because there is only 1 row per microblock hash, and both the orphaned blocks at this height and the
-    // canonical block can be pointed to the same microblocks.
+    // The canonical microblock tables _must_ be restored _after_ orphaning all other blocks at a
+    // given height, because there is only 1 row per microblock hash, and both the orphaned blocks
+    // at this height and the canonical block can be pointed to the same microblocks.
     const restoredBlock = parseBlockQueryResult(restoredBlockResult[0]);
     const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
       isCanonical: true,
@@ -2712,24 +2712,17 @@ export class PgWriteStore extends PgStore {
     updatedEntities.markedCanonical.microblocks += microblocksAccepted.size;
     updatedEntities.markedNonCanonical.microblocks += microblocksOrphaned.size;
 
-    microblocksOrphaned.forEach(mb => logger.debug(`Marked microblock as non-canonical: ${mb}`));
-    microblocksAccepted.forEach(mb => logger.debug(`Marked microblock as canonical: ${mb}`));
-
     const markCanonicalResult = await this.markEntitiesCanonical(
       sql,
       indexBlockHash,
       true,
       updatedEntities
     );
-    const removedTxsResult = await this.pruneMempoolTxs(
+    const prunedMempoolTxs = await this.pruneMempoolTxs(
       sql,
       markCanonicalResult.txsMarkedCanonical
     );
-    if (removedTxsResult.removedTxs.length > 0) {
-      logger.debug(
-        `Removed ${removedTxsResult.removedTxs.length} txs from mempool table during reorg handling`
-      );
-    }
+    updatedEntities.prunedMempoolTxs += prunedMempoolTxs.removedTxs.length;
     const parentResult = await sql<{ index_block_hash: string }[]>`
       SELECT index_block_hash
       FROM blocks
@@ -2779,11 +2772,13 @@ export class PgWriteStore extends PgStore {
             block.parent_index_block_hash
           }`
         );
-      // This blocks builds off a previously orphaned chain. Restore canonical status for this
-      // chain.
+      // This block builds off a previously orphaned chain. Restore canonical status for this chain.
       if (!parentResult[0].canonical && block.block_height > chainTipHeight) {
         await this.restoreOrphanedChain(sql, parentResult[0].index_block_hash, updatedEntities);
-        logReorgResultInfo(updatedEntities);
+        logger.info(
+          updatedEntities,
+          `Re-org resolved. Block ${block.block_height} builds off a previously orphaned chain.`
+        );
       }
       // Reflect updated transaction totals in `chain_tip` table.
       const txCountDelta =
