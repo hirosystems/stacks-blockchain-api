@@ -244,22 +244,31 @@ async function handleBlockMessage(
       switch (parsedTx.parsed_tx.payload.type_id) {
         case TxPayloadTypeID.Coinbase:
           counts.txs.coinbase += 1;
+          break;
         case TxPayloadTypeID.CoinbaseToAltRecipient:
           counts.txs.coinbase_to_alt_recipient += 1;
+          break;
         case TxPayloadTypeID.ContractCall:
           counts.txs.contract_call += 1;
+          break;
         case TxPayloadTypeID.NakamotoCoinbase:
           counts.txs.nakamoto_coinbase += 1;
+          break;
         case TxPayloadTypeID.PoisonMicroblock:
           counts.txs.poison_microblock += 1;
+          break;
         case TxPayloadTypeID.SmartContract:
           counts.txs.smart_contract += 1;
+          break;
         case TxPayloadTypeID.TenureChange:
           counts.txs.tenure_change += 1;
+          break;
         case TxPayloadTypeID.TokenTransfer:
           counts.txs.token_transfer += 1;
+          break;
         case TxPayloadTypeID.VersionedSmartContract:
           counts.txs.versioned_smart_contract += 1;
+          break;
       }
     }
   });

@@ -848,7 +848,7 @@ export function isPoxPrintEvent(event: SmartContractEvent): boolean {
   return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }
 
-export interface CoreNodeBlockEventCounts {
+interface CoreNodeBlockEventCounts {
   microblocks: number;
   tx_total: number;
   txs: {
