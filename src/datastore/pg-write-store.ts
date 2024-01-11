@@ -1134,29 +1134,6 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateStxEvent(sql: PgSqlClient, tx: DbTx, event: DbStxEvent) {
-    const values: StxEventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      asset_event_type_id: event.asset_event_type_id,
-      sender: event.sender ?? null,
-      recipient: event.recipient ?? null,
-      amount: event.amount,
-      memo: event.memo ?? null,
-    };
-    await sql`
-      INSERT INTO stx_events ${sql(values)}
-    `;
-  }
-
   async updateFtEvents(sql: PgSqlClient, entries: { tx: DbTx; ftEvents: DbFtEvent[] }[]) {
     const values: FtEventInsertValues[] = [];
     for (const { tx, ftEvents } of entries) {
@@ -1438,8 +1415,10 @@ export class PgWriteStore extends PgStore {
     acceptedMicroblocks: string[];
     orphanedMicroblocks: string[];
   }> {
-    // Find the parent microblock if this anchor block points to one. If not, perform a sanity check for expected block headers in this case:
-    // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+    // Find the parent microblock if this anchor block points to one. If not, perform a sanity check
+    // for expected block headers in this case: Anchored blocks that do not have parent microblock
+    // streams will have their parent microblock header hashes set to all 0's, and the parent
+    // microblock sequence number set to 0.
     let acceptedMicroblockTip: DbMicroblock | undefined;
     if (BigInt(blockData.parentMicroblockHash) === 0n) {
       if (blockData.parentMicroblockSequence !== 0) {
@@ -2521,26 +2500,23 @@ export class PgWriteStore extends PgStore {
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const txResult = await sql<TxQueryResult[]>`
+    const txResult = await sql<{ tx_id: string }[]>`
       UPDATE txs
       SET canonical = ${canonical}
       WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING ${sql(TX_COLUMNS)}
+      RETURNING tx_id
     `;
-    const txIds = txResult.map(row => parseTxQueryResult(row));
+    const txIds = txResult.map(row => row.tx_id);
     if (canonical) {
-      updatedEntities.markedCanonical.txs += txResult.length;
+      updatedEntities.markedCanonical.txs += txResult.count;
     } else {
-      updatedEntities.markedNonCanonical.txs += txResult.length;
+      updatedEntities.markedNonCanonical.txs += txResult.count;
     }
-    for (const txId of txIds) {
-      logger.debug(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
-    }
-    if (txIds.length) {
+    if (txResult.count) {
       await sql`
         UPDATE principal_stx_txs
         SET canonical = ${canonical}
-        WHERE tx_id IN ${sql(txIds.map(tx => tx.tx_id))}
+        WHERE tx_id IN ${sql(txIds)}
           AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       `;
     }
@@ -2693,8 +2669,8 @@ export class PgWriteStore extends PgStore {
     }
 
     return {
-      txsMarkedCanonical: canonical ? txIds.map(t => t.tx_id) : [],
-      txsMarkedNonCanonical: canonical ? [] : txIds.map(t => t.tx_id),
+      txsMarkedCanonical: canonical ? txIds : [],
+      txsMarkedNonCanonical: canonical ? [] : txIds,
     };
   }
 
