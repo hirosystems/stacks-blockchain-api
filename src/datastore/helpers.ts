@@ -1331,67 +1331,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       namespaces: 0,
       subdomains: 0,
     },
+    prunedMempoolTxs: 0,
+    restoredMempoolTxs: 0,
   };
-}
-
-export function logReorgResultInfo(updatedEntities: ReOrgUpdatedEntities) {
-  const updates = [
-    ['blocks', updatedEntities.markedCanonical.blocks, updatedEntities.markedNonCanonical.blocks],
-    [
-      'microblocks',
-      updatedEntities.markedCanonical.microblocks,
-      updatedEntities.markedNonCanonical.microblocks,
-    ],
-    ['txs', updatedEntities.markedCanonical.txs, updatedEntities.markedNonCanonical.txs],
-    [
-      'miner-rewards',
-      updatedEntities.markedCanonical.minerRewards,
-      updatedEntities.markedNonCanonical.minerRewards,
-    ],
-    [
-      'stx-lock events',
-      updatedEntities.markedCanonical.stxLockEvents,
-      updatedEntities.markedNonCanonical.stxLockEvents,
-    ],
-    [
-      'stx-token events',
-      updatedEntities.markedCanonical.stxEvents,
-      updatedEntities.markedNonCanonical.stxEvents,
-    ],
-    [
-      'non-fungible-token events',
-      updatedEntities.markedCanonical.nftEvents,
-      updatedEntities.markedNonCanonical.nftEvents,
-    ],
-    [
-      'fungible-token events',
-      updatedEntities.markedCanonical.ftEvents,
-      updatedEntities.markedNonCanonical.ftEvents,
-    ],
-    [
-      'contract logs',
-      updatedEntities.markedCanonical.contractLogs,
-      updatedEntities.markedNonCanonical.contractLogs,
-    ],
-    [
-      'smart contracts',
-      updatedEntities.markedCanonical.smartContracts,
-      updatedEntities.markedNonCanonical.smartContracts,
-    ],
-    ['names', updatedEntities.markedCanonical.names, updatedEntities.markedNonCanonical.names],
-    [
-      'namespaces',
-      updatedEntities.markedCanonical.namespaces,
-      updatedEntities.markedNonCanonical.namespaces,
-    ],
-    [
-      'subdomains',
-      updatedEntities.markedCanonical.subdomains,
-      updatedEntities.markedNonCanonical.subdomains,
-    ],
-  ];
-  const markedCanonical = updates.map(e => `${e[1]} ${e[0]}`).join(', ');
-  logger.debug(`Entities marked as canonical: ${markedCanonical}`);
-  const markedNonCanonical = updates.map(e => `${e[2]} ${e[0]}`).join(', ');
-  logger.debug(`Entities marked as non-canonical: ${markedNonCanonical}`);
 }
