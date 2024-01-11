@@ -2512,14 +2512,13 @@ export class PgWriteStore extends PgStore {
     } else {
       updatedEntities.markedNonCanonical.txs += txResult.count;
     }
-    if (txResult.count) {
+    if (txResult.count)
       await sql`
         UPDATE principal_stx_txs
         SET canonical = ${canonical}
         WHERE tx_id IN ${sql(txIds)}
           AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
       `;
-    }
 
     const minerRewardResults = await sql`
       UPDATE miner_rewards
@@ -2575,10 +2574,11 @@ export class PgWriteStore extends PgStore {
     } else {
       updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
     }
-    await this.updateNftCustodyFromReOrg(sql, {
-      index_block_hash: indexBlockHash,
-      microblocks: [],
-    });
+    if (nftResult.count)
+      await this.updateNftCustodyFromReOrg(sql, {
+        index_block_hash: indexBlockHash,
+        microblocks: [],
+      });
 
     const pox2Result = await sql`
       UPDATE pox2_events
