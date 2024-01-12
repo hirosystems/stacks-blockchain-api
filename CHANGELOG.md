@@ -1,3 +1,10 @@
+## [7.8.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.1...v7.8.0-beta.2) (2024-01-12)
+
+
+### Bug Fixes
+
+* optimize re-org queries and indexes ([#1821](https://github.com/hirosystems/stacks-blockchain-api/issues/1821)) ([5505d35](https://github.com/hirosystems/stacks-blockchain-api/commit/5505d354ecae6e52c751b3b634752fd56d24642f))
+
 ## [7.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.1...v7.8.0-beta.1) (2024-01-11)
 
 
