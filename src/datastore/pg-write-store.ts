@@ -1648,7 +1648,7 @@ export class PgWriteStore extends PgStore {
       // Revive mempool txs that were previously dropped
       const revivedTxs = await sql<{ tx_id: string }[]>`
         UPDATE mempool_txs
-        SET pruned = false
+        SET pruned = false, status = ${DbTxStatus.Pending}
         WHERE tx_id IN ${sql(values.map(v => v.tx_id))}
           AND pruned = true
           AND NOT EXISTS (
@@ -2349,7 +2349,7 @@ export class PgWriteStore extends PgStore {
     const updatedRows = await sql<{ tx_id: string }[]>`
       WITH restored AS (
         UPDATE mempool_txs
-        SET pruned = FALSE
+        SET pruned = FALSE, status = ${DbTxStatus.Pending}
         WHERE tx_id IN ${sql(txIds)} AND pruned = TRUE
         RETURNING tx_id
       ),
