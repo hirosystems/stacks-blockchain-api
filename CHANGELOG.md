@@ -1,3 +1,10 @@
+## [7.8.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.2...v7.8.0-beta.3) (2024-01-12)
+
+
+### Bug Fixes
+
+* change all HASH indexes to BTREE to optimize writes ([#1825](https://github.com/hirosystems/stacks-blockchain-api/issues/1825)) ([234936b](https://github.com/hirosystems/stacks-blockchain-api/commit/234936b430640fb7108e6cb57bdb21d1085a65b2))
+
 ## [7.8.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.1...v7.8.0-beta.2) (2024-01-12)
 
 
