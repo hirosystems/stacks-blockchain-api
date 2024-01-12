@@ -1647,15 +1647,29 @@ export class PgWriteStore extends PgStore {
       const result = await sql<{ tx_id: string }[]>`
         WITH inserted AS (
           INSERT INTO mempool_txs ${sql(values)}
-          ON CONFLICT ON CONSTRAINT unique_tx_id DO NOTHING
-          RETURNING tx_id
+          ON CONFLICT ON CONSTRAINT unique_tx_id DO
+          UPDATE SET
+            pruned = CASE
+              WHEN NOT EXISTS (
+                SELECT 1
+                FROM txs
+                WHERE txs.tx_id = mempool_txs.tx_id AND txs.canonical = true AND txs.microblock_canonical = true
+              ) THEN false
+              ELSE mempool_txs.pruned
+            END
+          RETURNING tx_id, (
+            mempool_txs.pruned IS DISTINCT FROM EXCLUDED.pruned OR 
+            mempool_txs.tx_id IS NOT DISTINCT FROM EXCLUDED.tx_id
+          ) AS is_new_or_updated
         ),
         count_update AS (
           UPDATE chain_tip SET
-            mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM inserted),
+            mempool_tx_count = mempool_tx_count + (
+              SELECT COUNT(*) FROM inserted WHERE is_new_or_updated
+            ),
             mempool_updated_at = NOW()
         )
-        SELECT tx_id FROM inserted
+        SELECT tx_id FROM inserted WHERE is_new_or_updated
       `;
       txIds.push(...result.map(r => r.tx_id));
       // The incoming mempool transactions might have already been settled
