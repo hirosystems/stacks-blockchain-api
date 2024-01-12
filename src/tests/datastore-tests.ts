@@ -4108,6 +4108,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0xcc',
       burn_block_height: 123,
       block_count: 3,
+      mempool_tx_count: 0,
       microblock_count: 0,
       microblock_hash: undefined,
       microblock_sequence: undefined,
