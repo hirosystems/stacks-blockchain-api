@@ -90,7 +90,7 @@ exports.down = pgm => {
   replaceIndex(pgm, 'nft_events', 'microblock_hash', 'hash');
   replaceIndex(pgm, 'nft_events', 'asset_identifier', 'hash');
 
-  replaceIndex(pgm, 'contract_logs', 'contract_id', 'hash');
+  replaceIndex(pgm, 'contract_logs', 'tx_id', 'hash');
   replaceIndex(pgm, 'contract_logs', 'microblock_hash', 'hash');
 
   replaceIndex(pgm, 'smart_contracts', 'contract_id', 'hash');
