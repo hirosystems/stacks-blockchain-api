@@ -32,9 +32,7 @@
       "type": "node",
       "request": "launch",
       "name": "Launch: mocknet",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -46,15 +44,13 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: w/ postgres",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -66,15 +62,13 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: krypton 2.1",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -86,15 +80,13 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: krypton 2.1-transition",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -106,15 +98,13 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: mocknet write-only",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
+      "skipFiles": ["<node_internals>/**"],
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
@@ -127,24 +117,15 @@
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: mocknet offline-mode",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only",
-        "-r",
-        "tsconfig-paths/register"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
+      "skipFiles": ["<node_internals>/**"],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "preLaunchTask": "stacks-node:start-mocknet",
@@ -155,24 +136,15 @@
         "STACKS_API_MODE": "offline",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
       "request": "launch",
       "name": "Launch: read-only",
-      "skipFiles": [
-        "<node_internals>/**"
-      ],
-      "runtimeArgs": [
-        "-r",
-        "ts-node/register/transpile-only",
-        "-r",
-        "tsconfig-paths/register"
-      ],
-      "args": [
-        "${workspaceFolder}/src/index.ts"
-      ],
+      "skipFiles": ["<node_internals>/**"],
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
+      "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
@@ -182,7 +154,7 @@
         "NODE_ENV": "production",
         "TS_NODE_SKIP_IGNORE": "true"
       },
-      "killBehavior": "polite",
+      "killBehavior": "polite"
     },
     {
       "type": "node",
@@ -205,7 +177,13 @@
       "request": "launch",
       "name": "Launch: export-events",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "export-events", "--file", "/tmp/test-events-export.csv", "--overwrite-file"],
+      "args": [
+        "${workspaceFolder}/src/index.ts",
+        "export-events",
+        "--file",
+        "/tmp/test-events-export.csv",
+        "--overwrite-file"
+      ],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
@@ -218,7 +196,13 @@
       "request": "launch",
       "name": "Launch: import-events",
       "runtimeArgs": ["-r", "ts-node/register/transpile-only", "-r", "tsconfig-paths/register"],
-      "args": ["${workspaceFolder}/src/index.ts", "import-events", "--file", "/tmp/test-events-export.csv", "--wipe-db"],
+      "args": [
+        "${workspaceFolder}/src/index.ts",
+        "import-events",
+        "--file",
+        "/tmp/test-events-export.csv",
+        "--wipe-db"
+      ],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
       "env": {
@@ -275,7 +259,7 @@
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "postDebugTask": "stop:krypton"
     },
     {
       "type": "node",
@@ -294,7 +278,7 @@
       "preLaunchTask": "deploy:subnets",
       "postDebugTask": "stop:subnets",
       "smartStep": false,
-      "sourceMaps": true,
+      "sourceMaps": true
     },
     {
       "type": "node",
@@ -311,7 +295,7 @@
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "postDebugTask": "stop:krypton"
     },
     {
       "type": "node",
@@ -324,13 +308,15 @@
         "--no-cache",
         "--config",
         "${workspaceRoot}/tests/jest.config.2.5.js",
+        "-t",
+        "Users cannot switch pools without cool down cycle"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
       "postDebugTask": "stop:krypton",
       "smartStep": false,
-      "sourceMaps": true,
+      "sourceMaps": true
     },
     {
       "type": "node",
@@ -342,12 +328,12 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.bns.js",
+        "${workspaceRoot}/tests/jest.config.bns.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "postDebugTask": "stop:krypton"
     },
     {
       "type": "node",
@@ -359,12 +345,12 @@
         "--runInBand",
         "--no-cache",
         "--config",
-        "${workspaceRoot}/tests/jest.config.bns-e2e.js",
+        "${workspaceRoot}/tests/jest.config.bns-e2e.js"
       ],
       "outputCapture": "std",
       "console": "integratedTerminal",
       "preLaunchTask": "deploy:krypton",
-      "postDebugTask": "stop:krypton",
+      "postDebugTask": "stop:krypton"
     },
     {
       "type": "node",
@@ -383,7 +369,7 @@
       "preLaunchTask": "deploy:krypton",
       "postDebugTask": "stop:krypton",
       "smartStep": false,
-      "sourceMaps": true,
+      "sourceMaps": true
     },
     {
       "type": "node",
@@ -475,7 +461,7 @@
       "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
       "cwd": "${workspaceFolder}/utils",
       "args": ["${workspaceFolder}/utils/src/chaintip-cache-control-test.ts"]
-    },
+    }
   ],
   "compounds": [
     {

@@ -375,7 +375,8 @@ describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
           type: '(optional uint)',
         },
         {
-          hex: '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
+          hex:
+            '0x0a0c000000020968617368627974657302000000204d4daaf0776c1bbeb4c6bb14e7499acc72c250bde7146ef79c8b051eb4cb85930776657273696f6e020000000106',
           repr: expectedPoxPayoutAddrRepr,
           name: 'pox-addr',
           type: '(optional (tuple (hashbytes (buff 32)) (version (buff 1))))',

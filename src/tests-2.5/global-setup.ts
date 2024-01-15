@@ -40,6 +40,8 @@ export default async (): Promise<void> => {
   process.env.PG_DATABASE = 'postgres';
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
+  await sleep(3000); // ensure postgres is ready
+
   await migrate('up');
   const db = await PgWriteStore.connect({ usageName: 'tests' });
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
@@ -55,3 +57,7 @@ export default async (): Promise<void> => {
 
   console.log('Jest - global setup done');
 };
+
+export function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
