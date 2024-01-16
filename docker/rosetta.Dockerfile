@@ -22,7 +22,7 @@ RUN apt-get update -y \
     && apt-get install -y \
         curl \
         jq \
-        openjdk-11-jre-headless \
+        openjdk-17-jre-headless \
         cmake \
     && git clone -b ${STACKS_API_VERSION} https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
