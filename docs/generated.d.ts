@@ -93,6 +93,7 @@ export type SchemaMergeRootStub =
   | SearchSuccessResult
   | TxSearchResult
   | SearchResult
+  | SmartContractsStatusResponse
   | PoolDelegationsResponse
   | {
       [k: string]: unknown | undefined;
@@ -177,6 +178,7 @@ export type SchemaMergeRootStub =
   | RosettaSyncStatus
   | TransactionIdentifier
   | RosettaTransaction
+  | SmartContractStatus
   | PoolDelegation
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
@@ -689,6 +691,10 @@ export type SearchSuccessResult =
  * complete search result for terms
  */
 export type SearchResult = SearchErrorResult | SearchSuccessResult;
+/**
+ * GET request that returns the deployment status of multiple smart contracts
+ */
+export type SmartContractsStatusResponse = SmartContractStatus[];
 /**
  * Describes an event from the history of a Non-Fungible Token
  */
@@ -3058,6 +3064,27 @@ export interface TxSearchResult {
     };
     metadata?: Transaction;
   };
+}
+/**
+ * Deployment status of a smart contract
+ */
+export interface SmartContractStatus {
+  /**
+   * Smart contract deployment transaction status
+   */
+  status: string;
+  /**
+   * Deployment transaction ID
+   */
+  tx_id: string;
+  /**
+   * Smart contract ID
+   */
+  contract_id: string;
+  /**
+   * Height of the transaction confirmation block
+   */
+  block_height?: number;
 }
 /**
  * GET request that returns stacking pool member details for a given pool (delegator) principal
