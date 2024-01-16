@@ -103,7 +103,7 @@ RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
 RUN curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" > /etc/apt/sources.list.d/pgsql.list \
-    && curl -sL https://deb.nodesource.com/setup_16.x | bash -
+    && curl -sL https://deb.nodesource.com/setup_20.x | bash -
 RUN apt-get update \
     && apt-get install -y \
         postgresql-${PG_VERSION} \
