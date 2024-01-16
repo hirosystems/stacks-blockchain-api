@@ -149,9 +149,8 @@ interface PoxSyntheticPrintEventTypes {
     'amount-ustx': ClarityValueUInt;
   };
   [SyntheticPoxEventName.RevokeDelegateStx]: {
-    'amount-ustx': ClarityValueUInt;
-    'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
     'pox-addr': PoxSyntheticEventAddr | ClarityValueOptionalNone;
+    'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
 }
 
@@ -410,7 +409,6 @@ export function decodePoxSyntheticPrintEvent(
         ...baseEventData,
         name: eventName,
         data: {
-          amount_ustx: BigInt(d['amount-ustx'].value),
           delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
         },
       };
