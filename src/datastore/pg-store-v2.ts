@@ -6,6 +6,7 @@ import {
   TransactionLimitParamSchema,
   BlockParams,
   BlockPaginationQueryParams,
+  SmartContractStatusParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -16,6 +17,8 @@ import {
   DbTx,
   TxQueryResult,
   DbBurnBlock,
+  DbTxTypeId,
+  DbSmartContractStatus,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -228,6 +231,40 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
+    });
+  }
+
+  async getSmartContractStatus(args: SmartContractStatusParams): Promise<DbSmartContractStatus[]> {
+    return await this.sqlTransaction(async sql => {
+      const statusArray: DbSmartContractStatus[] = [];
+
+      // Search confirmed txs.
+      const confirmed = await sql<DbSmartContractStatus[]>`
+        SELECT DISTINCT ON (smart_contract_contract_id) smart_contract_contract_id, tx_id, block_height, status
+        FROM txs
+        WHERE type_id IN ${sql([DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract])}
+          AND smart_contract_contract_id IN ${sql(args.contract_id)}
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC, tx_index DESC
+      `;
+      statusArray.push(...confirmed);
+      if (confirmed.count < args.contract_id.length) {
+        // Search mempool txs.
+        const confirmedIds = confirmed.map(c => c.contract_id);
+        const remainingIds = args.contract_id.filter(c => !confirmedIds.includes(c));
+        const mempool = await sql<DbSmartContractStatus[]>`
+          SELECT DISTINCT ON (smart_contract_contract_id) smart_contract_contract_id, tx_id, status
+          FROM mempool_txs
+          WHERE pruned = FALSE
+            AND type_id IN ${sql([DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract])}
+            AND smart_contract_contract_id IN ${sql(remainingIds)}
+          ORDER BY smart_contract_contract_id
+        `;
+        statusArray.push(...mempool);
+      }
+
+      return statusArray;
     });
   }
 }

@@ -1554,3 +1554,10 @@ export enum IndexesState {
   Off = 0,
   On = 1,
 }
+
+export interface DbSmartContractStatus {
+  contract_id: string;
+  tx_id: string;
+  status: string;
+  block_height?: number;
+}
