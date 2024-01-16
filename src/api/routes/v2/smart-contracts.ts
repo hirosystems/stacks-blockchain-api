@@ -2,14 +2,12 @@ import * as express from 'express';
 import { PgStore } from '../../../datastore/pg-store';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
-import { NakamotoBlockListResponse } from 'docs/generated';
+import { SmartContractsStatusResponse } from 'docs/generated';
 import {
   validRequestQuery,
-  BlockPaginationQueryParams,
   CompiledSmartContractStatusParams,
   SmartContractStatusParams,
 } from './schemas';
-import { parseDbNakamotoBlock } from './helpers';
 
 export function createV2SmartContractsRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -22,13 +20,7 @@ export function createV2SmartContractsRouter(db: PgStore): express.Router {
       if (!validRequestQuery(req, res, CompiledSmartContractStatusParams)) return;
       const query = req.query as SmartContractStatusParams;
 
-      const results = await db.v2.getSmartContractStatus(query);
-      // const response: NakamotoBlockListResponse = {
-      //   limit,
-      //   offset,
-      //   total,
-      //   results: results.map(r => parseDbNakamotoBlock(r)),
-      // };
+      const response = (await db.v2.getSmartContractStatus(query)) as SmartContractsStatusResponse;
       setETagCacheHeaders(res);
       res.json(response);
     })
