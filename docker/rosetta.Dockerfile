@@ -20,6 +20,7 @@ ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /app
 RUN apt-get update -y \
     && apt-get install -y \
+        git \
         curl \
         jq \
         openjdk-17-jre-headless \
