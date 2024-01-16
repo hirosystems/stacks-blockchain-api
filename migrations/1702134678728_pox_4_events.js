@@ -171,6 +171,8 @@ exports.up = pgm => {
       WHEN 'stack-aggregation-increase' THEN
         reward_cycle IS NOT NULL AND
         amount_ustx IS NOT NULL
+      WHEN 'revoke-delegate-stx' THEN
+        delegate_to IS NOT NULL
       ELSE false
     END
   )`
