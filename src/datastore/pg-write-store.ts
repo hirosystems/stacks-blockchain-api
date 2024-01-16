@@ -848,7 +848,6 @@ export class PgWriteStore extends PgStore {
             break;
           }
           case SyntheticPoxEventName.RevokeDelegateStx: {
-            value.amount_ustx = event.data.amount_ustx.toString();
             value.delegate_to = event.data.delegate_to;
             break;
           }

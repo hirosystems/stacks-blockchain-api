@@ -324,7 +324,6 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
       return {
         ...baseInfo,
         data: {
-          amount_ustx: poxEvent.data.amount_ustx.toString(),
           delegate_to: poxEvent.data.delegate_to,
         },
       };

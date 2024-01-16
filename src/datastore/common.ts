@@ -454,8 +454,6 @@ export interface DbPoxSyntheticStackAggregationIncreaseEvent extends DbPoxSynthe
 export interface DbPoxSyntheticRevokeDelegateStxEvent extends DbPoxSyntheticBaseEventData {
   name: SyntheticPoxEventName.RevokeDelegateStx;
   data: {
-    // TODO: determine what data is available for this event type
-    amount_ustx: bigint;
     delegate_to: string;
   };
 }

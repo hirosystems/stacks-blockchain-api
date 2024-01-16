@@ -807,8 +807,6 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         ...basePoxEvent,
         name: rowName,
         data: {
-          // TODO: figure out what data is available for this event
-          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
           delegate_to: unwrapOptionalProp(row, 'delegate_to'),
         },
       };

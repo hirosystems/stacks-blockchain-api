@@ -238,7 +238,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
-    // validate delegate-stack-stx pox2 event for this tx
+    // validate delegate-stack-stx pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -284,6 +284,28 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
     expect(revokeStackResult.repr).toEqual('(ok true)');
     expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
+
+    // validate revoke-delegate-stx pox event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${revokeTxResult.txId}`);
+    expect(res).toBeDefined();
+    expect(res.results).toHaveLength(1);
+    console.log('res.results[0]', res.results[0]);
+    expect(res.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'revoke-delegate-stx',
+        pox_addr: STACKER.btcTestnetAddr,
+        stacker: STACKER.stxAddr,
+        // balance: BigInt(coreBalanceInfo.balance).toString(),
+        locked: DELEGATE_HALF_AMOUNT.toString(),
+        // burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
+      })
+    );
+    console.log('res.results[0].data', res.results[0].data);
+    expect(res.results[0].data).toEqual(
+      expect.objectContaining({
+        delegate_to: POOL.stxAddr,
+      })
+    );
 
     // revocation doesn't change anything for the previous delegate-stack-stx state
     const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
@@ -421,7 +443,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     await standByForTxSuccess(stackAggrCommitTxId);
 
-    // validate stack-aggregation-commit pox2 event for this tx
+    // validate stack-aggregation-commit pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
