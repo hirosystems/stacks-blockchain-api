@@ -1,3 +1,10 @@
+## [7.7.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.1...v7.7.2) (2024-01-16)
+
+
+### Bug Fixes
+
+* revive dropped mempool rebroadcasts ([#1823](https://github.com/hirosystems/stacks-blockchain-api/issues/1823)) ([862b36c](https://github.com/hirosystems/stacks-blockchain-api/commit/862b36c3fa896bcf9b5434ecf33c1bc0c9077aed))
+
 ## [7.7.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.0...v7.7.1) (2024-01-11)
 
 
