@@ -1,3 +1,10 @@
+## [7.8.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.3...v7.8.0-beta.4) (2024-01-16)
+
+
+### Features
+
+* upgrade to node 20, use bookworm-slim image ([#1832](https://github.com/hirosystems/stacks-blockchain-api/issues/1832)) ([0a42109](https://github.com/hirosystems/stacks-blockchain-api/commit/0a42109242ab5804004e01338f236f61ef07651b))
+
 ## [7.8.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.2...v7.8.0-beta.3) (2024-01-12)
 
 
