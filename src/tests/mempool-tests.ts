@@ -1726,6 +1726,226 @@ describe('mempool tests', () => {
     expect(txResult2.body.tx_status).toBe('success');
   });
 
+  test('Revive dropped and rebroadcasted mempool tx', async () => {
+    const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
+    const txId = '0x521234';
+    const dbBlock1: DbBlock = {
+      block_hash: '0x0123',
+      index_block_hash: '0x1234',
+      parent_index_block_hash: '0x5678',
+      parent_block_hash: '0x5678',
+      parent_microblock_hash: '0x00',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+    };
+    const dbBlock1b: DbBlock = {
+      block_hash: '0x0123bb',
+      index_block_hash: '0x1234bb',
+      parent_index_block_hash: '0x5678bb',
+      parent_block_hash: '0x5678bb',
+      parent_microblock_hash: '0x00',
+      parent_microblock_sequence: 0,
+      block_height: 1,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234bb',
+      burn_block_height: 123,
+      miner_txid: '0x4321bb',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+    };
+    const dbBlock2b: DbBlock = {
+      block_hash: '0x2123',
+      index_block_hash: '0x2234',
+      parent_index_block_hash: dbBlock1b.index_block_hash,
+      parent_block_hash: dbBlock1b.block_hash,
+      parent_microblock_hash: '0x00',
+      parent_microblock_sequence: 0,
+      block_height: 2,
+      burn_block_time: 39486,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+    };
+    const mempoolTx: DbMempoolTxRaw = {
+      tx_id: txId,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      post_conditions: '0x01f5',
+      fee_rate: 1234n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: senderAddress,
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      pruned: false,
+      receipt_time: 1616063078,
+    };
+    const dbTx1: DbTxRaw = {
+      ...mempoolTx,
+      ...dbBlock1,
+      parent_burn_block_time: 1626122935,
+      tx_index: 4,
+      status: DbTxStatus.Success,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '',
+      parent_index_block_hash: '',
+      event_count: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    let chainTip = await db.getChainTip();
+    expect(chainTip.mempool_tx_count).toBe(1);
+
+    // Verify tx shows up in mempool (non-pruned)
+    const mempoolResult1 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult1.body.results[0].tx_id).toBe(txId);
+    const mempoolCount1 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount1.body.total).toBe(1);
+
+    // Drop mempool tx
+    await db.dropMempoolTxs({
+      status: DbTxStatus.DroppedStaleGarbageCollect,
+      txIds: [mempoolTx.tx_id],
+    });
+
+    // Verify tx is pruned from mempool
+    const mempoolResult2 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult2.body.results).toHaveLength(0);
+    const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount2.body.total).toBe(0);
+    chainTip = await db.getChainTip();
+    expect(chainTip.mempool_tx_count).toBe(0);
+
+    // Re-broadcast mempool tx
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    // Verify tx shows up in mempool again (revived)
+    const mempoolResult3 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult3.body.results[0].tx_id).toBe(txId);
+    const mempoolCount3 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount3.body.total).toBe(1);
+    chainTip = await db.getChainTip();
+    expect(chainTip.mempool_tx_count).toBe(1);
+
+    // Mine tx in block to prune from mempool
+    await db.update({
+      block: dbBlock1,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: dbTx1,
+          stxEvents: [],
+          stxLockEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+      ],
+    });
+
+    // Verify tx is pruned from mempool
+    const mempoolResult4 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult4.body.results).toHaveLength(0);
+    const mempoolCount4 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount4.body.total).toBe(0);
+    chainTip = await db.getChainTip();
+    expect(chainTip.mempool_tx_count).toBe(0);
+
+    // Verify tx is mined
+    const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+    expect(txResult1.body.tx_status).toBe('success');
+    expect(txResult1.body.canonical).toBe(true);
+
+    // Orphan the block to get the tx orphaned and placed back in the pool
+    await db.update({
+      block: dbBlock1b,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
+    await db.update({
+      block: dbBlock2b,
+      microblocks: [],
+      minerRewards: [],
+      txs: [],
+    });
+
+    // Verify tx is orphaned and back in mempool
+    const txResult2 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
+    expect(txResult2.body.canonical).toBeFalsy();
+
+    // Verify tx has been revived and is back in the mempool
+    const mempoolResult5 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult5.body.results[0].tx_id).toBe(txId);
+    const mempoolCount5 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount5.body.total).toBe(1);
+    chainTip = await db.getChainTip();
+    expect(chainTip.mempool_tx_count).toBe(1);
+
+    // Re-broadcast mempool tx
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
+
+    // Verify tx has been revived and is back in the mempool
+    const mempoolResult6 = await supertest(api.server).get(
+      `/extended/v1/address/${mempoolTx.sender_address}/mempool`
+    );
+    expect(mempoolResult6.body.results[0].tx_id).toBe(txId);
+    const mempoolCount6 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
+    expect(mempoolCount6.body.total).toBe(1);
+  });
+
   test('returns fee priorities for mempool transactions', async () => {
     const mempoolTxs: DbMempoolTxRaw[] = [];
     for (let i = 0; i < 10; i++) {

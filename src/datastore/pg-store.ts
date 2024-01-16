@@ -218,6 +218,7 @@ export class PgStore extends BasePgStore {
       microblock_count: tip?.microblock_count ?? 0,
       tx_count: tip?.tx_count ?? 0,
       tx_count_unanchored: tip?.tx_count_unanchored ?? 0,
+      mempool_tx_count: tip?.mempool_tx_count ?? 0,
     };
   }
 

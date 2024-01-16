@@ -1644,6 +1644,27 @@ export class PgWriteStore extends PgStore {
         tenure_change_signature: tx.tenure_change_signature ?? null,
         tenure_change_signers: tx.tenure_change_signers ?? null,
       }));
+
+      // Revive mempool txs that were previously dropped
+      const revivedTxs = await sql<{ tx_id: string }[]>`
+        UPDATE mempool_txs
+        SET pruned = false,
+            status = ${DbTxStatus.Pending},
+            receipt_block_height = ${values[0].receipt_block_height},
+            receipt_time = ${values[0].receipt_time}
+        WHERE tx_id IN ${sql(values.map(v => v.tx_id))}
+          AND pruned = true
+          AND NOT EXISTS (
+            SELECT 1
+            FROM txs
+            WHERE txs.tx_id = mempool_txs.tx_id
+              AND txs.canonical = true
+              AND txs.microblock_canonical = true
+          )
+        RETURNING tx_id
+      `;
+      txIds.push(...revivedTxs.map(r => r.tx_id));
+
       const result = await sql<{ tx_id: string }[]>`
         WITH inserted AS (
           INSERT INTO mempool_txs ${sql(values)}
@@ -1652,7 +1673,9 @@ export class PgWriteStore extends PgStore {
         ),
         count_update AS (
           UPDATE chain_tip SET
-            mempool_tx_count = mempool_tx_count + (SELECT COUNT(*) FROM inserted),
+            mempool_tx_count = mempool_tx_count
+              + (SELECT COUNT(*) FROM inserted)
+              + ${revivedTxs.count},
             mempool_updated_at = NOW()
         )
         SELECT tx_id FROM inserted
@@ -2329,7 +2352,7 @@ export class PgWriteStore extends PgStore {
     const updatedRows = await sql<{ tx_id: string }[]>`
       WITH restored AS (
         UPDATE mempool_txs
-        SET pruned = FALSE
+        SET pruned = FALSE, status = ${DbTxStatus.Pending}
         WHERE tx_id IN ${sql(txIds)} AND pruned = TRUE
         RETURNING tx_id
       ),
