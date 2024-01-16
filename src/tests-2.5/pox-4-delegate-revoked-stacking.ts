@@ -1,6 +1,10 @@
+import { hexToBytes } from '@stacks/common';
+import { poxAddressToTuple } from '@stacks/stacking';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  Cl,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
@@ -8,12 +12,7 @@ import {
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import {
-  ClarityValueOptionalNone,
-  ClarityValueTuple,
-  ClarityValueUInt,
-  decodeClarityValue,
-} from 'stacks-encoding-native-js';
+import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
@@ -137,6 +136,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
+        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -223,6 +223,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(3), // lock-period
+        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -279,31 +280,30 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       fee: 10000n,
     });
     const revokeTxResult = await testEnv.client.sendTransaction(Buffer.from(revokeTx.serialize()));
-    const revokeStackDbTx = await standByForTxSuccess(revokeTxResult.txId);
+    const revokeStackDbTx = await standByForTx(revokeTxResult.txId);
 
-    const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
-    expect(revokeStackResult.repr).toEqual('(ok true)');
     expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
+    expect(Cl.deserialize(revokeStackDbTx.raw_result)).toEqual(
+      Cl.ok(
+        Cl.some(
+          Cl.tuple({
+            'amount-ustx': Cl.uint(DELEGATE_HALF_AMOUNT),
+            'delegated-to': Cl.standardPrincipal(POOL.stxAddr),
+            'pox-addr': Cl.some(poxAddressToTuple(STACKER.btcTestnetAddr)),
+            'until-burn-ht': Cl.none(),
+          })
+        )
+      )
+    );
 
     // validate revoke-delegate-stx pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${revokeTxResult.txId}`);
-    expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
-    console.log('res.results[0]', res.results[0]);
     expect(res.results[0]).toEqual(
       expect.objectContaining({
         name: 'revoke-delegate-stx',
-        pox_addr: STACKER.btcTestnetAddr,
         stacker: STACKER.stxAddr,
-        // balance: BigInt(coreBalanceInfo.balance).toString(),
-        locked: DELEGATE_HALF_AMOUNT.toString(),
-        // burnchain_unlock_height: coreBalanceInfo.unlock_height.toString(),
-      })
-    );
-    console.log('res.results[0].data', res.results[0].data);
-    expect(res.results[0].data).toEqual(
-      expect.objectContaining({
-        delegate_to: POOL.stxAddr,
+        data: { delegate_to: POOL.stxAddr },
       })
     );
 
@@ -328,6 +328,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
+        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -377,6 +378,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         standardPrincipalCV(STACKER.stxAddr), // stacker
         STACKER.poxAddrClar, // pox-addr
+        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
         uintCV(2), // extend-count
       ],
       network: testEnv.stacksNetwork,
@@ -407,6 +409,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
+        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
