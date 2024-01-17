@@ -3,8 +3,8 @@ import { pipeline } from 'stream/promises';
 import { PgWriteStore } from '../../../datastore/pg-write-store';
 import { RawEventRequestInsertValues } from '../../../datastore/common';
 import { logger } from '../../../logger';
-import { batchIterate } from '../../../helpers';
 import { DatasetStore } from '../dataset/store';
+import { batchIterate } from '@hirosystems/api-toolkit';
 
 const batchInserters: BatchInserter[] = [];
 

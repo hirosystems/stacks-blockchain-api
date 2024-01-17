@@ -6,9 +6,10 @@ import {
   getRosettaTransactionFromDataStore,
   getRosettaBlockFromDataStore,
 } from '../../controllers/db-controller';
-import { ChainID, has0xPrefix } from '../../../helpers';
+import { ChainID } from '../../../helpers';
 import { RosettaErrors, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createRosettaBlockRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

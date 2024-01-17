@@ -2,7 +2,7 @@ import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
-import { has0xPrefix, FoundOrNot, ChainID } from '../../../helpers';
+import { FoundOrNot, ChainID } from '../../../helpers';
 import {
   RosettaAccount,
   RosettaBlockIdentifier,
@@ -13,8 +13,8 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
-import { getValidatedFtMetadata } from '../../../rosetta-helpers';
-import { isFtMetadataEnabled } from '../../../token-metadata/helpers';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { RosettaFtMetadataClient } from '../../../rosetta/rosetta-ft-metadata-client';
 
 export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -121,22 +121,21 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           ];
 
           // Add Fungible Token balances.
-          if (isFtMetadataEnabled()) {
-            const ftBalances = await db.getFungibleTokenBalances({
-              stxAddress: accountIdentifier.address,
-              untilBlock: block.block_height,
-            });
-            for (const [ftAssetIdentifier, ftBalance] of ftBalances) {
-              const ftMetadata = await getValidatedFtMetadata(db, ftAssetIdentifier);
-              if (ftMetadata) {
-                balances.push({
-                  value: ftBalance.balance.toString(),
-                  currency: {
-                    symbol: ftMetadata.symbol,
-                    decimals: ftMetadata.decimals,
-                  },
-                });
-              }
+          const ftBalances = await db.getFungibleTokenBalances({
+            stxAddress: accountIdentifier.address,
+            untilBlock: block.block_height,
+          });
+          const metadataClient = new RosettaFtMetadataClient(chainId);
+          for (const [ftAssetIdentifier, ftBalance] of ftBalances) {
+            const ftMetadata = await metadataClient.getFtMetadata(ftAssetIdentifier);
+            if (ftMetadata) {
+              balances.push({
+                value: ftBalance.balance.toString(),
+                currency: {
+                  symbol: ftMetadata.symbol,
+                  decimals: ftMetadata.decimals,
+                },
+              });
             }
           }
 

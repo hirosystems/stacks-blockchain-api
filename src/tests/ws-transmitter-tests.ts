@@ -1,5 +1,4 @@
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
 import { WebSocketTransmitter } from '../api/routes/ws/web-socket-transmitter';
 import { Server } from 'http';
 import {
@@ -8,6 +7,7 @@ import {
   WebSocketPayload,
   WebSocketTopics,
 } from '../api/routes/ws/web-socket-channel';
+import { migrate } from '../test-utils/test-helpers';
 
 class TestChannel extends WebSocketChannel {
   connect(): void {
@@ -36,8 +36,13 @@ describe('ws transmitter', () => {
 
   beforeEach(async () => {
     process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', skipMigrations: true });
+  });
+
+  afterEach(async () => {
+    await db?.close();
+    await migrate('down');
   });
 
   test('handles pg exceptions gracefully', async () => {
@@ -50,10 +55,5 @@ describe('ws transmitter', () => {
     await expect(transmitter['txUpdate']('0xff')).resolves.not.toThrow();
     await expect(transmitter['nftEventUpdate']('0xff', 0)).resolves.not.toThrow();
     await expect(transmitter['addressUpdate']('0xff', 1)).resolves.not.toThrow();
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

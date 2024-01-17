@@ -1,11 +1,11 @@
-import { loadDotEnv, timeout } from '../helpers';
+import { loadDotEnv } from '../helpers';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations } from '../datastore/migrations';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { ApiServer, startApiServer } from '../api/init';
 import { ChainID } from '@stacks/transactions';
-import { StacksNetwork, StacksTestnet } from '@stacks/network';
+import { cycleMigrations, timeout } from '@hirosystems/api-toolkit';
+import { MIGRATIONS_DIR } from '../datastore/pg-store';
+import { getConnectionArgs } from '../datastore/connection';
 
 export interface GlobalTestEnv {
   db: PgWriteStore;
@@ -19,7 +19,6 @@ async function standByForInfoToBeReady(client: StacksCoreRpcClient): Promise<voi
       tries++;
       await client.getInfo();
       return;
-      await timeout(500);
     } catch (error) {
       console.log(`Waiting on /v2/info to be ready, retrying after ${error}`);
       await timeout(500);
@@ -55,7 +54,7 @@ export default async (): Promise<void> => {
   process.env.STACKS_CHAIN_ID = '0x80000000';
 
   const db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
-  await cycleMigrations();
+  await cycleMigrations(MIGRATIONS_DIR, getConnectionArgs());
   const eventServer = await startEventServer({ datastore: db, chainId: ChainID.Testnet });
 
   const subnetClient = new StacksCoreRpcClient();

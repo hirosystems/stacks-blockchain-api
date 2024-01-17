@@ -1,17 +1,12 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import * as c32check from 'c32check';
-import * as poxHelpers from '../pox-helpers';
 import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
-import { getCurrentGitTag, has0xPrefix, isValidBitcoinAddress } from '../helpers';
+import { isValidBitcoinAddress, getUintEnvOrDefault } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
-
-test('get git tag', () => {
-  const tag = getCurrentGitTag();
-  expect(tag).toBeTruthy();
-});
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {
@@ -540,4 +535,14 @@ describe('Bitcoin address encoding formats', () => {
     });
     expect(randP2TRTestnet).toMatch(/^tb1p/);
   });
+});
+
+test('getUintEnvOrDefault tests', () => {
+  const key = 'SOME_UINT_ENV';
+  process.env[key] = '123';
+  expect(getUintEnvOrDefault(key)).toBe(123);
+  process.env[key] = '-123';
+  expect(() => getUintEnvOrDefault(key)).toThrowError();
+  process.env[key] = 'ABC';
+  expect(() => getUintEnvOrDefault(key)).toThrowError();
 });

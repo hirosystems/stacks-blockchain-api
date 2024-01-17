@@ -18,66 +18,24 @@ import {
   DbBnsName,
   DbBnsSubdomain,
   DbTokenOfferingLocked,
-  DbNonFungibleTokenMetadata,
-  DbFungibleTokenMetadata,
   DbTx,
-  DataStoreTxEventData,
+  DataStoreBnsBlockTxData,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { getPostgres, PgServer, PgSqlClient } from '../datastore/connection';
-import { bnsNameCV, bufferToHexPrefixString, I32_MAX } from '../helpers';
+import { bnsNameCV, I32_MAX } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
-import { sqlTransactionContext } from '../datastore/pg-store';
-
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => Promise<void>
-): Promise<void>;
-function testEnvVars(envVars: Record<string, string | undefined>, use: () => void): void;
-function testEnvVars(
-  envVars: Record<string, string | undefined>,
-  use: () => void | Promise<void>
-): void | Promise<void> {
-  const existing = Object.fromEntries(
-    Object.keys(envVars)
-      .filter(k => k in process.env)
-      .map(k => [k, process.env[k]])
-  );
-  const added = Object.keys(envVars).filter(k => !(k in process.env));
-  Object.entries(envVars).forEach(([k, v]) => {
-    process.env[k] = v;
-    if (v === undefined) {
-      delete process.env[k];
-    }
-  });
-  const restoreEnvVars = () => {
-    added.forEach(k => delete process.env[k]);
-    Object.entries(existing).forEach(([k, v]) => (process.env[k] = v));
-  };
-  let runFn: void | Promise<void>;
-  try {
-    runFn = use();
-    if (runFn instanceof Promise) {
-      return runFn.finally(() => restoreEnvVars());
-    }
-  } finally {
-    if (!(runFn instanceof Promise)) {
-      restoreEnvVars();
-    }
-  }
-}
+import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -86,245 +44,9 @@ describe('postgres datastore', () => {
     client = db.sql;
   });
 
-  test('bytea column serialization', async () => {
-    const vectors = [
-      {
-        from: '0x0001',
-        to: '0x0001',
-      },
-      {
-        from: '0X0002',
-        to: '0x0002',
-      },
-      {
-        from: '0xFfF3',
-        to: '0xfff3',
-      },
-      {
-        from: Buffer.from('0004', 'hex'),
-        to: '0x0004',
-      },
-      {
-        from: new Uint16Array(new Uint8Array([0x00, 0x05]).buffer),
-        to: '0x0005',
-      },
-      {
-        from: '\\x0006',
-        to: '0x0006',
-      },
-      {
-        from: '\\xfFf7',
-        to: '0xfff7',
-      },
-      {
-        from: '\\x',
-        to: '0x',
-      },
-      {
-        from: '',
-        to: '0x',
-      },
-      {
-        from: Buffer.alloc(0),
-        to: '0x',
-      },
-    ];
-    await db.sql.begin(async sql => {
-      await sql`
-        CREATE TEMPORARY TABLE bytea_testing(
-          value bytea NOT NULL
-        ) ON COMMIT DROP
-      `;
-      for (const v of vectors) {
-        const query = await sql<{ value: string }[]>`
-          insert into bytea_testing (value) values (${v.from})
-          returning value
-        `;
-        expect(query[0].value).toBe(v.to);
-      }
-    });
-    const badInputs = ['0x123', '1234', '0xnoop', new Date(), 1234];
-    for (const input of badInputs) {
-      const query = async () =>
-        db.sql.begin(async sql => {
-          await sql`
-          CREATE TEMPORARY TABLE bytea_testing(
-            value bytea NOT NULL
-          ) ON COMMIT DROP
-        `;
-          return await sql`insert into bytea_testing (value) values (${input})`;
-        });
-      await expect(query()).rejects.toThrow();
-    }
-  });
-
-  test('postgres uri config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema&application_name=test-conn-str';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: undefined,
-        PG_USER: undefined,
-        PG_PASSWORD: undefined,
-        PG_HOST: undefined,
-        PG_PORT: undefined,
-        PG_SSL: undefined,
-        PG_SCHEMA: undefined,
-        PG_APPLICATION_NAME: undefined,
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests' });
-        expect(sql.options.database).toBe('test_db');
-        expect(sql.options.user).toBe('test_user');
-        expect(sql.options.pass).toBe('secret_password');
-        expect(sql.options.host).toStrictEqual(['database.server.com']);
-        expect(sql.options.port).toStrictEqual([3211]);
-        expect(sql.options.ssl).toBe('true');
-        expect(sql.options.connection.search_path).toBe('test_schema');
-        expect(sql.options.connection.application_name).toBe('test-conn-str:tests');
-      }
-    );
-  });
-
-  test('postgres env var config', () => {
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: undefined,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-        PG_APPLICATION_NAME: 'test-env-vars',
-        PG_MAX_LIFETIME: '5',
-        PG_IDLE_TIMEOUT: '1',
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests' });
-        expect(sql.options.database).toBe('pg_db_db1');
-        expect(sql.options.user).toBe('pg_user_user1');
-        expect(sql.options.pass).toBe('pg_password_password1');
-        expect(sql.options.host).toStrictEqual(['pg_host_host1']);
-        expect(sql.options.port).toStrictEqual([9876]);
-        expect(sql.options.ssl).toBe(true);
-        expect(sql.options.max_lifetime).toBe(5);
-        expect(sql.options.idle_timeout).toBe(1);
-        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
-        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
-      }
-    );
-  });
-
-  test('postgres primary env var config fallback', () => {
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: undefined,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-        PG_APPLICATION_NAME: 'test-env-vars',
-        PG_MAX_LIFETIME: '5',
-        PG_IDLE_TIMEOUT: '1',
-        // Primary values:
-        PG_PRIMARY_DATABASE: 'primary_db',
-        PG_PRIMARY_USER: 'primary_user',
-        PG_PRIMARY_PASSWORD: 'primary_password',
-        PG_PRIMARY_HOST: 'primary_host',
-        PG_PRIMARY_PORT: '9999',
-      },
-      () => {
-        const sql = getPostgres({ usageName: 'tests', pgServer: PgServer.primary });
-        // Primary values take precedence.
-        expect(sql.options.database).toBe('primary_db');
-        expect(sql.options.user).toBe('primary_user');
-        expect(sql.options.pass).toBe('primary_password');
-        expect(sql.options.host).toStrictEqual(['primary_host']);
-        expect(sql.options.port).toStrictEqual([9999]);
-        // Other values come from defaults.
-        expect(sql.options.ssl).toBe(true);
-        expect(sql.options.max_lifetime).toBe(5);
-        expect(sql.options.idle_timeout).toBe(1);
-        expect(sql.options.connection.search_path).toBe('pg_schema_schema1');
-        expect(sql.options.connection.application_name).toBe('test-env-vars:tests');
-      }
-    );
-  });
-
-  test('postgres connection application_name', async () => {
-    await testEnvVars(
-      {
-        PG_APPLICATION_NAME: 'test-app-name',
-      },
-      async () => {
-        const testDb = await PgWriteStore.connect({
-          usageName: 'test-usage-name',
-          skipMigrations: true,
-        });
-        try {
-          const name = await testDb.getConnectionApplicationName();
-          expect(name).toStrictEqual('test-app-name:test-usage-name;datastore-crud');
-        } finally {
-          await testDb.close();
-        }
-      }
-    );
-  });
-
-  test('postgres conflicting config', () => {
-    const uri =
-      'postgresql://test_user:secret_password@database.server.com:3211/test_db?ssl=true&currentSchema=test_schema';
-    testEnvVars(
-      {
-        PG_CONNECTION_URI: uri,
-        PG_DATABASE: 'pg_db_db1',
-        PG_USER: 'pg_user_user1',
-        PG_PASSWORD: 'pg_password_password1',
-        PG_HOST: 'pg_host_host1',
-        PG_PORT: '9876',
-        PG_SSL: 'true',
-        PG_SCHEMA: 'pg_schema_schema1',
-      },
-      () => {
-        expect(() => {
-          const config = getPostgres({ usageName: 'tests' });
-        }).toThrowError();
-      }
-    );
-  });
-
-  test('postgres transaction connection integrity', async () => {
-    const usageName = 'stacks-blockchain-api:tests;datastore-crud';
-    const obj = db.sql;
-
-    expect(sqlTransactionContext.getStore()).toBeUndefined();
-    await db.sqlTransaction(async sql => {
-      // Transaction flag is open.
-      expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
-      // New connection object.
-      const newObj = sql;
-      expect(obj).not.toEqual(newObj);
-      expect(sqlTransactionContext.getStore()?.sql).toEqual(newObj);
-
-      // Nested tx uses the same connection object.
-      await db.sqlTransaction(sql => {
-        expect(sqlTransactionContext.getStore()?.usageName).toBe(usageName);
-        expect(newObj).toEqual(sql);
-      });
-
-      // Getter returns the same connection object too.
-      expect(db.sql).toEqual(newObj);
-    });
-
-    // Back to normal.
-    expect(sqlTransactionContext.getStore()).toBeUndefined();
-    expect(db.sql).toEqual(obj);
+  afterEach(async () => {
+    await db?.close();
+    await migrate('down');
   });
 
   test('pg address STX balances', async () => {
@@ -374,9 +96,7 @@ describe('postgres datastore', () => {
       createMinerReward('addrB', 0n, 30n, 40n, 7n),
       createMinerReward('addrB', 99999n, 92n, 93n, 0n, false),
     ];
-    for (const reward of minerRewards) {
-      await db.updateMinerReward(client, reward);
-    }
+    await db.updateMinerRewards(client, minerRewards);
 
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -475,9 +195,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrA', 222n, 1),
       createStxLockEvent('addrB', 333n, 1),
     ];
-    for (const stxLockEvent of stxLockEvents) {
-      await db.updateStxLockEvent(client, tx, stxLockEvent);
-    }
+    await db.updateStxLockEvents(client, tx, stxLockEvents);
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -555,6 +273,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -659,6 +378,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -717,6 +437,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -826,6 +547,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -885,6 +607,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -950,6 +673,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     let indexIdIndex = 0;
@@ -973,7 +697,7 @@ describe('postgres datastore', () => {
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
-        token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+        token_transfer_memo: bufferToHex(Buffer.from('hi')),
         token_transfer_recipient_address: recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
@@ -1040,6 +764,7 @@ describe('postgres datastore', () => {
         smartContracts: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       })),
     });
 
@@ -1208,6 +933,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const txs1 = [
       createStxTx('addrA', 'addrB', 100, dbBlock1),
@@ -1237,6 +963,7 @@ describe('postgres datastore', () => {
         smartContracts: [],
         pox2Events: [],
         pox3Events: [],
+        pox4Events: [],
       })),
     });
 
@@ -1279,6 +1006,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x1234',
@@ -1514,6 +1242,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -1527,6 +1256,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx3,
@@ -1540,6 +1270,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2241,6 +1972,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -2292,6 +2024,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2319,6 +2052,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2375,6 +2109,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2402,6 +2137,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2466,6 +2202,7 @@ describe('postgres datastore', () => {
           smartContracts: [contract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2493,6 +2230,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -2561,6 +2299,7 @@ describe('postgres datastore', () => {
           smartContracts: [contract],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2626,6 +2365,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2682,6 +2422,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2709,6 +2450,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2764,6 +2506,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2791,6 +2534,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2845,6 +2589,7 @@ describe('postgres datastore', () => {
           smartContracts: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -2872,6 +2617,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2941,6 +2687,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -3088,6 +2835,7 @@ describe('postgres datastore', () => {
           namespaces: [namespace1],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: { ...tx2, raw_tx: '0x' },
@@ -3101,6 +2849,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3308,6 +3057,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3327,6 +3077,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3346,6 +3097,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3371,6 +3123,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -3390,6 +3143,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -3409,6 +3163,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -3428,6 +3183,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const tx1Mempool: DbMempoolTxRaw = {
@@ -3439,7 +3195,7 @@ describe('postgres datastore', () => {
       type_id: DbTxTypeId.TokenTransfer,
       receipt_time: 123456,
       token_transfer_amount: 1n,
-      token_transfer_memo: bufferToHexPrefixString(Buffer.from('hi')),
+      token_transfer_memo: bufferToHex(Buffer.from('hi')),
       token_transfer_recipient_address: 'stx-recipient-addr',
       status: DbTxStatus.Pending,
       post_conditions: '0x',
@@ -3515,6 +3271,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3578,6 +3335,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -3613,6 +3371,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3632,6 +3391,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3651,6 +3411,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3676,6 +3437,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3711,7 +3473,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3746,7 +3508,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3776,9 +3538,7 @@ describe('postgres datastore', () => {
     }
 
     // insert miner rewards directly
-    for (const minerReward of [minerReward1]) {
-      await db.updateMinerReward(client, minerReward);
-    }
+    await db.updateMinerRewards(client, [minerReward1]);
 
     // insert txs directly
     for (const tx of [tx1, tx2]) {
@@ -3786,9 +3546,7 @@ describe('postgres datastore', () => {
     }
 
     // insert stx lock events directly
-    for (const event of [stxLockEvent1]) {
-      await db.updateStxLockEvent(client, tx1, event);
-    }
+    await db.updateStxLockEvents(client, tx1, [stxLockEvent1]);
 
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -3808,6 +3566,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
@@ -3823,6 +3582,7 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
@@ -3840,12 +3600,15 @@ describe('postgres datastore', () => {
         nftEvents: 0,
         pox2Events: 0,
         pox3Events: 0,
+        pox4Events: 0,
         contractLogs: 0,
         smartContracts: 0,
         names: 0,
         namespaces: 0,
         subdomains: 0,
       },
+      prunedMempoolTxs: 0,
+      restoredMempoolTxs: 0,
     });
 
     const blockQuery1 = await db.getBlock({ hash: block1.block_hash });
@@ -3877,6 +3640,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3896,6 +3660,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3943,7 +3708,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -3978,7 +3743,7 @@ describe('postgres datastore', () => {
       sender_address: 'sender-addr',
       sponsor_address: undefined,
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 1,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4012,6 +3777,7 @@ describe('postgres datastore', () => {
       contract_name: 'pox',
     };
 
+    // Start canonical chain
     await db.update({
       block: block1,
       microblocks: [],
@@ -4029,6 +3795,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4095,6 +3862,7 @@ describe('postgres datastore', () => {
           ],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4166,6 +3934,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4187,6 +3956,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx3: DbTxRaw = {
       tx_id: '0x03',
@@ -4209,7 +3979,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4232,6 +4002,7 @@ describe('postgres datastore', () => {
       abi: '{"thing":1}',
     };
 
+    // Insert non-canonical block
     await db.update({
       block: block2b,
       microblocks: [],
@@ -4295,6 +4066,7 @@ describe('postgres datastore', () => {
           ],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4329,12 +4101,19 @@ describe('postgres datastore', () => {
 
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTip(client);
+    const chainTip1 = await db.getChainTip();
     expect(chainTip1).toEqual({
-      blockHash: '0x33',
-      blockHeight: 3,
-      indexBlockHash: '0xcc',
-      burnBlockHeight: 123,
+      block_hash: '0x33',
+      block_height: 3,
+      index_block_hash: '0xcc',
+      burn_block_height: 123,
+      block_count: 3,
+      mempool_tx_count: 0,
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2, // Tx from block 2b does not count
+      tx_count_unanchored: 2,
     });
     const namespaces = await db.getNamespaceList({ includeUnanchored: false });
     expect(namespaces.results.length).toBe(1);
@@ -4384,16 +4163,25 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
-    const chainTip2 = await db.getChainTip(client);
+    // Chain tip doesn't change yet.
+    const chainTip2 = await db.getChainTip();
     expect(chainTip2).toEqual({
-      blockHash: '0x33',
-      blockHeight: 3,
-      indexBlockHash: '0xcc',
-      burnBlockHeight: 123,
+      block_hash: '0x33',
+      block_height: 3,
+      index_block_hash: '0xcc',
+      burn_block_height: 123,
+      block_count: 3,
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2,
+      tx_count_unanchored: 2,
+      mempool_tx_count: 0,
     });
 
     const block4b: DbBlock = {
@@ -4414,6 +4202,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4431,12 +4220,19 @@ describe('postgres datastore', () => {
 
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTip(client);
+    const chainTip3 = await db.getChainTip();
     expect(chainTip3).toEqual({
-      blockHash: '0x44bb',
-      blockHeight: 4,
-      indexBlockHash: '0xddbb',
-      burnBlockHeight: 123,
+      block_count: 4,
+      block_hash: '0x44bb',
+      block_height: 4,
+      burn_block_height: 123,
+      index_block_hash: '0xddbb',
+      microblock_count: 0,
+      microblock_hash: undefined,
+      microblock_sequence: undefined,
+      tx_count: 2, // Tx from block 2b now counts, but compensates with tx from block 2
+      tx_count_unanchored: 2,
+      mempool_tx_count: 1,
     });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });
@@ -4504,6 +4300,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -4526,7 +4323,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4557,6 +4354,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4585,13 +4383,14 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
       tx_index: 0,
       anchor_mode: 3,
       nonce: 0,
-      raw_tx: bufferToHexPrefixString(Buffer.from('abc')),
+      raw_tx: bufferToHex(Buffer.from('abc')),
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
@@ -4607,7 +4406,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 0,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4638,6 +4437,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4665,6 +4465,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -4687,7 +4488,7 @@ describe('postgres datastore', () => {
       sponsor_address: undefined,
       sender_address: 'sender-addr',
       origin_hash_mode: 1,
-      coinbase_payload: bufferToHexPrefixString(Buffer.from('hi')),
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
       event_count: 4,
       parent_index_block_hash: '0x00',
       parent_block_hash: '0x00',
@@ -4773,6 +4574,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
         {
           tx: tx2,
@@ -4786,6 +4588,7 @@ describe('postgres datastore', () => {
           namespaces: [],
           pox2Events: [],
           pox3Events: [],
+          pox4Events: [],
         },
       ],
     });
@@ -4815,6 +4618,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({
       block: dbBlock,
@@ -4847,8 +4651,8 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      },
-      namespace
+      } as DataStoreBnsBlockTxData,
+      [namespace]
     );
     const { results } = await db.getNamespaceList({ includeUnanchored: false });
     expect(results.length).toBe(1);
@@ -4874,6 +4678,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({
       block: dbBlock,
@@ -4903,8 +4708,8 @@ describe('postgres datastore', () => {
         microblock_hash: '0x00',
         microblock_sequence: I32_MAX,
         microblock_canonical: true,
-      },
-      name
+      } as DataStoreBnsBlockTxData,
+      [name]
     );
     const { results } = await db.getNamespaceNamesList({
       namespace: 'abc',
@@ -4934,6 +4739,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.update({
       block: dbBlock,
@@ -4994,6 +4800,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -5097,6 +4904,7 @@ describe('postgres datastore', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      tx_count: 1,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -5195,48 +5003,6 @@ describe('postgres datastore', () => {
     expect(results.found).toBe(false);
   });
 
-  test('pg token nft-metadata', async () => {
-    const nftMetadata: DbNonFungibleTokenMetadata = {
-      token_uri: 'nft-tokenuri',
-      name: 'nft-metadata',
-      description: 'nft -metadata description',
-      image_uri: 'nft-metadata image uri example',
-      image_canonical_uri: 'nft-metadata image canonical uri example',
-      contract_id: 'ABCDEFGHIJ.nft-metadata',
-      tx_id: '0x1234',
-      sender_address: 'sender-addr-test',
-    };
-
-    const rowCount = await db.updateNFtMetadata(nftMetadata, 1);
-    expect(rowCount).toBe(1);
-
-    const query = await db.getNftMetadata(nftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(nftMetadata);
-  });
-
-  test('pg token ft-metadata', async () => {
-    const ftMetadata: DbFungibleTokenMetadata = {
-      token_uri: 'ft-token',
-      name: 'ft-metadata',
-      description: 'ft -metadata description',
-      symbol: 'stx',
-      decimals: 5,
-      image_uri: 'ft-metadata image uri example',
-      image_canonical_uri: 'ft-metadata image canonical uri example',
-      contract_id: 'ABCDEFGHIJ.ft-metadata',
-      tx_id: '0x1234',
-      sender_address: 'sender-addr-test',
-    };
-
-    const rowCount = await db.updateFtMetadata(ftMetadata, 1);
-    expect(rowCount).toBe(1);
-
-    const query = await db.getFtMetadata(ftMetadata.contract_id);
-    expect(query.found).toBe(true);
-    if (query.found) expect(query.result).toStrictEqual(ftMetadata);
-  });
-
   test('empty parameter lists are handled correctly', async () => {
     const block = new TestBlockBuilder({ block_height: 1 }).addTx().build();
     await db.update(block);
@@ -5260,10 +5026,5 @@ describe('postgres datastore', () => {
     await expect(
       db.getTxListDetails({ txIds: [], includeUnanchored: true })
     ).resolves.not.toThrow();
-  });
-
-  afterEach(async () => {
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

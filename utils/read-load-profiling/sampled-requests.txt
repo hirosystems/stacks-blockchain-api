@@ -2,7 +2,6 @@
 /extended/v1/address/SP2ZSTSSE61NZTRGWVB18MEQ26AMQ0Z7R70Z2ND36/transactions_with_transfers?limit=50&unanchored=true
 /extended/v1/address/SP2Y4WPD4JDQ9A9HCADNTNTE6NTEKCCNDBA373XHY/transactions_with_transfers?limit=50&unanchored=true
 /extended/v1/block/0x10bc1ba06366077c85b096bfa7b0e4f2f9df1fe3182e1cec8ffa7ee79a11bf92?unanchored=true
-/extended/v1/address/SP1TA84JTP4YRFWBK7PYKBA33H3YB60XP654RAR7M/nft_events?limit=50&offset=0
 /extended/v1/tx/0x0429af694679c329ba6a7ec0e0c540148b99e720db286589df2b07844c459e62?unanchored=true
 /extended/v1/tx/0xcacb7888089d814974cfdc8ee65ca639f65e7911eeb7f26f05bd4139797be390?event_offset=0&event_limit=200
 /extended/v1/tx/0x2632ee0489174c5e2900b33f0c40dda2c1abcf6f41bb0aa91441e678c4478ea3?unanchored=true
@@ -169,7 +168,6 @@
 /extended/v1/block/0x983157ca681cfc98fcb3f655e2bbef2805977fc9a869495da5a71e98ad8b544e?unanchored=true
 /extended/v1/address/SP374RMXRCP8SZCWYT21KX7ETY3V2WSQPNGEZ7GF8/balances
 /extended/v1/address/SP3W3F6SS0G0BSFE1AWA1S7C66EY744W1BJMNT96M/balances
-/extended/v1/tokens/ft/metadata?unanchored=true
 /extended/v1/address/SP1QDGYS3D54VK3QX7E0TB11BS6M5JRHGDQJVX01X/balances
 /extended/v1/tx/0x2cab8e5fe2ec4457a1dbb21bfb351d8342e02b2c7123cf1290ebb817fd531e93?unanchored=true
 /extended/v1/address/SP1Y56N007J3H18CA2N5T5E4XY3K4V5WD030H0NXC/stx?unanchored=true
@@ -436,7 +434,6 @@
 /extended/v1/address/SP1G9JDXSSWM0EHP2FNMEB5GQ06WA54TMDVM1CNMG/stx
 /extended/v1/address/SP1FEAD66PAAYHQRZG4G6FV0RY1RWBA7SJV6NFXVD/stx?unanchored=true
 /extended/v1/tx/mempool?address=SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft
-/extended/v1/tokens/ft/metadata?unanchored=true
 /extended/v1/address/SP3H3X8ZPY9XJE7Q7DREH7F0RXJJH3EFWBMC8ETFY/transactions_with_transfers?limit=50&unanchored=true
 /extended/v1/tx/mempool?limit=200&address=SP7383KRJA9AQAY9WS1AKAPG4KAR9ERQM3586AZ3&unanchored=true
 /extended/v1/contract/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-swap-v2-1?unanchored=true
@@ -766,7 +763,6 @@
 /extended/v1/address/SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft/transactions?limit=30&offset=0&unanchored=true
 /extended/v1/tx/mempool?address=SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft
 /extended/v1/tx/0x07f603ca4b210e0a17bd31b56a27f7a98502e1e4db8873ca65574660b0fb15e9?event_offset=0&event_limit=200
-/extended/v1/tokens/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-swap-token-xbtc-usda/ft/metadata?unanchored=true
 /extended/v1/address/SP15BBZH3TSP1KT7RNNJ86566WD2K8GT8AH93V3V7/transactions?limit=50
 /extended/v1/tx/mempool?address=SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft
 /extended/v1/tx/0x8fb7bee09eff178935d1e174ac565ae75a47d074baa2f19f6386ec8daf478bb3?event_offset=0&event_limit=200
@@ -813,9 +809,7 @@
 /extended/v1/address/SP2XZ5NT9R6W7PAD9Z72MZA8RRDD168AP28N9CNMV/stx?unanchored=true
 /extended/v1/address/SP2XZ5NT9R6W7PAD9Z72MZA8RRDD168AP28N9CNMV/transactions_with_transfers?limit=50&unanchored=true
 /extended/v1/tx/mempool?limit=30&offset=0&unanchored=true
-/extended/v1/tokens/ft/metadata?unanchored=true
 /extended/v1/address/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-swap-v2-1/balances?unanchored=true
-/extended/v1/tokens/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.wrapped-stx-token/ft/metadata?unanchored=true
 /extended/v1/address/SPJW1XE278YMCEYMXB8ZFGJMH8ZVAAEDP2S2PJYG.stacks-art-market-v2/transactions?limit=30&offset=0&unanchored=true
 /extended/v1/tx/mempool?limit=30&offset=0&unanchored=true
 /extended/v1/tx/0xc259761a2c7435388a283d15d989f4ec5e8dac7994d0599862009ae95d988fc4?unanchored=true
@@ -823,7 +817,6 @@
 /extended/v1/tx/0x76901f23e486881a855d44c58ea2e9632066d93742e0b63de0b7b6aebfb78c58?unanchored=true
 /extended/v1/block/0x112d73352fbc27ef4f75bd2b1023d0b16e03ce6d3c169ed8e233fac64c9e5c4b?unanchored=true
 /extended/v1/address/SP3YK7KWMYRCDMV5M4792T0T7DERQXHJJGGEPV1N8/balances?unanchored=true
-/extended/v1/tokens/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-swap-token-wstx-diko/ft/metadata?unanchored=true
 /extended/v1/address/SP15BBZH3TSP1KT7RNNJ86566WD2K8GT8AH93V3V7/balances
 /extended/v1/tx/0x350a207e00756a50527216c19682540d46318785efedcec07804ebbd1b28c8ba?unanchored=true
 /extended/v1/contract/SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft?unanchored=true
@@ -959,11 +952,9 @@
 /extended/v1/tx/mempool?limit=200&address=SP1WGEZBR8BCXRA9X6QS3X24X8HPVPF9P1Q8MYTEB
 /extended/v1/tx/0xc9517fc98a26de0498a4dce5e14007cd200da97acf8ee80f55ace095af87f5b5?unanchored=true
 /extended/v1/address/SP37G983VM8T3RPSSQTVA798Y3GPJEXEJK8FJ7M03/transactions_with_transfers?limit=50&unanchored=true
-/extended/v1/tokens/ft/metadata?unanchored=true
 /extended/v1/address/SPV6J95VNA11FAQ3ATFV8JTP78SFGRS6V2EB0SWN/transactions?limit=30&unanchored=true
 /extended/v1/address/SP2KAF9RF86PVX3NEE27DFV1CQX0T4WGR41X3S45C.wasteland-apes-nft/transactions?limit=30&offset=0&unanchored=true
 /extended/v1/block/0xdbf829d5d1a3f17b35faf0ff0336587e7ac10a8b21a2e001eae539a592351a65?unanchored=true
-/extended/v1/tokens/SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.age000-governance-token/ft/metadata?unanchored=true
 /extended/v1/address/SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR.arkadiko-stake-registry-v1-1/transactions?limit=30&offset=0&unanchored=true
 /extended/v1/tx/mempool?address=SP3D6PV2ACBPEKYJTCMH7HEN02KP87QSP8KTEH335.megapont-ape-club-nft
 /extended/v1/address/SP14V9BXQR5A6M32REYYFDBQQE7FA0Q2R41GD90NK/balances?unanchored=true

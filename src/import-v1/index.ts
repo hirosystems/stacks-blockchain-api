@@ -8,17 +8,18 @@ import * as zlib from 'zlib';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
 import * as split2 from 'split2';
 import {
+  DataStoreBnsBlockTxData,
   DbBnsName,
   DbBnsNamespace,
   DbBnsSubdomain,
   DbConfigState,
   DbTokenOfferingLocked,
 } from '../datastore/common';
-import { asyncBatchIterate, asyncIterableToGenerator, I32_MAX, REPO_DIR } from '../helpers';
-import { BnsGenesisBlock, getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
-import { PgSqlClient } from '../datastore/connection';
+import { REPO_DIR } from '../helpers';
+import { getBnsGenesisBlockFromBlockMessage } from '../event-replay/helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { logger } from '../logger';
+import { PgSqlClient, asyncBatchIterate, asyncIterableToGenerator } from '@hirosystems/api-toolkit';
 
 const finished = util.promisify(stream.finished);
 const pipeline = util.promisify(stream.pipeline);
@@ -78,13 +79,13 @@ class ChainProcessor extends stream.Writable {
   namespace: Map<string, DbBnsNamespace>;
   db: PgWriteStore;
   sql: PgSqlClient;
-  genesisBlock: BnsGenesisBlock;
+  genesisBlock: DataStoreBnsBlockTxData;
 
   constructor(
     sql: PgSqlClient,
     db: PgWriteStore,
     zhashes: Map<string, string>,
-    genesisBlock: BnsGenesisBlock
+    genesisBlock: DataStoreBnsBlockTxData
   ) {
     super();
     this.zhashes = zhashes;
@@ -159,7 +160,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
             status: 'name-register',
           };
-          await this.db.updateNames(this.sql, this.genesisBlock, obj);
+          await this.db.updateNames(this.sql, this.genesisBlock, [obj]);
           this.rowCount += 1;
           if (obj.zonefile === '') {
             logger.debug(
@@ -186,7 +187,7 @@ class ChainProcessor extends stream.Writable {
             canonical: true,
           };
           this.namespace.set(obj.namespace_id, obj);
-          await this.db.updateNamespaces(this.sql, this.genesisBlock, obj);
+          await this.db.updateNamespaces(this.sql, this.genesisBlock, [obj]);
           this.rowCount += 1;
         }
       }
@@ -230,9 +231,9 @@ function btcToStxAddress(btcAddress: string) {
 }
 
 class SubdomainTransform extends stream.Transform {
-  genesisBlock: BnsGenesisBlock;
+  genesisBlock: DataStoreBnsBlockTxData;
 
-  constructor(genesisBlock: BnsGenesisBlock) {
+  constructor(genesisBlock: DataStoreBnsBlockTxData) {
     super({ objectMode: true, highWaterMark: SUBDOMAIN_BATCH_SIZE });
     this.genesisBlock = genesisBlock;
   }
@@ -304,7 +305,7 @@ async function valid(fileName: string): Promise<boolean> {
   return true;
 }
 
-async function* readSubdomains(importDir: string, genesisBlock: BnsGenesisBlock) {
+async function* readSubdomains(importDir: string, genesisBlock: DataStoreBnsBlockTxData) {
   const metaIter = asyncIterableToGenerator<DbBnsSubdomain>(
     stream.pipeline(
       fs.createReadStream(path.join(importDir, 'subdomains.csv')),
@@ -416,7 +417,7 @@ async function validateBnsImportDir(importDir: string, importFiles: string[]) {
 export async function importV1BnsNames(
   db: PgWriteStore,
   importDir: string,
-  genesisBlock: BnsGenesisBlock
+  genesisBlock: DataStoreBnsBlockTxData
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_names_onchain_imported) {
@@ -444,7 +445,7 @@ export async function importV1BnsNames(
 export async function importV1BnsSubdomains(
   db: PgWriteStore,
   importDir: string,
-  genesisBlock: BnsGenesisBlock
+  genesisBlock: DataStoreBnsBlockTxData
 ) {
   const configState = await db.getConfigState();
   if (configState.bns_subdomains_imported) {

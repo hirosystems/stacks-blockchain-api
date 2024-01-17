@@ -1,13 +1,13 @@
 import * as express from 'express';
 import { BlockListResponse } from '@stacks/stacks-blockchain-api-types';
 import { getBlockFromDataStore, getBlocksWithMetadata } from '../controllers/db-controller';
-import { has0xPrefix } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { getBlockHeightPathParam, validateRequestHexInput } from '../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../controllers/cache-controller';
 import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 export function createBlockRouter(db: PgStore): express.Router {
   const router = express.Router();

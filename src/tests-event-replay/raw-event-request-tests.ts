@@ -1,13 +1,12 @@
 import * as fs from 'fs';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { runMigrations } from '../datastore/migrations';
 import { ChainID } from '@stacks/transactions';
 import { httpPostRequest } from '../helpers';
 import { EventStreamServer, startEventServer } from '../event-stream/event-server';
-import { cycleMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
-import { getRawEventRequests } from '../datastore/event-requests';
+import { getRawEventRequests } from '../event-replay/event-requests';
 import { useWithCleanup } from '../tests/test-helpers';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('Events table', () => {
   let db: PgWriteStore;
@@ -15,8 +14,7 @@ describe('Events table', () => {
   let eventServer: EventStreamServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({ usageName: 'tests', withNotifier: false });
     client = db.sql;
     eventServer = await startEventServer({
@@ -30,7 +28,7 @@ describe('Events table', () => {
   afterEach(async () => {
     await eventServer.closeAsync();
     await db?.close();
-    await runMigrations(undefined, 'down');
+    await migrate('down');
   });
 
   test('If there is an event request error, then the event will not be recorded in the events_observer_request table', async () => {

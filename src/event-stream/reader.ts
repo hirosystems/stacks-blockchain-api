@@ -1,9 +1,7 @@
 import {
   BurnchainOp,
-  CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
-  CoreNodeMicroblockTxMessage,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   FtMintEvent,
@@ -36,15 +34,13 @@ import {
 } from 'stacks-encoding-native-js';
 import {
   DbMicroblockPartial,
-  DbPox2DelegateStxEvent,
-  DbPox2StackStxEvent,
+  DbPoxSyntheticDelegateStxEvent,
+  DbPoxSyntheticStackStxEvent,
 } from '../datastore/common';
 import { NotImplementedError } from '../errors';
 import {
   getEnumDescription,
   I32_MAX,
-  bufferToHexPrefixString,
-  hexToBuffer,
   SubnetContractIdentifer,
   getChainIDNetwork,
   ChainID,
@@ -53,15 +49,12 @@ import {
 import {
   TransactionVersion,
   uintCV,
-  tupleCV,
   bufferCV,
   serializeCV,
   noneCV,
   someCV,
   OptionalCV,
   TupleCV,
-  BufferCV,
-  SomeCV,
   NoneCV,
   UIntCV,
   stringAsciiCV,
@@ -69,10 +62,11 @@ import {
 } from '@stacks/transactions';
 import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
-import { decodePox2PrintEvent } from './pox2-event-parsing';
-import { Pox2ContractIdentifer, Pox2EventName } from '../pox-helpers';
+import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
+import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
+import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -128,9 +122,7 @@ function createSubnetTransactionFromL1RegisterAsset(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -190,9 +182,7 @@ function createSubnetTransactionFromL1NftDeposit(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -252,9 +242,7 @@ function createSubnetTransactionFromL1FtDeposit(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -357,7 +345,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   txResult: string,
   txId: string,
   /** also pox-3 compatible */
-  stxStacksPox2Event: DbPox2StackStxEvent | undefined
+  stxStacksPox2Event: DbPoxSyntheticStackStxEvent | undefined
 ): DecodedTxResult {
   const resultCv = decodeClarityValue<
     ClarityValueResponse<
@@ -402,9 +390,7 @@ function createTransactionFromCoreBtcStxLockEvent(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -464,7 +450,7 @@ function createTransactionFromCoreBtcStxLockEvent(
 function createTransactionFromCoreBtcDelegateStxEvent(
   chainId: ChainID,
   contractEvent: SmartContractEvent,
-  decodedEvent: DbPox2DelegateStxEvent,
+  decodedEvent: DbPoxSyntheticDelegateStxEvent,
   txResult: string,
   txId: string
 ): DecodedTxResult {
@@ -500,9 +486,7 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
   const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
-  const rawFnArgs = bufferToHexPrefixString(
-    Buffer.concat([fnLenBuffer, ...serializedClarityValues])
-  );
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
   const clarityFnArgs = decodeClarityValueList(rawFnArgs);
 
   const tx: DecodedTxResult = {
@@ -668,7 +652,7 @@ export function parseMessageTransaction(
         (e): e is StxMintEvent => e.type === CoreNodeEventType.StxMintEvent
       );
 
-      // pox-2 and pox-3 compatible events
+      // pox-2, pox-3, and pox-4 compatible events
       const poxEvent = events
         .filter(
           (e): e is SmartContractEvent =>
@@ -676,7 +660,7 @@ export function parseMessageTransaction(
         )
         .map(e => {
           const network = getChainIDNetwork(chainId);
-          const decodedEvent = decodePox2PrintEvent(e.contract_event.raw_value, network);
+          const decodedEvent = decodePoxSyntheticPrintEvent(e.contract_event.raw_value, network);
           if (decodedEvent) {
             return {
               contractEvent: e,
@@ -699,7 +683,7 @@ export function parseMessageTransaction(
         txSender = stxTransferEvent.stx_transfer_event.sender;
       } else if (stxLockEvent) {
         const stxStacksPoxEvent =
-          poxEvent?.decodedEvent.name === Pox2EventName.StackStx
+          poxEvent?.decodedEvent.name === SyntheticPoxEventName.StackStx
             ? poxEvent.decodedEvent
             : undefined;
         rawTx = createTransactionFromCoreBtcStxLockEvent(
@@ -711,7 +695,7 @@ export function parseMessageTransaction(
           stxStacksPoxEvent
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
-      } else if (poxEvent && poxEvent.decodedEvent.name === Pox2EventName.DelegateStx) {
+      } else if (poxEvent && poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx) {
         rawTx = createTransactionFromCoreBtcDelegateStxEvent(
           chainId,
           poxEvent.contractEvent,
@@ -789,6 +773,20 @@ export function parseMessageTransaction(
         }
         break;
       }
+      case TxPayloadTypeID.NakamotoCoinbase: {
+        if (payload.recipient?.type_id === PrincipalTypeID.Standard) {
+          logger.debug(
+            `NakamotoCoinbase to alt recipient, standard principal: ${payload.recipient.address}, vrf=${payload.vrf_proof}`
+          );
+        } else if (payload.recipient?.type_id === PrincipalTypeID.Contract) {
+          logger.debug(
+            `NakamotoCoinbase to alt recipient, contract principal: ${payload.recipient.address}.${payload.recipient.contract_name}, vrf=${payload.vrf_proof}`
+          );
+        } else {
+          logger.debug(`NakamotoCoinbase (no alt recipient), vrf=${payload.vrf_proof}`);
+        }
+        break;
+      }
       case TxPayloadTypeID.SmartContract: {
         logger.debug(
           `Smart contract deployed: ${parsedTx.sender_address}.${payload.contract_name}`
@@ -823,6 +821,12 @@ export function parseMessageTransaction(
         );
         break;
       }
+      case TxPayloadTypeID.TenureChange: {
+        logger.debug(
+          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end}, signers=${payload.signers},`
+        );
+        break;
+      }
       default: {
         throw new NotImplementedError(
           `extracting data for tx type: ${getEnumDescription(
@@ -841,10 +845,5 @@ export function parseMessageTransaction(
 
 export function isPoxPrintEvent(event: SmartContractEvent): boolean {
   if (event.contract_event.topic !== 'print') return false;
-
-  const [address, name] = event.contract_event.contract_identifier.split('.');
-  return (
-    (address == BootContractAddress.mainnet || address == BootContractAddress.testnet) &&
-    name.startsWith('pox')
-  );
+  return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }

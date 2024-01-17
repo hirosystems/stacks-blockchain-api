@@ -12,6 +12,7 @@ export default async (): Promise<void> => {
     process.env.NODE_ENV = 'test';
   }
   loadDotEnv();
+  process.env.PG_DATABASE = 'postgres';
   const db = await PgWriteStore.connect({ skipMigrations: true, usageName: 'tests' });
   const globalServices: GlobalServices = {
     db: db,

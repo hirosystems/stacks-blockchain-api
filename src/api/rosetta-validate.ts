@@ -1,5 +1,5 @@
 import * as Ajv from 'ajv';
-import { hexToBuffer, has0xPrefix, isValidC32Address, isValidPrincipal } from '../helpers';
+import { isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
   RosettaErrors,
@@ -13,6 +13,7 @@ import * as T from '@stacks/stacks-blockchain-api-types';
 import { dereferenceSchema, getDocSchemaFile } from './validate';
 import { ChainID } from '@stacks/transactions';
 import { logger } from '../logger';
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 
 export interface ValidSchema {
   valid: boolean;

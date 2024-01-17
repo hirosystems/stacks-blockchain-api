@@ -1,10 +1,9 @@
-import { BufferCV, ClarityType, hexToCV, StringAsciiCV } from '@stacks/transactions';
-import { bnsNameCV, ChainID, getChainIDNetwork, hexToBuffer, hexToUtf8String } from '../../helpers';
+import { BufferCV, ClarityType, hexToCV } from '@stacks/transactions';
+import { bnsNameCV, ChainID, getChainIDNetwork } from '../../helpers';
 import {
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
-  NftTransferEvent,
 } from '../../event-stream/core-node-message';
 import { getCoreNodeEndpoint } from '../../core-rpc/client';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
@@ -25,6 +24,7 @@ import {
 } from 'stacks-encoding-native-js';
 import { SmartContractEvent } from '../core-node-message';
 import { DbBnsNamespace, DbBnsName } from '../../datastore/common';
+import { hexToBuffer, hexToUtf8String } from '@hirosystems/api-toolkit';
 
 interface Attachment {
   attachment: {

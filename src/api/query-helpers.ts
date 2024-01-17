@@ -1,8 +1,20 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { NextFunction, Request, Response } from 'express';
-import { has0xPrefix, hexToBuffer, parseEventTypeStrings, isValidPrincipal } from './../helpers';
+import { parseEventTypeStrings, isValidPrincipal } from './../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { DbEventTypeId } from './../datastore/common';
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+
+export enum MempoolOrderByParam {
+  fee = 'fee',
+  size = 'size',
+  age = 'age',
+}
+
+export enum OrderParam {
+  asc = 'asc',
+  desc = 'desc',
+}
 
 function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
@@ -318,7 +330,11 @@ export function parseEventTypeFilter(
     }
   } else if (typeof typeQuery === 'string') {
     try {
-      eventTypeFilter = parseEventTypeStrings([typeQuery]);
+      if (typeQuery.includes(',')) {
+        eventTypeFilter = parseEventTypeStrings(typeQuery.split(','));
+      } else {
+        eventTypeFilter = parseEventTypeStrings([typeQuery]);
+      }
     } catch (error) {
       handleBadRequest(res, next, `invalid 'event type'`);
     }
@@ -343,4 +359,14 @@ export function isValidTxId(tx_id: string) {
   } catch {
     return false;
   }
+}
+
+/**
+ * Returns the query string of a request, including the leading '?' character.
+ * If the request does not have a query string then an empty string is returned.
+ */
+export function getReqQuery(req: Request): string {
+  const fullUrl = `http://${req.headers.host}${req.originalUrl}`;
+  const urlObject = new URL(fullUrl);
+  return urlObject.search;
 }

@@ -3,8 +3,8 @@ import { ChainID } from '@stacks/transactions';
 import { DbBurnchainReward, DbRewardSlotHolder } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { cycleMigrations, runMigrations } from '../datastore/migrations';
-import { PgSqlClient } from '../datastore/connection';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('burnchain tests', () => {
   let db: PgWriteStore;
@@ -12,8 +12,7 @@ describe('burnchain tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    process.env.PG_DATABASE = 'postgres';
-    await cycleMigrations();
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: false,
@@ -21,6 +20,12 @@ describe('burnchain tests', () => {
     });
     client = db.sql;
     api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+  });
+
+  afterEach(async () => {
+    await api.terminate();
+    await db?.close();
+    await migrate('down');
   });
 
   test('fetch reward slot holders', async () => {
@@ -465,11 +470,5 @@ describe('burnchain tests', () => {
     };
 
     expect(JSON.parse(rewardResult.text)).toEqual(expectedResp1);
-  });
-
-  afterEach(async () => {
-    await api.terminate();
-    await db?.close();
-    await runMigrations(undefined, 'down');
   });
 });

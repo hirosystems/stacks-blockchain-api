@@ -1,7 +1,7 @@
 import { ClarityAbi } from '@stacks/transactions';
 import { Block } from '@stacks/stacks-blockchain-api-types';
-import { PgBytea, PgJsonb, PgNumeric } from './connection';
-import { Pox2EventName } from '../pox-helpers';
+import { SyntheticPoxEventName } from '../pox-helpers';
+import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
 
 export interface DbBlock {
   block_hash: string;
@@ -23,6 +23,7 @@ export interface DbBlock {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
+  tx_count: number;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -44,6 +45,14 @@ export interface DbMicroblock extends DbMicroblockPartial {
   parent_block_hash: string;
   index_block_hash: string;
   block_hash: string;
+}
+
+export interface DbBurnBlock {
+  block_hash: string;
+  burn_block_time: number;
+  burn_block_hash: string;
+  burn_block_height: number;
+  stacks_blocks: string[];
 }
 
 export interface DbBurnchainReward {
@@ -89,6 +98,8 @@ export enum DbTxTypeId {
   Coinbase = 0x04,
   CoinbaseToAltRecipient = 0x05,
   VersionedSmartContract = 0x06,
+  TenureChange = 0x07,
+  NakamotoCoinbase = 0x08,
 }
 
 export enum DbTxStatus {
@@ -106,6 +117,8 @@ export enum DbTxStatus {
   DroppedStaleGarbageCollect = -13,
   /** Dropped by the API (even though the Stacks node hadn't dropped it) because it exceeded maximum mempool age */
   DroppedApiGarbageCollect = -14,
+  /** Transaction is problematic (e.g. a DDoS vector) and should be dropped. */
+  DroppedProblematic = -15,
 }
 
 export enum DbTxAnchorMode {
@@ -138,6 +151,17 @@ export interface BaseTx {
   /** Hex encoded Clarity values. Undefined if function defines no args. */
   contract_call_function_args?: string;
   abi?: string;
+
+  /** Only valid for `tenure-change` tx types. */
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash?: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -184,6 +208,9 @@ export interface DbTx extends BaseTx {
 
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
+
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
 
   event_count: number;
 
@@ -235,6 +262,14 @@ export interface DbMempoolStats {
   >;
 }
 
+export interface DbMempoolFeePriority {
+  type_id: DbTxTypeId | null;
+  high_priority: number;
+  medium_priority: number;
+  low_priority: number;
+  no_priority: number;
+}
+
 export interface DbMempoolTx extends BaseTx {
   pruned: boolean;
 
@@ -260,6 +295,9 @@ export interface DbMempoolTx extends BaseTx {
 
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
+
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
 }
 
 export interface DbMempoolTxRaw extends DbMempoolTx {
@@ -305,7 +343,9 @@ export interface DbEventBase {
   canonical: boolean;
 }
 
-export interface DbPox2BaseEventData {
+export type PoxSyntheticEventTable = 'pox2_events' | 'pox3_events' | 'pox4_events';
+
+export interface DbPoxSyntheticBaseEventData {
   stacker: string;
   locked: bigint;
   balance: bigint;
@@ -314,16 +354,16 @@ export interface DbPox2BaseEventData {
   pox_addr_raw: string | null;
 }
 
-export interface DbPox2HandleUnlockEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.HandleUnlock;
+export interface DbPoxSyntheticHandleUnlockEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.HandleUnlock;
   data: {
     first_cycle_locked: bigint;
     first_unlocked_cycle: bigint;
   };
 }
 
-export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackStx;
+export interface DbPoxSyntheticStackStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackStx;
   data: {
     lock_amount: bigint;
     lock_period: bigint;
@@ -332,24 +372,24 @@ export interface DbPox2StackStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2StackIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackIncrease;
+export interface DbPoxSyntheticStackIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackIncrease;
   data: {
     increase_by: bigint;
     total_locked: bigint;
   };
 }
 
-export interface DbPox2StackExtendEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackExtend;
+export interface DbPoxSyntheticStackExtendEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackExtend;
   data: {
     extend_count: bigint;
     unlock_burn_height: bigint;
   };
 }
 
-export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStx;
+export interface DbPoxSyntheticDelegateStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStx;
   data: {
     amount_ustx: bigint;
     delegate_to: string;
@@ -357,8 +397,8 @@ export interface DbPox2DelegateStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackStx;
+export interface DbPoxSyntheticDelegateStackStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackStx;
   data: {
     lock_amount: bigint;
     unlock_burn_height: bigint;
@@ -368,8 +408,8 @@ export interface DbPox2DelegateStackStxEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackIncrease;
+export interface DbPoxSyntheticDelegateStackIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackIncrease;
   data: {
     increase_by: bigint;
     total_locked: bigint;
@@ -377,8 +417,8 @@ export interface DbPox2DelegateStackIncreaseEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.DelegateStackExtend;
+export interface DbPoxSyntheticDelegateStackExtendEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.DelegateStackExtend;
   data: {
     unlock_burn_height: bigint;
     extend_count: bigint;
@@ -386,49 +426,57 @@ export interface DbPox2DelegateStackExtendEvent extends DbPox2BaseEventData {
   };
 }
 
-export interface DbPox2StackAggregationCommitEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationCommit;
+export interface DbPoxSyntheticStackAggregationCommitEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationCommit;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export interface DbPox2StackAggregationCommitIndexedEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationCommitIndexed;
+export interface DbPoxSyntheticStackAggregationCommitIndexedEvent
+  extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationCommitIndexed;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export interface DbPox2StackAggregationIncreaseEvent extends DbPox2BaseEventData {
-  name: Pox2EventName.StackAggregationIncrease;
+export interface DbPoxSyntheticStackAggregationIncreaseEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.StackAggregationIncrease;
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
   };
 }
 
-export type DbPox2EventData =
-  | DbPox2HandleUnlockEvent
-  | DbPox2StackStxEvent
-  | DbPox2StackIncreaseEvent
-  | DbPox2StackExtendEvent
-  | DbPox2DelegateStxEvent
-  | DbPox2DelegateStackStxEvent
-  | DbPox2DelegateStackIncreaseEvent
-  | DbPox2DelegateStackExtendEvent
-  | DbPox2StackAggregationCommitEvent
-  | DbPox2StackAggregationCommitIndexedEvent
-  | DbPox2StackAggregationIncreaseEvent;
+export interface DbPoxSyntheticRevokeDelegateStxEvent extends DbPoxSyntheticBaseEventData {
+  name: SyntheticPoxEventName.RevokeDelegateStx;
+  data: {
+    // TODO: determine what data is available for this event type
+    amount_ustx: bigint;
+    delegate_to: string;
+  };
+}
 
-export type DbPox2Event = DbEventBase & DbPox2EventData;
+export type DbPoxSyntheticEventData =
+  | DbPoxSyntheticHandleUnlockEvent
+  | DbPoxSyntheticStackStxEvent
+  | DbPoxSyntheticStackIncreaseEvent
+  | DbPoxSyntheticStackExtendEvent
+  | DbPoxSyntheticDelegateStxEvent
+  | DbPoxSyntheticDelegateStackStxEvent
+  | DbPoxSyntheticDelegateStackIncreaseEvent
+  | DbPoxSyntheticDelegateStackExtendEvent
+  | DbPoxSyntheticStackAggregationCommitEvent
+  | DbPoxSyntheticStackAggregationCommitIndexedEvent
+  | DbPoxSyntheticStackAggregationIncreaseEvent
+  | DbPoxSyntheticRevokeDelegateStxEvent;
 
-// todo: should we copy DbPox2EventData for pox3?
-export type DbPox3Event = DbEventBase & DbPox2EventData;
+export type DbPoxSyntheticEvent = DbEventBase & DbPoxSyntheticEventData;
 
-export interface DbPox3Stacker {
+export interface DbPoxStacker {
   stacker: string;
   pox_addr?: string;
   amount_ustx: string;
@@ -534,24 +582,6 @@ export interface NftEventWithTxMetadata {
   tx?: DbTx;
 }
 
-export interface AddressNftEventIdentifier {
-  sender: string;
-  recipient: string;
-  asset_identifier: string;
-  value: string;
-  block_height: number;
-  tx_id: string;
-  event_index: number;
-  tx_index: number;
-  asset_event_type_id: number;
-}
-
-export interface TokenMetadataUpdateInfo {
-  queueId: number;
-  txId: string;
-  contractId: string;
-}
-
 export interface DataStoreBlockUpdateData {
   block: DbBlock;
   microblocks: DbMicroblock[];
@@ -559,6 +589,7 @@ export interface DataStoreBlockUpdateData {
   txs: DataStoreTxEventData[];
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
+  pox_v3_unlock_height?: number;
 }
 
 export interface DataStoreMicroblockUpdateData {
@@ -576,8 +607,9 @@ export interface DataStoreTxEventData {
   smartContracts: DbSmartContract[];
   names: DbBnsName[];
   namespaces: DbBnsNamespace[];
-  pox2Events: DbPox2Event[];
-  pox3Events: DbPox3Event[];
+  pox2Events: DbPoxSyntheticEvent[];
+  pox3Events: DbPoxSyntheticEvent[];
+  pox4Events: DbPoxSyntheticEvent[];
 }
 
 export interface DataStoreAttachmentData {
@@ -598,6 +630,11 @@ export interface DataStoreBnsBlockData {
   microblock_sequence: number;
   microblock_canonical: boolean;
 }
+
+export type DataStoreBnsBlockTxData = DataStoreBnsBlockData & {
+  tx_id: string;
+  tx_index: number;
+};
 
 export interface DataStoreAttachmentSubdomainData {
   attachment?: DataStoreAttachmentData;
@@ -750,49 +787,6 @@ export type BlockIdentifier =
   | { burnBlockHash: string }
   | { burnBlockHeight: number };
 
-export interface DbNonFungibleTokenMetadata {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbFungibleTokenMetadata {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbTokenMetadataQueueEntry {
-  queueId: number;
-  txId: string;
-  contractId: string;
-  contractAbi: ClarityAbi;
-  blockHeight: number;
-  processed: boolean;
-  retry_count: number;
-}
-
-export interface DbChainTip {
-  blockHeight: number;
-  indexBlockHash: string;
-  blockHash: string;
-  microblockHash?: string;
-  microblockSequence?: number;
-  burnBlockHeight: number;
-}
-
 export interface BlockQueryResult {
   block_hash: string;
   index_block_hash: string;
@@ -811,6 +805,7 @@ export interface BlockQueryResult {
   execution_cost_runtime: string;
   execution_cost_write_count: string;
   execution_cost_write_length: string;
+  tx_count: number;
 }
 
 export interface MicroblockQueryResult {
@@ -877,6 +872,20 @@ export interface MempoolTxQueryResult {
   /** Only valid for `coinbase-to-alt-recipient` tx types. Either a standard principal or contract principal. */
   coinbase_alt_recipient?: string;
 
+  /** Only valid for `nakamoto-coinbase` tx types. Hex encoded 80-bytes. */
+  coinbase_vrf_proof?: string;
+
+  // `tenure-change` tx types
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
+
   // sending abi in case tx is contract call
   abi: unknown | null;
 }
@@ -937,6 +946,20 @@ export interface TxQueryResult {
   // `coinbase-to-alt-recipient` tx types
   coinbase_alt_recipient?: string;
 
+  // `nakamoto-coinbase` tx types. Hex encoded 80-bytes.
+  coinbase_vrf_proof?: string;
+
+  // `tenure-change` tx types
+  tenure_change_tenure_consensus_hash?: string;
+  tenure_change_prev_tenure_consensus_hash?: string;
+  tenure_change_burn_view_consensus_hash?: string;
+  tenure_change_previous_tenure_end?: string;
+  tenure_change_previous_tenure_blocks?: number;
+  tenure_change_cause?: number;
+  tenure_change_pubkey_hash: string;
+  tenure_change_signature?: string;
+  tenure_change_signers?: string;
+
   // events count
   event_count: number;
 
@@ -958,41 +981,30 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
-export interface UpdatedEntities {
-  markedCanonical: {
-    blocks: number;
-    microblocks: number;
-    minerRewards: number;
-    txs: number;
-    stxLockEvents: number;
-    stxEvents: number;
-    ftEvents: number;
-    nftEvents: number;
-    pox2Events: number;
-    pox3Events: number;
-    contractLogs: number;
-    smartContracts: number;
-    names: number;
-    namespaces: number;
-    subdomains: number;
-  };
-  markedNonCanonical: {
-    blocks: number;
-    microblocks: number;
-    minerRewards: number;
-    txs: number;
-    stxLockEvents: number;
-    stxEvents: number;
-    ftEvents: number;
-    nftEvents: number;
-    pox2Events: number;
-    pox3Events: number;
-    contractLogs: number;
-    smartContracts: number;
-    names: number;
-    namespaces: number;
-    subdomains: number;
-  };
+interface ReOrgEntities {
+  blocks: number;
+  microblocks: number;
+  minerRewards: number;
+  txs: number;
+  stxLockEvents: number;
+  stxEvents: number;
+  ftEvents: number;
+  nftEvents: number;
+  pox2Events: number;
+  pox3Events: number;
+  pox4Events: number;
+  contractLogs: number;
+  smartContracts: number;
+  names: number;
+  namespaces: number;
+  subdomains: number;
+}
+
+export interface ReOrgUpdatedEntities {
+  markedCanonical: ReOrgEntities;
+  markedNonCanonical: ReOrgEntities;
+  prunedMempoolTxs: number;
+  restoredMempoolTxs: number;
 }
 
 export interface TransferQueryResult {
@@ -1005,6 +1017,13 @@ export interface TransferQueryResult {
   amount: string;
 }
 
+export type DbPaginatedResult<T> = {
+  limit: number;
+  offset: number;
+  total: number;
+  results: T[];
+};
+
 export interface BlocksWithMetadata {
   results: {
     block: DbBlock;
@@ -1014,40 +1033,6 @@ export interface BlocksWithMetadata {
     microblock_tx_count: Record<string, number>;
   }[];
   total: number;
-}
-
-export interface NonFungibleTokenMetadataQueryResult {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface FungibleTokenMetadataQueryResult {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: string;
-  sender_address: string;
-}
-
-export interface DbTokenMetadataQueueEntryQuery {
-  queue_id: number;
-  tx_id: string;
-  contract_id: string;
-  contract_abi: string;
-  block_height: number;
-  processed: boolean;
-  retry_count: number;
 }
 
 export interface RawTxQueryResult {
@@ -1093,6 +1078,16 @@ export interface TxInsertValues {
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
+  coinbase_vrf_proof: string | null;
+  tenure_change_tenure_consensus_hash: string | null;
+  tenure_change_prev_tenure_consensus_hash: string | null;
+  tenure_change_burn_view_consensus_hash: string | null;
+  tenure_change_previous_tenure_end: string | null;
+  tenure_change_previous_tenure_blocks: number | null;
+  tenure_change_cause: number | null;
+  tenure_change_pubkey_hash: string | null;
+  tenure_change_signature: string | null;
+  tenure_change_signers: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -1132,6 +1127,16 @@ export interface MempoolTxInsertValues {
   poison_microblock_header_2: PgBytea | null;
   coinbase_payload: PgBytea | null;
   coinbase_alt_recipient: string | null;
+  coinbase_vrf_proof: string | null;
+  tenure_change_tenure_consensus_hash: string | null;
+  tenure_change_prev_tenure_consensus_hash: string | null;
+  tenure_change_burn_view_consensus_hash: string | null;
+  tenure_change_previous_tenure_end: string | null;
+  tenure_change_previous_tenure_blocks: number | null;
+  tenure_change_cause: number | null;
+  tenure_change_pubkey_hash: string | null;
+  tenure_change_signature: string | null;
+  tenure_change_signers: string | null;
 }
 
 export interface BlockInsertValues {
@@ -1152,6 +1157,7 @@ export interface BlockInsertValues {
   execution_cost_runtime: number;
   execution_cost_write_count: number;
   execution_cost_write_length: number;
+  tx_count: number;
 }
 
 export interface MicroblockInsertValues {
@@ -1225,7 +1231,7 @@ export interface RawEventRequestInsertValues {
   payload: string;
 }
 
-export interface Pox2EventQueryResult {
+export interface PoxSyntheticEventQueryResult {
   event_index: number;
   tx_id: string;
   tx_index: number;
@@ -1284,10 +1290,7 @@ export interface Pox2EventQueryResult {
   amount_ustx: string | null;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface Pox3EventQueryResult extends Pox2EventQueryResult {}
-
-export interface Pox2EventInsertValues {
+export interface PoxSyntheticEventInsertValues {
   event_index: number;
   tx_id: PgBytea;
   tx_index: number;
@@ -1358,6 +1361,20 @@ export interface NftEventInsertValues {
   canonical: boolean;
   asset_event_type_id: DbAssetEventTypeId;
   sender: string | null;
+  recipient: string | null;
+  asset_identifier: string;
+  value: PgBytea;
+}
+
+export interface NftCustodyInsertValues {
+  event_index: number;
+  tx_id: PgBytea;
+  tx_index: number;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  microblock_hash: PgBytea;
+  microblock_sequence: number;
   recipient: string | null;
   asset_identifier: string;
   value: PgBytea;
@@ -1505,38 +1522,6 @@ export interface RewardSlotHolderInsertValues {
   slot_index: number;
 }
 
-export interface TokenMetadataQueueEntryInsertValues {
-  tx_id: PgBytea;
-  contract_id: string;
-  contract_abi: string;
-  block_height: number;
-  processed: boolean;
-}
-
-export interface NftMetadataInsertValues {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  tx_id: PgBytea;
-  sender_address: string;
-}
-
-export interface FtMetadataInsertValues {
-  token_uri: string;
-  name: string;
-  description: string;
-  image_uri: string;
-  image_canonical_uri: string;
-  contract_id: string;
-  symbol: string;
-  decimals: number;
-  tx_id: PgBytea;
-  sender_address: string;
-}
-
 export interface SmartContractInsertValues {
   tx_id: PgBytea;
   canonical: boolean;
@@ -1553,10 +1538,17 @@ export interface SmartContractInsertValues {
 }
 
 export interface DbChainTip {
-  blockHeight: number;
-  blockHash: string;
-  indexBlockHash: string;
-  burnBlockHeight: number;
+  block_height: number;
+  block_count: number;
+  block_hash: string;
+  index_block_hash: string;
+  burn_block_height: number;
+  microblock_hash?: string;
+  microblock_sequence?: number;
+  microblock_count: number;
+  tx_count: number;
+  tx_count_unanchored: number;
+  mempool_tx_count: number;
 }
 
 export enum IndexesState {
