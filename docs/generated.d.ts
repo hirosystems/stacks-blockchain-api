@@ -94,6 +94,8 @@ export type SchemaMergeRootStub =
   | TxSearchResult
   | SearchResult
   | SmartContractsStatusResponse
+  | SmartContractFound
+  | SmartContractNotFound
   | PoolDelegationsResponse
   | {
       [k: string]: unknown | undefined;
@@ -691,10 +693,6 @@ export type SearchSuccessResult =
  * complete search result for terms
  */
 export type SearchResult = SearchErrorResult | SearchSuccessResult;
-/**
- * GET request that returns the deployment status of multiple smart contracts
- */
-export type SmartContractsStatusResponse = SmartContractStatus[];
 /**
  * Describes an event from the history of a Non-Fungible Token
  */
@@ -3066,6 +3064,16 @@ export interface TxSearchResult {
   };
 }
 /**
+ * GET request that returns the deployment status of multiple smart contracts
+ */
+export interface SmartContractsStatusResponse {
+  [k: string]: (SmartContractFound | SmartContractNotFound) | undefined;
+}
+export interface SmartContractFound {
+  found: true;
+  status?: SmartContractStatus;
+}
+/**
  * Deployment status of a smart contract
  */
 export interface SmartContractStatus {
@@ -3085,6 +3093,9 @@ export interface SmartContractStatus {
    * Height of the transaction confirmation block
    */
   block_height?: number;
+}
+export interface SmartContractNotFound {
+  found: false;
 }
 /**
  * GET request that returns stacking pool member details for a given pool (delegator) principal

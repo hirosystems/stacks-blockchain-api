@@ -19,6 +19,7 @@ import {
   DbBurnBlock,
   DbTxTypeId,
   DbSmartContractStatus,
+  DbTxStatus,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -246,6 +247,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           AND smart_contract_contract_id IN ${sql(args.contract_id)}
           AND canonical = TRUE
           AND microblock_canonical = TRUE
+          AND status = ${DbTxStatus.Success}
         ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC, tx_index DESC
       `;
       statusArray.push(...confirmed);
@@ -259,7 +261,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           WHERE pruned = FALSE
             AND type_id IN ${sql([DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract])}
             AND smart_contract_contract_id IN ${sql(remainingIds)}
-          ORDER BY smart_contract_contract_id
+          ORDER BY smart_contract_contract_id, nonce
         `;
         statusArray.push(...mempool);
       }

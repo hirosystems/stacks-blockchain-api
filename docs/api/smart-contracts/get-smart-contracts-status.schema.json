@@ -1,9 +1,15 @@
 {
   "description": "GET request that returns the deployment status of multiple smart contracts",
-  "additionalProperties": false,
   "title": "SmartContractsStatusResponse",
-  "type": "array",
-  "items": {
-    "$ref": "../../entities/smart-contracts/smart-contract-status.schema.json"
+  "type": "object",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "$ref": "./smart-contract-found.schema.json"
+      },
+      {
+        "$ref": "./smart-contract-not-found.schema.json"
+      }
+    ]
   }
 }

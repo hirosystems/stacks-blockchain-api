@@ -2,12 +2,12 @@ import * as express from 'express';
 import { PgStore } from '../../../datastore/pg-store';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
-import { SmartContractsStatusResponse } from 'docs/generated';
 import {
   validRequestQuery,
   CompiledSmartContractStatusParams,
   SmartContractStatusParams,
 } from './schemas';
+import { parseDbSmartContractStatusArray } from './helpers';
 
 export function createV2SmartContractsRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -20,9 +20,9 @@ export function createV2SmartContractsRouter(db: PgStore): express.Router {
       if (!validRequestQuery(req, res, CompiledSmartContractStatusParams)) return;
       const query = req.query as SmartContractStatusParams;
 
-      const response = (await db.v2.getSmartContractStatus(query)) as SmartContractsStatusResponse;
+      const result = await db.v2.getSmartContractStatus(query);
       setETagCacheHeaders(res);
-      res.json(response);
+      res.json(parseDbSmartContractStatusArray(query, result));
     })
   );
 

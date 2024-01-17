@@ -1,6 +1,7 @@
-import { BurnBlock, NakamotoBlock } from 'docs/generated';
-import { DbBlock, DbBurnBlock } from '../../../datastore/common';
+import { BurnBlock, NakamotoBlock, SmartContractsStatusResponse } from 'docs/generated';
+import { DbBlock, DbBurnBlock, DbSmartContractStatus } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
+import { SmartContractStatusParams } from './schemas';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -34,4 +35,21 @@ export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {
     stacks_blocks: block.stacks_blocks,
   };
   return burnBlock;
+}
+
+export function parseDbSmartContractStatusArray(
+  params: SmartContractStatusParams,
+  status: DbSmartContractStatus[]
+): SmartContractsStatusResponse {
+  const ids = new Set(params.contract_id);
+  const response: SmartContractsStatusResponse = {};
+  for (const s of status) {
+    response[s.contract_id] = {
+      found: true,
+      status: s,
+    };
+    ids.delete(s.contract_id);
+  }
+  for (const missingId of ids) response[missingId] = { found: false };
+  return response;
 }

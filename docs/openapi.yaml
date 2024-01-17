@@ -860,9 +860,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/blocks/get-blocks.schema.json
+                $ref: ./api/smart-contracts/get-smart-contracts-status.schema.json
               example:
-                $ref: ./api/blocks/get-blocks.example.json
+                $ref: ./api/smart-contracts/get-smart-contracts-status.example.json
 
   /extended/v1/block:
     get:
