@@ -13,6 +13,7 @@ import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
 import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
 import {
+  ZERO_SIGNER_KEY_BYTES,
   fetchGet,
   standByForPoxCycle,
   standByForTxSuccess,
@@ -95,13 +96,14 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         contractName,
         functionName: 'stack-stx',
         functionArgs: [
-          uintCV(ustxAmount.toString()),
+          uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
             hashbytes: bufferCV(decodedBtcAddr.data),
             version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-          }),
-          uintCV(burnBlockHeight),
-          uintCV(cycleCount),
+          }), // pox-addr
+          uintCV(burnBlockHeight), // start-burn-ht
+          uintCV(cycleCount), // lock-period
+          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -342,13 +344,14 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         contractName,
         functionName: 'stack-stx',
         functionArgs: [
-          uintCV(ustxAmount.toString()),
+          uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
             hashbytes: bufferCV(decodedBtcAddr.data),
             version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-          }),
-          uintCV(burnBlockHeight),
-          uintCV(cycleCount),
+          }), // pox-addr
+          uintCV(burnBlockHeight), // start-burn-ht
+          uintCV(cycleCount), // lock-period
+          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -595,13 +598,14 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         contractName,
         functionName: 'stack-stx',
         functionArgs: [
-          uintCV(ustxAmount.toString()),
+          uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
             hashbytes: bufferCV(decodedBtcAddr.data),
             version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-          }),
-          uintCV(burnBlockHeight),
-          uintCV(cycleCount),
+          }), // pox-addr
+          uintCV(burnBlockHeight), // start-burn-ht
+          uintCV(cycleCount), // lock-period
+          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,

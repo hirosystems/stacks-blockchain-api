@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { bytesToHex } from '@stacks/common';
+import { bytesToHex, hexToBytes } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
@@ -53,6 +53,9 @@ import { b58ToC32 } from 'c32check';
 import { coerceToBuffer, hexToBuffer, runMigrations, timeout } from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { getConnectionArgs } from '../datastore/connection';
+
+/** A (buff 33) signer key of all zeroes, to be used for testing */
+export const ZERO_SIGNER_KEY_BYTES = hexToBytes('00'.repeat(33));
 
 export async function migrate(direction: 'up' | 'down') {
   await runMigrations(MIGRATIONS_DIR, direction, getConnectionArgs());
