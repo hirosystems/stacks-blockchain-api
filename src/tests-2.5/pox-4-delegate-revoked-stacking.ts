@@ -19,6 +19,7 @@ import { DbTxStatus } from '../datastore/common';
 import { stxToMicroStx } from '../helpers';
 import {
   Account,
+  ZERO_SIGNER_KEY_BYTES,
   accountFromKey,
   fetchGet,
   readOnlyFnCall,
@@ -136,7 +137,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -223,7 +224,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(3), // lock-period
-        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -328,7 +329,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -378,7 +379,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         standardPrincipalCV(STACKER.stxAddr), // stacker
         STACKER.poxAddrClar, // pox-addr
-        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
         uintCV(2), // extend-count
       ],
       network: testEnv.stacksNetwork,
@@ -409,7 +410,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(hexToBytes('00'.repeat(33))), // signer-key
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
