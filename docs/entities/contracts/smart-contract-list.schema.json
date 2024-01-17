@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "title": "SmartContractList",
+  "additionalProperties": {
+    "anyOf": [
+      {
+        "$ref": "./smart-contract-found.schema.json"
+      },
+      {
+        "$ref": "./smart-contract-not-found.schema.json"
+      }
+    ]
+  }
+}

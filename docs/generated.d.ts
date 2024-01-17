@@ -120,6 +120,9 @@ export type SchemaMergeRootStub =
   | BurnchainReward
   | BurnchainRewardsTotal
   | ReadOnlyFunctionArgs
+  | SmartContractFound
+  | SmartContractList
+  | SmartContractNotFound
   | SmartContract
   | TargetBlockTime
   | ChainTip
@@ -1560,6 +1563,7 @@ export interface SmartContract {
   block_height: number;
   source_code: string;
   abi: string;
+  tx_status: TransactionStatus | MempoolTransactionStatus;
 }
 /**
  * GET request for account data
@@ -3479,6 +3483,25 @@ export interface ReadOnlyFunctionArgs {
    * An array of hex serialized Clarity values
    */
   arguments: string[];
+}
+/**
+ * This object returns smart contract for found true
+ */
+export interface SmartContractFound {
+  found: true;
+  result: SmartContract;
+}
+export interface SmartContractList {
+  [k: string]: (SmartContractFound | SmartContractNotFound) | undefined;
+}
+/**
+ * This object returns the smart contract id for not found
+ */
+export interface SmartContractNotFound {
+  found: false;
+  result: {
+    contract_id: string;
+  };
 }
 export interface NftEvent {
   sender?: string;

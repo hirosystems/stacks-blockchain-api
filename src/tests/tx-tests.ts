@@ -3069,6 +3069,7 @@ describe('tx tests', () => {
       contract_id: contractCall2.contract_id,
       source_code: contractCall2.source_code,
       tx_id: contractCall2.tx_id,
+      tx_status: '',
     };
     const contractResult1 = await supertest(api.server).get(
       `/extended/v1/contract/${contractCall2.contract_id}`
@@ -3084,6 +3085,7 @@ describe('tx tests', () => {
       contract_id: contractCall.contract_id,
       source_code: contractCall.source_code,
       tx_id: contractCall.tx_id,
+      tx_status: '',
     };
     const contractResult2 = await supertest(api.server).get(
       `/extended/v1/contract/${contractCall.contract_id}`

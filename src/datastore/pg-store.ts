@@ -1883,12 +1883,14 @@ export class PgStore extends BasePgStore {
         clarity_version: number | null;
         source_code: string;
         abi: unknown | null;
+        status: number | null;
       }[]
     >`
-      SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
-      FROM smart_contracts
-      WHERE contract_id = ${contractId}
-      ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
+      SELECT sc.tx_id, sc.canonical, sc.contract_id, sc.block_height, sc.clarity_version, sc.source_code, sc.abi, tx.status
+      FROM smart_contracts sc
+      LEFT JOIN txs tx ON sc.tx_id = tx.tx_id AND tx.canonical = true AND tx.microblock_canonical = true
+      WHERE sc.contract_id = ${contractId}
+      ORDER BY sc.abi != 'null' DESC, sc.canonical DESC, sc.microblock_canonical DESC, sc.block_height DESC
       LIMIT 1
     `;
     if (result.length === 0) {
@@ -2096,13 +2098,16 @@ export class PgStore extends BasePgStore {
         clarity_version: number | null;
         source_code: string;
         abi: unknown | null;
+        status: number | null;
       }[]
     >`
-      SELECT tx_id, canonical, contract_id, block_height, clarity_version, source_code, abi
-      FROM smart_contracts
-      WHERE abi->'functions' @> ${traitFunctionList as any}::jsonb
-        AND canonical = true AND microblock_canonical = true
-      ORDER BY block_height DESC
+      SELECT sc.tx_id, sc.canonical, sc.contract_id, sc.block_height, sc.clarity_version, sc.source_code, sc.abi, tx.status
+      FROM smart_contracts sc
+      LEFT JOIN txs tx ON sc.tx_id = tx.tx_id AND tx.canonical = true AND tx.microblock_canonical = true
+      WHERE sc.abi->'functions' @> ${traitFunctionList as any}::jsonb
+        AND sc.canonical = true 
+        AND sc.microblock_canonical = true
+      ORDER BY sc.block_height DESC
       LIMIT ${args.limit} OFFSET ${args.offset}
     `;
     if (result.length === 0) {

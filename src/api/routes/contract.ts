@@ -1,7 +1,7 @@
 import * as express from 'express';
 import { asyncHandler } from '../async-handler';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { parseDbEvent } from '../controllers/db-controller';
+import { getTxStatus, parseDbEvent } from '../controllers/db-controller';
 import { parseTraitAbi } from '../query-helpers';
 import { PgStore } from '../../datastore/pg-store';
 
@@ -43,6 +43,7 @@ export function createContractRouter(db: PgStore): express.Router {
       const contractResult = {
         ...contractQuery.result,
         abi: contractQuery.result.abi,
+        tx_status: getTxStatus(contractQuery.result.tx_status ?? ''),
       };
       res.json(contractResult);
     })

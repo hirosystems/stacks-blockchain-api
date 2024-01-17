@@ -20,6 +20,7 @@ import {
   DbTokenOfferingLocked,
   DbTx,
   DataStoreBnsBlockTxData,
+  DbSmartContractResult,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
@@ -2779,7 +2780,7 @@ describe('postgres datastore', () => {
       topic: 'some-topic',
       value: '0x736f6d652076616c',
     };
-    const smartContract1: DbSmartContract = {
+    const smartContract1: DbSmartContractResult = {
       tx_id: '0x421234',
       canonical: true,
       block_height: block1.block_height,
@@ -2787,6 +2788,7 @@ describe('postgres datastore', () => {
       contract_id: 'some-contract-id',
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
+      tx_status: DbTxStatus.Success,
     };
     const name1: DbBnsName = {
       tx_id: '0x421234',

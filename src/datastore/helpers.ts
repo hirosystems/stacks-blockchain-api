@@ -44,6 +44,7 @@ import {
   TxQueryResult,
   DbPoxSyntheticRevokeDelegateStxEvent,
   ReOrgUpdatedEntities,
+  DbSmartContractResult,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -831,8 +832,9 @@ export function parseQueryResultToSmartContract(row: {
   clarity_version: number | null;
   source_code: string;
   abi: unknown | null;
+  status: DbTxStatus | null;
 }) {
-  const smartContract: DbSmartContract = {
+  const smartContract: DbSmartContractResult = {
     tx_id: row.tx_id,
     canonical: row.canonical,
     contract_id: row.contract_id,
@@ -842,6 +844,7 @@ export function parseQueryResultToSmartContract(row: {
     // The consumers of this object expect the value to be stringify
     // JSON if exists, otherwise null rather than undefined.
     abi: parseAbiColumn(row.abi) ?? null,
+    tx_status: row.status,
   };
   return { found: true, result: smartContract };
 }

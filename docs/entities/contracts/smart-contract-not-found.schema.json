@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "title": "SmartContractNotFound",
+  "description": "This object returns the smart contract id for not found",
+  "additionalProperties": false,
+  "properties": {
+    "found": {
+      "type": "boolean",
+      "enum": [false]
+    },
+    "result": {
+      "type": "object",
+      "required": ["contract_id"],
+      "additionalProperties": false,
+      "properties": {
+        "contract_id": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "required": ["found", "result"]
+}

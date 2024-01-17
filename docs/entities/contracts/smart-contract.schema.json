@@ -2,7 +2,7 @@
   "type": "object",
   "title": "SmartContract",
   "description": "A Smart Contract Detail",
-  "required": ["tx_id", "canonical", "block_height", "source_code", "contract_id", "abi"],
+  "required": ["tx_id", "canonical", "block_height", "source_code", "contract_id", "abi", "tx_status"],
   "properties": {
     "tx_id": {
       "type": "string"
@@ -21,6 +21,16 @@
     },
     "abi": {
       "type": "string"
+    },
+    "tx_status": {
+      "anyOf": [
+        {
+          "$ref": "../transactions/transaction-status.schema.json"
+        },
+        {
+          "$ref": "../mempool-transactions/transaction-status.schema.json"
+        }
+      ]
     }
   },
   "additionalProperties": false

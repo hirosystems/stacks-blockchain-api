@@ -314,6 +314,17 @@ export interface DbSmartContract {
   abi: string | null;
 }
 
+export interface DbSmartContractResult {
+  tx_id: string;
+  canonical: boolean;
+  contract_id: string;
+  block_height: number;
+  clarity_version: number | null;
+  source_code: string;
+  abi: string | null;
+  tx_status: DbTxStatus | null;
+}
+
 export enum DbFaucetRequestCurrency {
   BTC = 'btc',
   STX = 'stx',

@@ -293,6 +293,7 @@ describe('smart contract tests', () => {
       block_height: 1,
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
+      tx_status: 'success',
     });
 
     db.eventEmitter.removeListener('smartContractUpdate', handler);
@@ -401,6 +402,7 @@ describe('smart contract tests', () => {
       block_height: 1,
       source_code: '(some-contract-src)',
       abi: '{"some-abi":1}',
+      tx_status: 'success',
     });
   });
 

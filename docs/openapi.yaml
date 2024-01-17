@@ -1210,6 +1210,59 @@ paths:
           example: true
           default: false
 
+  /extended/v2/contracts:
+    get:
+      summary: Get info for contracts
+      description: Retrieves details of a contract with a given set of contracts
+      tags:
+        - Smart Contracts
+      operationId: get_contracts
+      parameters:
+      - name: contract_id
+        in: query
+        description: Array of contract ids
+        required: true
+        style: form
+        explode: true
+        schema:
+          type: array
+          example: [
+            "SP000000000000000000002Q6VF78.pox-3",
+            "SPQC38PW542EQJ5M11CR25P7BS1CA6QT4TBXGB3M.stableswap-stx-ststx-v-1-1",
+            "SP1ZKR93HX7QC5VNE4H64QHX92XCCDPHMB803FKWC.sordinals-inscribe"
+          ]
+          items:
+            type: string
+      - name: event_offset
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: The number of items to skip
+      - name: event_limit
+        in: query
+        schema:
+          type: integer
+          default: 96
+        description: The numbers of items to return
+      - name: unanchored
+        in: query
+        description: Include data from unanchored (i.e. unconfirmed) microblocks
+        required: false
+        schema:
+          type: boolean
+          example: true
+          default: false
+      responses:
+        200:
+          description: Returns list of contracts with their details.
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/contracts/smart-contract-list.schema.json
+              example:
+                $ref: ./entities/contracts/smart-contract-list.example.json
+
   /extended/v1/contract/by_trait:
     get:
       summary: Get contracts by trait

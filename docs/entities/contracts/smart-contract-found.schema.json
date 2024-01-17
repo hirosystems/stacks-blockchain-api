@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "title": "SmartContractFound",
+  "description": "This object returns smart contract for found true",
+  "additionalProperties": false,
+  "required": ["found", "result"],
+  "properties": {
+    "found": {
+      "type": "boolean",
+      "enum": [true]
+    },
+    "result": {
+      "$ref": "./smart-contract.schema.json"
+    }
+  }
+}
