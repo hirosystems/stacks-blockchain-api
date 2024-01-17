@@ -17,6 +17,7 @@ import {
   standByForTxSuccess,
   standByUntilBurnBlock,
   testEnv,
+  ZERO_SIGNER_KEY_BYTES,
 } from '../test-utils/test-helpers';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
@@ -115,13 +116,14 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       contractName,
       functionName: 'stack-stx',
       functionArgs: [
-        uintCV(ustxAmount.toString()),
+        uintCV(ustxAmount.toString()), // amount-ustx
         tupleCV({
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-        }),
-        uintCV(burnBlockHeight),
-        uintCV(lockPeriod), // lock-period
+        }), // pox-addr
+        uintCV(burnBlockHeight), // start-burn-ht
+        uintCV(lockPeriod), // lock-period,
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -308,11 +310,12 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       contractName,
       functionName: 'stack-extend',
       functionArgs: [
-        uintCV(extendCycleAmount),
+        uintCV(extendCycleAmount), // extend-count
         tupleCV({
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-        }),
+        }), // pox-addr
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

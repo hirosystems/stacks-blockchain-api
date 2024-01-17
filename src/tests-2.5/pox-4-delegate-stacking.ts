@@ -2,6 +2,7 @@ import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { testnetKeys } from '../api/routes/debug';
 import {
   Account,
+  ZERO_SIGNER_KEY_BYTES,
   accountFromKey,
   fetchGet,
   readOnlyFnCall,
@@ -14,6 +15,7 @@ import {
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
@@ -218,7 +220,8 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         uintCV(amountToDelegateInitial), // amount-ustx
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
-        uintCV(1), // lock-period
+        uintCV(1), // lock-period,
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -343,6 +346,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       functionArgs: [
         standardPrincipalCV(delegateeAccount.stxAddr), // stacker
         delegateeAccount.poxAddrClar, // pox-addr
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
         uintCV(extendCount), // extend-count
       ],
       network: testEnv.stacksNetwork,
