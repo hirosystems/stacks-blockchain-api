@@ -149,7 +149,6 @@ interface PoxSyntheticPrintEventTypes {
     'amount-ustx': ClarityValueUInt;
   };
   [SyntheticPoxEventName.RevokeDelegateStx]: {
-    'pox-addr': PoxSyntheticEventAddr | ClarityValueOptionalNone;
     'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
   };
 }
