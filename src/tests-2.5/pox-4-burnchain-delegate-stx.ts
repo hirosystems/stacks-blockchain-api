@@ -7,6 +7,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   standardPrincipalCV,
@@ -27,6 +28,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
   TestEnvContext,
+  ZERO_SIGNER_KEY_BYTES,
 } from '../test-utils/test-helpers';
 import * as btc from 'bitcoinjs-lib';
 import { b58ToC32, c32ToB58 } from 'c32check';
@@ -401,6 +403,7 @@ describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
         poxAddrPayoutAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

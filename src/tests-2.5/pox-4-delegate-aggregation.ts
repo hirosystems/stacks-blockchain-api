@@ -11,10 +11,12 @@ import {
   standByForTxSuccess,
   standByForAccountUnlock,
   testEnv,
+  ZERO_SIGNER_KEY_BYTES,
 } from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
@@ -202,7 +204,8 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(amountStackedInitial), // amount-ustx
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
-        uintCV(1), // lock-period
+        uintCV(1), // lock-period,
+        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
