@@ -1556,8 +1556,8 @@ export enum IndexesState {
 }
 
 export interface DbSmartContractStatus {
-  contract_id: string;
+  smart_contract_contract_id: string;
   tx_id: string;
-  status: string;
+  status: DbTxStatus;
   block_height?: number;
 }
