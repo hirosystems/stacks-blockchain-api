@@ -1,5 +1,4 @@
 import * as assert from 'assert';
-import PQueue from 'p-queue';
 import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,

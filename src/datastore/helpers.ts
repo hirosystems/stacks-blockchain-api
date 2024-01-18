@@ -1337,6 +1337,10 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
   };
 }
 
+/**
+ * Priority queue for parallel Postgres write query execution. This helps performance because it
+ * parallelizes the work postgres.js has to do when serializing JS types to PG types.
+ */
 export class PgWriteQueue {
   readonly queue: PQueue;
   constructor() {
