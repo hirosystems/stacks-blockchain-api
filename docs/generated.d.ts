@@ -3071,7 +3071,7 @@ export interface SmartContractsStatusResponse {
 }
 export interface SmartContractFound {
   found: true;
-  status?: SmartContractStatus;
+  result: SmartContractStatus;
 }
 /**
  * Deployment status of a smart contract

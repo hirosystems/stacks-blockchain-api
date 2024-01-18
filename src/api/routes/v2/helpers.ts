@@ -50,7 +50,7 @@ export function parseDbSmartContractStatusArray(
     ids.delete(s.smart_contract_contract_id);
     response[s.smart_contract_contract_id] = {
       found: true,
-      status: {
+      result: {
         contract_id: s.smart_contract_contract_id,
         block_height: s.block_height,
         status: getTxStatusString(s.status),

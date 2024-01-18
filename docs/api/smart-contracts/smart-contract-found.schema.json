@@ -8,7 +8,7 @@
       "type": "boolean",
       "enum": [true]
     },
-    "status": {
+    "result": {
       "$ref": "../../entities/smart-contracts/smart-contract-status.schema.json"
     }
   }

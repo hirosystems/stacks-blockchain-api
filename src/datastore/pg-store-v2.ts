@@ -248,8 +248,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           AND smart_contract_contract_id IN ${sql(contractArray)}
           AND canonical = TRUE
           AND microblock_canonical = TRUE
-          AND status = ${DbTxStatus.Success}
-        ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC, tx_index DESC
+        ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC, tx_index DESC, status
       `;
       statusArray.push(...confirmed);
       if (confirmed.count < contractArray.length) {

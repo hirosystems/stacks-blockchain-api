@@ -1762,7 +1762,7 @@ describe('smart contract tests', () => {
     expect(json).toStrictEqual({
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1': {
         found: true,
-        status: {
+        result: {
           block_height: 1,
           contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
           status: 'success',
@@ -1771,7 +1771,7 @@ describe('smart contract tests', () => {
       },
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2': {
         found: true,
-        status: {
+        result: {
           block_height: 2,
           contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
           status: 'success',
@@ -1803,7 +1803,7 @@ describe('smart contract tests', () => {
     expect(json).toStrictEqual({
       'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3': {
         found: true,
-        status: {
+        result: {
           contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3',
           status: 'pending',
           tx_id: '0x111111',
