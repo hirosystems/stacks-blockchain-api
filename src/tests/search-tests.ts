@@ -717,7 +717,7 @@ describe('search tests', () => {
       recipient: addr3,
       sender: 'none',
     };
-    await db.updateStxEvents(client, [{ tx: stxTx1, stxEvents: [stxEvent1] }]);
+    await db.updateStxEvents(client, stxTx1, [stxEvent1]);
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(`/extended/v1/search/${addr3}`);
@@ -745,7 +745,7 @@ describe('search tests', () => {
       sender: addr4,
     };
 
-    await db.updateStxEvents(client, [{ tx: stxTx1, stxEvents: [stxEvent2] }]);
+    await db.updateStxEvents(client, stxTx1, [stxEvent2]);
 
     // test address as a stx event sender
     const searchResult4 = await supertest(api.server).get(`/extended/v1/search/${addr4}`);

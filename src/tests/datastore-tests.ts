@@ -167,7 +167,7 @@ describe('postgres datastore', () => {
       createStxEvent('addrA', 'addrC', 35),
     ];
     for (const event of events) {
-      await db.updateStxEvents(client, [{ tx, stxEvents: [event] }]);
+      await db.updateStxEvents(client, tx, [event]);
     }
 
     const createStxLockEvent = (
