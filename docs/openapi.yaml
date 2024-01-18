@@ -834,6 +834,36 @@ paths:
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
+  /extended/v2/smart-contracts/status:
+    get:
+      summary: Get smart contracts status
+      description: |
+        Retrieves the deployment status of multiple smart contracts.
+      tags:
+        - Smart Contracts
+      operationId: get_smart_contracts_status
+      parameters:
+        - name: contract_id
+          in: query
+          description: contract ids to fetch status for
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            example: "SPQZF23W7SEYBFG5JQ496NMY0G7379SRYEDREMSV.Candy"
+            items:
+              type: string
+      responses:
+        200:
+          description: List of smart contract status
+          content:
+            application/json:
+              schema:
+                $ref: ./api/smart-contracts/get-smart-contracts-status.schema.json
+              example:
+                $ref: ./api/smart-contracts/get-smart-contracts-status.example.json
+
   /extended/v1/block:
     get:
       summary: Get recent blocks
