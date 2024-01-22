@@ -8,6 +8,7 @@ import {
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
+  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
@@ -19,7 +20,6 @@ import { DbTxStatus } from '../datastore/common';
 import { stxToMicroStx } from '../helpers';
 import {
   Account,
-  ZERO_SIGNER_KEY_BYTES,
   accountFromKey,
   fetchGet,
   readOnlyFnCall,
@@ -137,7 +137,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -224,7 +224,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(3), // lock-period
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -329,7 +329,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -379,7 +379,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         standardPrincipalCV(STACKER.stxAddr), // stacker
         STACKER.poxAddrClar, // pox-addr
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
         uintCV(2), // extend-count
       ],
       network: testEnv.stacksNetwork,
@@ -410,7 +410,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

@@ -8,7 +8,14 @@ import {
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
-import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
+import {
+  AnchorMode,
+  bufferCV,
+  makeContractCall,
+  randomBytes,
+  tupleCV,
+  uintCV,
+} from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
 import {
@@ -17,7 +24,6 @@ import {
   standByForTxSuccess,
   standByUntilBurnBlock,
   testEnv,
-  ZERO_SIGNER_KEY_BYTES,
 } from '../test-utils/test-helpers';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
@@ -123,7 +129,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
         }), // pox-addr
         uintCV(burnBlockHeight), // start-burn-ht
         uintCV(lockPeriod), // lock-period,
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -315,7 +321,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
         }), // pox-addr
-        bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

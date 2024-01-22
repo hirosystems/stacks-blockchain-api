@@ -54,9 +54,6 @@ import { coerceToBuffer, hexToBuffer, runMigrations, timeout } from '@hirosystem
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { getConnectionArgs } from '../datastore/connection';
 
-/** A (buff 33) signer key of all zeroes, to be used for testing */
-export const ZERO_SIGNER_KEY_BYTES = hexToBytes('00'.repeat(33));
-
 export async function migrate(direction: 'up' | 'down') {
   await runMigrations(MIGRATIONS_DIR, direction, getConnectionArgs());
 }
@@ -137,6 +134,7 @@ export function accountFromKey(
   return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, btcTestnetAddr, wif };
 }
 
+/** Stand by until prepare phase of next pox cycle (still in current cycle) */
 export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   const firstPoxInfo = await testEnv.client.getPox();
   await standByUntilBurnBlock(firstPoxInfo.next_cycle.prepare_phase_start_block_height);
@@ -151,6 +149,7 @@ export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   return lastPoxInfo;
 }
 
+/** Stand by until `current_cycle.id` increases */
 export async function standByForPoxCycle(
   apiArg?: ApiServer,
   clientArg?: StacksCoreRpcClient
