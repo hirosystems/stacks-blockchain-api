@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
   AddressStxBalanceResponse,
@@ -11,39 +13,33 @@ import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
-import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
+import { VerboseKeyOutput, getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
 import {
-  ZERO_SIGNER_KEY_BYTES,
   fetchGet,
-  standByForPoxCycle,
+  standByForNextPoxCycle,
   standByForTxSuccess,
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-4 - Stack using supported bitcoin address formats', () => {
-  test('Standby for next cycle', async () => {
-    const poxInfo = await testEnv.client.getPox();
-    await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
-  });
+  let poxInfo: CoreRpcPoxInfo;
+  let burnBlockHeight: number;
+  let cycleBlockLength: number;
+  let contractAddress: string;
+  let contractName: string;
+  let ustxAmount: bigint;
+  const cycleCount = 1;
+  const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
   describe('PoX-4 - Stacking operations P2SH-P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
-    let btcRegtestAccount: VerboseKeyOutput;
+    let btcAddrDecoded: { version: number; data: Uint8Array };
+    let btcAddrRegtest: VerboseKeyOutput;
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Uint8Array };
-    let poxInfo: CoreRpcPoxInfo;
-    let burnBlockHeight: number;
-    let cycleBlockLength: number;
-    let contractAddress: string;
-    let contractName: string;
-    let ustxAmount: bigint;
-    const cycleCount = 1;
-    const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
-    beforeAll(async () => {
+    test('P2SH-P2WPKH setup', async () => {
       btcAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'testnet',
@@ -53,38 +49,44 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       btcPubKey = privateToPublicKey(btcPrivateKey).toString('hex');
       expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
 
-      decodedBtcAddr = decodeBtcAddress(btcAddr);
+      btcAddrDecoded = decodeBtcAddress(btcAddr);
       expect({
-        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
-        version: decodedBtcAddr.version,
+        data: Buffer.from(btcAddrDecoded.data).toString('hex'),
+        version: btcAddrDecoded.version,
       }).toEqual({ data: '978a0121f9a24de65a13bab0c43c3a48be074eae', version: 1 });
 
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
-      btcRegtestAccount = getBitcoinAddressFromKey({
+      btcAddrRegtest = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'regtest',
         addressFormat: 'p2sh-p2wpkh',
         verbose: true,
       });
-      expect(btcRegtestAccount.address).toBe('2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
+      expect(btcAddrRegtest.address).toBe('2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o');
 
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: btcRegtestAccount.wif,
-        label: btcRegtestAccount.address,
-        rescan: false,
+      await testEnv.bitcoinRpcClient.importaddress({
+        address: btcAddrRegtest.address,
+        label: btcAddrRegtest.address,
       });
+      // await testEnv.bitcoinRpcClient.importprivkey({
+      //   privkey: btcAddrRegtest.wif,
+      //   label: btcAddrRegtest.address,
+      //   rescan: false,
+      // });
       const btcWalletAddrs = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-        label: btcRegtestAccount.address,
+        label: btcAddrRegtest.address,
       });
-      expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAccount.address);
+      expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest.address);
+
+      await standByForNextPoxCycle();
 
       poxInfo = await testEnv.client.getPox();
-      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
+      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
-
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
+
       expect(contractName).toBe('pox-4');
     });
 
@@ -98,12 +100,12 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         functionArgs: [
           uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
-            hashbytes: bufferCV(decodedBtcAddr.data),
-            version: bufferCV(Buffer.from([decodedBtcAddr.version])),
+            hashbytes: bufferCV(btcAddrDecoded.data),
+            version: bufferCV(Buffer.from([btcAddrDecoded.version])),
           }), // pox-addr
           uintCV(burnBlockHeight), // start-burn-ht
           uintCV(cycleCount), // lock-period
-          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+          bufferCV(hexToBytes('1'.padStart(66, '0'))), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -147,32 +149,11 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
     });
 
-    test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
-      // Wait until end of prepare phase
-      const preparePhaseEndBurnBlock =
-        poxInfo.next_cycle.prepare_phase_start_block_height +
-        poxInfo.prepare_phase_block_length +
-        1;
-      await standByForPoxCycle();
-
-      const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
-        `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
-      );
-      expect(rewardSlotHolders.total).toBe(1);
-      expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(
-        poxInfo.next_cycle.prepare_phase_start_block_height
-      );
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(
-        preparePhaseEndBurnBlock
-      );
-    });
-
     test('stacking rewards - API /burnchain/rewards', async () => {
-      // Wait until end of reward phase
-      const rewardPhaseEndBurnBlock =
-        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
-      await standByForPoxCycle();
+      await standByUntilBurnBlock(
+        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_cycle_length
+      );
+
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
@@ -184,13 +165,28 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(
         poxInfo.next_cycle.reward_phase_start_block_height
       );
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(rewardPhaseEndBurnBlock);
+      expect(firstReward.burn_block_height).toBeLessThanOrEqual(
+        poxInfo.next_cycle.reward_phase_start_block_height + 2 // early in the reward phase
+      );
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
         `/extended/v1/burnchain/rewards/${btcAddr}/total`
       );
       expect(rewardsTotal.reward_recipient).toBe(btcAddr);
       expect(Number(rewardsTotal.reward_amount)).toBeGreaterThan(0);
+    });
+
+    test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
+      const slotStart = poxInfo.next_cycle.reward_phase_start_block_height;
+      const slotEnd = slotStart + 2; // early in the reward phase
+
+      const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
+        `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
+      );
+      expect(rewardSlotHolders.total).toBe(1);
+      expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(slotStart);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(slotEnd);
     });
 
     test('stacking rewards - BTC JSON-RPC', async () => {
@@ -201,17 +197,17 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
       const blockResult: {
-        tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+        tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
       } = await testEnv.bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
       const vout = blockResult.tx
         .flatMap(t => t.vout)
-        .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAccount.address) && t.value);
-      if (!vout || !vout.value) {
+        .find(v => v?.value && v.scriptPubKey.address == btcAddrRegtest.address);
+      if (!vout?.value) {
         throw new Error(
-          `Could not find bitcoin vout for ${btcRegtestAccount.address} in block ${firstReward.burn_block_hash}`
+          `Could not find bitcoin vout for ${btcAddrRegtest.address} in block ${firstReward.burn_block_hash}`
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
@@ -232,13 +228,11 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         amount: number;
         blockhash: string;
         blockheight: number;
-        txid: string;
-        confirmations: number;
       }[] = await testEnv.bitcoinRpcClient.listtransactions({
-        label: btcRegtestAccount.address,
+        label: btcAddrRegtest.address,
         include_watchonly: true,
       });
-      received = received.filter(r => r.address === btcRegtestAccount.address);
+      received = received.filter(r => r.address === btcAddrRegtest.address);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -250,7 +244,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await testEnv.client.getAccount(account.stacksAddress);
       const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
+      await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       const rpcAccountInfo = await testEnv.client.getAccount(account.stacksAddress);
@@ -271,7 +265,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
 
     test('BTC stacking reward received', async () => {
       const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
-        address: btcRegtestAccount.address,
+        address: btcAddrRegtest.address,
         minconf: 0,
       });
       expect(received).toBeGreaterThan(0);
@@ -281,19 +275,11 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
   describe('PoX-4 - Stacking operations P2WPKH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
-    let btcRegtestAddr: string;
+    let btcAddrDecoded: { version: number; data: Uint8Array };
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Uint8Array };
-    let poxInfo: CoreRpcPoxInfo;
-    let burnBlockHeight: number;
-    let cycleBlockLength: number;
-    let contractAddress: string;
-    let contractName: string;
-    let ustxAmount: bigint;
-    const cycleCount = 1;
-    const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
+    let btcAddrRegtest: string;
 
-    beforeAll(async () => {
+    test('P2WPKH setup', async () => {
       btcAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'testnet',
@@ -303,36 +289,42 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       btcPubKey = privateToPublicKey(btcPrivateKey).toString('hex');
       expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
 
-      decodedBtcAddr = decodeBtcAddress(btcAddr);
+      btcAddrDecoded = decodeBtcAddress(btcAddr);
       expect({
-        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
-        version: decodedBtcAddr.version,
+        data: Buffer.from(btcAddrDecoded.data).toString('hex'),
+        version: btcAddrDecoded.version,
       }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 4 });
 
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
-      btcRegtestAddr = getBitcoinAddressFromKey({
+      btcAddrRegtest = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'regtest',
         addressFormat: 'p2wpkh',
       });
-      expect(btcRegtestAddr).toBe('bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
+      expect(btcAddrRegtest).toBe('bcrt1qq6hag67dl53wl99vzg42z8eyzfz2xlkvwk6f7m');
 
       await testEnv.bitcoinRpcClient.importaddress({
-        address: btcRegtestAddr,
-        label: btcRegtestAddr,
+        address: btcAddrRegtest,
+        label: btcAddrRegtest,
       });
       const btcWalletAddrs = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
       });
-      expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
+      expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
+
+      // If we're close to or in the prepare phase, wait until until the start of the next cycle
+      // if ((await testEnv.client.getPox()).next_cycle.blocks_until_prepare_phase <= 20) {
+      if (true) {
+        await standByForNextPoxCycle();
+      }
 
       poxInfo = await testEnv.client.getPox();
-      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
+      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
-
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
+
       expect(contractName).toBe('pox-4');
     });
 
@@ -346,12 +338,12 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         functionArgs: [
           uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
-            hashbytes: bufferCV(decodedBtcAddr.data),
-            version: bufferCV(Buffer.from([decodedBtcAddr.version])),
+            hashbytes: bufferCV(btcAddrDecoded.data),
+            version: bufferCV(Buffer.from([btcAddrDecoded.version])),
           }), // pox-addr
           uintCV(burnBlockHeight), // start-burn-ht
           uintCV(cycleCount), // lock-period
-          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+          bufferCV(hexToBytes('2'.padStart(66, '0'))), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -396,31 +388,23 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
-      // Wait until end of prepare phase
-      const preparePhaseEndBurnBlock =
-        poxInfo.next_cycle.prepare_phase_start_block_height +
-        poxInfo.prepare_phase_block_length +
-        1;
-      await standByForPoxCycle();
+      const prepareStart = poxInfo.next_cycle.prepare_phase_start_block_height;
+      const prepareEnd = prepareStart + poxInfo.prepare_phase_block_length;
+
+      await standByUntilBurnBlock(prepareEnd + 1);
 
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(
-        poxInfo.next_cycle.prepare_phase_start_block_height
-      );
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(
-        preparePhaseEndBurnBlock
-      );
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(prepareStart);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(prepareEnd);
     });
 
     test('stacking rewards - API /burnchain/rewards', async () => {
-      // Wait until end of reward phase
-      const rewardPhaseEndBurnBlock =
-        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
-      await standByForPoxCycle();
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 2);
+
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
@@ -433,7 +417,9 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(
         poxInfo.next_cycle.reward_phase_start_block_height
       );
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(rewardPhaseEndBurnBlock);
+      expect(firstReward.burn_block_height).toBeLessThanOrEqual(
+        poxInfo.next_cycle.reward_phase_start_block_height + 2
+      );
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
         `/extended/v1/burnchain/rewards/${btcAddr}/total`
@@ -450,17 +436,17 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
       const blockResult: {
-        tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+        tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
       } = await testEnv.bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
       const vout = blockResult.tx
         .flatMap(t => t.vout)
-        .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAddr) && t.value);
+        .find(v => v?.value && v.scriptPubKey.address == btcAddrRegtest);
       if (!vout || !vout.value) {
         throw new Error(
-          `Could not find bitcoin vout for ${btcRegtestAddr} in block ${firstReward.burn_block_hash}`
+          `Could not find bitcoin vout for ${btcAddrRegtest} in block ${firstReward.burn_block_hash}`
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
@@ -484,10 +470,10 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         txid: string;
         confirmations: number;
       }[] = await testEnv.bitcoinRpcClient.listtransactions({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
         include_watchonly: true,
       });
-      received = received.filter(r => r.address === btcRegtestAddr);
+      received = received.filter(r => r.address === btcAddrRegtest);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -499,7 +485,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await testEnv.client.getAccount(account.stacksAddress);
       const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
+      await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       const rpcAccountInfo = await testEnv.client.getAccount(account.stacksAddress);
@@ -520,7 +506,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
 
     test('BTC stacking reward received', async () => {
       const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
-        address: btcRegtestAddr,
+        address: btcAddrRegtest,
         minconf: 0,
       });
       expect(received).toBeGreaterThan(0);
@@ -530,19 +516,11 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
   describe('PoX-4 - Stacking operations P2WSH', () => {
     const account = testnetKeys[1];
     let btcAddr: string;
-    let btcRegtestAddr: string;
+    let btcAddrDecoded: { version: number; data: Uint8Array };
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Uint8Array };
-    let poxInfo: CoreRpcPoxInfo;
-    let burnBlockHeight: number;
-    let cycleBlockLength: number;
-    let contractAddress: string;
-    let contractName: string;
-    let ustxAmount: bigint;
-    const cycleCount = 1;
-    const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
+    let btcAddrRegtest: string;
 
-    beforeAll(async () => {
+    test('P2WSH setup', async () => {
       btcAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'testnet',
@@ -552,41 +530,47 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       btcPubKey = privateToPublicKey(btcPrivateKey).toString('hex');
       expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
 
-      decodedBtcAddr = decodeBtcAddress(btcAddr);
+      btcAddrDecoded = decodeBtcAddress(btcAddr);
       expect({
-        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
-        version: decodedBtcAddr.version,
+        data: Buffer.from(btcAddrDecoded.data).toString('hex'),
+        version: btcAddrDecoded.version,
       }).toEqual({
         data: 'a802f89df647a9803154b5443e3ba7f3b29709fcca59e3cb36ea36a91e9a38dc',
         version: 5,
       });
 
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
-      btcRegtestAddr = getBitcoinAddressFromKey({
+      btcAddrRegtest = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'regtest',
         addressFormat: 'p2wsh',
       });
-      expect(btcRegtestAddr).toBe(
+      expect(btcAddrRegtest).toBe(
         'bcrt1q4qp0380kg75cqv25k4zruwa87wefwz0uefv78jekagm2j8568rwqpm5e2n'
       );
 
       await testEnv.bitcoinRpcClient.importaddress({
-        address: btcRegtestAddr,
-        label: btcRegtestAddr,
+        address: btcAddrRegtest,
+        label: btcAddrRegtest,
       });
       const btcWalletAddrs = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
       });
-      expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
+      expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
+
+      // If we're close to or in the prepare phase, wait until until the start of the next cycle
+      // if ((await testEnv.client.getPox()).next_cycle.blocks_until_prepare_phase <= 20) {
+      if (true) {
+        await standByForNextPoxCycle();
+      }
 
       poxInfo = await testEnv.client.getPox();
-      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
+      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
-
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
+
       expect(contractName).toBe('pox-4');
     });
 
@@ -600,12 +584,12 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         functionArgs: [
           uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
-            hashbytes: bufferCV(decodedBtcAddr.data),
-            version: bufferCV(Buffer.from([decodedBtcAddr.version])),
+            hashbytes: bufferCV(btcAddrDecoded.data),
+            version: bufferCV(Buffer.from([btcAddrDecoded.version])),
           }), // pox-addr
           uintCV(burnBlockHeight), // start-burn-ht
           uintCV(cycleCount), // lock-period
-          bufferCV(ZERO_SIGNER_KEY_BYTES), // signer-key
+          bufferCV(hexToBytes('3'.padStart(66, '0'))), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -650,31 +634,23 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
-      // Wait until end of prepare phase
-      const preparePhaseEndBurnBlock =
-        poxInfo.next_cycle.prepare_phase_start_block_height +
-        poxInfo.prepare_phase_block_length +
-        1;
-      await standByForPoxCycle();
+      const prepareStart = poxInfo.next_cycle.prepare_phase_start_block_height;
+      const prepareEnd = prepareStart + poxInfo.prepare_phase_block_length;
+
+      await standByUntilBurnBlock(prepareEnd + 1);
 
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(
-        poxInfo.next_cycle.prepare_phase_start_block_height
-      );
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(
-        preparePhaseEndBurnBlock
-      );
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(prepareStart);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(prepareEnd);
     });
 
     test('stacking rewards - API /burnchain/rewards', async () => {
-      // Wait until end of reward phase
-      const rewardPhaseEndBurnBlock =
-        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
-      await standByForPoxCycle();
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 2);
+
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
@@ -686,7 +662,9 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(
         poxInfo.next_cycle.reward_phase_start_block_height
       );
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(rewardPhaseEndBurnBlock);
+      expect(firstReward.burn_block_height).toBeLessThanOrEqual(
+        poxInfo.next_cycle.reward_phase_start_block_height + 2
+      );
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
         `/extended/v1/burnchain/rewards/${btcAddr}/total`
@@ -703,17 +681,17 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
       const blockResult: {
-        tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+        tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
       } = await testEnv.bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
       const vout = blockResult.tx
         .flatMap(t => t.vout)
-        .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAddr) && t.value);
+        .find(v => v?.value && v.scriptPubKey.address == btcAddrRegtest);
       if (!vout || !vout.value) {
         throw new Error(
-          `Could not find bitcoin vout for ${btcRegtestAddr} in block ${firstReward.burn_block_hash}`
+          `Could not find bitcoin vout for ${btcAddrRegtest} in block ${firstReward.burn_block_hash}`
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
@@ -737,10 +715,10 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         txid: string;
         confirmations: number;
       }[] = await testEnv.bitcoinRpcClient.listtransactions({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
         include_watchonly: true,
       });
-      received = received.filter(r => r.address === btcRegtestAddr);
+      received = received.filter(r => r.address === btcAddrRegtest);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -752,7 +730,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await testEnv.client.getAccount(account.stacksAddress);
       const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
+      await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       const rpcAccountInfo = await testEnv.client.getAccount(account.stacksAddress);
@@ -773,7 +751,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
 
     test('BTC stacking reward received', async () => {
       const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
-        address: btcRegtestAddr,
+        address: btcAddrRegtest,
         minconf: 0,
       });
       expect(received).toBeGreaterThan(0);
@@ -781,21 +759,13 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
   });
 
   describe('PoX-4 - Stacking operations P2TR', () => {
-    const account = testnetKeys[2];
+    const account = testnetKeys[1];
     let btcAddr: string;
-    let btcRegtestAddr: string;
+    let btcAddrDecoded: { version: number; data: Uint8Array };
     let btcPubKey: string;
-    let decodedBtcAddr: { version: number; data: Uint8Array };
-    let poxInfo: CoreRpcPoxInfo;
-    let burnBlockHeight: number;
-    let cycleBlockLength: number;
-    let contractAddress: string;
-    let contractName: string;
-    let ustxAmount: bigint;
-    const cycleCount = 1;
-    const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
+    let btcAddrRegtest: string;
 
-    beforeAll(async () => {
+    test('P2TR setup', async () => {
       btcAddr = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'testnet',
@@ -805,41 +775,47 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       btcPubKey = privateToPublicKey(btcPrivateKey).toString('hex');
       expect(btcPubKey).toBe('02c6047f9441ed7d6d3045406e95c07cd85c778e4b8cef3ca7abac09b95c709ee5');
 
-      decodedBtcAddr = decodeBtcAddress(btcAddr);
+      btcAddrDecoded = decodeBtcAddress(btcAddr);
       expect({
-        data: Buffer.from(decodedBtcAddr.data).toString('hex'),
-        version: decodedBtcAddr.version,
+        data: Buffer.from(btcAddrDecoded.data).toString('hex'),
+        version: btcAddrDecoded.version,
       }).toEqual({
         data: 'cafd90c7026f0b6ab98df89490d02732881f2f4b5900856358dddff4679c2ffb',
         version: 6,
       });
 
       // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
-      btcRegtestAddr = getBitcoinAddressFromKey({
+      btcAddrRegtest = getBitcoinAddressFromKey({
         privateKey: btcPrivateKey,
         network: 'regtest',
         addressFormat: 'p2tr',
       });
-      expect(btcRegtestAddr).toBe(
+      expect(btcAddrRegtest).toBe(
         'bcrt1pet7ep3czdu9k4wvdlz2fp5p8x2yp7t6ttyqg2c6cmh0lgeuu9laspse7la'
       );
 
       await testEnv.bitcoinRpcClient.importaddress({
-        address: btcRegtestAddr,
-        label: btcRegtestAddr,
+        address: btcAddrRegtest,
+        label: btcAddrRegtest,
       });
       const btcWalletAddrs = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
       });
-      expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAddr);
+      expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
+
+      // If we're close to or in the prepare phase, wait until until the start of the next cycle
+      // if ((await testEnv.client.getPox()).next_cycle.blocks_until_prepare_phase <= 20) {
+      if (true) {
+        await standByForNextPoxCycle();
+      }
 
       poxInfo = await testEnv.client.getPox();
-      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
+      burnBlockHeight = poxInfo.current_burnchain_block_height as number;
       ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
-
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
+
       expect(contractName).toBe('pox-4');
     });
 
@@ -851,13 +827,14 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         contractName,
         functionName: 'stack-stx',
         functionArgs: [
-          uintCV(ustxAmount.toString()),
+          uintCV(ustxAmount.toString()), // amount-ustx
           tupleCV({
-            hashbytes: bufferCV(decodedBtcAddr.data),
-            version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-          }),
-          uintCV(burnBlockHeight),
-          uintCV(cycleCount),
+            hashbytes: bufferCV(btcAddrDecoded.data),
+            version: bufferCV(Buffer.from([btcAddrDecoded.version])),
+          }), // pox-addr
+          uintCV(burnBlockHeight), // start-burn-ht
+          uintCV(cycleCount), // lock-period
+          bufferCV(hexToBytes('4'.padStart(66, '0'))), // signer-key
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -902,32 +879,23 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
     });
 
     test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
-      // Wait until end of prepare phase
-      const preparePhaseEndBurnBlock =
-        poxInfo.next_cycle.prepare_phase_start_block_height +
-        poxInfo.prepare_phase_block_length +
-        1;
-      await standByForPoxCycle();
+      const prepareStart = poxInfo.next_cycle.prepare_phase_start_block_height;
+      const prepareEnd = prepareStart + poxInfo.prepare_phase_block_length;
+
+      await standByUntilBurnBlock(prepareEnd + 1);
 
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(
-        poxInfo.next_cycle.prepare_phase_start_block_height
-      );
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(
-        preparePhaseEndBurnBlock
-      );
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(prepareStart);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(prepareEnd);
     });
 
     test('stacking rewards - API /burnchain/rewards', async () => {
-      // Wait until end of reward phase
-      const rewardPhaseEndBurnBlock =
-        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_phase_block_length + 1;
-      await standByForPoxCycle();
-      // await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 2);
+
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
@@ -939,7 +907,9 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(
         poxInfo.next_cycle.reward_phase_start_block_height
       );
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(rewardPhaseEndBurnBlock);
+      expect(firstReward.burn_block_height).toBeLessThanOrEqual(
+        poxInfo.next_cycle.reward_phase_start_block_height + 2
+      );
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
         `/extended/v1/burnchain/rewards/${btcAddr}/total`
@@ -956,17 +926,17 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
       const blockResult: {
-        tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+        tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
       } = await testEnv.bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
       const vout = blockResult.tx
         .flatMap(t => t.vout)
-        .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAddr) && t.value);
+        .find(v => v?.value && v.scriptPubKey.address == btcAddrRegtest);
       if (!vout || !vout.value) {
         throw new Error(
-          `Could not find bitcoin vout for ${btcRegtestAddr} in block ${firstReward.burn_block_hash}`
+          `Could not find bitcoin vout for ${btcAddrRegtest} in block ${firstReward.burn_block_hash}`
         );
       }
       const sats = new bignumber(vout.value).shiftedBy(8).toString();
@@ -990,10 +960,10 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
         txid: string;
         confirmations: number;
       }[] = await testEnv.bitcoinRpcClient.listtransactions({
-        label: btcRegtestAddr,
+        label: btcAddrRegtest,
         include_watchonly: true,
       });
-      received = received.filter(r => r.address === btcRegtestAddr);
+      received = received.filter(r => r.address === btcAddrRegtest);
       expect(received.length).toBe(1);
       expect(received[0].category).toBe('receive');
       expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
@@ -1005,7 +975,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccountInfo1 = await testEnv.client.getAccount(account.stacksAddress);
       const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      const dbBlock1 = await standByUntilBurnBlock(burnBlockUnlockHeight);
+      await standByUntilBurnBlock(burnBlockUnlockHeight);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       const rpcAccountInfo = await testEnv.client.getAccount(account.stacksAddress);
@@ -1026,7 +996,7 @@ describe('PoX-4 - Stack using supported bitcoin address formats', () => {
 
     test('BTC stacking reward received', async () => {
       const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
-        address: btcRegtestAddr,
+        address: btcAddrRegtest,
         minconf: 0,
       });
       expect(received).toBeGreaterThan(0);
