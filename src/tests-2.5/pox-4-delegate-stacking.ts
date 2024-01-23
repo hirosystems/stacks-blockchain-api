@@ -346,8 +346,8 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       functionArgs: [
         standardPrincipalCV(delegateeAccount.stxAddr), // stacker
         delegateeAccount.poxAddrClar, // pox-addr
-        bufferCV(randomBytes(33)), // signer-key
         uintCV(extendCount), // extend-count
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
