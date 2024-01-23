@@ -52,6 +52,12 @@ export interface ServerStatusResponse {
     pox_v2_unlock_height?: number | null;
     /**
      * 
+     * @type {number}
+     * @memberof ServerStatusResponse
+     */
+    pox_v3_unlock_height?: number | null;
+    /**
+     * 
      * @type {ChainTip}
      * @memberof ServerStatusResponse
      */
@@ -72,6 +78,7 @@ export function ServerStatusResponseFromJSONTyped(json: any, ignoreDiscriminator
         'status': json['status'],
         'pox_v1_unlock_height': !exists(json, 'pox_v1_unlock_height') ? undefined : json['pox_v1_unlock_height'],
         'pox_v2_unlock_height': !exists(json, 'pox_v2_unlock_height') ? undefined : json['pox_v2_unlock_height'],
+        'pox_v3_unlock_height': !exists(json, 'pox_v3_unlock_height') ? undefined : json['pox_v3_unlock_height'],
         'chain_tip': !exists(json, 'chain_tip') ? undefined : ChainTipFromJSON(json['chain_tip']),
     };
 }
@@ -89,6 +96,7 @@ export function ServerStatusResponseToJSON(value?: ServerStatusResponse | null):
         'status': value.status,
         'pox_v1_unlock_height': value.pox_v1_unlock_height,
         'pox_v2_unlock_height': value.pox_v2_unlock_height,
+        'pox_v3_unlock_height': value.pox_v3_unlock_height,
         'chain_tip': ChainTipToJSON(value.chain_tip),
     };
 }

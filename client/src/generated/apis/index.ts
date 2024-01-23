@@ -2,9 +2,9 @@
 /* eslint-disable */
 export * from './AccountsApi';
 export * from './BlocksApi';
+export * from './BurnBlocksApi';
 export * from './FaucetsApi';
 export * from './FeesApi';
-export * from './FungibleTokensApi';
 export * from './InfoApi';
 export * from './MempoolApi';
 export * from './MicroblocksApi';

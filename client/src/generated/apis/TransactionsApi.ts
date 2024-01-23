@@ -59,6 +59,8 @@ export interface GetMempoolTransactionListRequest {
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
+    orderBy?: GetMempoolTransactionListOrderByEnum;
+    order?: GetMempoolTransactionListOrderEnum;
     limit?: number;
     offset?: number;
     unanchored?: boolean;
@@ -80,6 +82,10 @@ export interface GetTransactionListRequest {
     offset?: number;
     type?: Array<GetTransactionListTypeEnum>;
     unanchored?: boolean;
+}
+
+export interface GetTransactionsByBlockRequest {
+    heightOrHash: number | string;
 }
 
 export interface GetTransactionsByBlockHashRequest {
@@ -175,6 +181,8 @@ export interface TransactionsApiInterface {
      * @param {string} [senderAddress] Filter to only return transactions with this sender address.
      * @param {string} [recipientAddress] Filter to only return transactions with this recipient address (only applicable for STX transfer tx types).
      * @param {string} [address] Filter to only return transactions with this address as the sender or recipient (recipient only applicable for STX transfer tx types).
+     * @param {'age' | 'size' | 'fee'} [orderBy] Option to sort results by transaction age, size, or fee rate.
+     * @param {'asc' | 'desc'} [order] Option to sort results in ascending or descending order.
      * @param {number} [limit] max number of mempool transactions to fetch
      * @param {number} [offset] index of first mempool transaction to fetch
      * @param {boolean} [unanchored] Include transaction data from unanchored (i.e. unconfirmed) microblocks
@@ -245,7 +253,7 @@ export interface TransactionsApiInterface {
      * @summary Get recent transactions
      * @param {number} [limit] max number of transactions to fetch
      * @param {number} [offset] index of first transaction to fetch
-     * @param {Array<'coinbase' | 'token_transfer' | 'smart_contract' | 'contract_call' | 'poison_microblock'>} [type] Filter by transaction type
+     * @param {Array<'coinbase' | 'token_transfer' | 'smart_contract' | 'contract_call' | 'poison_microblock' | 'tenure_change'>} [type] Filter by transaction type
      * @param {boolean} [unanchored] Include transaction data from unanchored (i.e. unconfirmed) microblocks
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -260,7 +268,23 @@ export interface TransactionsApiInterface {
     getTransactionList(requestParameters: GetTransactionListRequest, initOverrides?: RequestInit): Promise<TransactionResults>;
 
     /**
-     * Retrieves a list of all transactions within a block for a given block hash.
+     * Retrieves transactions confirmed in a single block 
+     * @summary Get transactions by block
+     * @param {number | string} heightOrHash filter by block height, hash, index block hash or the constant &#x60;latest&#x60; to filter for the most recent block
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof TransactionsApiInterface
+     */
+    getTransactionsByBlockRaw(requestParameters: GetTransactionsByBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>>;
+
+    /**
+     * Retrieves transactions confirmed in a single block 
+     * Get transactions by block
+     */
+    getTransactionsByBlock(requestParameters: GetTransactionsByBlockRequest, initOverrides?: RequestInit): Promise<TransactionResults>;
+
+    /**
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves a list of all transactions within a block for a given block hash. 
      * @summary Transactions by block hash
      * @param {string} blockHash Hash of block
      * @param {number} [limit] max number of transactions to fetch
@@ -272,13 +296,13 @@ export interface TransactionsApiInterface {
     getTransactionsByBlockHashRaw(requestParameters: GetTransactionsByBlockHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>>;
 
     /**
-     * Retrieves a list of all transactions within a block for a given block hash.
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves a list of all transactions within a block for a given block hash. 
      * Transactions by block hash
      */
     getTransactionsByBlockHash(requestParameters: GetTransactionsByBlockHashRequest, initOverrides?: RequestInit): Promise<TransactionResults>;
 
     /**
-     * Retrieves all transactions within a block at a given height
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves all transactions within a block at a given height 
      * @summary Transactions by block height
      * @param {number} height Height of block
      * @param {number} [limit] max number of transactions to fetch
@@ -291,7 +315,7 @@ export interface TransactionsApiInterface {
     getTransactionsByBlockHeightRaw(requestParameters: GetTransactionsByBlockHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>>;
 
     /**
-     * Retrieves all transactions within a block at a given height
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves all transactions within a block at a given height 
      * Transactions by block height
      */
     getTransactionsByBlockHeight(requestParameters: GetTransactionsByBlockHeightRequest, initOverrides?: RequestInit): Promise<TransactionResults>;
@@ -485,6 +509,14 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
             queryParameters['address'] = requestParameters.address;
         }
 
+        if (requestParameters.orderBy !== undefined) {
+            queryParameters['order_by'] = requestParameters.orderBy;
+        }
+
+        if (requestParameters.order !== undefined) {
+            queryParameters['order'] = requestParameters.order;
+        }
+
         if (requestParameters.limit !== undefined) {
             queryParameters['limit'] = requestParameters.limit;
         }
@@ -667,7 +699,39 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Retrieves a list of all transactions within a block for a given block hash.
+     * Retrieves transactions confirmed in a single block 
+     * Get transactions by block
+     */
+    async getTransactionsByBlockRaw(requestParameters: GetTransactionsByBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>> {
+        if (requestParameters.heightOrHash === null || requestParameters.heightOrHash === undefined) {
+            throw new runtime.RequiredError('heightOrHash','Required parameter requestParameters.heightOrHash was null or undefined when calling getTransactionsByBlock.');
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v2/blocks/{height_or_hash}/transactions`.replace(`{${"height_or_hash"}}`, encodeURIComponent(String(requestParameters.heightOrHash))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TransactionResultsFromJSON(jsonValue));
+    }
+
+    /**
+     * Retrieves transactions confirmed in a single block 
+     * Get transactions by block
+     */
+    async getTransactionsByBlock(requestParameters: GetTransactionsByBlockRequest, initOverrides?: RequestInit): Promise<TransactionResults> {
+        const response = await this.getTransactionsByBlockRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves a list of all transactions within a block for a given block hash. 
      * Transactions by block hash
      */
     async getTransactionsByBlockHashRaw(requestParameters: GetTransactionsByBlockHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>> {
@@ -698,7 +762,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Retrieves a list of all transactions within a block for a given block hash.
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves a list of all transactions within a block for a given block hash. 
      * Transactions by block hash
      */
     async getTransactionsByBlockHash(requestParameters: GetTransactionsByBlockHashRequest, initOverrides?: RequestInit): Promise<TransactionResults> {
@@ -707,7 +771,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Retrieves all transactions within a block at a given height
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves all transactions within a block at a given height 
      * Transactions by block height
      */
     async getTransactionsByBlockHeightRaw(requestParameters: GetTransactionsByBlockHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<TransactionResults>> {
@@ -742,7 +806,7 @@ export class TransactionsApi extends runtime.BaseAPI implements TransactionsApiI
     }
 
     /**
-     * Retrieves all transactions within a block at a given height
+     * **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).  Retrieves all transactions within a block at a given height 
      * Transactions by block height
      */
     async getTransactionsByBlockHeight(requestParameters: GetTransactionsByBlockHeightRequest, initOverrides?: RequestInit): Promise<TransactionResults> {
@@ -846,10 +910,28 @@ export enum GetFilteredEventsTypeEnum {
     * @export
     * @enum {string}
     */
+export enum GetMempoolTransactionListOrderByEnum {
+    age = 'age',
+    size = 'size',
+    fee = 'fee'
+}
+/**
+    * @export
+    * @enum {string}
+    */
+export enum GetMempoolTransactionListOrderEnum {
+    asc = 'asc',
+    desc = 'desc'
+}
+/**
+    * @export
+    * @enum {string}
+    */
 export enum GetTransactionListTypeEnum {
     coinbase = 'coinbase',
     token_transfer = 'token_transfer',
     smart_contract = 'smart_contract',
     contract_call = 'contract_call',
-    poison_microblock = 'poison_microblock'
+    poison_microblock = 'poison_microblock',
+    tenure_change = 'tenure_change'
 }

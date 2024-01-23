@@ -21,20 +21,10 @@ import {
     NonFungibleTokenHoldingsList,
     NonFungibleTokenHoldingsListFromJSON,
     NonFungibleTokenHoldingsListToJSON,
-    NonFungibleTokenMetadata,
-    NonFungibleTokenMetadataFromJSON,
-    NonFungibleTokenMetadataToJSON,
     NonFungibleTokenMintList,
     NonFungibleTokenMintListFromJSON,
     NonFungibleTokenMintListToJSON,
-    NonFungibleTokensMetadataList,
-    NonFungibleTokensMetadataListFromJSON,
-    NonFungibleTokensMetadataListToJSON,
 } from '../models';
-
-export interface GetContractNftMetadataRequest {
-    contractId: string;
-}
 
 export interface GetNftHistoryRequest {
     assetIdentifier: string;
@@ -54,11 +44,6 @@ export interface GetNftHoldingsRequest {
     txMetadata?: boolean;
 }
 
-export interface GetNftMetadataListRequest {
-    limit?: number;
-    offset?: number;
-}
-
 export interface GetNftMintsRequest {
     assetIdentifier: string;
     limit?: number;
@@ -74,22 +59,6 @@ export interface GetNftMintsRequest {
  * @interface NonFungibleTokensApiInterface
  */
 export interface NonFungibleTokensApiInterface {
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * @summary Non fungible tokens metadata for contract ID
-     * @param {string} contractId token\&#39;s contract id
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof NonFungibleTokensApiInterface
-     */
-    getContractNftMetadataRaw(requestParameters: GetContractNftMetadataRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NonFungibleTokenMetadata>>;
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata for contract ID
-     */
-    getContractNftMetadata(requestParameters: GetContractNftMetadataRequest, initOverrides?: RequestInit): Promise<NonFungibleTokenMetadata>;
-
     /**
      * Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.  More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
      * @summary Non-Fungible Token history
@@ -133,23 +102,6 @@ export interface NonFungibleTokensApiInterface {
     getNftHoldings(requestParameters: GetNftHoldingsRequest, initOverrides?: RequestInit): Promise<NonFungibleTokenHoldingsList>;
 
     /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * @summary Non fungible tokens metadata list
-     * @param {number} [limit] max number of tokens to fetch
-     * @param {number} [offset] index of first tokens to fetch
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof NonFungibleTokensApiInterface
-     */
-    getNftMetadataListRaw(requestParameters: GetNftMetadataListRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NonFungibleTokensMetadataList>>;
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata list
-     */
-    getNftMetadataList(requestParameters: GetNftMetadataListRequest, initOverrides?: RequestInit): Promise<NonFungibleTokensMetadataList>;
-
-    /**
      * Retrieves all mint events for a Non-Fungible Token asset class. Useful to determine which NFTs of a particular collection have been claimed.  More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
      * @summary Non-Fungible Token mints
      * @param {string} assetIdentifier token asset class identifier
@@ -175,38 +127,6 @@ export interface NonFungibleTokensApiInterface {
  * 
  */
 export class NonFungibleTokensApi extends runtime.BaseAPI implements NonFungibleTokensApiInterface {
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata for contract ID
-     */
-    async getContractNftMetadataRaw(requestParameters: GetContractNftMetadataRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NonFungibleTokenMetadata>> {
-        if (requestParameters.contractId === null || requestParameters.contractId === undefined) {
-            throw new runtime.RequiredError('contractId','Required parameter requestParameters.contractId was null or undefined when calling getContractNftMetadata.');
-        }
-
-        const queryParameters: any = {};
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/tokens/{contractId}/nft/metadata`.replace(`{${"contractId"}}`, encodeURIComponent(String(requestParameters.contractId))),
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => NonFungibleTokenMetadataFromJSON(jsonValue));
-    }
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves metadata for non fungible tokens for a given contract id. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata for contract ID
-     */
-    async getContractNftMetadata(requestParameters: GetContractNftMetadataRequest, initOverrides?: RequestInit): Promise<NonFungibleTokenMetadata> {
-        const response = await this.getContractNftMetadataRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
 
     /**
      * Retrieves all events relevant to a Non-Fungible Token. Useful to determine the ownership history of a particular asset.  More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
@@ -321,42 +241,6 @@ export class NonFungibleTokensApi extends runtime.BaseAPI implements NonFungible
      */
     async getNftHoldings(requestParameters: GetNftHoldingsRequest, initOverrides?: RequestInit): Promise<NonFungibleTokenHoldingsList> {
         const response = await this.getNftHoldingsRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata list
-     */
-    async getNftMetadataListRaw(requestParameters: GetNftMetadataListRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NonFungibleTokensMetadataList>> {
-        const queryParameters: any = {};
-
-        if (requestParameters.limit !== undefined) {
-            queryParameters['limit'] = requestParameters.limit;
-        }
-
-        if (requestParameters.offset !== undefined) {
-            queryParameters['offset'] = requestParameters.offset;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/tokens/nft/metadata`,
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => NonFungibleTokensMetadataListFromJSON(jsonValue));
-    }
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of the [Token Metadata Service](https://github.com/hirosystems/token-metadata-service).  Retrieves a list of non fungible tokens with their metadata. More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts). 
-     * Non fungible tokens metadata list
-     */
-    async getNftMetadataList(requestParameters: GetNftMetadataListRequest, initOverrides?: RequestInit): Promise<NonFungibleTokensMetadataList> {
-        const response = await this.getNftMetadataListRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

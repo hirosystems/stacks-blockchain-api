@@ -14,49 +14,49 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NftEvent,
-    NftEventFromJSON,
-    NftEventFromJSONTyped,
-    NftEventToJSON,
+    NakamotoBlock,
+    NakamotoBlockFromJSON,
+    NakamotoBlockFromJSONTyped,
+    NakamotoBlockToJSON,
 } from './';
 
 /**
- * 
+ * GET request that returns blocks
  * @export
- * @interface AddressNftListResponse
+ * @interface NakamotoBlockListResponse
  */
-export interface AddressNftListResponse {
+export interface NakamotoBlockListResponse {
     /**
-     * 
+     * The number of blocks to return
      * @type {number}
-     * @memberof AddressNftListResponse
+     * @memberof NakamotoBlockListResponse
      */
     limit: number;
     /**
-     * 
+     * The number to blocks to skip (starting at `0`)
      * @type {number}
-     * @memberof AddressNftListResponse
+     * @memberof NakamotoBlockListResponse
      */
     offset: number;
     /**
-     * 
+     * The number of blocks available
      * @type {number}
-     * @memberof AddressNftListResponse
+     * @memberof NakamotoBlockListResponse
      */
     total: number;
     /**
      * 
-     * @type {Array<NftEvent>}
-     * @memberof AddressNftListResponse
+     * @type {Array<NakamotoBlock>}
+     * @memberof NakamotoBlockListResponse
      */
-    nft_events: Array<NftEvent>;
+    results: Array<NakamotoBlock>;
 }
 
-export function AddressNftListResponseFromJSON(json: any): AddressNftListResponse {
-    return AddressNftListResponseFromJSONTyped(json, false);
+export function NakamotoBlockListResponseFromJSON(json: any): NakamotoBlockListResponse {
+    return NakamotoBlockListResponseFromJSONTyped(json, false);
 }
 
-export function AddressNftListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): AddressNftListResponse {
+export function NakamotoBlockListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): NakamotoBlockListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
@@ -65,11 +65,11 @@ export function AddressNftListResponseFromJSONTyped(json: any, ignoreDiscriminat
         'limit': json['limit'],
         'offset': json['offset'],
         'total': json['total'],
-        'nft_events': ((json['nft_events'] as Array<any>).map(NftEventFromJSON)),
+        'results': ((json['results'] as Array<any>).map(NakamotoBlockFromJSON)),
     };
 }
 
-export function AddressNftListResponseToJSON(value?: AddressNftListResponse | null): any {
+export function NakamotoBlockListResponseToJSON(value?: NakamotoBlockListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -81,7 +81,7 @@ export function AddressNftListResponseToJSON(value?: AddressNftListResponse | nu
         'limit': value.limit,
         'offset': value.offset,
         'total': value.total,
-        'nft_events': ((value.nft_events as Array<any>).map(NftEventToJSON)),
+        'results': ((value.results as Array<any>).map(NakamotoBlockToJSON)),
     };
 }
 

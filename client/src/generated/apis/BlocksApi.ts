@@ -21,7 +21,17 @@ import {
     BlockListResponse,
     BlockListResponseFromJSON,
     BlockListResponseToJSON,
+    NakamotoBlock,
+    NakamotoBlockFromJSON,
+    NakamotoBlockToJSON,
+    NakamotoBlockListResponse,
+    NakamotoBlockListResponseFromJSON,
+    NakamotoBlockListResponseToJSON,
 } from '../models';
+
+export interface GetBlockRequest {
+    heightOrHash: number | string;
+}
 
 export interface GetBlockByBurnBlockHashRequest {
     burnBlockHash: string;
@@ -44,6 +54,17 @@ export interface GetBlockListRequest {
     offset?: number;
 }
 
+export interface GetBlocksRequest {
+    limit?: number;
+    offset?: number;
+}
+
+export interface GetBlocksByBurnBlockRequest {
+    heightOrHash: number | string;
+    limit?: number;
+    offset?: number;
+}
+
 /**
  * BlocksApi - interface
  * 
@@ -52,7 +73,23 @@ export interface GetBlockListRequest {
  */
 export interface BlocksApiInterface {
     /**
-     * Retrieves block details of a specific block for a given burnchain block hash
+     * Retrieves a single block 
+     * @summary Get block
+     * @param {number | string} heightOrHash filter by block height, hash, index block hash or the constant &#x60;latest&#x60; to filter for the most recent block
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlockRaw(requestParameters: GetBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlock>>;
+
+    /**
+     * Retrieves a single block 
+     * Get block
+     */
+    getBlock(requestParameters: GetBlockRequest, initOverrides?: RequestInit): Promise<NakamotoBlock>;
+
+    /**
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burnchain block hash 
      * @summary Get block by burnchain block hash
      * @param {string} burnBlockHash Hash of the burnchain block
      * @param {*} [options] Override http request option.
@@ -62,13 +99,13 @@ export interface BlocksApiInterface {
     getBlockByBurnBlockHashRaw(requestParameters: GetBlockByBurnBlockHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>>;
 
     /**
-     * Retrieves block details of a specific block for a given burnchain block hash
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burnchain block hash 
      * Get block by burnchain block hash
      */
     getBlockByBurnBlockHash(requestParameters: GetBlockByBurnBlockHashRequest, initOverrides?: RequestInit): Promise<Block>;
 
     /**
-     * Retrieves block details of a specific block for a given burn chain height
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burn chain height 
      * @summary Get block by burnchain height
      * @param {number} burnBlockHeight Height of the burn chain block
      * @param {*} [options] Override http request option.
@@ -78,13 +115,13 @@ export interface BlocksApiInterface {
     getBlockByBurnBlockHeightRaw(requestParameters: GetBlockByBurnBlockHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>>;
 
     /**
-     * Retrieves block details of a specific block for a given burn chain height
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burn chain height 
      * Get block by burnchain height
      */
     getBlockByBurnBlockHeight(requestParameters: GetBlockByBurnBlockHeightRequest, initOverrides?: RequestInit): Promise<Block>;
 
     /**
-     * Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details.
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details. 
      * @summary Get block by hash
      * @param {string} hash Hash of the block
      * @param {*} [options] Override http request option.
@@ -94,13 +131,13 @@ export interface BlocksApiInterface {
     getBlockByHashRaw(requestParameters: GetBlockByHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>>;
 
     /**
-     * Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details.
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details. 
      * Get block by hash
      */
     getBlockByHash(requestParameters: GetBlockByHashRequest, initOverrides?: RequestInit): Promise<Block>;
 
     /**
-     * Retrieves block details of a specific block at a given block height
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block at a given block height 
      * @summary Get block by height
      * @param {number} height Height of the block
      * @param {*} [options] Override http request option.
@@ -110,13 +147,13 @@ export interface BlocksApiInterface {
     getBlockByHeightRaw(requestParameters: GetBlockByHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>>;
 
     /**
-     * Retrieves block details of a specific block at a given block height
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block at a given block height 
      * Get block by height
      */
     getBlockByHeight(requestParameters: GetBlockByHeightRequest, initOverrides?: RequestInit): Promise<Block>;
 
     /**
-     * Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
      * @summary Get recent blocks
      * @param {number} [limit] max number of blocks to fetch
      * @param {number} [offset] index of first block to fetch
@@ -127,10 +164,45 @@ export interface BlocksApiInterface {
     getBlockListRaw(requestParameters: GetBlockListRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<BlockListResponse>>;
 
     /**
-     * Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
      * Get recent blocks
      */
     getBlockList(requestParameters: GetBlockListRequest, initOverrides?: RequestInit): Promise<BlockListResponse>;
+
+    /**
+     * Retrieves a list of recently mined blocks 
+     * @summary Get blocks
+     * @param {number} [limit] max number of blocks to fetch
+     * @param {number} [offset] index of first burn block to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlocksRaw(requestParameters: GetBlocksRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlockListResponse>>;
+
+    /**
+     * Retrieves a list of recently mined blocks 
+     * Get blocks
+     */
+    getBlocks(requestParameters: GetBlocksRequest, initOverrides?: RequestInit): Promise<NakamotoBlockListResponse>;
+
+    /**
+     * Retrieves a list of blocks confirmed by a specific burn block 
+     * @summary Get blocks by burn block
+     * @param {number | string} heightOrHash filter by burn block height, hash, or the constant &#x60;latest&#x60; to filter for the most recent burn block
+     * @param {number} [limit] max number of blocks to fetch
+     * @param {number} [offset] index of first burn block to fetch
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof BlocksApiInterface
+     */
+    getBlocksByBurnBlockRaw(requestParameters: GetBlocksByBurnBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlockListResponse>>;
+
+    /**
+     * Retrieves a list of blocks confirmed by a specific burn block 
+     * Get blocks by burn block
+     */
+    getBlocksByBurnBlock(requestParameters: GetBlocksByBurnBlockRequest, initOverrides?: RequestInit): Promise<NakamotoBlockListResponse>;
 
 }
 
@@ -140,7 +212,39 @@ export interface BlocksApiInterface {
 export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
 
     /**
-     * Retrieves block details of a specific block for a given burnchain block hash
+     * Retrieves a single block 
+     * Get block
+     */
+    async getBlockRaw(requestParameters: GetBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlock>> {
+        if (requestParameters.heightOrHash === null || requestParameters.heightOrHash === undefined) {
+            throw new runtime.RequiredError('heightOrHash','Required parameter requestParameters.heightOrHash was null or undefined when calling getBlock.');
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v2/blocks/{height_or_hash}`.replace(`{${"height_or_hash"}}`, encodeURIComponent(String(requestParameters.heightOrHash))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => NakamotoBlockFromJSON(jsonValue));
+    }
+
+    /**
+     * Retrieves a single block 
+     * Get block
+     */
+    async getBlock(requestParameters: GetBlockRequest, initOverrides?: RequestInit): Promise<NakamotoBlock> {
+        const response = await this.getBlockRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burnchain block hash 
      * Get block by burnchain block hash
      */
     async getBlockByBurnBlockHashRaw(requestParameters: GetBlockByBurnBlockHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>> {
@@ -163,7 +267,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block for a given burnchain block hash
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burnchain block hash 
      * Get block by burnchain block hash
      */
     async getBlockByBurnBlockHash(requestParameters: GetBlockByBurnBlockHashRequest, initOverrides?: RequestInit): Promise<Block> {
@@ -172,7 +276,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block for a given burn chain height
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burn chain height 
      * Get block by burnchain height
      */
     async getBlockByBurnBlockHeightRaw(requestParameters: GetBlockByBurnBlockHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>> {
@@ -195,7 +299,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block for a given burn chain height
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves block details of a specific block for a given burn chain height 
      * Get block by burnchain height
      */
     async getBlockByBurnBlockHeight(requestParameters: GetBlockByBurnBlockHeightRequest, initOverrides?: RequestInit): Promise<Block> {
@@ -204,7 +308,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details.
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details. 
      * Get block by hash
      */
     async getBlockByHashRaw(requestParameters: GetBlockByHashRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>> {
@@ -227,7 +331,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details.
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block (\'get_block_list\' API) to get your block details. 
      * Get block by hash
      */
     async getBlockByHash(requestParameters: GetBlockByHashRequest, initOverrides?: RequestInit): Promise<Block> {
@@ -236,7 +340,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block at a given block height
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block at a given block height 
      * Get block by height
      */
     async getBlockByHeightRaw(requestParameters: GetBlockByHeightRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<Block>> {
@@ -259,7 +363,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves block details of a specific block at a given block height
+     * **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).  Retrieves block details of a specific block at a given block height 
      * Get block by height
      */
     async getBlockByHeight(requestParameters: GetBlockByHeightRequest, initOverrides?: RequestInit): Promise<Block> {
@@ -268,7 +372,7 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
      * Get recent blocks
      */
     async getBlockListRaw(requestParameters: GetBlockListRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<BlockListResponse>> {
@@ -295,11 +399,87 @@ export class BlocksApi extends runtime.BaseAPI implements BlocksApiInterface {
     }
 
     /**
-     * Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
+     * **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).  Retrieves a list of recently mined blocks  If you need to actively monitor new blocks, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates. 
      * Get recent blocks
      */
     async getBlockList(requestParameters: GetBlockListRequest, initOverrides?: RequestInit): Promise<BlockListResponse> {
         const response = await this.getBlockListRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retrieves a list of recently mined blocks 
+     * Get blocks
+     */
+    async getBlocksRaw(requestParameters: GetBlocksRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlockListResponse>> {
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v2/blocks`,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => NakamotoBlockListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Retrieves a list of recently mined blocks 
+     * Get blocks
+     */
+    async getBlocks(requestParameters: GetBlocksRequest, initOverrides?: RequestInit): Promise<NakamotoBlockListResponse> {
+        const response = await this.getBlocksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Retrieves a list of blocks confirmed by a specific burn block 
+     * Get blocks by burn block
+     */
+    async getBlocksByBurnBlockRaw(requestParameters: GetBlocksByBurnBlockRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<NakamotoBlockListResponse>> {
+        if (requestParameters.heightOrHash === null || requestParameters.heightOrHash === undefined) {
+            throw new runtime.RequiredError('heightOrHash','Required parameter requestParameters.heightOrHash was null or undefined when calling getBlocksByBurnBlock.');
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters.limit !== undefined) {
+            queryParameters['limit'] = requestParameters.limit;
+        }
+
+        if (requestParameters.offset !== undefined) {
+            queryParameters['offset'] = requestParameters.offset;
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        const response = await this.request({
+            path: `/extended/v2/burn-blocks/{height_or_hash}/blocks`.replace(`{${"height_or_hash"}}`, encodeURIComponent(String(requestParameters.heightOrHash))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => NakamotoBlockListResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Retrieves a list of blocks confirmed by a specific burn block 
+     * Get blocks by burn block
+     */
+    async getBlocksByBurnBlock(requestParameters: GetBlocksByBurnBlockRequest, initOverrides?: RequestInit): Promise<NakamotoBlockListResponse> {
+        const response = await this.getBlocksByBurnBlockRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

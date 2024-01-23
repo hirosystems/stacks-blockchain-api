@@ -24,9 +24,6 @@ import {
     AddressBalanceResponse,
     AddressBalanceResponseFromJSON,
     AddressBalanceResponseToJSON,
-    AddressNftListResponse,
-    AddressNftListResponseFromJSON,
-    AddressNftListResponseToJSON,
     AddressNonces,
     AddressNoncesFromJSON,
     AddressNoncesToJSON,
@@ -71,14 +68,6 @@ export interface GetAccountInfoRequest {
     principal: string;
     proof?: number;
     tip?: string;
-}
-
-export interface GetAccountNftRequest {
-    principal: string;
-    limit?: number;
-    offset?: number;
-    unanchored?: boolean;
-    untilBlock?: string;
 }
 
 export interface GetAccountNoncesRequest {
@@ -199,26 +188,6 @@ export interface AccountsApiInterface {
      * Get account info
      */
     getAccountInfo(requestParameters: GetAccountInfoRequest, initOverrides?: RequestInit): Promise<AccountDataResponse>;
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).  Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft. 
-     * @summary Get nft events
-     * @param {string} principal Stacks address or a Contract identifier
-     * @param {number} [limit] number of items to return
-     * @param {number} [offset] number of items to skip
-     * @param {boolean} [unanchored] Include transaction data from unanchored (i.e. unconfirmed) microblocks
-     * @param {string} [untilBlock] returned data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof AccountsApiInterface
-     */
-    getAccountNftRaw(requestParameters: GetAccountNftRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<AddressNftListResponse>>;
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).  Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft. 
-     * Get nft events
-     */
-    getAccountNft(requestParameters: GetAccountNftRequest, initOverrides?: RequestInit): Promise<AddressNftListResponse>;
 
     /**
      * Retrieves the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.
@@ -499,54 +468,6 @@ export class AccountsApi extends runtime.BaseAPI implements AccountsApiInterface
      */
     async getAccountInfo(requestParameters: GetAccountInfoRequest, initOverrides?: RequestInit): Promise<AccountDataResponse> {
         const response = await this.getAccountInfoRaw(requestParameters, initOverrides);
-        return await response.value();
-    }
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).  Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft. 
-     * Get nft events
-     */
-    async getAccountNftRaw(requestParameters: GetAccountNftRequest, initOverrides?: RequestInit): Promise<runtime.ApiResponse<AddressNftListResponse>> {
-        if (requestParameters.principal === null || requestParameters.principal === undefined) {
-            throw new runtime.RequiredError('principal','Required parameter requestParameters.principal was null or undefined when calling getAccountNft.');
-        }
-
-        const queryParameters: any = {};
-
-        if (requestParameters.limit !== undefined) {
-            queryParameters['limit'] = requestParameters.limit;
-        }
-
-        if (requestParameters.offset !== undefined) {
-            queryParameters['offset'] = requestParameters.offset;
-        }
-
-        if (requestParameters.unanchored !== undefined) {
-            queryParameters['unanchored'] = requestParameters.unanchored;
-        }
-
-        if (requestParameters.untilBlock !== undefined) {
-            queryParameters['until_block'] = requestParameters.untilBlock;
-        }
-
-        const headerParameters: runtime.HTTPHeaders = {};
-
-        const response = await this.request({
-            path: `/extended/v1/address/{principal}/nft_events`.replace(`{${"principal"}}`, encodeURIComponent(String(requestParameters.principal))),
-            method: 'GET',
-            headers: headerParameters,
-            query: queryParameters,
-        }, initOverrides);
-
-        return new runtime.JSONApiResponse(response, (jsonValue) => AddressNftListResponseFromJSON(jsonValue));
-    }
-
-    /**
-     * **NOTE:** This endpoint is deprecated in favor of [Non-Fungible Token holdings](#operation/get_nft_holdings).  Retrieves a list of all nfts owned by an address, contains the clarity value of the identifier of the nft. 
-     * Get nft events
-     */
-    async getAccountNft(requestParameters: GetAccountNftRequest, initOverrides?: RequestInit): Promise<AddressNftListResponse> {
-        const response = await this.getAccountNftRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

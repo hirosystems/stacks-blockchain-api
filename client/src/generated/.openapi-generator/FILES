@@ -1,9 +1,9 @@
 .openapi-generator-ignore
 apis/AccountsApi.ts
 apis/BlocksApi.ts
+apis/BurnBlocksApi.ts
 apis/FaucetsApi.ts
 apis/FeesApi.ts
-apis/FungibleTokensApi.ts
 apis/InfoApi.ts
 apis/MempoolApi.ts
 apis/MicroblocksApi.ts
@@ -20,8 +20,6 @@ index.ts
 models/AccountDataResponse.ts
 models/AddressAssetsListResponse.ts
 models/AddressBalanceResponse.ts
-models/AddressNftListResponse.ts
-models/AddressNftListResponseValue.ts
 models/AddressNonces.ts
 models/AddressStxInboundListResponse.ts
 models/AddressTokenOfferingLocked.ts
@@ -41,6 +39,8 @@ models/BnsGetNameInfoResponse.ts
 models/BnsGetNamePriceResponse.ts
 models/BnsGetNamespacePriceResponse.ts
 models/BnsNamesOwnByAddressResponse.ts
+models/BurnBlock.ts
+models/BurnBlockListResponse.ts
 models/BurnchainReward.ts
 models/BurnchainRewardListResponse.ts
 models/BurnchainRewardSlotHolder.ts
@@ -54,8 +54,6 @@ models/CoreNodeInfoResponse.ts
 models/CoreNodePoxResponse.ts
 models/FeeRate.ts
 models/FeeRateRequest.ts
-models/FungibleTokenMetadata.ts
-models/FungibleTokensMetadataList.ts
 models/GetRawTransactionResult.ts
 models/GetStxSupplyLegacyFormatResponse.ts
 models/GetStxSupplyResponse.ts
@@ -74,15 +72,14 @@ models/MempoolTransactionStatsResponseTxSimpleFeeAveragesTokenTransfer.ts
 models/MempoolTransactionStatsResponseTxTypeCounts.ts
 models/Microblock.ts
 models/MicroblockListResponse.ts
+models/NakamotoBlock.ts
+models/NakamotoBlockListResponse.ts
 models/NetworkBlockTimeResponse.ts
 models/NetworkBlockTimesResponse.ts
 models/NetworkIdentifier.ts
-models/NftEvent.ts
 models/NonFungibleTokenHistoryEventList.ts
 models/NonFungibleTokenHoldingsList.ts
-models/NonFungibleTokenMetadata.ts
 models/NonFungibleTokenMintList.ts
-models/NonFungibleTokensMetadataList.ts
 models/OtherTransactionIdentifier.ts
 models/PoolDelegation.ts
 models/PoolDelegationsResponse.ts

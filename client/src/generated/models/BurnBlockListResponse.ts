@@ -14,49 +14,49 @@
 
 import { exists, mapValues } from '../runtime';
 import {
-    NonFungibleTokenMetadata,
-    NonFungibleTokenMetadataFromJSON,
-    NonFungibleTokenMetadataFromJSONTyped,
-    NonFungibleTokenMetadataToJSON,
+    BurnBlock,
+    BurnBlockFromJSON,
+    BurnBlockFromJSONTyped,
+    BurnBlockToJSON,
 } from './';
 
 /**
- * List of non fungible tokens metadata
+ * GET request that returns burn blocks
  * @export
- * @interface NonFungibleTokensMetadataList
+ * @interface BurnBlockListResponse
  */
-export interface NonFungibleTokensMetadataList {
+export interface BurnBlockListResponse {
     /**
-     * The number of tokens metadata to return
+     * The number of burn blocks to return
      * @type {number}
-     * @memberof NonFungibleTokensMetadataList
+     * @memberof BurnBlockListResponse
      */
     limit: number;
     /**
-     * The number to tokens metadata to skip (starting at `0`)
+     * The number to burn blocks to skip (starting at `0`)
      * @type {number}
-     * @memberof NonFungibleTokensMetadataList
+     * @memberof BurnBlockListResponse
      */
     offset: number;
     /**
-     * The number of tokens metadata available
+     * The number of burn blocks available (regardless of filter parameters)
      * @type {number}
-     * @memberof NonFungibleTokensMetadataList
+     * @memberof BurnBlockListResponse
      */
     total: number;
     /**
      * 
-     * @type {Array<NonFungibleTokenMetadata>}
-     * @memberof NonFungibleTokensMetadataList
+     * @type {Array<BurnBlock>}
+     * @memberof BurnBlockListResponse
      */
-    results: Array<NonFungibleTokenMetadata>;
+    results: Array<BurnBlock>;
 }
 
-export function NonFungibleTokensMetadataListFromJSON(json: any): NonFungibleTokensMetadataList {
-    return NonFungibleTokensMetadataListFromJSONTyped(json, false);
+export function BurnBlockListResponseFromJSON(json: any): BurnBlockListResponse {
+    return BurnBlockListResponseFromJSONTyped(json, false);
 }
 
-export function NonFungibleTokensMetadataListFromJSONTyped(json: any, ignoreDiscriminator: boolean): NonFungibleTokensMetadataList {
+export function BurnBlockListResponseFromJSONTyped(json: any, ignoreDiscriminator: boolean): BurnBlockListResponse {
     if ((json === undefined) || (json === null)) {
         return json;
     }
@@ -65,11 +65,11 @@ export function NonFungibleTokensMetadataListFromJSONTyped(json: any, ignoreDisc
         'limit': json['limit'],
         'offset': json['offset'],
         'total': json['total'],
-        'results': ((json['results'] as Array<any>).map(NonFungibleTokenMetadataFromJSON)),
+        'results': ((json['results'] as Array<any>).map(BurnBlockFromJSON)),
     };
 }
 
-export function NonFungibleTokensMetadataListToJSON(value?: NonFungibleTokensMetadataList | null): any {
+export function BurnBlockListResponseToJSON(value?: BurnBlockListResponse | null): any {
     if (value === undefined) {
         return undefined;
     }
@@ -81,7 +81,7 @@ export function NonFungibleTokensMetadataListToJSON(value?: NonFungibleTokensMet
         'limit': value.limit,
         'offset': value.offset,
         'total': value.total,
-        'results': ((value.results as Array<any>).map(NonFungibleTokenMetadataToJSON)),
+        'results': ((value.results as Array<any>).map(BurnBlockToJSON)),
     };
 }
 

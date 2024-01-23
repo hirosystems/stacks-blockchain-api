@@ -139,6 +139,12 @@ export interface RosettaOptions {
      * @memberof RosettaOptions
      */
     pox_addr?: string;
+    /**
+     * The hex-encoded signer key (buff 33) for PoX.
+     * @type {string}
+     * @memberof RosettaOptions
+     */
+    signer_key?: string;
 }
 
 export function RosettaOptionsFromJSON(json: any): RosettaOptions {
@@ -171,6 +177,7 @@ export function RosettaOptionsFromJSONTyped(json: any, ignoreDiscriminator: bool
         'burn_block_height': !exists(json, 'burn_block_height') ? undefined : json['burn_block_height'],
         'delegate_to': !exists(json, 'delegate_to') ? undefined : json['delegate_to'],
         'pox_addr': !exists(json, 'pox_addr') ? undefined : json['pox_addr'],
+        'signer_key': !exists(json, 'signer_key') ? undefined : json['signer_key'],
     };
 }
 
@@ -203,6 +210,7 @@ export function RosettaOptionsToJSON(value?: RosettaOptions | null): any {
         'burn_block_height': value.burn_block_height,
         'delegate_to': value.delegate_to,
         'pox_addr': value.pox_addr,
+        'signer_key': value.signer_key,
     };
 }
 

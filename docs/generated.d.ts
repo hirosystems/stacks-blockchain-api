@@ -2534,6 +2534,10 @@ export interface RosettaOptions {
    * The reward address for stacking transaction. It should be a valid Bitcoin address
    */
   pox_addr?: string;
+  /**
+   * The hex-encoded signer key (buff 33) for PoX.
+   */
+  signer_key?: string;
 }
 /**
  * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
