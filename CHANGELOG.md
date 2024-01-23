@@ -1,3 +1,53 @@
+## [7.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.2...v7.8.0) (2024-01-23)
+
+
+### Features
+
+* add `/extended/v2/smart-contracts/status` endpoint ([#1833](https://github.com/hirosystems/stacks-blockchain-api/issues/1833)) ([3535c11](https://github.com/hirosystems/stacks-blockchain-api/commit/3535c113e0d3b730b3e0d9df630c51b04e516a7e))
+* run inserts in batch and in parallel when processing new block ([#1818](https://github.com/hirosystems/stacks-blockchain-api/issues/1818)) ([86dfdb5](https://github.com/hirosystems/stacks-blockchain-api/commit/86dfdb5d536fee8d7490ca5213f7005a8800f9fa))
+* upgrade to node 20, use bookworm-slim image ([#1832](https://github.com/hirosystems/stacks-blockchain-api/issues/1832)) ([0a42109](https://github.com/hirosystems/stacks-blockchain-api/commit/0a42109242ab5804004e01338f236f61ef07651b))
+
+
+### Bug Fixes
+
+* change all HASH indexes to BTREE to optimize writes ([#1825](https://github.com/hirosystems/stacks-blockchain-api/issues/1825)) ([234936b](https://github.com/hirosystems/stacks-blockchain-api/commit/234936b430640fb7108e6cb57bdb21d1085a65b2))
+* log block event counts after processing ([#1820](https://github.com/hirosystems/stacks-blockchain-api/issues/1820)) ([9c39743](https://github.com/hirosystems/stacks-blockchain-api/commit/9c397439e6eb2830186cda90a213b3ab3d5a4301)), closes [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819) [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819)
+* optimize re-org queries and indexes ([#1821](https://github.com/hirosystems/stacks-blockchain-api/issues/1821)) ([5505d35](https://github.com/hirosystems/stacks-blockchain-api/commit/5505d354ecae6e52c751b3b634752fd56d24642f))
+* parallelize re-org update queries ([#1835](https://github.com/hirosystems/stacks-blockchain-api/issues/1835)) ([340a304](https://github.com/hirosystems/stacks-blockchain-api/commit/340a3043529ca12316198d8f4605128396f02560))
+
+## [7.8.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.3...v7.8.0-beta.4) (2024-01-16)
+
+
+### Features
+
+* upgrade to node 20, use bookworm-slim image ([#1832](https://github.com/hirosystems/stacks-blockchain-api/issues/1832)) ([0a42109](https://github.com/hirosystems/stacks-blockchain-api/commit/0a42109242ab5804004e01338f236f61ef07651b))
+
+## [7.8.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.2...v7.8.0-beta.3) (2024-01-12)
+
+
+### Bug Fixes
+
+* change all HASH indexes to BTREE to optimize writes ([#1825](https://github.com/hirosystems/stacks-blockchain-api/issues/1825)) ([234936b](https://github.com/hirosystems/stacks-blockchain-api/commit/234936b430640fb7108e6cb57bdb21d1085a65b2))
+
+## [7.8.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0-beta.1...v7.8.0-beta.2) (2024-01-12)
+
+
+### Bug Fixes
+
+* optimize re-org queries and indexes ([#1821](https://github.com/hirosystems/stacks-blockchain-api/issues/1821)) ([5505d35](https://github.com/hirosystems/stacks-blockchain-api/commit/5505d354ecae6e52c751b3b634752fd56d24642f))
+
+## [7.8.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.1...v7.8.0-beta.1) (2024-01-11)
+
+
+### Features
+
+* run inserts in batch and in parallel when processing new block ([#1818](https://github.com/hirosystems/stacks-blockchain-api/issues/1818)) ([86dfdb5](https://github.com/hirosystems/stacks-blockchain-api/commit/86dfdb5d536fee8d7490ca5213f7005a8800f9fa))
+
+### Bug Fixes
+
+* log block event counts after processing ([#1820](https://github.com/hirosystems/stacks-blockchain-api/issues/1820)) ([9c39743](https://github.com/hirosystems/stacks-blockchain-api/commit/9c397439e6eb2830186cda90a213b3ab3d5a4301)), closes [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819) [#1819](https://github.com/hirosystems/stacks-blockchain-api/issues/1819)
+
+
 ## [7.7.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.1...v7.7.2) (2024-01-16)
 
 
