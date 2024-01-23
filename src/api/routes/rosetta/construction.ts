@@ -1,5 +1,7 @@
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
-import { decodeBtcAddress, poxAddressToTuple, StackingClient } from '@stacks/stacking';
+import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import {
   NetworkIdentifier,
   RosettaAccountIdentifier,
@@ -25,8 +27,14 @@ import {
 import {
   AnchorMode,
   AuthType,
-  bufferCV,
   BytesReader,
+  MessageSignature,
+  OptionalCV,
+  StacksTransaction,
+  TransactionSigner,
+  UnsignedContractCallOptions,
+  UnsignedTokenTransferOptions,
+  bufferCV,
   createMessageSignature,
   deserializeTransaction,
   emptyMessageSignature,
@@ -34,38 +42,25 @@ import {
   makeSigHashPreSign,
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
-  MessageSignature,
   noneCV,
-  OptionalCV,
   someCV,
-  StacksTransaction,
   standardPrincipalCV,
-  TransactionSigner,
   tupleCV,
   uintCV,
-  UnsignedContractCallOptions,
-  UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
 import * as express from 'express';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/client';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import {
   BigIntMath,
   ChainID,
-  doesThrow,
   FoundOrNot,
+  doesThrow,
   getChainIDNetwork,
   isValidC32Address,
 } from '../../../helpers';
-import { asyncHandler } from '../../async-handler';
-import {
-  RosettaConstants,
-  RosettaErrors,
-  RosettaErrorsTypes,
-  RosettaOperationType,
-} from '../../rosetta-constants';
 import {
   getOperations,
   getOptionsFromOperations,
@@ -81,9 +76,14 @@ import {
   rawTxToStacksTransaction,
   verifySignature,
 } from '../../../rosetta/rosetta-helpers';
-import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
-import { hexToBytes } from '@stacks/common';
+import { asyncHandler } from '../../async-handler';
+import {
+  RosettaConstants,
+  RosettaErrors,
+  RosettaErrorsTypes,
+  RosettaOperationType,
+} from '../../rosetta-constants';
+import { ValidSchema, makeRosettaError, rosettaValidateRequest } from './../../rosetta-validate';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -253,7 +253,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          if (!options.amount || !options.delegate_to || !options.signer_key) {
+          if (!options.amount || !options.delegate_to) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -273,7 +273,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               standardPrincipalCV(options.delegate_to),
               noneCV(),
               poxAddrOptionalCV,
-              bufferCV(hexToBytes(options.signer_key)),
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -711,7 +710,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             if (typeof burn_block_height !== 'number' || typeof burn_block_height !== 'string')
               expire_burn_block_heightCV = someCV(uintCV(burn_block_height));
           }
-          if (!options.delegate_to || !options.amount || !options.signer_key) {
+          if (!options.delegate_to || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -726,7 +725,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               standardPrincipalCV(options.delegate_to),
               expire_burn_block_heightCV,
               poxAddressCV,
-              bufferCV(hexToBytes(options.signer_key)),
             ],
             fee: txFee,
             nonce: nonce,
