@@ -157,7 +157,7 @@ describe('other tests', () => {
       event_type: DbEventTypeId.StxAsset,
       amount: 10_000_000_000_000n,
     };
-    await db.updateStxEvent(client, tx, stxBurnEvent1);
+    await db.updateStxEvents(client, [{ tx, stxEvents: [stxBurnEvent1] }]);
     const expectedTotalStx2 = stxMintEvent1.amount + stxMintEvent2.amount - stxBurnEvent1.amount;
     const result2 = await supertest(api.server).get(`/extended/v1/stx_supply`);
     expect(result2.status).toBe(200);

@@ -149,7 +149,9 @@ export function getTxTypeId(typeString: Transaction['tx_type']): DbTxTypeId[] {
   }
 }
 
-function getTxStatusString(txStatus: DbTxStatus): TransactionStatus | MempoolTransactionStatus {
+export function getTxStatusString(
+  txStatus: DbTxStatus
+): TransactionStatus | MempoolTransactionStatus {
   switch (txStatus) {
     case DbTxStatus.Pending:
       return 'pending';

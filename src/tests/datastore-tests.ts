@@ -167,7 +167,7 @@ describe('postgres datastore', () => {
       createStxEvent('addrA', 'addrC', 35),
     ];
     for (const event of events) {
-      await db.updateStxEvent(client, tx, event);
+      await db.updateStxEvents(client, [{ tx, stxEvents: [event] }]);
     }
 
     const createStxLockEvent = (
@@ -195,7 +195,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrA', 222n, 1),
       createStxLockEvent('addrB', 333n, 1),
     ];
-    await db.updateStxLockEvents(client, tx, stxLockEvents);
+    await db.updateStxLockEvents(client, [{ tx, stxLockEvents }]);
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -3546,7 +3546,7 @@ describe('postgres datastore', () => {
     }
 
     // insert stx lock events directly
-    await db.updateStxLockEvents(client, tx1, [stxLockEvent1]);
+    await db.updateStxLockEvents(client, [{ tx: tx1, stxLockEvents: [stxLockEvent1] }]);
 
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -4108,6 +4108,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0xcc',
       burn_block_height: 123,
       block_count: 3,
+      mempool_tx_count: 0,
       microblock_count: 0,
       microblock_hash: undefined,
       microblock_sequence: undefined,
@@ -4180,6 +4181,7 @@ describe('postgres datastore', () => {
       microblock_sequence: undefined,
       tx_count: 2,
       tx_count_unanchored: 2,
+      mempool_tx_count: 0,
     });
 
     const block4b: DbBlock = {
@@ -4230,6 +4232,7 @@ describe('postgres datastore', () => {
       microblock_sequence: undefined,
       tx_count: 2, // Tx from block 2b now counts, but compensates with tx from block 2
       tx_count_unanchored: 2,
+      mempool_tx_count: 1,
     });
 
     const b1 = await db.getBlock({ hash: block1.block_hash });

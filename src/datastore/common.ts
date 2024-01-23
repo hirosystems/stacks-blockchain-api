@@ -1548,9 +1548,17 @@ export interface DbChainTip {
   microblock_count: number;
   tx_count: number;
   tx_count_unanchored: number;
+  mempool_tx_count: number;
 }
 
 export enum IndexesState {
   Off = 0,
   On = 1,
+}
+
+export interface DbSmartContractStatus {
+  smart_contract_contract_id: string;
+  tx_id: string;
+  status: DbTxStatus;
+  block_height?: number;
 }

@@ -6,6 +6,7 @@ import {
   TransactionLimitParamSchema,
   BlockParams,
   BlockPaginationQueryParams,
+  SmartContractStatusParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -16,6 +17,9 @@ import {
   DbTx,
   TxQueryResult,
   DbBurnBlock,
+  DbTxTypeId,
+  DbSmartContractStatus,
+  DbTxStatus,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -228,6 +232,41 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
+    });
+  }
+
+  async getSmartContractStatus(args: SmartContractStatusParams): Promise<DbSmartContractStatus[]> {
+    return await this.sqlTransaction(async sql => {
+      const statusArray: DbSmartContractStatus[] = [];
+      const contractArray = Array.isArray(args.contract_id) ? args.contract_id : [args.contract_id];
+
+      // Search confirmed txs.
+      const confirmed = await sql<DbSmartContractStatus[]>`
+        SELECT DISTINCT ON (smart_contract_contract_id) smart_contract_contract_id, tx_id, block_height, status
+        FROM txs
+        WHERE type_id IN ${sql([DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract])}
+          AND smart_contract_contract_id IN ${sql(contractArray)}
+          AND canonical = TRUE
+          AND microblock_canonical = TRUE
+        ORDER BY smart_contract_contract_id, block_height DESC, microblock_sequence DESC, tx_index DESC, status
+      `;
+      statusArray.push(...confirmed);
+      if (confirmed.count < contractArray.length) {
+        // Search mempool txs.
+        const confirmedIds = confirmed.map(c => c.smart_contract_contract_id);
+        const remainingIds = contractArray.filter(c => !confirmedIds.includes(c));
+        const mempool = await sql<DbSmartContractStatus[]>`
+          SELECT DISTINCT ON (smart_contract_contract_id) smart_contract_contract_id, tx_id, status
+          FROM mempool_txs
+          WHERE pruned = FALSE
+            AND type_id IN ${sql([DbTxTypeId.SmartContract, DbTxTypeId.VersionedSmartContract])}
+            AND smart_contract_contract_id IN ${sql(remainingIds)}
+          ORDER BY smart_contract_contract_id, nonce
+        `;
+        statusArray.push(...mempool);
+      }
+
+      return statusArray;
     });
   }
 }
