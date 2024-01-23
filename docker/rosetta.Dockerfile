@@ -12,7 +12,7 @@ ARG ARCHIVE_VERSION=latest
 
 #######################################################################
 ## Build the stacks-blockchain-api
-FROM node:18-buster as stacks-blockchain-api-build
+FROM node:20-bookworm-slim as stacks-blockchain-api-build
 ARG STACKS_API_VERSION
 ENV STACKS_API_REPO=hirosystems/stacks-blockchain-api
 ENV STACKS_API_VERSION=${STACKS_API_VERSION}
@@ -20,9 +20,10 @@ ENV DEBIAN_FRONTEND noninteractive
 WORKDIR /app
 RUN apt-get update -y \
     && apt-get install -y \
+        git \
         curl \
         jq \
-        openjdk-11-jre-headless \
+        openjdk-17-jre-headless \
         cmake \
     && git clone -b ${STACKS_API_VERSION} https://github.com/${STACKS_API_REPO} . \
     && echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env \
@@ -102,7 +103,7 @@ RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
 
 RUN curl -sL https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" > /etc/apt/sources.list.d/pgsql.list \
-    && curl -sL https://deb.nodesource.com/setup_16.x | bash -
+    && curl -sL https://deb.nodesource.com/setup_20.x | bash -
 RUN apt-get update \
     && apt-get install -y \
         postgresql-${PG_VERSION} \

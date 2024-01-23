@@ -376,7 +376,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
 
       const insertStxLockEvents = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          await db.updateStxLockEvents(db.sql, entry.tx, entry.stxLockEvents);
+          await db.updateStxLockEvents(db.sql, [entry]);
         }
       };
 
@@ -386,19 +386,19 @@ const populateBatchInserters = (db: PgWriteStore) => {
 
       const insertPox2Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          await db.updatePoxSyntheticEvents(db.sql, entry.tx, 'pox2_events', entry.pox2Events);
+          await db.updatePoxSyntheticEvents(db.sql, 'pox2_events', [entry]);
         }
       };
 
       const insertPox3Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          await db.updatePoxSyntheticEvents(db.sql, entry.tx, 'pox3_events', entry.pox3Events);
+          await db.updatePoxSyntheticEvents(db.sql, 'pox3_events', [entry]);
         }
       };
 
       const insertPox4Events = async (dbData: DataStoreBlockUpdateData) => {
         for (const entry of dbData.txs) {
-          await db.updatePoxSyntheticEvents(db.sql, entry.tx, 'pox4_events', entry.pox4Events);
+          await db.updatePoxSyntheticEvents(db.sql, 'pox4_events', [entry]);
         }
       };
 

@@ -167,7 +167,7 @@ describe('postgres datastore', () => {
       createStxEvent('addrA', 'addrC', 35),
     ];
     for (const event of events) {
-      await db.updateStxEvent(client, tx, event);
+      await db.updateStxEvents(client, [{ tx, stxEvents: [event] }]);
     }
 
     const createStxLockEvent = (
@@ -195,7 +195,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrA', 222n, 1),
       createStxLockEvent('addrB', 333n, 1),
     ];
-    await db.updateStxLockEvents(client, tx, stxLockEvents);
+    await db.updateStxLockEvents(client, [{ tx, stxLockEvents }]);
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -3546,7 +3546,7 @@ describe('postgres datastore', () => {
     }
 
     // insert stx lock events directly
-    await db.updateStxLockEvents(client, tx1, [stxLockEvent1]);
+    await db.updateStxLockEvents(client, [{ tx: tx1, stxLockEvents: [stxLockEvent1] }]);
 
     const block5: DbBlock = {
       block_hash: '0x55',

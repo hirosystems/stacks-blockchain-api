@@ -717,7 +717,7 @@ describe('search tests', () => {
       recipient: addr3,
       sender: 'none',
     };
-    await db.updateStxEvent(client, stxTx1, stxEvent1);
+    await db.updateStxEvents(client, [{ tx: stxTx1, stxEvents: [stxEvent1] }]);
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(`/extended/v1/search/${addr3}`);
@@ -745,7 +745,7 @@ describe('search tests', () => {
       sender: addr4,
     };
 
-    await db.updateStxEvent(client, stxTx1, stxEvent2);
+    await db.updateStxEvents(client, [{ tx: stxTx1, stxEvents: [stxEvent2] }]);
 
     // test address as a stx event sender
     const searchResult4 = await supertest(api.server).get(`/extended/v1/search/${addr4}`);
@@ -773,7 +773,7 @@ describe('search tests', () => {
       recipient: addr5,
       sender: 'none',
     };
-    await db.updateFtEvents(client, stxTx1, [ftEvent1]);
+    await db.updateFtEvents(client, [{ tx: stxTx1, ftEvents: [ftEvent1] }]);
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(`/extended/v1/search/${addr5}`);
@@ -801,7 +801,7 @@ describe('search tests', () => {
       recipient: 'none',
       sender: addr6,
     };
-    await db.updateFtEvents(client, stxTx1, [ftEvent2]);
+    await db.updateFtEvents(client, [{ tx: stxTx1, ftEvents: [ftEvent2] }]);
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(`/extended/v1/search/${addr6}`);

@@ -1,0 +1,29 @@
+{
+  "title": "SmartContractStatus",
+  "description": "Deployment status of a smart contract",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "status",
+    "tx_id",
+    "contract_id"
+  ],
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Smart contract deployment transaction status"
+    },
+    "tx_id": {
+      "type": "string",
+      "description": "Deployment transaction ID"
+    },
+    "contract_id": {
+      "type": "string",
+      "description": "Smart contract ID"
+    },
+    "block_height": {
+      "type": "integer",
+      "description": "Height of the transaction confirmation block"
+    }
+  }
+}

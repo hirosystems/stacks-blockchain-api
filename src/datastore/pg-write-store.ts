@@ -1,3 +1,4 @@
+import * as assert from 'assert';
 import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
 import {
   DbBlock,
@@ -73,6 +74,7 @@ import {
   TX_METADATA_TABLES,
   validateZonefileHash,
   newReOrgUpdatedEntities,
+  PgWriteQueue,
 } from './helpers';
 import { PgNotifier } from './pg-notifier';
 import { MIGRATIONS_DIR, PgStore } from './pg-store';
@@ -188,11 +190,7 @@ export class PgWriteStore extends PgStore {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
         const txIds = data.txs.map(d => d.tx.tx_id);
-        const pruneRes = await this.pruneMempoolTxs(sql, txIds);
-        if (pruneRes.removedTxs.length > 0)
-          logger.debug(
-            `Removed ${pruneRes.removedTxs.length} txs from mempool table during new block ingestion`
-          );
+        await this.pruneMempoolTxs(sql, txIds);
       }
       setTotalBlockUpdateDataExecutionCost(data);
 
@@ -203,8 +201,8 @@ export class PgWriteStore extends PgStore {
         return !insertedMicroblockHashes.has(entry.tx.microblock_hash);
       });
 
-      // When processing an immediately-non-canonical block, do not orphan and possible existing microblocks
-      // which may be still considered canonical by the canonical block at this height.
+      // When processing an immediately-non-canonical block, do not orphan and possible existing
+      // microblocks which may be still considered canonical by the canonical block at this height.
       if (isCanonical) {
         const { acceptedMicroblockTxs, orphanedMicroblockTxs } = await this.updateMicroCanonical(
           sql,
@@ -220,7 +218,8 @@ export class PgWriteStore extends PgStore {
           }
         );
 
-        // Identify any micro-orphaned txs that also didn't make it into this anchor block, and restore them into the mempool
+        // Identify any micro-orphaned txs that also didn't make it into this anchor block, and
+        // restore them into the mempool
         const orphanedAndMissingTxs = orphanedMicroblockTxs.filter(
           tx => !data.txs.find(r => tx.tx_id === r.tx.tx_id)
         );
@@ -232,7 +231,8 @@ export class PgWriteStore extends PgStore {
           logger.info(`Restored micro-orphaned tx to mempool ${txId}`);
         });
 
-        // Clear accepted microblock txs from the anchor-block update data to avoid duplicate inserts.
+        // Clear accepted microblock txs from the anchor-block update data to avoid duplicate
+        // inserts.
         batchedTxData = batchedTxData.filter(entry => {
           const matchingTx = acceptedMicroblockTxs.find(tx => tx.tx_id === entry.tx.tx_id);
           return !matchingTx;
@@ -251,27 +251,35 @@ export class PgWriteStore extends PgStore {
         }
       }
       if ((await this.updateBlock(sql, data.block)) !== 0) {
-        await this.updateMinerRewards(sql, data.minerRewards);
-        for (const entry of batchedTxData) {
-          await this.updateTx(sql, entry.tx);
-          await this.updateStxEvents(sql, entry.tx, entry.stxEvents);
-          await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
-          await this.updateSmartContractEvents(sql, entry.tx, entry.contractLogEvents);
-          await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox2_events', entry.pox2Events);
-          await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox3_events', entry.pox3Events);
-          await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox4_events', entry.pox4Events);
-          await this.updateStxLockEvents(sql, entry.tx, entry.stxLockEvents);
-          await this.updateFtEvents(sql, entry.tx, entry.ftEvents);
-          await this.updateNftEvents(sql, entry.tx, entry.nftEvents);
-          await this.updateSmartContracts(sql, entry.tx, entry.smartContracts);
-          await this.updateNamespaces(sql, entry.tx, entry.namespaces);
-          await this.updateNames(sql, entry.tx, entry.names);
+        const q = new PgWriteQueue();
+        q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
+        if (batchedTxData.length > 0) {
+          q.enqueue(() =>
+            this.updateTx(
+              sql,
+              batchedTxData.map(b => b.tx)
+            )
+          );
+          q.enqueue(() => this.updateStxEvents(sql, batchedTxData));
+          q.enqueue(() => this.updatePrincipalStxTxs(sql, batchedTxData));
+          q.enqueue(() => this.updateSmartContractEvents(sql, batchedTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', batchedTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', batchedTxData));
+          q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox4_events', batchedTxData));
+          q.enqueue(() => this.updateStxLockEvents(sql, batchedTxData));
+          q.enqueue(() => this.updateFtEvents(sql, batchedTxData));
+          for (const entry of batchedTxData) {
+            q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents));
+            q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
+            q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
+            q.enqueue(() => this.updateNames(sql, entry.tx, entry.names));
+          }
         }
-        const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
-        if (mempoolGarbageResults.deletedTxs.length > 0) {
-          logger.debug(`Garbage collected ${mempoolGarbageResults.deletedTxs.length} mempool txs`);
-        }
-        garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
+        q.enqueue(async () => {
+          const mempoolGarbageResults = await this.deleteGarbageCollectedMempoolTxs(sql);
+          garbageCollectedMempoolTxs = mempoolGarbageResults.deletedTxs;
+        });
+        await q.done();
       }
 
       if (!this.isEventReplay) {
@@ -742,14 +750,37 @@ export class PgWriteStore extends PgStore {
     logger.info('Updated block zero boot data', tablesUpdates);
   }
 
-  async updatePoxSyntheticEvents(
-    sql: PgSqlClient,
-    tx: DbTx,
-    poxTable: PoxSyntheticEventTable,
-    events: DbPoxSyntheticEvent[]
-  ) {
-    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const values = batch.map(event => {
+  async updatePoxSyntheticEvents<
+    T extends PoxSyntheticEventTable,
+    Entry extends { tx: DbTx } & ('pox2_events' extends T
+      ? { pox2Events: DbPoxSyntheticEvent[] }
+      : 'pox3_events' extends T
+      ? { pox3Events: DbPoxSyntheticEvent[] }
+      : 'pox4_events' extends T
+      ? { pox4Events: DbPoxSyntheticEvent[] }
+      : never)
+  >(sql: PgSqlClient, poxTable: T, entries: Entry[]) {
+    const values: PoxSyntheticEventInsertValues[] = [];
+    for (const entry of entries) {
+      let events: DbPoxSyntheticEvent[] | null = null;
+      switch (poxTable) {
+        case 'pox2_events':
+          assert('pox2Events' in entry);
+          events = entry.pox2Events;
+          break;
+        case 'pox3_events':
+          assert('pox3Events' in entry);
+          events = entry.pox3Events;
+          break;
+        case 'pox4_events':
+          assert('pox4Events' in entry);
+          events = entry.pox4Events;
+          break;
+        default:
+          throw new Error(`unknown pox table: ${poxTable}`);
+      }
+      const tx = entry.tx;
+      for (const event of events ?? []) {
         const value: PoxSyntheticEventInsertValues = {
           event_index: event.event_index,
           tx_id: event.tx_id,
@@ -782,6 +813,7 @@ export class PgWriteStore extends PgStore {
           reward_cycle: null,
           amount_ustx: null,
         };
+
         // Set event-specific columns
         switch (event.name) {
           case SyntheticPoxEventName.HandleUnlock: {
@@ -858,63 +890,78 @@ export class PgWriteStore extends PgStore {
             );
           }
         }
-        return value;
-      });
-      await sql`
-        INSERT INTO ${sql(poxTable)} ${sql(values)}
-      `;
-    }
-  }
-
-  async updateStxLockEvents(sql: PgSqlClient, tx: DbTx, events: DbStxLockEvent[]) {
-    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const values: StxLockEventInsertValues[] = batch.map(event => ({
-        event_index: event.event_index,
-        tx_id: event.tx_id,
-        tx_index: event.tx_index,
-        block_height: event.block_height,
-        index_block_hash: tx.index_block_hash,
-        parent_index_block_hash: tx.parent_index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_canonical: tx.microblock_canonical,
-        canonical: event.canonical,
-        locked_amount: event.locked_amount.toString(),
-        unlock_height: event.unlock_height,
-        locked_address: event.locked_address,
-        contract_name: event.contract_name,
-      }));
-      await sql`
-        INSERT INTO stx_lock_events ${sql(values)}
-      `;
-    }
-  }
-
-  async updateStxEvents(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const values: StxEventInsertValues[] = eventBatch.map(event => ({
-        event_index: event.event_index,
-        tx_id: event.tx_id,
-        tx_index: event.tx_index,
-        block_height: event.block_height,
-        index_block_hash: tx.index_block_hash,
-        parent_index_block_hash: tx.parent_index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_canonical: tx.microblock_canonical,
-        canonical: event.canonical,
-        asset_event_type_id: event.asset_event_type_id,
-        sender: event.sender ?? null,
-        recipient: event.recipient ?? null,
-        amount: event.amount,
-        memo: event.memo ?? null,
-      }));
-      const res = await sql`
-        INSERT INTO stx_events ${sql(values)}
-      `;
-      if (res.count !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
+        values.push(value);
       }
+    }
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO ${sql(String(poxTable))} ${sql(batch)}
+      `;
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
+    }
+  }
+
+  async updateStxLockEvents(
+    sql: PgSqlClient,
+    entries: { tx: DbTx; stxLockEvents: DbStxLockEvent[] }[]
+  ) {
+    const values: StxLockEventInsertValues[] = [];
+    for (const { tx, stxLockEvents } of entries) {
+      for (const event of stxLockEvents) {
+        values.push({
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          locked_amount: event.locked_amount.toString(),
+          unlock_height: event.unlock_height,
+          locked_address: event.locked_address,
+          contract_name: event.contract_name,
+        });
+      }
+    }
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO stx_lock_events ${sql(batch)}
+      `;
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
+    }
+  }
+
+  async updateStxEvents(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
+    const values: StxEventInsertValues[] = [];
+    for (const { tx, stxEvents } of entries) {
+      for (const event of stxEvents) {
+        values.push({
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          asset_event_type_id: event.asset_event_type_id,
+          sender: event.sender ?? null,
+          recipient: event.recipient ?? null,
+          amount: event.amount,
+          memo: event.memo ?? null,
+        });
+      }
+    }
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO stx_events ${sql(batch)}
+      `;
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -922,45 +969,43 @@ export class PgWriteStore extends PgStore {
    * Update the `principal_stx_tx` table with the latest `tx_id`s that resulted in a STX
    * transfer relevant to a principal (stx address or contract id).
    * @param sql - DB client
-   * @param tx - Transaction
-   * @param events - Transaction STX events
+   * @param entries - list of tx and stxEvents
    */
-  async updatePrincipalStxTxs(sql: PgSqlClient, tx: DbTx, events: DbStxEvent[]) {
-    const insertPrincipalStxTxs = async (principals: string[]) => {
-      principals = [...new Set(principals)]; // Remove duplicates
-      const values: PrincipalStxTxsInsertValues[] = principals.map(principal => ({
-        principal: principal,
-        tx_id: tx.tx_id,
-        block_height: tx.block_height,
-        index_block_hash: tx.index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        tx_index: tx.tx_index,
-        canonical: tx.canonical,
-        microblock_canonical: tx.microblock_canonical,
-      }));
+  async updatePrincipalStxTxs(sql: PgSqlClient, entries: { tx: DbTx; stxEvents: DbStxEvent[] }[]) {
+    const values: PrincipalStxTxsInsertValues[] = [];
+    for (const { tx, stxEvents } of entries) {
+      const principals = new Set<string>(
+        [
+          tx.sender_address,
+          tx.token_transfer_recipient_address,
+          tx.contract_call_contract_id,
+          tx.smart_contract_contract_id,
+        ].filter((p): p is string => !!p)
+      );
+      for (const event of stxEvents) {
+        if (event.sender) principals.add(event.sender);
+        if (event.recipient) principals.add(event.recipient);
+      }
+      for (const principal of principals) {
+        values.push({
+          principal: principal,
+          tx_id: tx.tx_id,
+          block_height: tx.block_height,
+          index_block_hash: tx.index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          tx_index: tx.tx_index,
+          canonical: tx.canonical,
+          microblock_canonical: tx.microblock_canonical,
+        });
+      }
+    }
+
+    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
       await sql`
-        INSERT INTO principal_stx_txs ${sql(values)}
+        INSERT INTO principal_stx_txs ${sql(eventBatch)}
         ON CONFLICT ON CONSTRAINT unique_principal_tx_id_index_block_hash_microblock_hash DO NOTHING
       `;
-    };
-    // Insert tx data
-    await insertPrincipalStxTxs(
-      [
-        tx.sender_address,
-        tx.token_transfer_recipient_address,
-        tx.contract_call_contract_id,
-        tx.smart_contract_contract_id,
-      ].filter((p): p is string => !!p) // Remove undefined
-    );
-    // Insert stx_event data
-    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const principals: string[] = [];
-      for (const event of eventBatch) {
-        if (event.sender) principals.push(event.sender);
-        if (event.recipient) principals.push(event.recipient);
-      }
-      await insertPrincipalStxTxs(principals);
     }
   }
 
@@ -999,9 +1044,10 @@ export class PgWriteStore extends PgStore {
       ON CONFLICT ON CONSTRAINT unique_name_zonefile_hash_tx_id_index_block_hash DO
         UPDATE SET zonefile = EXCLUDED.zonefile
     `;
-    if (result.count !== zonefileValues.length) {
-      throw new Error(`Expected ${result.count} zonefile inserts, got ${zonefileValues.length}`);
-    }
+    assert(
+      result.count === zonefileValues.length,
+      `Expecting ${result.count} zonefile inserts, got ${zonefileValues.length}`
+    );
   }
 
   async updateBatchSubdomains(
@@ -1057,9 +1103,10 @@ export class PgWriteStore extends PgStore {
           microblock_sequence = EXCLUDED.microblock_sequence,
           microblock_canonical = EXCLUDED.microblock_canonical
     `;
-    if (result.count !== subdomainValues.length) {
-      throw new Error(`Expected ${subdomainValues.length} subdomain inserts, got ${result.count}`);
-    }
+    assert(
+      result.count === subdomainValues.length,
+      `Expecting ${subdomainValues.length} subdomain inserts, got ${result.count}`
+    );
   }
 
   async resolveBnsSubdomains(
@@ -1079,51 +1126,34 @@ export class PgWriteStore extends PgStore {
     });
   }
 
-  async updateStxEvent(sql: PgSqlClient, tx: DbTx, event: DbStxEvent) {
-    const values: StxEventInsertValues = {
-      event_index: event.event_index,
-      tx_id: event.tx_id,
-      tx_index: event.tx_index,
-      block_height: event.block_height,
-      index_block_hash: tx.index_block_hash,
-      parent_index_block_hash: tx.parent_index_block_hash,
-      microblock_hash: tx.microblock_hash,
-      microblock_sequence: tx.microblock_sequence,
-      microblock_canonical: tx.microblock_canonical,
-      canonical: event.canonical,
-      asset_event_type_id: event.asset_event_type_id,
-      sender: event.sender ?? null,
-      recipient: event.recipient ?? null,
-      amount: event.amount,
-      memo: event.memo ?? null,
-    };
-    await sql`
-      INSERT INTO stx_events ${sql(values)}
-    `;
-  }
-
-  async updateFtEvents(sql: PgSqlClient, tx: DbTx, events: DbFtEvent[]) {
-    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const values: FtEventInsertValues[] = batch.map(event => ({
-        event_index: event.event_index,
-        tx_id: event.tx_id,
-        tx_index: event.tx_index,
-        block_height: event.block_height,
-        index_block_hash: tx.index_block_hash,
-        parent_index_block_hash: tx.parent_index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_canonical: tx.microblock_canonical,
-        canonical: event.canonical,
-        asset_event_type_id: event.asset_event_type_id,
-        sender: event.sender ?? null,
-        recipient: event.recipient ?? null,
-        asset_identifier: event.asset_identifier,
-        amount: event.amount.toString(),
-      }));
-      await sql`
-        INSERT INTO ft_events ${sql(values)}
+  async updateFtEvents(sql: PgSqlClient, entries: { tx: DbTx; ftEvents: DbFtEvent[] }[]) {
+    const values: FtEventInsertValues[] = [];
+    for (const { tx, ftEvents } of entries) {
+      for (const event of ftEvents) {
+        values.push({
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          asset_event_type_id: event.asset_event_type_id,
+          sender: event.sender ?? null,
+          recipient: event.recipient ?? null,
+          asset_identifier: event.asset_identifier,
+          amount: event.amount.toString(),
+        });
+      }
+    }
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO ft_events ${sql(batch)}
       `;
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -1222,29 +1252,35 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateSmartContractEvents(sql: PgSqlClient, tx: DbTx, events: DbSmartContractEvent[]) {
-    for (const eventBatch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const values: SmartContractEventInsertValues[] = eventBatch.map(event => ({
-        event_index: event.event_index,
-        tx_id: event.tx_id,
-        tx_index: event.tx_index,
-        block_height: event.block_height,
-        index_block_hash: tx.index_block_hash,
-        parent_index_block_hash: tx.parent_index_block_hash,
-        microblock_hash: tx.microblock_hash,
-        microblock_sequence: tx.microblock_sequence,
-        microblock_canonical: tx.microblock_canonical,
-        canonical: event.canonical,
-        contract_identifier: event.contract_identifier,
-        topic: event.topic,
-        value: event.value,
-      }));
-      const res = await sql`
-        INSERT INTO contract_logs ${sql(values)}
-      `;
-      if (res.count !== eventBatch.length) {
-        throw new Error(`Expected ${eventBatch.length} inserts, got ${res.count}`);
+  async updateSmartContractEvents(
+    sql: PgSqlClient,
+    entries: { tx: DbTx; contractLogEvents: DbSmartContractEvent[] }[]
+  ) {
+    const values: SmartContractEventInsertValues[] = [];
+    for (const { tx, contractLogEvents } of entries) {
+      for (const event of contractLogEvents) {
+        values.push({
+          event_index: event.event_index,
+          tx_id: event.tx_id,
+          tx_index: event.tx_index,
+          block_height: event.block_height,
+          index_block_hash: tx.index_block_hash,
+          parent_index_block_hash: tx.parent_index_block_hash,
+          microblock_hash: tx.microblock_hash,
+          microblock_sequence: tx.microblock_sequence,
+          microblock_canonical: tx.microblock_canonical,
+          canonical: event.canonical,
+          contract_identifier: event.contract_identifier,
+          topic: event.topic,
+          value: event.value,
+        });
       }
+    }
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO contract_logs ${sql(batch)}
+      `;
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -1371,8 +1407,10 @@ export class PgWriteStore extends PgStore {
     acceptedMicroblocks: string[];
     orphanedMicroblocks: string[];
   }> {
-    // Find the parent microblock if this anchor block points to one. If not, perform a sanity check for expected block headers in this case:
-    // > Anchored blocks that do not have parent microblock streams will have their parent microblock header hashes set to all 0's, and the parent microblock sequence number set to 0.
+    // Find the parent microblock if this anchor block points to one. If not, perform a sanity check
+    // for expected block headers in this case: Anchored blocks that do not have parent microblock
+    // streams will have their parent microblock header hashes set to all 0's, and the parent
+    // microblock sequence number set to 0.
     let acceptedMicroblockTip: DbMicroblock | undefined;
     if (BigInt(blockData.parentMicroblockHash) === 0n) {
       if (blockData.parentMicroblockSequence !== 0) {
@@ -1530,8 +1568,9 @@ export class PgWriteStore extends PgStore {
     }
   }
 
-  async updateTx(sql: PgSqlClient, tx: DbTxRaw): Promise<number> {
-    const values: TxInsertValues = {
+  async updateTx(sql: PgSqlClient, txs: DbTxRaw | DbTxRaw[]): Promise<number> {
+    if (!Array.isArray(txs)) txs = [txs];
+    const values: TxInsertValues[] = txs.map(tx => ({
       tx_id: tx.tx_id,
       raw_tx: tx.raw_tx,
       tx_index: tx.tx_index,
@@ -1587,12 +1626,17 @@ export class PgWriteStore extends PgStore {
       execution_cost_runtime: tx.execution_cost_runtime,
       execution_cost_write_count: tx.execution_cost_write_count,
       execution_cost_write_length: tx.execution_cost_write_length,
-    };
-    const result = await sql`
-      INSERT INTO txs ${sql(values)}
-      ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
-    `;
-    return result.count;
+    }));
+
+    let count = 0;
+    for (const eventBatch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO txs ${sql(eventBatch)}
+        ON CONFLICT ON CONSTRAINT unique_tx_id_index_block_hash_microblock_hash DO NOTHING
+      `;
+      count += res.count;
+    }
+    return count;
   }
 
   async insertDbMempoolTxs(
@@ -1978,9 +2022,10 @@ export class PgWriteStore extends PgStore {
       const res = await sql`
         INSERT INTO token_offering_locked ${sql(lockedInfos, 'address', 'value', 'block')}
       `;
-      if (res.count !== lockedInfos.length) {
-        throw new Error(`Expected ${lockedInfos.length} inserts, got ${res.count}`);
-      }
+      assert(
+        res.count === lockedInfos.length,
+        `Expecting ${lockedInfos.length} inserts, got ${res.count}`
+      );
     } catch (e: any) {
       logger.error(e, `Locked Info errors ${e.message}`);
       throw e;
@@ -2107,26 +2152,33 @@ export class PgWriteStore extends PgStore {
       }
     }
 
-    for (const entry of txs) {
-      const rowsUpdated = await this.updateTx(sql, entry.tx);
-      if (rowsUpdated !== 1) {
-        throw new Error(
-          `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}`
+    if (txs.length > 0) {
+      const q = new PgWriteQueue();
+      q.enqueue(async () => {
+        const rowsUpdated = await this.updateTx(
+          sql,
+          txs.map(t => t.tx)
         );
+        if (rowsUpdated !== txs.length)
+          throw new Error(
+            `Unexpected amount of rows updated for microblock tx insert: ${rowsUpdated}, expecting ${txs.length}`
+          );
+      });
+      q.enqueue(() => this.updateStxEvents(sql, txs));
+      q.enqueue(() => this.updatePrincipalStxTxs(sql, txs));
+      q.enqueue(() => this.updateSmartContractEvents(sql, txs));
+      q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox2_events', txs));
+      q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox3_events', txs));
+      q.enqueue(() => this.updatePoxSyntheticEvents(sql, 'pox4_events', txs));
+      q.enqueue(() => this.updateStxLockEvents(sql, txs));
+      q.enqueue(() => this.updateFtEvents(sql, txs));
+      for (const entry of txs) {
+        q.enqueue(() => this.updateNftEvents(sql, entry.tx, entry.nftEvents, true));
+        q.enqueue(() => this.updateSmartContracts(sql, entry.tx, entry.smartContracts));
+        q.enqueue(() => this.updateNamespaces(sql, entry.tx, entry.namespaces));
+        q.enqueue(() => this.updateNames(sql, entry.tx, entry.names));
       }
-
-      await this.updateStxEvents(sql, entry.tx, entry.stxEvents);
-      await this.updatePrincipalStxTxs(sql, entry.tx, entry.stxEvents);
-      await this.updateSmartContractEvents(sql, entry.tx, entry.contractLogEvents);
-      await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox2_events', entry.pox2Events);
-      await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox3_events', entry.pox3Events);
-      await this.updatePoxSyntheticEvents(sql, entry.tx, 'pox4_events', entry.pox4Events);
-      await this.updateStxLockEvents(sql, entry.tx, entry.stxLockEvents);
-      await this.updateFtEvents(sql, entry.tx, entry.ftEvents);
-      await this.updateNftEvents(sql, entry.tx, entry.nftEvents, true);
-      await this.updateSmartContracts(sql, entry.tx, entry.smartContracts);
-      await this.updateNamespaces(sql, entry.tx, entry.namespaces);
-      await this.updateNames(sql, entry.tx, entry.names);
+      await q.done();
     }
   }
 
@@ -2454,6 +2506,8 @@ export class PgWriteStore extends PgStore {
       )
       SELECT tx_id FROM pruned
     `;
+    const txIds = deletedTxResults.map(r => r.tx_id);
+    if (txIds.length > 0) logger.debug(`Garbage collected ${txIds.length} mempool txs`);
     return { deletedTxs: deletedTxResults.map(r => r.tx_id) };
   }
 
@@ -2463,181 +2517,199 @@ export class PgWriteStore extends PgStore {
     canonical: boolean,
     updatedEntities: ReOrgUpdatedEntities
   ): Promise<{ txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] }> {
-    const txResult = await sql<TxQueryResult[]>`
-      UPDATE txs
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      RETURNING ${sql(TX_COLUMNS)}
-    `;
-    const txIds = txResult.map(row => parseTxQueryResult(row));
-    if (canonical) {
-      updatedEntities.markedCanonical.txs += txResult.length;
-    } else {
-      updatedEntities.markedNonCanonical.txs += txResult.length;
-    }
-    for (const txId of txIds) {
-      logger.debug(`Marked tx as ${canonical ? 'canonical' : 'non-canonical'}: ${txId.tx_id}`);
-    }
-    if (txIds.length) {
-      await sql`
-        UPDATE principal_stx_txs
-        SET canonical = ${canonical}
-        WHERE tx_id IN ${sql(txIds.map(tx => tx.tx_id))}
-          AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-      `;
-    }
-
-    const minerRewardResults = await sql`
-      UPDATE miner_rewards
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.minerRewards += minerRewardResults.count;
-    } else {
-      updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.count;
-    }
-
-    const stxLockResults = await sql`
-      UPDATE stx_lock_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.stxLockEvents += stxLockResults.count;
-    } else {
-      updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.count;
-    }
-
-    const stxResults = await sql`
-      UPDATE stx_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.stxEvents += stxResults.count;
-    } else {
-      updatedEntities.markedNonCanonical.stxEvents += stxResults.count;
-    }
-
-    const ftResult = await sql`
-      UPDATE ft_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.ftEvents += ftResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.ftEvents += ftResult.count;
-    }
-
-    const nftResult = await sql`
-      UPDATE nft_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.nftEvents += nftResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
-    }
-    await this.updateNftCustodyFromReOrg(sql, {
-      index_block_hash: indexBlockHash,
-      microblocks: [],
-    });
-
-    const pox2Result = await sql`
-      UPDATE pox2_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.pox2Events += pox2Result.count;
-    } else {
-      updatedEntities.markedNonCanonical.pox2Events += pox2Result.count;
-    }
-
-    const pox3Result = await sql`
-      UPDATE pox3_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.pox3Events += pox3Result.count;
-    } else {
-      updatedEntities.markedNonCanonical.pox3Events += pox3Result.count;
-    }
-
-    const pox4Result = await sql`
-      UPDATE pox4_events
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.pox4Events += pox4Result.count;
-    } else {
-      updatedEntities.markedNonCanonical.pox4Events += pox4Result.count;
-    }
-
-    const contractLogResult = await sql`
-      UPDATE contract_logs
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.contractLogs += contractLogResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.contractLogs += contractLogResult.count;
-    }
-
-    const smartContractResult = await sql`
-      UPDATE smart_contracts
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.smartContracts += smartContractResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.smartContracts += smartContractResult.count;
-    }
-
-    const nameResult = await sql`
-      UPDATE names
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.names += nameResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.names += nameResult.count;
-    }
-
-    const namespaceResult = await sql`
-      UPDATE namespaces
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.namespaces += namespaceResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.namespaces += namespaceResult.count;
-    }
-
-    const subdomainResult = await sql`
-      UPDATE subdomains
-      SET canonical = ${canonical}
-      WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-    `;
-    if (canonical) {
-      updatedEntities.markedCanonical.subdomains += subdomainResult.count;
-    } else {
-      updatedEntities.markedNonCanonical.subdomains += subdomainResult.count;
-    }
-
-    return {
-      txsMarkedCanonical: canonical ? txIds.map(t => t.tx_id) : [],
-      txsMarkedNonCanonical: canonical ? [] : txIds.map(t => t.tx_id),
+    const result: { txsMarkedCanonical: string[]; txsMarkedNonCanonical: string[] } = {
+      txsMarkedCanonical: [],
+      txsMarkedNonCanonical: [],
     };
+
+    const q = new PgWriteQueue();
+    q.enqueue(async () => {
+      const txResult = await sql<{ tx_id: string }[]>`
+        UPDATE txs
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+        RETURNING tx_id
+      `;
+      const txIds = txResult.map(row => row.tx_id);
+      if (canonical) {
+        updatedEntities.markedCanonical.txs += txResult.count;
+        result.txsMarkedCanonical = txIds;
+      } else {
+        updatedEntities.markedNonCanonical.txs += txResult.count;
+        result.txsMarkedNonCanonical = txIds;
+      }
+      if (txResult.count)
+        await sql`
+          UPDATE principal_stx_txs
+          SET canonical = ${canonical}
+          WHERE tx_id IN ${sql(txIds)}
+            AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+        `;
+    });
+    q.enqueue(async () => {
+      const minerRewardResults = await sql`
+        UPDATE miner_rewards
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.minerRewards += minerRewardResults.count;
+      } else {
+        updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.count;
+      }
+    });
+    q.enqueue(async () => {
+      const stxLockResults = await sql`
+        UPDATE stx_lock_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.stxLockEvents += stxLockResults.count;
+      } else {
+        updatedEntities.markedNonCanonical.stxLockEvents += stxLockResults.count;
+      }
+    });
+    q.enqueue(async () => {
+      const stxResults = await sql`
+        UPDATE stx_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.stxEvents += stxResults.count;
+      } else {
+        updatedEntities.markedNonCanonical.stxEvents += stxResults.count;
+      }
+    });
+    q.enqueue(async () => {
+      const ftResult = await sql`
+        UPDATE ft_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.ftEvents += ftResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.ftEvents += ftResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const nftResult = await sql`
+        UPDATE nft_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.nftEvents += nftResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.nftEvents += nftResult.count;
+      }
+      if (nftResult.count)
+        await this.updateNftCustodyFromReOrg(sql, {
+          index_block_hash: indexBlockHash,
+          microblocks: [],
+        });
+    });
+    q.enqueue(async () => {
+      const pox2Result = await sql`
+        UPDATE pox2_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.pox2Events += pox2Result.count;
+      } else {
+        updatedEntities.markedNonCanonical.pox2Events += pox2Result.count;
+      }
+    });
+    q.enqueue(async () => {
+      const pox3Result = await sql`
+        UPDATE pox3_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.pox3Events += pox3Result.count;
+      } else {
+        updatedEntities.markedNonCanonical.pox3Events += pox3Result.count;
+      }
+    });
+    q.enqueue(async () => {
+      const pox4Result = await sql`
+        UPDATE pox4_events
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.pox4Events += pox4Result.count;
+      } else {
+        updatedEntities.markedNonCanonical.pox4Events += pox4Result.count;
+      }
+    });
+    q.enqueue(async () => {
+      const contractLogResult = await sql`
+        UPDATE contract_logs
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.contractLogs += contractLogResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.contractLogs += contractLogResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const smartContractResult = await sql`
+        UPDATE smart_contracts
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.smartContracts += smartContractResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.smartContracts += smartContractResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const nameResult = await sql`
+        UPDATE names
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.names += nameResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.names += nameResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const namespaceResult = await sql`
+        UPDATE namespaces
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.namespaces += namespaceResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.namespaces += namespaceResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const subdomainResult = await sql`
+        UPDATE subdomains
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.subdomains += subdomainResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.subdomains += subdomainResult.count;
+      }
+    });
+    await q.done();
+
+    return result;
   }
 
   async restoreOrphanedChain(

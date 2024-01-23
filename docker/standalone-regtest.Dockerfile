@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:18-bullseye as api-builder
+FROM node:20-bookworm-slim as api-builder
 
 ARG API_GIT_COMMIT
 ARG STACKS_API_VERSION
