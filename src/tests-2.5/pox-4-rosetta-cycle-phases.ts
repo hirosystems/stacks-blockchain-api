@@ -1,3 +1,5 @@
+import { bytesToHex } from '@stacks/common';
+import { randomBytes } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { stackStxWithRosetta, standByUntilBurnBlock, testEnv } from '../test-utils/test-helpers';
 
@@ -41,6 +43,7 @@ describe.each(BLOCK_SHIFT_COUNT)(
         cycleCount: 1,
         ustxAmount,
         btcAddr,
+        signerKey: bytesToHex(randomBytes(33)),
       });
     });
 
