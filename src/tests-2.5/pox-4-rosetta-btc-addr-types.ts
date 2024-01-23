@@ -9,6 +9,8 @@ import {
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
 import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
+import { bytesToHex } from '@stacks/common';
+import { randomBytes } from '@stacks/transactions';
 
 const BTC_ADDRESS_CASES = [
   { addressFormat: 'p2pkh' },
@@ -55,6 +57,7 @@ describe.each(BTC_ADDRESS_CASES)(
         privateKey: account.secretKey,
         cycleCount,
         ustxAmount,
+        signerKey: bytesToHex(randomBytes(33)),
       });
       expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
       expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');

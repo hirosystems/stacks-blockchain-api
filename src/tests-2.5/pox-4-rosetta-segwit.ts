@@ -7,6 +7,7 @@ import {
   AnchorMode,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
+  randomBytes,
   TransactionVersion,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
@@ -26,6 +27,7 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { bytesToHex } from '@stacks/common';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
@@ -129,6 +131,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount: cycleCount,
       ustxAmount: ustxAmount,
+      signerKey: bytesToHex(randomBytes(33)),
     });
 
     expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -247,6 +250,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount,
       ustxAmount,
+      signerKey: bytesToHex(randomBytes(33)),
     });
 
     expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');

@@ -83,6 +83,7 @@ import {
 } from '../../../rosetta/rosetta-helpers';
 import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
 import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -215,13 +216,12 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         case RosettaOperationType.StackStx: {
           const poxAddr = options.pox_addr;
-          if (!options.number_of_cycles || !poxAddr) {
+          if (!options.number_of_cycles || !options.signer_key || !poxAddr) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
 
           if (doesThrow(() => decodeBtcAddress(poxAddr))) {
-            // todo: add error type specifically for this?
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -241,6 +241,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               poxAddressToTuple(poxAddr),
               uintCV(0),
               uintCV(options.number_of_cycles),
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -252,11 +253,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
-          if (!options.delegate_to) {
+          if (!options.amount || !options.delegate_to || !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -276,6 +273,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               standardPrincipalCV(options.delegate_to),
               noneCV(),
               poxAddrOptionalCV,
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -656,7 +654,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          if (!options.number_of_cycles || !options.amount) {
+          if (!options.number_of_cycles || !options.amount || !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -671,6 +669,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               poxAddressCV,
               uintCV(req.body.metadata.burn_block_height),
               uintCV(options.number_of_cycles),
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             fee: txFee,
             nonce: nonce,
@@ -712,7 +711,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             if (typeof burn_block_height !== 'number' || typeof burn_block_height !== 'string')
               expire_burn_block_heightCV = someCV(uintCV(burn_block_height));
           }
-          if (!options.delegate_to || !options.amount) {
+          if (!options.delegate_to || !options.amount || !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -727,6 +726,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               standardPrincipalCV(options.delegate_to),
               expire_burn_block_heightCV,
               poxAddressCV,
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             fee: txFee,
             nonce: nonce,

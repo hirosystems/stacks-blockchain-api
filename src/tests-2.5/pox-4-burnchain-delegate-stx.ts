@@ -174,7 +174,7 @@ async function createPox2DelegateStx(args: {
   };
 }
 
-describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;
