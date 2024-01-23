@@ -1548,6 +1548,7 @@ export interface DbChainTip {
   microblock_count: number;
   tx_count: number;
   tx_count_unanchored: number;
+  mempool_tx_count: number;
 }
 
 export enum IndexesState {
