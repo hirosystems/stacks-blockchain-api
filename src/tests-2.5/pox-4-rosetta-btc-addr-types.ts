@@ -47,7 +47,7 @@ describe.each(BTC_ADDRESS_CASES)(
     test('Perform stack-stx using Rosetta', async () => {
       poxInfo = await testEnv.client.getPox();
       expect(poxInfo.next_cycle.blocks_until_reward_phase).toBeGreaterThanOrEqual(
-        poxInfo.reward_cycle_length - 1 // close to cycle start (+1 block margin)
+        poxInfo.reward_cycle_length - 1 // close to cycle start (1 block margin)
       );
 
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
@@ -70,7 +70,7 @@ describe.each(BTC_ADDRESS_CASES)(
       const nextCycleStart = poxInfo.next_cycle.reward_phase_start_block_height;
 
       await standByUntilBurnBlock(nextCycleStart); // time to check reward sets after a few blocks
-      await timeout(2000); // wait for indexer to catch up
+      await timeout(3000); // make sure rewards have been processed
 
       poxInfo = await testEnv.client.getPox();
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
