@@ -379,8 +379,8 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         standardPrincipalCV(STACKER.stxAddr), // stacker
         STACKER.poxAddrClar, // pox-addr
-        bufferCV(randomBytes(33)), // signer-key
         uintCV(2), // extend-count
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
