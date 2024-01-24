@@ -149,7 +149,7 @@ export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   return lastPoxInfo;
 }
 
-/** Stand by until `current_cycle.id` increases */
+/** Stand by until block height reaches the start of the next cycle */
 export async function standByForPoxCycle(
   apiArg?: ApiServer,
   clientArg?: StacksCoreRpcClient
@@ -162,8 +162,10 @@ export async function standByForPoxCycle(
   do {
     await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1, api, client);
     lastPoxInfo = await client.getPox();
-  } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
-  expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
+  } while (
+    (lastPoxInfo.current_burnchain_block_height as number) <=
+    firstPoxInfo.next_cycle.reward_phase_start_block_height
+  );
   const info = await client.getInfo();
   console.log({
     'firstPoxInfo.next_cycle.prepare_phase_start_block_height':
