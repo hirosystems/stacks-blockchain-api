@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
@@ -62,6 +61,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         // descriptor wallets, if legacy wallet import fails
         await withDescriptorWallet(async walletName => {
           const info = await testEnv.bitcoinRpcClient.getdescriptorinfo({
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             descriptor: btcDescriptor!,
           });
           const request = { label: btcAddrRegtest, desc: info.descriptor, timestamp: 'now' };
@@ -85,7 +85,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stack-stx tx', async () => {
       // Create and broadcast a `stack-stx` tx
-      const tx1 = await makeContractCall({
+      const tx = await makeContractCall({
         senderKey: account.secretKey,
         contractAddress,
         contractName,
@@ -105,90 +105,106 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         fee: 10000,
         validateWithAbi: false,
       });
-      const expectedTxId1 = '0x' + tx1.txid();
-      const sendResult1 = await testEnv.client.sendTransaction(Buffer.from(tx1.serialize()));
-      expect(sendResult1.txId).toBe(expectedTxId1);
+      const expectedTxId = '0x' + tx.txid();
+      const sendResult = await testEnv.client.sendTransaction(Buffer.from(tx.serialize()));
+      expect(sendResult.txId).toBe(expectedTxId);
 
       // Wait for API to receive and ingest tx
-      const dbTx1 = await standByForTxSuccess(expectedTxId1);
+      const dbTx = await standByForTxSuccess(expectedTxId);
 
-      const tx1Events = await testEnv.api.datastore.getTxEvents({
-        txId: expectedTxId1,
-        indexBlockHash: dbTx1.index_block_hash,
+      const txEvents = await testEnv.api.datastore.getTxEvents({
+        txId: expectedTxId,
+        indexBlockHash: dbTx.index_block_hash,
         limit: 99999,
         offset: 0,
       });
-      expect(tx1Events.results).toBeTruthy();
-      const lockEvent1 = tx1Events.results.find(
+      expect(txEvents.results).toBeTruthy();
+      const lockEvent = txEvents.results.find(
         r => r.event_type === DbEventTypeId.StxLock
       ) as DbStxLockEvent;
-      expect(lockEvent1).toBeDefined();
-      expect(lockEvent1.locked_address).toBe(account.stacksAddress);
-      expect(lockEvent1.locked_amount).toBe(ustxAmount);
+      expect(lockEvent).toBeDefined();
+      expect(lockEvent.locked_address).toBe(account.stacksAddress);
+      expect(lockEvent.locked_amount).toBe(ustxAmount);
 
       // Test that the unlock height event data in the API db matches the expected height from the
       // calculated values from the /v2/pox data and the cycle count specified in the `stack-stx` tx.
-      const expectedUnlockHeight1 =
+      const expectedUnlockHeight =
         cycleBlockLength + poxInfo.next_cycle.reward_phase_start_block_height;
-      expect(lockEvent1.unlock_height).toBe(expectedUnlockHeight1);
+      expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-stx` operation
-      const addrBalance1 = await fetchGet<AddressStxBalanceResponse>(
+      const balance = await fetchGet<AddressStxBalanceResponse>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
-      expect(addrBalance1.locked).toBe(ustxAmount.toString());
-      expect(addrBalance1.burnchain_unlock_height).toBe(expectedUnlockHeight1);
-      expect(addrBalance1.lock_height).toBe(dbTx1.block_height);
-      expect(addrBalance1.lock_tx_id).toBe(dbTx1.tx_id);
+      expect(balance.locked).toBe(ustxAmount.toString());
+      expect(balance.burnchain_unlock_height).toBe(expectedUnlockHeight);
+      expect(balance.lock_height).toBe(dbTx.block_height);
+      expect(balance.lock_tx_id).toBe(dbTx.tx_id);
     });
 
-    test('stacking rewards - API /burnchain/rewards', async () => {
-      await standByUntilBurnBlock(
-        poxInfo.next_cycle.reward_phase_start_block_height + poxInfo.reward_cycle_length
+    test('stx unlocked - RPC balance', async () => {
+      // Wait until account has unlocked (finished Stacking cycles)
+      const rpcAccountBefore = await testEnv.client.getAccount(account.stacksAddress);
+      const unlockHeight = rpcAccountBefore.unlock_height + 1;
+      await standByUntilBurnBlock(unlockHeight);
+
+      // Check that STX are no longer reported as locked by the RPC endpoints:
+      const rpcAccountAfter = await testEnv.client.getAccount(account.stacksAddress);
+      expect(BigInt(rpcAccountAfter.locked)).toBe(0n);
+      expect(rpcAccountAfter.unlock_height).toBe(0);
+    });
+
+    test('stx unlocked - API balance', async () => {
+      // Check that STX are no longer reported as locked by the API endpoints:
+      const balance = await fetchGet<AddressStxBalanceResponse>(
+        `/extended/v1/address/${account.stacksAddress}/stx`
       );
+      expect(BigInt(balance.locked)).toBe(0n);
+      expect(balance.burnchain_unlock_height).toBe(0);
+      expect(balance.lock_height).toBe(0);
+      expect(balance.lock_tx_id).toBe('');
+    });
+
+    test('stacking rewards - API', async () => {
+      const slotStart = poxInfo.next_cycle.reward_phase_start_block_height;
+      const slotEnd = slotStart + 2; // early in the reward phase
 
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
+      expect(rewards.results).toHaveLength(1);
+
       const firstReward = rewards.results.sort(
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
+
       expect(firstReward.reward_recipient).toBe(btcAddr);
       expect(Number(firstReward.burn_amount)).toBeGreaterThan(0);
-      expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(
-        poxInfo.next_cycle.reward_phase_start_block_height
-      );
-      expect(firstReward.burn_block_height).toBeLessThanOrEqual(
-        poxInfo.next_cycle.reward_phase_start_block_height + 2 // early in the reward phase
-      );
+      expect(firstReward.burn_block_height).toBeGreaterThanOrEqual(slotStart);
+      expect(firstReward.burn_block_height).toBeLessThanOrEqual(slotEnd);
 
       const rewardsTotal = await fetchGet<BurnchainRewardsTotal>(
         `/extended/v1/burnchain/rewards/${btcAddr}/total`
       );
       expect(rewardsTotal.reward_recipient).toBe(btcAddr);
-      expect(Number(rewardsTotal.reward_amount)).toBeGreaterThan(0);
-    });
-
-    test('stacking rewards - API /burnchain/reward_slot_holders', async () => {
-      const slotStart = poxInfo.next_cycle.reward_phase_start_block_height;
-      const slotEnd = slotStart + 2; // early in the reward phase
+      expect(rewardsTotal.reward_amount).toBe(firstReward.burn_amount);
 
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${btcAddr}`
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(btcAddr);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeGreaterThanOrEqual(slotStart);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBeLessThanOrEqual(slotEnd);
+      expect(rewardSlotHolders.results[0].burn_block_height).toBe(firstReward.burn_block_height);
     });
 
-    test('stacking rewards - BTC JSON-RPC', async () => {
+    test('stacking rewards - BTC JSON-RPC - getblock', async () => {
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
       const firstReward = rewards.results.sort(
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
+
       const blockResult: {
         tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
       } = await testEnv.bitcoinRpcClient.getblock({
@@ -237,29 +253,6 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       expect(txs[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
       const sats = new bignumber(txs[0].amount).shiftedBy(8).toString();
       expect(sats).toBe(firstReward.reward_amount);
-    });
-
-    test('stx unlocked - RPC balance endpoint', async () => {
-      // Wait until account has unlocked (finished Stacking cycles)
-      const rpcAccountInfo1 = await testEnv.client.getAccount(account.stacksAddress);
-      const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-      await standByUntilBurnBlock(burnBlockUnlockHeight);
-
-      // Check that STX are no longer reported as locked by the RPC endpoints:
-      const rpcAccountInfo = await testEnv.client.getAccount(account.stacksAddress);
-      expect(BigInt(rpcAccountInfo.locked)).toBe(0n);
-      expect(rpcAccountInfo.unlock_height).toBe(0);
-    });
-
-    test('stx unlocked - API balance endpoint', async () => {
-      // Check that STX are no longer reported as locked by the API endpoints:
-      const addrBalance = await fetchGet<AddressStxBalanceResponse>(
-        `/extended/v1/address/${account.stacksAddress}/stx`
-      );
-      expect(BigInt(addrBalance.locked)).toBe(0n);
-      expect(addrBalance.burnchain_unlock_height).toBe(0);
-      expect(addrBalance.lock_height).toBe(0);
-      expect(addrBalance.lock_tx_id).toBe('');
     });
 
     test('BTC stacking reward received', async () => {
