@@ -1134,14 +1134,6 @@ export interface TenureChangeTransactionMetadata {
      * (Hex string) The ECDSA public key hash of the current tenure.
      */
     pubkey_hash: string;
-    /**
-     * (Hex string) A Schnorr signature from the Stackers.
-     */
-    signature: string;
-    /**
-     * (Hex string) A bitmap of which Stackers signed.
-     */
-    signers: string;
   };
 }
 /**

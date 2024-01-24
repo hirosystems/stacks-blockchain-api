@@ -1616,8 +1616,6 @@ export class PgWriteStore extends PgStore {
       tenure_change_previous_tenure_blocks: tx.tenure_change_previous_tenure_blocks ?? null,
       tenure_change_cause: tx.tenure_change_cause ?? null,
       tenure_change_pubkey_hash: tx.tenure_change_pubkey_hash ?? null,
-      tenure_change_signature: tx.tenure_change_signature ?? null,
-      tenure_change_signers: tx.tenure_change_signers ?? null,
       raw_result: tx.raw_result,
       event_count: tx.event_count,
       execution_cost_read_count: tx.execution_cost_read_count,
@@ -1684,8 +1682,6 @@ export class PgWriteStore extends PgStore {
         tenure_change_previous_tenure_blocks: tx.tenure_change_previous_tenure_blocks ?? null,
         tenure_change_cause: tx.tenure_change_cause ?? null,
         tenure_change_pubkey_hash: tx.tenure_change_pubkey_hash ?? null,
-        tenure_change_signature: tx.tenure_change_signature ?? null,
-        tenure_change_signers: tx.tenure_change_signers ?? null,
       }));
 
       // Revive mempool txs that were previously dropped
@@ -2996,8 +2992,6 @@ export class PgWriteStore extends PgStore {
       tenure_change_previous_tenure_blocks: tx.tenure_change_previous_tenure_blocks ?? null,
       tenure_change_cause: tx.tenure_change_cause ?? null,
       tenure_change_pubkey_hash: tx.tenure_change_pubkey_hash ?? null,
-      tenure_change_signature: tx.tenure_change_signature ?? null,
-      tenure_change_signers: tx.tenure_change_signers ?? null,
       raw_result: tx.raw_result,
       event_count: tx.event_count,
       execution_cost_read_count: tx.execution_cost_read_count,

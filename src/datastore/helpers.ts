@@ -114,8 +114,6 @@ export const TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
   'tenure_change_pubkey_hash',
-  'tenure_change_signature',
-  'tenure_change_signers',
   'raw_result',
   'event_count',
   'execution_cost_read_count',
@@ -162,8 +160,6 @@ export const MEMPOOL_TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
   'tenure_change_pubkey_hash',
-  'tenure_change_signature',
-  'tenure_change_signers',
 ];
 
 export const BLOCK_COLUMNS = [
@@ -409,8 +405,6 @@ function parseTxTypeSpecificQueryResult(
     target.tenure_change_previous_tenure_blocks = result.tenure_change_previous_tenure_blocks;
     target.tenure_change_cause = result.tenure_change_cause;
     target.tenure_change_pubkey_hash = result.tenure_change_pubkey_hash;
-    target.tenure_change_signature = result.tenure_change_signature;
-    target.tenure_change_signers = result.tenure_change_signers;
   } else {
     throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
   }
@@ -1069,8 +1063,6 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       dbTx.tenure_change_previous_tenure_blocks = txData.payload.previous_tenure_blocks;
       dbTx.tenure_change_cause = txData.payload.cause;
       dbTx.tenure_change_pubkey_hash = txData.payload.pubkey_hash;
-      dbTx.tenure_change_signature = txData.payload.signature;
-      dbTx.tenure_change_signers = txData.payload.signers;
       break;
     }
     default:

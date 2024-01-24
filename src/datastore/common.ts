@@ -160,8 +160,6 @@ export interface BaseTx {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash?: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -881,8 +879,6 @@ export interface MempoolTxQueryResult {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 
   // sending abi in case tx is contract call
   abi: unknown | null;
@@ -955,8 +951,6 @@ export interface TxQueryResult {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 
   // events count
   event_count: number;
@@ -1084,8 +1078,6 @@ export interface TxInsertValues {
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;
   tenure_change_pubkey_hash: string | null;
-  tenure_change_signature: string | null;
-  tenure_change_signers: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -1133,8 +1125,6 @@ export interface MempoolTxInsertValues {
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;
   tenure_change_pubkey_hash: string | null;
-  tenure_change_signature: string | null;
-  tenure_change_signers: string | null;
 }
 
 export interface BlockInsertValues {

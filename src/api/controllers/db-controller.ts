@@ -16,7 +16,6 @@ import {
   AbstractTransaction,
   BaseTransaction,
   Block,
-  BurnBlock,
   CoinbaseTransactionMetadata,
   ContractCallTransactionMetadata,
   MempoolTransaction,
@@ -971,14 +970,6 @@ function parseDbTxTypeMetadata(dbTx: DbTx | DbMempoolTx): TransactionMetadata {
           pubkey_hash: unwrapOptional(
             dbTx.tenure_change_pubkey_hash,
             () => 'Unexpected nullish tenure_change_pubkey_hash'
-          ),
-          signature: unwrapOptional(
-            dbTx.tenure_change_signature,
-            () => 'Unexpected nullish tenure_change_signature'
-          ),
-          signers: unwrapOptional(
-            dbTx.tenure_change_signers,
-            () => 'Unexpected nullish tenure_change_signers'
           ),
         },
       };
