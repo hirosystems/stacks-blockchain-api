@@ -281,7 +281,8 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     await standByUntilBlock(curInfo.stacks_tip_height + 1);
   });
 
-  test('Test synthetic STX tx', async () => {
+  // TODO: this is blocked by a blockchain bug: https://github.com/stacks-network/stacks-core/issues/4282
+  test.skip('Test synthetic STX tx', async () => {
     const coreNodeBalance = await client.getAccount(account.stxAddr);
     const addressEventsResp = await supertest(api.server)
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
