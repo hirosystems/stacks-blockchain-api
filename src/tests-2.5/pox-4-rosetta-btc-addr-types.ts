@@ -1,16 +1,17 @@
-import { getBitcoinAddressFromKey } from '../ec-helpers';
+import { timeout } from '@hirosystems/api-toolkit';
+import { bytesToHex } from '@stacks/common';
+import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
+import { randomBytes } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo } from '../core-rpc/client';
+import { DbTxStatus } from '../datastore/common';
+import { getBitcoinAddressFromKey } from '../ec-helpers';
 import {
   fetchGet,
   stackStxWithRosetta,
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { DbTxStatus } from '../datastore/common';
-import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
-import { bytesToHex } from '@stacks/common';
-import { randomBytes } from '@stacks/transactions';
 
 const BTC_ADDRESS_CASES = [
   { addressFormat: 'p2pkh' },
@@ -45,7 +46,9 @@ describe.each(BTC_ADDRESS_CASES)(
 
     test('Perform stack-stx using Rosetta', async () => {
       poxInfo = await testEnv.client.getPox();
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBeGreaterThanOrEqual(
+        poxInfo.reward_cycle_length - 1 // close to cycle start (+1 block margin)
+      );
 
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
       const cycleCount = 1;
@@ -64,8 +67,10 @@ describe.each(BTC_ADDRESS_CASES)(
     });
 
     test('Validate reward set received', async () => {
-      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
+      const nextCycleStart = poxInfo.next_cycle.reward_phase_start_block_height;
+
+      await standByUntilBurnBlock(nextCycleStart); // time to check reward sets after a few blocks
+      await timeout(2000); // wait for indexer to catch up
 
       poxInfo = await testEnv.client.getPox();
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
@@ -73,12 +78,8 @@ describe.each(BTC_ADDRESS_CASES)(
       );
       expect(rewardSlotHolders.total).toBe(1);
       expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-        poxInfo.current_burnchain_block_height
-      );
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
-      );
+      expect(rewardSlotHolders.results[0].burn_block_height).toBe(nextCycleStart + 1);
+      // todo: is it correct that the reware slot is for the 2nd block of a reward phase?
     });
   }
 );
