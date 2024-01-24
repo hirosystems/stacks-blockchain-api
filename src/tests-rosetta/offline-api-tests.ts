@@ -464,7 +464,7 @@ describe('Rosetta offline API', () => {
         symbol: 'STX',
         decimals: 6,
         max_fee: '12380898',
-        size: 291,
+        size: 253,
         pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
       },
       required_public_keys: [
