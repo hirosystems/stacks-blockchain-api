@@ -1,4 +1,4 @@
-import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
 import { decodeBtcAddress } from '@stacks/stacking';
 import {
   AddressStxBalanceResponse,
@@ -144,11 +144,11 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stx unlocked - RPC balance', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
-      const rpcAccountBefore = await testEnv.client.getAccount(account.stacksAddress);
-      const unlockHeight = rpcAccountBefore.unlock_height + 1;
-      await standByUntilBurnBlock(unlockHeight);
+      const rpcAccount = await testEnv.client.getAccount(account.stacksAddress);
+      await standByUntilBurnBlock(rpcAccount.unlock_height + 1);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
+      await timeout(200); // make sure unlock was processed
       const rpcAccountAfter = await testEnv.client.getAccount(account.stacksAddress);
       expect(BigInt(rpcAccountAfter.locked)).toBe(0n);
       expect(rpcAccountAfter.unlock_height).toBe(0);
