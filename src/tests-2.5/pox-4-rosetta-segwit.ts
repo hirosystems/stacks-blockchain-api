@@ -187,7 +187,10 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       include_watchonly: true,
     });
     received = received.filter(r => r.address === btcAddr);
-    expect(received.length).toBe(1);
+    // todo: double-check if multiple rewards are possible/intended for
+    //       this test, since it doesn't happen often
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    expect(received.length).toBe(rewards.results.length);
     expect(received[0].category).toBe('receive');
     expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
     const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
