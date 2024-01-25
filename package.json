@@ -93,7 +93,7 @@
     "@sinclair/typebox": "0.31.28",
     "@stacks/common": "6.8.1",
     "@stacks/network": "6.8.1",
-    "@stacks/stacking": "6.11.2-pr.64326b1.0",
+    "@stacks/stacking": "6.9.0",
     "@stacks/transactions": "6.9.0",
     "@types/express-list-endpoints": "4.0.1",
     "@types/lru-cache": "5.1.1",
