@@ -49,7 +49,7 @@
   },
   "devDependencies": {
     "@apidevtools/swagger-cli": "4.0.4",
-    "@openapitools/openapi-generator-cli": "2.4.21",
+    "@openapitools/openapi-generator-cli": "2.9.0",
     "@stacks/eslint-config": "2.0.0",
     "@stacks/prettier-config": "0.0.10",
     "@types/node": "20.10.6",
