@@ -53,16 +53,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     STACKER = accountFromKey(delegateeKey);
   });
 
-  test('Import testing accounts to bitcoind', async () => {
-    for (const account of [POOL, STACKER]) {
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: account.wif,
-        label: account.btcAddr,
-        rescan: false,
-      });
-    }
-  });
-
   test('Seed delegate accounts', async () => {
     poxInfo = await testEnv.client.getPox();
 
