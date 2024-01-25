@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.9.0-nakamoto.1) (2024-01-25)
+
+
+### Features
+
+* pox 4 revoke events and signer-key support ([#1829](https://github.com/hirosystems/stacks-blockchain-api/issues/1829)) ([5e5650a](https://github.com/hirosystems/stacks-blockchain-api/commit/5e5650a29bcc5950f061ed0a84961075c855a863)), closes [#1849](https://github.com/hirosystems/stacks-blockchain-api/issues/1849)
+
 ## [7.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.2...v7.8.0) (2024-01-23)
 
 
