@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
+import { bytesToHex } from '@stacks/common';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  TransactionVersion,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
   randomBytes,
-  TransactionVersion,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
@@ -26,8 +28,6 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
-import { bytesToHex } from '@stacks/common';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
@@ -159,14 +159,50 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
   });
 
-  test('Verify PoX rewards - Bitcoin RPC', async () => {
-    // Wait until end of reward phase
-    const rewardPhaseEndBurnBlock =
-      lastPoxInfo.next_cycle.reward_phase_start_block_height +
-      lastPoxInfo.reward_phase_block_length +
-      1;
-    await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+  test('Rosetta unlock events', async () => {
+    const rpcAccountInfo = await testEnv.client.getAccount(account.stxAddr);
+    const rpcAccountLocked = BigInt(rpcAccountInfo.locked).toString();
+    const burnBlockUnlockHeight = rpcAccountInfo.unlock_height + 1;
 
+    // Wait until account has unlocked (finished Stacking cycles)
+    // (wait one more block due to test flakiness..)
+    await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
+
+    // verify STX unlocked - stacks-node account RPC balance
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
+    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+    expect(coreNodeBalance.unlock_height).toBe(0);
+
+    // verify STX unlocked - API address endpoint balance
+    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stxAddr}/stx`
+    );
+    expect(BigInt(apiBalance.locked)).toBe(0n);
+
+    // verify STX unlocked - Rosetta address endpoint balance
+    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
+
+    await timeout(1000); // wait a bit for block to be processed
+    // Get Stacks block associated with the burn block `unlock_height` reported by RPC
+    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo.unlock_height);
+
+    // Ensure Rosetta block contains a stx_unlock operation
+    const unlockOp = unlockRstaBlock
+      .block!.transactions.flatMap(t => t.operations)
+      .find(op => op.type === 'stx_unlock')!;
+    expect(unlockOp).toBeDefined();
+    expect(unlockOp).toEqual(
+      expect.objectContaining({
+        type: 'stx_unlock',
+        status: 'success',
+        account: { address: account.stxAddr },
+        amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
+      })
+    );
+  });
+
+  test('Verify PoX rewards - Bitcoin RPC', async () => {
     const rewards = await fetchGet<BurnchainRewardListResponse>(
       `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
     );
@@ -195,49 +231,6 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
     const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
     expect(sats).toBe(firstReward.reward_amount);
-  });
-
-  test('Rosetta unlock events', async () => {
-    // unlock_height: 115
-    const rpcAccountInfo1 = await testEnv.client.getAccount(account.stxAddr);
-    const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
-    const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-
-    // Wait until account has unlocked (finished Stacking cycles)
-    // (wait one more block due to test flakiness..)
-    await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
-
-    // verify STX unlocked - stacks-node account RPC balance
-    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
-    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
-    expect(coreNodeBalance.unlock_height).toBe(0);
-
-    // verify STX unlocked - API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
-      `/extended/v1/address/${account.stxAddr}/stx`
-    );
-    expect(BigInt(apiBalance.locked)).toBe(0n);
-
-    // verify STX unlocked - Rosetta address endpoint balance
-    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
-    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
-
-    // Get Stacks block associated with the burn block `unlock_height` reported by RPC
-    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height);
-
-    // Ensure Rosetta block contains a stx_unlock operation
-    const unlockOp = unlockRstaBlock
-      .block!.transactions.flatMap(t => t.operations)
-      .find(op => op.type === 'stx_unlock')!;
-    expect(unlockOp).toBeDefined();
-    expect(unlockOp).toEqual(
-      expect.objectContaining({
-        type: 'stx_unlock',
-        status: 'success',
-        account: { address: account.stxAddr },
-        amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
-      })
-    );
   });
 
   test('Stack below threshold to trigger early auto-unlock', async () => {
@@ -352,11 +345,11 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     // Ensure stx_unlock operations and balances are correct for before and after blocks
     const surroundingBlocks = [earlyUnlockBurnHeight - 1, earlyUnlockBurnHeight + 1];
     for (const surroundingBlock of surroundingBlocks) {
-      const block2 = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
-      const unlockOps2 = block2
+      const block = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
+      const unlockOps = block
         .block!.transactions.flatMap(t => t.operations)
         .filter(op => op.type === 'stx_unlock')!;
-      expect(unlockOps2).toHaveLength(0);
+      expect(unlockOps).toHaveLength(0);
     }
   });
 });
