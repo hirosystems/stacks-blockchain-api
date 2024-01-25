@@ -53,6 +53,7 @@ import * as nock from 'nock';
 import { PgStore } from '../datastore/pg-store';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { bufferToHex } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
 
 describe('Rosetta offline API', () => {
   let db: PgStore;
@@ -329,7 +330,8 @@ describe('Rosetta offline API', () => {
           },
           metadata: {
             number_of_cycles: 3,
-            pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+            pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+            signer_key: "00".repeat(33),
           },
         },
       ],
@@ -364,9 +366,10 @@ describe('Rosetta offline API', () => {
         symbol: 'STX',
         decimals: 6,
         max_fee: '12380898',
-        size: 260,
+        size: 298,
         number_of_cycles: 3,
-        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+        signer_key: "00".repeat(33),
       },
       required_public_keys: [
         {
@@ -425,7 +428,7 @@ describe('Rosetta offline API', () => {
           },
           metadata: {
             pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
-            delegate_to: testnetKeys[1].stacksAddress
+            delegate_to: testnetKeys[1].stacksAddress,
           },
         },
       ],
@@ -462,7 +465,7 @@ describe('Rosetta offline API', () => {
         decimals: 6,
         max_fee: '12380898',
         size: 253,
-        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+        pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
       },
       required_public_keys: [
         {
@@ -873,6 +876,7 @@ describe('Rosetta offline API', () => {
           metadata: {
             number_of_cycles: number_of_cycles,
             pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+            signer_key: "02".repeat(33),
           }
         },
       ],
@@ -911,6 +915,7 @@ describe('Rosetta offline API', () => {
         poxAddressCV,
         uintCV(burn_block_height),
         uintCV(number_of_cycles),
+        bufferCV(hexToBytes("02".repeat(33)))
       ],
       validateWithAbi: false,
       nonce: 0,
@@ -978,7 +983,7 @@ describe('Rosetta offline API', () => {
         contract_name: contract_name,
         account_sequence: 0,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
-        burn_block_height: burn_block_height
+        burn_block_height: burn_block_height,
       },
       suggested_fee: [ { value: '390', currency: {symbol: 'STX', decimals: 6} } ]
     }

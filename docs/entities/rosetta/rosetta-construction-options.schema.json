@@ -83,6 +83,10 @@
     "pox_addr": {
       "type": "string",
       "description": "The reward address for stacking transaction. It should be a valid Bitcoin address"
+    },
+    "signer_key": {
+      "type": "string",
+      "description": "The hex-encoded signer key (buff 33) for PoX."
     }
   }
 }

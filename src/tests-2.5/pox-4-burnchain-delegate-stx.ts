@@ -7,8 +7,10 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
+  randomBytes,
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
@@ -172,7 +174,7 @@ async function createPox2DelegateStx(args: {
   };
 }
 
-describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;
@@ -401,6 +403,7 @@ describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
         poxAddrPayoutAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

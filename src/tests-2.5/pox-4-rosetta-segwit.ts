@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
+import { bytesToHex } from '@stacks/common';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  TransactionVersion,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
-  TransactionVersion,
+  randomBytes,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
@@ -25,7 +28,6 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
@@ -129,6 +131,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount: cycleCount,
       ustxAmount: ustxAmount,
+      signerKey: bytesToHex(randomBytes(33)),
     });
 
     expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -156,46 +159,10 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
   });
 
-  test('Verify PoX rewards - Bitcoin RPC', async () => {
-    // Wait until end of reward phase
-    const rewardPhaseEndBurnBlock =
-      lastPoxInfo.next_cycle.reward_phase_start_block_height +
-      lastPoxInfo.reward_phase_block_length +
-      1;
-    await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
-
-    const rewards = await fetchGet<BurnchainRewardListResponse>(
-      `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
-    );
-    const firstReward = rewards.results.sort(
-      (a, b) => a.burn_block_height - b.burn_block_height
-    )[0];
-
-    let received: {
-      address: string;
-      category: string;
-      amount: number;
-      blockhash: string;
-      blockheight: number;
-      txid: string;
-      confirmations: number;
-    }[] = await testEnv.bitcoinRpcClient.listtransactions({
-      label: btcAddr,
-      include_watchonly: true,
-    });
-    received = received.filter(r => r.address === btcAddr);
-    expect(received.length).toBe(1);
-    expect(received[0].category).toBe('receive');
-    expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
-    const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
-    expect(sats).toBe(firstReward.reward_amount);
-  });
-
   test('Rosetta unlock events', async () => {
-    // unlock_height: 115
-    const rpcAccountInfo1 = await testEnv.client.getAccount(account.stxAddr);
-    const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
-    const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
+    const rpcAccountInfo = await testEnv.client.getAccount(account.stxAddr);
+    const rpcAccountLocked = BigInt(rpcAccountInfo.locked).toString();
+    const burnBlockUnlockHeight = rpcAccountInfo.unlock_height + 1;
 
     // Wait until account has unlocked (finished Stacking cycles)
     // (wait one more block due to test flakiness..)
@@ -216,8 +183,9 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
 
+    await timeout(1000); // wait a bit for block to be processed
     // Get Stacks block associated with the burn block `unlock_height` reported by RPC
-    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height);
+    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo.unlock_height);
 
     // Ensure Rosetta block contains a stx_unlock operation
     const unlockOp = unlockRstaBlock
@@ -234,6 +202,37 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     );
   });
 
+  test('Verify PoX rewards - Bitcoin RPC', async () => {
+    const rewards = await fetchGet<BurnchainRewardListResponse>(
+      `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
+    );
+    const firstReward = rewards.results.sort(
+      (a, b) => a.burn_block_height - b.burn_block_height
+    )[0];
+
+    let received: {
+      address: string;
+      category: string;
+      amount: number;
+      blockhash: string;
+      blockheight: number;
+      txid: string;
+      confirmations: number;
+    }[] = await testEnv.bitcoinRpcClient.listtransactions({
+      label: btcAddr,
+      include_watchonly: true,
+    });
+    received = received.filter(r => r.address === btcAddr);
+    // todo: double-check if multiple rewards are possible/intended for
+    //       this test, since it doesn't happen often
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    expect(received.length).toBe(rewards.results.length);
+    expect(received[0].category).toBe('receive');
+    expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+    const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
+    expect(sats).toBe(firstReward.reward_amount);
+  });
+
   test('Stack below threshold to trigger early auto-unlock', async () => {
     const cycleCount = 5;
 
@@ -247,6 +246,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount,
       ustxAmount,
+      signerKey: bytesToHex(randomBytes(33)),
     });
 
     expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -345,11 +345,11 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     // Ensure stx_unlock operations and balances are correct for before and after blocks
     const surroundingBlocks = [earlyUnlockBurnHeight - 1, earlyUnlockBurnHeight + 1];
     for (const surroundingBlock of surroundingBlocks) {
-      const block2 = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
-      const unlockOps2 = block2
+      const block = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
+      const unlockOps = block
         .block!.transactions.flatMap(t => t.operations)
         .filter(op => op.type === 'stx_unlock')!;
-      expect(unlockOps2).toHaveLength(0);
+      expect(unlockOps).toHaveLength(0);
     }
   });
 });
