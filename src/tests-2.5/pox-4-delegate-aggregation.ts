@@ -58,15 +58,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Import testing accounts to bitcoind', async () => {
-    // register delegate accounts to bitcoind wallet
-    // TODO: only one of these (delegatee ?) should be required..
-    for (const account of [delegatorAccount, delegateeAccount]) {
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: account.wif,
-        label: account.btcAddr,
-        rescan: false,
-      });
-    }
+    // register delegatee account to bitcoind wallet
+    await testEnv.bitcoinRpcClient.importaddress({
+      address: delegateeAccount.btcAddr,
+      label: delegateeAccount.btcAddr,
+      rescan: false,
+    });
   });
 
   test('Seed delegate accounts', async () => {
@@ -445,5 +442,13 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
+  });
+
+  test('BTC stacking reward received', async () => {
+    const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
+      address: delegateeAccount.btcAddr,
+      minconf: 0,
+    });
+    expect(received).toBeGreaterThan(0);
   });
 });
