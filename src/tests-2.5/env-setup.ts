@@ -34,7 +34,7 @@ beforeAll(async () => {
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
     timeout: 120000,
-    wallet: '',
+    wallet: 'main',
   });
 
   testEnv = {
