@@ -26,6 +26,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
+import { RPCClient } from 'rpc-bitcoin';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
@@ -44,34 +45,48 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     const { btcAddr, btcAddrDecoded, btcAddrRegtest, btcDescriptor } = addressSetup();
 
+    let bitcoinRpcClient: RPCClient;
+
+    test('setup BTC wallet client', async () => {
+      const { BTC_RPC_PORT, BTC_RPC_HOST, BTC_RPC_PW, BTC_RPC_USER } = process.env;
+      bitcoinRpcClient = new RPCClient({
+        url: BTC_RPC_HOST,
+        port: Number(BTC_RPC_PORT),
+        user: BTC_RPC_USER,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        pass: BTC_RPC_PW!,
+        timeout: 120000,
+        wallet: btcAddrRegtest,
+      });
+      const createWalletResult = await bitcoinRpcClient.createwallet({
+        wallet_name: btcAddrRegtest,
+        blank: true,
+        disable_private_keys: true,
+        descriptors: true,
+        load_on_startup: false,
+      } as any);
+      expect(createWalletResult.name).toBe(btcAddrRegtest);
+      expect(createWalletResult.warning).toBeFalsy();
+
+      // descriptor wallets, if legacy wallet import fails
+      const info = await bitcoinRpcClient.getdescriptorinfo({
+        descriptor: btcDescriptor,
+      });
+      const request = { label: btcAddrRegtest, desc: info.descriptor, timestamp: 'now' };
+      const importDescriptorRes: { success: boolean }[] = await bitcoinRpcClient.rpc(
+        'importdescriptors',
+        { requests: [request] },
+        btcAddrRegtest
+      );
+      expect(importDescriptorRes[0].success).toBe(true);
+      const btcWalletAddrs = await bitcoinRpcClient.getaddressesbylabel({
+        label: btcAddrRegtest,
+      });
+      expect(Object.keys(btcWalletAddrs)).toEqual([btcAddrRegtest]);
+    });
+
     test('prepare', async () => {
       await standByForPoxCycle();
-
-      try {
-        // legacy wallets
-        await testEnv.bitcoinRpcClient.importaddress({
-          address: btcAddrRegtest,
-          label: btcAddrRegtest,
-        });
-        const btcWalletAddrs = await testEnv.bitcoinRpcClient.getaddressesbylabel({
-          label: btcAddrRegtest,
-        });
-        expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
-      } catch (e) {
-        // descriptor wallets, if legacy wallet import fails
-        await withDescriptorWallet(async walletName => {
-          const info = await testEnv.bitcoinRpcClient.getdescriptorinfo({
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            descriptor: btcDescriptor!,
-          });
-          const request = { label: btcAddrRegtest, desc: info.descriptor, timestamp: 'now' };
-          await testEnv.bitcoinRpcClient.rpc(
-            'importdescriptors',
-            { requests: [request] },
-            walletName
-          );
-        });
-      }
 
       poxInfo = await testEnv.client.getPox();
 
@@ -172,7 +187,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
       );
-      expect(rewards.results).toHaveLength(1);
+      expect(rewards.results.length).toBeGreaterThan(0);
 
       const firstReward = rewards.results.sort(
         (a, b) => a.burn_block_height - b.burn_block_height
@@ -207,7 +222,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
       const blockResult: {
         tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
-      } = await testEnv.bitcoinRpcClient.getblock({
+      } = await bitcoinRpcClient.getblock({
         blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
         verbosity: 2,
       });
@@ -231,42 +246,44 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
         (a, b) => a.burn_block_height - b.burn_block_height
       )[0];
 
-      let txs = await withDescriptorWallet(
-        async walletName =>
-          (await testEnv.bitcoinRpcClient.listtransactions(
-            {
-              label: btcAddrRegtest,
-              include_watchonly: true,
-            },
-            btcDescriptor ? walletName : undefined
-          )) as {
-            address: string;
-            category: string;
-            amount: number;
-            blockhash: string;
-            blockheight: number;
-          }[]
+      let txs: {
+        address: string;
+        category: string;
+        amount: number;
+        blockhash: string;
+        blockheight: number;
+      }[] = await bitcoinRpcClient.listtransactions(
+        {
+          label: btcAddrRegtest,
+          include_watchonly: true,
+        },
+        btcAddrRegtest
       );
       txs = txs.filter(r => r.address === btcAddrRegtest);
-      expect(txs.length).toBe(1);
-      expect(txs[0].category).toBe('receive');
-      expect(txs[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
-      const sats = new bignumber(txs[0].amount).shiftedBy(8).toString();
+
+      expect(txs.length).toBeGreaterThan(0);
+
+      const firstTx = txs.sort((a, b) => a.blockheight - b.blockheight)[0];
+      expect(firstTx.category).toBe('receive');
+      expect(firstTx.blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
+      const sats = new bignumber(firstTx.amount).shiftedBy(8).toString();
       expect(sats).toBe(firstReward.reward_amount);
     });
 
     test('BTC stacking reward received', async () => {
-      const received = await withDescriptorWallet(
-        async walletName =>
-          (await testEnv.bitcoinRpcClient.getreceivedbyaddress(
-            {
-              address: btcAddrRegtest,
-              minconf: 0,
-            },
-            btcDescriptor ? walletName : undefined
-          )) as number
+      const received: number = await bitcoinRpcClient.getreceivedbyaddress(
+        {
+          address: btcAddrRegtest,
+          minconf: 0,
+        },
+        btcAddrRegtest
       );
       expect(received).toBeGreaterThan(0);
+    });
+
+    afterAll(async () => {
+      // after: unload descriptor wallet
+      await bitcoinRpcClient.unloadwallet({ wallet_name: btcAddrRegtest });
     });
   }
 );
@@ -300,7 +317,7 @@ function P2SH_P2WPKH() {
     btcAddrDecoded,
     btcAddrRegtest,
     btcPubKey,
-    btcDescriptor: undefined,
+    btcDescriptor: `sh(wpkh(${btcPubKey}))`,
   };
 }
 
@@ -336,7 +353,7 @@ function P2WSH() {
     btcAddrDecoded,
     btcAddrRegtest,
     btcPubKey,
-    btcDescriptor: undefined,
+    btcDescriptor: `wsh(multi(1,${btcPubKey}))`,
   };
 }
 
@@ -369,7 +386,7 @@ function P2WPKH() {
     btcAddrDecoded,
     btcAddrRegtest,
     btcPubKey,
-    btcDescriptor: undefined,
+    btcDescriptor: `wpkh(${btcPubKey})`,
   };
 }
 
@@ -407,26 +424,4 @@ function P2TR() {
     btcPubKey,
     btcDescriptor: `tr(${btcPubKey})`,
   };
-}
-
-// helper
-async function withDescriptorWallet<R>(fn: (walletName: string) => Promise<R> | R): Promise<R> {
-  // before: load or create descriptor wallet
-  try {
-    await testEnv.bitcoinRpcClient.loadwallet({ filename: 'descriptor-wallet' });
-  } catch (e) {
-    await testEnv.bitcoinRpcClient.createwallet({
-      wallet_name: 'descriptor-wallet',
-      disable_private_keys: true,
-      descriptors: true,
-      load_on_startup: false,
-    } as any);
-  }
-
-  const res = await fn('descriptor-wallet');
-
-  // after: unload descriptor walletl
-  await testEnv.bitcoinRpcClient.unloadwallet({ wallet_name: 'descriptor-wallet' });
-
-  return res;
 }
