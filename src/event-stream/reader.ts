@@ -823,7 +823,7 @@ export function parseMessageTransaction(
       }
       case TxPayloadTypeID.TenureChange: {
         logger.debug(
-          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end}, signers=${payload.signers},`
+          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end},`
         );
         break;
       }
