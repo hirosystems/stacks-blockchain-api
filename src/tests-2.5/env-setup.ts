@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   console.log('Jest - teardown..');
-  await testEnv.api.terminate();
-  await testEnv.db?.close();
+  await testEnv.api.forceKill();
+  await testEnv.db?.close({ timeout: 0 });
   console.log('Jest - teardown done');
 });

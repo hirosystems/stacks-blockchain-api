@@ -141,10 +141,12 @@ export class PgStore extends BasePgStore {
     return store;
   }
 
-  async close(): Promise<void> {
+  async close(args?: { timeout?: number }): Promise<void> {
     await this.notifier?.close();
     await super.close({
-      timeout: parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5'),
+      timeout:
+        args?.timeout ??
+        parseInt(getPgConnectionEnvValue('CLOSE_TIMEOUT', PgServer.default) ?? '5'),
     });
   }
 
