@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.2...v7.9.0-nakamoto.3) (2024-01-26)
+
+
+### Bug Fixes
+
+* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([ada8536](https://github.com/hirosystems/stacks-blockchain-api/commit/ada85364b5465b59e1dba0e82815bd8b8057f23f))
+
 ## [7.9.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.1...v7.9.0-nakamoto.2) (2024-01-26)
 
 
