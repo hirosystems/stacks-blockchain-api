@@ -1666,7 +1666,7 @@ describe('mempool tests', () => {
     // Simulate the bug with a txs being in the mempool at confirmed at the same time by
     // directly inserting the mempool-tx and mined-tx, bypassing the normal update functions.
     await db.updateBlock(db.sql, dbBlock1);
-    const chainTip = await db.getChainTip();
+    const chainTip = await db.getChainTip(db.sql);
     await db.insertDbMempoolTxs([mempoolTx], chainTip, db.sql);
     await db.updateTx(db.sql, dbTx1);
 
@@ -1828,7 +1828,7 @@ describe('mempool tests', () => {
 
     await db.updateMempoolTxs({ mempoolTxs: [mempoolTx] });
 
-    let chainTip = await db.getChainTip();
+    let chainTip = await db.getChainTip(db.sql);
     expect(chainTip.mempool_tx_count).toBe(1);
 
     // Verify tx shows up in mempool (non-pruned)
@@ -1852,7 +1852,7 @@ describe('mempool tests', () => {
     expect(mempoolResult2.body.results).toHaveLength(0);
     const mempoolCount2 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(mempoolCount2.body.total).toBe(0);
-    chainTip = await db.getChainTip();
+    chainTip = await db.getChainTip(db.sql);
     expect(chainTip.mempool_tx_count).toBe(0);
 
     // Re-broadcast mempool tx
@@ -1865,7 +1865,7 @@ describe('mempool tests', () => {
     expect(mempoolResult3.body.results[0].tx_id).toBe(txId);
     const mempoolCount3 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(mempoolCount3.body.total).toBe(1);
-    chainTip = await db.getChainTip();
+    chainTip = await db.getChainTip(db.sql);
     expect(chainTip.mempool_tx_count).toBe(1);
 
     // Mine tx in block to prune from mempool
@@ -1898,7 +1898,7 @@ describe('mempool tests', () => {
     expect(mempoolResult4.body.results).toHaveLength(0);
     const mempoolCount4 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(mempoolCount4.body.total).toBe(0);
-    chainTip = await db.getChainTip();
+    chainTip = await db.getChainTip(db.sql);
     expect(chainTip.mempool_tx_count).toBe(0);
 
     // Verify tx is mined
@@ -1931,7 +1931,7 @@ describe('mempool tests', () => {
     expect(mempoolResult5.body.results[0].tx_id).toBe(txId);
     const mempoolCount5 = await supertest(api.server).get(`/extended/v1/tx/mempool`);
     expect(mempoolCount5.body.total).toBe(1);
-    chainTip = await db.getChainTip();
+    chainTip = await db.getChainTip(db.sql);
     expect(chainTip.mempool_tx_count).toBe(1);
 
     // Re-broadcast mempool tx

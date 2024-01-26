@@ -4101,7 +4101,7 @@ describe('postgres datastore', () => {
 
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTip();
+    const chainTip1 = await db.getChainTip(db.sql);
     expect(chainTip1).toEqual({
       block_hash: '0x33',
       block_height: 3,
@@ -4169,7 +4169,7 @@ describe('postgres datastore', () => {
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
     // Chain tip doesn't change yet.
-    const chainTip2 = await db.getChainTip();
+    const chainTip2 = await db.getChainTip(db.sql);
     expect(chainTip2).toEqual({
       block_hash: '0x33',
       block_height: 3,
@@ -4220,7 +4220,7 @@ describe('postgres datastore', () => {
 
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTip();
+    const chainTip3 = await db.getChainTip(db.sql);
     expect(chainTip3).toEqual({
       block_count: 4,
       block_hash: '0x44bb',
