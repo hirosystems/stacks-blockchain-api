@@ -888,7 +888,7 @@ export async function startEventServer(opts: {
   if (ibdHeight) {
     app.use(IBD_PRUNABLE_ROUTES, async (req, res, next) => {
       try {
-        const chainTip = await db.getChainTip();
+        const chainTip = await db.getChainTip(db.sql);
         if (chainTip.block_height > ibdHeight) {
           next();
         } else {

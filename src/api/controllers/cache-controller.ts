@@ -252,7 +252,7 @@ async function calculateETag(
   switch (etagType) {
     case ETagType.chainTip:
       try {
-        const chainTip = await db.getChainTip();
+        const chainTip = await db.getChainTip(db.sql);
         if (chainTip.block_height === 0) {
           // This should never happen unless the API is serving requests before it has synced any
           // blocks.

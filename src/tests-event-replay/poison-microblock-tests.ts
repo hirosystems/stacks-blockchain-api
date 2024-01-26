@@ -25,7 +25,7 @@ describe('poison microblock for height 80743', () => {
       true
     );
     const poisonTxId = '0x58ffe62029f94f7101b959536ea4953b9bce0ec3f6e2a06254c511bdd5cfa9e7';
-    const chainTip = await db.getChainTip();
+    const chainTip = await db.getChainTip(db.sql);
     // query the txs table and check the transaction type
     const searchResult = await db.searchHash({ hash: poisonTxId });
     let entityData: any;

@@ -206,8 +206,8 @@ export class PgStore extends BasePgStore {
     });
   }
 
-  async getChainTip(): Promise<DbChainTip> {
-    const tipResult = await this.sql<DbChainTip[]>`SELECT * FROM chain_tip`;
+  async getChainTip(sql: PgSqlClient): Promise<DbChainTip> {
+    const tipResult = await sql<DbChainTip[]>`SELECT * FROM chain_tip`;
     const tip = tipResult[0];
     return {
       block_height: tip?.block_height ?? 0,
@@ -609,7 +609,7 @@ export class PgStore extends BasePgStore {
 
   async getUnanchoredTxsInternal(sql: PgSqlClient): Promise<{ txs: DbTx[] }> {
     // Get transactions that have been streamed in microblocks but not yet accepted or rejected in an anchor block.
-    const { block_height } = await this.getChainTip();
+    const { block_height } = await this.getChainTip(sql);
     const unanchoredBlockHeight = block_height + 1;
     const query = await sql<ContractTxQueryResult[]>`
       SELECT ${unsafeCols(sql, [...TX_COLUMNS, abiColumn()])}
@@ -1404,7 +1404,7 @@ export class PgStore extends BasePgStore {
     sql: PgSqlClient,
     { includeUnanchored }: { includeUnanchored: boolean }
   ): Promise<number> {
-    const chainTip = await this.getChainTip();
+    const chainTip = await this.getChainTip(sql);
     if (includeUnanchored) {
       return chainTip.block_height + 1;
     } else {
@@ -2144,7 +2144,7 @@ export class PgStore extends BasePgStore {
 
   async getStxBalanceAtBlock(stxAddress: string, blockHeight: number): Promise<DbStxBalance> {
     return await this.sqlTransaction(async sql => {
-      const chainTip = await this.getChainTip();
+      const chainTip = await this.getChainTip(sql);
       const blockHeightToQuery =
         blockHeight > chainTip.block_height ? chainTip.block_height : blockHeight;
       const blockQuery = await this.getBlockByHeightInternal(sql, blockHeightToQuery);
