@@ -321,7 +321,7 @@ describe('cache-control tests', () => {
       ],
     });
 
-    const chainTip2 = await db.getChainTip();
+    const chainTip2 = await db.getChainTip(db.sql);
     expect(chainTip2.block_hash).toBe(block1.block_hash);
     expect(chainTip2.block_height).toBe(block1.block_height);
     expect(chainTip2.index_block_hash).toBe(block1.index_block_hash);

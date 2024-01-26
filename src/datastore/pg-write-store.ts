@@ -183,7 +183,7 @@ export class PgWriteStore extends PgStore {
     let batchedTxData: DataStoreTxEventData[] = [];
 
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip();
+      const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.block_height);
       const isCanonical = data.block.block_height > chainTip.block_height;
       if (!isCanonical) {
@@ -555,7 +555,7 @@ export class PgWriteStore extends PgStore {
       // Sanity check: ensure incoming microblocks have a `parent_index_block_hash` that matches the
       // API's current known canonical chain tip. We assume this holds true so incoming microblock
       // data is always treated as being built off the current canonical anchor block.
-      const chainTip = await this.getChainTip();
+      const chainTip = await this.getChainTip(sql);
       const nonCanonicalMicroblock = data.microblocks.find(
         mb => mb.parent_index_block_hash !== chainTip.index_block_hash
       );
@@ -1797,7 +1797,7 @@ export class PgWriteStore extends PgStore {
   async updateMempoolTxs({ mempoolTxs: txs }: { mempoolTxs: DbMempoolTxRaw[] }): Promise<void> {
     const updatedTxIds: string[] = [];
     await this.sqlWriteTransaction(async sql => {
-      const chainTip = await this.getChainTip();
+      const chainTip = await this.getChainTip(sql);
       updatedTxIds.push(...(await this.insertDbMempoolTxs(txs, chainTip, sql)));
     });
     if (!this.isEventReplay) {
