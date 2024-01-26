@@ -27,6 +27,7 @@ import {
 } from '../test-utils/test-helpers';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
+import * as assert from 'assert';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
@@ -508,6 +509,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('BTC stacking reward received', async () => {
+    const curBlock = await testEnv.db.getCurrentBlock();
+    assert(curBlock.found);
+    await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
+
     const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
       address: btcAddrRegtest,
       minconf: 0,
