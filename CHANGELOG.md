@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.1...v7.9.0-nakamoto.2) (2024-01-26)
+
+
+### Bug Fixes
+
+* remove signer columns from tenure-change transactions ([#1845](https://github.com/hirosystems/stacks-blockchain-api/issues/1845)) ([8ec726b](https://github.com/hirosystems/stacks-blockchain-api/commit/8ec726b05531abb7787d035d21f7afc276574b9c))
+
 ## [7.9.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.9.0-nakamoto.1) (2024-01-25)
 
 
