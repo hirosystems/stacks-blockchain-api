@@ -1282,7 +1282,7 @@ export interface PoxSyntheticEventQueryResult {
   amount_ustx: string | null;
 
   // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
-  signer_key: string | null;
+  signer_key?: string | null;
 }
 
 export interface PoxSyntheticEventInsertValues {
@@ -1343,7 +1343,7 @@ export interface PoxSyntheticEventInsertValues {
   amount_ustx: PgNumeric | null;
 
   // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
-  signer_key: PgBytea | null;
+  signer_key?: PgBytea | null;
 }
 
 export interface NftEventInsertValues {

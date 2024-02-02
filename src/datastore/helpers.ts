@@ -656,7 +656,7 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
           start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
-          signer_key: row.signer_key,
+          signer_key: row.signer_key ?? null,
         },
       };
       return {
@@ -685,7 +685,7 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
-          signer_key: row.signer_key,
+          signer_key: row.signer_key ?? null,
         },
       };
       return {
@@ -764,7 +764,7 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
-          signer_key: row.signer_key,
+          signer_key: row.signer_key ?? null,
         },
       };
       return {
@@ -779,7 +779,7 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
-          signer_key: row.signer_key,
+          signer_key: row.signer_key ?? null,
         },
       };
       return {
