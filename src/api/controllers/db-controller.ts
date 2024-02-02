@@ -231,6 +231,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           lock_period: poxEvent.data.lock_period.toString(),
           start_burn_height: poxEvent.data.start_burn_height.toString(),
           unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          signer_key: poxEvent.data.signer_key,
         },
       };
     }
@@ -249,6 +250,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         data: {
           extend_count: poxEvent.data.extend_count.toString(),
           unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
+          signer_key: poxEvent.data.signer_key,
         },
       };
     }
@@ -300,6 +302,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+          signer_key: poxEvent.data.signer_key,
         },
       };
     }
@@ -309,6 +312,7 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+          signer_key: poxEvent.data.signer_key,
         },
       };
     }

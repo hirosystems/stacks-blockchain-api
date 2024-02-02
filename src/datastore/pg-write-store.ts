@@ -812,6 +812,7 @@ export class PgWriteStore extends PgStore {
           extend_count: null,
           reward_cycle: null,
           amount_ustx: null,
+          signer_key: null,
         };
 
         // Set event-specific columns
@@ -826,6 +827,7 @@ export class PgWriteStore extends PgStore {
             value.lock_amount = event.data.lock_amount.toString();
             value.start_burn_height = event.data.start_burn_height.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.signer_key = event.data.signer_key;
             break;
           }
           case SyntheticPoxEventName.StackIncrease: {
@@ -836,6 +838,7 @@ export class PgWriteStore extends PgStore {
           case SyntheticPoxEventName.StackExtend: {
             value.extend_count = event.data.extend_count.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
+            value.signer_key = event.data.signer_key;
             break;
           }
           case SyntheticPoxEventName.DelegateStx: {
@@ -867,11 +870,13 @@ export class PgWriteStore extends PgStore {
           case SyntheticPoxEventName.StackAggregationCommit: {
             value.reward_cycle = event.data.reward_cycle.toString();
             value.amount_ustx = event.data.amount_ustx.toString();
+            value.signer_key = event.data.signer_key;
             break;
           }
           case SyntheticPoxEventName.StackAggregationCommitIndexed: {
             value.reward_cycle = event.data.reward_cycle.toString();
             value.amount_ustx = event.data.amount_ustx.toString();
+            value.signer_key = event.data.signer_key;
             break;
           }
           case SyntheticPoxEventName.StackAggregationIncrease: {

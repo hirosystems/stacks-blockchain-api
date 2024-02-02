@@ -97,6 +97,7 @@ interface PoxSyntheticPrintEventTypes {
     'pox-addr': PoxSyntheticEventAddr;
     'start-burn-height': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
   };
   [SyntheticPoxEventName.StackIncrease]: {
     'increase-by': ClarityValueUInt;
@@ -106,6 +107,7 @@ interface PoxSyntheticPrintEventTypes {
     'extend-count': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
     'pox-addr': PoxSyntheticEventAddr;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
   };
   [SyntheticPoxEventName.DelegateStx]: {
     'amount-ustx': ClarityValueUInt;
@@ -132,16 +134,19 @@ interface PoxSyntheticPrintEventTypes {
     'unlock-burn-height': ClarityValueUInt;
     'extend-count': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
   };
   [SyntheticPoxEventName.StackAggregationCommit]: {
     'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
   };
   [SyntheticPoxEventName.StackAggregationCommitIndexed]: {
     'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
   };
   [SyntheticPoxEventName.StackAggregationIncrease]: {
     'pox-addr': PoxSyntheticEventAddr;
@@ -252,6 +257,8 @@ export function decodePoxSyntheticPrintEvent(
           lock_period: BigInt(d['lock-period'].value),
           start_burn_height: BigInt(d['start-burn-height'].value),
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
+          signer_key:
+            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -285,6 +292,8 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           extend_count: BigInt(d['extend-count'].value),
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
+          signer_key:
+            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -374,6 +383,8 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
+          signer_key:
+            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
         },
       };
       return parsedData;
@@ -386,6 +397,8 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
+          signer_key:
+            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
         },
       };
       return parsedData;

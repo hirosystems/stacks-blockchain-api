@@ -1910,8 +1910,12 @@ export class PgStore extends BasePgStore {
     poxTable: PoxSyntheticEventTable;
   }): Promise<DbPoxSyntheticEvent[]> {
     return await this.sqlTransaction(async sql => {
+      const cols =
+        poxTable === 'pox4_events'
+          ? [...POX_SYNTHETIC_EVENT_COLUMNS, 'signer_key']
+          : POX_SYNTHETIC_EVENT_COLUMNS;
       const queryResults = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+        SELECT ${sql(cols)}
         FROM ${sql(poxTable)}
         WHERE canonical = true AND microblock_canonical = true
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
