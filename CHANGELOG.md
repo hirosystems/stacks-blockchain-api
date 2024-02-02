@@ -1,3 +1,11 @@
+## [7.8.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.8.1) (2024-02-02)
+
+
+### Bug Fixes
+
+* **rosetta:** use /v2/fees/transaction for fee estimation ([b287b7b](https://github.com/hirosystems/stacks-blockchain-api/commit/b287b7bb3426719553e9ffa3b88178fb24207a6b))
+* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([07339c0](https://github.com/hirosystems/stacks-blockchain-api/commit/07339c08f3f42bc7b08c2e830939bfadcd308cb0))
+
 ## [7.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.2...v7.8.0) (2024-01-23)
 
 
