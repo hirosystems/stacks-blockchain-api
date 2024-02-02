@@ -220,7 +220,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period,
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -346,7 +345,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
         standardPrincipalCV(delegateeAccount.stxAddr), // stacker
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(extendCount), // extend-count
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -405,6 +403,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       functionArgs: [
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

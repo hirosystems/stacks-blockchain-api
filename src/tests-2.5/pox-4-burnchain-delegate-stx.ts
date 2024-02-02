@@ -403,7 +403,6 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         poxAddrPayoutAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

@@ -127,7 +127,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -214,7 +213,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(3), // lock-period
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -319,7 +317,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -370,7 +367,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         standardPrincipalCV(STACKER.stxAddr), // stacker
         STACKER.poxAddrClar, // pox-addr
         uintCV(2), // extend-count
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -400,7 +396,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
         STACKER.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -427,6 +422,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         STACKER.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
