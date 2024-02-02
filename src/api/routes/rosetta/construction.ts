@@ -37,6 +37,7 @@ import {
   MessageSignature,
   noneCV,
   OptionalCV,
+  principalCV,
   someCV,
   StacksTransaction,
   standardPrincipalCV,
@@ -310,6 +311,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       const request: RosettaConstructionMetadataRequest = req.body;
       const options: RosettaOptions = request.options;
 
+      let dummyTransaction: StacksTransaction;
+
       if (options?.sender_address && !isValidC32Address(options.sender_address)) {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidSender]);
         return;
@@ -337,6 +340,20 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidRecipient]);
             return;
           }
+
+          // dummy transaction to calculate fee
+          const dummyTokenTransferTx: UnsignedTokenTransferOptions = {
+            recipient: recipientAddress,
+            amount: 1n, // placeholder
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000', // placeholder
+            network: getStacksNetwork(),
+            nonce: 0, // placeholder
+            memo: '123456', // placeholder
+            anchorMode: AnchorMode.Any,
+          };
+          // Do not set fee so that the fee is calculated
+          dummyTransaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
+
           break;
         case RosettaOperationType.StackStx: {
           // Getting PoX info
@@ -353,6 +370,27 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           options.contract_address = contractAddress;
           options.contract_name = contractName;
           options.burn_block_height = burnBlockHeight;
+
+          // dummy transaction to calculate fee
+          const dummyStackingTx: UnsignedContractCallOptions = {
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+            contractAddress: contractAddress,
+            contractName: contractName,
+            functionName: 'stack-stx',
+            functionArgs: [
+              uintCV(0),
+              poxAddressToTuple('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), // placeholder
+              uintCV(0),
+              uintCV(1),
+            ],
+            validateWithAbi: false,
+            network: getStacksNetwork(),
+            nonce: 0,
+            anchorMode: AnchorMode.Any,
+          };
+          // Do not set fee so that the fee is calculated
+          dummyTransaction = await makeUnsignedContractCall(dummyStackingTx);
+
           break;
         }
         case RosettaOperationType.DelegateStx: {
@@ -361,6 +399,27 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const [contractAddress, contractName] = contract.split('.');
           options.contract_address = contractAddress;
           options.contract_name = contractName;
+
+          // dummy transaction to calculate fee
+          const dummyDelegateStxTx: UnsignedContractCallOptions = {
+            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+            contractAddress: 'ST000000000000000000002AMW42H',
+            contractName: 'pox',
+            functionName: 'delegate-stx',
+            functionArgs: [
+              uintCV(1), // placeholder
+              principalCV('SP3FGQ8Z7JY9BWYZ5WM53E0M9NK7WHJF0691NZ159.some-contract-name-v1-2-3-4'), // placeholder,
+              someCV(uintCV(1)), // placeholder
+              someCV(poxAddressToTuple('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4')), // placeholder
+            ],
+            validateWithAbi: false,
+            network: getStacksNetwork(),
+            nonce: 0,
+            anchorMode: AnchorMode.Any,
+          };
+          // Do not set fee so that the fee is calculated
+          dummyTransaction = await makeUnsignedContractCall(dummyDelegateStxTx);
+
           break;
         }
         default:
@@ -392,8 +451,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       };
 
       // Getting fee info if not operation fee was given in /preprocess
-      const feeInfo = await new StacksCoreRpcClient().getEstimatedTransferFee();
-      if (feeInfo === undefined || feeInfo === '0') {
+      const feeValue = dummyTransaction.auth.spendingCondition.fee.toString();
+      if (feeValue === undefined || feeValue === '0') {
         res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidFee]);
         return;
       }
@@ -402,7 +461,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         res.status(400).json(RosettaErrorsTypes.missingTransactionSize);
         return;
       }
-      const feeValue = Math.round(Number(feeInfo) * Number(options.size) * 1.5).toString();
+
       const currency: RosettaCurrency = {
         symbol: RosettaConstants.symbol,
         decimals: RosettaConstants.decimals,

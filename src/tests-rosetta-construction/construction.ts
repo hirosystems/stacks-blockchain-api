@@ -349,7 +349,7 @@ describe('Rosetta Construction', () => {
     expect(result.type).toBe('application/json');
     expect(JSON.parse(result.text)).toHaveProperty('metadata');
     expect(JSON.parse(result.text)).toHaveProperty('suggested_fee');
-    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('270');
+    expect(parseInt(JSON.parse(result.text).suggested_fee[0].value)).toBeGreaterThan(100);
     expect(JSON.parse(result.text).metadata.memo).toBe('SAMPLE MEMO');
   });
 
@@ -1584,7 +1584,7 @@ describe('Rosetta Construction', () => {
     expect(JSON.parse(result.text).metadata).toHaveProperty('contract_address');
     expect(JSON.parse(result.text).metadata).toHaveProperty('contract_name');
     expect(JSON.parse(result.text).metadata).toHaveProperty('burn_block_height');
-    expect(JSON.parse(result.text).suggested_fee[0].value).toBe('390');
+    expect(parseInt(JSON.parse(result.text).suggested_fee[0].value)).toBeGreaterThan(100);
   });
 
   test('construction/metadata - delegate_stacking', async () => {
@@ -1638,7 +1638,9 @@ describe('Rosetta Construction', () => {
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
       },
-      suggested_fee: [{ value: '390', currency: { symbol: 'STX', decimals: 6 } }],
+      suggested_fee: [
+        { value: expect.stringMatching(/^\d+$/), currency: { symbol: 'STX', decimals: 6 } },
+      ],
     };
 
     expect(result.body).toHaveProperty('metadata');
@@ -1808,7 +1810,7 @@ describe('Rosetta Construction', () => {
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_address');
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('contract_name');
     expect(JSON.parse(resultMetadata.text).metadata).toHaveProperty('burn_block_height');
-    expect(JSON.parse(resultMetadata.text).suggested_fee[0].value).toBe('390');
+    expect(parseInt(JSON.parse(resultMetadata.text).suggested_fee[0].value)).toBeGreaterThan(100);
 
     //payloads
     const contract_address = resultMetadata.body.metadata.contract_address;
@@ -2255,7 +2257,9 @@ describe('Rosetta Construction', () => {
         account_sequence: nonce,
         recent_block_hash: '0x969e494d5aee0166016836f97bbeb3d9473bea8427e477e9de253f78d3212354',
       },
-      suggested_fee: [{ value: '380', currency: { symbol: 'STX', decimals: 6 } }],
+      suggested_fee: [
+        { value: expect.stringMatching(/^\d+$/), currency: { symbol: 'STX', decimals: 6 } },
+      ],
     };
     expect(resultMetadata.body).toHaveProperty('metadata');
     expect(resultMetadata.body.suggested_fee).toStrictEqual(metadataResponse.suggested_fee);
