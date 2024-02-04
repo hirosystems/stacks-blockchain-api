@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.3...v7.9.0-nakamoto.4) (2024-02-04)
+
+
+### Features
+
+* add signer-keys from pox4 events ([#1857](https://github.com/hirosystems/stacks-blockchain-api/issues/1857)) ([c17ad23](https://github.com/hirosystems/stacks-blockchain-api/commit/c17ad23d3f451d7c072ff94f4cb1ae7a2f78705d))
+
 ## [7.9.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.2...v7.9.0-nakamoto.3) (2024-01-26)
 
 
