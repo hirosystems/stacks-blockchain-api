@@ -204,7 +204,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
         uintCV(1), // lock-period,
-        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -261,6 +260,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       functionArgs: [
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,

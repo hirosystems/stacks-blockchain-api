@@ -367,6 +367,7 @@ export interface DbPoxSyntheticStackStxEvent extends DbPoxSyntheticBaseEventData
     lock_period: bigint;
     start_burn_height: bigint;
     unlock_burn_height: bigint;
+    signer_key: string | null;
   };
 }
 
@@ -383,6 +384,7 @@ export interface DbPoxSyntheticStackExtendEvent extends DbPoxSyntheticBaseEventD
   data: {
     extend_count: bigint;
     unlock_burn_height: bigint;
+    signer_key: string | null;
   };
 }
 
@@ -429,6 +431,7 @@ export interface DbPoxSyntheticStackAggregationCommitEvent extends DbPoxSyntheti
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    signer_key: string | null;
   };
 }
 
@@ -438,6 +441,7 @@ export interface DbPoxSyntheticStackAggregationCommitIndexedEvent
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    signer_key: string | null;
   };
 }
 
@@ -1276,6 +1280,9 @@ export interface PoxSyntheticEventQueryResult {
 
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: string | null;
+
+  // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
+  signer_key?: string | null;
 }
 
 export interface PoxSyntheticEventInsertValues {
@@ -1334,6 +1341,9 @@ export interface PoxSyntheticEventInsertValues {
 
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: PgNumeric | null;
+
+  // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
+  signer_key?: PgBytea | null;
 }
 
 export interface NftEventInsertValues {
