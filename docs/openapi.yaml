@@ -839,7 +839,7 @@ paths:
       summary: Get recent blocks
       deprecated: true
       description: |
-          **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+          **NOTE:** This endpoint is deprecated in favor of [Get blocks](https://docs.hiro.so/api/get-blocks).
 
           Retrieves a list of recently mined blocks
 
@@ -885,7 +885,7 @@ paths:
       deprecated: true
       summary: Get block by hash
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get block](https://docs.hiro.so/api/get-block).
         
         Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
       tags:
@@ -919,7 +919,7 @@ paths:
       deprecated: true
       summary: Get block by height
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get block](https://docs.hiro.so/api/get-block).
 
         Retrieves block details of a specific block at a given block height
       tags:
@@ -953,7 +953,7 @@ paths:
       summary: Get block by burnchain block hash
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](https://docs.hiro.so/api/get-blocks).
 
         Retrieves block details of a specific block for a given burnchain block hash
       tags:
@@ -988,7 +988,7 @@ paths:
       summary: Get block by burnchain height
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](https://docs.hiro.so/api/get-blocks).
 
         Retrieves block details of a specific block for a given burn chain height
       tags:
@@ -2979,7 +2979,7 @@ paths:
       operationId: get_transactions_by_block_hash
       summary: Transactions by block hash
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](https://docs.hiro.so/api/get-transactions-by-block).
 
         Retrieves a list of all transactions within a block for a given block hash.
       tags:
@@ -3022,7 +3022,7 @@ paths:
       operationId: get_transactions_by_block_height
       summary: Transactions by block height
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](https://docs.hiro.so/api/get-transactions-by-block).
 
         Retrieves all transactions within a block at a given height
       tags:
@@ -3328,7 +3328,7 @@ paths:
       summary: Fetch fee rate
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](#operation/post_fee_transaction).
+        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](https://docs.hiro.so/api/get-approximate-fees-for-a-given-transaction).
 
         Retrieves estimated fee rate.
       tags:
