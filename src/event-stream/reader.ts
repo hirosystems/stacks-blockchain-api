@@ -847,3 +847,67 @@ export function isPoxPrintEvent(event: SmartContractEvent): boolean {
   if (event.contract_event.topic !== 'print') return false;
   return PoxContractIdentifiers.includes(event.contract_event.contract_identifier);
 }
+
+interface CoreNodeBlockEventCounts {
+  microblocks: number;
+  tx_total: number;
+  txs: {
+    token_transfer: number;
+    smart_contract: number;
+    contract_call: number;
+    poison_microblock: number;
+    coinbase: number;
+    coinbase_to_alt_recipient: number;
+    versioned_smart_contract: number;
+    tenure_change: number;
+    nakamoto_coinbase: number;
+  };
+  event_total: number;
+  events: {
+    contract_event: number;
+    stx_transfer_event: number;
+    stx_mint_event: number;
+    stx_burn_event: number;
+    stx_lock_event: number;
+    nft_transfer_event: number;
+    nft_mint_event: number;
+    nft_burn_event: number;
+    ft_transfer_event: number;
+    ft_mint_event: number;
+    ft_burn_event: number;
+  };
+  miner_rewards: number;
+}
+
+export function newCoreNoreBlockEventCounts(): CoreNodeBlockEventCounts {
+  return {
+    microblocks: 0,
+    tx_total: 0,
+    txs: {
+      token_transfer: 0,
+      smart_contract: 0,
+      contract_call: 0,
+      poison_microblock: 0,
+      coinbase: 0,
+      coinbase_to_alt_recipient: 0,
+      versioned_smart_contract: 0,
+      tenure_change: 0,
+      nakamoto_coinbase: 0,
+    },
+    event_total: 0,
+    events: {
+      contract_event: 0,
+      stx_transfer_event: 0,
+      stx_mint_event: 0,
+      stx_burn_event: 0,
+      stx_lock_event: 0,
+      nft_transfer_event: 0,
+      nft_mint_event: 0,
+      nft_burn_event: 0,
+      ft_transfer_event: 0,
+      ft_mint_event: 0,
+      ft_burn_event: 0,
+    },
+    miner_rewards: 0,
+  };
+}

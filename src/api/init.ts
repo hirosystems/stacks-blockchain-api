@@ -53,6 +53,7 @@ import { createV2BlocksRouter } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
 import { createMempoolRouter } from './routes/v2/mempool';
+import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -109,17 +110,16 @@ export async function startApiServer(opts: {
           // Get the url pathname without a query string or fragment
           // (note base url doesn't matter, but required by URL constructor)
           try {
-            let pathTemplate = new URL(path, 'http://x').pathname;
+            const pathTemplate = new URL(path, 'http://x').pathname;
             // Match request url to the Express route, e.g.:
             // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
             // `/extended/v1/address/:stx_address/stx`
             for (const pathRegex of routes) {
               if (pathRegex.regexp.test(pathTemplate)) {
-                pathTemplate = pathRegex.path;
-                break;
+                return pathRegex.path;
               }
             }
-            return pathTemplate;
+            return '<invalid_path>';
           } catch (error) {
             logger.warn(`Warning: ${error}`);
             return path;
@@ -234,6 +234,7 @@ export async function startApiServer(opts: {
           const v2 = express.Router();
           v2.use('/blocks', createV2BlocksRouter(datastore));
           v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
+          v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
           return v2;
         })()

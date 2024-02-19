@@ -70,7 +70,7 @@
   "homepage": "https://github.com/hirosystems/stacks-blockchain-api#readme",
   "prettier": "@stacks/prettier-config",
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "engineStrict": true,
   "commitlint": {
@@ -91,10 +91,10 @@
     "@promster/types": "3.2.3",
     "@scure/base": "1.1.1",
     "@sinclair/typebox": "0.31.28",
-    "@stacks/common": "6.8.1",
-    "@stacks/network": "6.8.1",
-    "@stacks/stacking": "6.9.0",
-    "@stacks/transactions": "6.9.0",
+    "@stacks/common": "6.10.0",
+    "@stacks/network": "6.11.3",
+    "@stacks/stacking": "6.11.3",
+    "@stacks/transactions": "6.11.3",
     "@types/express-list-endpoints": "4.0.1",
     "@types/lru-cache": "5.1.1",
     "@types/ws": "7.4.7",
@@ -162,7 +162,7 @@
     "@types/express": "4.17.13",
     "@types/is-ci": "3.0.0",
     "@types/jest": "29.5.6",
-    "@types/node": "18.13.0",
+    "@types/node": "20.11.4",
     "@types/node-fetch": "2.5.12",
     "@types/pg": "7.14.11",
     "@types/pg-copy-streams": "1.2.1",

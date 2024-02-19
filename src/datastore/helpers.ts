@@ -1,4 +1,4 @@
-import { parseEnum, unwrapOptionalProp } from '../helpers';
+import { getUintEnvOrDefault, parseEnum, unwrapOptionalProp } from '../helpers';
 import {
   BlockQueryResult,
   ContractTxQueryResult,
@@ -66,6 +66,7 @@ import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { logger } from '../logger';
 import { PgSqlClient } from '@hirosystems/api-toolkit';
+import PQueue from 'p-queue';
 
 export const TX_COLUMNS = [
   'tx_id',
@@ -1334,4 +1335,22 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
     prunedMempoolTxs: 0,
     restoredMempoolTxs: 0,
   };
+}
+
+/**
+ * Priority queue for parallel Postgres write query execution. This helps performance because it
+ * parallelizes the work postgres.js has to do when serializing JS types to PG types.
+ */
+export class PgWriteQueue {
+  readonly queue: PQueue;
+  constructor() {
+    const concurrency = Math.max(1, getUintEnvOrDefault('STACKS_BLOCK_DATA_INSERT_CONCURRENCY', 4));
+    this.queue = new PQueue({ concurrency, autoStart: true });
+  }
+  enqueue(task: Parameters<PQueue['add']>[0]): void {
+    void this.queue.add(task);
+  }
+  done(): Promise<void> {
+    return this.queue.onIdle();
+  }
 }

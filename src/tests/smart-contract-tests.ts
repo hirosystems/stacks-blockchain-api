@@ -13,6 +13,7 @@ import { I32_MAX } from '../helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { bufferToHex, PgSqlClient, waiter } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { TestBlockBuilder, testMempoolTx } from '../test-utils/test-builders';
 
 describe('smart contract tests', () => {
   let db: PgWriteStore;
@@ -1714,5 +1715,113 @@ describe('smart contract tests', () => {
       `/extended/v1/contract/by_trait?trait_abi=${randomData}`
     );
     expect(query.status).toBe(431);
+  });
+
+  test('status for multiple contracts', async () => {
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
+        smart_contract_source_code: '(some-contract-src)',
+      })
+      .addTxSmartContract({
+        tx_id: '0x1234',
+        block_height: 1,
+        contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
+        contract_source: '(some-contract-src)',
+      })
+      .build();
+    await db.update(block1);
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_index_block_hash: '0x01',
+    })
+      .addTx({
+        tx_id: '0x1222',
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
+        smart_contract_source_code: '(some-contract-src)',
+      })
+      .addTxSmartContract({
+        tx_id: '0x1222',
+        block_height: 2,
+        contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
+        contract_source: '(some-contract-src)',
+      })
+      .build();
+    await db.update(block2);
+
+    // Contracts are found
+    let query = await supertest(api.server).get(
+      `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1&contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2`
+    );
+    expect(query.status).toBe(200);
+    let json = JSON.parse(query.text);
+    expect(json).toStrictEqual({
+      'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1': {
+        found: true,
+        result: {
+          block_height: 1,
+          contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
+          status: 'success',
+          tx_id: '0x1234',
+        },
+      },
+      'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2': {
+        found: true,
+        result: {
+          block_height: 2,
+          contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
+          status: 'success',
+          tx_id: '0x1222',
+        },
+      },
+    });
+
+    // Assume two contract attempts on the mempool
+    const mempoolTx1 = testMempoolTx({
+      tx_id: '0x111111',
+      type_id: DbTxTypeId.SmartContract,
+      nonce: 5,
+      smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3',
+    });
+    const mempoolTx2 = testMempoolTx({
+      tx_id: '0x111122',
+      type_id: DbTxTypeId.SmartContract,
+      nonce: 6,
+      smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3',
+    });
+    await db.updateMempoolTxs({ mempoolTxs: [mempoolTx1, mempoolTx2] });
+    query = await supertest(api.server).get(
+      `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3`
+    );
+    expect(query.status).toBe(200);
+    json = JSON.parse(query.text);
+    // Only the first one is reported.
+    expect(json).toStrictEqual({
+      'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3': {
+        found: true,
+        result: {
+          contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-3',
+          status: 'pending',
+          tx_id: '0x111111',
+        },
+      },
+    });
+
+    // Check found = false
+    query = await supertest(api.server).get(
+      `/extended/v2/smart-contracts/status?contract_id=SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.abcde`
+    );
+    expect(query.status).toBe(200);
+    json = JSON.parse(query.text);
+    // Only the first one is reported.
+    expect(json).toStrictEqual({
+      'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.abcde': {
+        found: false,
+      },
+    });
   });
 });

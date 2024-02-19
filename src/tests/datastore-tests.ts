@@ -167,7 +167,7 @@ describe('postgres datastore', () => {
       createStxEvent('addrA', 'addrC', 35),
     ];
     for (const event of events) {
-      await db.updateStxEvent(client, tx, event);
+      await db.updateStxEvents(client, [{ tx, stxEvents: [event] }]);
     }
 
     const createStxLockEvent = (
@@ -195,7 +195,7 @@ describe('postgres datastore', () => {
       createStxLockEvent('addrA', 222n, 1),
       createStxLockEvent('addrB', 333n, 1),
     ];
-    await db.updateStxLockEvents(client, tx, stxLockEvents);
+    await db.updateStxLockEvents(client, [{ tx, stxLockEvents }]);
     await db.updateTx(client, tx);
     await db.updateTx(client, tx2);
 
@@ -3546,7 +3546,7 @@ describe('postgres datastore', () => {
     }
 
     // insert stx lock events directly
-    await db.updateStxLockEvents(client, tx1, [stxLockEvent1]);
+    await db.updateStxLockEvents(client, [{ tx: tx1, stxLockEvents: [stxLockEvent1] }]);
 
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -4101,7 +4101,7 @@ describe('postgres datastore', () => {
 
     const blockQuery1 = await db.getBlock({ hash: block2b.block_hash });
     expect(blockQuery1.result?.canonical).toBe(false);
-    const chainTip1 = await db.getChainTip();
+    const chainTip1 = await db.getChainTip(db.sql);
     expect(chainTip1).toEqual({
       block_hash: '0x33',
       block_height: 3,
@@ -4169,7 +4169,7 @@ describe('postgres datastore', () => {
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery2.result?.canonical).toBe(false);
     // Chain tip doesn't change yet.
-    const chainTip2 = await db.getChainTip();
+    const chainTip2 = await db.getChainTip(db.sql);
     expect(chainTip2).toEqual({
       block_hash: '0x33',
       block_height: 3,
@@ -4220,7 +4220,7 @@ describe('postgres datastore', () => {
 
     const blockQuery3 = await db.getBlock({ hash: block3b.block_hash });
     expect(blockQuery3.result?.canonical).toBe(true);
-    const chainTip3 = await db.getChainTip();
+    const chainTip3 = await db.getChainTip(db.sql);
     expect(chainTip3).toEqual({
       block_count: 4,
       block_hash: '0x44bb',

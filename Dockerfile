@@ -1,11 +1,11 @@
-FROM node:18-bullseye
+FROM node:20-bookworm-slim
 
 WORKDIR /app
 COPY . .
 COPY --from=qldrsc/duckdb /usr/local/bin/duckdb /bin/duckdb
 
 RUN apt-get update && \
-    apt-get install -y git openjdk-11-jre && \
+    apt-get install -y git openjdk-17-jre && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 RUN echo "GIT_TAG=$(git tag --points-at HEAD)" >> .env
