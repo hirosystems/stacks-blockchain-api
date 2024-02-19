@@ -1,3 +1,10 @@
+## [7.8.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.1...v7.8.2) (2024-02-19)
+
+
+### Bug Fixes
+
+* report placeholder in prom metrics for invalid request paths ([#1867](https://github.com/hirosystems/stacks-blockchain-api/issues/1867)) ([7921488](https://github.com/hirosystems/stacks-blockchain-api/commit/79214883a5c58724ddc3e7d7b57381317cb6e27d))
+
 ## [7.8.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.8.1) (2024-02-02)
 
 
