@@ -2003,7 +2003,7 @@ paths:
               example:
                 $ref: ./api/core-node/get-info.example.json
 
-  /extended/v1/status:
+  /extended:
     get:
       summary: API status
       description: Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.

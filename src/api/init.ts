@@ -150,7 +150,7 @@ export async function startApiServer(opts: {
   app.set('etag', false);
 
   app.get('/', (req, res) => {
-    res.redirect(`/extended/v1/status`);
+    res.redirect(`/extended/`);
   });
 
   app.use('/doc', (req, res) => {
@@ -189,6 +189,7 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
+      router.use('/', createStatusRouter(datastore));
       router.use(
         '/v1',
         (() => {
@@ -203,7 +204,9 @@ export async function startApiServer(opts: {
           v1.use('/info', createInfoRouter(datastore));
           v1.use('/stx_supply', createStxSupplyRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
-          v1.use('/status', createStatusRouter(datastore));
+          v1.use('/status', (req, res) =>
+            res.redirect(`${req.baseUrl.replace(/v1\/status/, '')}${getReqQuery(req)}`)
+          );
           v1.use('/fee_rate', createFeeRateRouter(datastore));
           v1.use('/tokens', createTokenRouter(datastore));
 
