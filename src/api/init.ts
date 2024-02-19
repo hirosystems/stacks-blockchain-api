@@ -120,7 +120,7 @@ export async function startApiServer(opts: {
                 break;
               }
             }
-            return pathTemplate;
+            return '<invalid_path>';
           } catch (error) {
             logger.warn(`Warning: ${error}`);
             return path;
