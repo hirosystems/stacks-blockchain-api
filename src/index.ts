@@ -110,7 +110,7 @@ async function init(): Promise<void> {
   if (isProdEnv && !fs.existsSync('.git-info')) {
     throw new Error(
       'File not found: .git-info. This generated file is required to display the running API version in the ' +
-        '`/extended/v1/status` endpoint. Please execute `npm run build` to regenerate it.'
+        '`/extended/` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
   chainIdConfigurationCheck();
