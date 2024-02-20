@@ -1,30 +1,17 @@
-## [7.9.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.3...v7.9.0-nakamoto.4) (2024-02-04)
-
-
-### Features
-
-* add signer-keys from pox4 events ([#1857](https://github.com/hirosystems/stacks-blockchain-api/issues/1857)) ([c17ad23](https://github.com/hirosystems/stacks-blockchain-api/commit/c17ad23d3f451d7c072ff94f4cb1ae7a2f78705d))
-
-## [7.9.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.2...v7.9.0-nakamoto.3) (2024-01-26)
+## [7.8.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.1...v7.8.2) (2024-02-19)
 
 
 ### Bug Fixes
 
-* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([ada8536](https://github.com/hirosystems/stacks-blockchain-api/commit/ada85364b5465b59e1dba0e82815bd8b8057f23f))
+* report placeholder in prom metrics for invalid request paths ([#1867](https://github.com/hirosystems/stacks-blockchain-api/issues/1867)) ([7921488](https://github.com/hirosystems/stacks-blockchain-api/commit/79214883a5c58724ddc3e7d7b57381317cb6e27d))
 
-## [7.9.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.1...v7.9.0-nakamoto.2) (2024-01-26)
+## [7.8.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.8.1) (2024-02-02)
 
 
 ### Bug Fixes
 
-* remove signer columns from tenure-change transactions ([#1845](https://github.com/hirosystems/stacks-blockchain-api/issues/1845)) ([8ec726b](https://github.com/hirosystems/stacks-blockchain-api/commit/8ec726b05531abb7787d035d21f7afc276574b9c))
-
-## [7.9.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.0...v7.9.0-nakamoto.1) (2024-01-25)
-
-
-### Features
-
-* pox 4 revoke events and signer-key support ([#1829](https://github.com/hirosystems/stacks-blockchain-api/issues/1829)) ([5e5650a](https://github.com/hirosystems/stacks-blockchain-api/commit/5e5650a29bcc5950f061ed0a84961075c855a863)), closes [#1849](https://github.com/hirosystems/stacks-blockchain-api/issues/1849)
+* **rosetta:** use /v2/fees/transaction for fee estimation ([b287b7b](https://github.com/hirosystems/stacks-blockchain-api/commit/b287b7bb3426719553e9ffa3b88178fb24207a6b))
+* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([07339c0](https://github.com/hirosystems/stacks-blockchain-api/commit/07339c08f3f42bc7b08c2e830939bfadcd308cb0))
 
 ## [7.8.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.7.2...v7.8.0) (2024-01-23)
 
