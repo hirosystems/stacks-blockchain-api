@@ -16,6 +16,7 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
+  CoreNodeNewPoxSet,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -38,6 +39,7 @@ import {
   DbPoxSyntheticEvent,
   DbTxStatus,
   DbBnsSubdomain,
+  DbPoxSetSigners,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -47,6 +49,7 @@ import {
   parseMicroblocksFromTxs,
   isPoxPrintEvent,
   newCoreNoreBlockEventCounts,
+  parsePoxSetRewardAddress,
 } from './reader';
 import {
   decodeTransaction,
@@ -708,6 +711,36 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
   await db.updateAttachments(attachments);
 }
 
+async function handleNewPoxSetMessage(
+  chainId: ChainID,
+  msg: CoreNodeNewPoxSet,
+  db: PgWriteStore
+): Promise<void> {
+  logger.info(
+    `Received new pox set message, block=${msg.block_id}, cycle=${msg.cycle_number}, signers=${
+      msg.stacker_set.signers?.length ?? 0
+    }`
+  );
+  if (msg.stacker_set.signers) {
+    const poxSetSigners: DbPoxSetSigners = {
+      index_block_hash: '0x' + msg.block_id,
+      cycle_number: msg.cycle_number,
+      signers: msg.stacker_set.signers.map(signer => ({
+        signing_key: '0x' + signer.signing_key,
+        slots: signer.slots,
+        stacked_amount: BigInt(signer.stacked_amt),
+      })),
+    };
+    await db.updatePoxSets(poxSetSigners);
+  }
+
+  const rewardedBtcAddrs = msg.stacker_set.rewarded_addresses.map(addr =>
+    parsePoxSetRewardAddress(addr)
+  );
+  logger.info(`Parsed ${rewardedBtcAddrs.length} rewarded BTC addresses`);
+  // TODO: store rewarded BTC addresses..
+}
+
 export const DummyEventMessageHandler: EventMessageHandler = {
   handleRawEventRequest: () => {},
   handleBlockMessage: () => {},
@@ -716,6 +749,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
   handleMempoolTxs: () => {},
   handleDroppedMempoolTxs: () => {},
   handleNewAttachment: () => {},
+  handleNewPoxSetMessage: () => {},
 };
 
 interface EventMessageHandler {
@@ -737,6 +771,11 @@ interface EventMessageHandler {
     db: PgWriteStore
   ): Promise<void> | void;
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
+  handleNewPoxSetMessage(
+    chainId: ChainID,
+    msg: CoreNodeNewPoxSet,
+    db: PgWriteStore
+  ): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -823,6 +862,14 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => observeEvent('new_attachment', () => handleNewAttachmentMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing new attachment message');
+          throw e;
+        });
+    },
+    handleNewPoxSetMessage: (chainId: ChainID, msg: CoreNodeNewPoxSet, db: PgWriteStore) => {
+      return processorQueue
+        .add(() => observeEvent('new_pox_set', () => handleNewPoxSetMessage(chainId, msg, db)))
+        .catch(e => {
+          logger.error(e, 'Error processing new pox set message');
           throw e;
         });
     },
@@ -998,6 +1045,22 @@ export async function startEventServer(opts: {
       try {
         const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
+        res.status(200).json({ result: 'ok' });
+        next();
+      } catch (error) {
+        logger.error(error, 'error processing core-node /new_microblocks');
+        res.status(500).json({ error: error });
+      }
+    }),
+    handleRawEventRequest
+  );
+
+  app.post(
+    '/new_pox_set',
+    asyncHandler(async (req, res, next) => {
+      try {
+        const msg: CoreNodeNewPoxSet = req.body;
+        await messageHandler.handleNewPoxSetMessage(opts.chainId, msg, db);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {

@@ -340,3 +340,36 @@ export interface CoreNodeMicroblockMessage {
   transactions: CoreNodeMicroblockTxMessage[];
   events: CoreNodeEvent[];
 }
+
+export interface CoreNodeNewPoxSet {
+  /** This is the index_block_hash */
+  block_id: string; // "c811822051a75406b1a9cfa66c7ef66e82ea72502db46fbb75fc66f9220cc5d1",
+  cycle_number: number; // 11,
+  stacker_set: {
+    rewarded_addresses: (
+      | {
+          Standard: [
+            {
+              bytes: string; // "5146f0566e9796602a677d895852e9c0fe5686f7"
+              version: number; // 26, 21
+            },
+            'SerializeP2PKH' | 'SerializeP2SH'
+          ];
+        }
+      | {
+          Addr20: [/** mainnet */ boolean, 'P2WPKH', /** 20 bytes */ number[]];
+        }
+      | {
+          Addr32: [/** mainnet */ boolean, 'P2WSH' | 'P2TR', /** 32 bytes */ number[]];
+        }
+    )[];
+    signers?: {
+      signing_key: string; // "03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e",
+      slots: number; // 1,
+      stacked_amt: number; // 3000225000000000
+    }[];
+    start_cycle_state: {
+      missed_reward_slots: [];
+    };
+  };
+}

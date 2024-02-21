@@ -65,6 +65,16 @@ export interface DbBurnchainReward {
   reward_index: number;
 }
 
+export interface DbPoxSetSigners {
+  index_block_hash: string;
+  cycle_number: number;
+  signers: {
+    signing_key: string;
+    slots: number;
+    stacked_amount: bigint;
+  }[];
+}
+
 export interface DbRewardSlotHolder {
   canonical: boolean;
   burn_block_hash: string;
@@ -994,6 +1004,7 @@ interface ReOrgEntities {
   names: number;
   namespaces: number;
   subdomains: number;
+  poxSigners: number;
 }
 
 export interface ReOrgUpdatedEntities {
@@ -1518,6 +1529,15 @@ export interface RewardSlotHolderInsertValues {
   burn_block_height: number;
   address: string;
   slot_index: number;
+}
+
+export interface PoxSetSignerValues {
+  canonical: boolean;
+  index_block_hash: PgBytea;
+  cycle_number: number;
+  signing_key: PgBytea;
+  slots: number;
+  stacked_amount: bigint;
 }
 
 export interface SmartContractInsertValues {

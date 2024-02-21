@@ -60,6 +60,8 @@ import {
   DataStoreBnsBlockTxData,
   DbPoxSyntheticEvent,
   PoxSyntheticEventTable,
+  DbPoxSetSigners,
+  PoxSetSignerValues,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -186,6 +188,10 @@ export class PgWriteStore extends PgStore {
       const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.block_height);
       const isCanonical = data.block.block_height > chainTip.block_height;
+      await this.markPoxSetsCanonical(sql, {
+        canonical: isCanonical,
+        indexBlockHash: data.block.index_block_hash,
+      });
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
@@ -1544,6 +1550,61 @@ export class PgWriteStore extends PgStore {
     });
   }
 
+  async updatePoxSets(poxSetSigners: DbPoxSetSigners): Promise<void> {
+    return await this.sqlWriteTransaction(async sql => {
+      // Check if the pox set is already in the database based on index_block_hash
+      const existingPoxSet = await sql<
+        {
+          reward_recipient: string;
+          reward_amount: string;
+        }[]
+      >`
+        SELECT * FROM pox_sets WHERE index_block_hash = ${poxSetSigners.index_block_hash}
+      `;
+      if (existingPoxSet.count > 0) {
+        // TODO: figure out the expected behavior during reorgs, is it ok to just return early here?
+        logger.error(`Pox set already exists for block ${poxSetSigners.index_block_hash}`);
+        return;
+      }
+
+      // The pox set event is received before the block is ingested, so we mark as non-canonical initially,
+      // and then update the canonical flag later when the block is ingested.
+      let canonical = false;
+
+      // Check if block was already ingested (this should never happen, but just in case)
+      const block = await sql<BlockQueryResult[]>`
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM blocks
+        WHERE index_block_hash = ${poxSetSigners.index_block_hash}
+      `;
+      if (block.count > 0) {
+        logger.error(
+          `Block was already ingested for pox set, block=${poxSetSigners.index_block_hash}`
+        );
+        canonical = block[0].canonical;
+      }
+
+      for (const signer of poxSetSigners.signers) {
+        const values: PoxSetSignerValues = {
+          canonical,
+          index_block_hash: poxSetSigners.index_block_hash,
+          cycle_number: poxSetSigners.cycle_number,
+          signing_key: signer.signing_key,
+          slots: signer.slots,
+          stacked_amount: signer.stacked_amount,
+        };
+        const signerInsertResult = await sql`
+          INSERT into pox_sets ${sql(values)}
+        `;
+        if (signerInsertResult.count !== 1) {
+          throw new Error(
+            `Failed to insert pox signer set at block ${poxSetSigners.index_block_hash}`
+          );
+        }
+      }
+    });
+  }
+
   async insertSlotHoldersBatch(sql: PgSqlClient, slotHolders: DbRewardSlotHolder[]): Promise<void> {
     const slotValues: RewardSlotHolderInsertValues[] = slotHolders.map(slot => ({
       canonical: true,
@@ -2743,6 +2804,12 @@ export class PgWriteStore extends PgStore {
     }
     updatedEntities.markedCanonical.blocks++;
 
+    const poxSignersRestored = await this.markPoxSetsCanonical(sql, {
+      canonical: true,
+      indexBlockHash,
+    });
+    updatedEntities.markedCanonical.poxSigners += poxSignersRestored;
+
     // Orphan the now conflicting block at the same height
     const orphanedBlockResult = await sql<BlockQueryResult[]>`
       UPDATE blocks
@@ -2758,6 +2825,12 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
+        const poxSignersOrphaned = await this.markPoxSetsCanonical(sql, {
+          canonical: false,
+          indexBlockHash: orphanedBlock.index_block_hash,
+        });
+        updatedEntities.markedNonCanonical.poxSigners += poxSignersRestored;
+
         const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
@@ -2895,6 +2968,21 @@ export class PgWriteStore extends PgStore {
       `;
     }
     return updatedEntities;
+  }
+
+  async markPoxSetsCanonical(
+    sql: PgSqlClient,
+    args: { canonical: boolean; indexBlockHash: string }
+  ): Promise<number> {
+    const result = await sql`
+      UPDATE pox_sets
+      SET canonical = ${args.canonical}
+      WHERE index_block_hash = ${args.indexBlockHash} AND canonical != ${args.canonical}
+    `;
+    logger.info(
+      `Marked ${result.count} pox sets as canonical=${args.canonical} for block ${args.indexBlockHash}`
+    );
+    return result.count;
   }
 
   /**
