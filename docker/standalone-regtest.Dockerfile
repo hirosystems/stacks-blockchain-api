@@ -295,7 +295,7 @@ RUN <<EOF
 
     export STACKS_EVENT_OBSERVER="127.0.0.1:3998"
     envsubst < config.toml.in > config.toml
-    stacks-node start --config=config.toml &
+    stacks-node start --config config.toml &
     STACKS_PID=$!
 
     while true; do
@@ -359,7 +359,7 @@ cat > run.sh <<'EOM'
 
   export STACKS_EVENT_OBSERVER="127.0.0.1:3700"
   envsubst < config.toml.in > config.toml
-  stacks-node start --config=config.toml &
+  stacks-node start --config config.toml &
   STACKS_PID=$!
 
   while true; do
