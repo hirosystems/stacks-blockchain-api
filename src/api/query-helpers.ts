@@ -16,7 +16,7 @@ export enum OrderParam {
   desc = 'desc',
 }
 
-function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
+export function handleBadRequest(res: Response, next: NextFunction, errorMessage: string): never {
   const error = new InvalidRequestError(errorMessage, InvalidRequestErrorType.bad_request);
   res.status(400).json({ error: errorMessage });
   next(error);

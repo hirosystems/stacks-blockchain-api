@@ -936,28 +936,77 @@ export class PgStore extends BasePgStore {
     return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
   }
 
-  async getPoxSetsForCycle(cycle: number): Promise<FoundOrNot<DbPoxSetSigners>> {
+  async getPoxSetForCycle(cycle: number) {
     return await this.sqlTransaction(async sql => {
-      const poxSetQuery = await sql<PoxSetQueryResult[]>`
-        SELECT ${sql(POX_SET_COLUMNS)}
-        FROM pox_sets
-        WHERE cycle_number = ${cycle} AND canonical = true
-        ORDER BY stacked_amount DESC, slots DESC, signing_key ASC
+      // TODO: The query against pox4_events needs to be constrained to only look at rows that are associated with this cycle
+      // and not just the most recent rows. Unclear if simply comparing block heights is sufficient, might need the pox4 events
+      // to start including cycle numbers. It needs to exclude rows that are too old and too new to be related to the cycle.
+      // TODO: add btc address for stackers
+      // TODO: how to exclude stackers who's stacking tx was too late to be included in the cycle?
+      // TODO: how to exclude stackers who didn't have enough stacked to be included in the cycle?
+      // TODO: add pagination support
+      const poxSetQuery = await sql<
+        {
+          canonical: boolean;
+          index_block_hash: string;
+          cycle_number: number;
+          signing_key: string;
+          slots: number;
+          stacked_amount: string;
+          stacker_locked_pairs: [stacker: string, locked_amount: string, pox_addr: string][];
+        }[]
+      >`
+        WITH LastEvents AS NOT MATERIALIZED (
+          SELECT DISTINCT ON (pe.stacker)
+            pe.stacker,
+            pe.signer_key,
+            pe.locked,
+            pe.pox_addr
+          FROM pox4_events pe
+          WHERE pe.canonical = true AND pe.microblock_canonical = true
+          ORDER BY pe.stacker, pe.block_height DESC, pe.tx_index DESC, pe.event_index DESC
+        ), AggregatedStackers AS NOT MATERIALIZED (
+          SELECT
+            le.signer_key,
+            JSON_AGG(ARRAY[le.stacker, le.locked::text, le.pox_addr] ORDER BY le.locked DESC) AS stacker_locked_pairs
+          FROM LastEvents le
+          GROUP BY le.signer_key
+        )
+        SELECT
+          ps.canonical,
+          ps.index_block_hash,
+          ps.cycle_number,
+          ps.signing_key,
+          ps.slots,
+          ps.stacked_amount,
+          asa.stacker_locked_pairs
+        FROM pox_sets ps
+        JOIN AggregatedStackers asa ON asa.signer_key = ps.signing_key
+        WHERE ps.cycle_number = ${cycle} AND ps.canonical = true
+        ORDER BY ps.stacked_amount DESC, ps.slots DESC, ps.signing_key ASC
       `;
       if (poxSetQuery.length === 0) {
-        return { found: false };
+        return { found: false } as const;
       }
-      const result: DbPoxSetSigners = {
+
+      const signers = poxSetQuery.map(r => ({
+        signing_key: r.signing_key,
+        slots: r.slots,
+        stacked_amount: BigInt(r.stacked_amount),
+        stackers: r.stacker_locked_pairs.map(([stacker, locked_amount, pox_addr]) => ({
+          stacker: stacker,
+          amount: BigInt(locked_amount),
+          pox_addr: pox_addr,
+        })),
+      }));
+      const totalStacked = signers.reduce((acc, r) => acc + r.stacked_amount, 0n);
+      const result = {
         index_block_hash: poxSetQuery[0].index_block_hash,
         cycle_number: poxSetQuery[0].cycle_number,
-        signers: poxSetQuery.map(r => ({
-          signing_key: r.signing_key,
-          slots: r.slots,
-          stacked_amount: BigInt(r.stacked_amount),
-        })),
+        total_stacked: totalStacked,
+        signers: signers,
       };
-      const found: FoundOrNot<DbPoxSetSigners> = { found: true, result };
-      return found;
+      return { found: true, result } as const;
     });
   }
 

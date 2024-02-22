@@ -5059,7 +5059,7 @@ describe('postgres datastore', () => {
 
     await handleNewPoxSetMessage(NETWORK_CHAIN_ID.testnet, payload, db);
 
-    const poxSet = await db.getPoxSetsForCycle(payload.cycle_number);
+    const poxSet = await db.getPoxSetForCycle(payload.cycle_number);
     expect(poxSet.found).toBe(true);
     assert(poxSet.found);
     expect(poxSet.result.signers.length).toBeGreaterThan(0);
