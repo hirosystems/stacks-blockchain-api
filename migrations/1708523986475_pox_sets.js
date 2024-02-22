@@ -2,7 +2,7 @@
 exports.up = pgm => {
   pgm.createTable('pox_sets', {
     id: {
-      type: 'serial',
+      type: 'bigserial',
       primaryKey: true,
     },
     index_block_hash: {
@@ -10,7 +10,7 @@ exports.up = pgm => {
       notNull: true,
     },
     cycle_number: {
-      type: 'bigint',
+      type: 'int',
       notNull: true,
     },
     canonical: {
@@ -22,7 +22,7 @@ exports.up = pgm => {
       notNull: true,
     },
     slots: {
-      type: 'bigint',
+      type: 'int',
       notNull: true,
     },
     stacked_amount: {

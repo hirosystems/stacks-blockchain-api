@@ -711,7 +711,7 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
   await db.updateAttachments(attachments);
 }
 
-async function handleNewPoxSetMessage(
+export async function handleNewPoxSetMessage(
   chainId: ChainID,
   msg: CoreNodeNewPoxSet,
   db: PgWriteStore
@@ -1064,7 +1064,7 @@ export async function startEventServer(opts: {
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
-        logger.error(error, 'error processing core-node /new_microblocks');
+        logger.error(error, 'error processing core-node /new_pox_set');
         res.status(500).json({ error: error });
       }
     }),

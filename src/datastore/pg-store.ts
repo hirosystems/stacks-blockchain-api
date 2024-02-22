@@ -69,6 +69,8 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
+  DbPoxSetSigners,
+  PoxSetQueryResult,
 } from './common';
 import {
   abiColumn,
@@ -84,6 +86,7 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
+  POX_SET_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
@@ -931,6 +934,31 @@ export class PgStore extends BasePgStore {
     `;
     const resultAmount = BigInt(queryResults[0]?.amount ?? 0);
     return { reward_recipient: burnchainRecipient, reward_amount: resultAmount };
+  }
+
+  async getPoxSetsForCycle(cycle: number): Promise<FoundOrNot<DbPoxSetSigners>> {
+    return await this.sqlTransaction(async sql => {
+      const poxSetQuery = await sql<PoxSetQueryResult[]>`
+        SELECT ${sql(POX_SET_COLUMNS)}
+        FROM pox_sets
+        WHERE cycle_number = ${cycle} AND canonical = true
+        ORDER BY stacked_amount DESC, slots DESC, signing_key ASC
+      `;
+      if (poxSetQuery.length === 0) {
+        return { found: false };
+      }
+      const result: DbPoxSetSigners = {
+        index_block_hash: poxSetQuery[0].index_block_hash,
+        cycle_number: poxSetQuery[0].cycle_number,
+        signers: poxSetQuery.map(r => ({
+          signing_key: r.signing_key,
+          slots: r.slots,
+          stacked_amount: BigInt(r.stacked_amount),
+        })),
+      };
+      const found: FoundOrNot<DbPoxSetSigners> = { found: true, result };
+      return found;
+    });
   }
 
   private async parseMempoolTransactions(

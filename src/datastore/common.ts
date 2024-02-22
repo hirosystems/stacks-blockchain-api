@@ -987,6 +987,15 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
+export interface PoxSetQueryResult {
+  index_block_hash: string;
+  cycle_number: number;
+  canonical: boolean;
+  signing_key: string;
+  slots: number;
+  stacked_amount: string;
+}
+
 interface ReOrgEntities {
   blocks: number;
   microblocks: number;
