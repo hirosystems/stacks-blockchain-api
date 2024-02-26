@@ -2813,6 +2813,9 @@ export class PgStore extends BasePgStore {
     return txTransfers[0];
   }
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions`
+   */
   async getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
     blockHeight: number;

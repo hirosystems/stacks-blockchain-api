@@ -54,6 +54,7 @@ import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
 import { createMempoolRouter } from './routes/v2/mempool';
 import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
+import { createV2AddressesRouter } from './routes/v2/addresses';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -239,6 +240,7 @@ export async function startApiServer(opts: {
           v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
           v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
+          v2.use('/addresses', createV2AddressesRouter(datastore));
           return v2;
         })()
       );

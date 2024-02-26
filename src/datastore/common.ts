@@ -225,6 +225,14 @@ export interface DbTxRaw extends DbTx {
   raw_tx: string;
 }
 
+export interface DbTxWithAccountTransferSummary extends DbTx {
+  stx_sent: bigint;
+  stx_received: bigint;
+  stx_transfers: number;
+  ft_transfers: number;
+  nft_transfers: number;
+}
+
 export interface DbTxGlobalStatus {
   status: DbTxStatus;
   index_block_hash?: string;
@@ -972,6 +980,14 @@ export interface TxQueryResult {
 
 export interface ContractTxQueryResult extends TxQueryResult {
   abi?: unknown | null;
+}
+
+export interface AccountTransferSummaryTxQueryResult extends TxQueryResult {
+  stx_sent: bigint;
+  stx_received: bigint;
+  stx_transfers: number;
+  ft_transfers: number;
+  nft_transfers: number;
 }
 
 export interface FaucetRequestQueryResult {

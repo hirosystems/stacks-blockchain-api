@@ -11,6 +11,7 @@ export type SchemaMergeRootStub =
   | AddressStxInboundListResponse
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
+  | AddressTransactionsWithTransferSummaryListResponse
   | BlockListResponse
   | BurnBlockListResponse
   | NakamotoBlockListResponse
@@ -110,6 +111,7 @@ export type SchemaMergeRootStub =
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
+  | AddressTransactionWithTransferSummaries
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
   | AddressUnlockSchedule
@@ -1152,6 +1154,41 @@ export interface AddressTransactionsListResponse {
   offset: number;
   total: number;
   results: (MempoolTransaction | Transaction)[];
+}
+/**
+ * GET Address Transactions With Transfer Summary
+ */
+export interface AddressTransactionsWithTransferSummaryListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransactionWithTransferSummaries[];
+}
+/**
+ * Transaction with STX transfer summaries for a given address
+ */
+export interface AddressTransactionWithTransferSummaries {
+  tx: Transaction;
+  /**
+   * Total sent from the given address, including the tx fee, in micro-STX as an integer string.
+   */
+  stx_sent: string;
+  /**
+   * Total received by the given address in micro-STX as an integer string.
+   */
+  stx_received: string;
+  /**
+   * Number of STX transfers for this account in this transaction
+   */
+  stx_transfers: number;
+  /**
+   * Number of FT transfers for this account in this transaction
+   */
+  ft_transfers: number;
+  /**
+   * Number of NFT transfers for this account in this transaction
+   */
+  nft_transfers: number;
 }
 /**
  * GET request that returns blocks

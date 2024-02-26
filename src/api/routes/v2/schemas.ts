@@ -126,14 +126,22 @@ const BlockParamsSchema = Type.Object(
 export type BlockParams = Static<typeof BlockParamsSchema>;
 export const CompiledBlockParams = ajv.compile(BlockParamsSchema);
 
-const SmartContractPrincipal = Type.RegExp(
+const Address = Type.RegExp(/^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}/);
+const SmartContractId = Type.RegExp(
   /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$/
 );
 const SmartContractStatusParamsSchema = Type.Object(
   {
-    contract_id: Type.Union([Type.Array(SmartContractPrincipal), SmartContractPrincipal]),
+    contract_id: Type.Union([Type.Array(SmartContractId), SmartContractId]),
   },
   { additionalProperties: false }
 );
 export type SmartContractStatusParams = Static<typeof SmartContractStatusParamsSchema>;
 export const CompiledSmartContractStatusParams = ajv.compile(SmartContractStatusParamsSchema);
+
+const AddressParamsSchema = Type.Object(
+  { address: Type.Union([Address, SmartContractId]) },
+  { additionalProperties: false }
+);
+export type AddressParams = Static<typeof AddressParamsSchema>;
+export const CompiledAddressParams = ajv.compile(AddressParamsSchema);

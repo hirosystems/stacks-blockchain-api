@@ -1,8 +1,18 @@
-import { BurnBlock, NakamotoBlock, SmartContractsStatusResponse } from 'docs/generated';
-import { DbBlock, DbBurnBlock, DbSmartContractStatus } from '../../../datastore/common';
+import {
+  AddressTransactionWithTransferSummaries,
+  BurnBlock,
+  NakamotoBlock,
+  SmartContractsStatusResponse,
+} from 'docs/generated';
+import {
+  DbBlock,
+  DbBurnBlock,
+  DbSmartContractStatus,
+  DbTxWithAccountTransferSummary,
+} from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
-import { getTxStatusString } from '../../../api/controllers/db-controller';
+import { getTxStatusString, parseDbTx } from '../../../api/controllers/db-controller';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -60,4 +70,18 @@ export function parseDbSmartContractStatusArray(
   }
   for (const missingId of ids) response[missingId] = { found: false };
   return response;
+}
+
+export function parseDbTxWithAccountTransferSummary(
+  tx: DbTxWithAccountTransferSummary
+): AddressTransactionWithTransferSummaries {
+  const summaryTx: AddressTransactionWithTransferSummaries = {
+    tx: parseDbTx(tx),
+    stx_sent: tx.stx_sent.toString(),
+    stx_received: tx.stx_received.toString(),
+    stx_transfers: tx.stx_transfers,
+    ft_transfers: tx.ft_transfers,
+    nft_transfers: tx.nft_transfers,
+  };
+  return summaryTx;
 }

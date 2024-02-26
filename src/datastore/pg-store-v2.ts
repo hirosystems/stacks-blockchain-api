@@ -7,6 +7,7 @@ import {
   BlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
+  AddressParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -19,9 +20,16 @@ import {
   DbBurnBlock,
   DbTxTypeId,
   DbSmartContractStatus,
-  DbTxStatus,
+  AccountTransferSummaryTxQueryResult,
+  DbTxWithAccountTransferSummary,
 } from './common';
-import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
+import {
+  BLOCK_COLUMNS,
+  parseBlockQueryResult,
+  TX_COLUMNS,
+  parseTxQueryResult,
+  parseAccountTransferSummaryTxQueryResult,
+} from './helpers';
 
 export class PgStoreV2 extends BasePgStoreModule {
   async getBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBlock>> {
@@ -267,6 +275,64 @@ export class PgStoreV2 extends BasePgStoreModule {
       }
 
       return statusArray;
+    });
+  }
+
+  async getAddressTransactions(
+    args: AddressParams & TransactionPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbTxWithAccountTransferSummary>> {
+    return await this.sqlTransaction(async sql => {
+      const addressCheck =
+        await sql`SELECT principal FROM principal_stx_txs WHERE principal = ${args.address} LIMIT 1`;
+      if (addressCheck.count === 0)
+        throw new InvalidRequestError(`Address not found`, InvalidRequestErrorType.invalid_param);
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+
+      const eventCond = sql`
+        tx_id = stx_txs.tx_id
+        AND index_block_hash = stx_txs.index_block_hash
+        AND microblock_hash = stx_txs.microblock_hash
+      `;
+      const eventAcctCond = sql`
+        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
+      `;
+      const resultQuery = await this.sql<
+        (AccountTransferSummaryTxQueryResult & { count: number })[]
+      >`
+        WITH stx_txs AS (
+          SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::int AS count
+          FROM principal_stx_txs
+          WHERE principal = ${args.address}
+            AND canonical = TRUE
+            AND microblock_canonical = TRUE
+          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        )
+        SELECT
+          ${sql(TX_COLUMNS)},
+          (
+            SELECT SUM(amount) FROM stx_events WHERE ${eventCond} AND sender = ${args.address}
+          ) AS stx_sent,
+          (
+            SELECT SUM(amount) FROM stx_events WHERE ${eventCond} AND recipient = ${args.address}
+          ) AS stx_received,
+          (SELECT COUNT(*)::int FROM stx_events WHERE ${eventAcctCond}) AS stx_transfers,
+          (SELECT COUNT(*)::int FROM ft_events WHERE ${eventAcctCond}) AS ft_transfers,
+          (SELECT COUNT(*)::int FROM nft_events WHERE ${eventAcctCond}) AS nft_transfers,
+          count
+        FROM stx_txs
+        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+      `;
+      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
+      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+      return {
+        total,
+        limit,
+        offset,
+        results: parsed,
+      };
     });
   }
 }
