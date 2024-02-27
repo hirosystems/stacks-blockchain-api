@@ -834,6 +834,54 @@ paths:
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
+  /extended/v2/addresses/{address}/transactions:
+    get:
+      summary: Get address transactions
+      description: |
+        Retrieves all transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent, received, and the number of STX, FT and NFT transfers contained within each transaction. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+      tags:
+        - Accounts
+      operationId: get_address_transactions
+      parameters:
+        - name: address
+          in: path
+          description: STX address or Smart Contract ID
+          required: true
+          schema:
+            type: string
+            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+        - name: limit
+          in: query
+          description: max number of account transactions to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: index of first account transaction to fetch
+          required: false
+          schema:
+            type: integer
+            example: 10
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-v2-address-transactions.schema.json
+              example:
+                $ref: ./api/address/get-v2-address-transactions.example.json
+
+  # /extended/v2/addresses/:address/transactions/:tx_id:
+  #   get:
+  #     summary: Get address transactions
+  #     description: |
+  #       Get X
+  #     tags:
+  #       - Accounts
+
   /extended/v2/smart-contracts/status:
     get:
       summary: Get smart contracts status
@@ -1618,6 +1666,7 @@ paths:
           Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
 
           If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_account_transactions
@@ -1679,6 +1728,7 @@ paths:
     get:
       summary: Get account transaction information for specific transaction
       description: Retrieves transaction details for a given Transaction Id `tx_id`, for a given account or contract Identifier.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_single_transaction_with_transfers
@@ -1717,6 +1767,7 @@ paths:
     get:
       summary: Get account transactions including STX transfers for each transaction.
       description: Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_account_transactions_with_transfers

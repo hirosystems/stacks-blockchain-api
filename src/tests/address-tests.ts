@@ -452,6 +452,30 @@ describe('address tests', () => {
       ],
     };
     expect(JSON.parse(fetch1.text)).toEqual(expected1);
+    const v2Fetch1 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions`
+    );
+    expect(v2Fetch1.status).toBe(200);
+    expect(v2Fetch1.type).toBe('application/json');
+    const v2Fetch1Json = JSON.parse(v2Fetch1.text);
+    expect(v2Fetch1Json.results[0].tx).toStrictEqual(expected1.results[0].tx);
+    expect(v2Fetch1Json.results[0].stx_sent).toBe('1339');
+    expect(v2Fetch1Json.results[0].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[0].stx_transfers).toBe(3);
+    expect(v2Fetch1Json.results[0].ft_transfers).toBe(1);
+    expect(v2Fetch1Json.results[0].nft_transfers).toBe(2);
+    expect(v2Fetch1Json.results[1].tx).toStrictEqual(expected1.results[1].tx);
+    expect(v2Fetch1Json.results[1].stx_sent).toBe('1484');
+    expect(v2Fetch1Json.results[1].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[1].stx_transfers).toBe(1);
+    expect(v2Fetch1Json.results[1].ft_transfers).toBe(0);
+    expect(v2Fetch1Json.results[1].nft_transfers).toBe(1);
+    expect(v2Fetch1Json.results[2].tx).toStrictEqual(expected1.results[2].tx);
+    expect(v2Fetch1Json.results[2].stx_sent).toBe('1334');
+    expect(v2Fetch1Json.results[2].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[2].stx_transfers).toBe(1);
+    expect(v2Fetch1Json.results[2].ft_transfers).toBe(2);
+    expect(v2Fetch1Json.results[2].nft_transfers).toBe(1);
 
     // testing single txs information based on given tx_id
     const fetchSingleTxInformation = await supertest(api.server).get(

@@ -14,8 +14,8 @@ import {
   validRequestQuery,
 } from './schemas';
 import { parseDbTxWithAccountTransferSummary } from './helpers';
-import { AddressTransactionsWithTransferSummaryListResponse } from 'docs/generated';
-import { InvalidRequestError } from 'src/errors';
+import { AddressTransactionsWithTransferSummaryListResponse } from '../../../../docs/generated';
+import { InvalidRequestError } from '../../../errors';
 
 export function createV2AddressesRouter(db: PgStore): express.Router {
   const router = express.Router();

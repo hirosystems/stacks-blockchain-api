@@ -2745,6 +2745,9 @@ export class PgStore extends BasePgStore {
     return { results: parsed, total: count };
   }
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions/:tx_id`
+   */
   async getInformationTxsWithStxTransfers({
     stxAddress,
     tx_id,

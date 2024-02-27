@@ -313,10 +313,14 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
           ${sql(TX_COLUMNS)},
           (
-            SELECT SUM(amount) FROM stx_events WHERE ${eventCond} AND sender = ${args.address}
-          ) AS stx_sent,
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND sender = ${args.address}
+          ) + txs.fee_rate AS stx_sent,
           (
-            SELECT SUM(amount) FROM stx_events WHERE ${eventCond} AND recipient = ${args.address}
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND recipient = ${args.address}
           ) AS stx_received,
           (SELECT COUNT(*)::int FROM stx_events WHERE ${eventAcctCond}) AS stx_transfers,
           (SELECT COUNT(*)::int FROM ft_events WHERE ${eventAcctCond}) AS ft_transfers,

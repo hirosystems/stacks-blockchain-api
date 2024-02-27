@@ -1,6 +1,6 @@
 {
-  "title": "AddressTransactionWithTransferSummaries",
-  "description": "Transaction with STX transfer summaries for a given address",
+  "title": "AddressTransaction",
+  "description": "Address transaction with STX, FT and NFT transfer summaries",
   "type": "object",
   "additionalProperties": false,
   "required": [
