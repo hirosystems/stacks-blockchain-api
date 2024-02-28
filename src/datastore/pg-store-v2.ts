@@ -1,4 +1,4 @@
-import { BasePgStoreModule } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient } from '@hirosystems/api-toolkit';
 import {
   BlockLimitParamSchema,
   CompiledBurnBlockHashParam,
@@ -8,6 +8,7 @@ import {
   BlockPaginationQueryParams,
   SmartContractStatusParams,
   AddressParams,
+  AddressTransactionParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -22,6 +23,8 @@ import {
   DbSmartContractStatus,
   AccountTransferSummaryTxQueryResult,
   DbTxWithAccountTransferSummary,
+  DbEventTypeId,
+  DbAccountTransactionTransfer,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -30,6 +33,19 @@ import {
   parseTxQueryResult,
   parseAccountTransferSummaryTxQueryResult,
 } from './helpers';
+
+async function assertAddressExists(sql: PgSqlClient, address: string) {
+  const addressCheck =
+    await sql`SELECT principal FROM principal_stx_txs WHERE principal = ${address} LIMIT 1`;
+  if (addressCheck.count === 0)
+    throw new InvalidRequestError(`Address not found`, InvalidRequestErrorType.invalid_param);
+}
+
+async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
+  const txCheck = await sql`SELECT tx_id FROM txs WHERE tx_id = ${tx_id} LIMIT 1`;
+  if (txCheck.count === 0)
+    throw new InvalidRequestError(`Transaction not found`, InvalidRequestErrorType.invalid_param);
+}
 
 export class PgStoreV2 extends BasePgStoreModule {
   async getBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBlock>> {
@@ -282,10 +298,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: AddressParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbTxWithAccountTransferSummary>> {
     return await this.sqlTransaction(async sql => {
-      const addressCheck =
-        await sql`SELECT principal FROM principal_stx_txs WHERE principal = ${args.address} LIMIT 1`;
-      if (addressCheck.count === 0)
-        throw new InvalidRequestError(`Address not found`, InvalidRequestErrorType.invalid_param);
+      await assertAddressExists(sql, args.address);
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
 
@@ -297,9 +310,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       const eventAcctCond = sql`
         ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
       `;
-      const resultQuery = await this.sql<
-        (AccountTransferSummaryTxQueryResult & { count: number })[]
-      >`
+      const resultQuery = await sql<(AccountTransferSummaryTxQueryResult & { count: number })[]>`
         WITH stx_txs AS (
           SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::int AS count
           FROM principal_stx_txs
@@ -336,6 +347,63 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: parsed,
+      };
+    });
+  }
+
+  async getAddressTransactionTransfers(
+    args: AddressTransactionParams & TransactionPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbAccountTransactionTransfer>> {
+    return await this.sqlTransaction(async sql => {
+      await assertAddressExists(sql, args.address);
+      await assertTxIdExists(sql, args.tx_id);
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+
+      const eventCond = sql`
+        canonical = true
+        AND microblock_canonical = true
+        AND tx_id = ${args.tx_id}
+        AND (sender = ${args.address} OR recipient = ${args.address})
+      `;
+      const results = await sql<(DbAccountTransactionTransfer & { count: number })[]>`
+        WITH events AS (
+          (
+            SELECT
+              sender, recipient, event_index, amount, NULL as asset_identifier,
+              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id
+            FROM stx_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id
+            FROM ft_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, 0 as amount, asset_identifier, value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id
+            FROM nft_events
+            WHERE ${eventCond}
+          )
+        )
+        SELECT *, COUNT(*) OVER()::int AS count
+        FROM events
+        ORDER BY event_index ASC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const total = results.length > 0 ? results[0].count : 0;
+      return {
+        total,
+        limit,
+        offset,
+        results,
       };
     });
   }

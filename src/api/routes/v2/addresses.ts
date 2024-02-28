@@ -7,14 +7,19 @@ import {
 import { asyncHandler } from '../../async-handler';
 import {
   AddressParams,
+  AddressTransactionParams,
   CompiledAddressParams,
+  CompiledAddressTransactionParams,
   CompiledTransactionPaginationQueryParams,
   TransactionPaginationQueryParams,
   validRequestParams,
   validRequestQuery,
 } from './schemas';
-import { parseDbTxWithAccountTransferSummary } from './helpers';
-import { AddressTransactionsWithTransferSummaryListResponse } from '../../../../docs/generated';
+import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
+import {
+  AddressTransactionTransfersListResponse,
+  AddressTransactionsV2ListResponse,
+} from '../../../../docs/generated';
 import { InvalidRequestError } from '../../../errors';
 
 export function createV2AddressesRouter(db: PgStore): express.Router {
@@ -38,11 +43,46 @@ export function createV2AddressesRouter(db: PgStore): express.Router {
           ...params,
           ...query,
         });
-        const response: AddressTransactionsWithTransferSummaryListResponse = {
+        const response: AddressTransactionsV2ListResponse = {
           limit,
           offset,
           total,
           results: results.map(r => parseDbTxWithAccountTransferSummary(r)),
+        };
+        setETagCacheHeaders(res);
+        res.json(response);
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          res.status(404).json({ errors: error.message });
+          return;
+        }
+        throw error;
+      }
+    })
+  );
+
+  router.get(
+    '/:address/transactions/:tx_id/transfers',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      if (
+        !validRequestParams(req, res, CompiledAddressTransactionParams) ||
+        !validRequestQuery(req, res, CompiledTransactionPaginationQueryParams)
+      )
+        return;
+      const params = req.params as AddressTransactionParams;
+      const query = req.query as TransactionPaginationQueryParams;
+
+      try {
+        const { limit, offset, results, total } = await db.v2.getAddressTransactionTransfers({
+          ...params,
+          ...query,
+        });
+        const response: AddressTransactionTransfersListResponse = {
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbAddressTransactionTransfer(r)),
         };
         setETagCacheHeaders(res);
         res.json(response);

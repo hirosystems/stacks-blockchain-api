@@ -990,6 +990,16 @@ export interface AccountTransferSummaryTxQueryResult extends TxQueryResult {
   nft_transfers: number;
 }
 
+export interface DbAccountTransactionTransfer {
+  event_index: number;
+  amount: string;
+  event_type_id: DbEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string | null;
+  value: string | null;
+}
+
 export interface FaucetRequestQueryResult {
   currency: string;
   ip: string;

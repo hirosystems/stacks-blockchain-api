@@ -9,6 +9,7 @@ export type SchemaMergeRootStub =
   | AddressBalanceResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
+  | AddressTransactionTransfersListResponse
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | AddressTransactionsV2ListResponse
@@ -111,6 +112,7 @@ export type SchemaMergeRootStub =
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
+  | AddressTransactionTransfer
   | AddressTransaction
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
@@ -325,6 +327,75 @@ export type TransactionEventNonFungibleAsset = AbstractTransactionEvent & {
 export type AddressStxBalanceResponse = StxBalance & {
   token_offering_locked?: AddressTokenOfferingLocked;
 };
+/**
+ * Address Transaction Transfer
+ */
+export type AddressTransactionTransfer =
+  | {
+      type: "stx_transfer";
+      event_index: number;
+      data: {
+        /**
+         * Amount transferred in micro-STX as an integer string.
+         */
+        amount: string;
+        /**
+         * Principal that sent STX. This is unspecified if the STX were minted.
+         */
+        sender?: string;
+        /**
+         * Principal that received STX. This is unspecified if the STX were burned.
+         */
+        recipient?: string;
+      };
+    }
+  | {
+      type: "ft_transfer";
+      event_index: number;
+      data: {
+        /**
+         * Fungible Token asset identifier.
+         */
+        asset_identifier: string;
+        /**
+         * Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals.
+         */
+        amount: string;
+        /**
+         * Principal that sent the asset.
+         */
+        sender?: string;
+        /**
+         * Principal that received the asset.
+         */
+        recipient?: string;
+      };
+    }
+  | {
+      type: "nft_transfer";
+      event_index: number;
+      data: {
+        /**
+         * Non Fungible Token asset identifier.
+         */
+        asset_identifier: string;
+        /**
+         * Non Fungible Token asset value.
+         */
+        value: {
+          hex: string;
+          repr: string;
+        };
+        /**
+         * Principal that sent the asset.
+         */
+        sender?: string;
+        /**
+         * Principal that received the asset.
+         */
+        recipient?: string;
+      };
+    };
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
@@ -893,6 +964,15 @@ export interface InboundStxTransfer {
    * Index of the transaction within a block
    */
   tx_index: number;
+}
+/**
+ * GET Address Transaction Transfers
+ */
+export interface AddressTransactionTransfersListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransactionTransfer[];
 }
 /**
  * GET request that returns account transactions

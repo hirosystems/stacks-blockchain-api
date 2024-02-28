@@ -1,18 +1,22 @@
 import {
-  AddressTransactionWithTransferSummaries,
+  AddressTransaction,
+  AddressTransactionTransfer,
   BurnBlock,
   NakamotoBlock,
   SmartContractsStatusResponse,
 } from 'docs/generated';
 import {
+  DbAccountTransactionTransfer,
   DbBlock,
   DbBurnBlock,
+  DbEventTypeId,
   DbSmartContractStatus,
   DbTxWithAccountTransferSummary,
 } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
 import { getTxStatusString, parseDbTx } from '../../../api/controllers/db-controller';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -74,8 +78,8 @@ export function parseDbSmartContractStatusArray(
 
 export function parseDbTxWithAccountTransferSummary(
   tx: DbTxWithAccountTransferSummary
-): AddressTransactionWithTransferSummaries {
-  const summaryTx: AddressTransactionWithTransferSummaries = {
+): AddressTransaction {
+  return {
     tx: parseDbTx(tx),
     stx_sent: tx.stx_sent.toString(),
     stx_received: tx.stx_received.toString(),
@@ -83,5 +87,47 @@ export function parseDbTxWithAccountTransferSummary(
     ft_transfers: tx.ft_transfers,
     nft_transfers: tx.nft_transfers,
   };
-  return summaryTx;
+}
+
+export function parseDbAddressTransactionTransfer(
+  transfer: DbAccountTransactionTransfer
+): AddressTransactionTransfer {
+  switch (transfer.event_type_id) {
+    case DbEventTypeId.FungibleTokenAsset:
+      return {
+        type: 'ft_transfer',
+        event_index: transfer.event_index,
+        data: {
+          amount: transfer.amount,
+          asset_identifier: transfer.asset_identifier ?? '',
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+    case DbEventTypeId.NonFungibleTokenAsset:
+      return {
+        type: 'nft_transfer',
+        event_index: transfer.event_index,
+        data: {
+          asset_identifier: transfer.asset_identifier ?? '',
+          value: {
+            hex: transfer.value ?? '',
+            repr: decodeClarityValueToRepr(transfer.value ?? ''),
+          },
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+    case DbEventTypeId.StxAsset:
+      return {
+        type: 'stx_transfer',
+        event_index: transfer.event_index,
+        data: {
+          amount: transfer.amount,
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+  }
+  throw Error('Invalid address transaction transfer');
 }

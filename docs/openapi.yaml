@@ -838,9 +838,11 @@ paths:
     get:
       summary: Get address transactions
       description: |
-        Retrieves all transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent, received, and the number of STX, FT and NFT transfers contained within each transaction. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+        Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
+        
+        More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
       tags:
-        - Accounts
+        - Transactions
       operationId: get_address_transactions
       parameters:
         - name: address
@@ -852,14 +854,14 @@ paths:
             example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
         - name: limit
           in: query
-          description: max number of account transactions to fetch
+          description: Number of transactions to fetch
           required: false
           schema:
             type: integer
             example: 20
         - name: offset
           in: query
-          description: index of first account transaction to fetch
+          description: Index of first transaction to fetch
           required: false
           schema:
             type: integer
@@ -874,13 +876,52 @@ paths:
               example:
                 $ref: ./api/address/get-v2-address-transactions.example.json
 
-  # /extended/v2/addresses/:address/transactions/:tx_id:
-  #   get:
-  #     summary: Get address transactions
-  #     description: |
-  #       Get X
-  #     tags:
-  #       - Accounts
+  /extended/v2/addresses/{address}/transactions/{tx_id}/transfers:
+    get:
+      summary: Get transfers for an address transaction
+      description: |
+        Retrieves a paginated list of all STX, FT and NFT transfers sent or received by a STX address or Smart Contract ID within a specific transaction.
+      tags:
+        - Transactions
+      operationId: get_address_transaction_transfers
+      parameters:
+        - name: address
+          in: path
+          description: STX address or Smart Contract ID
+          required: true
+          schema:
+            type: string
+            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+        - name: tx_id
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: string
+            example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+        - name: limit
+          in: query
+          description: Number of transfers to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: Index of first transfer to fetch
+          required: false
+          schema:
+            type: integer
+            example: 10
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-transaction-transfers.schema.json
+              example:
+                $ref: ./api/address/get-address-transaction-transfers.example.json
 
   /extended/v2/smart-contracts/status:
     get:
