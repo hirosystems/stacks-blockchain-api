@@ -5,6 +5,7 @@
   "results": [
     {
       "type": "stx_transfer",
+      "event_index": 0,
       "data": {
         "amount": "200",
         "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
@@ -13,6 +14,7 @@
     },
     {
       "type": "stx_transfer",
+      "event_index": 1,
       "data": {
         "amount": "150",
         "sender": "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE",
@@ -21,6 +23,7 @@
     },
     {
       "type": "ft_transfer",
+      "event_index": 5,
       "data": {
         "amount": "103",
         "asset_identifier": "SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27.miamicoin-token::miamicoin",
@@ -30,6 +33,7 @@
     },
     {
       "type": "nft_transfer",
+      "event_index": 6,
       "data": {
         "asset_identifier": "SP497E7RX3233ATBS2AB9G4WTHB63X5PBSP5VGAQ.boom-nfts::boom",
         "value": { "hex": "0x00", "repr": "0" },
