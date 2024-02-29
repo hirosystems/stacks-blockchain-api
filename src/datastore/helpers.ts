@@ -44,8 +44,8 @@ import {
   TxQueryResult,
   DbPoxSyntheticRevokeDelegateStxEvent,
   ReOrgUpdatedEntities,
-  AccountTransferSummaryTxQueryResult,
-  DbTxWithAccountTransferSummary,
+  AddressTransfersTxQueryResult,
+  DbTxWithAddressTransfers,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -331,8 +331,8 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
 }
 
 export function parseAccountTransferSummaryTxQueryResult(
-  result: AccountTransferSummaryTxQueryResult
-): DbTxWithAccountTransferSummary {
+  result: AddressTransfersTxQueryResult
+): DbTxWithAddressTransfers {
   const tx = parseTxQueryResult(result);
   return {
     ...tx,

@@ -6,12 +6,12 @@ import {
   SmartContractsStatusResponse,
 } from 'docs/generated';
 import {
-  DbAccountTransactionTransfer,
+  DbAddressTransactionTransfer,
   DbBlock,
   DbBurnBlock,
   DbEventTypeId,
   DbSmartContractStatus,
-  DbTxWithAccountTransferSummary,
+  DbTxWithAddressTransfers,
 } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
@@ -77,7 +77,7 @@ export function parseDbSmartContractStatusArray(
 }
 
 export function parseDbTxWithAccountTransferSummary(
-  tx: DbTxWithAccountTransferSummary
+  tx: DbTxWithAddressTransfers
 ): AddressTransaction {
   return {
     tx: parseDbTx(tx),
@@ -90,7 +90,7 @@ export function parseDbTxWithAccountTransferSummary(
 }
 
 export function parseDbAddressTransactionTransfer(
-  transfer: DbAccountTransactionTransfer
+  transfer: DbAddressTransactionTransfer
 ): AddressTransactionTransfer {
   switch (transfer.event_type_id) {
     case DbEventTypeId.FungibleTokenAsset:

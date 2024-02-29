@@ -21,10 +21,10 @@ import {
   DbBurnBlock,
   DbTxTypeId,
   DbSmartContractStatus,
-  AccountTransferSummaryTxQueryResult,
-  DbTxWithAccountTransferSummary,
+  AddressTransfersTxQueryResult,
+  DbTxWithAddressTransfers,
   DbEventTypeId,
-  DbAccountTransactionTransfer,
+  DbAddressTransactionTransfer,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -296,7 +296,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getAddressTransactions(
     args: AddressParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTxWithAccountTransferSummary>> {
+  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
       await assertAddressExists(sql, args.address);
       const limit = args.limit ?? TransactionLimitParamSchema.default;
@@ -310,7 +310,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       const eventAcctCond = sql`
         ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
       `;
-      const resultQuery = await sql<(AccountTransferSummaryTxQueryResult & { count: number })[]>`
+      const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
         WITH stx_txs AS (
           SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::int AS count
           FROM principal_stx_txs
@@ -353,7 +353,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getAddressTransactionTransfers(
     args: AddressTransactionParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbAccountTransactionTransfer>> {
+  ): Promise<DbPaginatedResult<DbAddressTransactionTransfer>> {
     return await this.sqlTransaction(async sql => {
       await assertAddressExists(sql, args.address);
       await assertTxIdExists(sql, args.tx_id);
@@ -366,7 +366,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         AND tx_id = ${args.tx_id}
         AND (sender = ${args.address} OR recipient = ${args.address})
       `;
-      const results = await sql<(DbAccountTransactionTransfer & { count: number })[]>`
+      const results = await sql<(DbAddressTransactionTransfer & { count: number })[]>`
         WITH events AS (
           (
             SELECT

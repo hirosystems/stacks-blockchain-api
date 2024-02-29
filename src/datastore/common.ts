@@ -225,7 +225,7 @@ export interface DbTxRaw extends DbTx {
   raw_tx: string;
 }
 
-export interface DbTxWithAccountTransferSummary extends DbTx {
+export interface DbTxWithAddressTransfers extends DbTx {
   stx_sent: bigint;
   stx_received: bigint;
   stx_transfers: number;
@@ -982,7 +982,7 @@ export interface ContractTxQueryResult extends TxQueryResult {
   abi?: unknown | null;
 }
 
-export interface AccountTransferSummaryTxQueryResult extends TxQueryResult {
+export interface AddressTransfersTxQueryResult extends TxQueryResult {
   stx_sent: bigint;
   stx_received: bigint;
   stx_transfers: number;
@@ -990,7 +990,7 @@ export interface AccountTransferSummaryTxQueryResult extends TxQueryResult {
   nft_transfers: number;
 }
 
-export interface DbAccountTransactionTransfer {
+export interface DbAddressTransactionTransfer {
   event_index: number;
   amount: string;
   event_type_id: DbEventTypeId;
