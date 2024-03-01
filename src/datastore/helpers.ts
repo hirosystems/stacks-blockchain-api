@@ -1343,14 +1343,26 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
  */
 export class PgWriteQueue {
   readonly queue: PQueue;
+  private tasks: Promise<unknown>[];
   constructor() {
     const concurrency = Math.max(1, getUintEnvOrDefault('STACKS_BLOCK_DATA_INSERT_CONCURRENCY', 4));
     this.queue = new PQueue({ concurrency, autoStart: true });
+    this.tasks = [];
   }
   enqueue(task: Parameters<PQueue['add']>[0]): void {
-    void this.queue.add(task);
+    const p = this.queue.add(task);
+    p.catch(void 0);
+    this.tasks.push(p);
   }
-  done(): Promise<void> {
-    return this.queue.onIdle();
+  async done(): Promise<void> {
+    // https://medium.com/@alkor_shikyaro/transactions-and-promises-in-node-js-ca5a3aeb6b74
+    const results = await Promise.allSettled(this.tasks);
+    this.tasks = [];
+    const firstRejected = results.find(v => v.status === 'rejected') as
+      | PromiseRejectedResult
+      | undefined;
+    if (firstRejected != null) {
+      throw firstRejected.reason;
+    }
   }
 }
