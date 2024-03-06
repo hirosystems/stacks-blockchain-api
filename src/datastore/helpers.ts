@@ -1351,7 +1351,7 @@ export class PgWriteQueue {
   }
   enqueue(task: Parameters<PQueue['add']>[0]): void {
     const p = this.queue.add(task);
-    p.catch(void 0);
+    p.catch(e => logger.error(e, 'PgWriteQueue task failed'));
     this.tasks.push(p);
   }
   async done(): Promise<void> {
