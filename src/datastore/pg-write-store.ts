@@ -1,5 +1,11 @@
 import * as assert from 'assert';
-import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
+import {
+  getOrAdd,
+  I32_MAX,
+  getIbdBlockHeight,
+  getUintEnvOrDefault,
+  unwrapOptionalProp,
+} from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -94,6 +100,7 @@ import {
   runMigrations,
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { BigNumber } from 'bignumber.js';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
@@ -188,10 +195,6 @@ export class PgWriteStore extends PgStore {
       const chainTip = await this.getChainTip(sql);
       await this.handleReorg(sql, data.block, chainTip.block_height);
       const isCanonical = data.block.block_height > chainTip.block_height;
-      await this.markPoxSetsCanonical(sql, {
-        canonical: isCanonical,
-        indexBlockHash: data.block.index_block_hash,
-      });
       if (!isCanonical) {
         markBlockUpdateDataAsNonCanonical(data);
       } else {
@@ -259,6 +262,11 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
+        if (data.poxSetSigners && data.poxSetSigners.signers) {
+          const cycleNumber = unwrapOptionalProp(data.poxSetSigners, 'cycle_number');
+          const signers = data.poxSetSigners.signers;
+          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, cycleNumber, signers));
+        }
         if (batchedTxData.length > 0) {
           q.enqueue(() =>
             this.updateTx(
@@ -1325,6 +1333,42 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
+  async updatePoxSetsBatch(
+    sql: PgSqlClient,
+    block: DbBlock,
+    cycleNumber: number,
+    signers: Required<DbPoxSetSigners>['signers']
+  ) {
+    const totalWeight = signers.reduce((acc, signer) => acc + signer.weight, 0);
+    const totalStacked = signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
+
+    for (const signer of signers) {
+      const values: PoxSetSignerValues = {
+        canonical: block.canonical,
+        index_block_hash: block.index_block_hash,
+        parent_index_block_hash: block.parent_index_block_hash,
+        block_height: block.block_height,
+        cycle_number: cycleNumber,
+        signing_key: signer.signing_key,
+        weight: signer.weight,
+        stacked_amount: signer.stacked_amount,
+        weight_percent: (signer.weight / totalWeight) * 100,
+        stacked_amount_percent: new BigNumber(signer.stacked_amount.toString())
+          .div(totalStacked.toString())
+          .times(100)
+          .toNumber(),
+        total_stacked_amount: totalStacked,
+        total_weight: totalWeight,
+      };
+      const signerInsertResult = await sql`
+        INSERT into pox_sets ${sql(values)}
+      `;
+      if (signerInsertResult.count !== 1) {
+        throw new Error(`Failed to insert pox signer set at block ${block.index_block_hash}`);
+      }
+    }
+  }
+
   async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
     await this.sqlWriteTransaction(async sql => {
       // Each attachment will batch insert zonefiles for name and all subdomains that apply.
@@ -1545,61 +1589,6 @@ export class PgWriteStore extends PgStore {
         `;
         if (rewardInsertResult.count !== 1) {
           throw new Error(`Failed to insert burnchain reward at block ${reward.burn_block_hash}`);
-        }
-      }
-    });
-  }
-
-  async updatePoxSets(poxSetSigners: DbPoxSetSigners): Promise<void> {
-    return await this.sqlWriteTransaction(async sql => {
-      // Check if the pox set is already in the database based on index_block_hash
-      const existingPoxSet = await sql<
-        {
-          reward_recipient: string;
-          reward_amount: string;
-        }[]
-      >`
-        SELECT * FROM pox_sets WHERE index_block_hash = ${poxSetSigners.index_block_hash}
-      `;
-      if (existingPoxSet.count > 0) {
-        // TODO: figure out the expected behavior during reorgs, is it ok to just return early here?
-        logger.error(`Pox set already exists for block ${poxSetSigners.index_block_hash}`);
-        return;
-      }
-
-      // The pox set event is received before the block is ingested, so we mark as non-canonical initially,
-      // and then update the canonical flag later when the block is ingested.
-      let canonical = false;
-
-      // Check if block was already ingested (this should never happen, but just in case)
-      const block = await sql<BlockQueryResult[]>`
-        SELECT ${sql(BLOCK_COLUMNS)}
-        FROM blocks
-        WHERE index_block_hash = ${poxSetSigners.index_block_hash}
-      `;
-      if (block.count > 0) {
-        logger.error(
-          `Block was already ingested for pox set, block=${poxSetSigners.index_block_hash}`
-        );
-        canonical = block[0].canonical;
-      }
-
-      for (const signer of poxSetSigners.signers) {
-        const values: PoxSetSignerValues = {
-          canonical,
-          index_block_hash: poxSetSigners.index_block_hash,
-          cycle_number: poxSetSigners.cycle_number,
-          signing_key: signer.signing_key,
-          slots: signer.slots,
-          stacked_amount: signer.stacked_amount,
-        };
-        const signerInsertResult = await sql`
-          INSERT into pox_sets ${sql(values)}
-        `;
-        if (signerInsertResult.count !== 1) {
-          throw new Error(
-            `Failed to insert pox signer set at block ${poxSetSigners.index_block_hash}`
-          );
         }
       }
     });
@@ -2778,6 +2767,19 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.subdomains += subdomainResult.count;
       }
     });
+    q.enqueue(async () => {
+      const poxSetResult = await sql`
+        UPDATE pox_sets
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.poxSigners += poxSetResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.poxSigners += poxSetResult.count;
+      }
+    });
+
     await q.done();
 
     return result;
@@ -2804,12 +2806,6 @@ export class PgWriteStore extends PgStore {
     }
     updatedEntities.markedCanonical.blocks++;
 
-    const poxSignersRestored = await this.markPoxSetsCanonical(sql, {
-      canonical: true,
-      indexBlockHash,
-    });
-    updatedEntities.markedCanonical.poxSigners += poxSignersRestored;
-
     // Orphan the now conflicting block at the same height
     const orphanedBlockResult = await sql<BlockQueryResult[]>`
       UPDATE blocks
@@ -2825,12 +2821,6 @@ export class PgWriteStore extends PgStore {
     if (orphanedBlockResult.length > 0) {
       const orphanedBlocks = orphanedBlockResult.map(b => parseBlockQueryResult(b));
       for (const orphanedBlock of orphanedBlocks) {
-        const poxSignersOrphaned = await this.markPoxSetsCanonical(sql, {
-          canonical: false,
-          indexBlockHash: orphanedBlock.index_block_hash,
-        });
-        updatedEntities.markedNonCanonical.poxSigners += poxSignersRestored;
-
         const microCanonicalUpdateResult = await this.updateMicroCanonical(sql, {
           isCanonical: false,
           blockHeight: orphanedBlock.block_height,
@@ -2968,21 +2958,6 @@ export class PgWriteStore extends PgStore {
       `;
     }
     return updatedEntities;
-  }
-
-  async markPoxSetsCanonical(
-    sql: PgSqlClient,
-    args: { canonical: boolean; indexBlockHash: string }
-  ): Promise<number> {
-    const result = await sql`
-      UPDATE pox_sets
-      SET canonical = ${args.canonical}
-      WHERE index_block_hash = ${args.indexBlockHash} AND canonical != ${args.canonical}
-    `;
-    logger.info(
-      `Marked ${result.count} pox sets as canonical=${args.canonical} for block ${args.indexBlockHash}`
-    );
-    return result.count;
   }
 
   /**

@@ -1,8 +1,8 @@
 import {
   BurnchainOp,
+  CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
-  CoreNodeNewPoxSet,
   CoreNodeParsedTxMessage,
   CoreNodeTxMessage,
   FtMintEvent,
@@ -917,7 +917,7 @@ export function newCoreNoreBlockEventCounts(): CoreNodeBlockEventCounts {
 
 /** Parse a pox reward addr into a bitcoin address */
 export function parsePoxSetRewardAddress(
-  addr: CoreNodeNewPoxSet['stacker_set']['rewarded_addresses'][0]
+  addr: Required<CoreNodeBlockMessage>['reward_set']['rewarded_addresses'][0]
 ): string {
   let poxAddrVersion: PoXAddressVersion;
   let network: 'mainnet' | 'testnet';

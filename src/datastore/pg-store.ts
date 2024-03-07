@@ -6,7 +6,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
-  assertNotNullish,
+  unwrapNotNullish,
   FoundOrNot,
   unwrapOptional,
   bnsHexValueToName,
@@ -86,7 +86,6 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
-  POX_SET_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
@@ -951,8 +950,12 @@ export class PgStore extends BasePgStore {
           index_block_hash: string;
           cycle_number: number;
           signing_key: string;
-          slots: number;
+          weight: number;
           stacked_amount: string;
+          weight_percent: number;
+          stacked_amount_percent: number;
+          total_weight: number;
+          total_stacked_amount: string;
           stacker_locked_pairs: [stacker: string, locked_amount: string, pox_addr: string][];
         }[]
       >`
@@ -977,13 +980,17 @@ export class PgStore extends BasePgStore {
           ps.index_block_hash,
           ps.cycle_number,
           ps.signing_key,
-          ps.slots,
+          ps.weight,
           ps.stacked_amount,
+          ps.weight_percent,
+          ps.stacked_amount_percent,
+          ps.total_weight,
+          ps.total_stacked_amount,
           asa.stacker_locked_pairs
         FROM pox_sets ps
         JOIN AggregatedStackers asa ON asa.signer_key = ps.signing_key
         WHERE ps.cycle_number = ${cycle} AND ps.canonical = true
-        ORDER BY ps.stacked_amount DESC, ps.slots DESC, ps.signing_key ASC
+        ORDER BY ps.stacked_amount DESC, ps.weight DESC, ps.signing_key ASC
       `;
       if (poxSetQuery.length === 0) {
         return { found: false } as const;
@@ -991,19 +998,22 @@ export class PgStore extends BasePgStore {
 
       const signers = poxSetQuery.map(r => ({
         signing_key: r.signing_key,
-        slots: r.slots,
+        weight: r.weight,
         stacked_amount: BigInt(r.stacked_amount),
+        weight_percent: r.weight_percent,
+        stacked_amount_percent: r.stacked_amount_percent,
         stackers: r.stacker_locked_pairs.map(([stacker, locked_amount, pox_addr]) => ({
           stacker: stacker,
           amount: BigInt(locked_amount),
           pox_addr: pox_addr,
         })),
       }));
-      const totalStacked = signers.reduce((acc, r) => acc + r.stacked_amount, 0n);
       const result = {
         index_block_hash: poxSetQuery[0].index_block_hash,
         cycle_number: poxSetQuery[0].cycle_number,
-        total_stacked: totalStacked,
+        total_stacked: poxSetQuery[0].total_stacked_amount,
+        total_weight: poxSetQuery[0].total_weight,
+        signer_count: signers.length,
         signers: signers,
       };
       return { found: true, result } as const;
@@ -2606,8 +2616,8 @@ export class PgStore extends BasePgStore {
           block_height: row.block_height,
           canonical: row.canonical,
           locked_address: unwrapOptional(row.sender),
-          locked_amount: BigInt(assertNotNullish(row.amount)),
-          unlock_height: Number(assertNotNullish(row.unlock_height)),
+          locked_amount: BigInt(unwrapNotNullish(row.amount)),
+          unlock_height: Number(unwrapNotNullish(row.unlock_height)),
           event_type: DbEventTypeId.StxLock,
           contract_name: unwrapOptional(row.contract_name),
         };

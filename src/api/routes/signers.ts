@@ -51,10 +51,14 @@ export function createSignersRouter(db: PgStore): express.Router {
         index_block_hash: r.index_block_hash,
         cycle_number: r.cycle_number,
         total_stacked: r.total_stacked.toString(),
+        total_weight: r.total_weight,
+        signer_count: r.signer_count,
         signers: r.signers.map(s => ({
           signing_key: s.signing_key,
-          slots: s.slots,
+          weight: s.weight,
+          weight_percent: s.weight_percent,
           stacked_amount: s.stacked_amount.toString(),
+          stacked_amount_percent: s.stacked_amount_percent,
           stackers: s.stackers.map(st => ({
             stacker: st.stacker,
             amount: st.amount.toString(),

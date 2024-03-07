@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
+import { ChainID, assertNotNullish, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -16,7 +16,6 @@ import {
   CoreNodeMicroblockMessage,
   CoreNodeParsedTxMessage,
   CoreNodeEvent,
-  CoreNodeNewPoxSet,
 } from './core-node-message';
 import {
   DbEventBase,
@@ -348,6 +347,34 @@ async function handleBlockMessage(
     return microblock;
   });
 
+  const poxSetSigners: DbPoxSetSigners = {};
+  if (msg.reward_set) {
+    assertNotNullish(
+      msg.cycle_number,
+      () => 'Cycle number must be present if reward set is present'
+    );
+    poxSetSigners.cycle_number = msg.cycle_number;
+    if (msg.reward_set.signers) {
+      poxSetSigners.signers = msg.reward_set.signers.map(signer => ({
+        signing_key: '0x' + signer.signing_key,
+        weight: signer.weight,
+        stacked_amount: BigInt(signer.stacked_amt),
+      }));
+      logger.info(
+        `Received new pox set message, block=${msg.block_height}, cycle=${msg.cycle_number}, signers=${msg.reward_set.signers.length}`
+      );
+    }
+    if (msg.reward_set.rewarded_addresses) {
+      const rewardedBtcAddrs = msg.reward_set.rewarded_addresses.map(addr =>
+        parsePoxSetRewardAddress(addr)
+      );
+      poxSetSigners.rewarded_addresses = rewardedBtcAddrs;
+      logger.info(
+        `Received new pox set message, ${rewardedBtcAddrs.length} rewarded BTC addresses`
+      );
+    }
+  }
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
@@ -356,6 +383,7 @@ async function handleBlockMessage(
     pox_v1_unlock_height: msg.pox_v1_unlock_height,
     pox_v2_unlock_height: msg.pox_v2_unlock_height,
     pox_v3_unlock_height: msg.pox_v3_unlock_height,
+    poxSetSigners: poxSetSigners,
   };
 
   await db.update(dbData);
@@ -711,36 +739,6 @@ async function handleNewAttachmentMessage(msg: CoreNodeAttachmentMessage[], db: 
   await db.updateAttachments(attachments);
 }
 
-export async function handleNewPoxSetMessage(
-  chainId: ChainID,
-  msg: CoreNodeNewPoxSet,
-  db: PgWriteStore
-): Promise<void> {
-  logger.info(
-    `Received new pox set message, block=${msg.block_id}, cycle=${msg.cycle_number}, signers=${
-      msg.stacker_set.signers?.length ?? 0
-    }`
-  );
-  if (msg.stacker_set.signers) {
-    const poxSetSigners: DbPoxSetSigners = {
-      index_block_hash: '0x' + msg.block_id,
-      cycle_number: msg.cycle_number,
-      signers: msg.stacker_set.signers.map(signer => ({
-        signing_key: '0x' + signer.signing_key,
-        slots: signer.slots,
-        stacked_amount: BigInt(signer.stacked_amt),
-      })),
-    };
-    await db.updatePoxSets(poxSetSigners);
-  }
-
-  const rewardedBtcAddrs = msg.stacker_set.rewarded_addresses.map(addr =>
-    parsePoxSetRewardAddress(addr)
-  );
-  logger.info(`Parsed ${rewardedBtcAddrs.length} rewarded BTC addresses`);
-  // TODO: store rewarded BTC addresses..
-}
-
 export const DummyEventMessageHandler: EventMessageHandler = {
   handleRawEventRequest: () => {},
   handleBlockMessage: () => {},
@@ -749,7 +747,6 @@ export const DummyEventMessageHandler: EventMessageHandler = {
   handleMempoolTxs: () => {},
   handleDroppedMempoolTxs: () => {},
   handleNewAttachment: () => {},
-  handleNewPoxSetMessage: () => {},
 };
 
 interface EventMessageHandler {
@@ -771,11 +768,6 @@ interface EventMessageHandler {
     db: PgWriteStore
   ): Promise<void> | void;
   handleNewAttachment(msg: CoreNodeAttachmentMessage[], db: PgWriteStore): Promise<void> | void;
-  handleNewPoxSetMessage(
-    chainId: ChainID,
-    msg: CoreNodeNewPoxSet,
-    db: PgWriteStore
-  ): Promise<void> | void;
 }
 
 function createMessageProcessorQueue(): EventMessageHandler {
@@ -862,14 +854,6 @@ function createMessageProcessorQueue(): EventMessageHandler {
         .add(() => observeEvent('new_attachment', () => handleNewAttachmentMessage(msg, db)))
         .catch(e => {
           logger.error(e, 'Error processing new attachment message');
-          throw e;
-        });
-    },
-    handleNewPoxSetMessage: (chainId: ChainID, msg: CoreNodeNewPoxSet, db: PgWriteStore) => {
-      return processorQueue
-        .add(() => observeEvent('new_pox_set', () => handleNewPoxSetMessage(chainId, msg, db)))
-        .catch(e => {
-          logger.error(e, 'Error processing new pox set message');
           throw e;
         });
     },
@@ -1049,22 +1033,6 @@ export async function startEventServer(opts: {
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_microblocks');
-        res.status(500).json({ error: error });
-      }
-    }),
-    handleRawEventRequest
-  );
-
-  app.post(
-    '/new_pox_set',
-    asyncHandler(async (req, res, next) => {
-      try {
-        const msg: CoreNodeNewPoxSet = req.body;
-        await messageHandler.handleNewPoxSetMessage(opts.chainId, msg, db);
-        res.status(200).json({ result: 'ok' });
-        next();
-      } catch (error) {
-        logger.error(error, 'error processing core-node /new_pox_set');
         res.status(500).json({ error: error });
       }
     }),

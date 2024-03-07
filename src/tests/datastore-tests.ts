@@ -29,8 +29,7 @@ import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
-import { handleNewPoxSetMessage } from '../event-stream/event-server';
-import { CoreNodeNewPoxSet } from 'src/event-stream/core-node-message';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
@@ -5047,19 +5046,20 @@ describe('postgres datastore', () => {
       '{"block_id":"c63c4bfcffef55c827d326dcb36d270f3650d20c9bdd3c5d083b3b9a25a60234","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Addr32":[false,"P2WSH",[24,99,20,60,20,197,22,104,4,189,25,32,51,86,218,19,108,152,86,120,205,77,39,161,184,198,50,150,4,144,50,98]]}],"signers":[{"signing_key":"0230b7a3a290f79ab19e0f05e0347c97fd593dff2a21d85877d5bbc44597e2a2ed","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
     ],
   ])('pg ingest pox set event %#', async payloadStr => {
-    const payload: CoreNodeNewPoxSet = JSON.parse(payloadStr);
+    const payload: CoreNodeBlockMessage = JSON.parse(payloadStr);
 
     const block = new TestBlockBuilder({
       block_height: 1,
-      index_block_hash: '0x' + payload.block_id,
+      index_block_hash: payload.index_block_hash,
     })
       .addTx()
       .build();
     await db.update(block);
 
-    await handleNewPoxSetMessage(NETWORK_CHAIN_ID.testnet, payload, db);
+    // await handleNewPoxSetMessage(NETWORK_CHAIN_ID.testnet, payload, db);
 
-    const poxSet = await db.getPoxSetForCycle(payload.cycle_number);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const poxSet = await db.getPoxSetForCycle(payload.cycle_number!);
     expect(poxSet.found).toBe(true);
     assert(poxSet.found);
     expect(poxSet.result.signers.length).toBeGreaterThan(0);

@@ -7,7 +7,7 @@ import { isValidBitcoinAddress, getUintEnvOrDefault } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
-import { CoreNodeNewPoxSet } from '../event-stream/core-node-message';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 import { parsePoxSetRewardAddress } from '../event-stream/reader';
 
 describe('has0xPrefix()', () => {
@@ -202,7 +202,7 @@ test('PoX bitcoin address encoding', () => {
 test('Pox set reward address encoding', () => {
   const addrs: {
     btcAddr: string;
-    rewardAddr: CoreNodeNewPoxSet['stacker_set']['rewarded_addresses'][0];
+    rewardAddr: Required<CoreNodeBlockMessage>['reward_set']['rewarded_addresses'][0];
   }[] = [
     {
       btcAddr: 'mnvi1WQb3cm2QMeeKe6G9D7L1GsjmmGTda',

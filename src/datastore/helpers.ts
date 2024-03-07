@@ -249,15 +249,6 @@ export const POX_SYNTHETIC_EVENT_COLUMNS = [
   'amount_ustx',
 ];
 
-export const POX_SET_COLUMNS = [
-  'canonical',
-  'index_block_hash',
-  'cycle_number',
-  'signing_key',
-  'slots',
-  'stacked_amount',
-];
-
 /**
  * Adds a table name prefix to an array of column names.
  * @param columns - array of column names

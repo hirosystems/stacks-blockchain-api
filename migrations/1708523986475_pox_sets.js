@@ -5,7 +5,15 @@ exports.up = pgm => {
       type: 'bigserial',
       primaryKey: true,
     },
+    block_height: {
+      type: 'integer',
+      notNull: true,
+    },
     index_block_hash: {
+      type: 'bytea',
+      notNull: true,
+    },
+    parent_index_block_hash: {
       type: 'bytea',
       notNull: true,
     },
@@ -21,7 +29,7 @@ exports.up = pgm => {
       type: 'bytea',
       notNull: true,
     },
-    slots: {
+    weight: {
       type: 'int',
       notNull: true,
     },
@@ -29,8 +37,25 @@ exports.up = pgm => {
       type: 'numeric',
       notNull: true,
     },
+    weight_percent: {
+      type: 'double precision',
+      notNull: true,
+    },
+    stacked_amount_percent: {
+      type: 'double precision',
+      notNull: true,
+    },
+    total_weight: {
+      type: 'int',
+      notNull: true,
+    },
+    total_stacked_amount: {
+      type: 'numeric',
+      notNull: true,
+    },
   });
 
+  pgm.createIndex('pox_sets', 'block_height');
   pgm.createIndex('pox_sets', 'index_block_hash');
   pgm.createIndex('pox_sets', 'signing_key');
   pgm.createIndex('pox_sets', 'cycle_number');

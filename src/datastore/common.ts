@@ -66,13 +66,13 @@ export interface DbBurnchainReward {
 }
 
 export interface DbPoxSetSigners {
-  index_block_hash: string;
-  cycle_number: number;
-  signers: {
+  cycle_number?: number;
+  signers?: {
     signing_key: string;
-    slots: number;
+    weight: number;
     stacked_amount: bigint;
   }[];
+  rewarded_addresses?: any[];
 }
 
 export interface DbRewardSlotHolder {
@@ -600,6 +600,7 @@ export interface DataStoreBlockUpdateData {
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
   pox_v3_unlock_height?: number;
+  poxSetSigners?: DbPoxSetSigners;
 }
 
 export interface DataStoreMicroblockUpdateData {
@@ -992,7 +993,7 @@ export interface PoxSetQueryResult {
   cycle_number: number;
   canonical: boolean;
   signing_key: string;
-  slots: number;
+  weight: number;
   stacked_amount: string;
 }
 
@@ -1542,11 +1543,17 @@ export interface RewardSlotHolderInsertValues {
 
 export interface PoxSetSignerValues {
   canonical: boolean;
+  block_height: number;
   index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
   cycle_number: number;
   signing_key: PgBytea;
-  slots: number;
+  weight: number;
   stacked_amount: bigint;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  total_weight: number;
+  total_stacked_amount: bigint;
 }
 
 export interface SmartContractInsertValues {
