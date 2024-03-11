@@ -829,6 +829,8 @@ export class PgWriteStore extends PgStore {
         };
         if (poxTable === 'pox4_events') {
           value.signer_key = null;
+          value.end_cycle_id = null;
+          value.start_burn_height = null;
         }
 
         // Set event-specific columns
@@ -845,12 +847,19 @@ export class PgWriteStore extends PgStore {
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
           case SyntheticPoxEventName.StackIncrease: {
             value.increase_by = event.data.increase_by.toString();
             value.total_locked = event.data.total_locked.toString();
+            if (poxTable === 'pox4_events') {
+              value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.StackExtend: {
@@ -858,6 +867,8 @@ export class PgWriteStore extends PgStore {
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
@@ -865,6 +876,10 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             value.delegate_to = event.data.delegate_to;
             value.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackStx: {
@@ -873,18 +888,30 @@ export class PgWriteStore extends PgStore {
             value.start_burn_height = event.data.start_burn_height.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackIncrease: {
             value.increase_by = event.data.increase_by.toString();
             value.total_locked = event.data.total_locked.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackExtend: {
             value.extend_count = event.data.extend_count.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.StackAggregationCommit: {
@@ -892,6 +919,8 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
@@ -900,16 +929,26 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
           case SyntheticPoxEventName.StackAggregationIncrease: {
             value.reward_cycle = event.data.reward_cycle.toString();
             value.amount_ustx = event.data.amount_ustx.toString();
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.RevokeDelegateStx: {
             value.delegate_to = event.data.delegate_to;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           default: {

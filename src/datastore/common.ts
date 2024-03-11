@@ -378,6 +378,8 @@ export interface DbPoxSyntheticStackStxEvent extends DbPoxSyntheticBaseEventData
     start_burn_height: bigint;
     unlock_burn_height: bigint;
     signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -386,6 +388,9 @@ export interface DbPoxSyntheticStackIncreaseEvent extends DbPoxSyntheticBaseEven
   data: {
     increase_by: bigint;
     total_locked: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -395,6 +400,8 @@ export interface DbPoxSyntheticStackExtendEvent extends DbPoxSyntheticBaseEventD
     extend_count: bigint;
     unlock_burn_height: bigint;
     signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -404,6 +411,8 @@ export interface DbPoxSyntheticDelegateStxEvent extends DbPoxSyntheticBaseEventD
     amount_ustx: bigint;
     delegate_to: string;
     unlock_burn_height: bigint | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -415,6 +424,8 @@ export interface DbPoxSyntheticDelegateStackStxEvent extends DbPoxSyntheticBaseE
     start_burn_height: bigint;
     lock_period: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -424,6 +435,8 @@ export interface DbPoxSyntheticDelegateStackIncreaseEvent extends DbPoxSynthetic
     increase_by: bigint;
     total_locked: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -433,6 +446,8 @@ export interface DbPoxSyntheticDelegateStackExtendEvent extends DbPoxSyntheticBa
     unlock_burn_height: bigint;
     extend_count: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -442,6 +457,8 @@ export interface DbPoxSyntheticStackAggregationCommitEvent extends DbPoxSyntheti
     reward_cycle: bigint;
     amount_ustx: bigint;
     signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -452,6 +469,8 @@ export interface DbPoxSyntheticStackAggregationCommitIndexedEvent
     reward_cycle: bigint;
     amount_ustx: bigint;
     signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -460,6 +479,8 @@ export interface DbPoxSyntheticStackAggregationIncreaseEvent extends DbPoxSynthe
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -467,6 +488,8 @@ export interface DbPoxSyntheticRevokeDelegateStxEvent extends DbPoxSyntheticBase
   name: SyntheticPoxEventName.RevokeDelegateStx;
   data: {
     delegate_to: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -1304,6 +1327,10 @@ export interface PoxSyntheticEventQueryResult {
 
   // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
   signer_key?: string | null;
+
+  // [pox4]
+  end_cycle_id?: string | null;
+  start_cycle_id?: string | null;
 }
 
 export interface PoxSyntheticEventInsertValues {
@@ -1365,6 +1392,10 @@ export interface PoxSyntheticEventInsertValues {
 
   // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
   signer_key?: PgBytea | null;
+
+  // [pox4]
+  end_cycle_id?: PgNumeric | null;
+  start_cycle_id?: PgNumeric | null;
 }
 
 export interface NftEventInsertValues {

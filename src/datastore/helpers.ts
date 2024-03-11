@@ -249,6 +249,13 @@ export const POX_SYNTHETIC_EVENT_COLUMNS = [
   'amount_ustx',
 ];
 
+export const POX4_SYNTHETIC_EVENT_COLUMNS = [
+  ...POX_SYNTHETIC_EVENT_COLUMNS,
+  'signer_key',
+  'end_cycle_id',
+  'start_cycle_id',
+];
+
 /**
  * Adds a table name prefix to an array of column names.
  * @param columns - array of column names
@@ -657,6 +664,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
           signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -671,6 +680,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
           total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -686,6 +698,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
           signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -703,6 +717,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           unlock_burn_height: row.unlock_burn_height
             ? BigInt(unwrapOptionalProp(row, 'unlock_burn_height'))
             : null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -720,6 +736,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
           lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -735,6 +753,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
           total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -750,6 +770,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -765,6 +787,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
           signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -780,6 +804,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
           signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -794,6 +820,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -807,6 +835,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         name: rowName,
         data: {
           delegate_to: unwrapOptionalProp(row, 'delegate_to'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {

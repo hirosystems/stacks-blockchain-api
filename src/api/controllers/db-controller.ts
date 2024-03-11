@@ -232,6 +232,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           start_burn_height: poxEvent.data.start_burn_height.toString(),
           unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
           signer_key: poxEvent.data.signer_key,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -241,6 +243,9 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         data: {
           increase_by: poxEvent.data.increase_by.toString(),
           total_locked: poxEvent.data.total_locked.toString(),
+          signer_key: poxEvent.data.signer_key,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -251,6 +256,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           extend_count: poxEvent.data.extend_count.toString(),
           unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
           signer_key: poxEvent.data.signer_key,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -261,6 +268,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           amount_ustx: poxEvent.data.amount_ustx.toString(),
           delegate_to: poxEvent.data.delegate_to,
           unlock_burn_height: poxEvent.data.unlock_burn_height?.toString(),
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -273,6 +282,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           start_burn_height: poxEvent.data.start_burn_height.toString(),
           lock_period: poxEvent.data.lock_period.toString(),
           delegator: poxEvent.data.delegator,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -283,6 +294,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           increase_by: poxEvent.data.increase_by.toString(),
           total_locked: poxEvent.data.total_locked.toString(),
           delegator: poxEvent.data.delegator,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -293,6 +306,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           unlock_burn_height: poxEvent.data.unlock_burn_height.toString(),
           extend_count: poxEvent.data.extend_count.toString(),
           delegator: poxEvent.data.delegator,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -303,6 +318,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
           signer_key: poxEvent.data.signer_key,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -313,6 +330,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
           signer_key: poxEvent.data.signer_key,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -322,6 +341,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         data: {
           reward_cycle: poxEvent.data.reward_cycle.toString(),
           amount_ustx: poxEvent.data.amount_ustx.toString(),
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }
@@ -330,6 +351,8 @@ export function parsePoxSyntheticEvent(poxEvent: DbPoxSyntheticEvent) {
         ...baseInfo,
         data: {
           delegate_to: poxEvent.data.delegate_to,
+          end_cycle_id: poxEvent.data.end_cycle_id?.toString() ?? null,
+          start_cycle_id: poxEvent.data.start_cycle_id?.toString() ?? null,
         },
       };
     }

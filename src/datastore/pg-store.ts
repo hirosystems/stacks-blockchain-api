@@ -86,6 +86,7 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
+  POX4_SYNTHETIC_EVENT_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
@@ -1998,9 +1999,7 @@ export class PgStore extends BasePgStore {
   }): Promise<DbPoxSyntheticEvent[]> {
     return await this.sqlTransaction(async sql => {
       const cols =
-        poxTable === 'pox4_events'
-          ? [...POX_SYNTHETIC_EVENT_COLUMNS, 'signer_key']
-          : POX_SYNTHETIC_EVENT_COLUMNS;
+        poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
       const queryResults = await sql<PoxSyntheticEventQueryResult[]>`
         SELECT ${sql(cols)}
         FROM ${sql(poxTable)}
