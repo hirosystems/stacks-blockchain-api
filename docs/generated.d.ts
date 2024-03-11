@@ -9,7 +9,7 @@ export type SchemaMergeRootStub =
   | AddressBalanceResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
-  | AddressTransactionTransfersListResponse
+  | AddressTransactionEventListResponse
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | AddressTransactionsV2ListResponse
@@ -112,7 +112,7 @@ export type SchemaMergeRootStub =
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
-  | AddressTransactionTransfer
+  | AddressTransactionEvent
   | AddressTransaction
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
@@ -328,13 +328,14 @@ export type AddressStxBalanceResponse = StxBalance & {
   token_offering_locked?: AddressTokenOfferingLocked;
 };
 /**
- * Address Transaction Transfer
+ * Address Transaction Event
  */
-export type AddressTransactionTransfer =
+export type AddressTransactionEvent =
   | {
-      type: "stx_transfer";
+      type: "stx";
       event_index: number;
       data: {
+        type: "transfer" | "mint" | "burn";
         /**
          * Amount transferred in micro-STX as an integer string.
          */
@@ -350,9 +351,10 @@ export type AddressTransactionTransfer =
       };
     }
   | {
-      type: "ft_transfer";
+      type: "ft";
       event_index: number;
       data: {
+        type: "transfer" | "mint" | "burn";
         /**
          * Fungible Token asset identifier.
          */
@@ -372,9 +374,10 @@ export type AddressTransactionTransfer =
       };
     }
   | {
-      type: "nft_transfer";
+      type: "nft";
       event_index: number;
       data: {
+        type: "transfer" | "mint" | "burn";
         /**
          * Non Fungible Token asset identifier.
          */
@@ -966,13 +969,13 @@ export interface InboundStxTransfer {
   tx_index: number;
 }
 /**
- * GET Address Transaction Transfers
+ * GET Address Transaction Events
  */
-export interface AddressTransactionTransfersListResponse {
+export interface AddressTransactionEventListResponse {
   limit: number;
   offset: number;
   total: number;
-  results: AddressTransactionTransfer[];
+  results: AddressTransactionEvent[];
 }
 /**
  * GET request that returns account transactions

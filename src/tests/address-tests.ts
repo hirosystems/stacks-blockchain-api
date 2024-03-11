@@ -519,53 +519,70 @@ describe('address tests', () => {
     });
 
     const v2Fetch2 = await supertest(api.server).get(
-      `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/transfers`
+      `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?limit=3`
     );
-    expect(v2Fetch1.status).toBe(200);
-    expect(v2Fetch1.type).toBe('application/json');
+    expect(v2Fetch2.status).toBe(200);
+    expect(v2Fetch2.type).toBe('application/json');
     expect(JSON.parse(v2Fetch2.text)).toStrictEqual({
-      limit: 20,
+      limit: 3,
       offset: 0,
       results: [
         {
           data: {
+            type: 'transfer',
             amount: '35',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           },
           event_index: 0,
-          type: 'stx_transfer',
+          type: 'stx',
         },
         {
           data: {
+            type: 'transfer',
             amount: '35',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           },
           event_index: 1,
-          type: 'stx_transfer',
+          type: 'stx',
         },
         {
           data: {
+            type: 'transfer',
             amount: '35',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           },
           event_index: 2,
-          type: 'stx_transfer',
+          type: 'stx',
         },
+      ],
+      total: 6,
+    });
+    const v2Fetch3 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?offset=3&limit=3`
+    );
+    expect(v2Fetch3.status).toBe(200);
+    expect(v2Fetch3.type).toBe('application/json');
+    expect(JSON.parse(v2Fetch3.text)).toStrictEqual({
+      limit: 3,
+      offset: 3,
+      results: [
         {
           data: {
+            type: 'transfer',
             amount: '35',
             asset_identifier: 'usdc',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
           },
           event_index: 3,
-          type: 'ft_transfer',
+          type: 'ft',
         },
         {
           data: {
+            type: 'transfer',
             asset_identifier: 'punk1',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
@@ -575,10 +592,11 @@ describe('address tests', () => {
             },
           },
           event_index: 4,
-          type: 'nft_transfer',
+          type: 'nft',
         },
         {
           data: {
+            type: 'transfer',
             asset_identifier: 'punk1',
             recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
             sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
@@ -588,7 +606,7 @@ describe('address tests', () => {
             },
           },
           event_index: 5,
-          type: 'nft_transfer',
+          type: 'nft',
         },
       ],
       total: 6,

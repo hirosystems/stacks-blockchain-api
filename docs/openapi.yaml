@@ -876,14 +876,14 @@ paths:
               example:
                 $ref: ./api/address/get-v2-address-transactions.example.json
 
-  /extended/v2/addresses/{address}/transactions/{tx_id}/transfers:
+  /extended/v2/addresses/{address}/transactions/{tx_id}/events:
     get:
-      summary: Get transfers for an address transaction
+      summary: Get events for an address transaction
       description: |
-        Retrieves a paginated list of all STX, FT and NFT transfers sent or received by a STX address or Smart Contract ID within a specific transaction.
+        Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction.
       tags:
         - Transactions
-      operationId: get_address_transaction_transfers
+      operationId: get_address_transaction_events
       parameters:
         - name: address
           in: path
@@ -919,9 +919,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: ./api/address/get-address-transaction-transfers.schema.json
+                $ref: ./api/address/get-address-transaction-events.schema.json
               example:
-                $ref: ./api/address/get-address-transaction-transfers.example.json
+                $ref: ./api/address/get-address-transaction-events.example.json
 
   /extended/v2/smart-contracts/status:
     get:

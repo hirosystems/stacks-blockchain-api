@@ -24,7 +24,7 @@ import {
   AddressTransfersTxQueryResult,
   DbTxWithAddressTransfers,
   DbEventTypeId,
-  DbAddressTransactionTransfer,
+  DbAddressTransactionEvent,
   DbAssetEventTypeId,
 } from './common';
 import {
@@ -385,9 +385,9 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getAddressTransactionTransfers(
+  async getAddressTransactionEvents(
     args: AddressTransactionParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbAddressTransactionTransfer>> {
+  ): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
       await assertAddressExists(sql, args.address);
       await assertTxIdExists(sql, args.tx_id);
@@ -400,12 +400,13 @@ export class PgStoreV2 extends BasePgStoreModule {
         AND tx_id = ${args.tx_id}
         AND (sender = ${args.address} OR recipient = ${args.address})
       `;
-      const results = await sql<(DbAddressTransactionTransfer & { count: number })[]>`
+      const results = await sql<(DbAddressTransactionEvent & { count: number })[]>`
         WITH events AS (
           (
             SELECT
               sender, recipient, event_index, amount, NULL as asset_identifier,
-              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id
+              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id
             FROM stx_events
             WHERE ${eventCond}
           )
@@ -413,7 +414,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           (
             SELECT
               sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
-              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id
             FROM ft_events
             WHERE ${eventCond}
           )
@@ -421,7 +422,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           (
             SELECT
               sender, recipient, event_index, 0 as amount, asset_identifier, value,
-              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id
             FROM nft_events
             WHERE ${eventCond}
           )

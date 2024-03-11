@@ -1,6 +1,6 @@
 {
-  "description": "GET Address Transaction Transfers",
-  "title": "AddressTransactionTransfersListResponse",
+  "description": "GET Address Transaction Events",
+  "title": "AddressTransactionEventListResponse",
   "type": "object",
   "additionalProperties": false,
   "required": ["results", "limit", "offset", "total"],
@@ -18,7 +18,7 @@
     "results": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/address/address-transaction-transfer.schema.json"
+        "$ref": "../../entities/address/address-transaction-event.schema.json"
       }
     }
   }

@@ -1,6 +1,6 @@
 {
-  "description": "Address Transaction Transfer",
-  "title": "AddressTransactionTransfer",
+  "description": "Address Transaction Event",
+  "title": "AddressTransactionEvent",
   "type": "object",
   "anyOf": [
     {
@@ -10,7 +10,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["stx_transfer"]
+          "enum": ["stx"]
         },
         "event_index": {
           "type": "integer"
@@ -19,9 +19,13 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "amount"
+            "amount", "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
             "amount": {
               "type": "string",
               "description": "Amount transferred in micro-STX as an integer string."
@@ -45,7 +49,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["ft_transfer"]
+          "enum": ["ft"]
         },
         "event_index": {
           "type": "integer"
@@ -54,9 +58,13 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "amount", "asset_identifier"
+            "amount", "asset_identifier", "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
             "asset_identifier": {
               "type": "string",
               "description": "Fungible Token asset identifier."
@@ -84,7 +92,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["nft_transfer"]
+          "enum": ["nft"]
         },
         "event_index": {
           "type": "integer"
@@ -93,9 +101,13 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "asset_identifier", "value"
+            "asset_identifier", "value", "type"
           ],
           "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
             "asset_identifier": {
               "type": "string",
               "description": "Non Fungible Token asset identifier."

@@ -17,7 +17,7 @@ import {
 } from './schemas';
 import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
 import {
-  AddressTransactionTransfersListResponse,
+  AddressTransactionEventListResponse,
   AddressTransactionsV2ListResponse,
 } from '../../../../docs/generated';
 import { InvalidRequestError } from '../../../errors';
@@ -62,7 +62,7 @@ export function createV2AddressesRouter(db: PgStore): express.Router {
   );
 
   router.get(
-    '/:address/transactions/:tx_id/transfers',
+    '/:address/transactions/:tx_id/events',
     cacheHandler,
     asyncHandler(async (req, res) => {
       if (
@@ -74,11 +74,11 @@ export function createV2AddressesRouter(db: PgStore): express.Router {
       const query = req.query as TransactionPaginationQueryParams;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getAddressTransactionTransfers({
+        const { limit, offset, results, total } = await db.v2.getAddressTransactionEvents({
           ...params,
           ...query,
         });
-        const response: AddressTransactionTransfersListResponse = {
+        const response: AddressTransactionEventListResponse = {
           limit,
           offset,
           total,

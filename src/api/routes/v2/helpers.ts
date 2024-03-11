@@ -1,12 +1,12 @@
 import {
   AddressTransaction,
-  AddressTransactionTransfer,
+  AddressTransactionEvent,
   BurnBlock,
   NakamotoBlock,
   SmartContractsStatusResponse,
 } from 'docs/generated';
 import {
-  DbAddressTransactionTransfer,
+  DbAddressTransactionEvent,
   DbBlock,
   DbBurnBlock,
   DbEventTypeId,
@@ -15,7 +15,11 @@ import {
 } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
-import { getTxStatusString, parseDbTx } from '../../../api/controllers/db-controller';
+import {
+  getAssetEventTypeString,
+  getTxStatusString,
+  parseDbTx,
+} from '../../../api/controllers/db-controller';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
@@ -104,14 +108,15 @@ export function parseDbTxWithAccountTransferSummary(
 }
 
 export function parseDbAddressTransactionTransfer(
-  transfer: DbAddressTransactionTransfer
-): AddressTransactionTransfer {
+  transfer: DbAddressTransactionEvent
+): AddressTransactionEvent {
   switch (transfer.event_type_id) {
     case DbEventTypeId.FungibleTokenAsset:
       return {
-        type: 'ft_transfer',
+        type: 'ft',
         event_index: transfer.event_index,
         data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
           amount: transfer.amount,
           asset_identifier: transfer.asset_identifier ?? '',
           sender: transfer.sender ?? undefined,
@@ -120,9 +125,10 @@ export function parseDbAddressTransactionTransfer(
       };
     case DbEventTypeId.NonFungibleTokenAsset:
       return {
-        type: 'nft_transfer',
+        type: 'nft',
         event_index: transfer.event_index,
         data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
           asset_identifier: transfer.asset_identifier ?? '',
           value: {
             hex: transfer.value ?? '',
@@ -134,9 +140,10 @@ export function parseDbAddressTransactionTransfer(
       };
     case DbEventTypeId.StxAsset:
       return {
-        type: 'stx_transfer',
+        type: 'stx',
         event_index: transfer.event_index,
         data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
           amount: transfer.amount,
           sender: transfer.sender ?? undefined,
           recipient: transfer.recipient ?? undefined,

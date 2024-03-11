@@ -1002,10 +1002,11 @@ export interface AddressTransfersTxQueryResult extends TxQueryResult {
   nft_burn: number;
 }
 
-export interface DbAddressTransactionTransfer {
+export interface DbAddressTransactionEvent {
   event_index: number;
   amount: string;
   event_type_id: DbEventTypeId;
+  asset_event_type_id: DbAssetEventTypeId;
   sender: string | null;
   recipient: string | null;
   asset_identifier: string | null;
