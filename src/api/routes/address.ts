@@ -239,6 +239,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     })
   );
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions/:tx_id`
+   */
   router.get(
     '/:stx_address/:tx_id/with_transfers',
     cacheHandler,
@@ -282,6 +285,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
     })
   );
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions`
+   */
   router.get(
     '/:stx_address/transactions_with_transfers',
     cacheHandler,

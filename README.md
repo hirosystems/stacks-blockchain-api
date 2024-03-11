@@ -198,7 +198,24 @@ Development of this product happens in the open on GitHub, and we are grateful t
 Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it. 
 
 ### Contributing Guide
-Read our [contributing guide](.github/CONTRIBUTING.md) to learn about our development process, how to propose bug fixes and improvements, and how to build and test your changes.
+
+Hiro welcomes all contributions to Hiro documentation. These contributions come in two forms: issues and pull requests.
+
+#### Issues
+
+Bugs, feature requests, and development-related questions should be directed to our [GitHub issues tracker](https://github.com/hirosystems/stacks-blockchain-api/issues/new).
+
+If reporting a bug, try to provide as much context as possible and anything else that might be relevant to the describe the issue.  If possible include a simple test case that we can use to reproduce the problem on our own. 
+
+For feature requests, please explain what you're trying to do, and how the requested feature would be a complement to the project.
+
+The two most important pieces of information we need in order to properly evaluate an issue or a feature request is a clear description of the behavior being reported.
+
+#### Pull requests
+
+A pull request allows anyone to suggest changes to a repository on GitHub that can be easily reviewed by others. Once a pull request is opened, you can discuss and review the potential changes with collaborators and add follow-up commits before your changes are merged into the base branch.
+
+Keep in mind that pull requests are not merged directly into the `master` branch. It must have `develop` as the base branch.
 
 ### Community
 

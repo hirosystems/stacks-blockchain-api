@@ -10,7 +10,7 @@ info:
   title: Stacks Blockchain API
   version: 'STACKS_API_VERSION'
   description: |
-    Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/get-started/stacks-blockchain-api).
+    Welcome to the API reference overview for the [Stacks Blockchain API](https://docs.hiro.so/stacks-blockchain-api).
 
     [Download Postman collection](https://hirosystems.github.io/stacks-blockchain-api/collection.json)
 tags:
@@ -834,6 +834,95 @@ paths:
               example:
                 $ref: ./api/transaction/get-transactions.example.json
 
+  /extended/v2/addresses/{address}/transactions:
+    get:
+      summary: Get address transactions
+      description: |
+        Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
+        
+        More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+      tags:
+        - Transactions
+      operationId: get_address_transactions
+      parameters:
+        - name: address
+          in: path
+          description: STX address or Smart Contract ID
+          required: true
+          schema:
+            type: string
+            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+        - name: limit
+          in: query
+          description: Number of transactions to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: Index of first transaction to fetch
+          required: false
+          schema:
+            type: integer
+            example: 10
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-v2-address-transactions.schema.json
+              example:
+                $ref: ./api/address/get-v2-address-transactions.example.json
+
+  /extended/v2/addresses/{address}/transactions/{tx_id}/events:
+    get:
+      summary: Get events for an address transaction
+      description: |
+        Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction.
+      tags:
+        - Transactions
+      operationId: get_address_transaction_events
+      parameters:
+        - name: address
+          in: path
+          description: STX address or Smart Contract ID
+          required: true
+          schema:
+            type: string
+            example: "SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0"
+        - name: tx_id
+          in: path
+          description: Transaction ID
+          required: true
+          schema:
+            type: string
+            example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
+        - name: limit
+          in: query
+          description: Number of events to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+        - name: offset
+          in: query
+          description: Index of first event to fetch
+          required: false
+          schema:
+            type: integer
+            example: 10
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: ./api/address/get-address-transaction-events.schema.json
+              example:
+                $ref: ./api/address/get-address-transaction-events.example.json
+
   /extended/v2/smart-contracts/status:
     get:
       summary: Get smart contracts status
@@ -869,7 +958,7 @@ paths:
       summary: Get recent blocks
       deprecated: true
       description: |
-          **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+          **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
 
           Retrieves a list of recently mined blocks
 
@@ -915,7 +1004,7 @@ paths:
       deprecated: true
       summary: Get block by hash
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
         
         Retrieves block details of a specific block for a given chain height. You can use the hash from your latest block ('get_block_list' API) to get your block details.
       tags:
@@ -949,7 +1038,7 @@ paths:
       deprecated: true
       summary: Get block by height
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get block](#operation/get_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get block](/api/get-block).
 
         Retrieves block details of a specific block at a given block height
       tags:
@@ -983,7 +1072,7 @@ paths:
       summary: Get block by burnchain block hash
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
 
         Retrieves block details of a specific block for a given burnchain block hash
       tags:
@@ -1018,7 +1107,7 @@ paths:
       summary: Get block by burnchain height
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get blocks](#operation/get_blocks).
+        **NOTE:** This endpoint is deprecated in favor of [Get blocks](/api/get-blocks).
 
         Retrieves block details of a specific block for a given burn chain height
       tags:
@@ -1618,6 +1707,7 @@ paths:
           Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
 
           If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_account_transactions
@@ -1679,6 +1769,7 @@ paths:
     get:
       summary: Get account transaction information for specific transaction
       description: Retrieves transaction details for a given Transaction Id `tx_id`, for a given account or contract Identifier.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_single_transaction_with_transfers
@@ -1717,6 +1808,7 @@ paths:
     get:
       summary: Get account transactions including STX transfers for each transaction.
       description: Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.
+      deprecated: true
       tags:
         - Accounts
       operationId: get_account_transactions_with_transfers
@@ -2003,7 +2095,7 @@ paths:
               example:
                 $ref: ./api/core-node/get-info.example.json
 
-  /extended/v1/status:
+  /extended:
     get:
       summary: API status
       description: Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.
@@ -3009,7 +3101,7 @@ paths:
       operationId: get_transactions_by_block_hash
       summary: Transactions by block hash
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
 
         Retrieves a list of all transactions within a block for a given block hash.
       tags:
@@ -3052,7 +3144,7 @@ paths:
       operationId: get_transactions_by_block_height
       summary: Transactions by block height
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](#operation/get_transactions_by_block).
+        **NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
 
         Retrieves all transactions within a block at a given height
       tags:
@@ -3358,7 +3450,7 @@ paths:
       summary: Fetch fee rate
       deprecated: true
       description: |
-        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](#operation/post_fee_transaction).
+        **NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](/api/get-approximate-fees-for-a-given-transaction).
 
         Retrieves estimated fee rate.
       tags:

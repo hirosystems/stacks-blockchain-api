@@ -9,8 +9,10 @@ export type SchemaMergeRootStub =
   | AddressBalanceResponse
   | AddressStxBalanceResponse
   | AddressStxInboundListResponse
+  | AddressTransactionEventListResponse
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
+  | AddressTransactionsV2ListResponse
   | BlockListResponse
   | BurnBlockListResponse
   | NakamotoBlockListResponse
@@ -110,6 +112,8 @@ export type SchemaMergeRootStub =
   | TransactionResults
   | PostCoreNodeTransactionsError
   | AddressNonces
+  | AddressTransactionEvent
+  | AddressTransaction
   | AddressTokenOfferingLocked
   | AddressTransactionWithTransfers
   | AddressUnlockSchedule
@@ -323,6 +327,78 @@ export type TransactionEventNonFungibleAsset = AbstractTransactionEvent & {
 export type AddressStxBalanceResponse = StxBalance & {
   token_offering_locked?: AddressTokenOfferingLocked;
 };
+/**
+ * Address Transaction Event
+ */
+export type AddressTransactionEvent =
+  | {
+      type: "stx";
+      event_index: number;
+      data: {
+        type: "transfer" | "mint" | "burn";
+        /**
+         * Amount transferred in micro-STX as an integer string.
+         */
+        amount: string;
+        /**
+         * Principal that sent STX. This is unspecified if the STX were minted.
+         */
+        sender?: string;
+        /**
+         * Principal that received STX. This is unspecified if the STX were burned.
+         */
+        recipient?: string;
+      };
+    }
+  | {
+      type: "ft";
+      event_index: number;
+      data: {
+        type: "transfer" | "mint" | "burn";
+        /**
+         * Fungible Token asset identifier.
+         */
+        asset_identifier: string;
+        /**
+         * Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals.
+         */
+        amount: string;
+        /**
+         * Principal that sent the asset.
+         */
+        sender?: string;
+        /**
+         * Principal that received the asset.
+         */
+        recipient?: string;
+      };
+    }
+  | {
+      type: "nft";
+      event_index: number;
+      data: {
+        type: "transfer" | "mint" | "burn";
+        /**
+         * Non Fungible Token asset identifier.
+         */
+        asset_identifier: string;
+        /**
+         * Non Fungible Token asset value.
+         */
+        value: {
+          hex: string;
+          repr: string;
+        };
+        /**
+         * Principal that sent the asset.
+         */
+        sender?: string;
+        /**
+         * Principal that received the asset.
+         */
+        recipient?: string;
+      };
+    };
 /**
  * Describes all transaction types on Stacks 2.0 blockchain
  */
@@ -893,6 +969,15 @@ export interface InboundStxTransfer {
   tx_index: number;
 }
 /**
+ * GET Address Transaction Events
+ */
+export interface AddressTransactionEventListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransactionEvent[];
+}
+/**
  * GET request that returns account transactions
  */
 export interface AddressTransactionsWithTransfersListResponse {
@@ -1152,6 +1237,47 @@ export interface AddressTransactionsListResponse {
   offset: number;
   total: number;
   results: (MempoolTransaction | Transaction)[];
+}
+/**
+ * GET Address Transactions
+ */
+export interface AddressTransactionsV2ListResponse {
+  limit: number;
+  offset: number;
+  total: number;
+  results: AddressTransaction[];
+}
+/**
+ * Address transaction with STX, FT and NFT transfer summaries
+ */
+export interface AddressTransaction {
+  tx: Transaction;
+  /**
+   * Total sent from the given address, including the tx fee, in micro-STX as an integer string.
+   */
+  stx_sent: string;
+  /**
+   * Total received by the given address in micro-STX as an integer string.
+   */
+  stx_received: string;
+  events?: {
+    stx: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    ft: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    nft: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    [k: string]: unknown | undefined;
+  };
 }
 /**
  * GET request that returns blocks

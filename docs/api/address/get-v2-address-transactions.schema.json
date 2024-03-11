@@ -1,0 +1,25 @@
+{
+  "description": "GET Address Transactions",
+  "title": "AddressTransactionsV2ListResponse",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 30
+    },
+    "offset": {
+      "type": "integer"
+    },
+    "total": {
+      "type": "integer"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/address/address-transaction.schema.json"
+      }
+    }
+  }
+}
