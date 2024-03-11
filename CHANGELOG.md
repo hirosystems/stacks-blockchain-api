@@ -1,3 +1,15 @@
+## [7.9.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0-beta.1) (2024-03-11)
+
+
+### Features
+
+* add v2 addresses endpoints ([#1876](https://github.com/hirosystems/stacks-blockchain-api/issues/1876)) ([c9440dd](https://github.com/hirosystems/stacks-blockchain-api/commit/c9440dd8efc0ac0589567f51bb8700d52d8d348f))
+
+
+### Bug Fixes
+
+* show status endpoint in /extended ([#1869](https://github.com/hirosystems/stacks-blockchain-api/issues/1869)) ([cf47f8f](https://github.com/hirosystems/stacks-blockchain-api/commit/cf47f8fe220d9388c204798b547699a44c27fab5))
+
 ## [7.8.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.1...v7.8.2) (2024-02-19)
 
 
