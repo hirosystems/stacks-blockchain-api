@@ -83,9 +83,23 @@ export function parseDbTxWithAccountTransferSummary(
     tx: parseDbTx(tx),
     stx_sent: tx.stx_sent.toString(),
     stx_received: tx.stx_received.toString(),
-    stx_transfers: tx.stx_transfers,
-    ft_transfers: tx.ft_transfers,
-    nft_transfers: tx.nft_transfers,
+    events: {
+      stx: {
+        transfer: tx.stx_transfer,
+        mint: tx.stx_mint,
+        burn: tx.stx_burn,
+      },
+      ft: {
+        transfer: tx.ft_transfer,
+        mint: tx.ft_mint,
+        burn: tx.ft_burn,
+      },
+      nft: {
+        transfer: tx.nft_transfer,
+        mint: tx.nft_mint,
+        burn: tx.nft_burn,
+      },
+    },
   };
 }
 

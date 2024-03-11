@@ -25,6 +25,7 @@ import {
   DbTxWithAddressTransfers,
   DbEventTypeId,
   DbAddressTransactionTransfer,
+  DbAssetEventTypeId,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -333,9 +334,42 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM stx_events
             WHERE ${eventCond} AND recipient = ${args.address}
           ) AS stx_received,
-          (SELECT COUNT(*)::int FROM stx_events WHERE ${eventAcctCond}) AS stx_transfers,
-          (SELECT COUNT(*)::int FROM ft_events WHERE ${eventAcctCond}) AS ft_transfers,
-          (SELECT COUNT(*)::int FROM nft_events WHERE ${eventAcctCond}) AS nft_transfers,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS stx_transfer,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS stx_mint,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS stx_burn,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS ft_transfer,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS ft_mint,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS ft_burn,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS nft_transfer,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS nft_mint,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS nft_burn,
           count
         FROM stx_txs
         INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)

@@ -23,17 +23,59 @@
       "type": "string",
       "description": "Total received by the given address in micro-STX as an integer string."
     },
-    "stx_transfers": {
-      "type": "integer",
-      "description": "Number of STX transfers for this account in this transaction"
-    },
-    "ft_transfers": {
-      "type": "integer",
-      "description": "Number of FT transfers for this account in this transaction"
-    },
-    "nft_transfers": {
-      "type": "integer",
-      "description": "Number of NFT transfers for this account in this transaction"
+    "events": {
+      "type": "object",
+      "required": ["stx", "ft", "nft"],
+      "properties": {
+        "stx": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        },
+        "ft": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        },
+        "nft": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        }
+      }
     }
   }
 }

@@ -56,9 +56,23 @@
       },
       "stx_sent": "696",
       "stx_received": "0",
-      "stx_transfers": 2,
-      "ft_transfers": 1,
-      "nft_transfers": 1
+      "events": {
+        "stx": {
+          "transfer": 2,
+          "mint": 0,
+          "burn": 0
+        },
+        "ft": {
+          "transfer": 1,
+          "mint": 0,
+          "burn": 0
+        },
+        "nft": {
+          "transfer": 1,
+          "mint": 0,
+          "burn": 0
+        }
+      }
     },
     {
       "tx": {
@@ -94,9 +108,23 @@
       },
       "stx_sent": "100180",
       "stx_received": "0",
-      "stx_transfers": 1,
-      "ft_transfers": 0,
-      "nft_transfers": 0
+      "events": {
+        "stx": {
+          "transfer": 1,
+          "mint": 0,
+          "burn": 0
+        },
+        "ft": {
+          "transfer": 0,
+          "mint": 0,
+          "burn": 0
+        },
+        "nft": {
+          "transfer": 0,
+          "mint": 0,
+          "burn": 0
+        }
+      }
     }
   ]
 }

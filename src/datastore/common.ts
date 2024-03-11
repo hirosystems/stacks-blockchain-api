@@ -228,9 +228,15 @@ export interface DbTxRaw extends DbTx {
 export interface DbTxWithAddressTransfers extends DbTx {
   stx_sent: bigint;
   stx_received: bigint;
-  stx_transfers: number;
-  ft_transfers: number;
-  nft_transfers: number;
+  stx_transfer: number;
+  stx_mint: number;
+  stx_burn: number;
+  ft_transfer: number;
+  ft_mint: number;
+  ft_burn: number;
+  nft_transfer: number;
+  nft_mint: number;
+  nft_burn: number;
 }
 
 export interface DbTxGlobalStatus {
@@ -985,9 +991,15 @@ export interface ContractTxQueryResult extends TxQueryResult {
 export interface AddressTransfersTxQueryResult extends TxQueryResult {
   stx_sent: bigint;
   stx_received: bigint;
-  stx_transfers: number;
-  ft_transfers: number;
-  nft_transfers: number;
+  stx_transfer: number;
+  stx_mint: number;
+  stx_burn: number;
+  ft_transfer: number;
+  ft_mint: number;
+  ft_burn: number;
+  nft_transfer: number;
+  nft_mint: number;
+  nft_burn: number;
 }
 
 export interface DbAddressTransactionTransfer {

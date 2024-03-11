@@ -338,9 +338,15 @@ export function parseAccountTransferSummaryTxQueryResult(
     ...tx,
     stx_sent: result.stx_sent,
     stx_received: result.stx_received,
-    stx_transfers: result.stx_transfers,
-    ft_transfers: result.ft_transfers,
-    nft_transfers: result.nft_transfers,
+    stx_transfer: result.stx_transfer,
+    stx_mint: result.stx_mint,
+    stx_burn: result.stx_burn,
+    ft_transfer: result.ft_transfer,
+    ft_mint: result.ft_mint,
+    ft_burn: result.ft_burn,
+    nft_transfer: result.nft_transfer,
+    nft_mint: result.nft_mint,
+    nft_burn: result.nft_burn,
   };
 }
 

@@ -1257,18 +1257,24 @@ export interface AddressTransaction {
    * Total received by the given address in micro-STX as an integer string.
    */
   stx_received: string;
-  /**
-   * Number of STX transfers for this account in this transaction
-   */
-  stx_transfers: number;
-  /**
-   * Number of FT transfers for this account in this transaction
-   */
-  ft_transfers: number;
-  /**
-   * Number of NFT transfers for this account in this transaction
-   */
-  nft_transfers: number;
+  events?: {
+    stx: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    ft: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    nft: {
+      transfer: number;
+      mint: number;
+      burn: number;
+    };
+    [k: string]: unknown | undefined;
+  };
 }
 /**
  * GET request that returns blocks
