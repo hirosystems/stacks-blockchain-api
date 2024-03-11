@@ -69,7 +69,7 @@ describe('address tests', () => {
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
-    const testTxId = '0x12340006';
+    const testTxId = '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -102,7 +102,9 @@ describe('address tests', () => {
       nftEventCount = 1
     ): [DbTxRaw, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
       const tx: DbTxRaw = {
-        tx_id: '0x1234' + (++indexIdIndex).toString().padStart(4, '0'),
+        tx_id:
+          '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b89' +
+          (++indexIdIndex).toString().padStart(4, '0'),
         tx_index: indexIdIndex,
         anchor_mode: 3,
         nonce: 0,
@@ -137,13 +139,14 @@ describe('address tests', () => {
         execution_cost_write_count: 4,
         execution_cost_write_length: 5,
       };
+      let eventIndex = 0;
       const stxEvents: DbStxEvent[] = [];
       for (let i = 0; i < stxEventCount; i++) {
         const stxEvent: DbStxEvent = {
           canonical,
           event_type: DbEventTypeId.StxAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
-          event_index: i,
+          event_index: eventIndex++,
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
@@ -160,7 +163,7 @@ describe('address tests', () => {
           event_type: DbEventTypeId.FungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           asset_identifier: 'usdc',
-          event_index: i,
+          event_index: eventIndex++,
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
@@ -177,7 +180,7 @@ describe('address tests', () => {
           event_type: DbEventTypeId.NonFungibleTokenAsset,
           asset_event_type_id: DbAssetEventTypeId.Transfer,
           asset_identifier: 'punk1',
-          event_index: i,
+          event_index: eventIndex++,
           tx_id: tx.tx_id,
           tx_index: tx.tx_index,
           block_height: tx.block_height,
@@ -229,7 +232,7 @@ describe('address tests', () => {
       results: [
         {
           tx: {
-            tx_id: '0x12340006',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -316,7 +319,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x12340003',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890003',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -377,7 +380,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x12340002',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890002',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -453,6 +456,162 @@ describe('address tests', () => {
     };
     expect(JSON.parse(fetch1.text)).toEqual(expected1);
 
+    // Test v2 endpoints
+    const v2Fetch1 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions`
+    );
+    expect(v2Fetch1.status).toBe(200);
+    expect(v2Fetch1.type).toBe('application/json');
+    const v2Fetch1Json = JSON.parse(v2Fetch1.text);
+    expect(v2Fetch1Json.results[0].tx).toStrictEqual(expected1.results[0].tx);
+    expect(v2Fetch1Json.results[0].stx_sent).toBe('1339');
+    expect(v2Fetch1Json.results[0].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[0].events.stx).toStrictEqual({
+      transfer: 3,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[0].events.ft).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[0].events.nft).toStrictEqual({
+      transfer: 2,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[1].tx).toStrictEqual(expected1.results[1].tx);
+    expect(v2Fetch1Json.results[1].stx_sent).toBe('1484');
+    expect(v2Fetch1Json.results[1].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[1].events.stx).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[1].events.ft).toStrictEqual({
+      transfer: 0,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[1].events.nft).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[2].tx).toStrictEqual(expected1.results[2].tx);
+    expect(v2Fetch1Json.results[2].stx_sent).toBe('1334');
+    expect(v2Fetch1Json.results[2].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[2].events.stx).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[2].events.ft).toStrictEqual({
+      transfer: 2,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[2].events.nft).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+
+    const v2Fetch2 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?limit=3`
+    );
+    expect(v2Fetch2.status).toBe(200);
+    expect(v2Fetch2.type).toBe('application/json');
+    expect(JSON.parse(v2Fetch2.text)).toStrictEqual({
+      limit: 3,
+      offset: 0,
+      results: [
+        {
+          data: {
+            type: 'transfer',
+            amount: '35',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          },
+          event_index: 0,
+          type: 'stx',
+        },
+        {
+          data: {
+            type: 'transfer',
+            amount: '35',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          },
+          event_index: 1,
+          type: 'stx',
+        },
+        {
+          data: {
+            type: 'transfer',
+            amount: '35',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          },
+          event_index: 2,
+          type: 'stx',
+        },
+      ],
+      total: 6,
+    });
+    const v2Fetch3 = await supertest(api.server).get(
+      `/extended/v2/addresses/${testAddr2}/transactions/${v2Fetch1Json.results[0].tx.tx_id}/events?offset=3&limit=3`
+    );
+    expect(v2Fetch3.status).toBe(200);
+    expect(v2Fetch3.type).toBe('application/json');
+    expect(JSON.parse(v2Fetch3.text)).toStrictEqual({
+      limit: 3,
+      offset: 3,
+      results: [
+        {
+          data: {
+            type: 'transfer',
+            amount: '35',
+            asset_identifier: 'usdc',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+          },
+          event_index: 3,
+          type: 'ft',
+        },
+        {
+          data: {
+            type: 'transfer',
+            asset_identifier: 'punk1',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            value: {
+              hex: '0x0100000000000000000000000000000023',
+              repr: 'u35',
+            },
+          },
+          event_index: 4,
+          type: 'nft',
+        },
+        {
+          data: {
+            type: 'transfer',
+            asset_identifier: 'punk1',
+            recipient: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
+            sender: 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4',
+            value: {
+              hex: '0x0100000000000000000000000000000023',
+              repr: 'u35',
+            },
+          },
+          event_index: 5,
+          type: 'nft',
+        },
+      ],
+      total: 6,
+    });
+
     // testing single txs information based on given tx_id
     const fetchSingleTxInformation = await supertest(api.server).get(
       `/extended/v1/address/${testAddr4}/${testTxId}/with_transfers`
@@ -461,7 +620,7 @@ describe('address tests', () => {
     expect(fetchSingleTxInformation.type).toBe('application/json');
     const expectedSingleTxInformation = {
       tx: {
-        tx_id: '0x12340006',
+        tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
         tx_type: 'token_transfer',
         nonce: 0,
         anchor_mode: 'any',
@@ -533,7 +692,7 @@ describe('address tests', () => {
       results: [
         {
           tx: {
-            tx_id: '0x12340006',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -620,7 +779,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x12340005',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890005',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',

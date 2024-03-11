@@ -225,6 +225,20 @@ export interface DbTxRaw extends DbTx {
   raw_tx: string;
 }
 
+export interface DbTxWithAddressTransfers extends DbTx {
+  stx_sent: bigint;
+  stx_received: bigint;
+  stx_transfer: number;
+  stx_mint: number;
+  stx_burn: number;
+  ft_transfer: number;
+  ft_mint: number;
+  ft_burn: number;
+  nft_transfer: number;
+  nft_mint: number;
+  nft_burn: number;
+}
+
 export interface DbTxGlobalStatus {
   status: DbTxStatus;
   index_block_hash?: string;
@@ -972,6 +986,31 @@ export interface TxQueryResult {
 
 export interface ContractTxQueryResult extends TxQueryResult {
   abi?: unknown | null;
+}
+
+export interface AddressTransfersTxQueryResult extends TxQueryResult {
+  stx_sent: bigint;
+  stx_received: bigint;
+  stx_transfer: number;
+  stx_mint: number;
+  stx_burn: number;
+  ft_transfer: number;
+  ft_mint: number;
+  ft_burn: number;
+  nft_transfer: number;
+  nft_mint: number;
+  nft_burn: number;
+}
+
+export interface DbAddressTransactionEvent {
+  event_index: number;
+  amount: string;
+  event_type_id: DbEventTypeId;
+  asset_event_type_id: DbAssetEventTypeId;
+  sender: string | null;
+  recipient: string | null;
+  asset_identifier: string | null;
+  value: string | null;
 }
 
 export interface FaucetRequestQueryResult {
