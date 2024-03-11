@@ -901,14 +901,14 @@ paths:
             example: "0x0a411719e3bfde95f9e227a2d7f8fac3d6c646b1e6cc186db0e2838a2c6cd9c0"
         - name: limit
           in: query
-          description: Number of transfers to fetch
+          description: Number of events to fetch
           required: false
           schema:
             type: integer
             example: 20
         - name: offset
           in: query
-          description: Index of first transfer to fetch
+          description: Index of first event to fetch
           required: false
           schema:
             type: integer
