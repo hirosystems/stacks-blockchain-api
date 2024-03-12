@@ -968,6 +968,7 @@ export class PgStore extends BasePgStore {
             pe.pox_addr
           FROM pox4_events pe
           WHERE pe.canonical = true AND pe.microblock_canonical = true
+          AND pe.start_cycle_id <= ${cycle} AND (pe.end_cycle_id >= ${cycle} OR pe.end_cycle_id IS NULL)
           ORDER BY pe.stacker, pe.block_height DESC, pe.tx_index DESC, pe.event_index DESC
         ), AggregatedStackers AS NOT MATERIALIZED (
           SELECT

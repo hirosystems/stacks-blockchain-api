@@ -259,6 +259,7 @@ export interface CoreNodeBlockMessage {
   cycle_number?: number;
   /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
   reward_set?: {
+    pox_stx_threshold: string; // "666720000000000"
     rewarded_addresses: (
       | {
           Standard: [
@@ -279,7 +280,7 @@ export interface CoreNodeBlockMessage {
     signers?: {
       signing_key: string; // "03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e",
       weight: number; // 1,
-      stacked_amt: number; // 3000225000000000
+      stacked_amt: string; // "3000225000000000"
     }[];
     start_cycle_state: {
       missed_reward_slots: [];
