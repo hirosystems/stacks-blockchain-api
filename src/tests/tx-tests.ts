@@ -44,6 +44,7 @@ import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { Transaction } from '@stacks/stacks-blockchain-api-types';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -440,6 +441,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -582,6 +585,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -723,6 +728,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -898,6 +905,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -1492,9 +1501,11 @@ describe('tx tests', () => {
       throw Error('not found');
     }
 
-    const expectedResp = {
+    const expectedResp: Transaction = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -1698,6 +1709,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0x5678',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -1846,6 +1859,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       microblock_canonical: true,
@@ -2778,6 +2793,8 @@ describe('tx tests', () => {
       tx_status: 'success',
       block_hash: '0x1234',
       block_height: 1,
+      stacks_block_time: 1594647995,
+      stacks_block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -2949,6 +2966,8 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       is_unanchored: false,
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      stacks_block_time: 1637003433,
+      stacks_block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_block_hash: '0x',
       block_height: 1,
       burn_block_time: 1637003433,
@@ -3049,6 +3068,8 @@ describe('tx tests', () => {
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       parent_block_hash: '0x',
       block_height: 1,
+      stacks_block_time: 1637003433,
+      stacks_block_time_iso: '2021-11-15T19:10:33.000Z',
       burn_block_time: 1637003433,
       burn_block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_burn_block_time: 1637002470,
@@ -3395,6 +3416,8 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       block_height: 1,
+      stacks_block_time: 94869287,
+      stacks_block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_time: 94869286,
       burn_block_time_iso: '1973-01-03T00:34:46.000Z',
       canonical: true,
