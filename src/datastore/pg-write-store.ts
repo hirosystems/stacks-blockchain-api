@@ -1795,8 +1795,16 @@ export class PgWriteStore extends PgStore {
           return await this.getMempoolStatsInternal({ sql });
         });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
-      } catch (e) {
-        logger.error(e, `failed to run mempool stats update`);
+      } catch (e: unknown) {
+        if (
+          e instanceof Error &&
+          'code' in e &&
+          ['CONNECTION_ENDED', 'CONNECTION_ENDED'].includes((e as any).code)
+        ) {
+          logger.info(`Skipping mempool stats query because ${(e as any).code}`);
+        } else {
+          logger.error(e, `failed to run mempool stats update`);
+        }
       } finally {
         this._debounceMempoolStat.running = false;
         this._debounceMempoolStat.debounce = null;
@@ -3164,5 +3172,12 @@ export class PgWriteStore extends PgStore {
         throw new Error(`No updates made while toggling table indexes`);
       }
     }
+  }
+
+  async close(args?: { timeout?: number }): Promise<void> {
+    if (this._debounceMempoolStat.debounce) {
+      clearTimeout(this._debounceMempoolStat.debounce);
+    }
+    await super.close(args);
   }
 }
