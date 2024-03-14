@@ -23,12 +23,21 @@ export const EMPTY_HASH_256 = '0x00000000000000000000000000000000000000000000000
 
 export const pipelineAsync = util.promisify(stream.pipeline);
 
+let _ibdBlockHeight: number | undefined;
 export function getIbdBlockHeight(): number | undefined {
-  const val = process.env.IBD_MODE_UNTIL_BLOCK;
-  if (val) {
-    const num = Number.parseInt(val);
-    return !Number.isNaN(num) ? num : undefined;
+  if (typeof _ibdBlockHeight !== 'undefined') {
+    return _ibdBlockHeight;
   }
+  if (process.env.IBD_MODE_UNTIL_BLOCK) {
+    const num = Number.parseInt(process.env.IBD_MODE_UNTIL_BLOCK);
+    _ibdBlockHeight = !Number.isNaN(num) ? num : undefined;
+  }
+  return _ibdBlockHeight;
+}
+
+export function isBlockInIbdMode(blockHeight: number): boolean {
+  const ibdBlockHeight = getIbdBlockHeight();
+  return typeof ibdBlockHeight === 'number' && blockHeight <= ibdBlockHeight;
 }
 
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {

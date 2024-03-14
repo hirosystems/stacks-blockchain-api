@@ -588,6 +588,7 @@ export interface CoreNodeMsgBlockData {
   block_height: number;
   burn_block_time: number;
   burn_block_height: number;
+  stacks_block_time: number;
 }
 
 export function parseMicroblocksFromTxs(args: {
@@ -744,6 +745,7 @@ export function parseMessageTransaction(
       raw_tx: coreTx.raw_tx,
       parsed_tx: rawTx,
       block_hash: blockData.block_hash,
+      stacks_block_time: blockData.stacks_block_time,
       index_block_hash: blockData.index_block_hash,
       parent_index_block_hash: blockData.parent_index_block_hash,
       parent_block_hash: blockData.parent_block_hash,

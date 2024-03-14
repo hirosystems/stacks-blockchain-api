@@ -271,6 +271,7 @@ describe('microblock tests', () => {
           parent_block_hash: '0x00',
           parent_microblock_hash: '',
           block_height: 1,
+          stacks_block_time: 1234,
           burn_block_time: 1234,
           burn_block_hash: '0x1234',
           burn_block_height: 123,
@@ -294,6 +295,7 @@ describe('microblock tests', () => {
           index_block_hash: block1.index_block_hash,
           block_hash: block1.block_hash,
           block_height: block1.block_height,
+          stacks_block_time: block1.burn_block_time,
           burn_block_time: block1.burn_block_time,
           parent_burn_block_time: 1626122935,
           type_id: DbTxTypeId.Coinbase,
@@ -439,6 +441,7 @@ describe('microblock tests', () => {
           index_block_hash: '',
           block_hash: '',
           burn_block_time: -1,
+          stacks_block_time: -1,
 
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
@@ -485,6 +488,7 @@ describe('microblock tests', () => {
           index_block_hash: '',
           block_hash: '',
           burn_block_time: -1,
+          stacks_block_time: -1,
 
           // These properties can be determined with a db query, they are set while the db is inserting them.
           block_height: -1,
