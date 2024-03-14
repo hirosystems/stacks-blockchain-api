@@ -3,7 +3,7 @@ services:
   stacks-blockchain:
     build:
       context: ../stacks-blockchain/docker
-    command: stacks-node start --config=/app/config/Stacks-follower.toml
+    command: stacks-node start --config /app/config/Stacks-follower.toml
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700

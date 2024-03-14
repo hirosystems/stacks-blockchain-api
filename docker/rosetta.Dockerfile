@@ -152,7 +152,7 @@ case "${STACKS_NETWORK}" in
         ;;
 esac
 # start stacks-blockchain and store pid
-${STACKS_BLOCKCHAIN_DIR}/stacks-node start --config=${STACKS_BLOCKCHAIN_DIR}/${STACKS_NETWORK}-follower-conf.toml 2>&1 &
+${STACKS_BLOCKCHAIN_DIR}/stacks-node start --config ${STACKS_BLOCKCHAIN_DIR}/${STACKS_NETWORK}-follower-conf.toml 2>&1 &
 STACKS_BLOCKCHAIN_PID=$!
 
 # start stacks-blockchain-api and store pid
