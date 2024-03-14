@@ -1791,7 +1791,9 @@ export class PgWriteStore extends PgStore {
       this._debounceMempoolStat.running = true;
       this._debounceMempoolStat.triggeredAt = null;
       try {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
+        const mempoolStats = await this.sqlTransaction(async sql => {
+          return await this.getMempoolStatsInternal({ sql });
+        });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       } catch (e) {
         logger.error(e, `failed to run mempool stats update`);
