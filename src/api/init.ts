@@ -54,7 +54,7 @@ import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
 import { createMempoolRouter } from './routes/v2/mempool';
 import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
-import { createSignersRouter } from './routes/signers';
+import { createPoxRouter } from './routes/v2/pox';
 
 export interface ApiServer {
   expressApp: express.Express;
@@ -207,7 +207,6 @@ export async function startApiServer(opts: {
           v1.use('/status', createStatusRouter(datastore));
           v1.use('/fee_rate', createFeeRateRouter(datastore));
           v1.use('/tokens', createTokenRouter(datastore));
-          v1.use('/signers', createSignersRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
           v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
@@ -238,6 +237,7 @@ export async function startApiServer(opts: {
           v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
           v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
+          v2.use('/pox', createPoxRouter(datastore));
           return v2;
         })()
       );

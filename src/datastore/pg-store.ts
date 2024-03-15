@@ -69,8 +69,6 @@ import {
   PoxSyntheticEventTable,
   DbPoxStacker,
   DbPoxSyntheticEvent,
-  DbPoxSetSigners,
-  PoxSetQueryResult,
 } from './common';
 import {
   abiColumn,

@@ -72,6 +72,14 @@ export const TransactionLimitParamSchema = Type.Integer({
   description: 'Transactions per page',
 });
 
+export const PoxCycleLimitParamSchema = Type.Integer({
+  minimum: 1,
+  maximum: pagingQueryLimits[ResourceType.PoxCycle].maxLimit,
+  default: pagingQueryLimits[ResourceType.PoxCycle].defaultLimit,
+  title: 'PoX cycle limit',
+  description: 'PoX cycles per page',
+});
+
 const BurnBlockHashParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
   title: 'Burn block hash',
   description: 'Burn block hash',
@@ -111,6 +119,12 @@ export type TransactionPaginationQueryParams = Static<
 >;
 export const CompiledTransactionPaginationQueryParams = ajv.compile(
   TransactionPaginationQueryParamsSchema
+);
+
+const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
+export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
+export const CompiledPoxCyclePaginationQueryParams = ajv.compile(
+  PoxCyclePaginationQueryParamsSchema
 );
 
 const BlockParamsSchema = Type.Object(

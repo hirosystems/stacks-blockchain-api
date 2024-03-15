@@ -68,6 +68,8 @@ tags:
       url: https://docs.hiro.so/get-started/transactions
   - name: Mempool
     description: Endpoints to obtain Mempool information
+  - name: Proof of Transfer
+    description: Endpoints to get information about the Proof of Transfer consensus mechanism
 
 paths:
   /extended/v1/faucets/stx:
@@ -863,6 +865,39 @@ paths:
                 $ref: ./api/smart-contracts/get-smart-contracts-status.schema.json
               example:
                 $ref: ./api/smart-contracts/get-smart-contracts-status.example.json
+
+  /extended/v2/pox/cycles:
+    get:
+      summary: Get PoX cycles
+      description: Retrieves a list of PoX cycles
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycles
+      parameters:
+        - name: limit
+          in: query
+          description: max number of cycles to fetch
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 60
+        - name: offset
+          in: query
+          description: index of first cycle to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+      responses:
+        200:
+          description: List of cycles
+          content:
+            application/json:
+              schema:
+                $ref: ./api/stacking/get-pox-cycles.schema.json
+              example:
+                $ref: ./api/stacking/get-pox-cycles.example.json      
 
   /extended/v1/block:
     get:

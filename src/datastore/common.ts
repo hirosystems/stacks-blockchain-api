@@ -1011,13 +1011,23 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
-export interface PoxSetQueryResult {
+export interface PoxCycleQueryResult {
+  block_height: number;
   index_block_hash: string;
   cycle_number: number;
   canonical: boolean;
-  signing_key: string;
-  weight: number;
-  stacked_amount: string;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
+}
+
+export interface DbPoxCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
 }
 
 interface ReOrgEntities {

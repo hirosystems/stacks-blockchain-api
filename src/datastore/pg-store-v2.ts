@@ -7,6 +7,8 @@ import {
   BlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
+  PoxCyclePaginationQueryParams,
+  PoxCycleLimitParamSchema,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -20,6 +22,8 @@ import {
   DbTxTypeId,
   DbSmartContractStatus,
   DbTxStatus,
+  PoxCycleQueryResult,
+  DbPoxCycle,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -267,6 +271,29 @@ export class PgStoreV2 extends BasePgStoreModule {
       }
 
       return statusArray;
+    });
+  }
+
+  async getPoxCycles(args: PoxCyclePaginationQueryParams): Promise<DbPaginatedResult<DbPoxCycle>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const results = await sql<(PoxCycleQueryResult & { total: number })[]>`
+        SELECT DISTINCT ON(cycle_number)
+          cycle_number, block_height, index_block_hash, total_weight,
+          COUNT(*) AS total_signers, total_stacked_amount, COUNT(*) OVER()::int AS total
+        FROM pox_sets
+        WHERE canonical = TRUE
+        ORDER BY cycle_number DESC
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      return {
+        limit,
+        offset,
+        results: results,
+        total: results[0].total,
+      };
     });
   }
 }

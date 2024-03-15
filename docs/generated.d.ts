@@ -97,6 +97,7 @@ export type SchemaMergeRootStub =
   | SmartContractFound
   | SmartContractNotFound
   | PoolDelegationsResponse
+  | PoXCycleListResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -182,6 +183,7 @@ export type SchemaMergeRootStub =
   | RosettaTransaction
   | SmartContractStatus
   | PoolDelegation
+  | PoXCycle
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -3136,6 +3138,32 @@ export interface PoolDelegation {
    * The tx_id of the stacker delegation operation
    */
   tx_id: string;
+}
+/**
+ * GET request that returns PoX cycles
+ */
+export interface PoXCycleListResponse {
+  /**
+   * The number of Stackers to return
+   */
+  limit: number;
+  /**
+   * The number to Stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of Stackers
+   */
+  total: number;
+  results: PoXCycle[];
+}
+export interface PoXCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
 }
 /**
  * List of Non-Fungible Token history events
