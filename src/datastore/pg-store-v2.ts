@@ -321,6 +321,12 @@ export class PgStoreV2 extends BasePgStoreModule {
           UNION
           (
             SELECT tx_id, index_block_hash, microblock_hash
+            FROM stx_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
             FROM ft_events
             WHERE sender = ${args.address} OR recipient = ${args.address}
           )
