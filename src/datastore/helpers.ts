@@ -76,6 +76,7 @@ export const TX_COLUMNS = [
   'block_hash',
   'parent_block_hash',
   'block_height',
+  'block_time',
   'burn_block_time',
   'parent_burn_block_time',
   'type_id',
@@ -170,6 +171,7 @@ export const BLOCK_COLUMNS = [
   'parent_microblock_hash',
   'parent_microblock_sequence',
   'block_height',
+  'block_time',
   'burn_block_time',
   'burn_block_hash',
   'burn_block_height',
@@ -214,6 +216,7 @@ export const TX_METADATA_TABLES = [
   'names',
   'namespaces',
   'subdomains',
+  // TODO: add pox_set table here
 ] as const;
 
 export const POX_SYNTHETIC_EVENT_COLUMNS = [
@@ -333,6 +336,7 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     index_block_hash: result.index_block_hash,
     parent_index_block_hash: result.parent_index_block_hash,
     block_hash: result.block_hash,
+    block_time: result.block_time || result.burn_block_time,
     parent_block_hash: result.parent_block_hash,
     block_height: result.block_height,
     burn_block_time: result.burn_block_time,
@@ -450,6 +454,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     parent_microblock_hash: row.parent_microblock_hash,
     parent_microblock_sequence: row.parent_microblock_sequence,
     block_height: row.block_height,
+    block_time: row.block_time || row.burn_block_time,
     burn_block_time: row.burn_block_time,
     burn_block_hash: row.burn_block_hash,
     burn_block_height: row.burn_block_height,
@@ -1128,6 +1133,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     parent_burn_block_time: msg.parent_burn_block_time,
+    block_time: msg.block_time,
     type_id: parseEnum(DbTxTypeId, parsedTx.payload.type_id as number),
     anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchor_mode as number),
     status: getTxDbStatus(coreTx.status),

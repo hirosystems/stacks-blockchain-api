@@ -1593,6 +1593,7 @@ export class PgWriteStore extends PgStore {
       block_hash: tx.block_hash,
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
+      block_time: tx.block_time,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
@@ -1790,10 +1791,22 @@ export class PgWriteStore extends PgStore {
       this._debounceMempoolStat.running = true;
       this._debounceMempoolStat.triggeredAt = null;
       try {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
+        const mempoolStats = await this.sqlTransaction(async sql => {
+          return await this.getMempoolStatsInternal({ sql });
+        });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
-      } catch (e) {
-        logger.error(e, `failed to run mempool stats update`);
+      } catch (e: unknown) {
+        const connectionError = e as Error & { code: string };
+        if (
+          connectionError instanceof Error &&
+          ['CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECTION_CLOSED'].includes(
+            connectionError.code
+          )
+        ) {
+          logger.info(`Skipping mempool stats query because ${connectionError.code}`);
+        } else {
+          logger.error(e, `failed to run mempool stats update`);
+        }
       } finally {
         this._debounceMempoolStat.running = false;
         this._debounceMempoolStat.debounce = null;
@@ -2969,6 +2982,7 @@ export class PgWriteStore extends PgStore {
       block_hash: tx.block_hash,
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
+      block_time: tx.block_time,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
@@ -3160,5 +3174,12 @@ export class PgWriteStore extends PgStore {
         throw new Error(`No updates made while toggling table indexes`);
       }
     }
+  }
+
+  async close(args?: { timeout?: number }): Promise<void> {
+    if (this._debounceMempoolStat.debounce) {
+      clearTimeout(this._debounceMempoolStat.debounce);
+    }
+    await super.close(args);
   }
 }

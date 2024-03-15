@@ -617,6 +617,11 @@ function parseDbBlock(
     canonical: dbBlock.canonical,
     height: dbBlock.block_height,
     hash: dbBlock.block_hash,
+    block_time: dbBlock.block_time > 0 ? dbBlock.block_time : dbBlock.burn_block_time,
+    block_time_iso:
+      dbBlock.block_time > 0
+        ? unixEpochToIso(dbBlock.block_time)
+        : unixEpochToIso(dbBlock.burn_block_time),
     index_block_hash: dbBlock.index_block_hash,
     parent_block_hash: dbBlock.parent_block_hash,
     burn_block_time: dbBlock.burn_block_time,
@@ -1039,6 +1044,12 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
     block_hash: dbTx.block_hash,
     parent_block_hash: dbTx.parent_block_hash,
     block_height: dbTx.block_height,
+    block_time: dbTx.block_time || dbTx.burn_block_time,
+    block_time_iso: dbTx.block_time
+      ? unixEpochToIso(dbTx.block_time)
+      : dbTx.burn_block_time > 0
+      ? unixEpochToIso(dbTx.burn_block_time)
+      : '',
     burn_block_time: dbTx.burn_block_time,
     burn_block_time_iso: dbTx.burn_block_time > 0 ? unixEpochToIso(dbTx.burn_block_time) : '',
     parent_burn_block_time: dbTx.parent_burn_block_time,
