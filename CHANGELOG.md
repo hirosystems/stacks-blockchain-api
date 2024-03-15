@@ -1,3 +1,10 @@
+## [7.9.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-beta.1...v7.9.0-beta.2) (2024-03-15)
+
+
+### Bug Fixes
+
+* include address transactions with no stx transfers ([#1887](https://github.com/hirosystems/stacks-blockchain-api/issues/1887)) ([d308e46](https://github.com/hirosystems/stacks-blockchain-api/commit/d308e463b4bb5569b2dc2d8da8892050c1d4b40f))
+
 ## [7.9.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0-beta.1) (2024-03-11)
 
 
