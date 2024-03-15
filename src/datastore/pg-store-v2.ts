@@ -1,4 +1,4 @@
-import { BasePgStoreModule } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient } from '@hirosystems/api-toolkit';
 import {
   BlockLimitParamSchema,
   CompiledBurnBlockHashParam,
@@ -7,6 +7,8 @@ import {
   BlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
+  AddressParams,
+  AddressTransactionParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -19,9 +21,32 @@ import {
   DbBurnBlock,
   DbTxTypeId,
   DbSmartContractStatus,
-  DbTxStatus,
+  AddressTransfersTxQueryResult,
+  DbTxWithAddressTransfers,
+  DbEventTypeId,
+  DbAddressTransactionEvent,
+  DbAssetEventTypeId,
 } from './common';
-import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
+import {
+  BLOCK_COLUMNS,
+  parseBlockQueryResult,
+  TX_COLUMNS,
+  parseTxQueryResult,
+  parseAccountTransferSummaryTxQueryResult,
+} from './helpers';
+
+async function assertAddressExists(sql: PgSqlClient, address: string) {
+  const addressCheck =
+    await sql`SELECT principal FROM principal_stx_txs WHERE principal = ${address} LIMIT 1`;
+  if (addressCheck.count === 0)
+    throw new InvalidRequestError(`Address not found`, InvalidRequestErrorType.invalid_param);
+}
+
+async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
+  const txCheck = await sql`SELECT tx_id FROM txs WHERE tx_id = ${tx_id} LIMIT 1`;
+  if (txCheck.count === 0)
+    throw new InvalidRequestError(`Transaction not found`, InvalidRequestErrorType.invalid_param);
+}
 
 export class PgStoreV2 extends BasePgStoreModule {
   async getBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBlock>> {
@@ -267,6 +292,173 @@ export class PgStoreV2 extends BasePgStoreModule {
       }
 
       return statusArray;
+    });
+  }
+
+  async getAddressTransactions(
+    args: AddressParams & TransactionPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
+    return await this.sqlTransaction(async sql => {
+      await assertAddressExists(sql, args.address);
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+
+      const eventCond = sql`
+        tx_id = address_txs.tx_id
+        AND index_block_hash = address_txs.index_block_hash
+        AND microblock_hash = address_txs.microblock_hash
+      `;
+      const eventAcctCond = sql`
+        ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
+      `;
+      const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
+        WITH address_txs AS (
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM principal_stx_txs
+            WHERE principal = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM stx_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM ft_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM nft_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
+        )
+        SELECT
+          ${sql(TX_COLUMNS)},
+          (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND sender = ${args.address}
+          ) + txs.fee_rate AS stx_sent,
+          (
+            SELECT COALESCE(SUM(amount), 0)
+            FROM stx_events
+            WHERE ${eventCond} AND recipient = ${args.address}
+          ) AS stx_received,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS stx_transfer,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS stx_mint,
+          (
+            SELECT COUNT(*)::int FROM stx_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS stx_burn,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS ft_transfer,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS ft_mint,
+          (
+            SELECT COUNT(*)::int FROM ft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS ft_burn,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Transfer}
+          ) AS nft_transfer,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Mint}
+          ) AS nft_mint,
+          (
+            SELECT COUNT(*)::int FROM nft_events
+            WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
+          ) AS nft_burn,
+          (COUNT(*) OVER())::int AS count
+        FROM address_txs
+        INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
+      const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
+      return {
+        total,
+        limit,
+        offset,
+        results: parsed,
+      };
+    });
+  }
+
+  async getAddressTransactionEvents(
+    args: AddressTransactionParams & TransactionPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
+    return await this.sqlTransaction(async sql => {
+      await assertAddressExists(sql, args.address);
+      await assertTxIdExists(sql, args.tx_id);
+      const limit = args.limit ?? TransactionLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+
+      const eventCond = sql`
+        canonical = true
+        AND microblock_canonical = true
+        AND tx_id = ${args.tx_id}
+        AND (sender = ${args.address} OR recipient = ${args.address})
+      `;
+      const results = await sql<(DbAddressTransactionEvent & { count: number })[]>`
+        WITH events AS (
+          (
+            SELECT
+              sender, recipient, event_index, amount, NULL as asset_identifier,
+              NULL::bytea as value, ${DbEventTypeId.StxAsset}::int as event_type_id,
+              asset_event_type_id
+            FROM stx_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, amount, asset_identifier, NULL::bytea as value,
+              ${DbEventTypeId.FungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM ft_events
+            WHERE ${eventCond}
+          )
+          UNION
+          (
+            SELECT
+              sender, recipient, event_index, 0 as amount, asset_identifier, value,
+              ${DbEventTypeId.NonFungibleTokenAsset}::int as event_type_id, asset_event_type_id
+            FROM nft_events
+            WHERE ${eventCond}
+          )
+        )
+        SELECT *, COUNT(*) OVER()::int AS count
+        FROM events
+        ORDER BY event_index ASC
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+      const total = results.length > 0 ? results[0].count : 0;
+      return {
+        total,
+        limit,
+        offset,
+        results,
+      };
     });
   }
 }

@@ -1,8 +1,26 @@
-import { BurnBlock, NakamotoBlock, SmartContractsStatusResponse } from 'docs/generated';
-import { DbBlock, DbBurnBlock, DbSmartContractStatus } from '../../../datastore/common';
+import {
+  AddressTransaction,
+  AddressTransactionEvent,
+  BurnBlock,
+  NakamotoBlock,
+  SmartContractsStatusResponse,
+} from 'docs/generated';
+import {
+  DbAddressTransactionEvent,
+  DbBlock,
+  DbBurnBlock,
+  DbEventTypeId,
+  DbSmartContractStatus,
+  DbTxWithAddressTransfers,
+} from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
-import { getTxStatusString } from '../../../api/controllers/db-controller';
+import {
+  getAssetEventTypeString,
+  getTxStatusString,
+  parseDbTx,
+} from '../../../api/controllers/db-controller';
+import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -60,4 +78,77 @@ export function parseDbSmartContractStatusArray(
   }
   for (const missingId of ids) response[missingId] = { found: false };
   return response;
+}
+
+export function parseDbTxWithAccountTransferSummary(
+  tx: DbTxWithAddressTransfers
+): AddressTransaction {
+  return {
+    tx: parseDbTx(tx),
+    stx_sent: tx.stx_sent.toString(),
+    stx_received: tx.stx_received.toString(),
+    events: {
+      stx: {
+        transfer: tx.stx_transfer,
+        mint: tx.stx_mint,
+        burn: tx.stx_burn,
+      },
+      ft: {
+        transfer: tx.ft_transfer,
+        mint: tx.ft_mint,
+        burn: tx.ft_burn,
+      },
+      nft: {
+        transfer: tx.nft_transfer,
+        mint: tx.nft_mint,
+        burn: tx.nft_burn,
+      },
+    },
+  };
+}
+
+export function parseDbAddressTransactionTransfer(
+  transfer: DbAddressTransactionEvent
+): AddressTransactionEvent {
+  switch (transfer.event_type_id) {
+    case DbEventTypeId.FungibleTokenAsset:
+      return {
+        type: 'ft',
+        event_index: transfer.event_index,
+        data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
+          amount: transfer.amount,
+          asset_identifier: transfer.asset_identifier ?? '',
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+    case DbEventTypeId.NonFungibleTokenAsset:
+      return {
+        type: 'nft',
+        event_index: transfer.event_index,
+        data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
+          asset_identifier: transfer.asset_identifier ?? '',
+          value: {
+            hex: transfer.value ?? '',
+            repr: decodeClarityValueToRepr(transfer.value ?? ''),
+          },
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+    case DbEventTypeId.StxAsset:
+      return {
+        type: 'stx',
+        event_index: transfer.event_index,
+        data: {
+          type: getAssetEventTypeString(transfer.asset_event_type_id),
+          amount: transfer.amount,
+          sender: transfer.sender ?? undefined,
+          recipient: transfer.recipient ?? undefined,
+        },
+      };
+  }
+  throw Error('Invalid address transaction transfer');
 }

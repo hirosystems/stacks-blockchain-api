@@ -1,0 +1,142 @@
+{
+  "description": "Address Transaction Event",
+  "title": "AddressTransactionEvent",
+  "type": "object",
+  "anyOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "event_index", "data"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["stx"]
+        },
+        "event_index": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount", "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
+            "amount": {
+              "type": "string",
+              "description": "Amount transferred in micro-STX as an integer string."
+            },
+            "sender": {
+              "type": "string",
+              "description": "Principal that sent STX. This is unspecified if the STX were minted."
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Principal that received STX. This is unspecified if the STX were burned."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "event_index", "data"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["ft"]
+        },
+        "event_index": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "amount", "asset_identifier", "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
+            "asset_identifier": {
+              "type": "string",
+              "description": "Fungible Token asset identifier."
+            },
+            "amount": {
+              "type": "string",
+              "description": "Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals."
+            },
+            "sender": {
+              "type": "string",
+              "description": "Principal that sent the asset."
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Principal that received the asset."
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "event_index", "data"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["nft"]
+        },
+        "event_index": {
+          "type": "integer"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "asset_identifier", "value", "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["transfer", "mint", "burn"]
+            },
+            "asset_identifier": {
+              "type": "string",
+              "description": "Non Fungible Token asset identifier."
+            },
+            "value": {
+              "type": "object",
+              "description": "Non Fungible Token asset value.",
+              "additionalProperties": false,
+              "required": ["hex", "repr"],
+              "properties": {
+                "hex": {
+                  "type": "string"
+                },
+                "repr": {
+                  "type": "string"
+                }
+              }
+            },
+            "sender": {
+              "type": "string",
+              "description": "Principal that sent the asset."
+            },
+            "recipient": {
+              "type": "string",
+              "description": "Principal that received the asset."
+            }
+          }
+        }
+      }
+    }
+  ]
+}

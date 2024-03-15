@@ -302,7 +302,7 @@ describe('other tests', () => {
   });
 
   test('active status', async () => {
-    const result = await supertest(api.server).get(`/extended/v1/status/`);
+    const result = await supertest(api.server).get(`/extended/`);
     expect(result.body.status).toBe('ready');
   });
 

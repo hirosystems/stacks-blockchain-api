@@ -44,6 +44,8 @@ import {
   TxQueryResult,
   DbPoxSyntheticRevokeDelegateStxEvent,
   ReOrgUpdatedEntities,
+  AddressTransfersTxQueryResult,
+  DbTxWithAddressTransfers,
 } from './common';
 import {
   CoreNodeDropMempoolTxReasonType,
@@ -326,6 +328,26 @@ function parseAbiColumn(abi: unknown | null): string | undefined {
   } else {
     return JSON.stringify(abi);
   }
+}
+
+export function parseAccountTransferSummaryTxQueryResult(
+  result: AddressTransfersTxQueryResult
+): DbTxWithAddressTransfers {
+  const tx = parseTxQueryResult(result);
+  return {
+    ...tx,
+    stx_sent: result.stx_sent,
+    stx_received: result.stx_received,
+    stx_transfer: result.stx_transfer,
+    stx_mint: result.stx_mint,
+    stx_burn: result.stx_burn,
+    ft_transfer: result.ft_transfer,
+    ft_mint: result.ft_mint,
+    ft_burn: result.ft_burn,
+    nft_transfer: result.nft_transfer,
+    nft_mint: result.nft_mint,
+    nft_burn: result.nft_burn,
+  };
 }
 
 export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
