@@ -1,3 +1,17 @@
+## [7.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0) (2024-03-15)
+
+
+### Features
+
+* add v2 addresses endpoints ([#1876](https://github.com/hirosystems/stacks-blockchain-api/issues/1876)) ([c9440dd](https://github.com/hirosystems/stacks-blockchain-api/commit/c9440dd8efc0ac0589567f51bb8700d52d8d348f))
+
+
+### Bug Fixes
+
+* include address transactions from genesis block ([#1888](https://github.com/hirosystems/stacks-blockchain-api/issues/1888)) ([cdea9e6](https://github.com/hirosystems/stacks-blockchain-api/commit/cdea9e61230850444e2227f4d15ec8ffce28ab9b))
+* include address transactions with no stx transfers ([#1887](https://github.com/hirosystems/stacks-blockchain-api/issues/1887)) ([d308e46](https://github.com/hirosystems/stacks-blockchain-api/commit/d308e463b4bb5569b2dc2d8da8892050c1d4b40f))
+* show status endpoint in /extended ([#1869](https://github.com/hirosystems/stacks-blockchain-api/issues/1869)) ([cf47f8f](https://github.com/hirosystems/stacks-blockchain-api/commit/cf47f8fe220d9388c204798b547699a44c27fab5))
+
 ## [7.9.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-beta.2...v7.9.0-beta.3) (2024-03-15)
 
 
