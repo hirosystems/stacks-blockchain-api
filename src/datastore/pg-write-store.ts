@@ -1163,61 +1163,64 @@ export class PgWriteStore extends PgStore {
     events: DbNftEvent[],
     microblock: boolean = false
   ) {
-    for (const batch of batchIterate(events, INSERT_BATCH_SIZE)) {
-      const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
-      const nftEventInserts: NftEventInsertValues[] = [];
-      for (const event of batch) {
-        const custodyItem: NftCustodyInsertValues = {
-          asset_identifier: event.asset_identifier,
-          value: event.value,
-          tx_id: event.tx_id,
-          index_block_hash: tx.index_block_hash,
-          parent_index_block_hash: tx.parent_index_block_hash,
-          microblock_hash: tx.microblock_hash,
-          microblock_sequence: tx.microblock_sequence,
-          recipient: event.recipient ?? null,
-          event_index: event.event_index,
-          tx_index: event.tx_index,
-          block_height: event.block_height,
-        };
-        // Avoid duplicates on NFT custody inserts, because we could run into an `ON CONFLICT DO
-        // UPDATE command cannot affect row a second time` error otherwise.
-        const custodyKey = `${event.asset_identifier}_${event.value}`;
-        const currCustody = custodyInsertsMap.get(custodyKey);
-        if (currCustody) {
-          if (
-            custodyItem.block_height > currCustody.block_height ||
-            (custodyItem.block_height == currCustody.block_height &&
-              custodyItem.microblock_sequence > currCustody.microblock_sequence) ||
-            (custodyItem.block_height == currCustody.block_height &&
-              custodyItem.microblock_sequence == currCustody.microblock_sequence &&
-              custodyItem.tx_index > currCustody.tx_index) ||
-            (custodyItem.block_height == currCustody.block_height &&
-              custodyItem.microblock_sequence == currCustody.microblock_sequence &&
-              custodyItem.tx_index == currCustody.tx_index &&
-              custodyItem.event_index > currCustody.event_index)
-          ) {
-            custodyInsertsMap.set(custodyKey, custodyItem);
-          }
-        } else {
+    const custodyInsertsMap = new Map<string, NftCustodyInsertValues>();
+    const nftEventInserts: NftEventInsertValues[] = [];
+    for (const event of events) {
+      const custodyItem: NftCustodyInsertValues = {
+        asset_identifier: event.asset_identifier,
+        value: event.value,
+        tx_id: event.tx_id,
+        index_block_hash: tx.index_block_hash,
+        parent_index_block_hash: tx.parent_index_block_hash,
+        microblock_hash: tx.microblock_hash,
+        microblock_sequence: tx.microblock_sequence,
+        recipient: event.recipient ?? null,
+        event_index: event.event_index,
+        tx_index: event.tx_index,
+        block_height: event.block_height,
+      };
+      // Avoid duplicates on NFT custody inserts, because we could run into an `ON CONFLICT DO
+      // UPDATE command cannot affect row a second time` error otherwise.
+      const custodyKey = `${event.asset_identifier}_${event.value}`;
+      const currCustody = custodyInsertsMap.get(custodyKey);
+      if (currCustody) {
+        if (
+          custodyItem.block_height > currCustody.block_height ||
+          (custodyItem.block_height == currCustody.block_height &&
+            custodyItem.microblock_sequence > currCustody.microblock_sequence) ||
+          (custodyItem.block_height == currCustody.block_height &&
+            custodyItem.microblock_sequence == currCustody.microblock_sequence &&
+            custodyItem.tx_index > currCustody.tx_index) ||
+          (custodyItem.block_height == currCustody.block_height &&
+            custodyItem.microblock_sequence == currCustody.microblock_sequence &&
+            custodyItem.tx_index == currCustody.tx_index &&
+            custodyItem.event_index > currCustody.event_index)
+        ) {
           custodyInsertsMap.set(custodyKey, custodyItem);
         }
-        const valuesItem: NftEventInsertValues = {
-          ...custodyItem,
-          microblock_canonical: tx.microblock_canonical,
-          canonical: event.canonical,
-          sender: event.sender ?? null,
-          asset_event_type_id: event.asset_event_type_id,
-        };
-        nftEventInserts.push(valuesItem);
+      } else {
+        custodyInsertsMap.set(custodyKey, custodyItem);
       }
+      const valuesItem: NftEventInsertValues = {
+        ...custodyItem,
+        microblock_canonical: tx.microblock_canonical,
+        canonical: event.canonical,
+        sender: event.sender ?? null,
+        asset_event_type_id: event.asset_event_type_id,
+      };
+      nftEventInserts.push(valuesItem);
+    }
+    for (const batch of batchIterate(nftEventInserts, INSERT_BATCH_SIZE)) {
       await sql`
-        INSERT INTO nft_events ${sql(nftEventInserts)}
+        INSERT INTO nft_events ${sql(batch)}
       `;
-      if (tx.canonical && tx.microblock_canonical) {
-        const table = microblock ? sql`nft_custody_unanchored` : sql`nft_custody`;
+    }
+
+    if (tx.canonical && tx.microblock_canonical) {
+      const table = microblock ? sql`nft_custody_unanchored` : sql`nft_custody`;
+      for (const batch of batchIterate(Array.from(custodyInsertsMap.values()), INSERT_BATCH_SIZE)) {
         await sql`
-          INSERT INTO ${table} ${sql(Array.from(custodyInsertsMap.values()))}
+          INSERT INTO ${table} ${sql(batch)}
           ON CONFLICT ON CONSTRAINT ${table}_unique DO UPDATE SET
             tx_id = EXCLUDED.tx_id,
             index_block_hash = EXCLUDED.index_block_hash,
