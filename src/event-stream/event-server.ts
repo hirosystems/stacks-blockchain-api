@@ -237,16 +237,16 @@ async function handleBlockMessage(
   const counts = newCoreNoreBlockEventCounts();
   // If running in IBD mode, we use the parent burn block timestamp as the receipt date,
   // otherwise, use the current timestamp.
-  // TOOD: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
-  // increment this by that value so that timestampts increase monotonically.
-  const stacksBlockReceiptDate = isBlockInIbdMode(msg.block_height)
-    ? msg.parent_burn_block_timestamp
-    : Math.round(Date.now() / 1000);
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
   };
   if (!blockData.stacks_block_time) {
+    // TODO: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
+    // increment this by that value so that timestampts increase monotonically.
+    const stacksBlockReceiptDate = db.isEventReplay
+      ? msg.parent_burn_block_timestamp
+      : Math.round(Date.now() / 1000);
     blockData.stacks_block_time = stacksBlockReceiptDate;
   }
   msg.transactions.forEach(item => {

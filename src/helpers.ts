@@ -31,11 +31,6 @@ export function getIbdBlockHeight(): number | undefined {
   }
 }
 
-export function isBlockInIbdMode(blockHeight: number): boolean {
-  const ibdBlockHeight = getIbdBlockHeight();
-  return typeof ibdBlockHeight === 'number' && blockHeight <= ibdBlockHeight;
-}
-
 function createEnumChecker<T extends string, TEnumValue extends number>(enumVariable: {
   [key in T]: TEnumValue;
 }): (value: number) => value is TEnumValue {

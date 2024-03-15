@@ -1796,12 +1796,14 @@ export class PgWriteStore extends PgStore {
         });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
       } catch (e: unknown) {
+        const connectionError = e as Error & { code: string };
         if (
-          e instanceof Error &&
-          'code' in e &&
-          ['CONNECTION_ENDED', 'CONNECTION_ENDED'].includes((e as any).code)
+          connectionError instanceof Error &&
+          ['CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECTION_CLOSED'].includes(
+            connectionError.code
+          )
         ) {
-          logger.info(`Skipping mempool stats query because ${(e as any).code}`);
+          logger.info(`Skipping mempool stats query because ${connectionError.code}`);
         } else {
           logger.error(e, `failed to run mempool stats update`);
         }
