@@ -7,8 +7,8 @@
     "canonical",
     "height",
     "hash",
-    "stacks_block_time",
-    "stacks_block_time_iso",
+    "block_time",
+    "block_time_iso",
     "index_block_hash",
     "parent_block_hash",
     "txs",
@@ -41,11 +41,11 @@
       "type": "string",
       "description": "Hash representing the block"
     },
-    "stacks_block_time": {
+    "block_time": {
       "type": "number",
       "description": "Unix timestamp (in seconds) indicating when this block was mined."
     },
-    "stacks_block_time_iso": {
+    "block_time_iso": {
       "type": "string",
       "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined."
     },

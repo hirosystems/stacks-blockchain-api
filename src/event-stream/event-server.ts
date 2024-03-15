@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight, isBlockInIbdMode } from '../helpers';
+import { ChainID, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -198,7 +198,7 @@ async function handleMicroblockMessage(
       burn_block_height: -1,
       index_block_hash: '',
       block_hash: '',
-      stacks_block_time: stacksBlockReceiptDate,
+      block_time: stacksBlockReceiptDate,
 
       // These properties can be determined with a db query, they are set while the db is inserting them.
       block_height: -1,
@@ -220,7 +220,7 @@ async function handleMicroblockMessage(
       {
         block_height: -1, // TODO: fill during initial db insert
         index_block_hash: '',
-        stacks_block_time: stacksBlockReceiptDate,
+        block_time: stacksBlockReceiptDate,
       },
       chainId
     ),
@@ -241,13 +241,13 @@ async function handleBlockMessage(
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
   };
-  if (!blockData.stacks_block_time) {
+  if (!blockData.block_time) {
     // TODO: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
     // increment this by that value so that timestampts increase monotonically.
     const stacksBlockReceiptDate = db.isEventReplay
       ? msg.parent_burn_block_timestamp
       : Math.round(Date.now() / 1000);
-    blockData.stacks_block_time = stacksBlockReceiptDate;
+    blockData.block_time = stacksBlockReceiptDate;
   }
   msg.transactions.forEach(item => {
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
@@ -309,7 +309,7 @@ async function handleBlockMessage(
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
     tx_count: msg.transactions.length,
-    stacks_block_time: msg.stacks_block_time,
+    block_time: msg.block_time,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -383,7 +383,7 @@ function parseDataStoreTxEventData(
   blockData: {
     block_height: number;
     index_block_hash: string;
-    stacks_block_time: number;
+    block_time: number;
   },
   chainId: ChainID
 ): DataStoreTxEventData[] {
@@ -1106,7 +1106,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     burn_block_time: msg.burn_block_time,
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
-    stacks_block_time: msg.stacks_block_time,
+    block_time: msg.block_time,
     miner_txid: msg.miner_txid,
     execution_cost_read_count: totalCost.execution_cost_read_count,
     execution_cost_read_length: totalCost.execution_cost_read_length,

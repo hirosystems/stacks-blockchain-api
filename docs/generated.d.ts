@@ -352,11 +352,11 @@ export type AbstractTransaction = BaseTransaction & {
   /**
    * Unix timestamp (in seconds) indicating when this block was mined.
    */
-  stacks_block_time: number;
+  block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
-  stacks_block_time_iso: string;
+  block_time_iso: string;
   /**
    * Unix timestamp (in seconds) indicating when this block was mined
    */
@@ -1190,11 +1190,11 @@ export interface Block {
   /**
    * Unix timestamp (in seconds) indicating when this block was mined.
    */
-  stacks_block_time: number;
+  block_time: number;
   /**
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
-  stacks_block_time_iso: string;
+  block_time_iso: string;
   /**
    * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
    */
