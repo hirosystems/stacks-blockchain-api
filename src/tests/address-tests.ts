@@ -69,7 +69,7 @@ describe('address tests', () => {
     const testAddr2 = 'ST1HB64MAJ1MBV4CQ80GF01DZS4T1DSMX20ADCRA4';
     const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
     const testAddr4 = 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C';
-    const testTxId = '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006';
+    const testTxId = '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890008';
 
     const block: DbBlock = {
       block_hash: '0x1234',
@@ -99,7 +99,8 @@ describe('address tests', () => {
       canonical: boolean = true,
       stxEventCount = 1,
       ftEventCount = 1,
-      nftEventCount = 1
+      nftEventCount = 1,
+      eventAddressesOnly = false
     ): [DbTxRaw, DbStxEvent[], DbFtEvent[], DbNftEvent[]] => {
       const tx: DbTxRaw = {
         tx_id:
@@ -117,7 +118,7 @@ describe('address tests', () => {
         type_id: DbTxTypeId.TokenTransfer,
         token_transfer_amount: BigInt(amount),
         token_transfer_memo: bufferToHex(Buffer.from('hi')),
-        token_transfer_recipient_address: recipient,
+        token_transfer_recipient_address: eventAddressesOnly ? '' : recipient,
         status: 1,
         raw_result: '0x0100000000000000000000000000000001', // u1
         canonical,
@@ -130,7 +131,7 @@ describe('address tests', () => {
         fee_rate: 1234n,
         sponsored: false,
         sponsor_address: undefined,
-        sender_address: sender,
+        sender_address: eventAddressesOnly ? '' : sender,
         origin_hash_mode: 1,
         event_count: 0,
         execution_cost_read_count: 1,
@@ -193,6 +194,8 @@ describe('address tests', () => {
       return [tx, stxEvents, ftEvents, nftEvents];
     };
     const txs = [
+      createStxTx(testAddr4, testAddr2, 0, true, 0, 1, 0, true),
+      createStxTx(testAddr4, testAddr2, 0, true, 0, 0, 1, true),
       createStxTx(testAddr1, testAddr2, 100_000, true, 1, 1, 1),
       createStxTx(testAddr2, testContractAddr, 100, true, 1, 2, 1),
       createStxTx(testAddr2, testContractAddr, 250, true, 1, 0, 1),
@@ -228,11 +231,11 @@ describe('address tests', () => {
     const expected1 = {
       limit: 3,
       offset: 0,
-      total: 4,
+      total: 6,
       results: [
         {
           tx: {
-            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890008',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -254,7 +257,7 @@ describe('address tests', () => {
             parent_block_hash: '0x',
             parent_burn_block_time: 1626122935,
             parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-            tx_index: 6,
+            tx_index: 8,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
               recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
@@ -319,7 +322,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890003',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890005',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -341,7 +344,7 @@ describe('address tests', () => {
             parent_block_hash: '0x',
             parent_burn_block_time: 1626122935,
             parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-            tx_index: 3,
+            tx_index: 5,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
               recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -380,7 +383,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890002',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890004',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -402,7 +405,7 @@ describe('address tests', () => {
             parent_block_hash: '0x',
             parent_burn_block_time: 1626122935,
             parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-            tx_index: 2,
+            tx_index: 4,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
               recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world',
@@ -454,7 +457,8 @@ describe('address tests', () => {
         },
       ],
     };
-    expect(JSON.parse(fetch1.text)).toEqual(expected1);
+    const fetch1Json = JSON.parse(fetch1.text);
+    expect(fetch1Json).toEqual(expected1);
 
     // Test v2 endpoints
     const v2Fetch1 = await supertest(api.server).get(
@@ -463,6 +467,7 @@ describe('address tests', () => {
     expect(v2Fetch1.status).toBe(200);
     expect(v2Fetch1.type).toBe('application/json');
     const v2Fetch1Json = JSON.parse(v2Fetch1.text);
+    expect(v2Fetch1Json.total).toBe(6);
     expect(v2Fetch1Json.results[0].tx).toStrictEqual(expected1.results[0].tx);
     expect(v2Fetch1Json.results[0].stx_sent).toBe('1339');
     expect(v2Fetch1Json.results[0].stx_received).toBe('0');
@@ -514,6 +519,40 @@ describe('address tests', () => {
     });
     expect(v2Fetch1Json.results[2].events.nft).toStrictEqual({
       transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[4].stx_sent).toBe('1234');
+    expect(v2Fetch1Json.results[4].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[4].events.stx).toStrictEqual({
+      transfer: 0,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[4].events.ft).toStrictEqual({
+      transfer: 0,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[4].events.nft).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[5].stx_sent).toBe('1234');
+    expect(v2Fetch1Json.results[5].stx_received).toBe('0');
+    expect(v2Fetch1Json.results[5].events.stx).toStrictEqual({
+      transfer: 0,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[5].events.ft).toStrictEqual({
+      transfer: 1,
+      mint: 0,
+      burn: 0,
+    });
+    expect(v2Fetch1Json.results[5].events.nft).toStrictEqual({
+      transfer: 0,
       mint: 0,
       burn: 0,
     });
@@ -620,7 +659,7 @@ describe('address tests', () => {
     expect(fetchSingleTxInformation.type).toBe('application/json');
     const expectedSingleTxInformation = {
       tx: {
-        tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
+        tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890008',
         tx_type: 'token_transfer',
         nonce: 0,
         anchor_mode: 'any',
@@ -642,7 +681,7 @@ describe('address tests', () => {
         parent_block_hash: '0x',
         parent_burn_block_time: 1626122935,
         parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-        tx_index: 6,
+        tx_index: 8,
         tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
         token_transfer: {
           recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
@@ -681,18 +720,18 @@ describe('address tests', () => {
 
     // testing for multiple tx_ids given a single stx addr
     const fetch2 = await supertest(api.server).get(
-      `/extended/v1/address/${testAddr4}/transactions_with_transfers`
+      `/extended/v1/address/${testAddr4}/transactions_with_transfers?limit=2`
     );
     expect(fetch2.status).toBe(200);
     expect(fetch2.type).toBe('application/json');
     const expected2 = {
-      limit: 20,
+      limit: 2,
       offset: 0,
-      total: 2,
+      total: 4,
       results: [
         {
           tx: {
-            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890006',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890008',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -714,7 +753,7 @@ describe('address tests', () => {
             parent_block_hash: '0x',
             parent_burn_block_time: 1626122935,
             parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-            tx_index: 6,
+            tx_index: 8,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
               recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',
@@ -779,7 +818,7 @@ describe('address tests', () => {
         },
         {
           tx: {
-            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890005',
+            tx_id: '0x03807fdb726b3cb843e0330c564a4974037be8f9ea58ec7f8ebe03c34b890007',
             tx_type: 'token_transfer',
             nonce: 0,
             anchor_mode: 'any',
@@ -801,7 +840,7 @@ describe('address tests', () => {
             parent_block_hash: '0x',
             parent_burn_block_time: 1626122935,
             parent_burn_block_time_iso: '2021-07-12T20:48:55.000Z',
-            tx_index: 5,
+            tx_index: 7,
             tx_result: { hex: '0x0100000000000000000000000000000001', repr: 'u1' },
             token_transfer: {
               recipient_address: 'ST3DWSXBPYDB484QXFTR81K4AWG4ZB5XZNFF3H70C',

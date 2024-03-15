@@ -304,23 +304,32 @@ export class PgStoreV2 extends BasePgStoreModule {
       const offset = args.offset ?? 0;
 
       const eventCond = sql`
-        tx_id = stx_txs.tx_id
-        AND index_block_hash = stx_txs.index_block_hash
-        AND microblock_hash = stx_txs.microblock_hash
+        tx_id = address_txs.tx_id
+        AND index_block_hash = address_txs.index_block_hash
+        AND microblock_hash = address_txs.microblock_hash
       `;
       const eventAcctCond = sql`
         ${eventCond} AND (sender = ${args.address} OR recipient = ${args.address})
       `;
       const resultQuery = await sql<(AddressTransfersTxQueryResult & { count: number })[]>`
-        WITH stx_txs AS (
-          SELECT tx_id, index_block_hash, microblock_hash, (COUNT(*) OVER())::int AS count
-          FROM principal_stx_txs
-          WHERE principal = ${args.address}
-            AND canonical = TRUE
-            AND microblock_canonical = TRUE
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
-          LIMIT ${limit}
-          OFFSET ${offset}
+        WITH address_txs AS (
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM principal_stx_txs
+            WHERE principal = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM ft_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
+          UNION
+          (
+            SELECT tx_id, index_block_hash, microblock_hash
+            FROM nft_events
+            WHERE sender = ${args.address} OR recipient = ${args.address}
+          )
         )
         SELECT
           ${sql(TX_COLUMNS)},
@@ -370,9 +379,13 @@ export class PgStoreV2 extends BasePgStoreModule {
             SELECT COUNT(*)::int FROM nft_events
             WHERE ${eventAcctCond} AND asset_event_type_id = ${DbAssetEventTypeId.Burn}
           ) AS nft_burn,
-          count
-        FROM stx_txs
+          (COUNT(*) OVER())::int AS count
+        FROM address_txs
         INNER JOIN txs USING (tx_id, index_block_hash, microblock_hash)
+        WHERE canonical = TRUE AND microblock_canonical = TRUE
+        ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+        LIMIT ${limit}
+        OFFSET ${offset}
       `;
       const total = resultQuery.length > 0 ? resultQuery[0].count : 0;
       const parsed = resultQuery.map(r => parseAccountTransferSummaryTxQueryResult(r));
