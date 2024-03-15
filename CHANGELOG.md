@@ -1,3 +1,10 @@
+## [7.9.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-beta.2...v7.9.0-beta.3) (2024-03-15)
+
+
+### Bug Fixes
+
+* include address transactions from genesis block ([#1888](https://github.com/hirosystems/stacks-blockchain-api/issues/1888)) ([cdea9e6](https://github.com/hirosystems/stacks-blockchain-api/commit/cdea9e61230850444e2227f4d15ec8ffce28ab9b))
+
 ## [7.9.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-beta.1...v7.9.0-beta.2) (2024-03-15)
 
 
