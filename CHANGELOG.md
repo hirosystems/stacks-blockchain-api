@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.5...v7.9.0-nakamoto.6) (2024-03-15)
+
+
+### Features
+
+* nakamoto block timestamps ([#1886](https://github.com/hirosystems/stacks-blockchain-api/issues/1886)) ([f547832](https://github.com/hirosystems/stacks-blockchain-api/commit/f5478329d7267a65b5f3c557b197feadff298afb))
+
 ## [7.9.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.4...v7.9.0-nakamoto.5) (2024-02-20)
 
 
