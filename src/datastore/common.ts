@@ -1048,6 +1048,7 @@ interface ReOrgEntities {
   namespaces: number;
   subdomains: number;
   poxSigners: number;
+  poxCycles: number;
 }
 
 export interface ReOrgUpdatedEntities {
@@ -1595,6 +1596,17 @@ export interface PoxSetSignerValues {
   stacked_amount_percent: number;
   total_weight: number;
   total_stacked_amount: bigint;
+}
+
+export interface PoxCycleInsertValues {
+  canonical: boolean;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: bigint;
+  total_signers: number;
 }
 
 export interface SmartContractInsertValues {

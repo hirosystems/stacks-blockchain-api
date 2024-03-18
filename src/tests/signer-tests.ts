@@ -2,7 +2,6 @@ import * as supertest from 'supertest';
 import { PgSqlClient } from '@hirosystems/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
-import { migrate } from '../test-utils/test-helpers';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { importEventsFromTsv } from '../event-replay/event-replay';
 
@@ -12,7 +11,6 @@ describe('Signers', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
-    // await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: true,
@@ -25,7 +23,6 @@ describe('Signers', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
-    // await migrate('down');
   });
 
   test('api', async () => {
@@ -33,57 +30,47 @@ describe('Signers', () => {
     const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
     expect(cycles.status).toBe(200);
     expect(cycles.type).toBe('application/json');
-    expect(JSON.parse(cycles.text)).toStrictEqual({});
-    // expect(JSON.parse(signers.text)).toStrictEqual({
-    //   cycle_number: 12,
-    //   index_block_hash: '0x62d06851fe03f17cb45a488ae70bd8e0c5c308c523f37814ad4df36bd2108713',
-    //   signer_count: 3,
-    //   signers: [
-    //     {
-    //       signing_key: '0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d',
-    //       stacked_amount: '686251350000000000',
-    //       stacked_amount_percent: 50,
-    //       stackers: [
-    //         {
-    //           amount: '686251350000000000',
-    //           pox_addr: '15Z2sAvjgVDpcBh4vx9g2XKU8FVHYcXNaj',
-    //           stacker: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
-    //         },
-    //       ],
-    //       weight: 5,
-    //       weight_percent: 55.55555555555556,
-    //     },
-    //     {
-    //       signing_key: '0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09',
-    //       stacked_amount: '457500900000000000',
-    //       stacked_amount_percent: 33.333333333333336,
-    //       stackers: [
-    //         {
-    //           amount: '457500900000000000',
-    //           pox_addr: '13niVygM7QGg3rJpFjFdHZyX93N58Du4Gq',
-    //           stacker: 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2',
-    //         },
-    //       ],
-    //       weight: 3,
-    //       weight_percent: 33.33333333333333,
-    //     },
-    //     {
-    //       signing_key: '0x02dcde79b38787b72d8e5e0af81cffa802f0a3c8452d6b46e08859165f49a72736',
-    //       stacked_amount: '228750450000000000',
-    //       stacked_amount_percent: 16.666666666666668,
-    //       stackers: [
-    //         {
-    //           amount: '228750450000000000',
-    //           pox_addr: '18QkiTKcEbKmdFB2c57tKHu19HH2q1beCS',
-    //           stacker: 'ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS',
-    //         },
-    //       ],
-    //       weight: 1,
-    //       weight_percent: 11.11111111111111,
-    //     },
-    //   ],
-    //   total_stacked: '1372502700000000000',
-    //   total_weight: 9,
-    // });
+    expect(JSON.parse(cycles.text)).toStrictEqual({
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          block_height: 50,
+          cycle_number: 14,
+          index_block_hash: '0xf5be33abc4e508bdaf2191e88339372edcb3358c44e2a31e1b9b44f2880dde09',
+          total_signers: 3,
+          total_stacked_amount: '1372502700000000000',
+          total_weight: 9,
+        },
+        {
+          block_height: 22,
+          cycle_number: 13,
+          index_block_hash: '0x5077c7d971dd83cd3ba19dca579e3cc8dcf17913186b66093c94520e50d3b7b2',
+          total_signers: 3,
+          total_stacked_amount: '1372502700000000000',
+          total_weight: 9,
+        },
+        {
+          block_height: 13,
+          cycle_number: 12,
+          index_block_hash: '0x62d06851fe03f17cb45a488ae70bd8e0c5c308c523f37814ad4df36bd2108713',
+          total_signers: 3,
+          total_stacked_amount: '1372502700000000000',
+          total_weight: 9,
+        },
+      ],
+      total: 3,
+    });
+    const cycle = await supertest(api.server).get(`/extended/v2/pox/cycles/14`);
+    expect(cycle.status).toBe(200);
+    expect(cycle.type).toBe('application/json');
+    expect(JSON.parse(cycle.text)).toStrictEqual({
+      block_height: 50,
+      cycle_number: 14,
+      index_block_hash: '0xf5be33abc4e508bdaf2191e88339372edcb3358c44e2a31e1b9b44f2880dde09',
+      total_signers: 3,
+      total_stacked_amount: '1372502700000000000',
+      total_weight: 9,
+    });
   });
 });

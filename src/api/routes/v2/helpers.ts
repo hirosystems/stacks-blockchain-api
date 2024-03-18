@@ -1,5 +1,5 @@
-import { BurnBlock, NakamotoBlock, SmartContractsStatusResponse } from 'docs/generated';
-import { DbBlock, DbBurnBlock, DbSmartContractStatus } from '../../../datastore/common';
+import { BurnBlock, NakamotoBlock, PoXCycle, SmartContractsStatusResponse } from 'docs/generated';
+import { DbBlock, DbBurnBlock, DbPoxCycle, DbSmartContractStatus } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
 import { getTxStatusString } from '../../../api/controllers/db-controller';
@@ -60,4 +60,16 @@ export function parseDbSmartContractStatusArray(
   }
   for (const missingId of ids) response[missingId] = { found: false };
   return response;
+}
+
+export function parseDbPoxCycle(cycle: DbPoxCycle): PoXCycle {
+  const result: PoXCycle = {
+    block_height: cycle.block_height,
+    index_block_hash: cycle.index_block_hash,
+    cycle_number: cycle.cycle_number,
+    total_weight: cycle.total_weight,
+    total_stacked_amount: cycle.total_stacked_amount,
+    total_signers: cycle.total_signers,
+  };
+  return result;
 }

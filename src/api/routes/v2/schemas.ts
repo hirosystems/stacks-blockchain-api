@@ -140,6 +140,15 @@ const BlockParamsSchema = Type.Object(
 export type BlockParams = Static<typeof BlockParamsSchema>;
 export const CompiledBlockParams = ajv.compile(BlockParamsSchema);
 
+const PoxCycleParamsSchema = Type.Object(
+  {
+    cycle_number: Type.RegExp(/^[0-9]+$/),
+  },
+  { additionalProperties: false }
+);
+export type PoxCycleParams = Static<typeof PoxCycleParamsSchema>;
+export const CompiledPoxCycleParams = ajv.compile(PoxCycleParamsSchema);
+
 const SmartContractPrincipal = Type.RegExp(
   /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$/
 );

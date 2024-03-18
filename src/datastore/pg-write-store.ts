@@ -68,6 +68,7 @@ import {
   PoxSyntheticEventTable,
   DbPoxSetSigners,
   PoxSetSignerValues,
+  PoxCycleInsertValues,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -1380,6 +1381,21 @@ export class PgWriteStore extends PgStore {
   ) {
     const totalWeight = signers.reduce((acc, signer) => acc + signer.weight, 0);
     const totalStacked = signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
+
+    const cycleValues: PoxCycleInsertValues = {
+      canonical: block.canonical,
+      block_height: block.block_height,
+      index_block_hash: block.index_block_hash,
+      parent_index_block_hash: block.parent_index_block_hash,
+      cycle_number: cycleNumber,
+      total_stacked_amount: totalStacked,
+      total_weight: totalWeight,
+      total_signers: signers.length,
+    };
+    await sql`
+      INSERT INTO pox_cycles ${sql(cycleValues)}
+      ON CONFLICT ON CONSTRAINT pox_cycles_unique DO NOTHING
+    `;
 
     for (const signer of signers) {
       const values: PoxSetSignerValues = {
@@ -2816,6 +2832,18 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedCanonical.poxSigners += poxSetResult.count;
       } else {
         updatedEntities.markedNonCanonical.poxSigners += poxSetResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const poxCycleResult = await sql`
+        UPDATE pox_cycles
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.poxCycles += poxCycleResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
       }
     });
 

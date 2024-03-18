@@ -9,6 +9,7 @@ import {
   SmartContractStatusParams,
   PoxCyclePaginationQueryParams,
   PoxCycleLimitParamSchema,
+  PoxCycleParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -279,10 +280,10 @@ export class PgStoreV2 extends BasePgStoreModule {
       const limit = args.limit ?? PoxCycleLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const results = await sql<(PoxCycleQueryResult & { total: number })[]>`
-        SELECT DISTINCT ON(cycle_number)
-          cycle_number, block_height, index_block_hash, total_weight,
-          COUNT(*) AS total_signers, total_stacked_amount, COUNT(*) OVER()::int AS total
-        FROM pox_sets
+        SELECT
+          cycle_number, block_height, index_block_hash, total_weight, total_signers,
+          total_stacked_amount, COUNT(*) OVER()::int AS total
+        FROM pox_cycles
         WHERE canonical = TRUE
         ORDER BY cycle_number DESC
         OFFSET ${offset}
@@ -294,6 +295,20 @@ export class PgStoreV2 extends BasePgStoreModule {
         results: results,
         total: results[0].total,
       };
+    });
+  }
+
+  async getPoxCycle(args: PoxCycleParams): Promise<DbPoxCycle | undefined> {
+    return this.sqlTransaction(async sql => {
+      const results = await sql<PoxCycleQueryResult[]>`
+        SELECT
+          cycle_number, block_height, index_block_hash, total_weight, total_signers,
+          total_stacked_amount
+        FROM pox_cycles
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        LIMIT 1
+      `;
+      if (results.count > 0) return results[0];
     });
   }
 }
