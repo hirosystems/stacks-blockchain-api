@@ -950,6 +950,7 @@ export class PgStore extends BasePgStore {
           canonical: boolean;
           index_block_hash: string;
           cycle_number: number;
+          pox_ustx_threshold: string;
           signing_key: string;
           weight: number;
           stacked_amount: string;
@@ -981,6 +982,7 @@ export class PgStore extends BasePgStore {
           ps.canonical,
           ps.index_block_hash,
           ps.cycle_number,
+          ps.pox_ustx_threshold,
           ps.signing_key,
           ps.weight,
           ps.stacked_amount,
@@ -1014,6 +1016,7 @@ export class PgStore extends BasePgStore {
         index_block_hash: poxSetQuery[0].index_block_hash,
         cycle_number: poxSetQuery[0].cycle_number,
         total_stacked: poxSetQuery[0].total_stacked_amount,
+        pox_ustx_threshold: BigInt(poxSetQuery[0].pox_ustx_threshold),
         total_weight: poxSetQuery[0].total_weight,
         signer_count: signers.length,
         signers: signers,

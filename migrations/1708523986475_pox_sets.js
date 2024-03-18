@@ -21,6 +21,10 @@ exports.up = pgm => {
       type: 'int',
       notNull: true,
     },
+    pox_ustx_threshold: {
+      type: 'numeric',
+      notNull: true,
+    },
     canonical: {
       type: 'boolean',
       notNull: true,

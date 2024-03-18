@@ -259,7 +259,6 @@ export interface CoreNodeBlockMessage {
   cycle_number?: number;
   /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
   reward_set?: {
-    pox_stx_threshold: string; // "666720000000000"
     rewarded_addresses: (
       | {
           Standard: [
@@ -277,6 +276,7 @@ export interface CoreNodeBlockMessage {
           Addr32: [mainnet: boolean, type: 'P2WSH' | 'P2TR', hashbytes: number[]];
         }
     )[];
+    pox_ustx_threshold: string; // "666720000000000"
     signers?: {
       signing_key: string; // "03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e",
       weight: number; // 1,

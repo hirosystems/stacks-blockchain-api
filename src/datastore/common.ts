@@ -68,6 +68,7 @@ export interface DbBurnchainReward {
 export interface DbPoxSetSigners {
   cycle_number?: number;
   signers?: {
+  pox_ustx_threshold: bigint;
     signing_key: string;
     weight: number;
     stacked_amount: bigint;
@@ -1578,6 +1579,7 @@ export interface PoxSetSignerValues {
   index_block_hash: PgBytea;
   parent_index_block_hash: PgBytea;
   cycle_number: number;
+  pox_ustx_threshold: bigint;
   signing_key: PgBytea;
   weight: number;
   stacked_amount: bigint;

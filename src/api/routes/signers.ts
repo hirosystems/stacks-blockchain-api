@@ -53,6 +53,7 @@ export function createSignersRouter(db: PgStore): express.Router {
         total_stacked: r.total_stacked.toString(),
         total_weight: r.total_weight,
         signer_count: r.signer_count,
+        pox_ustx_threshold: r.pox_ustx_threshold.toString(),
         signers: r.signers.map(s => ({
           signing_key: s.signing_key,
           weight: s.weight,

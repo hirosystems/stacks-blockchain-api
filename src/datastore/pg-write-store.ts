@@ -1388,6 +1388,7 @@ export class PgWriteStore extends PgStore {
         parent_index_block_hash: block.parent_index_block_hash,
         block_height: block.block_height,
         cycle_number: cycleNumber,
+        pox_ustx_threshold: poxSet.pox_ustx_threshold,
         signing_key: signer.signing_key,
         weight: signer.weight,
         stacked_amount: signer.stacked_amount,
