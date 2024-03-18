@@ -263,9 +263,8 @@ export class PgWriteStore extends PgStore {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
         if (data.poxSetSigners && data.poxSetSigners.signers) {
-          const cycleNumber = unwrapOptionalProp(data.poxSetSigners, 'cycle_number');
-          const signers = data.poxSetSigners.signers;
-          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, cycleNumber, signers));
+          const poxSet = data.poxSetSigners;
+          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
         }
         if (batchedTxData.length > 0) {
           q.enqueue(() =>
@@ -1372,22 +1371,17 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async updatePoxSetsBatch(
-    sql: PgSqlClient,
-    block: DbBlock,
-    cycleNumber: number,
-    signers: Required<DbPoxSetSigners>['signers']
-  ) {
-    const totalWeight = signers.reduce((acc, signer) => acc + signer.weight, 0);
-    const totalStacked = signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
+  async updatePoxSetsBatch(sql: PgSqlClient, block: DbBlock, poxSet: DbPoxSetSigners) {
+    const totalWeight = poxSet.signers.reduce((acc, signer) => acc + signer.weight, 0);
+    const totalStacked = poxSet.signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
 
-    for (const signer of signers) {
+    for (const signer of poxSet.signers) {
       const values: PoxSetSignerValues = {
         canonical: block.canonical,
         index_block_hash: block.index_block_hash,
         parent_index_block_hash: block.parent_index_block_hash,
         block_height: block.block_height,
-        cycle_number: cycleNumber,
+        cycle_number: poxSet.cycle_number,
         pox_ustx_threshold: poxSet.pox_ustx_threshold,
         signing_key: signer.signing_key,
         weight: signer.weight,

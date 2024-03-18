@@ -259,24 +259,8 @@ export interface CoreNodeBlockMessage {
   cycle_number?: number;
   /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
   reward_set?: {
-    rewarded_addresses: (
-      | {
-          Standard: [
-            addr: {
-              bytes: string; // "hex string (no 0x prefix)"
-              version: number; // 26, 21
-            },
-            type: 'SerializeP2PKH' | 'SerializeP2SH'
-          ];
-        }
-      | {
-          Addr20: [mainnet: boolean, type: 'P2WPKH', hashbytes: number[]];
-        }
-      | {
-          Addr32: [mainnet: boolean, type: 'P2WSH' | 'P2TR', hashbytes: number[]];
-        }
-    )[];
     pox_ustx_threshold: string; // "666720000000000"
+    rewarded_addresses: string[]; // burnchain (btc) addresses
     signers?: {
       signing_key: string; // "03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e",
       weight: number; // 1,

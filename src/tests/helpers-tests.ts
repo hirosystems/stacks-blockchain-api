@@ -8,7 +8,6 @@ import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
 import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
-import { parsePoxSetRewardAddress } from '../event-stream/reader';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {
@@ -196,76 +195,6 @@ test('PoX bitcoin address encoding', () => {
     const decoded = decodeBtcAddress(addr);
     const encoded = poxAddressToBtcAddress(decoded.version, decoded.data, v[1]);
     expect(encoded).toBe(addr);
-  }
-});
-
-test('Pox set reward address encoding', () => {
-  const addrs: {
-    btcAddr: string;
-    rewardAddr: Required<CoreNodeBlockMessage>['reward_set']['rewarded_addresses'][0];
-  }[] = [
-    {
-      btcAddr: 'mnvi1WQb3cm2QMeeKe6G9D7L1GsjmmGTda',
-      rewardAddr: {
-        Standard: [
-          { bytes: '5146f0566e9796602a677d895852e9c0fe5686f7', version: 26 },
-          'SerializeP2PKH',
-        ],
-      },
-    },
-    {
-      btcAddr: '2MzQwSSnBHWHqSAqtTVQ6v47XtaisrJa1Vc',
-      rewardAddr: {
-        Standard: [
-          { bytes: '4e9f39ca4688ff102128ea4ccda34105324305b0', version: 21 },
-          'SerializeP2SH',
-        ],
-      },
-    },
-    {
-      btcAddr: 'tb1qw508d6qejxtdg4y5r3zarvary0c5xw7kxpjzsx',
-      rewardAddr: {
-        Addr20: [
-          false,
-          'P2WPKH',
-          [
-            117, 30, 118, 232, 25, 145, 150, 212, 84, 148, 28, 69, 209, 179, 163, 35, 241, 67, 59,
-            214,
-          ],
-        ],
-      },
-    },
-    {
-      btcAddr: 'tb1p6h5fuzmnvpdthf5shf0qqjzwy7wsqc5rhmgq2ks9xrak4ry6mtrscsqvzp',
-      rewardAddr: {
-        Addr32: [
-          false,
-          'P2TR',
-          [
-            213, 232, 158, 11, 115, 96, 90, 187, 166, 144, 186, 94, 0, 72, 78, 39, 157, 0, 98, 131,
-            190, 208, 5, 90, 5, 48, 251, 106, 140, 154, 218, 199,
-          ],
-        ],
-      },
-    },
-    {
-      btcAddr: 'tb1qrp33g0q5c5txsp9arysrx4k6zdkfs4nce4xj0gdcccefvpysxf3q0sl5k7',
-      rewardAddr: {
-        Addr32: [
-          false,
-          'P2WSH',
-          [
-            24, 99, 20, 60, 20, 197, 22, 104, 4, 189, 25, 32, 51, 86, 218, 19, 108, 152, 86, 120,
-            205, 77, 39, 161, 184, 198, 50, 150, 4, 144, 50, 98,
-          ],
-        ],
-      },
-    },
-  ];
-
-  for (const entry of addrs) {
-    const addrStr = parsePoxSetRewardAddress(entry.rewardAddr);
-    expect(addrStr).toBe(entry.btcAddr);
   }
 });
 

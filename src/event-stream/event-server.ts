@@ -48,7 +48,6 @@ import {
   parseMicroblocksFromTxs,
   isPoxPrintEvent,
   newCoreNoreBlockEventCounts,
-  parsePoxSetRewardAddress,
 } from './reader';
 import {
   decodeTransaction,
@@ -347,15 +346,15 @@ async function handleBlockMessage(
     return microblock;
   });
 
-  const poxSetSigners: DbPoxSetSigners = {};
+  let poxSetSigners: DbPoxSetSigners | undefined;
   if (msg.reward_set) {
     assertNotNullish(
       msg.cycle_number,
       () => 'Cycle number must be present if reward set is present'
     );
-    poxSetSigners.cycle_number = msg.cycle_number;
+    let signers: DbPoxSetSigners['signers'] = [];
     if (msg.reward_set.signers) {
-      poxSetSigners.signers = msg.reward_set.signers.map(signer => ({
+      signers = msg.reward_set.signers.map(signer => ({
         signing_key: '0x' + signer.signing_key,
         weight: signer.weight,
         stacked_amount: BigInt(signer.stacked_amt),
@@ -364,15 +363,19 @@ async function handleBlockMessage(
         `Received new pox set message, block=${msg.block_height}, cycle=${msg.cycle_number}, signers=${msg.reward_set.signers.length}`
       );
     }
+    let rewardedAddresses: string[] = [];
     if (msg.reward_set.rewarded_addresses) {
-      const rewardedBtcAddrs = msg.reward_set.rewarded_addresses.map(addr =>
-        parsePoxSetRewardAddress(addr)
-      );
-      poxSetSigners.rewarded_addresses = rewardedBtcAddrs;
+      rewardedAddresses = msg.reward_set.rewarded_addresses;
       logger.info(
-        `Received new pox set message, ${rewardedBtcAddrs.length} rewarded BTC addresses`
+        `Received new pox set message, ${rewardedAddresses.length} rewarded BTC addresses`
       );
     }
+    poxSetSigners = {
+      cycle_number: msg.cycle_number,
+      pox_ustx_threshold: BigInt(msg.reward_set.pox_ustx_threshold),
+      signers,
+      rewarded_addresses: rewardedAddresses,
+    };
   }
 
   const dbData: DataStoreBlockUpdateData = {

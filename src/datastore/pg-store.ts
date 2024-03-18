@@ -1015,8 +1015,8 @@ export class PgStore extends BasePgStore {
       const result = {
         index_block_hash: poxSetQuery[0].index_block_hash,
         cycle_number: poxSetQuery[0].cycle_number,
-        total_stacked: poxSetQuery[0].total_stacked_amount,
         pox_ustx_threshold: BigInt(poxSetQuery[0].pox_ustx_threshold),
+        total_stacked: BigInt(poxSetQuery[0].total_stacked_amount),
         total_weight: poxSetQuery[0].total_weight,
         signer_count: signers.length,
         signers: signers,

@@ -66,14 +66,14 @@ export interface DbBurnchainReward {
 }
 
 export interface DbPoxSetSigners {
-  cycle_number?: number;
-  signers?: {
+  cycle_number: number;
   pox_ustx_threshold: bigint;
+  signers: {
     signing_key: string;
     weight: number;
     stacked_amount: bigint;
   }[];
-  rewarded_addresses?: any[];
+  rewarded_addresses: string[];
 }
 
 export interface DbRewardSlotHolder {
