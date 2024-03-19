@@ -270,6 +270,7 @@ export interface CoreNodeBlockMessage {
       missed_reward_slots: [];
     };
   };
+  block_time: number;
 }
 
 export interface CoreNodeParsedTxMessage {
@@ -289,6 +290,7 @@ export interface CoreNodeParsedTxMessage {
   burn_block_time: number;
   parent_burn_block_time: number;
   parent_burn_block_hash: string;
+  block_time: number;
 }
 
 export interface CoreNodeBurnBlockMessage {
