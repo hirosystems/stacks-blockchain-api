@@ -103,5 +103,23 @@ describe('Signers', () => {
       ],
       total: 3,
     });
+    const signer = await supertest(api.server).get(
+      `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d`
+    );
+    expect(signer.status).toBe(200);
+    expect(signer.type).toBe('application/json');
+    expect(JSON.parse(signer.text)).toStrictEqual({
+      signing_key: '0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09',
+      stacked_amount: '457500900000000000',
+      stacked_amount_percent: 33.333333333333336,
+      weight: 3,
+      weight_percent: 33.33333333333333,
+    });
+    // const stackers = await supertest(api.server).get(
+    //   `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d`
+    // );
+    // expect(stackers.status).toBe(200);
+    // expect(stackers.type).toBe('application/json');
+    // expect(JSON.parse(stackers.text)).toStrictEqual({});
   });
 });

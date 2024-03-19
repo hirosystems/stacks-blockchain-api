@@ -163,6 +163,16 @@ const PoxCycleParamsSchema = Type.Object(
 export type PoxCycleParams = Static<typeof PoxCycleParamsSchema>;
 export const CompiledPoxCycleParams = ajv.compile(PoxCycleParamsSchema);
 
+const PoxCycleSignerParamsSchema = Type.Object(
+  {
+    cycle_number: Type.RegExp(/^[0-9]+$/),
+    signer_key: Type.RegExp(/^(0x)?[a-fA-F0-9]{66}$/i),
+  },
+  { additionalProperties: false }
+);
+export type PoxCycleSignerParams = Static<typeof PoxCycleSignerParamsSchema>;
+export const CompiledPoxCycleSignerParams = ajv.compile(PoxCycleSignerParamsSchema);
+
 const SmartContractPrincipal = Type.RegExp(
   /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$/
 );

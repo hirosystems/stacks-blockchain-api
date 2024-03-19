@@ -5,14 +5,16 @@ import { PgStore } from '../../../datastore/pg-store';
 import {
   CompiledPoxCyclePaginationQueryParams,
   CompiledPoxCycleParams,
+  CompiledPoxCycleSignerParams,
   CompiledPoxSignerPaginationQueryParams,
   PoxCyclePaginationQueryParams,
   PoxCycleParams,
+  PoxCycleSignerParams,
   PoxSignerPaginationQueryParams,
   validRequestParams,
   validRequestQuery,
 } from './schemas';
-import { PoxCycleListResponse, PoxCycleSignersListResponse } from 'docs/generated';
+import { PoxCycleListResponse, PoxCycleSignersListResponse, PoxSigner } from 'docs/generated';
 import { parseDbPoxCycle, parseDbPoxSigner } from './helpers';
 import { InvalidRequestError } from '../../../errors';
 
@@ -91,6 +93,31 @@ export function createPoxRouter(db: PgStore): express.Router {
         };
         setETagCacheHeaders(res);
         res.json(response);
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          res.status(404).json({ errors: error.message });
+          return;
+        }
+        throw error;
+      }
+    })
+  );
+
+  router.get(
+    '/cycles/:cycle_number/signers/:signer_key',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      if (!validRequestParams(req, res, CompiledPoxCycleSignerParams)) return;
+      const params = req.params as PoxCycleSignerParams;
+
+      try {
+        const signer = await db.v2.getPoxCycleSigner(params);
+        if (!signer) {
+          res.status(404).json({ error: `Not found` });
+          return;
+        }
+        setETagCacheHeaders(res);
+        res.json(parseDbPoxSigner(signer));
       } catch (error) {
         if (error instanceof InvalidRequestError) {
           res.status(404).json({ errors: error.message });

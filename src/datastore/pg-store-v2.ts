@@ -11,6 +11,7 @@ import {
   PoxCycleLimitParamSchema,
   PoxCycleParams,
   PoxSignerPaginationQueryParams,
+  PoxCycleSignerParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -340,6 +341,23 @@ export class PgStoreV2 extends BasePgStoreModule {
         results: results,
         total: results[0].total,
       };
+    });
+  }
+
+  async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
+    return this.sqlTransaction(async sql => {
+      const cycleCheck =
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const results = await sql<DbPoxCycleSigner[]>`
+        SELECT
+          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
+        FROM pox_sets
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        LIMIT 1
+      `;
+      if (results.count > 0) return results[0];
     });
   }
 }

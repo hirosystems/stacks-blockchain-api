@@ -947,7 +947,39 @@ paths:
               schema:
                 $ref: ./api/stacking/get-pox-cycle-signers.schema.json
               example:
-                $ref: ./api/stacking/get-pox-cycle-signers.example.json    
+                $ref: ./api/stacking/get-pox-cycle-signers.example.json
+
+  /extended/v2/pox/cycles/{cycle_number}/signers/{signer_key}:
+    get:
+      summary: Get signer in PoX cycle
+      description: Retrieves details for a signer in a PoX cycle
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycle_signer
+      parameters:
+        - name: cycle_number
+          in: path
+          description: PoX cycle number
+          required: true
+          schema:
+            type: integer
+            example: 56
+        - name: signer_key
+          in: path
+          description: Signer key
+          required: true
+          schema:
+            type: string
+            example: "0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d"
+      responses:
+        200:
+          description: Details for PoX signer
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/stacking/signer.schema.json
+              example:
+                $ref: ./entities/stacking/signer.example.json 
 
   /extended/v1/block:
     get:
