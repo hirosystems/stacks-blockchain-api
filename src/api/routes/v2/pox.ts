@@ -25,17 +25,7 @@ import { InvalidRequestError } from '../../../errors';
 export function createPoxRouter(db: PgStore): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
-  /*
-    /extended/v2/pox/cycles
-    /extended/v2/pox/cycles/:number
-    /extended/v2/pox/cycles/next
-    /extended/v2/pox/cycles/:number/signers
-    /extended/v2/pox/cycles/:number/signers/:key/stackers
-    /extended/v2/pox/cycles/:number/signers/:key/stackers/:address/delegates     *pools only
 
-    /extended/v2/pox/signers/:key
-    /extended/v2/pox/stackers/:address
-    */
   router.get(
     '/cycles',
     cacheHandler,
