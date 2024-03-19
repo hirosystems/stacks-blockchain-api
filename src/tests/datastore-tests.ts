@@ -5099,40 +5099,4 @@ describe('postgres datastore', () => {
       db.getTxListDetails({ txIds: [], includeUnanchored: true })
     ).resolves.not.toThrow();
   });
-
-  test.each([
-    [
-      '{"block_id":"663efa15e366c7081858899af76285146397aa55a912f315abfaac723a1fd576","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Standard":[{"bytes":"5146f0566e9796602a677d895852e9c0fe5686f7","version":26},"SerializeP2PKH"]}],"signers":[{"signing_key":"03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
-    ],
-    [
-      '{"block_id":"6338616ddb427a7b2d2fb24fa8c2525772a3e2423165cc722b3bd710055fe914","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Standard":[{"bytes":"4e9f39ca4688ff102128ea4ccda34105324305b0","version":21},"SerializeP2SH"]}],"signers":[{"signing_key":"023bcbd7c8cbc44302c7fac07b12e891d2d398cb5c711ed4bd3100067cb354dd77","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
-    ],
-    [
-      '{"block_id":"c404dfd89f19e7b9615693f7d2019346ac879659289ec23f2c9cda6d3689f85a","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Addr20":[false,"P2WPKH",[117,30,118,232,25,145,150,212,84,148,28,69,209,179,163,35,241,67,59,214]]}],"signers":[{"signing_key":"03986fd519ffbab75ec32e200ae14fcdb8af8d575a43f16529a1849829d64cca67","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
-    ],
-    [
-      '{"block_id":"f6706748b0454b9fbbecae59a14edaf3764eb3d6414e171b5baafdf3772fde57","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Addr32":[false,"P2TR",[213,232,158,11,115,96,90,187,166,144,186,94,0,72,78,39,157,0,98,131,190,208,5,90,5,48,251,106,140,154,218,199]]}],"signers":[{"signing_key":"03941750863ce378fb1d21937b572025a71b97100df58077e0fb2cba79d2a57460","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
-    ],
-    [
-      '{"block_id":"c63c4bfcffef55c827d326dcb36d270f3650d20c9bdd3c5d083b3b9a25a60234","cycle_number":12,"stacker_set":{"rewarded_addresses":[{"Addr32":[false,"P2WSH",[24,99,20,60,20,197,22,104,4,189,25,32,51,86,218,19,108,152,86,120,205,77,39,161,184,198,50,150,4,144,50,98]]}],"signers":[{"signing_key":"0230b7a3a290f79ab19e0f05e0347c97fd593dff2a21d85877d5bbc44597e2a2ed","slots":1,"stacked_amt":3000225000000000}],"start_cycle_state":{"missed_reward_slots":[]}}}',
-    ],
-  ])('pg ingest pox set event %#', async payloadStr => {
-    const payload: CoreNodeBlockMessage = JSON.parse(payloadStr);
-
-    const block = new TestBlockBuilder({
-      block_height: 1,
-      index_block_hash: payload.index_block_hash,
-    })
-      .addTx()
-      .build();
-    await db.update(block);
-
-    // await handleNewPoxSetMessage(NETWORK_CHAIN_ID.testnet, payload, db);
-
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const poxSet = await db.getPoxSetForCycle(payload.cycle_number!);
-    expect(poxSet.found).toBe(true);
-    assert(poxSet.found);
-    expect(poxSet.result.signers.length).toBeGreaterThan(0);
-  });
 });

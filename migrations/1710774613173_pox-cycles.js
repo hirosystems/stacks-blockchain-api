@@ -1,10 +1,3 @@
-/* eslint-disable camelcase */
-
-exports.shorthands = undefined;
-
-exports.up = pgm => {};
-
-exports.down = pgm => {};
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
 exports.up = pgm => {
   pgm.createTable('pox_cycles', {
