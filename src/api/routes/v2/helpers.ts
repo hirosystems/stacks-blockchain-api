@@ -3,6 +3,7 @@ import {
   NakamotoBlock,
   PoxCycle,
   PoxSigner,
+  PoxStacker,
   SmartContractsStatusResponse,
 } from 'docs/generated';
 import {
@@ -10,6 +11,7 @@ import {
   DbBurnBlock,
   DbPoxCycle,
   DbPoxCycleSigner,
+  DbPoxCycleSignerStacker,
   DbSmartContractStatus,
 } from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
@@ -93,6 +95,15 @@ export function parseDbPoxSigner(signer: DbPoxCycleSigner): PoxSigner {
     stacked_amount: signer.stacked_amount,
     weight_percent: signer.weight_percent,
     stacked_amount_percent: signer.stacked_amount_percent,
+  };
+  return result;
+}
+
+export function parseDbPoxSignerStacker(stacker: DbPoxCycleSignerStacker): PoxStacker {
+  const result: PoxStacker = {
+    stacker_address: stacker.stacker,
+    stacked_amount: stacker.locked,
+    pox_address: stacker.pox_addr,
   };
   return result;
 }

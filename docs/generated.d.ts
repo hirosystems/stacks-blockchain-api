@@ -97,6 +97,7 @@ export type SchemaMergeRootStub =
   | SmartContractFound
   | SmartContractNotFound
   | PoolDelegationsResponse
+  | PoxCycleSignerStackersListResponse
   | PoxCycleSignersListResponse
   | PoxCycleListResponse
   | {
@@ -186,6 +187,7 @@ export type SchemaMergeRootStub =
   | PoolDelegation
   | PoxCycle
   | PoxSigner
+  | PoxStacker
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -3140,6 +3142,29 @@ export interface PoolDelegation {
    * The tx_id of the stacker delegation operation
    */
   tx_id: string;
+}
+/**
+ * GET request that returns stackers for a signer in a PoX cycle
+ */
+export interface PoxCycleSignerStackersListResponse {
+  /**
+   * The number of stackers to return
+   */
+  limit: number;
+  /**
+   * The number to stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of stackers
+   */
+  total: number;
+  results: PoxStacker[];
+}
+export interface PoxStacker {
+  stacker_address: string;
+  stacked_amount: string;
+  pox_address: string;
 }
 /**
  * GET request that returns signers for a PoX cycle

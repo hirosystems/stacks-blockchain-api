@@ -14,8 +14,12 @@ import {
   validRequestParams,
   validRequestQuery,
 } from './schemas';
-import { PoxCycleListResponse, PoxCycleSignersListResponse, PoxSigner } from 'docs/generated';
-import { parseDbPoxCycle, parseDbPoxSigner } from './helpers';
+import {
+  PoxCycleListResponse,
+  PoxCycleSignerStackersListResponse,
+  PoxCycleSignersListResponse,
+} from 'docs/generated';
+import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers';
 import { InvalidRequestError } from '../../../errors';
 
 export function createPoxRouter(db: PgStore): express.Router {
@@ -118,6 +122,41 @@ export function createPoxRouter(db: PgStore): express.Router {
         }
         setETagCacheHeaders(res);
         res.json(parseDbPoxSigner(signer));
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          res.status(404).json({ errors: error.message });
+          return;
+        }
+        throw error;
+      }
+    })
+  );
+
+  router.get(
+    '/cycles/:cycle_number/signers/:signer_key/stackers',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      if (
+        !validRequestParams(req, res, CompiledPoxCycleSignerParams) ||
+        !validRequestQuery(req, res, CompiledPoxSignerPaginationQueryParams)
+      )
+        return;
+      const params = req.params as PoxCycleSignerParams;
+      const query = req.query as PoxSignerPaginationQueryParams;
+
+      try {
+        const { limit, offset, results, total } = await db.v2.getPoxCycleSignerStackers({
+          ...params,
+          ...query,
+        });
+        const response: PoxCycleSignerStackersListResponse = {
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbPoxSignerStacker(r)),
+        };
+        setETagCacheHeaders(res);
+        res.json(response);
       } catch (error) {
         if (error instanceof InvalidRequestError) {
           res.status(404).json({ errors: error.message });

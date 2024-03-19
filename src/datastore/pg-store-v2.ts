@@ -28,6 +28,7 @@ import {
   PoxCycleQueryResult,
   DbPoxCycle,
   DbPoxCycleSigner,
+  DbPoxCycleSignerStacker,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -358,6 +359,52 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
+    });
+  }
+
+  async getPoxCycleSignerStackers(
+    args: PoxCycleSignerParams & PoxSignerPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const cycleCheck = await sql`
+        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1
+      `;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const signerCheck = await sql`
+        SELECT signing_key
+        FROM pox_sets
+        WHERE cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        LIMIT 1
+      `;
+      if (signerCheck.count === 0)
+        throw new InvalidRequestError(
+          `PoX cycle signer not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+      const results = await sql<(DbPoxCycleSignerStacker & { total: number })[]>`
+        WITH stackers AS (
+          SELECT DISTINCT ON (stacker) stacker, locked, pox_addr
+          FROM pox4_events
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND start_cycle_id <= ${args.cycle_number}
+            AND (end_cycle_id >= ${args.cycle_number} OR end_cycle_id IS NULL)
+            AND signer_key = ${args.signer_key}
+          ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        )
+        SELECT *, COUNT(*) OVER()::int AS total FROM stackers
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      return {
+        limit,
+        offset,
+        results: results,
+        total: results[0].total,
+      };
     });
   }
 }

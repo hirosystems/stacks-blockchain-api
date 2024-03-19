@@ -1036,7 +1036,14 @@ export interface DbPoxCycleSigner {
   stacked_amount: string;
   weight_percent: number;
   stacked_amount_percent: number;
+  // TODO: Figure this out
   // total_stackers: number;
+}
+
+export interface DbPoxCycleSignerStacker {
+  stacker: string;
+  locked: string;
+  pox_addr: string;
 }
 
 interface ReOrgEntities {

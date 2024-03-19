@@ -115,11 +115,22 @@ describe('Signers', () => {
       weight: 3,
       weight_percent: 33.33333333333333,
     });
-    // const stackers = await supertest(api.server).get(
-    //   `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d`
-    // );
-    // expect(stackers.status).toBe(200);
-    // expect(stackers.type).toBe('application/json');
-    // expect(JSON.parse(stackers.text)).toStrictEqual({});
+    const stackers = await supertest(api.server).get(
+      `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d/stackers`
+    );
+    expect(stackers.status).toBe(200);
+    expect(stackers.type).toBe('application/json');
+    expect(JSON.parse(stackers.text)).toStrictEqual({
+      limit: 20,
+      offset: 0,
+      results: [
+        {
+          pox_address: '15Z2sAvjgVDpcBh4vx9g2XKU8FVHYcXNaj',
+          stacked_amount: '686251350000000000',
+          stacker_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+        },
+      ],
+      total: 1,
+    });
   });
 });
