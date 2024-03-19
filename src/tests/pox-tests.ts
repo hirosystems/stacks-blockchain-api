@@ -5,7 +5,7 @@ import { ApiServer, startApiServer } from '../api/init';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { importEventsFromTsv } from '../event-replay/event-replay';
 
-describe('Signers', () => {
+describe('PoX tests', () => {
   let db: PgWriteStore;
   let client: PgSqlClient;
   let api: ApiServer;
@@ -58,8 +58,16 @@ describe('Signers', () => {
           total_stacked_amount: '1372502700000000000',
           total_weight: 9,
         },
+        {
+          block_height: 6,
+          cycle_number: 11,
+          index_block_hash: '0xe1fb9b3beaa302392d183151d3e5394f86eb64c3d46616b8ec18f5ebe734c4cb',
+          total_signers: 0,
+          total_stacked_amount: '0',
+          total_weight: 0,
+        },
       ],
-      total: 3,
+      total: 4,
     });
     const cycle = await supertest(api.server).get(`/extended/v2/pox/cycles/14`);
     expect(cycle.status).toBe(200);
@@ -76,7 +84,7 @@ describe('Signers', () => {
     expect(signers.status).toBe(200);
     expect(signers.type).toBe('application/json');
     expect(JSON.parse(signers.text)).toStrictEqual({
-      limit: 20,
+      limit: 100,
       offset: 0,
       results: [
         {
@@ -121,7 +129,7 @@ describe('Signers', () => {
     expect(stackers.status).toBe(200);
     expect(stackers.type).toBe('application/json');
     expect(JSON.parse(stackers.text)).toStrictEqual({
-      limit: 20,
+      limit: 100,
       offset: 0,
       results: [
         {
