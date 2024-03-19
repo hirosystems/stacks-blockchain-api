@@ -24,6 +24,7 @@ export interface DbBlock {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
   tx_count: number;
+  block_time: number;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -66,13 +67,14 @@ export interface DbBurnchainReward {
 }
 
 export interface DbPoxSetSigners {
-  cycle_number?: number;
-  signers?: {
+  cycle_number: number;
+  pox_ustx_threshold: bigint;
+  signers: {
     signing_key: string;
     weight: number;
     stacked_amount: bigint;
   }[];
-  rewarded_addresses?: any[];
+  rewarded_addresses: string[];
 }
 
 export interface DbRewardSlotHolder {
@@ -180,6 +182,7 @@ export interface DbTx extends BaseTx {
   block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
+  block_time: number;
 
   tx_index: number;
 
@@ -829,6 +832,7 @@ export interface BlockQueryResult {
   parent_microblock_hash: string;
   parent_microblock_sequence: number;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   burn_block_hash: string;
   burn_block_height: number;
@@ -928,6 +932,7 @@ export interface TxQueryResult {
   index_block_hash: string;
   parent_index_block_hash: string;
   block_hash: string;
+  block_time: number;
   parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
@@ -1115,6 +1120,7 @@ export interface TxInsertValues {
   block_hash: PgBytea;
   parent_block_hash: PgBytea;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   parent_burn_block_time: number;
   type_id: number;
@@ -1605,6 +1611,7 @@ export interface PoxSetSignerValues {
   index_block_hash: PgBytea;
   parent_index_block_hash: PgBytea;
   cycle_number: number;
+  pox_ustx_threshold: bigint;
   signing_key: PgBytea;
   weight: number;
   stacked_amount: bigint;

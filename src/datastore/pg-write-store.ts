@@ -264,9 +264,8 @@ export class PgWriteStore extends PgStore {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
         if (data.poxSetSigners && data.poxSetSigners.signers) {
-          const cycleNumber = unwrapOptionalProp(data.poxSetSigners, 'cycle_number');
-          const signers = data.poxSetSigners.signers;
-          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, cycleNumber, signers));
+          const poxSet = data.poxSetSigners;
+          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
         }
         if (batchedTxData.length > 0) {
           q.enqueue(() =>
@@ -1373,37 +1372,33 @@ export class PgWriteStore extends PgStore {
     `;
   }
 
-  async updatePoxSetsBatch(
-    sql: PgSqlClient,
-    block: DbBlock,
-    cycleNumber: number,
-    signers: Required<DbPoxSetSigners>['signers']
-  ) {
-    const totalWeight = signers.reduce((acc, signer) => acc + signer.weight, 0);
-    const totalStacked = signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
+  async updatePoxSetsBatch(sql: PgSqlClient, block: DbBlock, poxSet: DbPoxSetSigners) {
+    const totalWeight = poxSet.signers.reduce((acc, signer) => acc + signer.weight, 0);
+    const totalStacked = poxSet.signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
 
     const cycleValues: PoxCycleInsertValues = {
       canonical: block.canonical,
       block_height: block.block_height,
       index_block_hash: block.index_block_hash,
       parent_index_block_hash: block.parent_index_block_hash,
-      cycle_number: cycleNumber,
+      cycle_number: poxSet.cycle_number,
       total_stacked_amount: totalStacked,
       total_weight: totalWeight,
-      total_signers: signers.length,
+      total_signers: poxSet.signers.length,
     };
     await sql`
       INSERT INTO pox_cycles ${sql(cycleValues)}
       ON CONFLICT ON CONSTRAINT pox_cycles_unique DO NOTHING
     `;
 
-    for (const signer of signers) {
+    for (const signer of poxSet.signers) {
       const values: PoxSetSignerValues = {
         canonical: block.canonical,
         index_block_hash: block.index_block_hash,
         parent_index_block_hash: block.parent_index_block_hash,
         block_height: block.block_height,
-        cycle_number: cycleNumber,
+        cycle_number: poxSet.cycle_number,
+        pox_ustx_threshold: poxSet.pox_ustx_threshold,
         signing_key: signer.signing_key,
         weight: signer.weight,
         stacked_amount: signer.stacked_amount,
@@ -1698,6 +1693,7 @@ export class PgWriteStore extends PgStore {
       block_hash: tx.block_hash,
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
+      block_time: tx.block_time,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
@@ -1895,10 +1891,22 @@ export class PgWriteStore extends PgStore {
       this._debounceMempoolStat.running = true;
       this._debounceMempoolStat.triggeredAt = null;
       try {
-        const mempoolStats = await this.getMempoolStatsInternal({ sql: this.sql });
+        const mempoolStats = await this.sqlTransaction(async sql => {
+          return await this.getMempoolStatsInternal({ sql });
+        });
         this.eventEmitter.emit('mempoolStatsUpdate', mempoolStats);
-      } catch (e) {
-        logger.error(e, `failed to run mempool stats update`);
+      } catch (e: unknown) {
+        const connectionError = e as Error & { code: string };
+        if (
+          connectionError instanceof Error &&
+          ['CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECTION_CLOSED'].includes(
+            connectionError.code
+          )
+        ) {
+          logger.info(`Skipping mempool stats query because ${connectionError.code}`);
+        } else {
+          logger.error(e, `failed to run mempool stats update`);
+        }
       } finally {
         this._debounceMempoolStat.running = false;
         this._debounceMempoolStat.debounce = null;
@@ -3099,6 +3107,7 @@ export class PgWriteStore extends PgStore {
       block_hash: tx.block_hash,
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
+      block_time: tx.block_time,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
@@ -3290,5 +3299,12 @@ export class PgWriteStore extends PgStore {
         throw new Error(`No updates made while toggling table indexes`);
       }
     }
+  }
+
+  async close(args?: { timeout?: number }): Promise<void> {
+    if (this._debounceMempoolStat.debounce) {
+      clearTimeout(this._debounceMempoolStat.debounce);
+    }
+    await super.close(args);
   }
 }

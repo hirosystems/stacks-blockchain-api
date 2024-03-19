@@ -591,6 +591,7 @@ export interface CoreNodeMsgBlockData {
   block_height: number;
   burn_block_time: number;
   burn_block_height: number;
+  block_time: number;
 }
 
 export function parseMicroblocksFromTxs(args: {
@@ -747,6 +748,7 @@ export function parseMessageTransaction(
       raw_tx: coreTx.raw_tx,
       parsed_tx: rawTx,
       block_hash: blockData.block_hash,
+      block_time: blockData.block_time,
       index_block_hash: blockData.index_block_hash,
       parent_index_block_hash: blockData.parent_index_block_hash,
       parent_block_hash: blockData.parent_block_hash,
@@ -913,58 +915,4 @@ export function newCoreNoreBlockEventCounts(): CoreNodeBlockEventCounts {
     },
     miner_rewards: 0,
   };
-}
-
-/** Parse a pox reward addr into a bitcoin address */
-export function parsePoxSetRewardAddress(
-  addr: Required<CoreNodeBlockMessage>['reward_set']['rewarded_addresses'][0]
-): string {
-  let poxAddrVersion: PoXAddressVersion;
-  let network: 'mainnet' | 'testnet';
-  let hashBytes: Uint8Array;
-  if ('Standard' in addr) {
-    if (addr.Standard[1] === 'SerializeP2PKH') {
-      poxAddrVersion = PoXAddressVersion.P2PKH;
-    } else if (addr.Standard[1] === 'SerializeP2SH') {
-      poxAddrVersion = PoXAddressVersion.P2SH;
-    } else {
-      throw new Error(`Unknown pox address type: ${addr.Standard[1]}`);
-    }
-    if (
-      addr.Standard[0].version === AddressVersion.MainnetMultiSig ||
-      addr.Standard[0].version === AddressVersion.MainnetSingleSig
-    ) {
-      network = 'mainnet';
-    } else if (
-      addr.Standard[0].version === AddressVersion.TestnetMultiSig ||
-      addr.Standard[0].version === AddressVersion.TestnetSingleSig
-    ) {
-      network = 'testnet';
-    } else {
-      throw new Error(`Unknown address version: ${addr.Standard[0].version}`);
-    }
-    hashBytes = Buffer.from(addr.Standard[0].bytes, 'hex');
-  } else if ('Addr20' in addr) {
-    network = addr.Addr20[0] ? 'mainnet' : 'testnet';
-    if (addr.Addr20[1] === 'P2WPKH') {
-      poxAddrVersion = PoXAddressVersion.P2WPKH;
-    } else {
-      throw new Error(`Unknown pox address type: ${addr.Addr20[1]}`);
-    }
-    hashBytes = Buffer.from(addr.Addr20[2]);
-  } else if ('Addr32' in addr) {
-    network = addr.Addr32[0] ? 'mainnet' : 'testnet';
-    if (addr.Addr32[1] === 'P2WSH') {
-      poxAddrVersion = PoXAddressVersion.P2WSH;
-    } else if (addr.Addr32[1] === 'P2TR') {
-      poxAddrVersion = PoXAddressVersion.P2TR;
-    } else {
-      throw new Error(`Unknown pox address type: ${addr.Addr32[1]}`);
-    }
-    hashBytes = Buffer.from(addr.Addr32[2]);
-  } else {
-    throw new Error(`Unknown pox address type: ${JSON.stringify(addr)}`);
-  }
-  const btcAddr = poxAddressToBtcAddress(poxAddrVersion, hashBytes, network);
-  return btcAddr;
 }
