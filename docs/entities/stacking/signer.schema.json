@@ -1,0 +1,29 @@
+{
+  "title": "PoxSigner",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "signing_key",
+    "weight",
+    "stacked_amount",
+    "weight_percent",
+    "stacked_amount_percent"
+  ],
+  "properties": {
+    "signing_key": {
+      "type": "string"
+    },
+    "weight": {
+      "type": "integer"
+    },
+    "stacked_amount": {
+      "type": "string"
+    },
+    "weight_percent": {
+      "type": "number"
+    },
+    "stacked_amount_percent": {
+      "type": "number"
+    }
+  }
+}

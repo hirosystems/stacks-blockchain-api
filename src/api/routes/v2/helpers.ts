@@ -1,5 +1,17 @@
-import { BurnBlock, NakamotoBlock, PoXCycle, SmartContractsStatusResponse } from 'docs/generated';
-import { DbBlock, DbBurnBlock, DbPoxCycle, DbSmartContractStatus } from '../../../datastore/common';
+import {
+  BurnBlock,
+  NakamotoBlock,
+  PoxCycle,
+  PoxSigner,
+  SmartContractsStatusResponse,
+} from 'docs/generated';
+import {
+  DbBlock,
+  DbBurnBlock,
+  DbPoxCycle,
+  DbPoxCycleSigner,
+  DbSmartContractStatus,
+} from '../../../datastore/common';
 import { unixEpochToIso } from '../../../helpers';
 import { SmartContractStatusParams } from './schemas';
 import { getTxStatusString } from '../../../api/controllers/db-controller';
@@ -62,14 +74,25 @@ export function parseDbSmartContractStatusArray(
   return response;
 }
 
-export function parseDbPoxCycle(cycle: DbPoxCycle): PoXCycle {
-  const result: PoXCycle = {
+export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
+  const result: PoxCycle = {
     block_height: cycle.block_height,
     index_block_hash: cycle.index_block_hash,
     cycle_number: cycle.cycle_number,
     total_weight: cycle.total_weight,
     total_stacked_amount: cycle.total_stacked_amount,
     total_signers: cycle.total_signers,
+  };
+  return result;
+}
+
+export function parseDbPoxSigner(signer: DbPoxCycleSigner): PoxSigner {
+  const result: PoxSigner = {
+    signing_key: signer.signing_key,
+    weight: signer.weight,
+    stacked_amount: signer.stacked_amount,
+    weight_percent: signer.weight_percent,
+    stacked_amount_percent: signer.stacked_amount_percent,
   };
   return result;
 }

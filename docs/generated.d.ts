@@ -97,7 +97,8 @@ export type SchemaMergeRootStub =
   | SmartContractFound
   | SmartContractNotFound
   | PoolDelegationsResponse
-  | PoXCycleListResponse
+  | PoxCycleSignersListResponse
+  | PoxCycleListResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -183,7 +184,8 @@ export type SchemaMergeRootStub =
   | RosettaTransaction
   | SmartContractStatus
   | PoolDelegation
-  | PoXCycle
+  | PoxCycle
+  | PoxSigner
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -3140,24 +3142,49 @@ export interface PoolDelegation {
   tx_id: string;
 }
 /**
- * GET request that returns PoX cycles
+ * GET request that returns signers for a PoX cycle
  */
-export interface PoXCycleListResponse {
+export interface PoxCycleSignersListResponse {
   /**
-   * The number of Stackers to return
+   * The number of signers to return
    */
   limit: number;
   /**
-   * The number to Stackers to skip (starting at `0`)
+   * The number to signers to skip (starting at `0`)
    */
   offset: number;
   /**
-   * The total number of Stackers
+   * The total number of signers
    */
   total: number;
-  results: PoXCycle[];
+  results: PoxSigner[];
 }
-export interface PoXCycle {
+export interface PoxSigner {
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+}
+/**
+ * GET request that returns PoX cycles
+ */
+export interface PoxCycleListResponse {
+  /**
+   * The number of cycles to return
+   */
+  limit: number;
+  /**
+   * The number to cycles to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of cycles
+   */
+  total: number;
+  results: PoxCycle[];
+}
+export interface PoxCycle {
   block_height: number;
   index_block_hash: string;
   cycle_number: number;

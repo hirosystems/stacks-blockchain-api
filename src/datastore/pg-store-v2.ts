@@ -10,6 +10,7 @@ import {
   PoxCyclePaginationQueryParams,
   PoxCycleLimitParamSchema,
   PoxCycleParams,
+  PoxSignerPaginationQueryParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -25,6 +26,7 @@ import {
   DbTxStatus,
   PoxCycleQueryResult,
   DbPoxCycle,
+  DbPoxCycleSigner,
 } from './common';
 import { BLOCK_COLUMNS, parseBlockQueryResult, TX_COLUMNS, parseTxQueryResult } from './helpers';
 
@@ -309,6 +311,35 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
+    });
+  }
+
+  async getPoxCycleSigners(
+    args: PoxCycleParams & PoxSignerPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const cycleCheck =
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const results = await sql<(DbPoxCycleSigner & { total: number })[]>`
+        SELECT
+          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent,
+          COUNT(*) OVER()::int AS total
+        FROM pox_sets
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        ORDER BY weight DESC
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      return {
+        limit,
+        offset,
+        results: results,
+        total: results[0].total,
+      };
     });
   }
 }

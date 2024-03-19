@@ -1,18 +1,20 @@
 import * as express from 'express';
-import { handleBadRequest } from '../../query-helpers';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
 import { asyncHandler } from '../../async-handler';
 import { PgStore } from '../../../datastore/pg-store';
 import {
   CompiledPoxCyclePaginationQueryParams,
   CompiledPoxCycleParams,
+  CompiledPoxSignerPaginationQueryParams,
   PoxCyclePaginationQueryParams,
   PoxCycleParams,
+  PoxSignerPaginationQueryParams,
   validRequestParams,
   validRequestQuery,
 } from './schemas';
-import { PoXCycleListResponse } from 'docs/generated';
-import { parseDbPoxCycle } from './helpers';
+import { PoxCycleListResponse, PoxCycleSignersListResponse } from 'docs/generated';
+import { parseDbPoxCycle, parseDbPoxSigner } from './helpers';
+import { InvalidRequestError } from '../../../errors';
 
 export function createPoxRouter(db: PgStore): express.Router {
   const router = express.Router();
@@ -36,7 +38,7 @@ export function createPoxRouter(db: PgStore): express.Router {
       const query = req.query as PoxCyclePaginationQueryParams;
 
       const cycles = await db.v2.getPoxCycles(query);
-      const response: PoXCycleListResponse = {
+      const response: PoxCycleListResponse = {
         limit: cycles.limit,
         offset: cycles.offset,
         total: cycles.total,
@@ -61,6 +63,41 @@ export function createPoxRouter(db: PgStore): express.Router {
       }
       setETagCacheHeaders(res);
       res.json(parseDbPoxCycle(cycle));
+    })
+  );
+
+  router.get(
+    '/cycles/:cycle_number/signers',
+    cacheHandler,
+    asyncHandler(async (req, res, next) => {
+      if (
+        !validRequestParams(req, res, CompiledPoxCycleParams) ||
+        !validRequestQuery(req, res, CompiledPoxSignerPaginationQueryParams)
+      )
+        return;
+      const params = req.params as PoxCycleParams;
+      const query = req.query as PoxSignerPaginationQueryParams;
+
+      try {
+        const { limit, offset, results, total } = await db.v2.getPoxCycleSigners({
+          ...params,
+          ...query,
+        });
+        const response: PoxCycleSignersListResponse = {
+          limit,
+          offset,
+          total,
+          results: results.map(r => parseDbPoxSigner(r)),
+        };
+        setETagCacheHeaders(res);
+        res.json(response);
+      } catch (error) {
+        if (error instanceof InvalidRequestError) {
+          res.status(404).json({ errors: error.message });
+          return;
+        }
+        throw error;
+      }
     })
   );
 

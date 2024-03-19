@@ -80,6 +80,14 @@ export const PoxCycleLimitParamSchema = Type.Integer({
   description: 'PoX cycles per page',
 });
 
+export const PoxSignerLimitParamSchema = Type.Integer({
+  minimum: 1,
+  maximum: pagingQueryLimits[ResourceType.Signer].maxLimit,
+  default: pagingQueryLimits[ResourceType.Signer].defaultLimit,
+  title: 'PoX signer limit',
+  description: 'PoX signers per page',
+});
+
 const BurnBlockHashParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
   title: 'Burn block hash',
   description: 'Burn block hash',
@@ -125,6 +133,12 @@ const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycle
 export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
 export const CompiledPoxCyclePaginationQueryParams = ajv.compile(
   PoxCyclePaginationQueryParamsSchema
+);
+
+const PoxSignerPaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxSignerLimitParamSchema);
+export type PoxSignerPaginationQueryParams = Static<typeof PoxSignerPaginationQueryParamsSchema>;
+export const CompiledPoxSignerPaginationQueryParams = ajv.compile(
+  PoxSignerPaginationQueryParamsSchema
 );
 
 const BlockParamsSchema = Type.Object(

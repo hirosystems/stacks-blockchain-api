@@ -1030,6 +1030,15 @@ export interface DbPoxCycle {
   total_signers: number;
 }
 
+export interface DbPoxCycleSigner {
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  // total_stackers: number;
+}
+
 interface ReOrgEntities {
   blocks: number;
   microblocks: number;

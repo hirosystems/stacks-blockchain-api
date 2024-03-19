@@ -1,28 +1,28 @@
 {
-  "description": "GET request that returns PoX cycles",
+  "description": "GET request that returns signers for a PoX cycle",
   "additionalProperties": false,
-  "title": "PoxCycleListResponse",
+  "title": "PoxCycleSignersListResponse",
   "type": "object",
   "required": ["results", "limit", "offset", "total"],
   "properties": {
     "limit": {
       "type": "integer",
       "maximum": 200,
-      "description": "The number of cycles to return"
+      "description": "The number of signers to return"
     },
     "offset": {
       "type": "integer",
-      "description": "The number to cycles to skip (starting at `0`)",
+      "description": "The number to signers to skip (starting at `0`)",
       "default": 0
     },
     "total": {
       "type": "integer",
-      "description": "The total number of cycles"
+      "description": "The total number of signers"
     },
     "results": {
       "type": "array",
       "items": {
-        "$ref": "../../entities/stacking/pox-cycle.schema.json"
+        "$ref": "../../entities/stacking/signer.schema.json"
       }
     }
   }
