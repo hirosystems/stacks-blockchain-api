@@ -3637,6 +3637,8 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxCycles: 0,
+        poxSigners: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -3655,6 +3657,8 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxCycles: 0,
+        poxSigners: 0,
       },
       prunedMempoolTxs: 0,
       restoredMempoolTxs: 0,
