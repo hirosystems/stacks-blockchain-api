@@ -12,6 +12,7 @@ import {
   PoxCycleParams,
   PoxSignerPaginationQueryParams,
   PoxCycleSignerParams,
+  PoxSignerLimitParamSchema,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -320,7 +321,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: PoxCycleParams & PoxSignerPaginationQueryParams
   ): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
     return this.sqlTransaction(async sql => {
-      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
@@ -366,7 +367,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: PoxCycleSignerParams & PoxSignerPaginationQueryParams
   ): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
     return this.sqlTransaction(async sql => {
-      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const cycleCheck = await sql`
         SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1
