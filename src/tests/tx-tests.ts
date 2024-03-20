@@ -155,6 +155,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 2480886000,
       execution_cost_write_count: 138,
       execution_cost_write_length: 91116,
+      signer_bitvec: null,
     };
     const dbTx2: DbTxRaw = {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
@@ -349,6 +350,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not have a versioned-smart-contract tx builder as of writing, so use a known good serialized tx
@@ -509,6 +511,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
@@ -652,6 +655,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
@@ -795,6 +799,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -984,6 +989,7 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({
       block: dbBlock,
@@ -1179,6 +1185,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const dbTx: DbTxRaw = {
       tx_id: '0x421234',
@@ -1380,6 +1387,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     const pc1 = createNonFungiblePostCondition(
@@ -1630,6 +1638,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
@@ -1780,6 +1789,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
@@ -1930,6 +1940,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -2048,6 +2059,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -2702,6 +2714,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -2954,6 +2967,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 2480886000,
       execution_cost_write_count: 138,
       execution_cost_write_length: 91116,
+      signer_bitvec: null,
     };
     const expected = {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
@@ -3289,6 +3303,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -3490,6 +3505,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {

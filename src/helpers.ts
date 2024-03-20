@@ -783,3 +783,45 @@ export function getUintEnvOrDefault(envName: string, defaultValue = 0) {
   }
   return Number(v);
 }
+
+export class BitVec {
+  bits: boolean[];
+  constructor(bits: boolean[]) {
+    this.bits = bits;
+  }
+
+  /**
+   * Deserialize a bit vector from a bytes in the consensus format:
+   *  - 2 bytes (u16): bit length (how many bits to read from the byte data)
+   *  - 4 bytes (u32): data length (how many remaining bytes to read)
+   */
+  static consensusDeserialize(serializedData: Uint8Array) {
+    const dataView = new DataView(serializedData.buffer, serializedData.byteOffset);
+    const bitLen = dataView.getUint16(0);
+    const dataLen = dataView.getUint32(2);
+    const bitVecBytes = serializedData.subarray(6, 6 + dataLen);
+    const bits = Array.from(
+      { length: bitLen },
+      (_, i) => !!(bitVecBytes[i >>> 3] & (128 >> i % 8))
+    );
+    return new BitVec(bits);
+  }
+
+  /** Return a base-2 string */
+  toString() {
+    return this.bits.map(b => (b ? '1' : '0')).join('');
+  }
+
+  /**
+   * Deserialize a bit vector from a bytes in the consensus format, and return as a base-2 string
+   */
+  static consensusDeserializeToString(serializedData: Uint8Array | string): string {
+    const data =
+      typeof serializedData === 'string'
+        ? Buffer.from(serializedData.replace(/^0x/, ''), 'hex')
+        : serializedData;
+    const bitVec = BitVec.consensusDeserialize(data);
+    const bitVecStr = bitVec.toString();
+    return bitVecStr;
+  }
+}

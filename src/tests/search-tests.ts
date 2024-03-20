@@ -62,6 +62,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -272,6 +273,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const tx: DbTxRaw = {
@@ -609,6 +611,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
 
@@ -1050,6 +1053,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const stxTx1: DbTxRaw = {

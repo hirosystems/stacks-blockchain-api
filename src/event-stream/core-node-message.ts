@@ -271,6 +271,7 @@ export interface CoreNodeBlockMessage {
     };
   };
   block_time: number;
+  signer_bitvec?: string | null;
 }
 
 export interface CoreNodeParsedTxMessage {
