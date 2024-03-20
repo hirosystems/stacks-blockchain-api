@@ -20,6 +20,7 @@ import {
   DbTokenOfferingLocked,
   DbTx,
   DataStoreBnsBlockTxData,
+  ReOrgUpdatedEntities,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
@@ -3619,7 +3620,7 @@ describe('postgres datastore', () => {
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
-    expect(reorgResult).toEqual({
+    const expectedReorgResult: ReOrgUpdatedEntities = {
       markedCanonical: {
         blocks: 4,
         microblocks: 0,
@@ -3637,6 +3638,7 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxSigners: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -3655,10 +3657,12 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxSigners: 0,
       },
       prunedMempoolTxs: 0,
       restoredMempoolTxs: 0,
-    });
+    };
+    expect(reorgResult).toEqual(expectedReorgResult);
 
     const blockQuery1 = await db.getBlock({ hash: block1.block_hash });
     expect(blockQuery1.result?.canonical).toBe(true);
