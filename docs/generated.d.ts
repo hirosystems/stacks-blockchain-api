@@ -97,6 +97,9 @@ export type SchemaMergeRootStub =
   | SmartContractFound
   | SmartContractNotFound
   | PoolDelegationsResponse
+  | PoxCycleSignerStackersListResponse
+  | PoxCycleSignersListResponse
+  | PoxCycleListResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -182,6 +185,9 @@ export type SchemaMergeRootStub =
   | RosettaTransaction
   | SmartContractStatus
   | PoolDelegation
+  | PoxCycle
+  | PoxSigner
+  | PoxStacker
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -3152,6 +3158,80 @@ export interface PoolDelegation {
    * The tx_id of the stacker delegation operation
    */
   tx_id: string;
+}
+/**
+ * GET request that returns stackers for a signer in a PoX cycle
+ */
+export interface PoxCycleSignerStackersListResponse {
+  /**
+   * The number of stackers to return
+   */
+  limit: number;
+  /**
+   * The number to stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of stackers
+   */
+  total: number;
+  results: PoxStacker[];
+}
+export interface PoxStacker {
+  stacker_address: string;
+  stacked_amount: string;
+  pox_address: string;
+}
+/**
+ * GET request that returns signers for a PoX cycle
+ */
+export interface PoxCycleSignersListResponse {
+  /**
+   * The number of signers to return
+   */
+  limit: number;
+  /**
+   * The number to signers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of signers
+   */
+  total: number;
+  results: PoxSigner[];
+}
+export interface PoxSigner {
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+}
+/**
+ * GET request that returns PoX cycles
+ */
+export interface PoxCycleListResponse {
+  /**
+   * The number of cycles to return
+   */
+  limit: number;
+  /**
+   * The number to cycles to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of cycles
+   */
+  total: number;
+  results: PoxCycle[];
+}
+export interface PoxCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
 }
 /**
  * List of Non-Fungible Token history events

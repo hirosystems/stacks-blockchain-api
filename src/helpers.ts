@@ -427,7 +427,7 @@ export function unwrapOptionalProp<TObj, TKey extends keyof TObj>(
   return val as Exclude<TObj[TKey], undefined | null>;
 }
 
-export function assertNotNullish<T>(
+export function unwrapNotNullish<T>(
   val: T,
   onNullish?: () => string
 ): val is Exclude<T, undefined> {
@@ -438,6 +438,15 @@ export function assertNotNullish<T>(
     throw new Error(onNullish?.() ?? 'value is null');
   }
   return true;
+}
+
+export function assertNotNullish<T>(
+  val: T | null | undefined,
+  onNullish?: () => string
+): asserts val is T {
+  if (val === undefined || val === null) {
+    throw new Error(onNullish?.() ?? 'value is nullish');
+  }
 }
 
 function intMax(args: bigint[]): bigint;

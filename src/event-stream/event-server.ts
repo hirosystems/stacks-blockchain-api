@@ -6,7 +6,7 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
+import { ChainID, assertNotNullish, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -38,6 +38,7 @@ import {
   DbPoxSyntheticEvent,
   DbTxStatus,
   DbBnsSubdomain,
+  DbPoxSetSigners,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -359,6 +360,38 @@ async function handleBlockMessage(
     return microblock;
   });
 
+  let poxSetSigners: DbPoxSetSigners | undefined;
+  if (msg.reward_set) {
+    assertNotNullish(
+      msg.cycle_number,
+      () => 'Cycle number must be present if reward set is present'
+    );
+    let signers: DbPoxSetSigners['signers'] = [];
+    if (msg.reward_set.signers) {
+      signers = msg.reward_set.signers.map(signer => ({
+        signing_key: '0x' + signer.signing_key,
+        weight: signer.weight,
+        stacked_amount: BigInt(signer.stacked_amt),
+      }));
+      logger.info(
+        `Received new pox set message, block=${msg.block_height}, cycle=${msg.cycle_number}, signers=${msg.reward_set.signers.length}`
+      );
+    }
+    let rewardedAddresses: string[] = [];
+    if (msg.reward_set.rewarded_addresses) {
+      rewardedAddresses = msg.reward_set.rewarded_addresses;
+      logger.info(
+        `Received new pox set message, ${rewardedAddresses.length} rewarded BTC addresses`
+      );
+    }
+    poxSetSigners = {
+      cycle_number: msg.cycle_number,
+      pox_ustx_threshold: BigInt(msg.reward_set.pox_ustx_threshold),
+      signers,
+      rewarded_addresses: rewardedAddresses,
+    };
+  }
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
@@ -367,6 +400,7 @@ async function handleBlockMessage(
     pox_v1_unlock_height: msg.pox_v1_unlock_height,
     pox_v2_unlock_height: msg.pox_v2_unlock_height,
     pox_v3_unlock_height: msg.pox_v3_unlock_height,
+    poxSetSigners: poxSetSigners,
   };
 
   await db.update(dbData);

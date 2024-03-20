@@ -1,0 +1,21 @@
+{
+  "title": "PoxStacker",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "stacker_address",
+    "stacked_amount",
+    "pox_address"
+  ],
+  "properties": {
+    "stacker_address": {
+      "type": "string"
+    },
+    "stacked_amount": {
+      "type": "string"
+    },
+    "pox_address": {
+      "type": "string"
+    }
+  }
+}

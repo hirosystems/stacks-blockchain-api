@@ -1,5 +1,11 @@
 import * as assert from 'assert';
-import { getOrAdd, I32_MAX, getIbdBlockHeight, getUintEnvOrDefault } from '../helpers';
+import {
+  getOrAdd,
+  I32_MAX,
+  getIbdBlockHeight,
+  getUintEnvOrDefault,
+  unwrapOptionalProp,
+} from '../helpers';
 import {
   DbBlock,
   DbTx,
@@ -60,6 +66,9 @@ import {
   DataStoreBnsBlockTxData,
   DbPoxSyntheticEvent,
   PoxSyntheticEventTable,
+  DbPoxSetSigners,
+  PoxSetSignerValues,
+  PoxCycleInsertValues,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -92,6 +101,7 @@ import {
   runMigrations,
 } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs, getConnectionConfig } from './connection';
+import { BigNumber } from 'bignumber.js';
 
 const MIGRATIONS_TABLE = 'pgmigrations';
 const INSERT_BATCH_SIZE = 500;
@@ -253,6 +263,10 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
+        if (data.poxSetSigners && data.poxSetSigners.signers) {
+          const poxSet = data.poxSetSigners;
+          q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
+        }
         if (batchedTxData.length > 0) {
           q.enqueue(() =>
             this.updateTx(
@@ -815,6 +829,8 @@ export class PgWriteStore extends PgStore {
         };
         if (poxTable === 'pox4_events') {
           value.signer_key = null;
+          value.end_cycle_id = null;
+          value.start_burn_height = null;
         }
 
         // Set event-specific columns
@@ -831,12 +847,19 @@ export class PgWriteStore extends PgStore {
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
           case SyntheticPoxEventName.StackIncrease: {
             value.increase_by = event.data.increase_by.toString();
             value.total_locked = event.data.total_locked.toString();
+            if (poxTable === 'pox4_events') {
+              value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.StackExtend: {
@@ -844,6 +867,8 @@ export class PgWriteStore extends PgStore {
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
@@ -851,6 +876,10 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             value.delegate_to = event.data.delegate_to;
             value.unlock_burn_height = event.data.unlock_burn_height?.toString() ?? null;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackStx: {
@@ -859,18 +888,30 @@ export class PgWriteStore extends PgStore {
             value.start_burn_height = event.data.start_burn_height.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackIncrease: {
             value.increase_by = event.data.increase_by.toString();
             value.total_locked = event.data.total_locked.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.DelegateStackExtend: {
             value.extend_count = event.data.extend_count.toString();
             value.unlock_burn_height = event.data.unlock_burn_height.toString();
             value.delegator = event.data.delegator;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.StackAggregationCommit: {
@@ -878,6 +919,8 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
@@ -886,16 +929,26 @@ export class PgWriteStore extends PgStore {
             value.amount_ustx = event.data.amount_ustx.toString();
             if (poxTable === 'pox4_events') {
               value.signer_key = event.data.signer_key;
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
             }
             break;
           }
           case SyntheticPoxEventName.StackAggregationIncrease: {
             value.reward_cycle = event.data.reward_cycle.toString();
             value.amount_ustx = event.data.amount_ustx.toString();
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           case SyntheticPoxEventName.RevokeDelegateStx: {
             value.delegate_to = event.data.delegate_to;
+            if (poxTable === 'pox4_events') {
+              value.end_cycle_id = event.data.end_cycle_id?.toString() ?? null;
+              value.start_cycle_id = event.data.start_cycle_id?.toString() ?? null;
+            }
             break;
           }
           default: {
@@ -1317,6 +1370,53 @@ export class PgWriteStore extends PgStore {
     await sql`
       INSERT INTO contract_logs ${sql(values)}
     `;
+  }
+
+  async updatePoxSetsBatch(sql: PgSqlClient, block: DbBlock, poxSet: DbPoxSetSigners) {
+    const totalWeight = poxSet.signers.reduce((acc, signer) => acc + signer.weight, 0);
+    const totalStacked = poxSet.signers.reduce((acc, signer) => acc + signer.stacked_amount, 0n);
+
+    const cycleValues: PoxCycleInsertValues = {
+      canonical: block.canonical,
+      block_height: block.block_height,
+      index_block_hash: block.index_block_hash,
+      parent_index_block_hash: block.parent_index_block_hash,
+      cycle_number: poxSet.cycle_number,
+      total_stacked_amount: totalStacked,
+      total_weight: totalWeight,
+      total_signers: poxSet.signers.length,
+    };
+    await sql`
+      INSERT INTO pox_cycles ${sql(cycleValues)}
+      ON CONFLICT ON CONSTRAINT pox_cycles_unique DO NOTHING
+    `;
+
+    for (const signer of poxSet.signers) {
+      const values: PoxSetSignerValues = {
+        canonical: block.canonical,
+        index_block_hash: block.index_block_hash,
+        parent_index_block_hash: block.parent_index_block_hash,
+        block_height: block.block_height,
+        cycle_number: poxSet.cycle_number,
+        pox_ustx_threshold: poxSet.pox_ustx_threshold,
+        signing_key: signer.signing_key,
+        weight: signer.weight,
+        stacked_amount: signer.stacked_amount,
+        weight_percent: (signer.weight / totalWeight) * 100,
+        stacked_amount_percent: new BigNumber(signer.stacked_amount.toString())
+          .div(totalStacked.toString())
+          .times(100)
+          .toNumber(),
+        total_stacked_amount: totalStacked,
+        total_weight: totalWeight,
+      };
+      const signerInsertResult = await sql`
+        INSERT into pox_sets ${sql(values)}
+      `;
+      if (signerInsertResult.count !== 1) {
+        throw new Error(`Failed to insert pox signer set at block ${block.index_block_hash}`);
+      }
+    }
   }
 
   async updateAttachments(attachments: DataStoreAttachmentData[]): Promise<void> {
@@ -2730,6 +2830,31 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.subdomains += subdomainResult.count;
       }
     });
+    q.enqueue(async () => {
+      const poxSetResult = await sql`
+        UPDATE pox_sets
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.poxSigners += poxSetResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.poxSigners += poxSetResult.count;
+      }
+    });
+    q.enqueue(async () => {
+      const poxCycleResult = await sql`
+        UPDATE pox_cycles
+        SET canonical = ${canonical}
+        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      `;
+      if (canonical) {
+        updatedEntities.markedCanonical.poxCycles += poxCycleResult.count;
+      } else {
+        updatedEntities.markedNonCanonical.poxCycles += poxCycleResult.count;
+      }
+    });
+
     await q.done();
 
     return result;

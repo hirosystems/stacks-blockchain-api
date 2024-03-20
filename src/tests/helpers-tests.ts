@@ -7,6 +7,7 @@ import { isValidBitcoinAddress, getUintEnvOrDefault } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {

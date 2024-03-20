@@ -19,6 +19,7 @@ import {
   ClarityValue,
   ClarityValueAbstract,
   ClarityValueBuffer,
+  ClarityValueOptional,
   ClarityValueOptionalNone,
   ClarityValueOptionalSome,
   ClarityValuePrincipalContract,
@@ -98,22 +99,31 @@ interface PoxSyntheticPrintEventTypes {
     'start-burn-height': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
     'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.StackIncrease]: {
     'increase-by': ClarityValueUInt;
     'total-locked': ClarityValueUInt;
+    'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.StackExtend]: {
     'extend-count': ClarityValueUInt;
     'unlock-burn-height': ClarityValueUInt;
     'pox-addr': PoxSyntheticEventAddr;
     'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.DelegateStx]: {
     'amount-ustx': ClarityValueUInt;
     'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
     'unlock-burn-height': ClarityValueOptionalSome<ClarityValueUInt> | ClarityValueOptionalNone;
     'pox-addr': PoxSyntheticEventAddr | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt; // TODO: add this to core node
   };
   [SyntheticPoxEventName.DelegateStackStx]: {
     'lock-amount': ClarityValueUInt;
@@ -122,12 +132,16 @@ interface PoxSyntheticPrintEventTypes {
     'start-burn-height': ClarityValueUInt;
     'lock-period': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.DelegateStackIncrease]: {
     'pox-addr': PoxSyntheticEventAddr;
     'increase-by': ClarityValueUInt;
     'total-locked': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt; // TODO: add this to core node
   };
   [SyntheticPoxEventName.DelegateStackExtend]: {
     'pox-addr': PoxSyntheticEventAddr;
@@ -135,26 +149,37 @@ interface PoxSyntheticPrintEventTypes {
     'extend-count': ClarityValueUInt;
     delegator: ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
     'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt; // TODO: add this to core node
   };
   [SyntheticPoxEventName.StackAggregationCommit]: {
     'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
     'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.StackAggregationCommitIndexed]: {
     'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
     'signer-key'?: ClarityValueBuffer | ClarityValueOptionalNone;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.StackAggregationIncrease]: {
     'pox-addr': PoxSyntheticEventAddr;
     'reward-cycle': ClarityValueUInt;
     'amount-ustx': ClarityValueUInt;
+    'reward-cycle-index'?: ClarityValueUInt;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
   [SyntheticPoxEventName.RevokeDelegateStx]: {
     'delegate-to': ClarityValuePrincipalStandard | ClarityValuePrincipalContract;
+    'end-cycle-id'?: ClarityValueOptional<ClarityValueUInt>;
+    'start-cycle-id'?: ClarityValueUInt;
   };
 }
 
@@ -259,6 +284,11 @@ export function decodePoxSyntheticPrintEvent(
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
           signer_key:
             d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -276,6 +306,13 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           increase_by: BigInt(d['increase-by'].value),
           total_locked: BigInt(d['total-locked'].value),
+          signer_key:
+            d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -294,6 +331,11 @@ export function decodePoxSyntheticPrintEvent(
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
           signer_key:
             d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -313,6 +355,11 @@ export function decodePoxSyntheticPrintEvent(
             d['unlock-burn-height'].type_id === ClarityTypeID.OptionalSome
               ? BigInt(d['unlock-burn-height'].value.value)
               : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -333,6 +380,11 @@ export function decodePoxSyntheticPrintEvent(
           start_burn_height: BigInt(d['start-burn-height'].value),
           lock_period: BigInt(d['lock-period'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -351,6 +403,11 @@ export function decodePoxSyntheticPrintEvent(
           increase_by: BigInt(d['increase-by'].value),
           total_locked: BigInt(d['total-locked'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -368,6 +425,11 @@ export function decodePoxSyntheticPrintEvent(
           unlock_burn_height: BigInt(d['unlock-burn-height'].value),
           extend_count: BigInt(d['extend-count'].value),
           delegator: clarityPrincipalToFullAddress(d['delegator']),
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       if (PATCH_EVENT_BALANCES) {
@@ -385,6 +447,11 @@ export function decodePoxSyntheticPrintEvent(
           amount_ustx: BigInt(d['amount-ustx'].value),
           signer_key:
             d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       return parsedData;
@@ -399,6 +466,11 @@ export function decodePoxSyntheticPrintEvent(
           amount_ustx: BigInt(d['amount-ustx'].value),
           signer_key:
             d['signer-key']?.type_id === ClarityTypeID.Buffer ? d['signer-key'].buffer : null,
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       return parsedData;
@@ -411,6 +483,11 @@ export function decodePoxSyntheticPrintEvent(
         data: {
           reward_cycle: BigInt(d['reward-cycle'].value),
           amount_ustx: BigInt(d['amount-ustx'].value),
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       return parsedData;
@@ -422,6 +499,11 @@ export function decodePoxSyntheticPrintEvent(
         name: eventName,
         data: {
           delegate_to: clarityPrincipalToFullAddress(d['delegate-to']),
+          end_cycle_id:
+            d['end-cycle-id']?.type_id === ClarityTypeID.OptionalSome
+              ? BigInt(d['end-cycle-id'].value.value)
+              : null,
+          start_cycle_id: d['start-cycle-id']?.value ? BigInt(d['start-cycle-id'].value) : null,
         },
       };
       return parsedData;

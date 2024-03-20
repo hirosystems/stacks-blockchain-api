@@ -6,7 +6,7 @@ import {
 import { ClarityAbi } from '@stacks/transactions';
 import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
 import {
-  assertNotNullish,
+  unwrapNotNullish,
   FoundOrNot,
   unwrapOptional,
   bnsHexValueToName,
@@ -84,6 +84,7 @@ import {
   parseQueryResultToSmartContract,
   parseTxQueryResult,
   parseTxsWithAssetTransfers,
+  POX4_SYNTHETIC_EVENT_COLUMNS,
   POX_SYNTHETIC_EVENT_COLUMNS,
   prefixedCols,
   TX_COLUMNS,
@@ -1911,9 +1912,7 @@ export class PgStore extends BasePgStore {
   }): Promise<DbPoxSyntheticEvent[]> {
     return await this.sqlTransaction(async sql => {
       const cols =
-        poxTable === 'pox4_events'
-          ? [...POX_SYNTHETIC_EVENT_COLUMNS, 'signer_key']
-          : POX_SYNTHETIC_EVENT_COLUMNS;
+        poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
       const queryResults = await sql<PoxSyntheticEventQueryResult[]>`
         SELECT ${sql(cols)}
         FROM ${sql(poxTable)}
@@ -2529,8 +2528,8 @@ export class PgStore extends BasePgStore {
           block_height: row.block_height,
           canonical: row.canonical,
           locked_address: unwrapOptional(row.sender),
-          locked_amount: BigInt(assertNotNullish(row.amount)),
-          unlock_height: Number(assertNotNullish(row.unlock_height)),
+          locked_amount: BigInt(unwrapNotNullish(row.amount)),
+          unlock_height: Number(unwrapNotNullish(row.unlock_height)),
           event_type: DbEventTypeId.StxLock,
           contract_name: unwrapOptional(row.contract_name),
         };

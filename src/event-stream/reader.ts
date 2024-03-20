@@ -1,5 +1,6 @@
 import {
   BurnchainOp,
+  CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
@@ -59,14 +60,16 @@ import {
   UIntCV,
   stringAsciiCV,
   hexToCV,
+  AddressVersion,
 } from '@stacks/transactions';
-import { poxAddressToTuple } from '@stacks/stacking';
+import { poxAddressToBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
 import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
+import { PoXAddressVersion } from '@stacks/stacking/dist/constants';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
