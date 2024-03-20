@@ -333,7 +333,7 @@ export class PgStoreV2 extends BasePgStoreModule {
           COUNT(*) OVER()::int AS total
         FROM pox_sets
         WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
-        ORDER BY weight DESC
+        ORDER BY weight DESC, stacked_amount DESC, signing_key
         OFFSET ${offset}
         LIMIT ${limit}
       `;
