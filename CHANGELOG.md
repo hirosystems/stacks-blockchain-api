@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.7...v7.9.0-nakamoto.8) (2024-03-20)
+
+
+### Features
+
+* ingest signer_bitvec ([#1900](https://github.com/hirosystems/stacks-blockchain-api/issues/1900)) ([aa1750f](https://github.com/hirosystems/stacks-blockchain-api/commit/aa1750f7ebbdfe4c2a84583f98c3ff465236f8aa))
+
 ## [7.9.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.6...v7.9.0-nakamoto.7) (2024-03-20)
 
 
