@@ -6,7 +6,13 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, assertNotNullish, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
+import {
+  BitVec,
+  ChainID,
+  assertNotNullish,
+  getChainIDNetwork,
+  getIbdBlockHeight,
+} from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -291,6 +297,10 @@ async function handleBlockMessage(
     counts.events[event.type] += 1;
   }
 
+  const signerBitvec = msg.signer_bitvec
+    ? BitVec.consensusDeserializeToString(msg.signer_bitvec)
+    : null;
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,
@@ -311,6 +321,7 @@ async function handleBlockMessage(
     execution_cost_write_length: 0,
     tx_count: msg.transactions.length,
     block_time: msg.block_time,
+    signer_bitvec: signerBitvec,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -1148,6 +1159,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     execution_cost_write_count: totalCost.execution_cost_write_count,
     execution_cost_write_length: totalCost.execution_cost_write_length,
     tx_count: msg.transactions.length,
+    signer_bitvec: msg.signer_bitvec ?? null,
   };
 
   const dbMinerRewards: DbMinerReward[] = [];

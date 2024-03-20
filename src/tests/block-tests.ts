@@ -85,6 +85,7 @@ describe('block tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -532,6 +533,7 @@ describe('block tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const dbTx1: DbTxRaw = {
       ...dbBlock,

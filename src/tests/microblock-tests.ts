@@ -284,6 +284,7 @@ describe('microblock tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           tx_count: 1,
+          signer_bitvec: null,
         };
 
         const tx1: DbTxRaw = {

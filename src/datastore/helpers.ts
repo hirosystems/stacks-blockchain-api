@@ -183,6 +183,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_count',
   'execution_cost_write_length',
   'tx_count',
+  'signer_bitvec',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -473,6 +474,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     tx_count: row.tx_count,
+    signer_bitvec: row.signer_bitvec,
   };
   return block;
 }

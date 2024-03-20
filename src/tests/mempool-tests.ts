@@ -536,6 +536,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const dbTx1: DbTxRaw = {
       ...mempoolTx1,
@@ -1315,6 +1316,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -1389,6 +1391,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, dbBlock);
     const senderAddress = 'SP25YGP221F01S9SSCGN114MKDAK9VRK8P3KXGEMB';
@@ -1609,6 +1612,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const dbBlock2: DbBlock = {
       block_hash: '0x2123',
@@ -1630,6 +1634,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const mempoolTx: DbMempoolTxRaw = {
       tx_id: txId,
@@ -1754,6 +1759,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const dbBlock1b: DbBlock = {
       block_hash: '0x0123bb',
@@ -1775,6 +1781,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const dbBlock2b: DbBlock = {
       block_hash: '0x2123',
@@ -1796,6 +1803,7 @@ describe('mempool tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const mempoolTx: DbMempoolTxRaw = {
       tx_id: txId,
