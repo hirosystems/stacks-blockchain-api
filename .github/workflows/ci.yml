@@ -928,6 +928,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: ${{ steps.semantic.outputs.new_release_version != '' && 'linux/arm64, linux/amd64' || 'linux/amd64' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           # Only push if (there's a new release on main branch, or if building a non-main branch) and (Only run on non-PR events or only PRs that aren't from forks)
@@ -937,6 +938,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          platforms: ${{ steps.semantic.outputs.new_release_version != '' && 'linux/arm64, linux/amd64' || 'linux/amd64' }}
           build-args: |
             STACKS_API_VERSION=${{ github.head_ref || github.ref_name }}
           file: docker/rosetta.Dockerfile
