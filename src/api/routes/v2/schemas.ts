@@ -72,6 +72,22 @@ export const TransactionLimitParamSchema = Type.Integer({
   description: 'Transactions per page',
 });
 
+export const PoxCycleLimitParamSchema = Type.Integer({
+  minimum: 1,
+  maximum: pagingQueryLimits[ResourceType.PoxCycle].maxLimit,
+  default: pagingQueryLimits[ResourceType.PoxCycle].defaultLimit,
+  title: 'PoX cycle limit',
+  description: 'PoX cycles per page',
+});
+
+export const PoxSignerLimitParamSchema = Type.Integer({
+  minimum: 1,
+  maximum: pagingQueryLimits[ResourceType.Signer].maxLimit,
+  default: pagingQueryLimits[ResourceType.Signer].defaultLimit,
+  title: 'PoX signer limit',
+  description: 'PoX signers per page',
+});
+
 const BurnBlockHashParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
   title: 'Burn block hash',
   description: 'Burn block hash',
@@ -113,6 +129,18 @@ export const CompiledTransactionPaginationQueryParams = ajv.compile(
   TransactionPaginationQueryParamsSchema
 );
 
+const PoxCyclePaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxCycleLimitParamSchema);
+export type PoxCyclePaginationQueryParams = Static<typeof PoxCyclePaginationQueryParamsSchema>;
+export const CompiledPoxCyclePaginationQueryParams = ajv.compile(
+  PoxCyclePaginationQueryParamsSchema
+);
+
+const PoxSignerPaginationQueryParamsSchema = PaginationQueryParamsSchema(PoxSignerLimitParamSchema);
+export type PoxSignerPaginationQueryParams = Static<typeof PoxSignerPaginationQueryParamsSchema>;
+export const CompiledPoxSignerPaginationQueryParams = ajv.compile(
+  PoxSignerPaginationQueryParamsSchema
+);
+
 const BlockParamsSchema = Type.Object(
   {
     height_or_hash: Type.Union([
@@ -125,6 +153,25 @@ const BlockParamsSchema = Type.Object(
 );
 export type BlockParams = Static<typeof BlockParamsSchema>;
 export const CompiledBlockParams = ajv.compile(BlockParamsSchema);
+
+const PoxCycleParamsSchema = Type.Object(
+  {
+    cycle_number: Type.RegExp(/^[0-9]+$/),
+  },
+  { additionalProperties: false }
+);
+export type PoxCycleParams = Static<typeof PoxCycleParamsSchema>;
+export const CompiledPoxCycleParams = ajv.compile(PoxCycleParamsSchema);
+
+const PoxCycleSignerParamsSchema = Type.Object(
+  {
+    cycle_number: Type.RegExp(/^[0-9]+$/),
+    signer_key: Type.RegExp(/^(0x)?[a-fA-F0-9]{66}$/i),
+  },
+  { additionalProperties: false }
+);
+export type PoxCycleSignerParams = Static<typeof PoxCycleSignerParamsSchema>;
+export const CompiledPoxCycleSignerParams = ajv.compile(PoxCycleSignerParamsSchema);
 
 const SmartContractPrincipal = Type.RegExp(
   /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$/

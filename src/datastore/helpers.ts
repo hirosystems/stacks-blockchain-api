@@ -1344,6 +1344,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       namespaces: 0,
       subdomains: 0,
       poxSigners: 0,
+      poxCycles: 0,
     },
     markedNonCanonical: {
       blocks: 0,
@@ -1363,6 +1364,7 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       namespaces: 0,
       subdomains: 0,
       poxSigners: 0,
+      poxCycles: 0,
     },
     prunedMempoolTxs: 0,
     restoredMempoolTxs: 0,

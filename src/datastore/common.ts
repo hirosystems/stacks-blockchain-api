@@ -1016,13 +1016,39 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
-export interface PoxSetQueryResult {
+export interface PoxCycleQueryResult {
+  block_height: number;
   index_block_hash: string;
   cycle_number: number;
   canonical: boolean;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
+}
+
+export interface DbPoxCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
+}
+
+export interface DbPoxCycleSigner {
   signing_key: string;
   weight: number;
   stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  // TODO: Figure this out
+  // total_stackers: number;
+}
+
+export interface DbPoxCycleSignerStacker {
+  stacker: string;
+  locked: string;
+  pox_addr: string;
 }
 
 interface ReOrgEntities {
@@ -1043,6 +1069,7 @@ interface ReOrgEntities {
   namespaces: number;
   subdomains: number;
   poxSigners: number;
+  poxCycles: number;
 }
 
 export interface ReOrgUpdatedEntities {
@@ -1592,6 +1619,17 @@ export interface PoxSetSignerValues {
   stacked_amount_percent: number;
   total_weight: number;
   total_stacked_amount: bigint;
+}
+
+export interface PoxCycleInsertValues {
+  canonical: boolean;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: bigint;
+  total_signers: number;
 }
 
 export interface SmartContractInsertValues {
