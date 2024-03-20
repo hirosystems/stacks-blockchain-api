@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.6...v7.9.0-nakamoto.7) (2024-03-20)
+
+
+### Features
+
+* pox stacker & signer cycle details ([#1873](https://github.com/hirosystems/stacks-blockchain-api/issues/1873)) ([d2c2805](https://github.com/hirosystems/stacks-blockchain-api/commit/d2c28059cfca99cd9b9a35cb8c96074a60fedd35))
+
 ## [7.9.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.5...v7.9.0-nakamoto.6) (2024-03-15)
 
 
