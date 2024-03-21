@@ -6,7 +6,13 @@ import * as bodyParser from 'body-parser';
 import { asyncHandler } from '../api/async-handler';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
-import { ChainID, getChainIDNetwork, getIbdBlockHeight } from '../helpers';
+import {
+  BitVec,
+  ChainID,
+  assertNotNullish,
+  getChainIDNetwork,
+  getIbdBlockHeight,
+} from '../helpers';
 import {
   CoreNodeBlockMessage,
   CoreNodeEventType,
@@ -38,6 +44,7 @@ import {
   DbPoxSyntheticEvent,
   DbTxStatus,
   DbBnsSubdomain,
+  DbPoxSetSigners,
 } from '../datastore/common';
 import {
   getTxSenderAddress,
@@ -183,6 +190,7 @@ async function handleMicroblockMessage(
       time: msg.burn_block_timestamp,
     },
   });
+  const stacksBlockReceiptDate = Math.round(Date.now() / 1000);
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   msg.transactions.forEach(tx => {
     const blockData: CoreNodeMsgBlockData = {
@@ -197,6 +205,7 @@ async function handleMicroblockMessage(
       burn_block_height: -1,
       index_block_hash: '',
       block_hash: '',
+      block_time: stacksBlockReceiptDate,
 
       // These properties can be determined with a db query, they are set while the db is inserting them.
       block_height: -1,
@@ -218,6 +227,7 @@ async function handleMicroblockMessage(
       {
         block_height: -1, // TODO: fill during initial db insert
         index_block_hash: '',
+        block_time: stacksBlockReceiptDate,
       },
       chainId
     ),
@@ -232,10 +242,20 @@ async function handleBlockMessage(
 ): Promise<void> {
   const ingestionTimer = stopwatch();
   const counts = newCoreNoreBlockEventCounts();
+  // If running in IBD mode, we use the parent burn block timestamp as the receipt date,
+  // otherwise, use the current timestamp.
   const parsedTxs: CoreNodeParsedTxMessage[] = [];
   const blockData: CoreNodeMsgBlockData = {
     ...msg,
   };
+  if (!blockData.block_time) {
+    // TODO: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
+    // increment this by that value so that timestampts increase monotonically.
+    const stacksBlockReceiptDate = db.isEventReplay
+      ? msg.parent_burn_block_timestamp
+      : Math.round(Date.now() / 1000);
+    blockData.block_time = stacksBlockReceiptDate;
+  }
   msg.transactions.forEach(item => {
     const parsedTx = parseMessageTransaction(chainId, item, blockData, msg.events);
     if (parsedTx) {
@@ -277,6 +297,10 @@ async function handleBlockMessage(
     counts.events[event.type] += 1;
   }
 
+  const signerBitvec = msg.signer_bitvec
+    ? BitVec.consensusDeserializeToString(msg.signer_bitvec)
+    : null;
+
   const dbBlock: DbBlock = {
     canonical: true,
     block_hash: msg.block_hash,
@@ -296,6 +320,8 @@ async function handleBlockMessage(
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
     tx_count: msg.transactions.length,
+    block_time: msg.block_time,
+    signer_bitvec: signerBitvec,
   };
 
   logger.debug(`Received block ${msg.block_hash} (${msg.block_height}) from node`, dbBlock);
@@ -345,14 +371,47 @@ async function handleBlockMessage(
     return microblock;
   });
 
+  let poxSetSigners: DbPoxSetSigners | undefined;
+  if (msg.reward_set) {
+    assertNotNullish(
+      msg.cycle_number,
+      () => 'Cycle number must be present if reward set is present'
+    );
+    let signers: DbPoxSetSigners['signers'] = [];
+    if (msg.reward_set.signers) {
+      signers = msg.reward_set.signers.map(signer => ({
+        signing_key: '0x' + signer.signing_key,
+        weight: signer.weight,
+        stacked_amount: BigInt(signer.stacked_amt),
+      }));
+      logger.info(
+        `Received new pox set message, block=${msg.block_height}, cycle=${msg.cycle_number}, signers=${msg.reward_set.signers.length}`
+      );
+    }
+    let rewardedAddresses: string[] = [];
+    if (msg.reward_set.rewarded_addresses) {
+      rewardedAddresses = msg.reward_set.rewarded_addresses;
+      logger.info(
+        `Received new pox set message, ${rewardedAddresses.length} rewarded BTC addresses`
+      );
+    }
+    poxSetSigners = {
+      cycle_number: msg.cycle_number,
+      pox_ustx_threshold: BigInt(msg.reward_set.pox_ustx_threshold),
+      signers,
+      rewarded_addresses: rewardedAddresses,
+    };
+  }
+
   const dbData: DataStoreBlockUpdateData = {
     block: dbBlock,
     microblocks: dbMicroblocks,
     minerRewards: dbMinerRewards,
-    txs: parseDataStoreTxEventData(parsedTxs, msg.events, msg, chainId),
+    txs: parseDataStoreTxEventData(parsedTxs, msg.events, dbBlock, chainId),
     pox_v1_unlock_height: msg.pox_v1_unlock_height,
     pox_v2_unlock_height: msg.pox_v2_unlock_height,
     pox_v3_unlock_height: msg.pox_v3_unlock_height,
+    poxSetSigners: poxSetSigners,
   };
 
   await db.update(dbData);
@@ -369,6 +428,7 @@ function parseDataStoreTxEventData(
   blockData: {
     block_height: number;
     index_block_hash: string;
+    block_time: number;
   },
   chainId: ChainID
 ): DataStoreTxEventData[] {
@@ -1091,6 +1151,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     burn_block_time: msg.burn_block_time,
     burn_block_hash: msg.burn_block_hash,
     burn_block_height: msg.burn_block_height,
+    block_time: msg.block_time,
     miner_txid: msg.miner_txid,
     execution_cost_read_count: totalCost.execution_cost_read_count,
     execution_cost_read_length: totalCost.execution_cost_read_length,
@@ -1098,6 +1159,7 @@ export function parseNewBlockMessage(chainId: ChainID, msg: CoreNodeBlockMessage
     execution_cost_write_count: totalCost.execution_cost_write_count,
     execution_cost_write_length: totalCost.execution_cost_write_length,
     tx_count: msg.transactions.length,
+    signer_bitvec: msg.signer_bitvec ?? null,
   };
 
   const dbMinerRewards: DbMinerReward[] = [];

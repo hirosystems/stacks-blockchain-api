@@ -78,6 +78,7 @@ export const TX_COLUMNS = [
   'block_hash',
   'parent_block_hash',
   'block_height',
+  'block_time',
   'burn_block_time',
   'parent_burn_block_time',
   'type_id',
@@ -116,8 +117,6 @@ export const TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
   'tenure_change_pubkey_hash',
-  'tenure_change_signature',
-  'tenure_change_signers',
   'raw_result',
   'event_count',
   'execution_cost_read_count',
@@ -164,8 +163,6 @@ export const MEMPOOL_TX_COLUMNS = [
   'tenure_change_previous_tenure_blocks',
   'tenure_change_cause',
   'tenure_change_pubkey_hash',
-  'tenure_change_signature',
-  'tenure_change_signers',
 ];
 
 export const BLOCK_COLUMNS = [
@@ -176,6 +173,7 @@ export const BLOCK_COLUMNS = [
   'parent_microblock_hash',
   'parent_microblock_sequence',
   'block_height',
+  'block_time',
   'burn_block_time',
   'burn_block_hash',
   'burn_block_height',
@@ -187,6 +185,7 @@ export const BLOCK_COLUMNS = [
   'execution_cost_write_count',
   'execution_cost_write_length',
   'tx_count',
+  'signer_bitvec',
 ];
 
 export const MICROBLOCK_COLUMNS = [
@@ -220,6 +219,7 @@ export const TX_METADATA_TABLES = [
   'names',
   'namespaces',
   'subdomains',
+  // TODO: add pox_set table here
 ] as const;
 
 export const POX_SYNTHETIC_EVENT_COLUMNS = [
@@ -253,6 +253,13 @@ export const POX_SYNTHETIC_EVENT_COLUMNS = [
   'extend_count',
   'reward_cycle',
   'amount_ustx',
+];
+
+export const POX4_SYNTHETIC_EVENT_COLUMNS = [
+  ...POX_SYNTHETIC_EVENT_COLUMNS,
+  'signer_key',
+  'end_cycle_id',
+  'start_cycle_id',
 ];
 
 /**
@@ -359,6 +366,7 @@ export function parseTxQueryResult(result: ContractTxQueryResult): DbTx {
     index_block_hash: result.index_block_hash,
     parent_index_block_hash: result.parent_index_block_hash,
     block_hash: result.block_hash,
+    block_time: result.block_time || result.burn_block_time,
     parent_block_hash: result.parent_block_hash,
     block_height: result.block_height,
     burn_block_time: result.burn_block_time,
@@ -431,8 +439,6 @@ function parseTxTypeSpecificQueryResult(
     target.tenure_change_previous_tenure_blocks = result.tenure_change_previous_tenure_blocks;
     target.tenure_change_cause = result.tenure_change_cause;
     target.tenure_change_pubkey_hash = result.tenure_change_pubkey_hash;
-    target.tenure_change_signature = result.tenure_change_signature;
-    target.tenure_change_signers = result.tenure_change_signers;
   } else {
     throw new Error(`Received unexpected tx type_id from db query: ${target.type_id}`);
   }
@@ -478,6 +484,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     parent_microblock_hash: row.parent_microblock_hash,
     parent_microblock_sequence: row.parent_microblock_sequence,
     block_height: row.block_height,
+    block_time: row.block_time || row.burn_block_time,
     burn_block_time: row.burn_block_time,
     burn_block_hash: row.burn_block_hash,
     burn_block_height: row.burn_block_height,
@@ -489,6 +496,7 @@ export function parseBlockQueryResult(row: BlockQueryResult): DbBlock {
     execution_cost_write_count: Number.parseInt(row.execution_cost_write_count),
     execution_cost_write_length: Number.parseInt(row.execution_cost_write_length),
     tx_count: row.tx_count,
+    signer_bitvec: row.signer_bitvec,
   };
   return block;
 }
@@ -684,6 +692,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
           start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -698,6 +709,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
           total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -712,6 +726,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -729,6 +746,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           unlock_burn_height: row.unlock_burn_height
             ? BigInt(unwrapOptionalProp(row, 'unlock_burn_height'))
             : null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -746,6 +765,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           start_burn_height: BigInt(unwrapOptionalProp(row, 'start_burn_height')),
           lock_period: BigInt(unwrapOptionalProp(row, 'lock_period')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -761,6 +782,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           increase_by: BigInt(unwrapOptionalProp(row, 'increase_by')),
           total_locked: BigInt(unwrapOptionalProp(row, 'total_locked')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -776,6 +799,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
           unlock_burn_height: BigInt(unwrapOptionalProp(row, 'unlock_burn_height')),
           extend_count: BigInt(unwrapOptionalProp(row, 'extend_count')),
           delegator: unwrapOptionalProp(row, 'delegator'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -790,6 +815,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -804,6 +832,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          signer_key: row.signer_key ?? null,
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -818,6 +849,8 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         data: {
           reward_cycle: BigInt(unwrapOptionalProp(row, 'reward_cycle')),
           amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -830,9 +863,9 @@ export function parseDbPoxSyntheticEvent(row: PoxSyntheticEventQueryResult): DbP
         ...basePoxEvent,
         name: rowName,
         data: {
-          // TODO: figure out what data is available for this event
-          amount_ustx: BigInt(unwrapOptionalProp(row, 'amount_ustx')),
           delegate_to: unwrapOptionalProp(row, 'delegate_to'),
+          end_cycle_id: row.end_cycle_id ? BigInt(row.end_cycle_id) : null,
+          start_cycle_id: row.start_cycle_id ? BigInt(row.start_cycle_id) : null,
         },
       };
       return {
@@ -1093,8 +1126,6 @@ function extractTransactionPayload(txData: DecodedTxResult, dbTx: DbTx | DbMempo
       dbTx.tenure_change_previous_tenure_blocks = txData.payload.previous_tenure_blocks;
       dbTx.tenure_change_cause = txData.payload.cause;
       dbTx.tenure_change_pubkey_hash = txData.payload.pubkey_hash;
-      dbTx.tenure_change_signature = txData.payload.signature;
-      dbTx.tenure_change_signers = txData.payload.signers;
       break;
     }
     default:
@@ -1156,6 +1187,7 @@ export function createDbTxFromCoreMsg(msg: CoreNodeParsedTxMessage): DbTxRaw {
     block_height: msg.block_height,
     burn_block_time: msg.burn_block_time,
     parent_burn_block_time: msg.parent_burn_block_time,
+    block_time: msg.block_time,
     type_id: parseEnum(DbTxTypeId, parsedTx.payload.type_id as number),
     anchor_mode: parseEnum(DbTxAnchorMode, parsedTx.anchor_mode as number),
     status: getTxDbStatus(coreTx.status),
@@ -1335,6 +1367,8 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       names: 0,
       namespaces: 0,
       subdomains: 0,
+      poxSigners: 0,
+      poxCycles: 0,
     },
     markedNonCanonical: {
       blocks: 0,
@@ -1353,6 +1387,8 @@ export function newReOrgUpdatedEntities(): ReOrgUpdatedEntities {
       names: 0,
       namespaces: 0,
       subdomains: 0,
+      poxSigners: 0,
+      poxCycles: 0,
     },
     prunedMempoolTxs: 0,
     restoredMempoolTxs: 0,

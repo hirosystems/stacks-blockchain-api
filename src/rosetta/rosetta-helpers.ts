@@ -774,10 +774,13 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         if (!operation.metadata || typeof operation.metadata.number_of_cycles !== 'number') {
           return null;
         }
-
+        if (!operation.metadata || typeof operation.metadata.signer_key !== 'string') {
+          return null;
+        }
         options.sender_address = operation.account?.address;
         options.type = operation.type;
         options.number_of_cycles = operation.metadata.number_of_cycles;
+        options.signer_key = operation.metadata.signer_key;
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
@@ -797,6 +800,7 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
         options.pox_addr = operation.metadata?.pox_addr as string;
+
         break;
       default:
         return null;

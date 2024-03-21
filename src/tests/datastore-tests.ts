@@ -20,15 +20,17 @@ import {
   DbTokenOfferingLocked,
   DbTx,
   DataStoreBnsBlockTxData,
+  ReOrgUpdatedEntities,
 } from '../datastore/common';
 import { getBlocksWithMetadata, parseDbEvent } from '../api/controllers/db-controller';
 import * as assert from 'assert';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { bnsNameCV, I32_MAX } from '../helpers';
+import { bnsNameCV, I32_MAX, NETWORK_CHAIN_ID } from '../helpers';
 import { ChainID } from '@stacks/transactions';
 import { TestBlockBuilder } from '../test-utils/test-builders';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 describe('postgres datastore', () => {
   let db: PgWriteStore;
@@ -107,6 +109,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 1,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -263,6 +266,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -274,6 +278,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -284,6 +289,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -427,6 +433,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -438,6 +445,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -448,6 +456,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -596,6 +605,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -608,6 +618,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -623,6 +634,7 @@ describe('postgres datastore', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -663,6 +675,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -674,6 +687,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     let indexIdIndex = 0;
@@ -693,6 +707,7 @@ describe('postgres datastore', () => {
         index_block_hash: dbBlock.index_block_hash,
         block_hash: dbBlock.block_hash,
         block_height: dbBlock.block_height,
+        block_time: dbBlock.burn_block_time,
         burn_block_time: dbBlock.burn_block_time,
         parent_burn_block_time: 1626122935,
         type_id: DbTxTypeId.TokenTransfer,
@@ -923,6 +938,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 2,
+      block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1235',
       burn_block_height: 124,
@@ -934,6 +950,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const txs1 = [
       createStxTx('addrA', 'addrB', 100, dbBlock1),
@@ -996,6 +1013,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1007,6 +1025,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x1234',
@@ -1017,6 +1036,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1080,6 +1100,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1154,6 +1175,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1962,6 +1984,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1973,6 +1996,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x1234',
@@ -1982,6 +2006,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -2042,6 +2067,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2053,6 +2079,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2062,6 +2089,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -2127,6 +2155,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2138,6 +2167,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2147,6 +2177,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.SmartContract,
@@ -2220,6 +2251,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2231,6 +2263,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -2241,6 +2274,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.VersionedSmartContract,
@@ -2314,6 +2348,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.VersionedSmartContract,
@@ -2355,6 +2390,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2366,6 +2402,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2375,6 +2412,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.ContractCall,
@@ -2440,6 +2478,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2451,6 +2490,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2460,6 +2500,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.PoisonMicroblock,
@@ -2524,6 +2565,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2535,6 +2577,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTx = {
       tx_id: '0x421234',
@@ -2544,6 +2587,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -2607,6 +2651,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2618,6 +2663,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, dbBlock);
 
@@ -2630,6 +2676,7 @@ describe('postgres datastore', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -2676,6 +2723,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2688,6 +2736,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx1: DbTx = {
       tx_id: '0x421234',
@@ -2698,6 +2747,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3046,6 +3096,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3058,6 +3109,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3066,6 +3118,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3078,6 +3131,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3086,6 +3140,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3098,6 +3153,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3112,6 +3168,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3B.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3124,6 +3181,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block4: DbBlock = {
       block_hash: '0x44',
@@ -3132,6 +3190,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3144,6 +3203,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block5: DbBlock = {
       block_hash: '0x55',
@@ -3152,6 +3212,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block4.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 5,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3164,6 +3225,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block6: DbBlock = {
       block_hash: '0x66',
@@ -3172,6 +3234,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block5.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 6,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3184,6 +3247,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const tx1Mempool: DbMempoolTxRaw = {
@@ -3212,6 +3276,7 @@ describe('postgres datastore', () => {
       index_block_hash: block3B.index_block_hash,
       block_hash: block3B.block_hash,
       block_height: block3B.block_height,
+      block_time: block3B.burn_block_time,
       burn_block_time: block3B.burn_block_time,
       parent_burn_block_time: 1626122935,
       status: DbTxStatus.Success,
@@ -3360,6 +3425,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3372,6 +3438,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3380,6 +3447,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3392,6 +3460,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block3: DbBlock = {
       block_hash: '0x33',
@@ -3400,6 +3469,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3412,6 +3482,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block3B: DbBlock = {
       ...block3,
@@ -3426,6 +3497,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3438,6 +3510,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3461,6 +3534,7 @@ describe('postgres datastore', () => {
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
+      block_time: block1.burn_block_time,
       burn_block_time: block1.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3496,6 +3570,7 @@ describe('postgres datastore', () => {
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
+      block_time: block2.burn_block_time,
       burn_block_time: block2.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3555,6 +3630,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block4.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 5,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3567,10 +3643,11 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const reorgResult = await db.handleReorg(client, block5, 0);
-    expect(reorgResult).toEqual({
+    const expectedReorgResult: ReOrgUpdatedEntities = {
       markedCanonical: {
         blocks: 4,
         microblocks: 0,
@@ -3588,6 +3665,8 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxCycles: 0,
+        poxSigners: 0,
       },
       markedNonCanonical: {
         blocks: 1,
@@ -3606,10 +3685,13 @@ describe('postgres datastore', () => {
         names: 0,
         namespaces: 0,
         subdomains: 0,
+        poxCycles: 0,
+        poxSigners: 0,
       },
       prunedMempoolTxs: 0,
       restoredMempoolTxs: 0,
-    });
+    };
+    expect(reorgResult).toEqual(expectedReorgResult);
 
     const blockQuery1 = await db.getBlock({ hash: block1.block_hash });
     expect(blockQuery1.result?.canonical).toBe(true);
@@ -3629,6 +3711,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0x00',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3641,6 +3724,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const block2: DbBlock = {
       block_hash: '0x22',
@@ -3649,6 +3733,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3661,6 +3746,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const minerReward1: DbMinerReward = {
@@ -3696,6 +3782,7 @@ describe('postgres datastore', () => {
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: block1.block_height,
+      block_time: block1.block_height,
       burn_block_time: block1.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3731,6 +3818,7 @@ describe('postgres datastore', () => {
       index_block_hash: block2.index_block_hash,
       block_hash: block2.block_hash,
       block_height: block2.block_height,
+      block_time: block2.burn_block_time,
       burn_block_time: block2.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3923,6 +4011,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3935,6 +4024,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
 
@@ -3945,6 +4035,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block1.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 2,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3957,6 +4048,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx3: DbTxRaw = {
       tx_id: '0x03',
@@ -3967,6 +4059,7 @@ describe('postgres datastore', () => {
       index_block_hash: block2b.index_block_hash,
       block_hash: block2b.block_hash,
       block_height: block2b.block_height,
+      block_time: block2b.burn_block_time,
       burn_block_time: block2b.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4152,6 +4245,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block2b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 3,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4164,6 +4258,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
     const blockQuery2 = await db.getBlock({ hash: block3b.block_hash });
@@ -4191,6 +4286,7 @@ describe('postgres datastore', () => {
       parent_block_hash: block3b.block_hash,
       parent_microblock_hash: '0x00',
       block_height: 4,
+      block_time: 1234,
       burn_block_time: 1234,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4203,6 +4299,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
 
@@ -4289,6 +4386,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4301,6 +4399,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -4311,6 +4410,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4372,6 +4472,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4384,6 +4485,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -4394,6 +4496,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4454,6 +4557,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4466,6 +4570,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx1: DbTxRaw = {
       tx_id: '0x421234',
@@ -4476,6 +4581,7 @@ describe('postgres datastore', () => {
       index_block_hash: '0x1234',
       block_hash: '0x5678',
       block_height: block1.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4608,6 +4714,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4619,6 +4726,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({
       block: dbBlock,
@@ -4668,6 +4776,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4679,6 +4788,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({
       block: dbBlock,
@@ -4729,6 +4839,7 @@ describe('postgres datastore', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4740,6 +4851,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({
       block: dbBlock,
@@ -4789,6 +4901,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4801,6 +4914,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -4817,6 +4931,7 @@ describe('postgres datastore', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4853,6 +4968,7 @@ describe('postgres datastore', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -4893,6 +5009,7 @@ describe('postgres datastore', () => {
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       block_height: 1235,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -4905,6 +5022,7 @@ describe('postgres datastore', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const blockQuery = await db.getBlock({ hash: block.block_hash });
@@ -4920,6 +5038,7 @@ describe('postgres datastore', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,

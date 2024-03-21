@@ -1,5 +1,7 @@
+import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
-import { decodeBtcAddress, poxAddressToTuple, StackingClient } from '@stacks/stacking';
+import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import {
   NetworkIdentifier,
   RosettaAccountIdentifier,
@@ -25,8 +27,14 @@ import {
 import {
   AnchorMode,
   AuthType,
-  bufferCV,
   BytesReader,
+  MessageSignature,
+  OptionalCV,
+  StacksTransaction,
+  TransactionSigner,
+  UnsignedContractCallOptions,
+  UnsignedTokenTransferOptions,
+  bufferCV,
   createMessageSignature,
   deserializeTransaction,
   emptyMessageSignature,
@@ -34,39 +42,26 @@ import {
   makeSigHashPreSign,
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
-  MessageSignature,
   noneCV,
-  OptionalCV,
   principalCV,
   someCV,
-  StacksTransaction,
   standardPrincipalCV,
-  TransactionSigner,
   tupleCV,
   uintCV,
-  UnsignedContractCallOptions,
-  UnsignedTokenTransferOptions,
 } from '@stacks/transactions';
 import * as express from 'express';
 import { bitcoinToStacksAddress } from 'stacks-encoding-native-js';
-import { getCoreNodeEndpoint, StacksCoreRpcClient } from '../../../core-rpc/client';
+import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../../core-rpc/client';
 import { DbBlock } from '../../../datastore/common';
 import { PgStore } from '../../../datastore/pg-store';
 import {
   BigIntMath,
   ChainID,
-  doesThrow,
   FoundOrNot,
+  doesThrow,
   getChainIDNetwork,
   isValidC32Address,
 } from '../../../helpers';
-import { asyncHandler } from '../../async-handler';
-import {
-  RosettaConstants,
-  RosettaErrors,
-  RosettaErrorsTypes,
-  RosettaOperationType,
-} from '../../rosetta-constants';
 import {
   getOperations,
   getOptionsFromOperations,
@@ -82,8 +77,14 @@ import {
   rawTxToStacksTransaction,
   verifySignature,
 } from '../../../rosetta/rosetta-helpers';
-import { makeRosettaError, rosettaValidateRequest, ValidSchema } from './../../rosetta-validate';
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { asyncHandler } from '../../async-handler';
+import {
+  RosettaConstants,
+  RosettaErrors,
+  RosettaErrorsTypes,
+  RosettaOperationType,
+} from '../../rosetta-constants';
+import { ValidSchema, makeRosettaError, rosettaValidateRequest } from './../../rosetta-validate';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -216,13 +217,12 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         case RosettaOperationType.StackStx: {
           const poxAddr = options.pox_addr;
-          if (!options.number_of_cycles || !poxAddr) {
+          if (!options.number_of_cycles || !options.signer_key || !poxAddr) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
 
           if (doesThrow(() => decodeBtcAddress(poxAddr))) {
-            // todo: add error type specifically for this?
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -242,6 +242,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               poxAddressToTuple(poxAddr),
               uintCV(0),
               uintCV(options.number_of_cycles),
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             validateWithAbi: false,
             network: getStacksNetwork(),
@@ -253,11 +254,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         }
         case RosettaOperationType.DelegateStx: {
-          if (!options.amount) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
-          if (!options.delegate_to) {
+          if (!options.amount || !options.delegate_to) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -715,7 +712,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          if (!options.number_of_cycles || !options.amount) {
+          if (!options.number_of_cycles || !options.amount || !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -730,6 +727,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               poxAddressCV,
               uintCV(req.body.metadata.burn_block_height),
               uintCV(options.number_of_cycles),
+              bufferCV(hexToBytes(options.signer_key)),
             ],
             fee: txFee,
             nonce: nonce,

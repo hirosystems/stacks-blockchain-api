@@ -24,6 +24,8 @@ export interface DbBlock {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
   tx_count: number;
+  block_time: number;
+  signer_bitvec: string | null;
 }
 
 /** An interface representing the microblock data that can be constructed _only_ from the /new_microblocks payload */
@@ -63,6 +65,17 @@ export interface DbBurnchainReward {
   reward_recipient: string;
   reward_amount: bigint;
   reward_index: number;
+}
+
+export interface DbPoxSetSigners {
+  cycle_number: number;
+  pox_ustx_threshold: bigint;
+  signers: {
+    signing_key: string;
+    weight: number;
+    stacked_amount: bigint;
+  }[];
+  rewarded_addresses: string[];
 }
 
 export interface DbRewardSlotHolder {
@@ -160,8 +173,6 @@ export interface BaseTx {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash?: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 }
 
 export interface DbTx extends BaseTx {
@@ -172,6 +183,7 @@ export interface DbTx extends BaseTx {
   block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
+  block_time: number;
 
   tx_index: number;
 
@@ -383,6 +395,9 @@ export interface DbPoxSyntheticStackStxEvent extends DbPoxSyntheticBaseEventData
     lock_period: bigint;
     start_burn_height: bigint;
     unlock_burn_height: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -391,6 +406,9 @@ export interface DbPoxSyntheticStackIncreaseEvent extends DbPoxSyntheticBaseEven
   data: {
     increase_by: bigint;
     total_locked: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -399,6 +417,9 @@ export interface DbPoxSyntheticStackExtendEvent extends DbPoxSyntheticBaseEventD
   data: {
     extend_count: bigint;
     unlock_burn_height: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -408,6 +429,8 @@ export interface DbPoxSyntheticDelegateStxEvent extends DbPoxSyntheticBaseEventD
     amount_ustx: bigint;
     delegate_to: string;
     unlock_burn_height: bigint | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -419,6 +442,8 @@ export interface DbPoxSyntheticDelegateStackStxEvent extends DbPoxSyntheticBaseE
     start_burn_height: bigint;
     lock_period: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -428,6 +453,8 @@ export interface DbPoxSyntheticDelegateStackIncreaseEvent extends DbPoxSynthetic
     increase_by: bigint;
     total_locked: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -437,6 +464,8 @@ export interface DbPoxSyntheticDelegateStackExtendEvent extends DbPoxSyntheticBa
     unlock_burn_height: bigint;
     extend_count: bigint;
     delegator: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -445,6 +474,9 @@ export interface DbPoxSyntheticStackAggregationCommitEvent extends DbPoxSyntheti
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -454,6 +486,9 @@ export interface DbPoxSyntheticStackAggregationCommitIndexedEvent
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    signer_key: string | null;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -462,15 +497,17 @@ export interface DbPoxSyntheticStackAggregationIncreaseEvent extends DbPoxSynthe
   data: {
     reward_cycle: bigint;
     amount_ustx: bigint;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
 export interface DbPoxSyntheticRevokeDelegateStxEvent extends DbPoxSyntheticBaseEventData {
   name: SyntheticPoxEventName.RevokeDelegateStx;
   data: {
-    // TODO: determine what data is available for this event type
-    amount_ustx: bigint;
     delegate_to: string;
+    end_cycle_id: bigint | null;
+    start_cycle_id: bigint | null;
   };
 }
 
@@ -604,6 +641,7 @@ export interface DataStoreBlockUpdateData {
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
   pox_v3_unlock_height?: number;
+  poxSetSigners?: DbPoxSetSigners;
 }
 
 export interface DataStoreMicroblockUpdateData {
@@ -809,6 +847,7 @@ export interface BlockQueryResult {
   parent_microblock_hash: string;
   parent_microblock_sequence: number;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   burn_block_hash: string;
   burn_block_height: number;
@@ -820,6 +859,7 @@ export interface BlockQueryResult {
   execution_cost_write_count: string;
   execution_cost_write_length: string;
   tx_count: number;
+  signer_bitvec: string | null;
 }
 
 export interface MicroblockQueryResult {
@@ -897,8 +937,6 @@ export interface MempoolTxQueryResult {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 
   // sending abi in case tx is contract call
   abi: unknown | null;
@@ -910,6 +948,7 @@ export interface TxQueryResult {
   index_block_hash: string;
   parent_index_block_hash: string;
   block_hash: string;
+  block_time: number;
   parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
@@ -971,8 +1010,6 @@ export interface TxQueryResult {
   tenure_change_previous_tenure_blocks?: number;
   tenure_change_cause?: number;
   tenure_change_pubkey_hash: string;
-  tenure_change_signature?: string;
-  tenure_change_signers?: string;
 
   // events count
   event_count: number;
@@ -1020,6 +1057,41 @@ export interface FaucetRequestQueryResult {
   occurred_at: string;
 }
 
+export interface PoxCycleQueryResult {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  canonical: boolean;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
+}
+
+export interface DbPoxCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
+}
+
+export interface DbPoxCycleSigner {
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  // TODO: Figure this out
+  // total_stackers: number;
+}
+
+export interface DbPoxCycleSignerStacker {
+  stacker: string;
+  locked: string;
+  pox_addr: string;
+}
+
 interface ReOrgEntities {
   blocks: number;
   microblocks: number;
@@ -1037,6 +1109,8 @@ interface ReOrgEntities {
   names: number;
   namespaces: number;
   subdomains: number;
+  poxSigners: number;
+  poxCycles: number;
 }
 
 export interface ReOrgUpdatedEntities {
@@ -1087,6 +1161,7 @@ export interface TxInsertValues {
   block_hash: PgBytea;
   parent_block_hash: PgBytea;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   parent_burn_block_time: number;
   type_id: number;
@@ -1125,8 +1200,6 @@ export interface TxInsertValues {
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;
   tenure_change_pubkey_hash: string | null;
-  tenure_change_signature: string | null;
-  tenure_change_signers: string | null;
   raw_result: PgBytea;
   event_count: number;
   execution_cost_read_count: number;
@@ -1174,8 +1247,6 @@ export interface MempoolTxInsertValues {
   tenure_change_previous_tenure_blocks: number | null;
   tenure_change_cause: number | null;
   tenure_change_pubkey_hash: string | null;
-  tenure_change_signature: string | null;
-  tenure_change_signers: string | null;
 }
 
 export interface BlockInsertValues {
@@ -1197,6 +1268,7 @@ export interface BlockInsertValues {
   execution_cost_write_count: number;
   execution_cost_write_length: number;
   tx_count: number;
+  signer_bitvec: string | null;
 }
 
 export interface MicroblockInsertValues {
@@ -1327,6 +1399,13 @@ export interface PoxSyntheticEventQueryResult {
 
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: string | null;
+
+  // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
+  signer_key?: string | null;
+
+  // [pox4]
+  end_cycle_id?: string | null;
+  start_cycle_id?: string | null;
 }
 
 export interface PoxSyntheticEventInsertValues {
@@ -1385,6 +1464,13 @@ export interface PoxSyntheticEventInsertValues {
 
   // unique to stack-aggregation-commit, delegate-stx
   amount_ustx: PgNumeric | null;
+
+  // [pox4] unique to stacks-stx, stack-extend, stack-aggregation-commit, stack-aggregation-commit-indexed
+  signer_key?: PgBytea | null;
+
+  // [pox4]
+  end_cycle_id?: PgNumeric | null;
+  start_cycle_id?: PgNumeric | null;
 }
 
 export interface NftEventInsertValues {
@@ -1559,6 +1645,33 @@ export interface RewardSlotHolderInsertValues {
   burn_block_height: number;
   address: string;
   slot_index: number;
+}
+
+export interface PoxSetSignerValues {
+  canonical: boolean;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  cycle_number: number;
+  pox_ustx_threshold: bigint;
+  signing_key: PgBytea;
+  weight: number;
+  stacked_amount: bigint;
+  weight_percent: number;
+  stacked_amount_percent: number;
+  total_weight: number;
+  total_stacked_amount: bigint;
+}
+
+export interface PoxCycleInsertValues {
+  canonical: boolean;
+  block_height: number;
+  index_block_hash: PgBytea;
+  parent_index_block_hash: PgBytea;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: bigint;
+  total_signers: number;
 }
 
 export interface SmartContractInsertValues {

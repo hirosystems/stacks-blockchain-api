@@ -50,6 +50,7 @@ describe('other tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -61,6 +62,7 @@ describe('other tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -71,6 +73,7 @@ describe('other tests', () => {
       index_block_hash: dbBlock1.index_block_hash,
       block_hash: dbBlock1.block_hash,
       block_height: dbBlock1.block_height,
+      block_time: dbBlock1.burn_block_time,
       burn_block_time: dbBlock1.burn_block_time,
       parent_burn_block_time: 0,
       type_id: DbTxTypeId.Coinbase,

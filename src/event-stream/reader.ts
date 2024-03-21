@@ -1,5 +1,6 @@
 import {
   BurnchainOp,
+  CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
@@ -59,14 +60,16 @@ import {
   UIntCV,
   stringAsciiCV,
   hexToCV,
+  AddressVersion,
 } from '@stacks/transactions';
-import { poxAddressToTuple } from '@stacks/stacking';
+import { poxAddressToBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
 import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
+import { PoXAddressVersion } from '@stacks/stacking/dist/constants';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -588,6 +591,7 @@ export interface CoreNodeMsgBlockData {
   block_height: number;
   burn_block_time: number;
   burn_block_height: number;
+  block_time: number;
 }
 
 export function parseMicroblocksFromTxs(args: {
@@ -744,6 +748,7 @@ export function parseMessageTransaction(
       raw_tx: coreTx.raw_tx,
       parsed_tx: rawTx,
       block_hash: blockData.block_hash,
+      block_time: blockData.block_time,
       index_block_hash: blockData.index_block_hash,
       parent_index_block_hash: blockData.parent_index_block_hash,
       parent_block_hash: blockData.parent_block_hash,
@@ -823,7 +828,7 @@ export function parseMessageTransaction(
       }
       case TxPayloadTypeID.TenureChange: {
         logger.debug(
-          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end}, signers=${payload.signers},`
+          `Tenure change: cause=${payload.cause}, prev_tenure_blocks=${payload.previous_tenure_blocks}, prev_tenure_block=${payload.previous_tenure_end},`
         );
         break;
       }

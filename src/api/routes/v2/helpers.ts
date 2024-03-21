@@ -3,6 +3,9 @@ import {
   AddressTransactionEvent,
   BurnBlock,
   NakamotoBlock,
+  PoxCycle,
+  PoxSigner,
+  PoxStacker,
   SmartContractsStatusResponse,
 } from 'docs/generated';
 import {
@@ -10,6 +13,9 @@ import {
   DbBlock,
   DbBurnBlock,
   DbEventTypeId,
+  DbPoxCycle,
+  DbPoxCycleSigner,
+  DbPoxCycleSignerStacker,
   DbSmartContractStatus,
   DbTxWithAddressTransfers,
 } from '../../../datastore/common';
@@ -151,4 +157,36 @@ export function parseDbAddressTransactionTransfer(
       };
   }
   throw Error('Invalid address transaction transfer');
+}
+
+export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
+  const result: PoxCycle = {
+    block_height: cycle.block_height,
+    index_block_hash: cycle.index_block_hash,
+    cycle_number: cycle.cycle_number,
+    total_weight: cycle.total_weight,
+    total_stacked_amount: cycle.total_stacked_amount,
+    total_signers: cycle.total_signers,
+  };
+  return result;
+}
+
+export function parseDbPoxSigner(signer: DbPoxCycleSigner): PoxSigner {
+  const result: PoxSigner = {
+    signing_key: signer.signing_key,
+    weight: signer.weight,
+    stacked_amount: signer.stacked_amount,
+    weight_percent: signer.weight_percent,
+    stacked_amount_percent: signer.stacked_amount_percent,
+  };
+  return result;
+}
+
+export function parseDbPoxSignerStacker(stacker: DbPoxCycleSignerStacker): PoxStacker {
+  const result: PoxStacker = {
+    stacker_address: stacker.stacker,
+    stacked_amount: stacker.locked,
+    pox_address: stacker.pox_addr,
+  };
+  return result;
 }
