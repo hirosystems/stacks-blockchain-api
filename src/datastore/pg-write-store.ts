@@ -3109,7 +3109,7 @@ export class PgWriteStore extends PgStore {
       block_hash: tx.block_hash,
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
-      block_time: tx.block_time,
+      block_time: tx.block_time ?? 0,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
