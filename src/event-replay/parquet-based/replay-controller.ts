@@ -1,4 +1,5 @@
 import * as tty from 'tty';
+import * as fs from 'fs';
 
 import { PgWriteStore } from '../../datastore/pg-write-store';
 import { logger } from '../../logger';
@@ -19,6 +20,8 @@ import { FILE_PATH as new_block_worker_path } from './workers/new-block-worker';
 import { cycleMigrations, dangerousDropAllTables } from '@hirosystems/api-toolkit';
 import { PgServer, getConnectionArgs } from '../../datastore/connection';
 import { MIGRATIONS_DIR } from '../../datastore/pg-store';
+
+const EVENTS_DIR = process.env.STACKS_EVENTS_DIR;
 
 /**
  * This class is an entry point for the event-replay based on parquet files,
@@ -80,21 +83,27 @@ export class ReplayController {
    *
    */
   private ingestAttachmentNewEvents = async () => {
-    const timeTracker = createTimeTracker();
-
     try {
-      await timeTracker.track('ATTACHMENTS_NEW_EVENTS', async () => {
-        await processAttachmentNewEvents(this.db, this.dataset);
-      });
+      if (fs.existsSync(`${EVENTS_DIR}/attachments_new`)) {
+        const timeTracker = createTimeTracker();
+
+        try {
+          await timeTracker.track('ATTACHMENTS_NEW_EVENTS', async () => {
+            await processAttachmentNewEvents(this.db, this.dataset);
+          });
+        } catch (err) {
+          throw err;
+        } finally {
+          if (true || tty.isatty(1)) {
+            console.log('Tracked function times:');
+            console.table(timeTracker.getDurations(3));
+          } else {
+            logger.info(`Tracked function times`, timeTracker.getDurations(3));
+          }
+        }
+      }
     } catch (err) {
       throw err;
-    } finally {
-      if (true || tty.isatty(1)) {
-        console.log('Tracked function times:');
-        console.table(timeTracker.getDurations(3));
-      } else {
-        logger.info(`Tracked function times`, timeTracker.getDurations(3));
-      }
     }
   };
 
