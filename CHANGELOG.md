@@ -1,3 +1,10 @@
+## [7.9.0-nakamoto.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.8...v7.9.0-nakamoto.9) (2024-03-21)
+
+
+### Bug Fixes
+
+* event-replay readiness for nakamoto & fix for [#1879](https://github.com/hirosystems/stacks-blockchain-api/issues/1879) ([#1903](https://github.com/hirosystems/stacks-blockchain-api/issues/1903)) ([1572e73](https://github.com/hirosystems/stacks-blockchain-api/commit/1572e737337680510850b23662e1f36c57ebc198))
+
 ## [7.9.0-nakamoto.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0-nakamoto.7...v7.9.0-nakamoto.8) (2024-03-20)
 
 
