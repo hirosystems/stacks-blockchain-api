@@ -159,7 +159,6 @@ export function parseDbAddressTransactionTransfer(
   throw Error('Invalid address transaction transfer');
 }
 
-
 export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
   const result: PoxCycle = {
     block_height: cycle.block_height,
