@@ -1,3 +1,21 @@
+## [7.10.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.10.0-nakamoto.1) (2024-03-21)
+
+
+### Features
+
+* add signer-keys from pox4 events ([#1857](https://github.com/hirosystems/stacks-blockchain-api/issues/1857)) ([c17ad23](https://github.com/hirosystems/stacks-blockchain-api/commit/c17ad23d3f451d7c072ff94f4cb1ae7a2f78705d))
+* ingest signer_bitvec ([#1900](https://github.com/hirosystems/stacks-blockchain-api/issues/1900)) ([aa1750f](https://github.com/hirosystems/stacks-blockchain-api/commit/aa1750f7ebbdfe4c2a84583f98c3ff465236f8aa))
+* nakamoto block timestamps ([#1886](https://github.com/hirosystems/stacks-blockchain-api/issues/1886)) ([f547832](https://github.com/hirosystems/stacks-blockchain-api/commit/f5478329d7267a65b5f3c557b197feadff298afb))
+* pox 4 revoke events and signer-key support ([#1829](https://github.com/hirosystems/stacks-blockchain-api/issues/1829)) ([5e5650a](https://github.com/hirosystems/stacks-blockchain-api/commit/5e5650a29bcc5950f061ed0a84961075c855a863)), closes [#1849](https://github.com/hirosystems/stacks-blockchain-api/issues/1849)
+* pox stacker & signer cycle details ([#1873](https://github.com/hirosystems/stacks-blockchain-api/issues/1873)) ([d2c2805](https://github.com/hirosystems/stacks-blockchain-api/commit/d2c28059cfca99cd9b9a35cb8c96074a60fedd35))
+
+
+### Bug Fixes
+
+* event-replay readiness for nakamoto & fix for [#1879](https://github.com/hirosystems/stacks-blockchain-api/issues/1879) ([#1903](https://github.com/hirosystems/stacks-blockchain-api/issues/1903)) ([1572e73](https://github.com/hirosystems/stacks-blockchain-api/commit/1572e737337680510850b23662e1f36c57ebc198))
+* remove signer columns from tenure-change transactions ([#1845](https://github.com/hirosystems/stacks-blockchain-api/issues/1845)) ([8ec726b](https://github.com/hirosystems/stacks-blockchain-api/commit/8ec726b05531abb7787d035d21f7afc276574b9c))
+* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([ada8536](https://github.com/hirosystems/stacks-blockchain-api/commit/ada85364b5465b59e1dba0e82815bd8b8057f23f))
+
 ## [7.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0) (2024-03-15)
 
 
