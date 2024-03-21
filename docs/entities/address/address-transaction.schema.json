@@ -1,0 +1,81 @@
+{
+  "title": "AddressTransaction",
+  "description": "Address transaction with STX, FT and NFT transfer summaries",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "tx",
+    "stx_sent",
+    "stx_received",
+    "stx_transfers",
+    "ft_transfers",
+    "nft_transfers"
+  ],
+  "properties": {
+    "tx": {
+      "$ref": "../transactions/transaction.schema.json"
+    },
+    "stx_sent": {
+      "type": "string",
+      "description": "Total sent from the given address, including the tx fee, in micro-STX as an integer string."
+    },
+    "stx_received": {
+      "type": "string",
+      "description": "Total received by the given address in micro-STX as an integer string."
+    },
+    "events": {
+      "type": "object",
+      "required": ["stx", "ft", "nft"],
+      "properties": {
+        "stx": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        },
+        "ft": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        },
+        "nft": {
+          "type": "object",
+          "required": ["transfer", "mint", "burn"],
+          "additionalProperties": false,
+          "properties": {
+            "transfer": {
+              "type": "integer"
+            },
+            "mint": {
+              "type": "integer"
+            },
+            "burn": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    }
+  }
+}
