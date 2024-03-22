@@ -253,4 +253,71 @@ describe('PoX tests', () => {
       total: 2,
     });
   });
+
+  describe('regtest-env stack-stx in-reward-phase', () => {
+    // TEST CASE
+    // steph (STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6) stacks (using signer 029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7)
+    //
+    // current cycle: 5
+    // stephs stacks
+    // snapshot 1
+    // wait for prepare phase (i.e. pox-anchor block mined)
+    // snapshot 2
+    // wait for cycle 6
+    // snapshot 3
+
+    test('snapshot 1', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S1.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text).results.length).toBe(0); // regtest doesn't send pox-set earlier
+    });
+
+    test('snapshot 2', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S2.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text).results[0]).toEqual(
+        expect.objectContaining({
+          cycle_number: 6, // !!! next cycle (even though we're still in cycle 5)
+          total_signers: 3, // no addition signer
+          total_weight: 21, // additional weight from steph's stacking
+        })
+      );
+    });
+
+    test('snapshot 3', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S3.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text).results[0]).toEqual(
+        expect.objectContaining({
+          cycle_number: 6, // current cycle
+          total_signers: 3,
+          total_weight: 21,
+        })
+      );
+    });
+  });
 });
