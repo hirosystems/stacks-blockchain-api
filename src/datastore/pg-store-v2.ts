@@ -238,7 +238,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks
         FROM blocks
-        WHERE canonical = true AND ${filter} 
+        WHERE canonical = true AND ${filter}
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
@@ -298,7 +298,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total: results[0]?.total ?? 0,
       };
     });
   }
@@ -356,7 +356,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
           signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
         FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
