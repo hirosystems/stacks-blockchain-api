@@ -1,3 +1,10 @@
+## [7.10.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.1...v7.10.0-nakamoto.2) (2024-03-25)
+
+
+### Bug Fixes
+
+* add nakamoto testnet to openapi docs ([#1910](https://github.com/hirosystems/stacks-blockchain-api/issues/1910)) ([01fb971](https://github.com/hirosystems/stacks-blockchain-api/commit/01fb9713e86b1a289dbca016ad7b5c366aaef74c))
+
 ## [7.10.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.10.0-nakamoto.1) (2024-03-21)
 
 
