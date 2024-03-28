@@ -548,7 +548,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
           signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
         FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
         LIMIT 1
       `;
       if (results.count > 0) return results[0];

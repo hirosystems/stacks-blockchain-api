@@ -131,11 +131,11 @@ describe('PoX tests', () => {
     expect(signer.status).toBe(200);
     expect(signer.type).toBe('application/json');
     expect(JSON.parse(signer.text)).toStrictEqual({
-      signing_key: '0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09',
-      stacked_amount: '457500900000000000',
-      stacked_amount_percent: 33.333333333333336,
-      weight: 3,
-      weight_percent: 33.33333333333333,
+      signing_key: '0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d',
+      stacked_amount: '686251350000000000',
+      stacked_amount_percent: 50,
+      weight: 5,
+      weight_percent: 55.55555555555556,
     });
     const stackers = await supertest(api.server).get(
       `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d/stackers`
