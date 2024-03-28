@@ -234,12 +234,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      const blocks = blocksQuery.map(r => r);
       return {
         limit,
         offset,
-        results: blocks,
-        total: blocks[0].total,
+        results: blocksQuery,
+        total: blocksQuery.count > 0 ? blocksQuery[0].total : 0,
       };
     });
   }
@@ -534,7 +533,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total: results.count > 0 ? results[0].total : 0,
       };
     });
   }
@@ -597,7 +596,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total: results.count > 0 ? results[0].total : 0,
       };
     });
   }
