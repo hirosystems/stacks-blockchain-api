@@ -1,3 +1,10 @@
+## [7.10.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.2...v7.10.0-nakamoto.3) (2024-03-28)
+
+
+### Bug Fixes
+
+* cycles response for empty cycle info ([#1914](https://github.com/hirosystems/stacks-blockchain-api/issues/1914)) ([a7a4558](https://github.com/hirosystems/stacks-blockchain-api/commit/a7a4558105f669260cc4948b28213196c4c62079))
+
 ## [7.10.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.1...v7.10.0-nakamoto.2) (2024-03-25)
 
 
