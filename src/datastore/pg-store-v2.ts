@@ -486,11 +486,12 @@ export class PgStoreV2 extends BasePgStoreModule {
         OFFSET ${offset}
         LIMIT ${limit}
       `;
+      const total = results.length > 0 ? results[0].total : 0;
       return {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total,
       };
     });
   }
