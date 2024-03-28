@@ -54,6 +54,7 @@ import { getReqQuery } from './query-helpers';
 import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
 import { createMempoolRouter } from './routes/v2/mempool';
 import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
+import { createV2AddressesRouter } from './routes/v2/addresses';
 import { createPoxRouter } from './routes/v2/pox';
 
 export interface ApiServer {
@@ -151,7 +152,7 @@ export async function startApiServer(opts: {
   app.set('etag', false);
 
   app.get('/', (req, res) => {
-    res.redirect(`/extended/v1/status`);
+    res.redirect(`/extended/`);
   });
 
   app.use('/doc', (req, res) => {
@@ -190,6 +191,7 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
+      router.use('/', createStatusRouter(datastore));
       router.use(
         '/v1',
         (() => {
@@ -204,7 +206,9 @@ export async function startApiServer(opts: {
           v1.use('/info', createInfoRouter(datastore));
           v1.use('/stx_supply', createStxSupplyRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
-          v1.use('/status', createStatusRouter(datastore));
+          v1.use('/status', (req, res) =>
+            res.redirect(`${req.baseUrl.replace(/v1\/status/, '')}${getReqQuery(req)}`)
+          );
           v1.use('/fee_rate', createFeeRateRouter(datastore));
           v1.use('/tokens', createTokenRouter(datastore));
 
@@ -237,6 +241,7 @@ export async function startApiServer(opts: {
           v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
           v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
+          v2.use('/addresses', createV2AddressesRouter(datastore));
           v2.use('/pox', createPoxRouter(datastore));
           return v2;
         })()

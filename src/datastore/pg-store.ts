@@ -2750,6 +2750,9 @@ export class PgStore extends BasePgStore {
     return { results: parsed, total: count };
   }
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions/:tx_id`
+   */
   async getInformationTxsWithStxTransfers({
     stxAddress,
     tx_id,
@@ -2818,6 +2821,9 @@ export class PgStore extends BasePgStore {
     return txTransfers[0];
   }
 
+  /**
+   * @deprecated See `/v2/addresses/:address/transactions`
+   */
   async getAddressTxsWithAssetTransfers(args: {
     stxAddress: string;
     blockHeight: number;

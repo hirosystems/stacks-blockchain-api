@@ -4,6 +4,7 @@ import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { importEventsFromTsv } from '../event-replay/event-replay';
+import { migrate } from '../test-utils/test-helpers';
 
 describe('PoX tests', () => {
   let db: PgWriteStore;
@@ -11,6 +12,7 @@ describe('PoX tests', () => {
   let api: ApiServer;
 
   beforeEach(async () => {
+    await migrate('up');
     db = await PgWriteStore.connect({
       usageName: 'tests',
       withNotifier: true,
@@ -23,6 +25,18 @@ describe('PoX tests', () => {
   afterEach(async () => {
     await api.terminate();
     await db?.close();
+    await migrate('down');
+  });
+
+  test('api with empty cycles', async () => {
+    const cycles0 = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+    expect(cycles0.status).toBe(200);
+    expect(JSON.parse(cycles0.text)).toStrictEqual({
+      limit: 20,
+      offset: 0,
+      results: [],
+      total: 0,
+    });
   });
 
   test('api', async () => {
