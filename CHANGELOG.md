@@ -1,3 +1,10 @@
+## [7.10.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.4...v7.10.0-nakamoto.5) (2024-03-28)
+
+
+### Bug Fixes
+
+* cycle signer filter ([#1916](https://github.com/hirosystems/stacks-blockchain-api/issues/1916)) ([dc7d600](https://github.com/hirosystems/stacks-blockchain-api/commit/dc7d6009556b833ff3994b35c96ba4456ca7e81f))
+
 ## [7.10.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.3...v7.10.0-nakamoto.4) (2024-03-28)
 
 
