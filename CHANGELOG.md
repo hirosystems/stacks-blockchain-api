@@ -1,3 +1,10 @@
+## [7.10.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.5...v7.10.0-nakamoto.6) (2024-04-02)
+
+
+### Bug Fixes
+
+* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([a7ee96d](https://github.com/hirosystems/stacks-blockchain-api/commit/a7ee96de55c8a61c1e2d6bf9ef7c3b220fd82803))
+
 ## [7.10.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.4...v7.10.0-nakamoto.5) (2024-03-28)
 
 
