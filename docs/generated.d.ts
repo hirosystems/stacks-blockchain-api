@@ -1480,6 +1480,14 @@ export interface NakamotoBlock {
    */
   hash: string;
   /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  block_time_iso: string;
+  /**
    * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
    */
   index_block_hash: string;

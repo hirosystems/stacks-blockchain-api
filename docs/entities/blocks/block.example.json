@@ -2,6 +2,8 @@
   "canonical": true,
   "height": 3275,
   "hash": "0xe77ba8cf6bb7c0e4f64adc83356289ed467d31a22354907b4bb814590058430f",
+  "block_time": 1594233639,
+  "block_time_iso": "2020-08-27T16:41:26.000Z",
   "index_block_hash": "0x918697ef63f9d8bdf844c3312b299e72a231cde542f3173f7755bb8c1cdaf3a7",
   "parent_block_hash": "0x75ab21ef25cbff2caa14c27d830ed7886a4d1522e1b6f9e5dc3b59ccf73ed49f",
   "burn_block_time": 1594233639,

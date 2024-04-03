@@ -33,6 +33,8 @@ export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
     canonical: block.canonical,
     height: block.block_height,
     hash: block.block_hash,
+    block_time: block.block_time,
+    block_time_iso: unixEpochToIso(block.block_time),
     index_block_hash: block.index_block_hash,
     parent_block_hash: block.parent_block_hash,
     parent_index_block_hash: block.parent_index_block_hash,
