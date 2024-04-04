@@ -1,3 +1,10 @@
+## [7.10.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.6...v7.10.0-nakamoto.7) (2024-04-04)
+
+
+### Features
+
+* add nakamoto block time to v2 endpoints ([#1921](https://github.com/hirosystems/stacks-blockchain-api/issues/1921)) ([ae6bbe8](https://github.com/hirosystems/stacks-blockchain-api/commit/ae6bbe80b66520b7c7c7bc42b29716fb60146229))
+
 ## [7.10.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.5...v7.10.0-nakamoto.6) (2024-04-02)
 
 
