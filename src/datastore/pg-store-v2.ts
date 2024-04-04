@@ -210,6 +210,80 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  async getAverageBlockTimes(): Promise<{
+    times: {
+      span_desc: string;
+      span_seconds: number;
+      average_seconds: number;
+    }[];
+  }> {
+    const SECONDS_PER_HOUR = 60 * 60;
+    const SECONDS_PER_DAY = 24 * SECONDS_PER_HOUR;
+    const SECONDS_PER_3_DAYS = 3 * SECONDS_PER_DAY;
+    const SECONDS_PER_WEEK = 7 * SECONDS_PER_DAY;
+    const SECONDS_PER_MONTH = 30 * SECONDS_PER_DAY;
+
+    return await this.sqlTransaction(async sql => {
+      const [result] = await sql<
+        {
+          avg_last_1_hour: number | null;
+          avg_last_24_hours: number | null;
+          avg_last_3_days: number | null;
+          avg_last_1_week: number | null;
+          avg_last_1_month: number | null;
+        }[]
+      >`
+      WITH TimeDiffs AS (
+        SELECT
+          block_time,
+          block_time - LAG(block_time) OVER (ORDER BY block_height DESC) AS time_diff
+        FROM
+          blocks
+        WHERE
+          canonical = true
+      )
+      SELECT
+        AVG(CASE WHEN block_time > EXTRACT(EPOCH FROM NOW()) - ${SECONDS_PER_HOUR} THEN time_diff END) AS avg_last_1_hour,
+        AVG(CASE WHEN block_time > EXTRACT(EPOCH FROM NOW()) - ${SECONDS_PER_DAY} THEN time_diff END) AS avg_last_24_hours,
+        AVG(CASE WHEN block_time > EXTRACT(EPOCH FROM NOW()) - ${SECONDS_PER_3_DAYS} THEN time_diff END) AS avg_last_3_days,
+        AVG(CASE WHEN block_time > EXTRACT(EPOCH FROM NOW()) - ${SECONDS_PER_WEEK} THEN time_diff END) AS avg_last_1_week,
+        AVG(CASE WHEN block_time > EXTRACT(EPOCH FROM NOW()) - ${SECONDS_PER_MONTH} THEN time_diff END) AS avg_last_1_month
+      FROM
+        TimeDiffs
+      WHERE
+        time_diff IS NOT NULL
+      `;
+      const times = [
+        {
+          span_desc: '1 hour',
+          span_seconds: SECONDS_PER_HOUR,
+          average_seconds: result?.avg_last_1_hour ?? 0,
+        },
+        {
+          span_desc: '24 hours',
+          span_seconds: SECONDS_PER_DAY,
+          average_seconds: result?.avg_last_24_hours ?? 0,
+        },
+        {
+          span_desc: '3 days',
+          span_seconds: SECONDS_PER_3_DAYS,
+          average_seconds: result?.avg_last_3_days ?? 0,
+        },
+        {
+          span_desc: '1 week',
+          span_seconds: SECONDS_PER_WEEK,
+          average_seconds: result?.avg_last_1_week ?? 0,
+        },
+        {
+          span_desc: '1 month',
+          span_seconds: SECONDS_PER_MONTH,
+          average_seconds: result?.avg_last_1_month ?? 0,
+        },
+      ];
+      return { times };
+    });
+  }
+
   async getBurnBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBurnBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParamSchema.default;
