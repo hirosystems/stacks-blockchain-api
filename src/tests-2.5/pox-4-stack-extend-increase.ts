@@ -47,7 +47,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   let stackingClient: StackingClient;
   let signerPrivKey: StacksPrivateKey;
   let signerPubKey: string;
-  const lockPeriod = 1;
+  const lockPeriod = 3;
   const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
   beforeAll(async () => {
@@ -213,6 +213,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-increase tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreIncrease = await testEnv.client.getAccount(account.stacksAddress);
     // Create and broadcast a `stack-increase` tx
     const stackIncreaseAmount = 123n;
@@ -220,7 +221,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       stackingClient.signPoxSignature({
         topic: 'stack-increase',
         poxAddress: btcAddr,
-        rewardCycle: poxInfo.current_cycle.id,
+        rewardCycle: poxInfo.current_cycle.id + 1,
         period: lockPeriod,
         signerPrivateKey: signerPrivKey,
         maxAmount: ustxAmount + stackIncreaseAmount,
@@ -323,20 +324,21 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-extend tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreStackExtend = await testEnv.client.getAccount(account.stacksAddress);
+    // Create and broadcast a `stack-extend` tx
+    const extendCycleAmount = 1;
     const signerSig = hexToBytes(
       stackingClient.signPoxSignature({
         topic: 'stack-extend',
         poxAddress: btcAddr,
-        rewardCycle: poxInfo.current_cycle.id,
-        period: lockPeriod,
+        rewardCycle: poxInfo.current_cycle.id + 2,
+        period: extendCycleAmount,
         signerPrivateKey: signerPrivKey,
         maxAmount: 0,
         authId: 2,
       })
     );
-    // Create and broadcast a `stack-extend` tx
-    const extendCycleAmount = 1;
     const txFee = 10000n;
     const stackExtendTx = await makeContractCall({
       senderKey: account.secretKey,
