@@ -176,7 +176,7 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
-  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
+  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.

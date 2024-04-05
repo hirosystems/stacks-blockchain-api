@@ -88,7 +88,7 @@ const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microb
 
 async function handleRawEventRequest(
   eventPath: string,
-  payload: any,
+  payload: string,
   db: PgWriteStore
 ): Promise<void> {
   await db.storeRawEventRequest(eventPath, payload);
@@ -779,7 +779,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
 };
 
 interface EventMessageHandler {
-  handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
+  handleRawEventRequest(eventPath: string, payload: string, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
@@ -824,7 +824,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
   };
 
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
+    handleRawEventRequest: (eventPath: string, payload: string, db: PgWriteStore) => {
       return processorQueue
         .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
         .catch(e => {
@@ -926,23 +926,22 @@ export async function startEventServer(opts: {
 
   const app = express();
 
-  const handleRawEventRequest = asyncHandler(async req => {
+  const handleRawEventRequest = async (req: express.Request) => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
     if (logger.level === 'debug') {
       const eventPath = req.path;
-      let payload = JSON.stringify(req.body);
+      let payload = req.body;
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
       if (payload.length > 10_000_000) {
         payload = 'payload body too large for logging';
       }
       logger.debug(`${eventPath} ${payload}`, { component: 'stacks-node-event' });
     }
-  });
+  };
 
   app.use(loggerMiddleware);
-
-  app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
+  app.use(bodyParser.text({ type: 'application/json', limit: '500MB' }));
 
   const ibdHeight = getIbdBlockHeight();
   if (ibdHeight) {
@@ -952,7 +951,7 @@ export async function startEventServer(opts: {
         if (chainTip.block_height > ibdHeight) {
           next();
         } else {
-          handleRawEventRequest(req, res, next);
+          await handleRawEventRequest(req);
           res.status(200).send(`IBD`);
         }
       } catch (error) {
@@ -973,35 +972,35 @@ export async function startEventServer(opts: {
     '/new_block',
     asyncHandler(async (req, res, next) => {
       try {
-        const blockMessage: CoreNodeBlockMessage = req.body;
+        const blockMessage: CoreNodeBlockMessage = JSON.parse(req.body);
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
         if (blockMessage.block_height === 1) {
           await handleBnsImport(db);
         }
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_block');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/new_burn_block',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeBurnBlockMessage = req.body;
+        const msg: CoreNodeBurnBlockMessage = JSON.parse(req.body);
         await messageHandler.handleBurnBlock(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_burn_block');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
@@ -1010,14 +1009,14 @@ export async function startEventServer(opts: {
       try {
         const rawTxs: string[] = req.body;
         await messageHandler.handleMempoolTxs(rawTxs, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_mempool_tx');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
@@ -1026,14 +1025,14 @@ export async function startEventServer(opts: {
       try {
         const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /drop_mempool_tx');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
@@ -1042,14 +1041,14 @@ export async function startEventServer(opts: {
       try {
         const msg: CoreNodeAttachmentMessage[] = req.body;
         await messageHandler.handleNewAttachment(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /attachments/new');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
@@ -1058,14 +1057,14 @@ export async function startEventServer(opts: {
       try {
         const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
         next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_microblocks');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post('*', (req, res, next) => {
