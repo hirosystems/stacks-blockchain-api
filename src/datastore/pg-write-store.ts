@@ -1809,22 +1809,24 @@ export class PgWriteStore extends PgStore {
   }
 
   async dropMempoolTxs({ status, txIds }: { status: DbTxStatus; txIds: string[] }): Promise<void> {
-    const updateResults = await this.sql<{ tx_id: string }[]>`
-      WITH pruned AS (
-        UPDATE mempool_txs
-        SET pruned = TRUE, status = ${status}
-        WHERE tx_id IN ${this.sql(txIds)} AND pruned = FALSE
-        RETURNING tx_id
-      ),
-      count_update AS (
-        UPDATE chain_tip SET
-          mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
-          mempool_updated_at = NOW()
-      )
-      SELECT tx_id FROM pruned
-    `;
-    for (const txId of updateResults.map(r => r.tx_id)) {
-      await this.notifier?.sendTx({ txId });
+    for (const batch of batchIterate(txIds, INSERT_BATCH_SIZE)) {
+      const updateResults = await this.sql<{ tx_id: string }[]>`
+        WITH pruned AS (
+          UPDATE mempool_txs
+          SET pruned = TRUE, status = ${status}
+          WHERE tx_id IN ${this.sql(batch)} AND pruned = FALSE
+          RETURNING tx_id
+        ),
+        count_update AS (
+          UPDATE chain_tip SET
+            mempool_tx_count = mempool_tx_count - (SELECT COUNT(*) FROM pruned),
+            mempool_updated_at = NOW()
+        )
+        SELECT tx_id FROM pruned
+      `;
+      for (const txId of updateResults.map(r => r.tx_id)) {
+        await this.notifier?.sendTx({ txId });
+      }
     }
   }
 
