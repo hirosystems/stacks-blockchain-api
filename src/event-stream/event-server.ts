@@ -1007,7 +1007,7 @@ export async function startEventServer(opts: {
     '/new_mempool_tx',
     asyncHandler(async (req, res, next) => {
       try {
-        const rawTxs: string[] = req.body;
+        const rawTxs: string[] = JSON.parse(req.body);
         await messageHandler.handleMempoolTxs(rawTxs, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1023,7 +1023,7 @@ export async function startEventServer(opts: {
     '/drop_mempool_tx',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeDropMempoolTxMessage = req.body;
+        const msg: CoreNodeDropMempoolTxMessage = JSON.parse(req.body);
         await messageHandler.handleDroppedMempoolTxs(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1039,7 +1039,7 @@ export async function startEventServer(opts: {
     '/attachments/new',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeAttachmentMessage[] = req.body;
+        const msg: CoreNodeAttachmentMessage[] = JSON.parse(req.body);
         await messageHandler.handleNewAttachment(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1055,7 +1055,7 @@ export async function startEventServer(opts: {
     '/new_microblocks',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeMicroblockMessage = req.body;
+        const msg: CoreNodeMicroblockMessage = JSON.parse(req.body);
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
