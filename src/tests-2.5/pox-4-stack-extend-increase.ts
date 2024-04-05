@@ -88,6 +88,8 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       });
     expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
 
+    await standByForPoxCycle();
+
     poxInfo = await testEnv.client.getPox();
     burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 

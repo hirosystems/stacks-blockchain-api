@@ -48,7 +48,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     let stackingClient: StackingClient;
     let signerPrivKey: StacksPrivateKey;
     let signerPubKey: string;
-    const cycleCount = 1;
+    const cycleCount = 2;
 
     const { btcAddr, btcAddrDecoded, btcAddrRegtest, btcDescriptor } = addressSetup();
 
@@ -207,7 +207,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stacking rewards - API', async () => {
       const slotStart = poxInfo.next_cycle.reward_phase_start_block_height;
-      const slotEnd = slotStart + 2; // early in the reward phase
+      const slotEnd = slotStart + 6; // early in the reward phase for the next-next cycle
 
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`
