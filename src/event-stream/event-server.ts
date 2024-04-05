@@ -970,7 +970,7 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_block',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const blockMessage: CoreNodeBlockMessage = JSON.parse(req.body);
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
@@ -979,7 +979,6 @@ export async function startEventServer(opts: {
         }
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_block');
         res.status(500).json({ error: error });
@@ -989,13 +988,12 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_burn_block',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeBurnBlockMessage = JSON.parse(req.body);
         await messageHandler.handleBurnBlock(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_burn_block');
         res.status(500).json({ error: error });
@@ -1005,13 +1003,12 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_mempool_tx',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const rawTxs: string[] = JSON.parse(req.body);
         await messageHandler.handleMempoolTxs(rawTxs, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_mempool_tx');
         res.status(500).json({ error: error });
@@ -1037,13 +1034,12 @@ export async function startEventServer(opts: {
 
   app.post(
     '/attachments/new',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeAttachmentMessage[] = JSON.parse(req.body);
         await messageHandler.handleNewAttachment(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /attachments/new');
         res.status(500).json({ error: error });
@@ -1053,13 +1049,12 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_microblocks',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeMicroblockMessage = JSON.parse(req.body);
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_microblocks');
         res.status(500).json({ error: error });
