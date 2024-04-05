@@ -1,7 +1,6 @@
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
-
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
@@ -14,7 +13,6 @@ import {
   bufferCV,
   makeContractCall,
   makeRandomPrivKey,
-  randomBytes,
   someCV,
   tupleCV,
   uintCV,

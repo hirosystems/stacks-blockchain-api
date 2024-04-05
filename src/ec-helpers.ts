@@ -209,7 +209,7 @@ function p2trAddressFromKey(args: KeyInputArgs): KeyOutput {
   return { ecPair, address: pmnt.address };
 }
 
-export interface VerboseKeyOutput {
+interface VerboseKeyOutput {
   address: string;
   wif: string;
   privateKey: Buffer;

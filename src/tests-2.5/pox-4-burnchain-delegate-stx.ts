@@ -7,10 +7,8 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
-  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
-  randomBytes,
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
@@ -359,8 +357,8 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
       function_args: [
         {
-          hex: '0x0100000000000000000007fe8f3d591000',
-          repr: 'u2250216000000000',
+          hex: '0x010000000000000000000ffd1e7ab22000',
+          repr: 'u4500432000000000',
           name: 'amount-ustx',
           type: 'uint',
         },
