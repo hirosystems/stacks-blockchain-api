@@ -165,27 +165,28 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
-  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
+  async storeRawEventRequest(eventPath: string, payload: string): Promise<void> {
     // To avoid depending on the DB more than once and to allow the query transaction to settle,
     // we'll take the complete insert result and move that to the output TSV file instead of taking
     // only the `id` and performing a `COPY` of that row later.
-    const insertResult = await this.sql<
-      {
-        id: string;
-        receive_timestamp: string;
-        event_path: string;
-        payload: string;
-      }[]
-    >`INSERT INTO event_observer_requests(
+    await this.sqlWriteTransaction(async sql => {
+      const insertResult = await sql<
+        {
+          id: string;
+          receive_timestamp: string;
+          event_path: string;
+        }[]
+      >`INSERT INTO event_observer_requests(
         event_path, payload
-      ) values(${eventPath}, ${payload})
-      RETURNING id, receive_timestamp::text, event_path, payload::text
+      ) values(${eventPath}, ${sql.unsafe(`'${payload}'::jsonb`)})
+      RETURNING id, receive_timestamp::text, event_path
     `;
-    if (insertResult.length !== 1) {
-      throw new Error(
-        `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
-      );
-    }
+      if (insertResult.length !== 1) {
+        throw new Error(
+          `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
+        );
+      }
+    });
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
