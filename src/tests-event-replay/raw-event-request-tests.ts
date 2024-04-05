@@ -81,4 +81,69 @@ describe('Events table', () => {
       }
     );
   });
+
+  test('Large event requests are stored correctly', async () => {
+    const getRawEventCount = async () => {
+      const [row] = await client<{ count: string }[]>`SELECT count(*) from event_observer_requests`;
+      return Number(row.count);
+    };
+
+    await useWithCleanup(
+      async () => {
+        const eventServer = await startEventServer({
+          datastore: db,
+          chainId: ChainID.Mainnet,
+          serverHost: '127.0.0.1',
+          serverPort: 0,
+        });
+        return [eventServer, eventServer.closeAsync] as const;
+      },
+      async eventServer => {
+        // split the tsv file into lines, split each line by tab, find the first line that has a cell value of `/new_block`
+        const sampleTsv = fs
+          .readFileSync('src/tests-event-replay/tsv/mainnet-block0.tsv', 'utf8')
+          .split('\n')
+          .map(line => line.split('\t'))
+          .find(line => line[2] === '/new_block');
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        const sampleNewBlock = JSON.parse(sampleTsv![3]);
+        console.log(sampleTsv);
+        // Create a huge JSON object, 10000 nodes, 20 layers deep, some nodes containing 4 megabytes of data
+        function generateNestedObject(depth: number, nodesPerLevel: number, currentDepth = 1): any {
+          if (currentDepth > depth) {
+            // Return a leaf object instead of trying to link back to the top-level node
+            return { info: `Leaf at depth ${currentDepth}` };
+          }
+          // Create a new object for each call to ensure uniqueness
+          const currentNode: any = {};
+          for (let i = 0; i < nodesPerLevel; i++) {
+            currentNode[`node_${currentDepth}_${i}`] =
+              currentDepth === depth
+                ? { info: `Simulated large node leaf at ${currentDepth}_${i}` }
+                : generateNestedObject(depth, nodesPerLevel, currentDepth + 1);
+          }
+          return currentNode;
+        }
+        let hugeJsonObject = generateNestedObject(10, 3);
+        hugeJsonObject = Object.assign(hugeJsonObject, sampleNewBlock);
+        hugeJsonObject['very_large_value'] = 'x'.repeat(100 * 1024 * 1024); // 100 megabytes
+        const rawEvent = {
+          event_path: '/new_block',
+          payload: JSON.stringify(hugeJsonObject),
+        };
+        const rawEventRequestCountBefore = await getRawEventCount();
+        const response = await httpPostRequest({
+          host: '127.0.0.1',
+          port: eventServer.serverAddress.port,
+          path: rawEvent.event_path,
+          headers: { 'Content-Type': 'application/json' },
+          body: Buffer.from(rawEvent.payload, 'utf8'),
+          throwOnNotOK: false,
+        });
+        expect(response.statusCode).toBe(200);
+        const rawEventRequestCountAfter = await getRawEventCount();
+        expect(rawEventRequestCountAfter).toEqual(rawEventRequestCountBefore + 1);
+      }
+    );
+  });
 });
