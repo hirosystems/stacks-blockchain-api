@@ -1,3 +1,10 @@
+## [7.9.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.9.1) (2024-04-05)
+
+
+### Bug Fixes
+
+* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([#1927](https://github.com/hirosystems/stacks-blockchain-api/issues/1927)) ([f522d79](https://github.com/hirosystems/stacks-blockchain-api/commit/f522d795cef9b3f3ac0f1222b74a261f332c3065))
+
 ## [7.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0) (2024-03-15)
 
 
