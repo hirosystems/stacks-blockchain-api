@@ -19,7 +19,10 @@ describe('PoX tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Mainnet });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+
+    // set chainId env, because TSV import reads it manually
+    process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
   });
 
   afterEach(async () => {
