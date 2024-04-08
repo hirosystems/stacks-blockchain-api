@@ -2,7 +2,6 @@ import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
-import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import {
   NetworkIdentifier,
   RosettaAccountIdentifier,
@@ -255,10 +254,10 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 topic: 'stack-stx',
                 poxAddress: poxAddr,
                 rewardCycle: 0,
-                period: options.number_of_cycles,
+                period: options.number_of_cycles ?? 1,
                 signerPrivateKey: signerPrivKey,
-                maxAmount: 0,
-                authId: 0,
+                maxAmount: options.pox_max_amount ?? 1,
+                authId: options.pox_auth_id ?? 0,
               })
             );
             dummyStackingTx = {
@@ -270,11 +269,11 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 uintCV(options.amount), // amount-ustx
                 poxAddressToTuple(poxAddr), // pox-addr
                 uintCV(0), // start-burn-ht
-                uintCV(options.number_of_cycles), // lock-period
+                uintCV(options.number_of_cycles ?? 1), // lock-period
                 someCV(bufferCV(signerSig)), // signer-sig
                 bufferCV(hexToBytes(options.signer_key as string)), // signer-key
-                uintCV(1), // max-amount
-                uintCV(0), // auth-id
+                uintCV(options.pox_max_amount ?? 1), // max-amount
+                uintCV(options.pox_auth_id ?? 0), // auth-id
               ],
               validateWithAbi: false,
               network: getStacksNetwork(),
@@ -440,11 +439,13 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               const signerSig = stackingRpc.signPoxSignature({
                 topic: 'stack-stx',
                 poxAddress: poxAddr,
-                rewardCycle: options.reward_cycle_id,
-                period: options.number_of_cycles,
-                signerPrivateKey: createStacksPrivateKey(options.signer_private_key),
-                maxAmount: options.pox_max_amount,
-                authId: options.pox_auth_id,
+                rewardCycle: options?.reward_cycle_id ?? 0,
+                period: options?.number_of_cycles ?? 0,
+                signerPrivateKey: options.signer_private_key
+                  ? createStacksPrivateKey(options.signer_private_key)
+                  : makeRandomPrivKey(),
+                maxAmount: options?.pox_max_amount ?? 0,
+                authId: options?.pox_auth_id ?? 0,
               });
               options.signer_signature = signerSig;
               signerSigCV = someCV(bufferCV(hexToBytes(signerSig)));
@@ -457,12 +458,12 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
               functionArgs: [
                 uintCV(0), // amount-ustx
                 poxAddressToTuple(poxAddr), // pox-addr
-                uintCV(options.burn_block_height), // start-burn-ht
-                uintCV(options.number_of_cycles), // lock-period
+                uintCV(options?.burn_block_height ?? 0), // start-burn-ht
+                uintCV(options?.number_of_cycles ?? 0), // lock-period
                 signerSigCV, // signer-sig
                 bufferCV(hexToBytes(options.signer_key)), // signer-key
                 uintCV(options.pox_max_amount), // max-amount
-                uintCV(options.pox_auth_id), // auth-id
+                uintCV(options?.pox_auth_id ?? 0), // auth-id
               ],
               validateWithAbi: false,
               network: getStacksNetwork(),
