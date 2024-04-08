@@ -2679,6 +2679,10 @@ export interface RosettaOptions {
    */
   burn_block_height?: number;
   /**
+   * The reward cycle ID for stacking transaction.
+   */
+  reward_cycle_id?: number;
+  /**
    * Delegator address for when calling `delegate-stacking`.
    */
   delegate_to?: string;
@@ -2690,6 +2694,22 @@ export interface RosettaOptions {
    * The hex-encoded signer key (buff 33) for PoX.
    */
   signer_key?: string;
+  /**
+   * The hex-encoded signer private key for PoX. Must be specified for PoX transactions if `signer_signature` is not specified
+   */
+  signer_private_key?: string;
+  /**
+   * The hex-encoded signer signature for PoX. Must be specified for PoX transactions if `signer_key` is not specified.
+   */
+  signer_signature?: string;
+  /**
+   * The maximum amount of STX to stack for PoX
+   */
+  pox_max_amount?: string;
+  /**
+   * The auth ID for the PoX transaction
+   */
+  pox_auth_id?: string;
 }
 /**
  * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
