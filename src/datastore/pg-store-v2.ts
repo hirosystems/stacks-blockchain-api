@@ -234,12 +234,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      const blocks = blocksQuery.map(r => r);
       return {
         limit,
         offset,
-        results: blocks,
-        total: blocks[0].total,
+        results: blocksQuery,
+        total: blocksQuery.count > 0 ? blocksQuery[0].total : 0,
       };
     });
   }
@@ -486,11 +485,12 @@ export class PgStoreV2 extends BasePgStoreModule {
         OFFSET ${offset}
         LIMIT ${limit}
       `;
+      const total = results.length > 0 ? results[0].total : 0;
       return {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total,
       };
     });
   }
@@ -533,7 +533,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total: results.count > 0 ? results[0].total : 0,
       };
     });
   }
@@ -548,7 +548,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         SELECT
           signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
         FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
@@ -596,7 +596,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results: results,
-        total: results[0].total,
+        total: results.count > 0 ? results[0].total : 0,
       };
     });
   }

@@ -774,17 +774,21 @@ export function getOptionsFromOperations(operations: RosettaOperation[]): Rosett
         if (!operation.metadata || typeof operation.metadata.number_of_cycles !== 'number') {
           return null;
         }
-        if (!operation.metadata || typeof operation.metadata.signer_key !== 'string') {
-          return null;
-        }
         options.sender_address = operation.account?.address;
         options.type = operation.type;
         options.number_of_cycles = operation.metadata.number_of_cycles;
-        options.signer_key = operation.metadata.signer_key;
         options.amount = operation.amount?.value.replace('-', '');
         options.symbol = operation.amount?.currency.symbol;
         options.decimals = operation.amount?.currency.decimals;
         options.pox_addr = operation.metadata?.pox_addr as string;
+
+        options.signer_private_key = operation.metadata?.signer_private_key as string;
+        options.signer_signature = operation.metadata?.signer_signature as string;
+        options.signer_key = operation.metadata.signer_key as string;
+        options.pox_max_amount = operation.metadata?.pox_max_amount as string;
+        options.pox_auth_id = operation.metadata?.pox_auth_id as string;
+        options.reward_cycle_id = operation.metadata?.reward_cycle_id as number;
+
         break;
       case RosettaOperationType.DelegateStx:
         if (operation.amount && BigInt(operation.amount.value) > 0) {

@@ -1,5 +1,5 @@
 import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { StackingClient, decodeBtcAddress } from '@stacks/stacking';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
@@ -8,9 +8,11 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  StacksPrivateKey,
   bufferCV,
   makeContractCall,
-  randomBytes,
+  makeRandomPrivKey,
+  someCV,
   tupleCV,
   uintCV,
 } from '@stacks/transactions';
@@ -27,6 +29,8 @@ import {
   testEnv,
 } from '../test-utils/test-helpers';
 import { RPCClient } from 'rpc-bitcoin';
+import { hexToBytes } from '@stacks/common';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
@@ -41,7 +45,10 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     let contractAddress: string;
     let contractName: string;
     let ustxAmount: bigint;
-    const cycleCount = 1;
+    let stackingClient: StackingClient;
+    let signerPrivKey: StacksPrivateKey;
+    let signerPubKey: string;
+    const cycleCount = 2;
 
     const { btcAddr, btcAddrDecoded, btcAddrRegtest, btcDescriptor } = addressSetup();
 
@@ -95,10 +102,25 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       cycleBlockLength = cycleCount * poxInfo.reward_cycle_length;
       [contractAddress, contractName] = poxInfo.contract_id.split('.');
 
+      stackingClient = new StackingClient(account.stacksAddress, testEnv.stacksNetwork);
+      signerPrivKey = makeRandomPrivKey();
+      signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+
       expect(contractName).toBe('pox-4');
     });
 
     test('stack-stx tx', async () => {
+      const signerSig = hexToBytes(
+        stackingClient.signPoxSignature({
+          topic: 'stack-stx',
+          poxAddress: btcAddr,
+          rewardCycle: poxInfo.current_cycle.id,
+          period: cycleCount,
+          signerPrivateKey: signerPrivKey,
+          maxAmount: ustxAmount,
+          authId: 0,
+        })
+      );
       // Create and broadcast a `stack-stx` tx
       const tx = await makeContractCall({
         senderKey: account.secretKey,
@@ -113,7 +135,10 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
           }), // pox-addr
           uintCV(burnBlockHeight), // start-burn-ht
           uintCV(cycleCount), // lock-period
-          bufferCV(randomBytes(33)), // signer-key
+          someCV(bufferCV(signerSig)), // signer-sig
+          bufferCV(hexToBytes(signerPubKey)), // signer-key
+          uintCV(ustxAmount.toString()), // max-amount
+          uintCV(0), // auth-id
         ],
         network: testEnv.stacksNetwork,
         anchorMode: AnchorMode.OnChainOnly,
@@ -160,7 +185,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     test('stx unlocked - RPC balance', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
       const rpcAccount = await testEnv.client.getAccount(account.stacksAddress);
-      await standByUntilBurnBlock(rpcAccount.unlock_height + 1);
+      await standByUntilBurnBlock(rpcAccount.unlock_height + poxInfo.reward_phase_block_length);
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       await timeout(200); // make sure unlock was processed
@@ -182,7 +207,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stacking rewards - API', async () => {
       const slotStart = poxInfo.next_cycle.reward_phase_start_block_height;
-      const slotEnd = slotStart + 2; // early in the reward phase
+      const slotEnd = slotStart + 6; // early in the reward phase for the next-next cycle
 
       const rewards = await fetchGet<BurnchainRewardListResponse>(
         `/extended/v1/burnchain/rewards/${btcAddr}`

@@ -1480,6 +1480,14 @@ export interface NakamotoBlock {
    */
   hash: string;
   /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  block_time_iso: string;
+  /**
    * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
    */
   index_block_hash: string;
@@ -2671,6 +2679,10 @@ export interface RosettaOptions {
    */
   burn_block_height?: number;
   /**
+   * The reward cycle ID for stacking transaction.
+   */
+  reward_cycle_id?: number;
+  /**
    * Delegator address for when calling `delegate-stacking`.
    */
   delegate_to?: string;
@@ -2682,6 +2694,22 @@ export interface RosettaOptions {
    * The hex-encoded signer key (buff 33) for PoX.
    */
   signer_key?: string;
+  /**
+   * The hex-encoded signer private key for PoX. Specify either this or `signer_signature`, otherwise the PoX transaction requires allow-listing from the signer.
+   */
+  signer_private_key?: string;
+  /**
+   * The hex-encoded signer signature for PoX. Specify either this or `signer_private_key`, otherwise the PoX transaction requires allow-listing from the signer.
+   */
+  signer_signature?: string;
+  /**
+   * The maximum amount of STX to stack for PoX. If not specified, the `amount` will be used as the `max-amount` for the PoX transaction.
+   */
+  pox_max_amount?: string;
+  /**
+   * The auth ID for the PoX transaction. If not specified, a random value will be generated.
+   */
+  pox_auth_id?: string;
 }
 /**
  * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.

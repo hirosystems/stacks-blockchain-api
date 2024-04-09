@@ -36,9 +36,11 @@ import {
   UnsignedTokenTransferOptions,
   bufferCV,
   createMessageSignature,
+  createStacksPrivateKey,
   deserializeTransaction,
   emptyMessageSignature,
   isSingleSig,
+  makeRandomPrivKey,
   makeSigHashPreSign,
   makeUnsignedContractCall,
   makeUnsignedSTXTokenTransfer,
@@ -85,6 +87,7 @@ import {
   RosettaOperationType,
 } from '../../rosetta-constants';
 import { ValidSchema, makeRosettaError, rosettaValidateRequest } from './../../rosetta-validate';
+import { randomBytes } from 'node:crypto';
 
 export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
@@ -216,8 +219,17 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           transaction = await makeUnsignedSTXTokenTransfer(dummyTokenTransferTx);
           break;
         case RosettaOperationType.StackStx: {
+          const poxContract = await stackingRpc.getStackingContract();
+          const [contractAddress, contractName] = poxContract.split('.');
+          const isPox4 = contractName === 'pox-4';
+
           const poxAddr = options.pox_addr;
-          if (!options.number_of_cycles || !options.signer_key || !poxAddr) {
+          if (!options.number_of_cycles || !poxAddr) {
+            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+            return;
+          }
+
+          if (isPox4 && !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -231,25 +243,62 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
+
           // dummy transaction to calculate size
-          const dummyStackingTx: UnsignedContractCallOptions = {
-            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-            contractAddress: 'ST000000000000000000002AMW42H',
-            contractName: 'pox',
-            functionName: 'stack-stx',
-            functionArgs: [
-              uintCV(options.amount),
-              poxAddressToTuple(poxAddr),
-              uintCV(0),
-              uintCV(options.number_of_cycles),
-              bufferCV(hexToBytes(options.signer_key)),
-            ],
-            validateWithAbi: false,
-            network: getStacksNetwork(),
-            fee: 0,
-            nonce: 0,
-            anchorMode: AnchorMode.Any,
-          };
+          let dummyStackingTx: UnsignedContractCallOptions;
+          if (isPox4) {
+            const signerPrivKey = makeRandomPrivKey();
+            const signerSig = hexToBytes(
+              stackingRpc.signPoxSignature({
+                topic: 'stack-stx',
+                poxAddress: poxAddr,
+                rewardCycle: 0,
+                period: options.number_of_cycles ?? 1,
+                signerPrivateKey: signerPrivKey,
+                maxAmount: options.pox_max_amount ?? options.amount ?? 1,
+                authId: options.pox_auth_id ?? 0,
+              })
+            );
+            dummyStackingTx = {
+              publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+              contractAddress: contractAddress,
+              contractName: contractName,
+              functionName: 'stack-stx',
+              functionArgs: [
+                uintCV(options.amount), // amount-ustx
+                poxAddressToTuple(poxAddr), // pox-addr
+                uintCV(0), // start-burn-ht
+                uintCV(options.number_of_cycles ?? 1), // lock-period
+                someCV(bufferCV(signerSig)), // signer-sig
+                bufferCV(hexToBytes(options.signer_key as string)), // signer-key
+                uintCV(options.pox_max_amount ?? options.amount ?? 1), // max-amount
+                uintCV(options.pox_auth_id ?? 0), // auth-id
+              ],
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              fee: 0,
+              nonce: 0,
+              anchorMode: AnchorMode.Any,
+            };
+          } else {
+            dummyStackingTx = {
+              publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+              contractAddress: contractAddress,
+              contractName: contractName,
+              functionName: 'stack-stx',
+              functionArgs: [
+                uintCV(options.amount), // amount-ustx
+                poxAddressToTuple(poxAddr), // pox-addr
+                uintCV(0), // start-burn-ht
+                uintCV(options.number_of_cycles), // lock-period
+              ],
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              fee: 0,
+              nonce: 0,
+              anchorMode: AnchorMode.Any,
+            };
+          }
           transaction = await makeUnsignedContractCall(dummyStackingTx);
           break;
         }
@@ -306,7 +355,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
     makeValidationMiddleware(chainId),
     asyncHandler(async (req, res) => {
       const request: RosettaConstructionMetadataRequest = req.body;
-      const options: RosettaOptions = request.options;
+      const options: RosettaOptions | undefined = request.options;
 
       let dummyTransaction: StacksTransaction;
 
@@ -355,36 +404,87 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
         case RosettaOperationType.StackStx: {
           // Getting PoX info
           const poxInfo = await stackingRpc.getPoxInfo();
-          const poxOperationInfo = await stackingRpc.getPoxOperationInfo();
-          // todo: update stacks.js once released to use the latest stacking contract
-          const contract = await stackingRpc.getStackingContract(poxOperationInfo);
-          const [contractAddress, contractName] = contract.split('.');
+          const [contractAddress, contractName] = poxInfo.contract_id.split('.');
 
-          let burnBlockHeight = poxInfo.current_burnchain_block_height;
+          if (!options.number_of_cycles || !options.pox_addr) {
+            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+            return;
+          }
+
+          let burnBlockHeight =
+            options?.burn_block_height ?? poxInfo.current_burnchain_block_height;
           // In Stacks 2.1, the burn block height is included in `/v2/pox` so we can skip the extra network request
           burnBlockHeight ??= (await new StacksCoreRpcClient().getInfo()).burn_block_height;
 
           options.contract_address = contractAddress;
           options.contract_name = contractName;
           options.burn_block_height = burnBlockHeight;
+          options.reward_cycle_id ??= poxInfo.current_cycle.id;
 
           // dummy transaction to calculate fee
-          const dummyStackingTx: UnsignedContractCallOptions = {
-            publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
-            contractAddress: contractAddress,
-            contractName: contractName,
-            functionName: 'stack-stx',
-            functionArgs: [
-              uintCV(0),
-              poxAddressToTuple('bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4'), // placeholder
-              uintCV(0),
-              uintCV(1),
-            ],
-            validateWithAbi: false,
-            network: getStacksNetwork(),
-            nonce: 0,
-            anchorMode: AnchorMode.Any,
-          };
+          let dummyStackingTx: UnsignedContractCallOptions;
+          const poxAddr = options?.pox_addr;
+          if (contractName === 'pox-4') {
+            // fields required for pox4
+            if (!options.signer_key) {
+              res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+              return;
+            }
+            options.pox_auth_id ??= BigInt(`0x${randomBytes(16).toString('hex')}`).toString();
+            let signerSigCV: OptionalCV = noneCV();
+            if (options.signer_signature) {
+              signerSigCV = someCV(bufferCV(hexToBytes(options.signer_signature)));
+            } else if (options.signer_private_key) {
+              const signerSig = stackingRpc.signPoxSignature({
+                topic: 'stack-stx',
+                poxAddress: poxAddr,
+                rewardCycle: options.reward_cycle_id,
+                period: options.number_of_cycles,
+                signerPrivateKey: createStacksPrivateKey(options.signer_private_key),
+                maxAmount: (options.pox_max_amount ?? options.amount) as string,
+                authId: options.pox_auth_id,
+              });
+              options.signer_signature = signerSig;
+              signerSigCV = someCV(bufferCV(hexToBytes(signerSig)));
+            }
+            dummyStackingTx = {
+              publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+              contractAddress: contractAddress,
+              contractName: contractName,
+              functionName: 'stack-stx',
+              functionArgs: [
+                uintCV(0), // amount-ustx
+                poxAddressToTuple(poxAddr), // pox-addr
+                uintCV(options?.burn_block_height ?? 0), // start-burn-ht
+                uintCV(options?.number_of_cycles ?? 0), // lock-period
+                signerSigCV, // signer-sig
+                bufferCV(hexToBytes(options.signer_key)), // signer-key
+                uintCV(options?.pox_max_amount ?? options?.amount ?? 1), // max-amount
+                uintCV(options?.pox_auth_id ?? 0), // auth-id
+              ],
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              nonce: 0,
+              anchorMode: AnchorMode.Any,
+            };
+          } else {
+            dummyStackingTx = {
+              publicKey: '000000000000000000000000000000000000000000000000000000000000000000',
+              contractAddress: contractAddress,
+              contractName: contractName,
+              functionName: 'stack-stx',
+              functionArgs: [
+                uintCV(0),
+                poxAddressToTuple(poxAddr), // placeholder
+                uintCV(0),
+                uintCV(1),
+              ],
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              nonce: 0,
+              anchorMode: AnchorMode.Any,
+            };
+          }
           // Do not set fee so that the fee is calculated
           dummyTransaction = await makeUnsignedContractCall(dummyStackingTx);
 
@@ -687,54 +787,91 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           break;
         }
         case RosettaOperationType.StackStx: {
-          if (!options.pox_addr) {
+          const contractAddress = options.contract_address ?? req.body.metadata.contract_address;
+          const contractName = options.contract_name ?? req.body.metadata.contract_name;
+          const poxAddr = options.pox_addr ?? req.body.metadata.pox_addr;
+          const burnBlockHeight = options.burn_block_height ?? req.body.metadata.burn_block_height;
+          const numberOfCycles = options.number_of_cycles ?? req.body.metadata.number_of_cycles;
+
+          // pox4 fields
+          const authID = options.pox_auth_id ?? req.body.metadata.pox_auth_id;
+          const signerKey = options.signer_key ?? req.body.metadata.signer_key;
+          const rewardCycleID = options.reward_cycle_id ?? req.body.metadata.reward_cycle_id;
+          const poxMaxAmount =
+            options.pox_max_amount ?? req.body.metadata.pox_max_amount ?? options.amount;
+          const signerSignature = options.signer_signature ?? req.body.metadata.signer_signature;
+
+          if (!poxAddr) {
             res.status(400).json(RosettaErrorsTypes.invalidOperation);
             return;
           }
-          const poxBTCAddress = options.pox_addr;
-          const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
-          const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-          const hashbytes = bufferCV(data);
-          const poxAddressCV = tupleCV({
-            hashbytes,
-            version: hashModeBuffer,
-          });
 
-          if (!req.body.metadata.contract_address) {
+          if (!contractAddress) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractAddress]);
             return;
           }
-          if (!req.body.metadata.contract_name) {
+          if (!contractName) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.missingContractName]);
             return;
           }
-          if (!req.body.metadata.burn_block_height) {
+          if (!burnBlockHeight) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          if (!options.number_of_cycles || !options.amount || !options.signer_key) {
+          if (!numberOfCycles || !options.amount) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
 
-          const stackingTx: UnsignedContractCallOptions = {
-            contractAddress: req.body.metadata.contract_address,
-            contractName: req.body.metadata.contract_name,
-            functionName: 'stack-stx',
-            publicKey: publicKeys[0].hex_bytes,
-            functionArgs: [
-              uintCV(options.amount),
-              poxAddressCV,
-              uintCV(req.body.metadata.burn_block_height),
-              uintCV(options.number_of_cycles),
-              bufferCV(hexToBytes(options.signer_key)),
-            ],
-            fee: txFee,
-            nonce: nonce,
-            validateWithAbi: false,
-            network: getStacksNetwork(),
-            anchorMode: AnchorMode.Any,
-          };
+          const isPox4 = contractName === 'pox-4';
+          // fields required for pox4
+          if (isPox4 && (!signerKey || !poxMaxAmount || !rewardCycleID || !authID)) {
+            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
+            return;
+          }
+
+          let stackingTx: UnsignedContractCallOptions;
+          if (isPox4) {
+            stackingTx = {
+              contractAddress: contractAddress,
+              contractName: contractName,
+              functionName: 'stack-stx',
+              publicKey: publicKeys[0].hex_bytes,
+              functionArgs: [
+                uintCV(options.amount), // amount-ustx
+                poxAddressToTuple(poxAddr), // pox-addr
+                uintCV(burnBlockHeight), // start-burn-ht
+                uintCV(numberOfCycles), // lock-period
+                signerSignature ? someCV(bufferCV(hexToBytes(signerSignature))) : noneCV(), // signer-sig
+                bufferCV(hexToBytes(signerKey)), // signer-key
+                uintCV(poxMaxAmount), // max-amount
+                uintCV(authID), // auth-id
+              ],
+              fee: txFee,
+              nonce: nonce,
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              anchorMode: AnchorMode.Any,
+            };
+          } else {
+            stackingTx = {
+              contractAddress: req.body.metadata.contract_address,
+              contractName: req.body.metadata.contract_name,
+              functionName: 'stack-stx',
+              publicKey: publicKeys[0].hex_bytes,
+              functionArgs: [
+                uintCV(options.amount),
+                poxAddressToTuple(poxAddr),
+                uintCV(burnBlockHeight),
+                uintCV(numberOfCycles),
+              ],
+              fee: txFee,
+              nonce: nonce,
+              validateWithAbi: false,
+              network: getStacksNetwork(),
+              anchorMode: AnchorMode.Any,
+            };
+          }
           transaction = await makeUnsignedContractCall(stackingTx);
           break;
         }

@@ -51,7 +51,7 @@ import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
 import { getSignature, getStacksNetwork, publicKeyToBitcoinAddress } from '../rosetta/rosetta-helpers';
 import * as nock from 'nock';
 import { PgStore } from '../datastore/pg-store';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { bufferToHex } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 
@@ -284,6 +284,9 @@ describe('Rosetta offline API', () => {
   });
 
   test('offline construction/preprocess - stacking', async () => {
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
     const request: RosettaConstructionPreprocessRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -331,7 +334,8 @@ describe('Rosetta offline API', () => {
           metadata: {
             number_of_cycles: 3,
             pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
-            signer_key: "00".repeat(33),
+            signer_key: signerPubKey,
+            signer_private_key: signerPrivKey,
           },
         },
       ],
@@ -366,10 +370,11 @@ describe('Rosetta offline API', () => {
         symbol: 'STX',
         decimals: 6,
         max_fee: '12380898',
-        size: 298,
+        size: 405,
         number_of_cycles: 3,
         pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
-        signer_key: "00".repeat(33),
+        signer_key: signerPubKey,
+        signer_private_key: signerPrivKey,
       },
       required_public_keys: [
         {
@@ -820,7 +825,7 @@ describe('Rosetta offline API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('Sucess: offline - payloads single sign - stacking', async () => {
+  test('Success: offline - payloads single sign - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';
@@ -829,6 +834,23 @@ describe('Rosetta offline API', () => {
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
+    const reward_cycle_id = 3;
+    const pox_auth_id = 234565725;
+    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
+
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
+    const stackingClient = new StackingClient('', getStacksTestnetNetwork());
+    const signerSig = stackingClient.signPoxSignature({
+      topic: 'stack-stx',
+      poxAddress: poxBTCAddress,
+      rewardCycle: reward_cycle_id,
+      period: number_of_cycles,
+      signerPrivateKey: createStacksPrivateKey(signerPrivKey),
+      maxAmount: stacking_amount,
+      authId: pox_auth_id,
+    });
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -875,8 +897,12 @@ describe('Rosetta offline API', () => {
           },
           metadata: {
             number_of_cycles: number_of_cycles,
-            pox_addr : '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
-            signer_key: "02".repeat(33),
+            pox_addr: poxBTCAddress,
+            signer_key: signerPubKey,
+            signer_private_key: signerPrivKey,
+            reward_cycle_id: reward_cycle_id,
+            pox_auth_id: pox_auth_id,
+            signer_signature: signerSig,
           }
         },
       ],
@@ -894,28 +920,20 @@ describe('Rosetta offline API', () => {
       ],
     };
 
-    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
-
-    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
-    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-    const hashbytes = bufferCV(data);
-    const poxAddressCV = tupleCV({
-      hashbytes,
-      version: hashModeBuffer,
-    });
-
-
     const stackingTx: UnsignedContractCallOptions = {
       contractAddress: contract_address,
       contractName: contract_name,
       functionName: 'stack-stx',
       publicKey: publicKey,
       functionArgs: [
-        uintCV(stacking_amount),
-        poxAddressCV,
-        uintCV(burn_block_height),
-        uintCV(number_of_cycles),
-        bufferCV(hexToBytes("02".repeat(33)))
+        uintCV(stacking_amount), // amount-ustx
+        poxAddressToTuple(poxBTCAddress), // pox-addr
+        uintCV(burn_block_height), // start-burn-ht
+        uintCV(number_of_cycles), // lock-period
+        someCV(bufferCV(hexToBytes(signerSig))), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(stacking_amount), // max-amount
+        uintCV(pox_auth_id), // auth-id
       ],
       validateWithAbi: false,
       nonce: 0,
@@ -957,7 +975,7 @@ describe('Rosetta offline API', () => {
     expect(JSON.parse(result.text)).toEqual(expectedResponse);
   });
 
-  test('Sucess: offline - payloads single sign - delegate - stacking', async () => {
+  test('Success: offline - payloads single sign - delegate - stacking', async () => {
     const publicKey = publicKeyToString(pubKeyfromPrivKey(testnetKeys[0].secretKey));
     const sender = testnetKeys[0].stacksAddress;
     const fee = '270';

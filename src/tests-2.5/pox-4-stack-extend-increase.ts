@@ -1,7 +1,6 @@
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
-
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
@@ -10,9 +9,11 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  StacksPrivateKey,
   bufferCV,
   makeContractCall,
-  randomBytes,
+  makeRandomPrivKey,
+  someCV,
   tupleCV,
   uintCV,
 } from '@stacks/transactions';
@@ -25,9 +26,11 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { decodeBtcAddress, StackingClient } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 import * as assert from 'assert';
+import { hexToBytes } from '@stacks/common';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
@@ -41,7 +44,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   let contractAddress: string;
   let contractName: string;
   let ustxAmount: bigint;
-  const lockPeriod = 1;
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+  const lockPeriod = 3;
   const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
   beforeAll(async () => {
@@ -59,6 +65,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       data: Buffer.from(decodedBtcAddr.data).toString('hex'),
       version: decodedBtcAddr.version,
     }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 });
+
+    stackingClient = new StackingClient(account.stacksAddress, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
 
     // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
     btcAddrRegtest = getBitcoinAddressFromKey({
@@ -78,6 +88,8 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       });
     expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
 
+    await standByForPoxCycle();
+
     poxInfo = await testEnv.client.getPox();
     burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
@@ -90,7 +102,17 @@ describe('PoX-4 - Stack extend and increase operations', () => {
 
   test('stack-stx tx', async () => {
     const coreBalancePreStackStx = await testEnv.client.getAccount(account.stacksAddress);
-
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-stx',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id,
+        period: lockPeriod,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: ustxAmount,
+        authId: 0,
+      })
+    );
     // Create and broadcast a `stack-stx` tx
     const txFee = 10000n;
     const stackStxTx = await makeContractCall({
@@ -106,7 +128,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
         }), // pox-addr
         uintCV(burnBlockHeight), // start-burn-ht
         uintCV(lockPeriod), // lock-period,
-        bufferCV(randomBytes(33)), // signer-key
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(ustxAmount.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -188,17 +213,34 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-increase tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreIncrease = await testEnv.client.getAccount(account.stacksAddress);
-
     // Create and broadcast a `stack-increase` tx
     const stackIncreaseAmount = 123n;
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-increase',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id + 1,
+        period: lockPeriod,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: ustxAmount + stackIncreaseAmount,
+        authId: 1,
+      })
+    );
     const stackIncreaseTxFee = 10000n;
     const stackIncreaseTx = await makeContractCall({
       senderKey: account.secretKey,
       contractAddress,
       contractName,
       functionName: 'stack-increase',
-      functionArgs: [uintCV(stackIncreaseAmount)],
+      functionArgs: [
+        uintCV(stackIncreaseAmount.toString()), // increase-by
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV((ustxAmount + stackIncreaseAmount).toString()), // max-amount
+        uintCV(1), // auth-id
+      ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: stackIncreaseTxFee,
@@ -282,10 +324,21 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-extend tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreStackExtend = await testEnv.client.getAccount(account.stacksAddress);
-
     // Create and broadcast a `stack-extend` tx
     const extendCycleAmount = 1;
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-extend',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id + 2,
+        period: extendCycleAmount,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: 0,
+        authId: 2,
+      })
+    );
     const txFee = 10000n;
     const stackExtendTx = await makeContractCall({
       senderKey: account.secretKey,
@@ -298,7 +351,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
         }), // pox-addr
-        bufferCV(randomBytes(33)), // signer-key
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(0), // max-amount
+        uintCV(2), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
