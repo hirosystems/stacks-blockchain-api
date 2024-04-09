@@ -102,7 +102,7 @@
     },
     "pox_max_amount": {
       "type": "string",
-      "description": "The maximum amount of STX to stack for PoX"
+      "description": "The maximum amount of STX to stack for PoX. If not specified, the `amount` will be used as the `max-amount` for the PoX transaction."
     },
     "pox_auth_id": {
       "type": "string",

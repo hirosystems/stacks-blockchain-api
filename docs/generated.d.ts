@@ -2703,7 +2703,7 @@ export interface RosettaOptions {
    */
   signer_signature?: string;
   /**
-   * The maximum amount of STX to stack for PoX
+   * The maximum amount of STX to stack for PoX. If not specified, the `amount` will be used as the `max-amount` for the PoX transaction.
    */
   pox_max_amount?: string;
   /**

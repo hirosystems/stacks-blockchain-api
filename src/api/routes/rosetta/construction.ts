@@ -229,7 +229,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             return;
           }
 
-          if (isPox4 && (!options.signer_key || !options.pox_max_amount)) {
+          if (isPox4 && !options.signer_key) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -256,7 +256,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 rewardCycle: 0,
                 period: options.number_of_cycles ?? 1,
                 signerPrivateKey: signerPrivKey,
-                maxAmount: options.pox_max_amount ?? 1,
+                maxAmount: options.pox_max_amount ?? options.amount ?? 1,
                 authId: options.pox_auth_id ?? 0,
               })
             );
@@ -272,7 +272,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 uintCV(options.number_of_cycles ?? 1), // lock-period
                 someCV(bufferCV(signerSig)), // signer-sig
                 bufferCV(hexToBytes(options.signer_key as string)), // signer-key
-                uintCV(options.pox_max_amount ?? 1), // max-amount
+                uintCV(options.pox_max_amount ?? options.amount ?? 1), // max-amount
                 uintCV(options.pox_auth_id ?? 0), // auth-id
               ],
               validateWithAbi: false,
@@ -427,7 +427,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const poxAddr = options?.pox_addr ?? 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
           if (contractName === 'pox-4') {
             // fields required for pox4
-            if (!options.signer_key || !options.pox_max_amount) {
+            if (!options.signer_key) {
               res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
               return;
             }
@@ -444,7 +444,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 signerPrivateKey: options.signer_private_key
                   ? createStacksPrivateKey(options.signer_private_key)
                   : makeRandomPrivKey(),
-                maxAmount: options?.pox_max_amount ?? 0,
+                maxAmount: options?.pox_max_amount ?? options?.amount ?? 0,
                 authId: options?.pox_auth_id ?? 0,
               });
               options.signer_signature = signerSig;
@@ -462,7 +462,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 uintCV(options?.number_of_cycles ?? 0), // lock-period
                 signerSigCV, // signer-sig
                 bufferCV(hexToBytes(options.signer_key)), // signer-key
-                uintCV(options.pox_max_amount), // max-amount
+                uintCV(options?.pox_max_amount ?? options?.amount ?? 1), // max-amount
                 uintCV(options?.pox_auth_id ?? 0), // auth-id
               ],
               validateWithAbi: false,
@@ -800,7 +800,8 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const authID = options.pox_auth_id ?? req.body.metadata.pox_auth_id;
           const signerKey = options.signer_key ?? req.body.metadata.signer_key;
           const rewardCycleID = options.reward_cycle_id ?? req.body.metadata.reward_cycle_id;
-          const poxMaxAmount = options.pox_max_amount ?? req.body.metadata.pox_max_amount;
+          const poxMaxAmount =
+            options.pox_max_amount ?? req.body.metadata.pox_max_amount ?? options.amount;
           const signerPrivKey = options.signer_private_key ?? req.body.metadata.signer_private_key;
           const signerSignature = options.signer_signature ?? req.body.metadata.signer_signature;
 
@@ -867,7 +868,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 uintCV(numberOfCycles), // lock-period
                 signerSig ? someCV(bufferCV(hexToBuffer(signerSig))) : noneCV(), // signer-sig
                 bufferCV(hexToBytes(signerKey)), // signer-key
-                uintCV(options.pox_max_amount as string), // max-amount
+                uintCV(poxMaxAmount), // max-amount
                 uintCV(authID), // auth-id
               ],
               fee: txFee,
