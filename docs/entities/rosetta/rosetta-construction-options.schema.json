@@ -94,11 +94,11 @@
     },
     "signer_private_key": {
       "type": "string",
-      "description": "The hex-encoded signer private key for PoX. Must be specified for PoX transactions if `signer_signature` is not specified"
+      "description": "The hex-encoded signer private key for PoX. Specify either this or `signer_signature`, otherwise the PoX transaction requires allow-listing from the signer."
     },
     "signer_signature": {
       "type": "string",
-      "description": "The hex-encoded signer signature for PoX. Must be specified for PoX transactions if `signer_key` is not specified."
+      "description": "The hex-encoded signer signature for PoX. Specify either this or `signer_private_key`, otherwise the PoX transaction requires allow-listing from the signer."
     },
     "pox_max_amount": {
       "type": "string",
@@ -106,7 +106,7 @@
     },
     "pox_auth_id": {
       "type": "string",
-      "description": "The auth ID for the PoX transaction"
+      "description": "The auth ID for the PoX transaction. If not specified, a random value will be generated."
     }
   }
 }

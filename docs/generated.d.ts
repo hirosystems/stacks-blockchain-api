@@ -2695,11 +2695,11 @@ export interface RosettaOptions {
    */
   signer_key?: string;
   /**
-   * The hex-encoded signer private key for PoX. Must be specified for PoX transactions if `signer_signature` is not specified
+   * The hex-encoded signer private key for PoX. Specify either this or `signer_signature`, otherwise the PoX transaction requires allow-listing from the signer.
    */
   signer_private_key?: string;
   /**
-   * The hex-encoded signer signature for PoX. Must be specified for PoX transactions if `signer_key` is not specified.
+   * The hex-encoded signer signature for PoX. Specify either this or `signer_private_key`, otherwise the PoX transaction requires allow-listing from the signer.
    */
   signer_signature?: string;
   /**
@@ -2707,7 +2707,7 @@ export interface RosettaOptions {
    */
   pox_max_amount?: string;
   /**
-   * The auth ID for the PoX transaction
+   * The auth ID for the PoX transaction. If not specified, a random value will be generated.
    */
   pox_auth_id?: string;
 }
