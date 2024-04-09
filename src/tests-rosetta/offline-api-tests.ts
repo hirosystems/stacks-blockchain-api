@@ -836,7 +836,7 @@ describe('Rosetta offline API', () => {
     const number_of_cycles = 5;
     const reward_cycle_id = 3;
     const pox_auth_id = 234565725;
-    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3'
+    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
 
     const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
     const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
@@ -897,7 +897,7 @@ describe('Rosetta offline API', () => {
           },
           metadata: {
             number_of_cycles: number_of_cycles,
-            pox_addr : poxBTCAddress,
+            pox_addr: poxBTCAddress,
             signer_key: signerPubKey,
             signer_private_key: signerPrivKey,
             reward_cycle_id: reward_cycle_id,
