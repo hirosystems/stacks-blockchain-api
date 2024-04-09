@@ -88,7 +88,7 @@ const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microb
 
 async function handleRawEventRequest(
   eventPath: string,
-  payload: string,
+  payload: any,
   db: PgWriteStore
 ): Promise<void> {
   await db.storeRawEventRequest(eventPath, payload);
@@ -779,7 +779,7 @@ export const DummyEventMessageHandler: EventMessageHandler = {
 };
 
 interface EventMessageHandler {
-  handleRawEventRequest(eventPath: string, payload: string, db: PgWriteStore): Promise<void> | void;
+  handleRawEventRequest(eventPath: string, payload: any, db: PgWriteStore): Promise<void> | void;
   handleBlockMessage(
     chainId: ChainID,
     msg: CoreNodeBlockMessage,
@@ -824,7 +824,7 @@ function createMessageProcessorQueue(): EventMessageHandler {
   };
 
   const handler: EventMessageHandler = {
-    handleRawEventRequest: (eventPath: string, payload: string, db: PgWriteStore) => {
+    handleRawEventRequest: (eventPath: string, payload: any, db: PgWriteStore) => {
       return processorQueue
         .add(() => observeEvent('raw_event', () => handleRawEventRequest(eventPath, payload, db)))
         .catch(e => {
@@ -931,7 +931,7 @@ export async function startEventServer(opts: {
 
     if (logger.level === 'debug') {
       const eventPath = req.path;
-      let payload = req.body;
+      let payload = JSON.stringify(req.body);
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
       if (payload.length > 10_000_000) {
         payload = 'payload body too large for logging';
@@ -941,7 +941,7 @@ export async function startEventServer(opts: {
   };
 
   app.use(loggerMiddleware);
-  app.use(bodyParser.text({ type: 'application/json', limit: '500MB' }));
+  app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
   const ibdHeight = getIbdBlockHeight();
   if (ibdHeight) {
@@ -972,7 +972,7 @@ export async function startEventServer(opts: {
     '/new_block',
     asyncHandler(async (req, res) => {
       try {
-        const blockMessage: CoreNodeBlockMessage = JSON.parse(req.body);
+        const blockMessage: CoreNodeBlockMessage = req.body;
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
         if (blockMessage.block_height === 1) {
           await handleBnsImport(db);
@@ -990,7 +990,7 @@ export async function startEventServer(opts: {
     '/new_burn_block',
     asyncHandler(async (req, res) => {
       try {
-        const msg: CoreNodeBurnBlockMessage = JSON.parse(req.body);
+        const msg: CoreNodeBurnBlockMessage = req.body;
         await messageHandler.handleBurnBlock(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1005,7 +1005,7 @@ export async function startEventServer(opts: {
     '/new_mempool_tx',
     asyncHandler(async (req, res) => {
       try {
-        const rawTxs: string[] = JSON.parse(req.body);
+        const rawTxs: string[] = req.body;
         await messageHandler.handleMempoolTxs(rawTxs, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1020,7 +1020,7 @@ export async function startEventServer(opts: {
     '/drop_mempool_tx',
     asyncHandler(async (req, res, next) => {
       try {
-        const msg: CoreNodeDropMempoolTxMessage = JSON.parse(req.body);
+        const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1036,7 +1036,7 @@ export async function startEventServer(opts: {
     '/attachments/new',
     asyncHandler(async (req, res) => {
       try {
-        const msg: CoreNodeAttachmentMessage[] = JSON.parse(req.body);
+        const msg: CoreNodeAttachmentMessage[] = req.body;
         await messageHandler.handleNewAttachment(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
@@ -1051,7 +1051,7 @@ export async function startEventServer(opts: {
     '/new_microblocks',
     asyncHandler(async (req, res) => {
       try {
-        const msg: CoreNodeMicroblockMessage = JSON.parse(req.body);
+        const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
