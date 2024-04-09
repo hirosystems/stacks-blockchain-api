@@ -30,6 +30,8 @@ import {
   bufferCV,
   AnchorMode,
   deserializeTransaction,
+  makeRandomPrivKey,
+  privateKeyToString,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
@@ -55,6 +57,7 @@ import {
 } from '@stacks/stacks-blockchain-api-types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
 import { decodeBtcAddress } from '@stacks/stacking';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 const testnetAccounts = [
   {
@@ -587,6 +590,9 @@ export function createDebugRouter(db: PgStore): express.Router {
     btcAddr: string,
     cycleCount: number
   ): Promise<{ txId: string; burnBlockHeight: number }> {
+    const signerPrivKey = privateKeyToString(makeRandomPrivKey());
+    const signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
+
     const stackingOperations: RosettaOperation[] = [
       {
         operation_identifier: {
@@ -607,6 +613,8 @@ export function createDebugRouter(db: PgStore): express.Router {
         metadata: {
           number_of_cycles: cycleCount,
           pox_addr: btcAddr,
+          signer_key: signerPubKey,
+          signer_private_key: signerPrivKey,
         },
       },
       {
