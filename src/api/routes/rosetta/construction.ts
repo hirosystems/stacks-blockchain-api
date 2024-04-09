@@ -828,25 +828,22 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           const isPox4 = contractName === 'pox-4';
           // fields required for pox4
-          if (isPox4 && (!signerKey || !poxMaxAmount || !rewardCycleID || !signerKey)) {
+          if (isPox4 && (!signerKey || !poxMaxAmount || !rewardCycleID || !authID)) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          // either signer-private-key or signer-sig required for pox4, cannot specify both
-          if (
-            isPox4 &&
-            ((!signerPrivKey && !signerSignature) || (signerPrivKey && signerSignature))
-          ) {
+          // xor or neither signer-private-key or signer-sig required for pox4, cannot specify both
+          if (isPox4 && signerPrivKey && signerSignature) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
 
           let stackingTx: UnsignedContractCallOptions;
           if (isPox4) {
-            let signerSig: string;
+            let signerSig: string | undefined;
             if (signerSignature) {
               signerSig = signerSignature;
-            } else {
+            } else if (signerPrivKey) {
               signerSig = stackingRpc.signPoxSignature({
                 topic: 'stack-stx',
                 poxAddress: poxAddr,
@@ -868,7 +865,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 poxAddressToTuple(poxAddr), // pox-addr
                 uintCV(burnBlockHeight), // start-burn-ht
                 uintCV(numberOfCycles), // lock-period
-                someCV(bufferCV(hexToBuffer(signerSig))), // signer-sig
+                signerSig ? someCV(bufferCV(hexToBuffer(signerSig))) : noneCV(), // signer-sig
                 bufferCV(hexToBytes(signerKey)), // signer-key
                 uintCV(options.pox_max_amount as string), // max-amount
                 uintCV(authID), // auth-id
