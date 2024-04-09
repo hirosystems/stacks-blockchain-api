@@ -1,3 +1,21 @@
+## [7.10.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-beta.1...v7.10.0-beta.2) (2024-04-09)
+
+
+### Features
+
+* add nakamoto block time to v2 endpoints ([#1921](https://github.com/hirosystems/stacks-blockchain-api/issues/1921)) ([ae6bbe8](https://github.com/hirosystems/stacks-blockchain-api/commit/ae6bbe80b66520b7c7c7bc42b29716fb60146229))
+* rosetta pox4 stacking support ([#1928](https://github.com/hirosystems/stacks-blockchain-api/issues/1928)) ([2ba36f9](https://github.com/hirosystems/stacks-blockchain-api/commit/2ba36f9846f3d85de093376ad68ee7660e697846)), closes [#1929](https://github.com/hirosystems/stacks-blockchain-api/issues/1929)
+
+
+### Bug Fixes
+
+* add nakamoto testnet to openapi docs ([#1910](https://github.com/hirosystems/stacks-blockchain-api/issues/1910)) ([01fb971](https://github.com/hirosystems/stacks-blockchain-api/commit/01fb9713e86b1a289dbca016ad7b5c366aaef74c))
+* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([a7ee96d](https://github.com/hirosystems/stacks-blockchain-api/commit/a7ee96de55c8a61c1e2d6bf9ef7c3b220fd82803))
+* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([#1927](https://github.com/hirosystems/stacks-blockchain-api/issues/1927)) ([f522d79](https://github.com/hirosystems/stacks-blockchain-api/commit/f522d795cef9b3f3ac0f1222b74a261f332c3065))
+* cycle signer filter ([#1916](https://github.com/hirosystems/stacks-blockchain-api/issues/1916)) ([dc7d600](https://github.com/hirosystems/stacks-blockchain-api/commit/dc7d6009556b833ff3994b35c96ba4456ca7e81f))
+* cycles response for empty cycle info ([#1914](https://github.com/hirosystems/stacks-blockchain-api/issues/1914)) ([a7a4558](https://github.com/hirosystems/stacks-blockchain-api/commit/a7a4558105f669260cc4948b28213196c4c62079))
+* other empty result responses ([#1915](https://github.com/hirosystems/stacks-blockchain-api/issues/1915)) ([3cd2c64](https://github.com/hirosystems/stacks-blockchain-api/commit/3cd2c64674e7abe0b4ba3ed7c1890ea63c1b87b2))
+
 ## [7.10.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.10.0-beta.1) (2024-03-21)
 
 
