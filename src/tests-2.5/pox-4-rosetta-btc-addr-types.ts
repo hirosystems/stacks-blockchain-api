@@ -30,6 +30,9 @@ describe.each(BTC_ADDRESS_CASES)(
     const account = testnetKeys[1];
     let bitcoinAddress: string;
 
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
     beforeAll(() => {
       bitcoinAddress = getBitcoinAddressFromKey({
         privateKey: account.secretKey,
@@ -60,7 +63,8 @@ describe.each(BTC_ADDRESS_CASES)(
         privateKey: account.secretKey,
         cycleCount,
         ustxAmount,
-        signerKey: bytesToHex(randomBytes(33)),
+        signerKey: signerPubKey,
+        signerPrivKey: signerPrivKey,
       });
       expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
       expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');

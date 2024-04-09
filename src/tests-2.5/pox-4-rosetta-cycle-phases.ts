@@ -12,6 +12,9 @@ for (let shift = 0; shift < REWARD_CYCLE_LENGTH; shift++) {
 const account = testnetKeys[1];
 const btcAddr = '2N74VLxyT79VGHiBK2zEg3a9HJG7rEc5F3o';
 
+const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
 describe.each(BLOCK_SHIFT_COUNT)(
   'PoX-4 - Rosetta - Stack on any phase of cycle $shift',
   ({ shift }) => {
@@ -43,7 +46,8 @@ describe.each(BLOCK_SHIFT_COUNT)(
         cycleCount: 1,
         ustxAmount,
         btcAddr,
-        signerKey: bytesToHex(randomBytes(33)),
+        signerKey: signerPubKey,
+        signerPrivKey: signerPrivKey,
       });
     });
 

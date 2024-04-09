@@ -40,8 +40,10 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     pubKey: string;
   };
   let testAccountBalance: bigint;
-  let lastPoxInfo: CoreRpcPoxInfo;
   let ustxAmount: bigint;
+
+  const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+  const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
 
   beforeAll(() => {
     const ecPair = ECPair.fromPrivateKey(Buffer.from(accountKey, 'hex').slice(0, 32), {
@@ -121,7 +123,6 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     const cycleCount = 1;
 
     const poxInfo = await testEnv.client.getPox();
-    lastPoxInfo = poxInfo;
     ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
     const stackingResult = await stackStxWithRosetta({
@@ -131,7 +132,8 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount: cycleCount,
       ustxAmount: ustxAmount,
-      signerKey: bytesToHex(randomBytes(33)),
+      signerKey: signerPubKey,
+      signerPrivKey: signerPrivKey,
     });
 
     expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -246,7 +248,8 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount,
       ustxAmount,
-      signerKey: bytesToHex(randomBytes(33)),
+      signerKey: signerPubKey,
+      signerPrivKey: signerPrivKey,
     });
 
     expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
