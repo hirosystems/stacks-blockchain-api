@@ -248,7 +248,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           let dummyStackingTx: UnsignedContractCallOptions;
           if (isPox4) {
             const signerPrivKey = makeRandomPrivKey();
-            // const signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
             const signerSig = hexToBytes(
               stackingRpc.signPoxSignature({
                 topic: 'stack-stx',
@@ -407,7 +406,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const poxInfo = await stackingRpc.getPoxInfo();
           const [contractAddress, contractName] = poxInfo.contract_id.split('.');
 
-          if (!options.number_of_cycles) {
+          if (!options.number_of_cycles || !options.pox_addr) {
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
@@ -424,7 +423,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
 
           // dummy transaction to calculate fee
           let dummyStackingTx: UnsignedContractCallOptions;
-          const poxAddr = options?.pox_addr ?? 'bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4';
+          const poxAddr = options?.pox_addr;
           if (contractName === 'pox-4') {
             // fields required for pox4
             if (!options.signer_key) {
@@ -433,19 +432,17 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             }
             options.pox_auth_id ??= BigInt(`0x${randomBytes(16).toString('hex')}`).toString();
             let signerSigCV: OptionalCV = noneCV();
-            if (options?.signer_signature) {
+            if (options.signer_signature) {
               signerSigCV = someCV(bufferCV(hexToBytes(options.signer_signature)));
-            } else if (options?.signer_private_key) {
+            } else if (options.signer_private_key) {
               const signerSig = stackingRpc.signPoxSignature({
                 topic: 'stack-stx',
                 poxAddress: poxAddr,
-                rewardCycle: options?.reward_cycle_id ?? 0,
-                period: options?.number_of_cycles ?? 0,
-                signerPrivateKey: options.signer_private_key
-                  ? createStacksPrivateKey(options.signer_private_key)
-                  : makeRandomPrivKey(),
-                maxAmount: options?.pox_max_amount ?? options?.amount ?? 0,
-                authId: options?.pox_auth_id ?? 0,
+                rewardCycle: options.reward_cycle_id,
+                period: options.number_of_cycles,
+                signerPrivateKey: createStacksPrivateKey(options.signer_private_key),
+                maxAmount: (options.pox_max_amount ?? options.amount) as string,
+                authId: options.pox_auth_id,
               });
               options.signer_signature = signerSig;
               signerSigCV = someCV(bufferCV(hexToBytes(signerSig)));
@@ -802,7 +799,6 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
           const rewardCycleID = options.reward_cycle_id ?? req.body.metadata.reward_cycle_id;
           const poxMaxAmount =
             options.pox_max_amount ?? req.body.metadata.pox_max_amount ?? options.amount;
-          const signerPrivKey = options.signer_private_key ?? req.body.metadata.signer_private_key;
           const signerSignature = options.signer_signature ?? req.body.metadata.signer_signature;
 
           if (!poxAddr) {
@@ -833,29 +829,9 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
             res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
             return;
           }
-          // xor or neither signer-private-key or signer-sig required for pox4, cannot specify both
-          if (isPox4 && signerPrivKey && signerSignature) {
-            res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidOperation]);
-            return;
-          }
 
           let stackingTx: UnsignedContractCallOptions;
           if (isPox4) {
-            let signerSig: string | undefined;
-            if (signerSignature) {
-              signerSig = signerSignature;
-            } else if (signerPrivKey) {
-              signerSig = stackingRpc.signPoxSignature({
-                topic: 'stack-stx',
-                poxAddress: poxAddr,
-                rewardCycle: Number(BigInt(rewardCycleID).toString()),
-                period: numberOfCycles,
-                signerPrivateKey: createStacksPrivateKey(signerPrivKey),
-                maxAmount: poxMaxAmount,
-                authId: authID,
-              });
-            }
-
             stackingTx = {
               contractAddress: contractAddress,
               contractName: contractName,
@@ -866,7 +842,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
                 poxAddressToTuple(poxAddr), // pox-addr
                 uintCV(burnBlockHeight), // start-burn-ht
                 uintCV(numberOfCycles), // lock-period
-                signerSig ? someCV(bufferCV(hexToBuffer(signerSig))) : noneCV(), // signer-sig
+                signerSignature ? someCV(bufferCV(hexToBytes(signerSignature))) : noneCV(), // signer-sig
                 bufferCV(hexToBytes(signerKey)), // signer-key
                 uintCV(poxMaxAmount), // max-amount
                 uintCV(authID), // auth-id
