@@ -7,7 +7,6 @@ import {
   readOnlyFnCall,
   standByForNextPoxCycle,
   standByForPoxCycle,
-  standByForPoxCycleEnd,
   standByForTxSuccess,
   standByUntilBurnBlock,
   testEnv,
@@ -15,11 +14,12 @@ import {
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
+  StacksPrivateKey,
   bufferCV,
   makeContractCall,
+  makeRandomPrivKey,
   makeSTXTokenTransfer,
   noneCV,
-  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
@@ -27,6 +27,9 @@ import {
 import { ClarityValueTuple, ClarityValueUInt } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import * as assert from 'assert';
+import { StackingClient } from '@stacks/stacking';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { hexToBytes } from '@stacks/common';
 
 describe('PoX-4 - Delegate Stacking operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -43,10 +46,18 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   let contractAddress: string;
   let contractName: string;
 
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
+
+    stackingClient = new StackingClient(delegatorAccount.stxAddr, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
   });
 
   test('Import testing accounts to bitcoind', async () => {
@@ -191,6 +202,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
 
   test('Perform delegate-stack-stx operation', async () => {
     // get amount delegated
+    await standByForPoxCycle();
     const getDelegationInfo1 = await readOnlyFnCall<
       ClarityValueTuple<{ 'amount-ustx': ClarityValueUInt }>
     >(
@@ -393,8 +405,21 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   });
 
   test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
+    await standByForPoxCycle();
     const poxInfo2 = await testEnv.client.getPox();
     const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const coreBalanceInfo = await testEnv.client.getAccount(delegateeAccount.stxAddr);
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-commit',
+        poxAddress: delegateeAccount.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: coreBalanceInfo.locked,
+        authId: 0,
+      })
+    );
     const stackAggrCommitTx = await makeContractCall({
       senderKey: delegatorAccount.secretKey,
       contractAddress,
@@ -403,7 +428,10 @@ describe('PoX-4 - Delegate Stacking operations', () => {
       functionArgs: [
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
-        bufferCV(randomBytes(33)), // signer-key
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(coreBalanceInfo.locked.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -429,7 +457,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   });
 
   test('Wait for current two pox cycles to complete', async () => {
-    await standByForPoxCycleEnd();
+    // await standByForPoxCycle();
     await standByForPoxCycle();
     await standByForPoxCycle();
   });
