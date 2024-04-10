@@ -11,13 +11,16 @@ import {
   standByForTxSuccess,
   standByForAccountUnlock,
   testEnv,
+  standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
+  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
@@ -31,6 +34,7 @@ import {
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
+import * as assert from 'assert';
 
 describe('PoX-4 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -56,15 +60,12 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Import testing accounts to bitcoind', async () => {
-    // register delegate accounts to bitcoind wallet
-    // TODO: only one of these (delegatee ?) should be required..
-    for (const account of [delegatorAccount, delegateeAccount]) {
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: account.wif,
-        label: account.btcAddr,
-        rescan: false,
-      });
-    }
+    // register delegatee account to bitcoind wallet
+    await testEnv.bitcoinRpcClient.importaddress({
+      address: delegateeAccount.btcAddr,
+      label: delegateeAccount.btcAddr,
+      rescan: false,
+    });
   });
 
   test('Seed delegate accounts', async () => {
@@ -202,7 +203,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(amountStackedInitial), // amount-ustx
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
-        uintCV(1), // lock-period
+        uintCV(1), // lock-period,
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -259,6 +260,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       functionArgs: [
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -442,5 +444,17 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
     expect(apiBalance.burnchain_unlock_height).toBe(coreBalanceInfo.unlock_height);
+  });
+
+  test('BTC stacking reward received', async () => {
+    const curBlock = await testEnv.db.getCurrentBlock();
+    assert(curBlock.found);
+    await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
+
+    const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
+      address: delegateeAccount.btcAddr,
+      minconf: 0,
+    });
+    expect(received).toBeGreaterThan(0);
   });
 });

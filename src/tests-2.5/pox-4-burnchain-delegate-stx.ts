@@ -172,7 +172,7 @@ async function createPox2DelegateStx(args: {
   };
 }
 
-describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
+describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
   const seedAccount = testnetKeys[0];
 
   let db: PgWriteStore;
@@ -357,8 +357,8 @@ describe('PoX-4 - Stack using Bitcoin-chain ops', () => {
         '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
       function_args: [
         {
-          hex: '0x0100000000000000000007fe8f3d591000',
-          repr: 'u2250216000000000',
+          hex: '0x010000000000000000000ffd1e7ab22000',
+          repr: 'u4500432000000000',
           name: 'amount-ustx',
           type: 'uint',
         },

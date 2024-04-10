@@ -44,6 +44,7 @@ import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { Transaction } from '@stacks/stacks-blockchain-api-types';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -105,6 +106,7 @@ describe('tx tests', () => {
       tx_index: 33,
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_time: 1637003433,
       burn_block_time: 1637003433,
       parent_burn_block_time: 1637002470,
       status: DbTxStatus.Success,
@@ -141,6 +143,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1637003433,
       burn_block_time: 1637003433,
       burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
       burn_block_height: 1,
@@ -152,6 +155,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 2480886000,
       execution_cost_write_count: 138,
       execution_cost_write_length: 91116,
+      signer_bitvec: null,
     };
     const dbTx2: DbTxRaw = {
       tx_id: '0x8915000000000000000000000000000000000000000000000000000000000000',
@@ -170,6 +174,7 @@ describe('tx tests', () => {
       index_block_hash: '0x1234',
       parent_block_hash: '0x5678',
       block_height: 0,
+      block_time: 39486,
       burn_block_time: 39486,
       parent_burn_block_time: 1626122935,
       tx_index: 4,
@@ -216,6 +221,7 @@ describe('tx tests', () => {
       index_block_hash: '0x1234',
       parent_block_hash: '0x5678',
       block_height: 0,
+      block_time: 39486,
       burn_block_time: 39486,
       parent_burn_block_time: 1626122935,
       tx_index: 5,
@@ -332,6 +338,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -343,6 +350,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not have a versioned-smart-contract tx builder as of writing, so use a known good serialized tx
@@ -390,6 +398,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -434,6 +443,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -488,6 +499,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -499,6 +511,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
@@ -539,6 +552,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -574,6 +588,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -627,6 +643,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -638,6 +655,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     // stacks.js does not support `coinbase-pay-to-alt-recipient` tx support as of writing, so use a known good serialized tx
@@ -678,6 +696,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -713,6 +732,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -766,6 +787,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -777,6 +799,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractCall({
       contractAddress: 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y',
@@ -828,6 +851,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -886,6 +910,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -951,6 +977,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647997,
       burn_block_time: 1594647997,
       burn_block_hash: '0x1234ab',
       burn_block_height: 124,
@@ -962,6 +989,7 @@ describe('tx tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.update({
       block: dbBlock,
@@ -1039,6 +1067,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -1144,6 +1173,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1155,6 +1185,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const dbTx: DbTxRaw = {
       tx_id: '0x421234',
@@ -1165,6 +1196,7 @@ describe('tx tests', () => {
       index_block_hash: dbBlock.index_block_hash,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1343,6 +1375,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1354,6 +1387,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
 
     const pc1 = createNonFungiblePostCondition(
@@ -1420,6 +1454,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -1474,9 +1509,11 @@ describe('tx tests', () => {
       throw Error('not found');
     }
 
-    const expectedResp = {
+    const expectedResp: Transaction = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -1589,6 +1626,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1600,6 +1638,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
@@ -1643,6 +1682,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.parent_block_hash,
       block_height: dbBlock.block_height,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -1678,6 +1718,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0x5678',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -1735,6 +1777,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1746,6 +1789,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const txBuilder = await makeContractDeploy({
       contractName: 'hello-world',
@@ -1789,6 +1833,7 @@ describe('tx tests', () => {
       microblock_sequence: I32_MAX,
       block_hash: dbBlock.block_hash,
       block_height: dbBlock.block_height,
+      block_time: dbBlock.burn_block_time,
       burn_block_time: dbBlock.burn_block_time,
       parent_burn_block_hash: '0xaa',
       parent_burn_block_time: 1626122935,
@@ -1824,6 +1869,8 @@ describe('tx tests', () => {
     const expectedResp = {
       block_hash: '0xff',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       microblock_canonical: true,
@@ -1881,6 +1928,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -1892,6 +1940,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x421234',
@@ -1902,6 +1951,7 @@ describe('tx tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -1997,6 +2047,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2008,6 +2059,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -2019,6 +2071,7 @@ describe('tx tests', () => {
       index_block_hash: '0x1234',
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: block.burn_block_time,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -2649,6 +2702,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -2660,6 +2714,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -2670,6 +2725,7 @@ describe('tx tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -2750,6 +2806,8 @@ describe('tx tests', () => {
       tx_status: 'success',
       block_hash: '0x1234',
       block_height: 1,
+      block_time: 1594647995,
+      block_time_iso: '2020-07-13T13:46:35.000Z',
       burn_block_time: 1594647995,
       burn_block_time_iso: '2020-07-13T13:46:35.000Z',
       canonical: true,
@@ -2806,6 +2864,7 @@ describe('tx tests', () => {
       parent_index_block_hash: '',
       parent_block_hash: '',
       block_height: 1,
+      block_time: 1637003433,
       tx_index: 33,
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
@@ -2847,6 +2906,7 @@ describe('tx tests', () => {
       tx_index: 33,
       index_block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_time: 1637003433,
       burn_block_time: 1637003433,
       parent_burn_block_time: 1637002470,
       status: DbTxStatus.Success,
@@ -2895,6 +2955,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1637003433,
       burn_block_time: 1637003433,
       burn_block_hash: '0x0000000000000000000342c6f7e9313ffa6f0a92618edaf86351ca265aee1c7a',
       burn_block_height: 1,
@@ -2906,6 +2967,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 2480886000,
       execution_cost_write_count: 138,
       execution_cost_write_length: 91116,
+      signer_bitvec: null,
     };
     const expected = {
       tx_id: '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29af',
@@ -2918,6 +2980,8 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       is_unanchored: false,
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
+      block_time: 1637003433,
+      block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_block_hash: '0x',
       block_height: 1,
       burn_block_time: 1637003433,
@@ -3018,6 +3082,8 @@ describe('tx tests', () => {
       block_hash: '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb663139',
       parent_block_hash: '0x',
       block_height: 1,
+      block_time: 1637003433,
+      block_time_iso: '2021-11-15T19:10:33.000Z',
       burn_block_time: 1637003433,
       burn_block_time_iso: '2021-11-15T19:10:33.000Z',
       parent_burn_block_time: 1637002470,
@@ -3225,6 +3291,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3236,6 +3303,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -3246,6 +3314,7 @@ describe('tx tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: block.burn_block_time,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -3362,6 +3431,8 @@ describe('tx tests', () => {
       anchor_mode: 'any',
       block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       block_height: 1,
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_time: 94869286,
       burn_block_time_iso: '1973-01-03T00:34:46.000Z',
       canonical: true,
@@ -3422,6 +3493,7 @@ describe('tx tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -3433,6 +3505,7 @@ describe('tx tests', () => {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -3444,6 +3517,7 @@ describe('tx tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: block.burn_block_time,
       burn_block_time: block.burn_block_time,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,

@@ -76,6 +76,10 @@
       "type": "integer",
       "description": "Set the burnchain (BTC) block for stacking lock to start."
     },
+    "reward_cycle_id": {
+      "type": "integer",
+      "description": "The reward cycle ID for stacking transaction."
+    },
     "delegate_to": {
       "type": "string",
       "description": "Delegator address for when calling `delegate-stacking`."
@@ -83,6 +87,26 @@
     "pox_addr": {
       "type": "string",
       "description": "The reward address for stacking transaction. It should be a valid Bitcoin address"
+    },
+    "signer_key": {
+      "type": "string",
+      "description": "The hex-encoded signer key (buff 33) for PoX."
+    },
+    "signer_private_key": {
+      "type": "string",
+      "description": "The hex-encoded signer private key for PoX. Specify either this or `signer_signature`, otherwise the PoX transaction requires allow-listing from the signer."
+    },
+    "signer_signature": {
+      "type": "string",
+      "description": "The hex-encoded signer signature for PoX. Specify either this or `signer_private_key`, otherwise the PoX transaction requires allow-listing from the signer."
+    },
+    "pox_max_amount": {
+      "type": "string",
+      "description": "The maximum amount of STX to stack for PoX. If not specified, the `amount` will be used as the `max-amount` for the PoX transaction."
+    },
+    "pox_auth_id": {
+      "type": "string",
+      "description": "The auth ID for the PoX transaction. If not specified, a random value will be generated."
     }
   }
 }

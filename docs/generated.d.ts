@@ -99,6 +99,9 @@ export type SchemaMergeRootStub =
   | SmartContractFound
   | SmartContractNotFound
   | PoolDelegationsResponse
+  | PoxCycleSignerStackersListResponse
+  | PoxCycleSignersListResponse
+  | PoxCycleListResponse
   | {
       [k: string]: unknown | undefined;
     }
@@ -186,6 +189,9 @@ export type SchemaMergeRootStub =
   | RosettaTransaction
   | SmartContractStatus
   | PoolDelegation
+  | PoxCycle
+  | PoxSigner
+  | PoxStacker
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -425,6 +431,14 @@ export type AbstractTransaction = BaseTransaction & {
    * Height of the block this transactions was associated with
    */
   block_height: number;
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  block_time_iso: string;
   /**
    * Unix timestamp (in seconds) indicating when this block was mined
    */
@@ -1219,14 +1233,6 @@ export interface TenureChangeTransactionMetadata {
      * (Hex string) The ECDSA public key hash of the current tenure.
      */
     pubkey_hash: string;
-    /**
-     * (Hex string) A Schnorr signature from the Stackers.
-     */
-    signature: string;
-    /**
-     * (Hex string) A bitmap of which Stackers signed.
-     */
-    signers: string;
   };
 }
 /**
@@ -1313,6 +1319,14 @@ export interface Block {
    * Hash representing the block
    */
   hash: string;
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  block_time_iso: string;
   /**
    * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
    */
@@ -1465,6 +1479,14 @@ export interface NakamotoBlock {
    * Hash representing the block
    */
   hash: string;
+  /**
+   * Unix timestamp (in seconds) indicating when this block was mined.
+   */
+  block_time: number;
+  /**
+   * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
+   */
+  block_time_iso: string;
   /**
    * The only hash that can uniquely identify an anchored block or an unconfirmed state trie
    */
@@ -2657,6 +2679,10 @@ export interface RosettaOptions {
    */
   burn_block_height?: number;
   /**
+   * The reward cycle ID for stacking transaction.
+   */
+  reward_cycle_id?: number;
+  /**
    * Delegator address for when calling `delegate-stacking`.
    */
   delegate_to?: string;
@@ -2664,6 +2690,26 @@ export interface RosettaOptions {
    * The reward address for stacking transaction. It should be a valid Bitcoin address
    */
   pox_addr?: string;
+  /**
+   * The hex-encoded signer key (buff 33) for PoX.
+   */
+  signer_key?: string;
+  /**
+   * The hex-encoded signer private key for PoX. Specify either this or `signer_signature`, otherwise the PoX transaction requires allow-listing from the signer.
+   */
+  signer_private_key?: string;
+  /**
+   * The hex-encoded signer signature for PoX. Specify either this or `signer_private_key`, otherwise the PoX transaction requires allow-listing from the signer.
+   */
+  signer_signature?: string;
+  /**
+   * The maximum amount of STX to stack for PoX. If not specified, the `amount` will be used as the `max-amount` for the PoX transaction.
+   */
+  pox_max_amount?: string;
+  /**
+   * The auth ID for the PoX transaction. If not specified, a random value will be generated.
+   */
+  pox_auth_id?: string;
 }
 /**
  * The ConstructionMetadataResponse returns network-specific metadata used for transaction construction. Optionally, the implementer can return the suggested fee associated with the transaction being constructed. The caller may use this info to adjust the intent of the transaction or to create a transaction with a different account that can pay the suggested fee. Suggested fee is an array in case fee payment must occur in multiple currencies.
@@ -3266,6 +3312,80 @@ export interface PoolDelegation {
    * The tx_id of the stacker delegation operation
    */
   tx_id: string;
+}
+/**
+ * GET request that returns stackers for a signer in a PoX cycle
+ */
+export interface PoxCycleSignerStackersListResponse {
+  /**
+   * The number of stackers to return
+   */
+  limit: number;
+  /**
+   * The number to stackers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of stackers
+   */
+  total: number;
+  results: PoxStacker[];
+}
+export interface PoxStacker {
+  stacker_address: string;
+  stacked_amount: string;
+  pox_address: string;
+}
+/**
+ * GET request that returns signers for a PoX cycle
+ */
+export interface PoxCycleSignersListResponse {
+  /**
+   * The number of signers to return
+   */
+  limit: number;
+  /**
+   * The number to signers to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of signers
+   */
+  total: number;
+  results: PoxSigner[];
+}
+export interface PoxSigner {
+  signing_key: string;
+  weight: number;
+  stacked_amount: string;
+  weight_percent: number;
+  stacked_amount_percent: number;
+}
+/**
+ * GET request that returns PoX cycles
+ */
+export interface PoxCycleListResponse {
+  /**
+   * The number of cycles to return
+   */
+  limit: number;
+  /**
+   * The number to cycles to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The total number of cycles
+   */
+  total: number;
+  results: PoxCycle[];
+}
+export interface PoxCycle {
+  block_height: number;
+  index_block_hash: string;
+  cycle_number: number;
+  total_weight: number;
+  total_stacked_amount: string;
+  total_signers: number;
 }
 /**
  * List of Non-Fungible Token history events

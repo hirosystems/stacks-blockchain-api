@@ -85,6 +85,7 @@ describe('cache-control tests', () => {
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 1594647996,
       burn_block_time: 1594647996,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -96,6 +97,7 @@ describe('cache-control tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     const tx: DbTxRaw = {
       tx_id: '0x1234',
@@ -106,6 +108,7 @@ describe('cache-control tests', () => {
       index_block_hash: block1.index_block_hash,
       block_hash: block1.block_hash,
       block_height: 68456,
+      block_time: 1594647995,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -171,6 +174,8 @@ describe('cache-control tests', () => {
       hash: '0x1234',
       index_block_hash: '0xdeadbeef',
       height: 1,
+      block_time: 1594647996,
+      block_time_iso: '2020-07-13T13:46:36.000Z',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,
@@ -296,6 +301,7 @@ describe('cache-control tests', () => {
       index_block_hash: '',
       block_hash: '',
       burn_block_time: -1,
+      block_time: -1,
 
       // These properties can be determined with a db query, they are set while the db is inserting them.
       block_height: -1,
@@ -338,6 +344,8 @@ describe('cache-control tests', () => {
       hash: '0x1234',
       index_block_hash: '0xdeadbeef',
       height: 1,
+      block_time: 1594647996,
+      block_time_iso: '2020-07-13T13:46:36.000Z',
       parent_block_hash: '0xff0011',
       parent_microblock_hash: '0x00',
       parent_microblock_sequence: 0,

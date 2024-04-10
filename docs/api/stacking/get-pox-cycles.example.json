@@ -1,0 +1,31 @@
+{
+  "limit": 20,
+  "offset": 0,
+  "total": 3,
+  "results": [
+    {
+      "block_height": 50,
+      "cycle_number": 14,
+      "index_block_hash": "0xf5be33abc4e508bdaf2191e88339372edcb3358c44e2a31e1b9b44f2880dde09",
+      "total_signers": 3,
+      "total_stacked_amount": "1372502700000000000",
+      "total_weight": 9
+    },
+    {
+      "block_height": 22,
+      "cycle_number": 13,
+      "index_block_hash": "0x5077c7d971dd83cd3ba19dca579e3cc8dcf17913186b66093c94520e50d3b7b2",
+      "total_signers": 3,
+      "total_stacked_amount": "1372502700000000000",
+      "total_weight": 9
+    },
+    {
+      "block_height": 13,
+      "cycle_number": 12,
+      "index_block_hash": "0x62d06851fe03f17cb45a488ae70bd8e0c5c308c523f37814ad4df36bd2108713",
+      "total_signers": 3,
+      "total_stacked_amount": "1372502700000000000",
+      "total_weight": 9
+    }
+  ]
+}

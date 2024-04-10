@@ -1,66 +1,68 @@
-import { ApiServer, startApiServer } from '../api/init';
-import * as supertest from 'supertest';
-import { DbBlock } from '../datastore/common';
-import * as assert from 'assert';
+import { bufferToHex, timeout } from '@hirosystems/api-toolkit';
+import { hexToBytes } from '@stacks/common';
+import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import {
-  AnchorMode,
-  AuthType,
-  bufferCV,
-  ChainID,
-  createStacksPrivateKey,
-  getPublicKey,
-  makeSTXTokenTransfer,
-  makeUnsignedContractCall,
-  makeUnsignedSTXTokenTransfer,
-  noneCV,
-  pubKeyfromPrivKey,
-  publicKeyToString,
-  SignedTokenTransferOptions,
-  someCV,
-  standardPrincipalCV,
-  TransactionSigner,
-  tupleCV,
-  uintCV,
-  UnsignedContractCallOptions,
-  UnsignedTokenTransferOptions,
-} from '@stacks/transactions';
-import { StacksCoreRpcClient } from '../core-rpc/client';
-import {
+  RosettaAccountIdentifier,
   RosettaConstructionCombineRequest,
   RosettaConstructionCombineResponse,
-  RosettaAccountIdentifier,
   RosettaConstructionDeriveRequest,
   RosettaConstructionDeriveResponse,
   RosettaConstructionHashRequest,
   RosettaConstructionHashResponse,
   RosettaConstructionMetadataRequest,
+  RosettaConstructionMetadataResponse,
   RosettaConstructionParseRequest,
   RosettaConstructionParseResponse,
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
-  RosettaConstructionMetadataResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
-  getRosettaNetworkName,
+  AnchorMode,
+  AuthType,
+  ChainID,
+  MessageSignature,
+  SignedTokenTransferOptions,
+  TransactionSigner,
+  UnsignedContractCallOptions,
+  UnsignedTokenTransferOptions,
+  bufferCV,
+  createStacksPrivateKey,
+  getPublicKey,
+  makeSTXTokenTransfer,
+  makeSigHashPreSign,
+  makeUnsignedContractCall,
+  makeUnsignedSTXTokenTransfer,
+  noneCV,
+  pubKeyfromPrivKey,
+  publicKeyToString,
+  someCV,
+  standardPrincipalCV,
+  tupleCV,
+  uintCV,
+} from '@stacks/transactions';
+import * as assert from 'assert';
+import * as supertest from 'supertest';
+import { ApiServer, startApiServer } from '../api/init';
+import {
   RosettaConstants,
   RosettaErrors,
   RosettaErrorsTypes,
   RosettaOperationStatuses,
   RosettaOperationTypes,
+  getRosettaNetworkName,
 } from '../api/rosetta-constants';
 import { getStacksTestnetNetwork, testnetKeys } from '../api/routes/debug';
-import { getSignature, getStacksNetwork } from '../rosetta/rosetta-helpers';
-import { makeSigHashPreSign, MessageSignature } from '@stacks/transactions';
+import { StacksCoreRpcClient } from '../core-rpc/client';
+import { DbBlock } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { FoundOrNot } from '../helpers';
+import { getSignature, getStacksNetwork } from '../rosetta/rosetta-helpers';
 import {
   standByForPoxCycle,
   standByForTx as standByForTxShared,
   standByUntilBurnBlock,
 } from '../test-utils/test-helpers';
-import { bufferToHex, timeout } from '@hirosystems/api-toolkit';
-import { FoundOrNot } from '../helpers';
 
 describe('Rosetta Construction', () => {
   let db: PgWriteStore;
@@ -960,6 +962,23 @@ describe('Rosetta Construction', () => {
     const stacking_amount = 5000;
     const burn_block_height = 200;
     const number_of_cycles = 5;
+    const reward_cycle_id = 3;
+    const pox_auth_id = 234565725;
+    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
+
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
+    const stackingClient = new StackingClient('', getStacksTestnetNetwork());
+    const signerSig = stackingClient.signPoxSignature({
+      topic: 'stack-stx',
+      poxAddress: poxBTCAddress,
+      rewardCycle: reward_cycle_id,
+      period: number_of_cycles,
+      signerPrivateKey: createStacksPrivateKey(signerPrivKey),
+      maxAmount: stacking_amount,
+      authId: pox_auth_id,
+    });
 
     const request: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -1009,7 +1028,12 @@ describe('Rosetta Construction', () => {
           },
           metadata: {
             number_of_cycles: number_of_cycles,
-            pox_addr: '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3',
+            pox_addr: poxBTCAddress,
+            signer_key: signerPubKey,
+            signer_private_key: signerPrivKey,
+            reward_cycle_id: reward_cycle_id,
+            pox_auth_id: pox_auth_id,
+            signer_signature: signerSig,
           },
         },
       ],
@@ -1028,26 +1052,20 @@ describe('Rosetta Construction', () => {
       ],
     };
 
-    const poxBTCAddress = '1Xik14zRm29UsyS6DjhYg4iZeZqsDa8D3';
-
-    const { version: hashMode, data } = decodeBtcAddress(poxBTCAddress);
-    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-    const hashbytes = bufferCV(data);
-    const poxAddressCV = tupleCV({
-      hashbytes,
-      version: hashModeBuffer,
-    });
-
     const stackingTx: UnsignedContractCallOptions = {
       contractAddress: contract_address,
       contractName: contract_name,
       functionName: 'stack-stx',
       publicKey: publicKey,
       functionArgs: [
-        uintCV(stacking_amount),
-        poxAddressCV,
-        uintCV(burn_block_height),
-        uintCV(number_of_cycles),
+        uintCV(stacking_amount), // amount-ustx
+        poxAddressToTuple(poxBTCAddress), // pox-addr
+        uintCV(burn_block_height), // start-burn-ht
+        uintCV(number_of_cycles), // lock-period
+        someCV(bufferCV(hexToBytes(signerSig))), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(stacking_amount), // max-amount
+        uintCV(pox_auth_id), // auth-id
       ],
       validateWithAbi: false,
       nonce: 0,
@@ -1057,7 +1075,6 @@ describe('Rosetta Construction', () => {
     };
     const transaction = await makeUnsignedContractCall(stackingTx);
     const unsignedTransaction = Buffer.from(transaction.serialize());
-    // const hexBytes = digestSha512_256(unsignedTransaction).toString('hex');
 
     const signer = new TransactionSigner(transaction);
 
@@ -1563,12 +1580,14 @@ describe('Rosetta Construction', () => {
         sender_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6',
         type: 'stack_stx',
         suggested_fee_multiplier: 1,
-        amount: '-500000',
+        amount: '500000',
         symbol: 'STX',
         decimals: 6,
         max_fee: '12380898',
         number_of_cycles: 3,
         size: 260,
+        pox_addr: '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66',
+        signer_key: '02'.repeat(33),
       },
       public_keys: [{ hex_bytes: publicKey, curve_type: 'secp256k1' }],
     };
@@ -1692,13 +1711,17 @@ describe('Rosetta Construction', () => {
     expect(deriveResult.body).toEqual(deriveExpectResponse);
 
     //preprocess
-    const fee = '360';
+    const fee = '600';
     const stacking_amount = '1250180000000000'; //minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const number_of_cycles = 1;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';
-    const size = 260;
+    const size = 405;
     const max_fee = '12380898';
+    const pox_auth_id = '234565725';
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
     const preprocessRequest: RosettaConstructionPreprocessRequest = {
       network_identifier: {
         blockchain: RosettaConstants.blockchain,
@@ -1727,6 +1750,9 @@ describe('Rosetta Construction', () => {
           metadata: {
             number_of_cycles: number_of_cycles,
             pox_addr: pox_addr,
+            pox_auth_id: pox_auth_id,
+            signer_key: signerPubKey,
+            signer_private_key: signerPrivKey,
           },
         },
         {
@@ -1782,6 +1808,9 @@ describe('Rosetta Construction', () => {
         size: size,
         number_of_cycles: number_of_cycles,
         pox_addr: pox_addr,
+        pox_auth_id: pox_auth_id,
+        signer_key: signerPubKey,
+        signer_private_key: signerPrivKey,
       },
       required_public_keys: [
         {
@@ -1816,6 +1845,7 @@ describe('Rosetta Construction', () => {
     const contract_address = resultMetadata.body.metadata.contract_address;
     const contract_name = resultMetadata.body.metadata.contract_name;
     const burn_block_height = resultMetadata.body.metadata.burn_block_height;
+    const reward_cycle_id = resultMetadata.body.metadata.reward_cycle_id;
     const nonce = resultMetadata.body.metadata.account_sequence;
     const payloadsRequest: RosettaConstructionPayloadsRequest = {
       network_identifier: {
@@ -1831,12 +1861,16 @@ describe('Rosetta Construction', () => {
         },
       ],
     };
-    const { version: hashMode, data } = decodeBtcAddress(pox_addr);
-    const hashModeBuffer = bufferCV(Buffer.from([hashMode]));
-    const hashbytes = bufferCV(data);
-    const poxAddressCV = tupleCV({
-      hashbytes,
-      version: hashModeBuffer,
+
+    const stackingClient = new StackingClient('', getStacksTestnetNetwork());
+    const signerSig = stackingClient.signPoxSignature({
+      topic: 'stack-stx',
+      poxAddress: pox_addr,
+      rewardCycle: reward_cycle_id,
+      period: number_of_cycles,
+      signerPrivateKey: createStacksPrivateKey(signerPrivKey),
+      maxAmount: stacking_amount,
+      authId: pox_auth_id,
     });
     const stackingTx: UnsignedContractCallOptions = {
       contractAddress: contract_address,
@@ -1844,10 +1878,14 @@ describe('Rosetta Construction', () => {
       functionName: 'stack-stx',
       publicKey: publicKey,
       functionArgs: [
-        uintCV(stacking_amount),
-        poxAddressCV,
-        uintCV(burn_block_height),
-        uintCV(number_of_cycles),
+        uintCV(stacking_amount), // amount-ustx
+        poxAddressToTuple(pox_addr), // pox-addr
+        uintCV(burn_block_height), // start-burn-ht
+        uintCV(number_of_cycles), // lock-period
+        someCV(bufferCV(hexToBytes(signerSig))), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(stacking_amount), // max-amount
+        uintCV(pox_auth_id), // auth-id
       ],
       validateWithAbi: false,
       nonce: nonce,
@@ -2116,7 +2154,7 @@ describe('Rosetta Construction', () => {
     expect(deriveResult.body).toEqual(deriveExpectResponse);
 
     //preprocess
-    const fee = '260';
+    const fee = '293';
     const stacking_amount = '1250180000000000'; //minimum stacking
     const sender = deriveResult.body.account_identifier.address;
     const pox_addr = '2MtzNEqm2D9jcbPJ5mW7Z3AUNwqt3afZH66';

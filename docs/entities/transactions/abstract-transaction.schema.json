@@ -11,6 +11,8 @@
         "tx_index",
         "block_hash",
         "block_height",
+        "block_time",
+        "block_time_iso",
         "burn_block_time",
         "burn_block_time_iso",
         "parent_burn_block_time",
@@ -40,6 +42,14 @@
         "block_height": {
           "type": "integer",
           "description": "Height of the block this transactions was associated with"
+        },
+        "block_time": {
+          "type": "number",
+          "description": "Unix timestamp (in seconds) indicating when this block was mined."
+        },
+        "block_time_iso": {
+          "type": "string",
+          "description": "An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined."
         },
         "burn_block_time": {
           "type": "integer",

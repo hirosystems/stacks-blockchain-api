@@ -1,19 +1,19 @@
+import { hexToBytes } from '@stacks/common';
+import { poxAddressToTuple } from '@stacks/stacking';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  Cl,
+  bufferCV,
   makeContractCall,
   makeSTXTokenTransfer,
   noneCV,
+  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import {
-  ClarityValueOptionalNone,
-  ClarityValueTuple,
-  ClarityValueUInt,
-  decodeClarityValue,
-} from 'stacks-encoding-native-js';
+import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
@@ -51,16 +51,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     seedAccount = accountFromKey(seedKey);
     POOL = accountFromKey(delegatorKey);
     STACKER = accountFromKey(delegateeKey);
-  });
-
-  test('Import testing accounts to bitcoind', async () => {
-    for (const account of [POOL, STACKER]) {
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: account.wif,
-        label: account.btcAddr,
-        rescan: false,
-      });
-    }
   });
 
   test('Seed delegate accounts', async () => {
@@ -238,7 +228,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
-    // validate delegate-stack-stx pox2 event for this tx
+    // validate delegate-stack-stx pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -279,11 +269,32 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       fee: 10000n,
     });
     const revokeTxResult = await testEnv.client.sendTransaction(Buffer.from(revokeTx.serialize()));
-    const revokeStackDbTx = await standByForTxSuccess(revokeTxResult.txId);
+    const revokeStackDbTx = await standByForTx(revokeTxResult.txId);
 
-    const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
-    expect(revokeStackResult.repr).toEqual('(ok true)');
     expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
+    expect(Cl.deserialize(revokeStackDbTx.raw_result)).toEqual(
+      Cl.ok(
+        Cl.some(
+          Cl.tuple({
+            'amount-ustx': Cl.uint(DELEGATE_HALF_AMOUNT),
+            'delegated-to': Cl.standardPrincipal(POOL.stxAddr),
+            'pox-addr': Cl.some(poxAddressToTuple(STACKER.btcTestnetAddr)),
+            'until-burn-ht': Cl.none(),
+          })
+        )
+      )
+    );
+
+    // validate revoke-delegate-stx pox event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${revokeTxResult.txId}`);
+    expect(res.results).toHaveLength(1);
+    expect(res.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'revoke-delegate-stx',
+        stacker: STACKER.stxAddr,
+        data: { delegate_to: POOL.stxAddr },
+      })
+    );
 
     // revocation doesn't change anything for the previous delegate-stack-stx state
     const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
@@ -411,6 +422,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         STACKER.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        bufferCV(randomBytes(33)), // signer-key
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -421,7 +433,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     await standByForTxSuccess(stackAggrCommitTxId);
 
-    // validate stack-aggregation-commit pox2 event for this tx
+    // validate stack-aggregation-commit pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);

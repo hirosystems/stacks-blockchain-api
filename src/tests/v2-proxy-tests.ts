@@ -63,6 +63,7 @@ describe('v2-proxy tests', () => {
           parent_block_hash: '0x00',
           parent_microblock_hash: '',
           block_height: 1,
+          block_time: 1234,
           burn_block_time: 1234,
           burn_block_hash: '0x1234',
           burn_block_height: 123,
@@ -75,6 +76,7 @@ describe('v2-proxy tests', () => {
           execution_cost_write_count: 0,
           execution_cost_write_length: 0,
           tx_count: 1,
+          signer_bitvec: null,
         };
 
         // Ensure db has a block so that current block height queries return a found result

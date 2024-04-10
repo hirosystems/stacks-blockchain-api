@@ -9,6 +9,12 @@ import {
   SmartContractStatusParams,
   AddressParams,
   AddressTransactionParams,
+  PoxCyclePaginationQueryParams,
+  PoxCycleLimitParamSchema,
+  PoxCycleParams,
+  PoxSignerPaginationQueryParams,
+  PoxSignerLimitParamSchema,
+  PoxCycleSignerParams,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -26,6 +32,10 @@ import {
   DbEventTypeId,
   DbAddressTransactionEvent,
   DbAssetEventTypeId,
+  DbPoxCycle,
+  PoxCycleQueryResult,
+  DbPoxCycleSigner,
+  DbPoxCycleSignerStacker,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -224,12 +234,11 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      const blocks = blocksQuery.map(r => r);
       return {
         limit,
         offset,
-        results: blocks,
-        total: blocks[0].total,
+        results: blocksQuery,
+        total: blocksQuery.count > 0 ? blocksQuery[0].total : 0,
       };
     });
   }
@@ -253,7 +262,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks
         FROM blocks
-        WHERE canonical = true AND ${filter} 
+        WHERE canonical = true AND ${filter}
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
@@ -458,6 +467,136 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset,
         results,
+      };
+    });
+  }
+
+  async getPoxCycles(args: PoxCyclePaginationQueryParams): Promise<DbPaginatedResult<DbPoxCycle>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxCycleLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const results = await sql<(PoxCycleQueryResult & { total: number })[]>`
+        SELECT
+          cycle_number, block_height, index_block_hash, total_weight, total_signers,
+          total_stacked_amount, COUNT(*) OVER()::int AS total
+        FROM pox_cycles
+        WHERE canonical = TRUE
+        ORDER BY cycle_number DESC
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      const total = results.length > 0 ? results[0].total : 0;
+      return {
+        limit,
+        offset,
+        results: results,
+        total,
+      };
+    });
+  }
+
+  async getPoxCycle(args: PoxCycleParams): Promise<DbPoxCycle | undefined> {
+    return this.sqlTransaction(async sql => {
+      const results = await sql<PoxCycleQueryResult[]>`
+        SELECT
+          cycle_number, block_height, index_block_hash, total_weight, total_signers,
+          total_stacked_amount
+        FROM pox_cycles
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        LIMIT 1
+      `;
+      if (results.count > 0) return results[0];
+    });
+  }
+
+  async getPoxCycleSigners(
+    args: PoxCycleParams & PoxSignerPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const cycleCheck =
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const results = await sql<(DbPoxCycleSigner & { total: number })[]>`
+        SELECT
+          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent,
+          COUNT(*) OVER()::int AS total
+        FROM pox_sets
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
+        ORDER BY weight DESC, stacked_amount DESC, signing_key
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      return {
+        limit,
+        offset,
+        results: results,
+        total: results.count > 0 ? results[0].total : 0,
+      };
+    });
+  }
+
+  async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
+    return this.sqlTransaction(async sql => {
+      const cycleCheck =
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const results = await sql<DbPoxCycleSigner[]>`
+        SELECT
+          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
+        FROM pox_sets
+        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        LIMIT 1
+      `;
+      if (results.count > 0) return results[0];
+    });
+  }
+
+  async getPoxCycleSignerStackers(
+    args: PoxCycleSignerParams & PoxSignerPaginationQueryParams
+  ): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
+    return this.sqlTransaction(async sql => {
+      const limit = args.limit ?? PoxSignerLimitParamSchema.default;
+      const offset = args.offset ?? 0;
+      const cycleCheck = await sql`
+        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1
+      `;
+      if (cycleCheck.count === 0)
+        throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
+      const signerCheck = await sql`
+        SELECT signing_key
+        FROM pox_sets
+        WHERE cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        LIMIT 1
+      `;
+      if (signerCheck.count === 0)
+        throw new InvalidRequestError(
+          `PoX cycle signer not found`,
+          InvalidRequestErrorType.invalid_param
+        );
+      const results = await sql<(DbPoxCycleSignerStacker & { total: number })[]>`
+        WITH stackers AS (
+          SELECT DISTINCT ON (stacker) stacker, locked, pox_addr
+          FROM pox4_events
+          WHERE canonical = true
+            AND microblock_canonical = true
+            AND start_cycle_id <= ${args.cycle_number}
+            AND (end_cycle_id >= ${args.cycle_number} OR end_cycle_id IS NULL)
+            AND signer_key = ${args.signer_key}
+          ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        )
+        SELECT *, COUNT(*) OVER()::int AS total FROM stackers
+        OFFSET ${offset}
+        LIMIT ${limit}
+      `;
+      return {
+        limit,
+        offset,
+        results: results,
+        total: results.count > 0 ? results[0].total : 0,
       };
     });
   }
