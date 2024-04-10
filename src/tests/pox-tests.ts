@@ -1,5 +1,5 @@
 import * as supertest from 'supertest';
-import { PgSqlClient } from '@hirosystems/api-toolkit';
+import { PgSqlClient, timeout } from '@hirosystems/api-toolkit';
 import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
 import { PgWriteStore } from '../datastore/pg-write-store';
@@ -19,7 +19,10 @@ describe('PoX tests', () => {
       skipMigrations: true,
     });
     client = db.sql;
-    api = await startApiServer({ datastore: db, chainId: ChainID.Mainnet });
+    api = await startApiServer({ datastore: db, chainId: ChainID.Testnet });
+
+    // set chainId env, because TSV import reads it manually
+    process.env['STACKS_CHAIN_ID'] = ChainID.Testnet.toString();
   });
 
   afterEach(async () => {
@@ -147,12 +150,168 @@ describe('PoX tests', () => {
       offset: 0,
       results: [
         {
-          pox_address: '15Z2sAvjgVDpcBh4vx9g2XKU8FVHYcXNaj',
+          pox_address: 'mk4zAE1iVWf5PJAgeX83rSXnzF5zQBiqf1',
           stacked_amount: '686251350000000000',
           stacker_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
         },
       ],
       total: 1,
+    });
+  });
+
+  describe('regtest-env stack-stx in-reward-phase', () => {
+    // TEST CASE
+    // steph (STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6) stacks (using signer 029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7)
+    //
+    // current cycle: 5
+    // stephs stacks
+    // snapshot 1
+    // wait for prepare phase (i.e. pox-anchor block mined)
+    // snapshot 2
+    // wait for cycle 6
+    // snapshot 3
+
+    test('snapshot 1', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S1.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text).results.length).toBe(0); // regtest doesn't send pox-set earlier
+    });
+
+    test('snapshot 2', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S2.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text).results[0]).toEqual(
+        expect.objectContaining({
+          cycle_number: 6, // !!! next cycle (even though we're still in cycle 5)
+          total_signers: 3, // no addition signer
+          total_weight: 21, // additional weight from steph's stacking
+        })
+      );
+    });
+
+    test('snapshot 3', async () => {
+      await importEventsFromTsv(
+        'src/tests/tsv/regtest-env-pox-4-stack-stx-in-reward-phase-S3.tsv',
+        'archival',
+        true,
+        true
+      );
+
+      const cycles = await supertest(api.server).get(`/extended/v2/pox/cycles`);
+      expect(cycles.status).toBe(200);
+      expect(cycles.type).toBe('application/json');
+      expect(JSON.parse(cycles.text)).toStrictEqual({
+        limit: 20,
+        offset: 0,
+        results: [
+          {
+            block_height: 14,
+            cycle_number: 6, // current cycle
+            index_block_hash: '0xb2c9e06611349a04e98012748547a5dea6d60fd6d69e43244b9c0a483f1f7c86',
+            total_signers: 3,
+            total_stacked_amount: '17501190000000000',
+            total_weight: 21,
+          },
+        ],
+        total: 1,
+      });
+
+      const cycle = await supertest(api.server).get(`/extended/v2/pox/cycles/6`);
+      expect(cycle.status).toBe(200);
+      expect(cycle.type).toBe('application/json');
+      expect(JSON.parse(cycle.text)).toStrictEqual({
+        block_height: 14,
+        cycle_number: 6,
+        index_block_hash: '0xb2c9e06611349a04e98012748547a5dea6d60fd6d69e43244b9c0a483f1f7c86',
+        total_signers: 3,
+        total_stacked_amount: '17501190000000000',
+        total_weight: 21,
+      });
+
+      const signers = await supertest(api.server).get(`/extended/v2/pox/cycles/6/signers`);
+      expect(signers.status).toBe(200);
+      expect(signers.type).toBe('application/json');
+      expect(JSON.parse(signers.text)).toStrictEqual({
+        limit: 100,
+        offset: 0,
+        results: [
+          {
+            signing_key: '0x028efa20fa5706567008ebaf48f7ae891342eeb944d96392f719c505c89f84ed8d',
+            stacked_amount: '7500510000000000',
+            stacked_amount_percent: 42.857142857142854,
+            weight: 9,
+            weight_percent: 42.857142857142854,
+          },
+          {
+            signing_key: '0x023f19d77c842b675bd8c858e9ac8b0ca2efa566f17accf8ef9ceb5a992dc67836',
+            stacked_amount: '5000340000000000',
+            stacked_amount_percent: 28.571428571428573,
+            weight: 6,
+            weight_percent: 28.57142857142857,
+          },
+          {
+            // steph doubled the weight of this signer
+            signing_key: '0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7',
+            stacked_amount: '5000340000000000',
+            stacked_amount_percent: 28.571428571428573,
+            weight: 6,
+            weight_percent: 28.57142857142857,
+          },
+        ],
+        total: 3,
+      });
+
+      const signer = await supertest(api.server).get(
+        `/extended/v2/pox/cycles/6/signers/0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7`
+      );
+      expect(signer.status).toBe(200);
+      expect(signer.type).toBe('application/json');
+      expect(JSON.parse(signer.text)).toStrictEqual({
+        signing_key: '0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7',
+        stacked_amount: '5000340000000000',
+        stacked_amount_percent: 28.571428571428573,
+        weight: 6,
+        weight_percent: 28.57142857142857,
+      });
+
+      const stackers = await supertest(api.server).get(
+        `/extended/v2/pox/cycles/6/signers/0x029fb154a570a1645af3dd43c3c668a979b59d21a46dd717fd799b13be3b2a0dc7/stackers`
+      );
+      expect(stackers.status).toBe(200);
+      expect(stackers.type).toBe('application/json');
+      expect(JSON.parse(stackers.text)).toStrictEqual({
+        limit: 100,
+        offset: 0,
+        results: [
+          {
+            pox_address: 'n2v875jbJ4RjBnTjgbfikDfnwsDV5iUByw',
+            stacked_amount: '2500170000000000',
+            stacker_address: 'ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP', // signer
+          },
+          {
+            pox_address: 'mhYeZXrSEuyf2wbJ14qZ2apG7ofMLDj9Ss',
+            stacked_amount: '2500170000000000',
+            stacker_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6', // steph
+          },
+        ],
+        total: 2,
+      });
     });
   });
 });
