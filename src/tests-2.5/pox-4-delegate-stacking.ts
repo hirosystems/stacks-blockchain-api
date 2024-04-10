@@ -457,7 +457,6 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   });
 
   test('Wait for current two pox cycles to complete', async () => {
-    // await standByForPoxCycle();
     await standByForPoxCycle();
     await standByForPoxCycle();
   });
