@@ -31,15 +31,19 @@ import * as supertest from 'supertest';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
+import * as crypto from 'node:crypto';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
-async function createPox2StackStx(args: {
+async function createPox4StackStx(args: {
   stxAmount: bigint;
   cycleCount: number;
   stackerAddress: string;
   bitcoinWif: string;
   poxAddrPayout: string;
+  signerKey: string;
+  maxAmount: bigint;
+  authID: number;
 }) {
   const btcAccount = ECPair.fromWIF(args.bitcoinWif, btc.networks.regtest);
   const feeAmount = 0.0001;
@@ -97,14 +101,17 @@ async function createPox2StackStx(args: {
   });
 
   // StackStxOp: this operation executes the stack-stx operation.
-  // 0      2  3                             19        20
-  // |------|--|-----------------------------|---------|
-  //  magic  op         uSTX to lock (u128)     cycles (u8)
+  // 0      2  3                             19           20                  53                 69                        73
+  // |------|--|-----------------------------|------------|-------------------|-------------------|-------------------------|
+  // magic  op         uSTX to lock (u128)     cycles (u8)     signer key (optional)   max_amount (optional u128)  auth_id (optional u32)
   const stackStxOpTxPayload = Buffer.concat([
     Buffer.from('id'), // magic: 'id' ascii encoded (for krypton)
     Buffer.from('x'), // op: 'x' ascii encoded,
     Buffer.from(args.stxAmount.toString(16).padStart(32, '0'), 'hex'), // uSTX to lock (u128)
     Buffer.from([args.cycleCount]), // cycles (u8)
+    Buffer.from(args.signerKey, 'hex'), // signer key (33 bytes)
+    Buffer.from(args.maxAmount.toString(16).padStart(32, '0'), 'hex'), // max_amount (u128)
+    Buffer.from(args.authID.toString(16).padStart(8, '0'), 'hex'), // auth_id (u32)
   ]);
   const stackStxOpTxHex = new btc.Psbt({ network: btc.networks.regtest })
     .setVersion(1)
@@ -150,6 +157,9 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
   // regtest btc addr: bcrt1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfs4w3npt
   const poxAddrPayoutKey = 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01';
   let poxAddrPayoutAccount: Account;
+
+  const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+  const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
 
   let testAccountBalance: bigint;
   const testAccountBtcBalance = 5;
@@ -250,12 +260,15 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
   test('Stack via Bitcoin tx', async () => {
     const poxInfo = await client.getPox();
     testStackAmount = BigInt(poxInfo.min_amount_ustx * 1.2);
-    stxOpBtcTxs = await createPox2StackStx({
+    stxOpBtcTxs = await createPox4StackStx({
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
       poxAddrPayout: poxAddrPayoutAccount.btcAddr,
       stxAmount: testStackAmount,
       cycleCount: 6,
+      signerKey: signerPubKey,
+      maxAmount: testStackAmount,
+      authID: 123456789,
     });
   });
 
@@ -281,8 +294,7 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     await standByUntilBlock(curInfo.stacks_tip_height + 1);
   });
 
-  // TODO: this is blocked by a blockchain bug: https://github.com/stacks-network/stacks-core/issues/4282
-  test.skip('Test synthetic STX tx', async () => {
+  test('Test synthetic STX tx', async () => {
     const coreNodeBalance = await client.getAccount(account.stxAddr);
     const addressEventsResp = await supertest(api.server)
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
