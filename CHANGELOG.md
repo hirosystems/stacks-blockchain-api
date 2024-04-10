@@ -1,62 +1,9 @@
-## [7.10.0-nakamoto.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.6...v7.10.0-nakamoto.7) (2024-04-04)
-
-
-### Features
-
-* add nakamoto block time to v2 endpoints ([#1921](https://github.com/hirosystems/stacks-blockchain-api/issues/1921)) ([ae6bbe8](https://github.com/hirosystems/stacks-blockchain-api/commit/ae6bbe80b66520b7c7c7bc42b29716fb60146229))
-
-## [7.10.0-nakamoto.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.5...v7.10.0-nakamoto.6) (2024-04-02)
+## [7.9.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.9.1) (2024-04-05)
 
 
 ### Bug Fixes
 
-* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([a7ee96d](https://github.com/hirosystems/stacks-blockchain-api/commit/a7ee96de55c8a61c1e2d6bf9ef7c3b220fd82803))
-
-## [7.10.0-nakamoto.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.4...v7.10.0-nakamoto.5) (2024-03-28)
-
-
-### Bug Fixes
-
-* cycle signer filter ([#1916](https://github.com/hirosystems/stacks-blockchain-api/issues/1916)) ([dc7d600](https://github.com/hirosystems/stacks-blockchain-api/commit/dc7d6009556b833ff3994b35c96ba4456ca7e81f))
-
-## [7.10.0-nakamoto.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.3...v7.10.0-nakamoto.4) (2024-03-28)
-
-
-### Bug Fixes
-
-* other empty result responses ([#1915](https://github.com/hirosystems/stacks-blockchain-api/issues/1915)) ([3cd2c64](https://github.com/hirosystems/stacks-blockchain-api/commit/3cd2c64674e7abe0b4ba3ed7c1890ea63c1b87b2))
-
-## [7.10.0-nakamoto.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.2...v7.10.0-nakamoto.3) (2024-03-28)
-
-
-### Bug Fixes
-
-* cycles response for empty cycle info ([#1914](https://github.com/hirosystems/stacks-blockchain-api/issues/1914)) ([a7a4558](https://github.com/hirosystems/stacks-blockchain-api/commit/a7a4558105f669260cc4948b28213196c4c62079))
-
-## [7.10.0-nakamoto.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0-nakamoto.1...v7.10.0-nakamoto.2) (2024-03-25)
-
-
-### Bug Fixes
-
-* add nakamoto testnet to openapi docs ([#1910](https://github.com/hirosystems/stacks-blockchain-api/issues/1910)) ([01fb971](https://github.com/hirosystems/stacks-blockchain-api/commit/01fb9713e86b1a289dbca016ad7b5c366aaef74c))
-
-## [7.10.0-nakamoto.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.0...v7.10.0-nakamoto.1) (2024-03-21)
-
-
-### Features
-
-* add signer-keys from pox4 events ([#1857](https://github.com/hirosystems/stacks-blockchain-api/issues/1857)) ([c17ad23](https://github.com/hirosystems/stacks-blockchain-api/commit/c17ad23d3f451d7c072ff94f4cb1ae7a2f78705d))
-* ingest signer_bitvec ([#1900](https://github.com/hirosystems/stacks-blockchain-api/issues/1900)) ([aa1750f](https://github.com/hirosystems/stacks-blockchain-api/commit/aa1750f7ebbdfe4c2a84583f98c3ff465236f8aa))
-* nakamoto block timestamps ([#1886](https://github.com/hirosystems/stacks-blockchain-api/issues/1886)) ([f547832](https://github.com/hirosystems/stacks-blockchain-api/commit/f5478329d7267a65b5f3c557b197feadff298afb))
-* pox 4 revoke events and signer-key support ([#1829](https://github.com/hirosystems/stacks-blockchain-api/issues/1829)) ([5e5650a](https://github.com/hirosystems/stacks-blockchain-api/commit/5e5650a29bcc5950f061ed0a84961075c855a863)), closes [#1849](https://github.com/hirosystems/stacks-blockchain-api/issues/1849)
-* pox stacker & signer cycle details ([#1873](https://github.com/hirosystems/stacks-blockchain-api/issues/1873)) ([d2c2805](https://github.com/hirosystems/stacks-blockchain-api/commit/d2c28059cfca99cd9b9a35cb8c96074a60fedd35))
-
-
-### Bug Fixes
-
-* event-replay readiness for nakamoto & fix for [#1879](https://github.com/hirosystems/stacks-blockchain-api/issues/1879) ([#1903](https://github.com/hirosystems/stacks-blockchain-api/issues/1903)) ([1572e73](https://github.com/hirosystems/stacks-blockchain-api/commit/1572e737337680510850b23662e1f36c57ebc198))
-* remove signer columns from tenure-change transactions ([#1845](https://github.com/hirosystems/stacks-blockchain-api/issues/1845)) ([8ec726b](https://github.com/hirosystems/stacks-blockchain-api/commit/8ec726b05531abb7787d035d21f7afc276574b9c))
-* sql transactional consistency bug with fetching chaintip in various areas ([#1853](https://github.com/hirosystems/stacks-blockchain-api/issues/1853)) ([ada8536](https://github.com/hirosystems/stacks-blockchain-api/commit/ada85364b5465b59e1dba0e82815bd8b8057f23f))
+* batch drop mempool transactions ([#1920](https://github.com/hirosystems/stacks-blockchain-api/issues/1920)) ([#1927](https://github.com/hirosystems/stacks-blockchain-api/issues/1927)) ([f522d79](https://github.com/hirosystems/stacks-blockchain-api/commit/f522d795cef9b3f3ac0f1222b74a261f332c3065))
 
 ## [7.9.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.8.2...v7.9.0) (2024-03-15)
 
