@@ -5,7 +5,15 @@ import {
   TransactionEventsResponse,
   TransactionEventStxLock,
 } from '@stacks/stacks-blockchain-api-types';
-import { AnchorMode, makeSTXTokenTransfer } from '@stacks/transactions';
+import {
+  AnchorMode,
+  boolCV,
+  bufferCV,
+  makeContractCall,
+  makeSTXTokenTransfer,
+  stringAsciiCV,
+  uintCV,
+} from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { StacksCoreRpcClient } from '../core-rpc/client';
 import { ECPair } from '../ec-helpers';
@@ -29,9 +37,9 @@ import { StacksNetwork } from '@stacks/network';
 import { RPCClient } from 'rpc-bitcoin';
 import * as supertest from 'supertest';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
-import * as crypto from 'node:crypto';
+import { hexToBytes } from '@stacks/common';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
@@ -158,11 +166,10 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
   const poxAddrPayoutKey = 'c71700b07d520a8c9731e4d0f095aa6efb91e16e25fb27ce2b72e7b698f8127a01';
   let poxAddrPayoutAccount: Account;
 
-  const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
-  const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
-
   let testAccountBalance: bigint;
   const testAccountBtcBalance = 5;
+  const testStackAuthID = 123456789;
+  const cycleCount = 6;
   let testStackAmount: bigint;
 
   let stxOpBtcTxs: {
@@ -257,18 +264,49 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height); // a good time to stack
   });
 
-  test('Stack via Bitcoin tx', async () => {
+  test('Submit set-signer-key-authorization transaction', async () => {
     const poxInfo = await client.getPox();
     testStackAmount = BigInt(poxInfo.min_amount_ustx * 1.2);
+    const [contractAddress, contractName] = poxInfo.contract_id.split('.');
+    const tx = await makeContractCall({
+      senderKey: seedAccount.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'set-signer-key-authorization',
+      functionArgs: [
+        poxAddressToTuple(poxAddrPayoutAccount.btcAddr), // (pox-addr { version: (buff 1), hashbytes: (buff 32)})
+        uintCV(cycleCount), // (period uint)
+        uintCV(poxInfo.current_cycle.id), // (reward-cycle uint)
+        stringAsciiCV('stack-stx'), // (topic (string-ascii 14))
+        bufferCV(hexToBytes(seedAccount.pubKey)), // (signer-key (buff 33))
+        boolCV(true), // (allowed bool)
+        uintCV(testStackAmount), // (max-amount uint)
+        uintCV(testStackAuthID), // (auth-id uint)
+      ],
+      network: testEnv.stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: 10000,
+      validateWithAbi: false,
+    });
+    const expectedTxId = '0x' + tx.txid();
+    const sendResult = await testEnv.client.sendTransaction(Buffer.from(tx.serialize()));
+    expect(sendResult.txId).toBe(expectedTxId);
+
+    // Wait for API to receive and ingest tx
+    await standByForTxSuccess(expectedTxId);
+  });
+
+  test('Stack via Bitcoin tx', async () => {
+    const poxInfo = await client.getPox();
     stxOpBtcTxs = await createPox4StackStx({
       bitcoinWif: account.wif,
       stackerAddress: account.stxAddr,
       poxAddrPayout: poxAddrPayoutAccount.btcAddr,
       stxAmount: testStackAmount,
-      cycleCount: 6,
-      signerKey: signerPubKey,
+      cycleCount: cycleCount,
+      signerKey: seedAccount.pubKey,
       maxAmount: testStackAmount,
-      authID: 123456789,
+      authID: testStackAuthID,
     });
   });
 

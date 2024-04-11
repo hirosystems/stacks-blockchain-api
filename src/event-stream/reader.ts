@@ -1,5 +1,7 @@
 import {
   BurnchainOp,
+  BurnchainOpRegisterAssetFt,
+  BurnchainOpRegisterAssetNft,
   CoreNodeBlockMessage,
   CoreNodeEvent,
   CoreNodeEventType,
@@ -86,7 +88,7 @@ export function getTxSponsorAddress(tx: DecodedTxResult): string | undefined {
 
 function createSubnetTransactionFromL1RegisterAsset(
   chainId: ChainID,
-  burnchainOp: BurnchainOp,
+  burnchainOp: BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt,
   subnetEvent: SmartContractEvent,
   txId: string
 ): DecodedTxResult {
@@ -720,6 +722,7 @@ export function parseMessageTransaction(
       } else if (
         subnetEvents.length > 0 &&
         coreTx.burnchain_op &&
+        'register_asset' in coreTx.burnchain_op &&
         coreTx.burnchain_op.register_asset
       ) {
         rawTx = createSubnetTransactionFromL1RegisterAsset(

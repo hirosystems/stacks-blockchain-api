@@ -148,7 +148,7 @@ interface FtBurnEvent extends CoreNodeEventBase {
   };
 }
 
-interface BurnchainOpRegisterAssetNft {
+export interface BurnchainOpRegisterAssetNft {
   register_asset: {
     asset_type: 'nft';
     burn_header_hash: string;
@@ -158,7 +158,7 @@ interface BurnchainOpRegisterAssetNft {
   };
 }
 
-interface BurnchainOpRegisterAssetFt {
+export interface BurnchainOpRegisterAssetFt {
   register_asset: {
     asset_type: 'ft';
     burn_header_hash: string;
@@ -168,7 +168,7 @@ interface BurnchainOpRegisterAssetFt {
   };
 }
 
-interface BurnchainOpStackStx {
+export interface BurnchainOpStackStx {
   stack_stx: {
     auth_id: number; // 123456789,
     burn_block_height: number; // 121,
