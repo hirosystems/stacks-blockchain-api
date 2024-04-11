@@ -400,11 +400,11 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
 
     // then commit to increased amount with call to `stack-aggregation-increase`
     const poxInfo2 = await testEnv.client.getPox();
-    const maxAmount = amountDelegated;
+    const maxAmount = amountStackedInitial + stxToDelegateIncrease;
     const rewardCycle = BigInt(poxInfo2.next_cycle.id);
     const signerSig = hexToBytes(
       stackingClient.signPoxSignature({
-        topic: 'agg-commit',
+        topic: 'agg-increase',
         poxAddress: delegateeAccount.btcAddr,
         rewardCycle: Number(rewardCycle),
         period: 1,

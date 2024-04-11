@@ -94,7 +94,7 @@
     "@stacks/common": "6.10.0",
     "@stacks/encryption": "6.13.1",
     "@stacks/network": "6.11.3",
-    "@stacks/stacking": "6.13.1",
+    "@stacks/stacking": "6.13.2",
     "@stacks/transactions": "6.11.3",
     "@types/express-list-endpoints": "4.0.1",
     "@types/lru-cache": "5.1.1",
