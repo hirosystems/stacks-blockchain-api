@@ -16,11 +16,12 @@ import {
 import { stxToMicroStx } from '../helpers';
 import {
   AnchorMode,
+  StacksPrivateKey,
   bufferCV,
   makeContractCall,
+  makeRandomPrivKey,
   makeSTXTokenTransfer,
   noneCV,
-  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
@@ -35,6 +36,9 @@ import {
 } from 'stacks-encoding-native-js';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import * as assert from 'assert';
+import { hexToBytes } from '@stacks/common';
+import { StackingClient } from '@stacks/stacking';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 describe('PoX-4 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -51,12 +55,20 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
 
   let poxCycleAddressIndex: bigint;
 
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
     // delegatorKey = ECPair.makeRandom({ compressed: true }).privateKey!.toString('hex');
     // delegateeKey = ECPair.makeRandom({ compressed: true }).privateKey!.toString('hex');
     delegatorAccount = accountFromKey(delegatorKey);
     delegateeAccount = accountFromKey(delegateeKey);
+
+    stackingClient = new StackingClient(delegatorAccount.stxAddr, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
   });
 
   test('Import testing accounts to bitcoind', async () => {
@@ -116,7 +128,8 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Get pox-info', async () => {
-    // wait until the start of the next cycle so we have enough blocks within the cycle to perform the various txs
+    // wait until the start of the next cycle so we have enough blocks within the cycle to perform
+    // the various txs
     poxInfo = await standByForNextPoxCycle();
     [contractAddress, contractName] = poxInfo.contract_id.split('.');
     expect(contractName).toBe('pox-4');
@@ -175,6 +188,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   let amountDelegated: bigint;
   let amountStackedInitial: bigint;
   test('Perform delegate-stack-stx operation', async () => {
+    await standByForPoxCycle();
     // get amount delegated
     const getDelegationInfo1 = await readOnlyFnCall<
       ClarityValueTuple<{ 'amount-ustx': ClarityValueUInt }>
@@ -190,7 +204,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     const poxInfo2 = await testEnv.client.getPox();
     const startBurnHt = poxInfo2.current_burnchain_block_height as number;
 
-    amountStackedInitial = amountDelegated - 2000n;
+    amountStackedInitial = amountDelegated - 20000n;
 
     const txFee = 10000n;
     const delegateStackStxTx = await makeContractCall({
@@ -203,7 +217,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         uintCV(amountStackedInitial), // amount-ustx
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(startBurnHt), // start-burn-ht
-        uintCV(1), // lock-period,
+        uintCV(6), // lock-period,
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -236,7 +250,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
     expect(res.results[0].data).toEqual(
       expect.objectContaining({
-        lock_period: '1',
+        lock_period: '6',
         lock_amount: amountStackedInitial.toString(),
       })
     );
@@ -250,8 +264,20 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Perform stack-aggregation-commit-indexed - delegator commit to stacking operation', async () => {
+    await standByForPoxCycle();
     const poxInfo2 = await testEnv.client.getPox();
     const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-commit',
+        poxAddress: delegateeAccount.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: amountStackedInitial,
+        authId: 0,
+      })
+    );
     const stackAggrCommitTx = await makeContractCall({
       senderKey: delegatorAccount.secretKey,
       contractAddress,
@@ -260,7 +286,10 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       functionArgs: [
         delegateeAccount.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
-        bufferCV(randomBytes(33)), // signer-key
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(amountStackedInitial.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -319,29 +348,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       Buffer.from(delegateStackIncreaseTx.serialize())
     );
 
-    // then commit to increased amount with call to `stack-aggregation-increase`
-    const poxInfo2 = await testEnv.client.getPox();
-    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
-    const stackAggrIncreaseTx = await makeContractCall({
-      senderKey: delegatorAccount.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'stack-aggregation-increase',
-      functionArgs: [
-        delegateeAccount.poxAddrClar, // pox-addr
-        uintCV(rewardCycle), // reward-cycle
-        uintCV(poxCycleAddressIndex), // reward-cycle-index
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-      fee: txFee,
-      validateWithAbi: false,
-      nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
-    });
-    const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
-      Buffer.from(stackAggrIncreaseTx.serialize())
-    );
-
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId);
     const delegateStackIncreaseResult = decodeClarityValue<
       ClarityValueResponseOk<
@@ -392,6 +398,45 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       })
     );
 
+    // then commit to increased amount with call to `stack-aggregation-increase`
+    const poxInfo2 = await testEnv.client.getPox();
+    const maxAmount = amountStackedInitial + stxToDelegateIncrease;
+    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-increase',
+        poxAddress: delegateeAccount.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: maxAmount,
+        authId: 1,
+      })
+    );
+    const stackAggrIncreaseTx = await makeContractCall({
+      senderKey: delegatorAccount.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-aggregation-increase',
+      functionArgs: [
+        delegateeAccount.poxAddrClar, // pox-addr
+        uintCV(rewardCycle), // reward-cycle
+        uintCV(poxCycleAddressIndex), // reward-cycle-index
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(maxAmount.toString()), // max-amount
+        uintCV(1), // auth-id
+      ],
+      network: testEnv.stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: txFee,
+      validateWithAbi: false,
+      nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
+    });
+    const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
+      Buffer.from(stackAggrIncreaseTx.serialize())
+    );
+
     // validate API endpoint balance state for account
     const apiBalance = await fetchGet<AddressStxBalanceResponse>(
       `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
@@ -421,7 +466,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Wait for current pox cycle to complete', async () => {
-    const poxStatus1 = await standByForPoxCycleEnd();
+    const poxStatus1 = await standByForPoxCycle();
     const poxStatus2 = await standByForPoxCycle();
     console.log('___Wait for current pox cycle to complete___', {
       pox1: { height: poxStatus1.current_burnchain_block_height, ...poxStatus1.next_cycle },

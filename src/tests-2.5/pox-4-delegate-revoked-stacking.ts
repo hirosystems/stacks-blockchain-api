@@ -1,11 +1,12 @@
-import { hexToBytes } from '@stacks/common';
-import { poxAddressToTuple } from '@stacks/stacking';
+import { StackingClient, poxAddressToTuple } from '@stacks/stacking';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
   Cl,
+  StacksPrivateKey,
   bufferCV,
   makeContractCall,
+  makeRandomPrivKey,
   makeSTXTokenTransfer,
   noneCV,
   randomBytes,
@@ -29,6 +30,8 @@ import {
   standByForTxSuccess,
   testEnv,
 } from '../test-utils/test-helpers';
+import { hexToBytes } from '@stacks/common';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -47,10 +50,18 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   let contractAddress: string;
   let contractName: string;
 
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
     POOL = accountFromKey(delegatorKey);
     STACKER = accountFromKey(delegateeKey);
+
+    stackingClient = new StackingClient(POOL.stxAddr, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
   });
 
   test('Seed delegate accounts', async () => {
@@ -292,7 +303,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       expect.objectContaining({
         name: 'revoke-delegate-stx',
         stacker: STACKER.stxAddr,
-        data: { delegate_to: POOL.stxAddr },
+        data: expect.objectContaining({ delegate_to: POOL.stxAddr }),
       })
     );
 
@@ -303,6 +314,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   });
 
   test('Try to perform delegate-stack-stx - while revoked', async () => {
+    await standByForPoxCycle();
     poxInfo = await testEnv.client.getPox();
     const startBurnHt = poxInfo.current_burnchain_block_height as number;
 
@@ -413,7 +425,17 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
     poxInfo = await testEnv.client.getPox();
     const rewardCycle = BigInt(poxInfo.next_cycle.id);
-
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-commit',
+        poxAddress: STACKER.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: DELEGATE_HALF_AMOUNT,
+        authId: 0,
+      })
+    );
     const stackAggrCommitTx = await makeContractCall({
       senderKey: POOL.secretKey,
       contractAddress,
@@ -422,7 +444,10 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         STACKER.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
-        bufferCV(randomBytes(33)), // signer-key
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(DELEGATE_HALF_AMOUNT.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -447,7 +472,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   });
 
   test('Wait for current two pox cycles to complete', async () => {
-    await standByForPoxCycleEnd();
     await standByForPoxCycle();
     await standByForPoxCycle();
   });

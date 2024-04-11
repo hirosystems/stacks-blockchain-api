@@ -1,7 +1,5 @@
 import { timeout } from '@hirosystems/api-toolkit';
-import { bytesToHex } from '@stacks/common';
 import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
-import { randomBytes } from '@stacks/transactions';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
@@ -9,6 +7,7 @@ import { getBitcoinAddressFromKey } from '../ec-helpers';
 import {
   fetchGet,
   stackStxWithRosetta,
+  standByForPoxCycle,
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
@@ -30,7 +29,7 @@ describe.each(BTC_ADDRESS_CASES)(
     const account = testnetKeys[1];
     let bitcoinAddress: string;
 
-    const cycleCount = 2;
+    const cycleCount = 1;
 
     const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
     const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
@@ -72,13 +71,9 @@ describe.each(BTC_ADDRESS_CASES)(
     });
 
     test('Validate reward set received', async () => {
-      for (let i = 0; i < cycleCount; i++) {
-        poxInfo = await testEnv.client.getPox();
-        const nextCycleStart = poxInfo.next_cycle.reward_phase_start_block_height;
-        await standByUntilBurnBlock(nextCycleStart); // time to check reward sets after a few blocks
-      }
-
-      await timeout(3000); // make sure rewards have been processed
+      await standByForPoxCycle();
+      await standByForPoxCycle();
+      await timeout(500); // make sure rewards have been processed
 
       poxInfo = await testEnv.client.getPox();
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(

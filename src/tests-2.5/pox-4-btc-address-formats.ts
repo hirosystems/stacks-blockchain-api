@@ -48,7 +48,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
     let stackingClient: StackingClient;
     let signerPrivKey: StacksPrivateKey;
     let signerPubKey: string;
-    const cycleCount = 2;
+    const cycleCount = 1;
 
     const { btcAddr, btcAddrDecoded, btcAddrRegtest, btcDescriptor } = addressSetup();
 
@@ -184,8 +184,8 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stx unlocked - RPC balance', async () => {
       // Wait until account has unlocked (finished Stacking cycles)
-      const rpcAccount = await testEnv.client.getAccount(account.stacksAddress);
-      await standByUntilBurnBlock(rpcAccount.unlock_height + poxInfo.reward_phase_block_length);
+      await standByForPoxCycle();
+      await standByForPoxCycle();
 
       // Check that STX are no longer reported as locked by the RPC endpoints:
       await timeout(200); // make sure unlock was processed
