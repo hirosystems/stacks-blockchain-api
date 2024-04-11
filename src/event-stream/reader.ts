@@ -1,8 +1,7 @@
 import {
-  BurnchainOp,
   BurnchainOpRegisterAssetFt,
   BurnchainOpRegisterAssetNft,
-  CoreNodeBlockMessage,
+  BurnchainOpStackStx,
   CoreNodeEvent,
   CoreNodeEventType,
   CoreNodeParsedTxMessage,
@@ -62,16 +61,15 @@ import {
   UIntCV,
   stringAsciiCV,
   hexToCV,
-  AddressVersion,
 } from '@stacks/transactions';
-import { poxAddressToBtcAddress, poxAddressToTuple } from '@stacks/stacking';
+import { poxAddressToTuple } from '@stacks/stacking';
 import { c32ToB58 } from 'c32check';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
 import { PoxContractIdentifiers, SyntheticPoxEventName } from '../pox-helpers';
 import { principalCV } from '@stacks/transactions/dist/clarity/types/principalCV';
 import { logger } from '../logger';
 import { bufferToHex, hexToBuffer } from '@hirosystems/api-toolkit';
-import { PoXAddressVersion } from '@stacks/stacking/dist/constants';
+import { hexToBytes } from '@stacks/common';
 
 export function getTxSenderAddress(tx: DecodedTxResult): string {
   const txSender = tx.auth.origin_condition.signer.address;
@@ -438,6 +436,88 @@ function createTransactionFromCoreBtcStxLockEvent(
   return tx;
 }
 
+function createTransactionFromCoreBtcStxLockEventPox4(
+  chainId: ChainID,
+  burnOpData: BurnchainOpStackStx,
+  txResult: string,
+  txId: string
+): DecodedTxResult {
+  const resultCv = decodeClarityValue<
+    ClarityValueResponse<
+      ClarityValueTuple<{
+        'lock-amount': ClarityValueUInt;
+        'unlock-burn-height': ClarityValueUInt;
+        stacker: ClarityValuePrincipalStandard;
+      }>
+    >
+  >(txResult);
+  if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
+    throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
+  }
+  const senderAddress = decodeStacksAddress(burnOpData.stack_stx.sender.address);
+  const poxAddressString =
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? BootContractAddress.mainnet
+      : BootContractAddress.testnet;
+  const poxAddress = decodeStacksAddress(poxAddressString);
+  const contractName = 'pox-4';
+
+  const legacyClarityVals = [
+    uintCV(burnOpData.stack_stx.stacked_ustx), // (amount-ustx uint)
+    poxAddressToTuple(burnOpData.stack_stx.reward_addr), // (pox-addr (tuple (version (buff 1)) (hashbytes (buff 32))))
+    uintCV(burnOpData.stack_stx.burn_block_height), // (start-burn-ht uint)
+    uintCV(burnOpData.stack_stx.num_cycles), // (lock-period uint)
+    noneCV(), // (signer-sig (optional (buff 65)))
+    bufferCV(hexToBytes(burnOpData.stack_stx.signer_key)), // (signer-key (buff 33))
+    uintCV(burnOpData.stack_stx.max_amount), // (max-amount uint)
+    uintCV(burnOpData.stack_stx.auth_id), // (auth-id uint)
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: senderAddress[0],
+          address_hash_bytes: senderAddress[1],
+          address: burnOpData.stack_stx.sender.address,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address: poxAddressString,
+      address_version: poxAddress[0],
+      address_hash_bytes: poxAddress[1],
+      contract_name: contractName,
+      function_name: 'stack-stx',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
 /*
 ;; Delegate to `delegate-to` the ability to stack from a given address.
 ;;  This method _does not_ lock the funds, rather, it allows the delegate
@@ -687,6 +767,20 @@ export function parseMessageTransaction(
       if (stxTransferEvent) {
         rawTx = createTransactionFromCoreBtcTxEvent(chainId, stxTransferEvent, coreTx.txid);
         txSender = stxTransferEvent.stx_transfer_event.sender;
+      } else if (
+        coreTx.burnchain_op &&
+        'stack_stx' in coreTx.burnchain_op &&
+        coreTx.burnchain_op.stack_stx.signer_key
+      ) {
+        // This is a pox-4 stack-stx burnchain op
+        const burnOpData = coreTx.burnchain_op.stack_stx;
+        rawTx = createTransactionFromCoreBtcStxLockEventPox4(
+          chainId,
+          coreTx.burnchain_op,
+          coreTx.raw_result,
+          coreTx.txid
+        );
+        txSender = burnOpData.sender.address;
       } else if (stxLockEvent) {
         const stxStacksPoxEvent =
           poxEvent?.decodedEvent.name === SyntheticPoxEventName.StackStx
