@@ -204,7 +204,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     const poxInfo2 = await testEnv.client.getPox();
     const startBurnHt = poxInfo2.current_burnchain_block_height as number;
 
-    amountStackedInitial = amountDelegated - 2000n;
+    amountStackedInitial = amountDelegated - 20000n;
 
     const txFee = 10000n;
     const delegateStackStxTx = await makeContractCall({
@@ -348,29 +348,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
       Buffer.from(delegateStackIncreaseTx.serialize())
     );
 
-    // then commit to increased amount with call to `stack-aggregation-increase`
-    const poxInfo2 = await testEnv.client.getPox();
-    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
-    const stackAggrIncreaseTx = await makeContractCall({
-      senderKey: delegatorAccount.secretKey,
-      contractAddress,
-      contractName,
-      functionName: 'stack-aggregation-increase',
-      functionArgs: [
-        delegateeAccount.poxAddrClar, // pox-addr
-        uintCV(rewardCycle), // reward-cycle
-        uintCV(poxCycleAddressIndex), // reward-cycle-index
-      ],
-      network: testEnv.stacksNetwork,
-      anchorMode: AnchorMode.OnChainOnly,
-      fee: txFee,
-      validateWithAbi: false,
-      nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
-    });
-    const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
-      Buffer.from(stackAggrIncreaseTx.serialize())
-    );
-
     const delegateStackIncreaseDbTx = await standByForTxSuccess(delegateStackIncreaseTxId);
     const delegateStackIncreaseResult = decodeClarityValue<
       ClarityValueResponseOk<
@@ -398,7 +375,6 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
     // validate delegate-stack-stx pox2 event for this tx
-    await standByForPoxCycle();
     const delegateStackIncreasePoxEvents: any = await fetchGet(
       `/extended/v1/pox4_events/tx/${delegateStackIncreaseDbTx.tx_id}`
     );
@@ -420,6 +396,45 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         increase_by: stxToDelegateIncrease.toString(),
         total_locked: BigInt(coreBalanceInfo.locked).toString(),
       })
+    );
+
+    // then commit to increased amount with call to `stack-aggregation-increase`
+    const poxInfo2 = await testEnv.client.getPox();
+    const maxAmount = amountDelegated;
+    const rewardCycle = BigInt(poxInfo2.next_cycle.id);
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-commit',
+        poxAddress: delegateeAccount.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: maxAmount,
+        authId: 1,
+      })
+    );
+    const stackAggrIncreaseTx = await makeContractCall({
+      senderKey: delegatorAccount.secretKey,
+      contractAddress,
+      contractName,
+      functionName: 'stack-aggregation-increase',
+      functionArgs: [
+        delegateeAccount.poxAddrClar, // pox-addr
+        uintCV(rewardCycle), // reward-cycle
+        uintCV(poxCycleAddressIndex), // reward-cycle-index
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(maxAmount.toString()), // max-amount
+        uintCV(1), // auth-id
+      ],
+      network: testEnv.stacksNetwork,
+      anchorMode: AnchorMode.OnChainOnly,
+      fee: txFee,
+      validateWithAbi: false,
+      nonce: delegateStackIncreaseTx.auth.spendingCondition.nonce + 1n,
+    });
+    const { txId: stackAggrIncreaseTxId } = await testEnv.client.sendTransaction(
+      Buffer.from(stackAggrIncreaseTx.serialize())
     );
 
     // validate API endpoint balance state for account
@@ -451,7 +466,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
   });
 
   test('Wait for current pox cycle to complete', async () => {
-    const poxStatus1 = await standByForPoxCycleEnd();
+    const poxStatus1 = await standByForPoxCycle();
     const poxStatus2 = await standByForPoxCycle();
     console.log('___Wait for current pox cycle to complete___', {
       pox1: { height: poxStatus1.current_burnchain_block_height, ...poxStatus1.next_cycle },
