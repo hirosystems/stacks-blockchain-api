@@ -188,10 +188,7 @@ export interface BurnchainOpStackStx {
   };
 }
 
-export type BurnchainOp =
-  | BurnchainOpRegisterAssetNft
-  | BurnchainOpRegisterAssetFt
-  | BurnchainOpStackStx;
+type BurnchainOp = BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt | BurnchainOpStackStx;
 
 export type CoreNodeEvent =
   | SmartContractEvent
