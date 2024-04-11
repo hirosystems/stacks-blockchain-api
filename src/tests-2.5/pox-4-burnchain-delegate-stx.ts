@@ -357,8 +357,8 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
         '(define-public (delegate-stx (amount-ustx uint) (delegate-to principal) (until-burn-ht (optional uint)) (pox-addr (optional (tuple (hashbytes (buff 32)) (version (buff 1)))))))',
       function_args: [
         {
-          hex: '0x010000000000000000000ffd1e7ab22000',
-          repr: 'u4500432000000000',
+          hex: '0x01000000000000000000066541116e8800',
+          repr: 'u1800180000000000',
           name: 'amount-ustx',
           type: 'uint',
         },
