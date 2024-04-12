@@ -612,26 +612,6 @@ export async function stackStxWithRosetta(opts: {
   };
 }
 
-export function decodePoxAddrArg(argHex: string): {
-  btcAddr: string;
-  stxAddr: string;
-  hash160: string;
-} {
-  const pox_address_cv = decodeClarityValue(argHex);
-  expect(pox_address_cv.type_id).toBe(ClarityTypeID.Tuple);
-  const addressCV = pox_address_cv as ClarityValueTuple<{
-    version: ClarityValueBuffer;
-    hashbytes: ClarityValueBuffer;
-  }>;
-  const btcAddr = poxAddressToBtcAddress(
-    hexToBuffer(addressCV.data.version.buffer)[0],
-    hexToBuffer(addressCV.data.hashbytes.buffer),
-    'mocknet'
-  );
-  const stxAddr = b58ToC32(btcAddr);
-  return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };
-}
-
 /** Client-side nonce tracking */
 export class NonceJar {
   nonceMap = new Map<string, number>();
