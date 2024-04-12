@@ -1,4 +1,5 @@
 import {
+  BurnchainOpDelegateStx,
   BurnchainOpRegisterAssetFt,
   BurnchainOpRegisterAssetNft,
   BurnchainOpStackStx,
@@ -547,8 +548,91 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   const senderAddress = decodeStacksAddress(decodedEvent.stacker);
   const poxContractAddressString =
     getChainIDNetwork(chainId) === 'mainnet'
-      ? 'SP000000000000000000002Q6VF78'
-      : 'ST000000000000000000002AMW42H';
+      ? BootContractAddress.mainnet
+      : BootContractAddress.testnet;
+  const poxContractAddress = decodeStacksAddress(poxContractAddressString);
+  const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
+
+  let poxAddr: NoneCV | OptionalCV<TupleCV> = noneCV();
+  if (decodedEvent.pox_addr) {
+    poxAddr = someCV(poxAddressToTuple(decodedEvent.pox_addr));
+  }
+
+  let untilBurnHeight: NoneCV | OptionalCV<UIntCV> = noneCV();
+  if (decodedEvent.data.unlock_burn_height) {
+    untilBurnHeight = someCV(uintCV(decodedEvent.data.unlock_burn_height));
+  }
+
+  const legacyClarityVals = [
+    uintCV(decodedEvent.data.amount_ustx), // amount-ustx
+    principalCV(decodedEvent.data.delegate_to), // delegate-to
+    untilBurnHeight, // until-burn-ht
+    poxAddr, // pox-addr
+  ];
+  const fnLenBuffer = Buffer.alloc(4);
+  fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
+  const serializedClarityValues = legacyClarityVals.map(c => serializeCV(c));
+  const rawFnArgs = bufferToHex(Buffer.concat([fnLenBuffer, ...serializedClarityValues]));
+  const clarityFnArgs = decodeClarityValueList(rawFnArgs);
+
+  const tx: DecodedTxResult = {
+    tx_id: txId,
+    version:
+      getChainIDNetwork(chainId) === 'mainnet'
+        ? TransactionVersion.Mainnet
+        : TransactionVersion.Testnet,
+    chain_id: chainId,
+    auth: {
+      type_id: PostConditionAuthFlag.Standard,
+      origin_condition: {
+        hash_mode: TxSpendingConditionSingleSigHashMode.P2PKH,
+        signer: {
+          address_version: senderAddress[0],
+          address_hash_bytes: senderAddress[1],
+          address: decodedEvent.stacker,
+        },
+        nonce: '0',
+        tx_fee: '0',
+        key_encoding: TxPublicKeyEncoding.Compressed,
+        signature: '0x',
+      },
+    },
+    anchor_mode: AnchorModeID.Any,
+    post_condition_mode: PostConditionModeID.Allow,
+    post_conditions: [],
+    post_conditions_buffer: '0x0100000000',
+    payload: {
+      type_id: TxPayloadTypeID.ContractCall,
+      address: poxContractAddressString,
+      address_version: poxContractAddress[0],
+      address_hash_bytes: poxContractAddress[1],
+      contract_name: contractName,
+      function_name: 'delegate-stx',
+      function_args: clarityFnArgs,
+      function_args_buffer: rawFnArgs,
+    },
+  };
+  return tx;
+}
+
+function createTransactionFromCoreBtcDelegateStxEventPox4(
+  chainId: ChainID,
+  contractEvent: SmartContractEvent,
+  decodedEvent: DbPoxSyntheticDelegateStxEvent,
+  burnOpData: BurnchainOpDelegateStx,
+  txResult: string,
+  txId: string
+): DecodedTxResult {
+  const resultCv = decodeClarityValue<ClarityValueResponse>(txResult);
+  if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
+    throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
+  }
+  console.log(burnOpData);
+  const senderAddress = decodeStacksAddress(decodedEvent.stacker);
+  const poxContractAddressString =
+    getChainIDNetwork(chainId) === 'mainnet'
+      ? BootContractAddress.mainnet
+      : BootContractAddress.testnet;
   const poxContractAddress = decodeStacksAddress(poxContractAddressString);
   const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
@@ -795,6 +879,22 @@ export function parseMessageTransaction(
           stxStacksPoxEvent
         );
         txSender = stxLockEvent.stx_lock_event.locked_address;
+      } else if (
+        poxEvent &&
+        poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx &&
+        poxEvent.contractEvent.contract_event.contract_identifier?.split('.')?.[1] === 'pox-4' &&
+        coreTx.burnchain_op &&
+        'delegate_stx' in coreTx.burnchain_op
+      ) {
+        rawTx = createTransactionFromCoreBtcDelegateStxEventPox4(
+          chainId,
+          poxEvent.contractEvent,
+          poxEvent.decodedEvent,
+          coreTx.burnchain_op,
+          coreTx.raw_result,
+          coreTx.txid
+        );
+        txSender = coreTx.burnchain_op.delegate_stx.sender.address;
       } else if (poxEvent && poxEvent.decodedEvent.name === SyntheticPoxEventName.DelegateStx) {
         rawTx = createTransactionFromCoreBtcDelegateStxEvent(
           chainId,

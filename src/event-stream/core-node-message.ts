@@ -188,7 +188,36 @@ export interface BurnchainOpStackStx {
   };
 }
 
-type BurnchainOp = BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt | BurnchainOpStackStx;
+export interface BurnchainOpDelegateStx {
+  delegate_stx: {
+    burn_block_height: number; // 121;
+    burn_header_hash: string; // '54feff1b7edc52311de1f4a54ccc0cf786274cdd2e2ca95ab73569a622f43e35';
+    burn_txid: string; // '15700f75e675181f79ab66219746b501e276006d53a8874cc3123d8317c6ed8b';
+    delegate_to: {
+      address: string; // 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
+      address_hash_bytes: string; // '0x43596b5386f466863e25658ddf94bd0fadab0048';
+      address_version: number; // 26;
+    };
+    delegated_ustx: number; // 4500432000000000;
+    reward_addr: [
+      number, // 1,
+      string // 'tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453'
+    ];
+    sender: {
+      address: string; // 'ST1Z7V02CJRY3G5R2RDG7SFAZA8VGH0Y44NC2NAJN';
+      address_hash_bytes: string; // '0x7e7d804c963c381702c3607cbd5f52370883c425';
+      address_version: number; // 26;
+    };
+    until_burn_height: number; // 200;
+    vtxindex: number; // 3;
+  };
+}
+
+type BurnchainOp =
+  | BurnchainOpRegisterAssetNft
+  | BurnchainOpRegisterAssetFt
+  | BurnchainOpStackStx
+  | BurnchainOpDelegateStx;
 
 export type CoreNodeEvent =
   | SmartContractEvent
