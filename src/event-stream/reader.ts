@@ -531,7 +531,7 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
   if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
     throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
   }
-  const senderAddress = decodeStacksAddress(decodedEvent.stacker);
+  const senderAddress = decodeStacksAddress(burnOpData.delegate_stx.sender.address);
   const poxContractAddressString =
     getChainIDNetwork(chainId) === 'mainnet'
       ? BootContractAddress.mainnet
@@ -539,21 +539,11 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
   const poxContractAddress = decodeStacksAddress(poxContractAddressString);
   const contractName = contractEvent.contract_event.contract_identifier?.split('.')?.[1] ?? 'pox';
 
-  let poxAddr: NoneCV | OptionalCV<TupleCV> = noneCV();
-  if (decodedEvent.pox_addr) {
-    poxAddr = someCV(poxAddressToTuple(decodedEvent.pox_addr));
-  }
-
-  let untilBurnHeight: NoneCV | OptionalCV<UIntCV> = noneCV();
-  if (decodedEvent.data.unlock_burn_height) {
-    untilBurnHeight = someCV(uintCV(decodedEvent.data.unlock_burn_height));
-  }
-
   const legacyClarityVals = [
-    uintCV(decodedEvent.data.amount_ustx), // amount-ustx
-    principalCV(decodedEvent.data.delegate_to), // delegate-to
-    untilBurnHeight, // until-burn-ht
-    poxAddr, // pox-addr
+    uintCV(burnOpData.delegate_stx.delegated_ustx), // amount-ustx
+    principalCV(burnOpData.delegate_stx.delegate_to.address), // delegate-to
+    someCV(uintCV(burnOpData.delegate_stx.until_burn_height)), // until-burn-ht
+    someCV(poxAddressToTuple(burnOpData.delegate_stx.reward_addr[1])), // pox-addr
   ];
   const fnLenBuffer = Buffer.alloc(4);
   fnLenBuffer.writeUInt32BE(legacyClarityVals.length);
