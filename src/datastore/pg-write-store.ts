@@ -157,7 +157,18 @@ export class PgWriteStore extends PgStore {
       connectionConfig: getConnectionConfig(PgServer.primary),
     });
     if (!skipMigrations) {
-      await runMigrations(MIGRATIONS_DIR, 'up', getConnectionArgs(PgServer.primary));
+      await runMigrations(MIGRATIONS_DIR, 'up', getConnectionArgs(PgServer.primary), {
+        logger: {
+          debug: _ => {},
+          info: msg => {
+            if (msg.includes('Migrating files')) {
+              logger.info(`Performing SQL migration, this may take a while...`);
+            }
+          },
+          warn: msg => logger.warn(msg),
+          error: msg => logger.error(msg),
+        },
+      });
     }
     const notifier = withNotifier ? await PgNotifier.create(usageName) : undefined;
     const store = new PgWriteStore(sql, notifier, isEventReplay);
