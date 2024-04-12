@@ -519,24 +519,11 @@ function createTransactionFromCoreBtcStxLockEventPox4(
   return tx;
 }
 
-/*
-;; Delegate to `delegate-to` the ability to stack from a given address.
-;;  This method _does not_ lock the funds, rather, it allows the delegate
-;;  to issue the stacking lock.
-;; The caller specifies:
-;;   * amount-ustx: the total amount of ustx the delegate may be allowed to lock
-;;   * until-burn-ht: an optional burn height at which this delegation expiration
-;;   * pox-addr: an optional address to which any rewards *must* be sent
-(define-public (delegate-stx (amount-ustx uint)
-                             (delegate-to principal)
-                             (until-burn-ht (optional uint))
-                             (pox-addr (optional { version: (buff 1),
-                                                   hashbytes: (buff 32) })))
-*/
-function createTransactionFromCoreBtcDelegateStxEvent(
+function createTransactionFromCoreBtcDelegateStxEventPox4(
   chainId: ChainID,
   contractEvent: SmartContractEvent,
   decodedEvent: DbPoxSyntheticDelegateStxEvent,
+  burnOpData: BurnchainOpDelegateStx,
   txResult: string,
   txId: string
 ): DecodedTxResult {
@@ -544,7 +531,6 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
     throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
   }
-
   const senderAddress = decodeStacksAddress(decodedEvent.stacker);
   const poxContractAddressString =
     getChainIDNetwork(chainId) === 'mainnet'
@@ -615,11 +601,24 @@ function createTransactionFromCoreBtcDelegateStxEvent(
   return tx;
 }
 
-function createTransactionFromCoreBtcDelegateStxEventPox4(
+/*
+;; Delegate to `delegate-to` the ability to stack from a given address.
+;;  This method _does not_ lock the funds, rather, it allows the delegate
+;;  to issue the stacking lock.
+;; The caller specifies:
+;;   * amount-ustx: the total amount of ustx the delegate may be allowed to lock
+;;   * until-burn-ht: an optional burn height at which this delegation expiration
+;;   * pox-addr: an optional address to which any rewards *must* be sent
+(define-public (delegate-stx (amount-ustx uint)
+                             (delegate-to principal)
+                             (until-burn-ht (optional uint))
+                             (pox-addr (optional { version: (buff 1),
+                                                   hashbytes: (buff 32) })))
+*/
+function createTransactionFromCoreBtcDelegateStxEvent(
   chainId: ChainID,
   contractEvent: SmartContractEvent,
   decodedEvent: DbPoxSyntheticDelegateStxEvent,
-  burnOpData: BurnchainOpDelegateStx,
   txResult: string,
   txId: string
 ): DecodedTxResult {
@@ -627,7 +626,7 @@ function createTransactionFromCoreBtcDelegateStxEventPox4(
   if (resultCv.type_id !== ClarityTypeID.ResponseOk) {
     throw new Error(`Unexpected tx result Clarity type ID: ${resultCv.type_id}`);
   }
-  console.log(burnOpData);
+
   const senderAddress = decodeStacksAddress(decodedEvent.stacker);
   const poxContractAddressString =
     getChainIDNetwork(chainId) === 'mainnet'
