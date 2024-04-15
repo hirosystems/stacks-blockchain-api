@@ -1,3 +1,10 @@
+## [7.11.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0...v7.11.0-beta.1) (2024-04-15)
+
+
+### Features
+
+* support multiple STX faucet source accounts ([#1946](https://github.com/hirosystems/stacks-blockchain-api/issues/1946)) ([be5db0c](https://github.com/hirosystems/stacks-blockchain-api/commit/be5db0c5fadb0d0278e10b6de3586bbd7f5c85be))
+
 ## [7.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.1...v7.10.0) (2024-04-15)
 
 
