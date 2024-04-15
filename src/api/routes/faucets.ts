@@ -310,8 +310,13 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           } else if (
             sendTxResults.every(res => res.status === TxSendResultStatus.TooMuchChaining)
           ) {
-            retrySend = true;
-            stxKeyIndex++;
+            // Try with the next key in case we have one.
+            if (stxKeyIndex + 1 === STX_FAUCET_KEYS.length) {
+              retrySend = false;
+            } else {
+              retrySend = true;
+              stxKeyIndex++;
+            }
           } else {
             retrySend = false;
           }
