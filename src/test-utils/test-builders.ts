@@ -39,6 +39,7 @@ const MICROBLOCK_HASH = '0x123466';
 const BURN_BLOCK_HASH = '0xf44f44';
 const BURN_BLOCK_HEIGHT = 713000;
 const BURN_BLOCK_TIME = 94869286;
+const STACKS_BLOCK_TIME = 94869287;
 const SENDER_ADDRESS = 'SP466FNC0P7JWTNM2R9T199QRZN1MYEDTAR0KP27';
 const RECIPIENT_ADDRESS = 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6';
 const TOKEN_TRANSFER_AMOUNT = 100n;
@@ -85,6 +86,7 @@ const ZONEFILE_HASH = 'b100a68235244b012854a95f9114695679002af9';
 export interface TestBlockArgs {
   block_height?: number;
   block_hash?: string;
+  block_time?: number;
   index_block_hash?: string;
   burn_block_hash?: string;
   burn_block_time?: number;
@@ -111,6 +113,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     parent_microblock_hash: args?.parent_microblock_hash ?? '0x00',
     parent_microblock_sequence: args?.parent_microblock_sequence ?? 0,
     block_height: args?.block_height ?? BLOCK_HEIGHT,
+    block_time: args?.block_time ?? STACKS_BLOCK_TIME,
     burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
     burn_block_hash: args?.burn_block_hash ?? BURN_BLOCK_HASH,
     burn_block_height: args?.burn_block_height ?? BURN_BLOCK_HEIGHT,
@@ -122,6 +125,7 @@ function testBlock(args?: TestBlockArgs): DbBlock {
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
     tx_count: 1,
+    signer_bitvec: null,
   };
 }
 
@@ -156,6 +160,7 @@ export interface TestTxArgs {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
+  block_time?: number;
   canonical?: boolean;
   microblock_canonical?: boolean;
   coinbase_alt_recipient?: string;
@@ -201,6 +206,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
       burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
+      block_time: args?.block_time ?? STACKS_BLOCK_TIME,
       parent_burn_block_time: BURN_BLOCK_TIME,
       type_id: args?.type_id ?? DbTxTypeId.Coinbase,
       status: args?.status ?? DbTxStatus.Success,

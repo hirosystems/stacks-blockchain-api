@@ -1,14 +1,22 @@
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { getBitcoinAddressFromKey, privateToPublicKey, VerboseKeyOutput } from '../ec-helpers';
-
+import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
   BurnchainRewardSlotHolderListResponse,
   BurnchainRewardsTotal,
 } from '@stacks/stacks-blockchain-api-types';
-import { AnchorMode, bufferCV, makeContractCall, tupleCV, uintCV } from '@stacks/transactions';
+import {
+  AnchorMode,
+  StacksPrivateKey,
+  bufferCV,
+  makeContractCall,
+  makeRandomPrivKey,
+  someCV,
+  tupleCV,
+  uintCV,
+} from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { DbEventTypeId, DbStxLockEvent } from '../datastore/common';
 import {
@@ -18,13 +26,16 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { decodeBtcAddress, StackingClient } from '@stacks/stacking';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
+import * as assert from 'assert';
+import { hexToBytes } from '@stacks/common';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
   let btcAddr: string;
-  let btcRegtestAccount: VerboseKeyOutput;
+  let btcAddrRegtest: string;
   let btcPubKey: string;
   let decodedBtcAddr: { version: number; data: Uint8Array };
   let poxInfo: CoreRpcPoxInfo;
@@ -33,7 +44,10 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   let contractAddress: string;
   let contractName: string;
   let ustxAmount: bigint;
-  const lockPeriod = 1;
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+  const lockPeriod = 3;
   const btcPrivateKey = '0000000000000000000000000000000000000000000000000000000000000002';
 
   beforeAll(async () => {
@@ -52,47 +66,29 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       version: decodedBtcAddr.version,
     }).toEqual({ data: '06afd46bcdfd22ef94ac122aa11f241244a37ecc', version: 0 });
 
+    stackingClient = new StackingClient(account.stacksAddress, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+
     // Create a regtest address to use with bitcoind json-rpc since the krypton-stacks-node uses testnet addresses
-    btcRegtestAccount = getBitcoinAddressFromKey({
+    btcAddrRegtest = getBitcoinAddressFromKey({
       privateKey: btcPrivateKey,
       network: 'regtest',
       addressFormat: 'p2pkh',
-      verbose: true,
     });
-    expect(btcRegtestAccount.address).toBe('mg8Jz5776UdyiYcBb9Z873NTozEiADRW5H');
+    expect(btcAddrRegtest).toBe('mg8Jz5776UdyiYcBb9Z873NTozEiADRW5H');
 
-    await testEnv.bitcoinRpcClient.importprivkey({
-      privkey: btcRegtestAccount.wif,
-      label: btcRegtestAccount.address,
-      rescan: false,
+    await testEnv.bitcoinRpcClient.importaddress({
+      address: btcAddrRegtest,
+      label: btcAddrRegtest,
     });
     const btcWalletAddrs: Record<string, unknown> =
       await testEnv.bitcoinRpcClient.getaddressesbylabel({
-        label: btcRegtestAccount.address,
+        label: btcAddrRegtest,
       });
+    expect(Object.keys(btcWalletAddrs)).toContain(btcAddrRegtest);
 
-    const expectedAddrs = {
-      P2PKH: getBitcoinAddressFromKey({
-        privateKey: btcPrivateKey,
-        network: 'regtest',
-        addressFormat: 'p2pkh',
-      }),
-      P2SH_P2WPKH: getBitcoinAddressFromKey({
-        privateKey: btcPrivateKey,
-        network: 'regtest',
-        addressFormat: 'p2sh-p2wpkh',
-      }),
-      P2WPKH: getBitcoinAddressFromKey({
-        privateKey: btcPrivateKey,
-        network: 'regtest',
-        addressFormat: 'p2wpkh',
-      }),
-    };
-
-    expect(Object.keys(btcWalletAddrs)).toEqual(
-      expect.arrayContaining(Object.values(expectedAddrs))
-    );
-    expect(Object.keys(btcWalletAddrs)).toContain(btcRegtestAccount.address);
+    await standByForPoxCycle();
 
     poxInfo = await testEnv.client.getPox();
     burnBlockHeight = poxInfo.current_burnchain_block_height as number;
@@ -106,7 +102,17 @@ describe('PoX-4 - Stack extend and increase operations', () => {
 
   test('stack-stx tx', async () => {
     const coreBalancePreStackStx = await testEnv.client.getAccount(account.stacksAddress);
-
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-stx',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id,
+        period: lockPeriod,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: ustxAmount,
+        authId: 0,
+      })
+    );
     // Create and broadcast a `stack-stx` tx
     const txFee = 10000n;
     const stackStxTx = await makeContractCall({
@@ -115,13 +121,17 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       contractName,
       functionName: 'stack-stx',
       functionArgs: [
-        uintCV(ustxAmount.toString()),
+        uintCV(ustxAmount.toString()), // amount-ustx
         tupleCV({
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-        }),
-        uintCV(burnBlockHeight),
-        uintCV(lockPeriod), // lock-period
+        }), // pox-addr
+        uintCV(burnBlockHeight), // start-burn-ht
+        uintCV(lockPeriod), // lock-period,
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(ustxAmount.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -203,17 +213,34 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-increase tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreIncrease = await testEnv.client.getAccount(account.stacksAddress);
-
     // Create and broadcast a `stack-increase` tx
     const stackIncreaseAmount = 123n;
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-increase',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id + 1,
+        period: lockPeriod,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: ustxAmount + stackIncreaseAmount,
+        authId: 1,
+      })
+    );
     const stackIncreaseTxFee = 10000n;
     const stackIncreaseTx = await makeContractCall({
       senderKey: account.secretKey,
       contractAddress,
       contractName,
       functionName: 'stack-increase',
-      functionArgs: [uintCV(stackIncreaseAmount)],
+      functionArgs: [
+        uintCV(stackIncreaseAmount.toString()), // increase-by
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV((ustxAmount + stackIncreaseAmount).toString()), // max-amount
+        uintCV(1), // auth-id
+      ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
       fee: stackIncreaseTxFee,
@@ -297,10 +324,21 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('stack-extend tx', async () => {
+    await standByForPoxCycle();
     const coreBalancePreStackExtend = await testEnv.client.getAccount(account.stacksAddress);
-
     // Create and broadcast a `stack-extend` tx
     const extendCycleAmount = 1;
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'stack-extend',
+        poxAddress: btcAddr,
+        rewardCycle: poxInfo.current_cycle.id + 2,
+        period: extendCycleAmount,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: 0,
+        authId: 2,
+      })
+    );
     const txFee = 10000n;
     const stackExtendTx = await makeContractCall({
       senderKey: account.secretKey,
@@ -308,11 +346,15 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       contractName,
       functionName: 'stack-extend',
       functionArgs: [
-        uintCV(extendCycleAmount),
+        uintCV(extendCycleAmount), // extend-count
         tupleCV({
           hashbytes: bufferCV(decodedBtcAddr.data),
           version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-        }),
+        }), // pox-addr
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(0), // max-amount
+        uintCV(2), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -451,17 +493,17 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       (a, b) => a.burn_block_height - b.burn_block_height
     )[0];
     const blockResult: {
-      tx: { vout?: { scriptPubKey: { addresses?: string[] }; value?: number }[] }[];
+      tx: { vout?: { scriptPubKey: { address?: string }; value?: number }[] }[];
     } = await testEnv.bitcoinRpcClient.getblock({
       blockhash: hexToBuffer(firstReward.burn_block_hash).toString('hex'),
       verbosity: 2,
     });
     const vout = blockResult.tx
       .flatMap(t => t.vout)
-      .find(t => t?.scriptPubKey.addresses?.includes(btcRegtestAccount.address) && t.value);
+      .find(v => v?.value && v.scriptPubKey.address == btcAddrRegtest);
     if (!vout || !vout.value) {
       throw new Error(
-        `Could not find bitcoin vout for ${btcRegtestAccount.address} in block ${firstReward.burn_block_hash}`
+        `Could not find bitcoin vout for ${btcAddrRegtest} in block ${firstReward.burn_block_hash}`
       );
     }
     const sats = new bignumber(vout.value).shiftedBy(8).toString();
@@ -485,11 +527,14 @@ describe('PoX-4 - Stack extend and increase operations', () => {
       txid: string;
       confirmations: number;
     }[] = await testEnv.bitcoinRpcClient.listtransactions({
-      label: btcRegtestAccount.address,
+      label: btcAddrRegtest,
       include_watchonly: true,
     });
-    received = received.filter(r => r.address === btcRegtestAccount.address);
-    // expect(received.length).toBe(1);
+    received = received.filter(r => r.address === btcAddrRegtest);
+    // todo: double-check if multiple rewards are possible/intended for
+    //       this test, since it doesn't happen often
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    expect(received.length).toBe(rewards.results.length);
     expect(received[0].category).toBe('receive');
     expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
     const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
@@ -520,8 +565,12 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('BTC stacking reward received', async () => {
+    const curBlock = await testEnv.db.getCurrentBlock();
+    assert(curBlock.found);
+    await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
+
     const received: number = await testEnv.bitcoinRpcClient.getreceivedbyaddress({
-      address: btcRegtestAccount.address,
+      address: btcAddrRegtest,
       minconf: 0,
     });
     expect(received).toBeGreaterThan(0);

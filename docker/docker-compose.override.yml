@@ -1,4 +1,4 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    command: stacks-node start --config=/app/config/Stacks-mocknet.toml
+    command: stacks-node start --config /app/config/Stacks-mocknet.toml

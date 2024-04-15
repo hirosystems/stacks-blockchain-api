@@ -2,6 +2,8 @@ openapi: 3.0.2
 servers:
   - url: https://api.mainnet.hiro.so/
     description: Mainnet
+  - url: https://api.nakamoto.testnet.hiro.so/
+    description: Nakamoto Testnet
   - url: https://api.testnet.hiro.so/
     description: Testnet
   - url: http://localhost:3999/
@@ -68,6 +70,8 @@ tags:
       url: https://docs.hiro.so/get-started/transactions
   - name: Mempool
     description: Endpoints to obtain Mempool information
+  - name: Proof of Transfer
+    description: Endpoints to get information about the Proof of Transfer consensus mechanism
 
 paths:
   /extended/v1/faucets/stx:
@@ -952,6 +956,153 @@ paths:
                 $ref: ./api/smart-contracts/get-smart-contracts-status.schema.json
               example:
                 $ref: ./api/smart-contracts/get-smart-contracts-status.example.json
+
+  /extended/v2/pox/cycles:
+    get:
+      summary: Get PoX cycles
+      description: Retrieves a list of PoX cycles
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycles
+      parameters:
+        - name: limit
+          in: query
+          description: max number of cycles to fetch
+          required: false
+          schema:
+            type: integer
+            default: 20
+            maximum: 60
+        - name: offset
+          in: query
+          description: index of first cycle to fetch
+          required: false
+          schema:
+            type: integer
+            example: 20
+      responses:
+        200:
+          description: List of cycles
+          content:
+            application/json:
+              schema:
+                $ref: ./api/stacking/get-pox-cycles.schema.json
+              example:
+                $ref: ./api/stacking/get-pox-cycles.example.json 
+
+  /extended/v2/pox/cycles/{cycle_number}:
+    get:
+      summary: Get PoX cycle
+      description: Retrieves details for a PoX cycle
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycle
+      parameters:
+        - name: cycle_number
+          in: path
+          description: PoX cycle number
+          required: true
+          schema:
+            type: integer
+            example: 56
+      responses:
+        200:
+          description: Details for cycle
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/stacking/pox-cycle.schema.json
+              example:
+                $ref: ./entities/stacking/pox-cycle.example.json
+  
+  /extended/v2/pox/cycles/{cycle_number}/signers:
+    get:
+      summary: Get signers in PoX cycle
+      description: Retrieves a list of signers in a PoX cycle
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycle_signers
+      parameters:
+        - name: cycle_number
+          in: path
+          description: PoX cycle number
+          required: true
+          schema:
+            type: integer
+            example: 56
+      responses:
+        200:
+          description: List of signers for cycle
+          content:
+            application/json:
+              schema:
+                $ref: ./api/stacking/get-pox-cycle-signers.schema.json
+              example:
+                $ref: ./api/stacking/get-pox-cycle-signers.example.json
+
+  /extended/v2/pox/cycles/{cycle_number}/signers/{signer_key}:
+    get:
+      summary: Get signer in PoX cycle
+      description: Retrieves details for a signer in a PoX cycle
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycle_signer
+      parameters:
+        - name: cycle_number
+          in: path
+          description: PoX cycle number
+          required: true
+          schema:
+            type: integer
+            example: 56
+        - name: signer_key
+          in: path
+          description: Signer key
+          required: true
+          schema:
+            type: string
+            example: "0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d"
+      responses:
+        200:
+          description: Details for PoX signer
+          content:
+            application/json:
+              schema:
+                $ref: ./entities/stacking/signer.schema.json
+              example:
+                $ref: ./entities/stacking/signer.example.json
+  
+  /extended/v2/pox/cycles/{cycle_number}/signers/{signer_key}/stackers:
+    get:
+      summary: Get stackers for signer in PoX cycle
+      description: Retrieves a list of stackers for a signer in a PoX cycle
+      tags:
+        - Proof of Transfer
+      operationId: get_pox_cycle_signer_stackers
+      parameters:
+        - name: cycle_number
+          in: path
+          description: PoX cycle number
+          required: true
+          schema:
+            type: integer
+            example: 56
+        - name: signer_key
+          in: path
+          description: Signer key
+          required: true
+          schema:
+            type: string
+            example: "0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d"
+      responses:
+        200:
+          description: List of stackers
+          content:
+            application/json:
+              schema:
+                $ref: ./api/stacking/get-pox-cycle-signer-stackers.schema.json
+              example:
+                $ref: ./api/stacking/get-pox-cycle-signer-stackers.example.json 
 
   /extended/v1/block:
     get:

@@ -1,0 +1,29 @@
+{
+  "description": "GET request that returns stackers for a signer in a PoX cycle",
+  "additionalProperties": false,
+  "title": "PoxCycleSignerStackersListResponse",
+  "type": "object",
+  "required": ["results", "limit", "offset", "total"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 200,
+      "description": "The number of stackers to return"
+    },
+    "offset": {
+      "type": "integer",
+      "description": "The number to stackers to skip (starting at `0`)",
+      "default": 0
+    },
+    "total": {
+      "type": "integer",
+      "description": "The total number of stackers"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/stacking/stacker.schema.json"
+      }
+    }
+  }
+}

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { bytesToHex } from '@stacks/common';
+import { bytesToHex, hexToBytes } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
@@ -134,6 +134,7 @@ export function accountFromKey(
   return { secretKey, pubKey, stxAddr, poxAddr, poxAddrClar, btcAddr, btcTestnetAddr, wif };
 }
 
+/** Stand by until prepare phase of next pox cycle (still in current cycle) */
 export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   const firstPoxInfo = await testEnv.client.getPox();
   await standByUntilBurnBlock(firstPoxInfo.next_cycle.prepare_phase_start_block_height);
@@ -148,6 +149,7 @@ export async function standByForNextPoxCycle(): Promise<CoreRpcPoxInfo> {
   return lastPoxInfo;
 }
 
+/** Stand by until block height reaches the start of the next cycle */
 export async function standByForPoxCycle(
   apiArg?: ApiServer,
   clientArg?: StacksCoreRpcClient
@@ -160,8 +162,10 @@ export async function standByForPoxCycle(
   do {
     await standByUntilBurnBlock(lastPoxInfo.current_burnchain_block_height! + 1, api, client);
     lastPoxInfo = await client.getPox();
-  } while (lastPoxInfo.current_cycle.id <= firstPoxInfo.current_cycle.id);
-  expect(lastPoxInfo.current_cycle.id).toBe(firstPoxInfo.next_cycle.id);
+  } while (
+    (lastPoxInfo.current_burnchain_block_height as number) <=
+    firstPoxInfo.next_cycle.reward_phase_start_block_height
+  );
   const info = await client.getInfo();
   console.log({
     'firstPoxInfo.next_cycle.prepare_phase_start_block_height':
@@ -513,6 +517,8 @@ export async function stackStxWithRosetta(opts: {
   privateKey: string;
   cycleCount: number;
   ustxAmount: bigint;
+  signerKey: string;
+  signerPrivKey: string;
 }) {
   const rosettaNetwork: NetworkIdentifier = {
     blockchain: RosettaConstants.blockchain,
@@ -533,6 +539,8 @@ export async function stackStxWithRosetta(opts: {
       metadata: {
         number_of_cycles: opts.cycleCount,
         pox_addr: opts.btcAddr,
+        signer_key: opts.signerKey,
+        signer_private_key: opts.signerPrivKey,
       },
     },
     {
@@ -602,26 +610,6 @@ export async function stackStxWithRosetta(opts: {
     constructionPreprocess: preprocessResult,
     constructionMetadata: metadataResult,
   };
-}
-
-export function decodePoxAddrArg(argHex: string): {
-  btcAddr: string;
-  stxAddr: string;
-  hash160: string;
-} {
-  const pox_address_cv = decodeClarityValue(argHex);
-  expect(pox_address_cv.type_id).toBe(ClarityTypeID.Tuple);
-  const addressCV = pox_address_cv as ClarityValueTuple<{
-    version: ClarityValueBuffer;
-    hashbytes: ClarityValueBuffer;
-  }>;
-  const btcAddr = poxAddressToBtcAddress(
-    hexToBuffer(addressCV.data.version.buffer)[0],
-    hexToBuffer(addressCV.data.hashbytes.buffer),
-    'mocknet'
-  );
-  const stxAddr = b58ToC32(btcAddr);
-  return { btcAddr, stxAddr, hash160: addressCV.data.hashbytes.buffer };
 }
 
 /** Client-side nonce tracking */

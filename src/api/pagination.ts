@@ -36,6 +36,8 @@ export enum ResourceType {
   Pox2Event,
   Stacker,
   BurnBlock,
+  Signer,
+  PoxCycle,
 }
 
 export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; maxLimit: number }> = {
@@ -78,6 +80,14 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
   [ResourceType.Stacker]: {
     defaultLimit: 100,
     maxLimit: 200,
+  },
+  [ResourceType.Signer]: {
+    defaultLimit: 100,
+    maxLimit: 250,
+  },
+  [ResourceType.PoxCycle]: {
+    defaultLimit: 20,
+    maxLimit: 60,
   },
 };
 

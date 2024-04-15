@@ -1,17 +1,17 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: "hirosystems/stacks-api-e2e:stacks3.0-800259e"
+    image: 'hirosystems/stacks-api-e2e:stacks3.0-4d11d85'
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
       BLOCKSTACK_USE_TEST_GENESIS_CHAINSTATE: 1
       NOP_BLOCKSTACK_DEBUG: 1
     ports:
-      - "20443:20443"
-      - "20444:20444"
+      - '20443:20443'
+      - '20444:20444'
     volumes:
       - ../stacks-blockchain/:/app/config
       - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     extra_hosts:
-      - "host.docker.internal:host-gateway" # fixes `host.docker.internal` on linux hosts
+      - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts

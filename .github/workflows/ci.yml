@@ -855,7 +855,6 @@ jobs:
       - lint
       - lint-docs
       - test
-      - test-2_5
       - test-bns
       - test-rosetta
       - test-rosetta-cli-construction

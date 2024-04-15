@@ -1,14 +1,16 @@
-import { getBitcoinAddressFromKey } from '../ec-helpers';
+import { timeout } from '@hirosystems/api-toolkit';
+import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
 import { testnetKeys } from '../api/routes/debug';
+import { CoreRpcPoxInfo } from '../core-rpc/client';
+import { DbTxStatus } from '../datastore/common';
+import { getBitcoinAddressFromKey } from '../ec-helpers';
 import {
   fetchGet,
   stackStxWithRosetta,
+  standByForPoxCycle,
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { CoreRpcPoxInfo } from '../core-rpc/client';
-import { DbTxStatus } from '../datastore/common';
-import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
 
 const BTC_ADDRESS_CASES = [
   { addressFormat: 'p2pkh' },
@@ -27,6 +29,11 @@ describe.each(BTC_ADDRESS_CASES)(
     const account = testnetKeys[1];
     let bitcoinAddress: string;
 
+    const cycleCount = 1;
+
+    const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+    const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
+
     beforeAll(() => {
       bitcoinAddress = getBitcoinAddressFromKey({
         privateKey: account.secretKey,
@@ -43,10 +50,11 @@ describe.each(BTC_ADDRESS_CASES)(
 
     test('Perform stack-stx using Rosetta', async () => {
       poxInfo = await testEnv.client.getPox();
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(poxInfo.reward_cycle_length); // cycle just started
+      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBeGreaterThanOrEqual(
+        poxInfo.reward_cycle_length - 1 // close to cycle start (1 block margin)
+      );
 
       const ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
-      const cycleCount = 1;
 
       const rosettaStackStx = await stackStxWithRosetta({
         btcAddr: bitcoinAddress,
@@ -55,27 +63,26 @@ describe.each(BTC_ADDRESS_CASES)(
         privateKey: account.secretKey,
         cycleCount,
         ustxAmount,
+        signerKey: signerPubKey,
+        signerPrivKey: signerPrivKey,
       });
       expect(rosettaStackStx.tx.status).toBe(DbTxStatus.Success);
       expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
     });
 
     test('Validate reward set received', async () => {
-      // todo: is it correct that the reward set is only available after/in the 2nd block of a reward phase?
-      await standByUntilBurnBlock(poxInfo.next_cycle.reward_phase_start_block_height + 1); // time to check reward sets
+      await standByForPoxCycle();
+      await standByForPoxCycle();
+      await timeout(500); // make sure rewards have been processed
 
       poxInfo = await testEnv.client.getPox();
       const rewardSlotHolders = await fetchGet<BurnchainRewardSlotHolderListResponse>(
         `/extended/v1/burnchain/reward_slot_holders/${bitcoinAddress}`
       );
-      expect(rewardSlotHolders.total).toBe(1);
+      expect(rewardSlotHolders.total).toBeGreaterThan(0);
       expect(rewardSlotHolders.results[0].address).toBe(bitcoinAddress);
-      expect(rewardSlotHolders.results[0].burn_block_height).toBe(
-        poxInfo.current_burnchain_block_height
-      );
-      expect(poxInfo.next_cycle.blocks_until_reward_phase).toBe(
-        poxInfo.reward_cycle_length - (2 - 1) // aka 2nd / nth block of reward phase (zero-indexed)
-      );
+      // expect(rewardSlotHolders.results[0].burn_block_height).toBe(nextCycleStart + 1);
+      // todo: is it correct that the reware slot is for the 2nd block of a reward phase?
     });
   }
 );

@@ -3,10 +3,11 @@ import * as c32check from 'c32check';
 import { bitcoinToStacksAddress, stacksToBitcoinAddress } from 'stacks-encoding-native-js';
 import * as c32AddrCache from '../c32-addr-cache';
 import { ADDR_CACHE_ENV_VAR } from '../c32-addr-cache';
-import { isValidBitcoinAddress, getUintEnvOrDefault } from '../helpers';
+import { isValidBitcoinAddress, getUintEnvOrDefault, BitVec } from '../helpers';
 import { ECPair, getBitcoinAddressFromKey } from '../ec-helpers';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 
 describe('has0xPrefix()', () => {
   test('falsy case, where there be no 0x', () => {
@@ -545,4 +546,30 @@ test('getUintEnvOrDefault tests', () => {
   expect(() => getUintEnvOrDefault(key)).toThrowError();
   process.env[key] = 'ABC';
   expect(() => getUintEnvOrDefault(key)).toThrowError();
+});
+
+test('signer bitvec decoding', () => {
+  const signerBitvecString1 = '00010000000100';
+  const signerBitvecPayload1 = Buffer.from(signerBitvecString1, 'hex');
+  const bitVec1 = BitVec.consensusDeserialize(signerBitvecPayload1);
+  expect(bitVec1.bits).toHaveLength(1);
+  expect(bitVec1.bits).toStrictEqual([false]);
+  expect(bitVec1.toString()).toBe('0');
+  expect(BitVec.consensusDeserializeToString(signerBitvecString1)).toBe('0');
+
+  const signerBitvecString2 = '000100000001ff';
+  const signerBitvecPayload2 = Buffer.from(signerBitvecString2, 'hex');
+  const bitVec2 = BitVec.consensusDeserialize(signerBitvecPayload2);
+  expect(bitVec2.bits).toHaveLength(1);
+  expect(bitVec2.bits).toStrictEqual([true]);
+  expect(bitVec2.toString()).toBe('1');
+  expect(BitVec.consensusDeserializeToString(signerBitvecString2)).toBe('1');
+
+  const signerBitvecString3 = '000300000001c0';
+  const signerBitvecPayload3 = Buffer.from(signerBitvecString3, 'hex');
+  const bitVec3 = BitVec.consensusDeserialize(signerBitvecPayload3);
+  expect(bitVec3.bits).toHaveLength(3);
+  expect(bitVec3.bits).toStrictEqual([true, true, false]);
+  expect(bitVec3.toString()).toBe('110');
+  expect(BitVec.consensusDeserializeToString(signerBitvecString3)).toBe('110');
 });

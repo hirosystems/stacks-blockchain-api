@@ -22,7 +22,7 @@ services:
     image: "hirosystems/stacks-subnets:7012d22"
     # build:
     #   dockerfile: ./subnet-node.Dockerfile
-    command: subnet-node start --config=/app/config/Stacks-subnet.toml
+    command: subnet-node start --config /app/config/Stacks-subnet.toml
     ports:
       - "30443:30443" # subnet-node RPC interface
       - "30444:30444" # subnet-node p2p

@@ -1,19 +1,20 @@
+import { StackingClient, poxAddressToTuple } from '@stacks/stacking';
 import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  Cl,
+  StacksPrivateKey,
+  bufferCV,
   makeContractCall,
+  makeRandomPrivKey,
   makeSTXTokenTransfer,
   noneCV,
+  randomBytes,
   someCV,
   standardPrincipalCV,
   uintCV,
 } from '@stacks/transactions';
-import {
-  ClarityValueOptionalNone,
-  ClarityValueTuple,
-  ClarityValueUInt,
-  decodeClarityValue,
-} from 'stacks-encoding-native-js';
+import { ClarityValueTuple, ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
@@ -29,6 +30,8 @@ import {
   standByForTxSuccess,
   testEnv,
 } from '../test-utils/test-helpers';
+import { hexToBytes } from '@stacks/common';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
 
 describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -47,20 +50,18 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   let contractAddress: string;
   let contractName: string;
 
+  let stackingClient: StackingClient;
+  let signerPrivKey: StacksPrivateKey;
+  let signerPubKey: string;
+
   beforeAll(() => {
     seedAccount = accountFromKey(seedKey);
     POOL = accountFromKey(delegatorKey);
     STACKER = accountFromKey(delegateeKey);
-  });
 
-  test('Import testing accounts to bitcoind', async () => {
-    for (const account of [POOL, STACKER]) {
-      await testEnv.bitcoinRpcClient.importprivkey({
-        privkey: account.wif,
-        label: account.btcAddr,
-        rescan: false,
-      });
-    }
+    stackingClient = new StackingClient(POOL.stxAddr, testEnv.stacksNetwork);
+    signerPrivKey = makeRandomPrivKey();
+    signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
   });
 
   test('Seed delegate accounts', async () => {
@@ -238,7 +239,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     expect(BigInt(coreBalanceInfo.locked)).toBe(DELEGATE_HALF_AMOUNT);
     expect(coreBalanceInfo.unlock_height).toBeGreaterThan(0);
 
-    // validate delegate-stack-stx pox2 event for this tx
+    // validate delegate-stack-stx pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${delegateStackStxTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -279,11 +280,32 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       fee: 10000n,
     });
     const revokeTxResult = await testEnv.client.sendTransaction(Buffer.from(revokeTx.serialize()));
-    const revokeStackDbTx = await standByForTxSuccess(revokeTxResult.txId);
+    const revokeStackDbTx = await standByForTx(revokeTxResult.txId);
 
-    const revokeStackResult = decodeClarityValue(revokeStackDbTx.raw_result);
-    expect(revokeStackResult.repr).toEqual('(ok true)');
     expect(revokeStackDbTx.status).toBe(DbTxStatus.Success);
+    expect(Cl.deserialize(revokeStackDbTx.raw_result)).toEqual(
+      Cl.ok(
+        Cl.some(
+          Cl.tuple({
+            'amount-ustx': Cl.uint(DELEGATE_HALF_AMOUNT),
+            'delegated-to': Cl.standardPrincipal(POOL.stxAddr),
+            'pox-addr': Cl.some(poxAddressToTuple(STACKER.btcTestnetAddr)),
+            'until-burn-ht': Cl.none(),
+          })
+        )
+      )
+    );
+
+    // validate revoke-delegate-stx pox event for this tx
+    const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${revokeTxResult.txId}`);
+    expect(res.results).toHaveLength(1);
+    expect(res.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'revoke-delegate-stx',
+        stacker: STACKER.stxAddr,
+        data: expect.objectContaining({ delegate_to: POOL.stxAddr }),
+      })
+    );
 
     // revocation doesn't change anything for the previous delegate-stack-stx state
     const coreBalanceInfo = await testEnv.client.getAccount(STACKER.stxAddr);
@@ -292,6 +314,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   });
 
   test('Try to perform delegate-stack-stx - while revoked', async () => {
+    await standByForPoxCycle();
     poxInfo = await testEnv.client.getPox();
     const startBurnHt = poxInfo.current_burnchain_block_height as number;
 
@@ -402,7 +425,17 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   test('Perform stack-aggregation-commit - delegator commit to stacking operation', async () => {
     poxInfo = await testEnv.client.getPox();
     const rewardCycle = BigInt(poxInfo.next_cycle.id);
-
+    const signerSig = hexToBytes(
+      stackingClient.signPoxSignature({
+        topic: 'agg-commit',
+        poxAddress: STACKER.btcAddr,
+        rewardCycle: Number(rewardCycle),
+        period: 1,
+        signerPrivateKey: signerPrivKey,
+        maxAmount: DELEGATE_HALF_AMOUNT,
+        authId: 0,
+      })
+    );
     const stackAggrCommitTx = await makeContractCall({
       senderKey: POOL.secretKey,
       contractAddress,
@@ -411,6 +444,10 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
       functionArgs: [
         STACKER.poxAddrClar, // pox-addr
         uintCV(rewardCycle), // reward-cycle
+        someCV(bufferCV(signerSig)), // signer-sig
+        bufferCV(hexToBytes(signerPubKey)), // signer-key
+        uintCV(DELEGATE_HALF_AMOUNT.toString()), // max-amount
+        uintCV(0), // auth-id
       ],
       network: testEnv.stacksNetwork,
       anchorMode: AnchorMode.OnChainOnly,
@@ -421,7 +458,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
     await standByForTxSuccess(stackAggrCommitTxId);
 
-    // validate stack-aggregation-commit pox2 event for this tx
+    // validate stack-aggregation-commit pox event for this tx
     const res: any = await fetchGet(`/extended/v1/pox4_events/tx/${stackAggrCommitTxId}`);
     expect(res).toBeDefined();
     expect(res.results).toHaveLength(1);
@@ -435,7 +472,6 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
   });
 
   test('Wait for current two pox cycles to complete', async () => {
-    await standByForPoxCycleEnd();
     await standByForPoxCycle();
     await standByForPoxCycle();
   });

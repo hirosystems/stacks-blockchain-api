@@ -30,6 +30,9 @@ import {
   bufferCV,
   AnchorMode,
   deserializeTransaction,
+  makeRandomPrivKey,
+  privateKeyToString,
+  someCV,
 } from '@stacks/transactions';
 import { StacksTestnet } from '@stacks/network';
 import { SampleContracts } from '../../sample-data/broadcast-contract-default';
@@ -54,7 +57,10 @@ import {
   RosettaOperation,
 } from '@stacks/stacks-blockchain-api-types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
-import { decodeBtcAddress } from '@stacks/stacking';
+import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
+import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { randomBytes } from 'node:crypto';
+import { hexToBytes } from '@stacks/common';
 
 const testnetAccounts = [
   {
@@ -587,6 +593,9 @@ export function createDebugRouter(db: PgStore): express.Router {
     btcAddr: string,
     cycleCount: number
   ): Promise<{ txId: string; burnBlockHeight: number }> {
+    const signerPrivKey = privateKeyToString(makeRandomPrivKey());
+    const signerPubKey = getPublicKeyFromPrivate(signerPrivKey);
+
     const stackingOperations: RosettaOperation[] = [
       {
         operation_identifier: {
@@ -607,6 +616,8 @@ export function createDebugRouter(db: PgStore): express.Router {
         metadata: {
           number_of_cycles: cycleCount,
           pox_addr: btcAddr,
+          signer_key: signerPubKey,
+          signer_private_key: signerPrivKey,
         },
       },
       {
@@ -723,21 +734,38 @@ export function createDebugRouter(db: PgStore): express.Router {
         ));
       } else {
         const [contractAddress, contractName] = poxInfo.contract_id.split('.');
-        const decodedBtcAddr = decodeBtcAddress(recipient_address);
+        const poxAddrTuple = poxAddressToTuple(recipient_address);
         burnBlockHeight = poxInfo.current_burnchain_block_height as number;
+
+        const stackingRpc = new StackingClient('', stacksNetwork);
+        const signerPrivKey = makeRandomPrivKey();
+        const signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
+        const authId = `0x${randomBytes(16).toString('hex')}`;
+
+        const signerSig = stackingRpc.signPoxSignature({
+          topic: 'stack-stx',
+          poxAddress: recipient_address,
+          rewardCycle: poxInfo.current_cycle.id,
+          period: cycles,
+          signerPrivateKey: signerPrivKey,
+          maxAmount: ustxAmount,
+          authId: authId,
+        });
+
         const txOptions: SignedContractCallOptions = {
           senderKey: sender.secretKey,
           contractAddress,
           contractName,
           functionName: 'stack-stx',
           functionArgs: [
-            uintCV(ustxAmount.toString()),
-            tupleCV({
-              hashbytes: bufferCV(decodedBtcAddr.data),
-              version: bufferCV(Buffer.from([decodedBtcAddr.version])),
-            }),
-            uintCV(burnBlockHeight),
-            uintCV(cycles),
+            uintCV(ustxAmount), // amount-ustx
+            poxAddrTuple, // pox-addr
+            uintCV(burnBlockHeight), // start-burn-ht
+            uintCV(cycles), // lock-period
+            someCV(bufferCV(hexToBytes(signerSig))), // signer-sig
+            bufferCV(hexToBytes(signerPubKey)), // signer-key
+            uintCV(ustxAmount), // max-amount
+            uintCV(authId), // auth-id
           ],
           network: stacksNetwork,
           anchorMode: AnchorMode.Any,

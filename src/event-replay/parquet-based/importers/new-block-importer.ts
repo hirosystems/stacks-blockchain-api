@@ -84,7 +84,7 @@ const populateBatchInserters = (db: PgWriteStore) => {
   batchInserters.push(dbMicroblockBatchInserter);
 
   const dbTxBatchInserter = createBatchInserter<DbTx>({
-    batchSize: 1400,
+    batchSize: 1000,
     insertFn: entries => {
       logger.debug({ component: 'event-replay' }, 'Inserting into txs table...');
       return db.insertTxBatch(db.sql, entries);

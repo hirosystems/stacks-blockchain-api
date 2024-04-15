@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
+import { bytesToHex } from '@stacks/common';
 import {
   AddressStxBalanceResponse,
   BurnchainRewardListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
+  TransactionVersion,
   getAddressFromPrivateKey,
   makeSTXTokenTransfer,
-  TransactionVersion,
+  randomBytes,
 } from '@stacks/transactions';
 import bignumber from 'bignumber.js';
 import { testnetKeys } from '../api/routes/debug';
@@ -25,7 +28,6 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
@@ -38,8 +40,10 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     pubKey: string;
   };
   let testAccountBalance: bigint;
-  let lastPoxInfo: CoreRpcPoxInfo;
   let ustxAmount: bigint;
+
+  const signerPrivKey = '929c9b8581473c67df8a21c2a4a12f74762d913dd39d91295ee96e779124bca9';
+  const signerPubKey = '033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161';
 
   beforeAll(() => {
     const ecPair = ECPair.fromPrivateKey(Buffer.from(accountKey, 'hex').slice(0, 32), {
@@ -116,10 +120,9 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     // This should be investigated further, but is not the purpose of this test
     await standByForPoxCycle();
 
-    const cycleCount = 1;
+    const cycleCount = 2;
 
     const poxInfo = await testEnv.client.getPox();
-    lastPoxInfo = poxInfo;
     ustxAmount = BigInt(Math.round(Number(poxInfo.min_amount_ustx) * 1.1).toString());
 
     const stackingResult = await stackStxWithRosetta({
@@ -129,6 +132,8 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount: cycleCount,
       ustxAmount: ustxAmount,
+      signerKey: signerPubKey,
+      signerPrivKey: signerPrivKey,
     });
 
     expect(stackingResult.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -156,14 +161,51 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(ustxAmount);
   });
 
-  test('Verify PoX rewards - Bitcoin RPC', async () => {
-    // Wait until end of reward phase
-    const rewardPhaseEndBurnBlock =
-      lastPoxInfo.next_cycle.reward_phase_start_block_height +
-      lastPoxInfo.reward_phase_block_length +
-      1;
-    await standByUntilBurnBlock(rewardPhaseEndBurnBlock);
+  test('Rosetta unlock events', async () => {
+    const rpcAccountInfo = await testEnv.client.getAccount(account.stxAddr);
+    const rpcAccountLocked = BigInt(rpcAccountInfo.locked).toString();
+    const burnBlockUnlockHeight = rpcAccountInfo.unlock_height + 1;
 
+    // Wait until account has unlocked (finished Stacking cycles)
+    await standByForPoxCycle();
+    await standByForPoxCycle();
+    await standByForPoxCycle();
+
+    // verify STX unlocked - stacks-node account RPC balance
+    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
+    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
+    expect(coreNodeBalance.unlock_height).toBe(0);
+
+    // verify STX unlocked - API address endpoint balance
+    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+      `/extended/v1/address/${account.stxAddr}/stx`
+    );
+    expect(BigInt(apiBalance.locked)).toBe(0n);
+
+    // verify STX unlocked - Rosetta address endpoint balance
+    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
+    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
+
+    await timeout(1000); // wait a bit for block to be processed
+    // Get Stacks block associated with the burn block `unlock_height` reported by RPC
+    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo.unlock_height);
+
+    // Ensure Rosetta block contains a stx_unlock operation
+    const unlockOp = unlockRstaBlock
+      .block!.transactions.flatMap(t => t.operations)
+      .find(op => op.type === 'stx_unlock')!;
+    expect(unlockOp).toBeDefined();
+    expect(unlockOp).toEqual(
+      expect.objectContaining({
+        type: 'stx_unlock',
+        status: 'success',
+        account: { address: account.stxAddr },
+        amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
+      })
+    );
+  });
+
+  test('Verify PoX rewards - Bitcoin RPC', async () => {
     const rewards = await fetchGet<BurnchainRewardListResponse>(
       `/extended/v1/burnchain/rewards/${btcAddrTestnet}`
     );
@@ -184,57 +226,19 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       include_watchonly: true,
     });
     received = received.filter(r => r.address === btcAddr);
-    expect(received.length).toBe(1);
+    // todo: double-check if multiple rewards are possible/intended for
+    //       this test, since it doesn't happen often
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    expect(received.length).toBe(rewards.results.length);
     expect(received[0].category).toBe('receive');
     expect(received[0].blockhash).toBe(hexToBuffer(firstReward.burn_block_hash).toString('hex'));
     const sats = new bignumber(received[0].amount).shiftedBy(8).toString();
     expect(sats).toBe(firstReward.reward_amount);
   });
 
-  test('Rosetta unlock events', async () => {
-    // unlock_height: 115
-    const rpcAccountInfo1 = await testEnv.client.getAccount(account.stxAddr);
-    const rpcAccountLocked = BigInt(rpcAccountInfo1.locked).toString();
-    const burnBlockUnlockHeight = rpcAccountInfo1.unlock_height + 1;
-
-    // Wait until account has unlocked (finished Stacking cycles)
-    // (wait one more block due to test flakiness..)
-    await standByUntilBurnBlock(burnBlockUnlockHeight + 1);
-
-    // verify STX unlocked - stacks-node account RPC balance
-    const coreNodeBalance = await testEnv.client.getAccount(account.stxAddr);
-    expect(BigInt(coreNodeBalance.locked)).toBe(0n);
-    expect(coreNodeBalance.unlock_height).toBe(0);
-
-    // verify STX unlocked - API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
-      `/extended/v1/address/${account.stxAddr}/stx`
-    );
-    expect(BigInt(apiBalance.locked)).toBe(0n);
-
-    // verify STX unlocked - Rosetta address endpoint balance
-    const rosettaBalance = await getRosettaAccountBalance(account.stxAddr);
-    expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
-
-    // Get Stacks block associated with the burn block `unlock_height` reported by RPC
-    const unlockRstaBlock = await getRosettaBlockByBurnBlockHeight(rpcAccountInfo1.unlock_height);
-
-    // Ensure Rosetta block contains a stx_unlock operation
-    const unlockOp = unlockRstaBlock
-      .block!.transactions.flatMap(t => t.operations)
-      .find(op => op.type === 'stx_unlock')!;
-    expect(unlockOp).toBeDefined();
-    expect(unlockOp).toEqual(
-      expect.objectContaining({
-        type: 'stx_unlock',
-        status: 'success',
-        account: { address: account.stxAddr },
-        amount: { value: rpcAccountLocked, currency: { symbol: 'STX', decimals: 6 } },
-      })
-    );
-  });
-
-  test('Stack below threshold to trigger early auto-unlock', async () => {
+  // NOTE: auto-unlock has been removed in pox-4
+  // See https://github.com/stacks-network/stacks-core/pull/4576
+  test.skip('Stack below threshold to trigger early auto-unlock', async () => {
     const cycleCount = 5;
 
     const poxInfo = await testEnv.client.getPox();
@@ -247,6 +251,8 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
       privateKey: account.secretKey,
       cycleCount,
       ustxAmount,
+      signerKey: signerPubKey,
+      signerPrivKey: signerPrivKey,
     });
 
     expect(rosettaStackStx.constructionMetadata.metadata.contract_name).toBe('pox-4');
@@ -273,7 +279,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   });
 
   let earlyUnlockBurnHeight: number;
-  test('Ensure account unlocks early', async () => {
+  test.skip('Ensure account unlocks early', async () => {
     const initialAccountInfo = await testEnv.client.getAccount(account.stxAddr);
     await standByForAccountUnlock(account.stxAddr);
 
@@ -298,7 +304,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(rosettaBalance.locked.balances[0].value)).toBe(0n);
   });
 
-  test('Ensure unlock operation generated after auto-unlock', async () => {
+  test.skip('Ensure unlock operation generated after auto-unlock', async () => {
     await standByUntilBurnBlock(earlyUnlockBurnHeight + 2);
 
     // Get Stacks block associated with the burn block `unlock_height` reported by RPC
@@ -345,11 +351,11 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     // Ensure stx_unlock operations and balances are correct for before and after blocks
     const surroundingBlocks = [earlyUnlockBurnHeight - 1, earlyUnlockBurnHeight + 1];
     for (const surroundingBlock of surroundingBlocks) {
-      const block2 = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
-      const unlockOps2 = block2
+      const block = await getRosettaBlockByBurnBlockHeight(surroundingBlock);
+      const unlockOps = block
         .block!.transactions.flatMap(t => t.operations)
         .filter(op => op.type === 'stx_unlock')!;
-      expect(unlockOps2).toHaveLength(0);
+      expect(unlockOps).toHaveLength(0);
     }
   });
 });

@@ -34,7 +34,7 @@ beforeAll(async () => {
     user: BTC_RPC_USER,
     pass: BTC_RPC_PW,
     timeout: 120000,
-    wallet: '',
+    wallet: 'main',
   });
 
   testEnv = {
@@ -51,7 +51,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   console.log('Jest - teardown..');
-  await testEnv.api.terminate();
-  await testEnv.db?.close();
+  await testEnv.api.forceKill();
+  await testEnv.db?.close({ timeout: 0 });
   console.log('Jest - teardown done');
 });

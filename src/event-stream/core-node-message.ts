@@ -148,7 +148,7 @@ interface FtBurnEvent extends CoreNodeEventBase {
   };
 }
 
-interface BurnchainOpRegisterAssetNft {
+export interface BurnchainOpRegisterAssetNft {
   register_asset: {
     asset_type: 'nft';
     burn_header_hash: string;
@@ -158,7 +158,7 @@ interface BurnchainOpRegisterAssetNft {
   };
 }
 
-interface BurnchainOpRegisterAssetFt {
+export interface BurnchainOpRegisterAssetFt {
   register_asset: {
     asset_type: 'ft';
     burn_header_hash: string;
@@ -168,7 +168,56 @@ interface BurnchainOpRegisterAssetFt {
   };
 }
 
-export type BurnchainOp = BurnchainOpRegisterAssetNft | BurnchainOpRegisterAssetFt;
+export interface BurnchainOpStackStx {
+  stack_stx: {
+    auth_id: number; // 123456789,
+    burn_block_height: number; // 121,
+    burn_header_hash: string; // "71b87d20a688d5a23dc2915cd0cff2dd019f81801717a230caf58ee5fae6faf0",
+    burn_txid: string; // "e5d9aa62315aadfe670a0180fa3687852830f50152461bfd393a1298add88842",
+    max_amount: number; // 4500432000000000,
+    num_cycles: number; // 6,
+    reward_addr: string; // "tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453",
+    sender: {
+      address: string; // "ST1Z7V02CJRY3G5R2RDG7SFAZA8VGH0Y44NC2NAJN",
+      address_hash_bytes: string; // "0x7e7d804c963c381702c3607cbd5f52370883c425",
+      address_version: number; // 26
+    };
+    signer_key: string; // "033b67384665cbc3a36052a2d1c739a6cd1222cd451c499400c9d42e2041a56161",
+    stacked_ustx: number; // 4500432000000000,
+    vtxindex: number; // 3
+  };
+}
+
+export interface BurnchainOpDelegateStx {
+  delegate_stx: {
+    burn_block_height: number; // 121;
+    burn_header_hash: string; // '54feff1b7edc52311de1f4a54ccc0cf786274cdd2e2ca95ab73569a622f43e35';
+    burn_txid: string; // '15700f75e675181f79ab66219746b501e276006d53a8874cc3123d8317c6ed8b';
+    delegate_to: {
+      address: string; // 'ST11NJTTKGVT6D1HY4NJRVQWMQM7TVAR091EJ8P2Y';
+      address_hash_bytes: string; // '0x43596b5386f466863e25658ddf94bd0fadab0048';
+      address_version: number; // 26;
+    };
+    delegated_ustx: number; // 4500432000000000;
+    reward_addr: [
+      number, // 1,
+      string // 'tb1pf4x64urhdsdmadxxhv2wwjv6e3evy59auu2xaauu3vz3adxtskfschm453'
+    ];
+    sender: {
+      address: string; // 'ST1Z7V02CJRY3G5R2RDG7SFAZA8VGH0Y44NC2NAJN';
+      address_hash_bytes: string; // '0x7e7d804c963c381702c3607cbd5f52370883c425';
+      address_version: number; // 26;
+    };
+    until_burn_height: number; // 200;
+    vtxindex: number; // 3;
+  };
+}
+
+type BurnchainOp =
+  | BurnchainOpRegisterAssetNft
+  | BurnchainOpRegisterAssetFt
+  | BurnchainOpStackStx
+  | BurnchainOpDelegateStx;
 
 export type CoreNodeEvent =
   | SmartContractEvent
@@ -255,6 +304,23 @@ export interface CoreNodeBlockMessage {
   pox_v1_unlock_height?: number;
   pox_v2_unlock_height?: number;
   pox_v3_unlock_height?: number;
+  /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
+  cycle_number?: number;
+  /** Available starting in epoch3, only included in blocks where the pox cycle rewards are first calculated */
+  reward_set?: {
+    pox_ustx_threshold: string; // "666720000000000"
+    rewarded_addresses: string[]; // burnchain (btc) addresses
+    signers?: {
+      signing_key: string; // "03a80704b1eb07b4d526f069d6ac592bb9b8216bcf1734fa40badd8f9867b4c79e",
+      weight: number; // 1,
+      stacked_amt: string; // "3000225000000000"
+    }[];
+    start_cycle_state: {
+      missed_reward_slots: [];
+    };
+  };
+  block_time: number;
+  signer_bitvec?: string | null;
 }
 
 export interface CoreNodeParsedTxMessage {
@@ -274,6 +340,7 @@ export interface CoreNodeParsedTxMessage {
   burn_block_time: number;
   parent_burn_block_time: number;
   parent_burn_block_hash: string;
+  block_time: number;
 }
 
 export interface CoreNodeBurnBlockMessage {

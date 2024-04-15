@@ -50,6 +50,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1235,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -61,6 +62,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
     const tx: DbTxRaw = {
@@ -72,6 +74,7 @@ describe('search tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -258,6 +261,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 94869286,
       burn_block_time: 94869286,
       burn_block_hash: '0x1234',
       burn_block_height: 123,
@@ -269,6 +273,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const tx: DbTxRaw = {
@@ -280,6 +285,7 @@ describe('search tests', () => {
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
       block_height: 1,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -361,6 +367,8 @@ describe('search tests', () => {
       execution_cost_write_length: 0,
       hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
       height: 1,
+      block_time: 94869286,
+      block_time_iso: '1973-01-03T00:34:46.000Z',
       index_block_hash: '0xdeadbeef',
       microblocks_accepted: [],
       microblocks_streamed: [],
@@ -535,6 +543,8 @@ describe('search tests', () => {
           block_hash: '0x1234000000000000000000000000000000000000000000000000000000000000',
           parent_block_hash: '0x',
           block_height: 1,
+          block_time: 2837565,
+          block_time_iso: '1970-02-02T20:12:45.000Z',
           burn_block_time: 2837565,
           burn_block_time_iso: '1970-02-02T20:12:45.000Z',
           parent_burn_block_time: 1626122935,
@@ -589,6 +599,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 100123123,
+      block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -600,6 +611,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
     await db.updateBlock(client, block);
 
@@ -612,6 +624,7 @@ describe('search tests', () => {
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -663,6 +676,7 @@ describe('search tests', () => {
       index_block_hash: '0x5432',
       block_hash: '0x9876',
       block_height: 68456,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -890,6 +904,7 @@ describe('search tests', () => {
       tx_index: 0,
       index_block_hash: '0x543288',
       block_hash: '0x9876',
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       status: 1,
@@ -1026,6 +1041,7 @@ describe('search tests', () => {
       parent_microblock_hash: '',
       parent_microblock_sequence: 0,
       block_height: 1,
+      block_time: 39486,
       burn_block_time: 39486,
       burn_block_hash: '0x1234',
       burn_block_height: 100123123,
@@ -1037,6 +1053,7 @@ describe('search tests', () => {
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
       tx_count: 1,
+      signer_bitvec: null,
     };
 
     const stxTx1: DbTxRaw = {
@@ -1048,6 +1065,7 @@ describe('search tests', () => {
       index_block_hash: '0x5432',
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -1085,6 +1103,7 @@ describe('search tests', () => {
       index_block_hash: '0x5432',
       block_hash: block.block_hash,
       block_height: block.block_height,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.TokenTransfer,
@@ -1213,6 +1232,7 @@ describe('search tests', () => {
       tx_index: 0,
       index_block_hash: block.index_block_hash,
       block_hash: block.block_hash,
+      block_time: 2837565,
       burn_block_time: 2837565,
       parent_burn_block_time: 1626122935,
       status: 1,
@@ -1499,6 +1519,8 @@ describe('search tests', () => {
           anchor_mode: 'any',
           block_hash: '0x1234',
           block_height: 1,
+          block_time: 2837565,
+          block_time_iso: '1970-02-02T20:12:45.000Z',
           burn_block_time: 2837565,
           burn_block_time_iso: '1970-02-02T20:12:45.000Z',
           canonical: true,
