@@ -42,6 +42,7 @@ export function getStxFaucetNetworks(): StacksNetwork[] {
 enum TxSendResultStatus {
   Success,
   ConflictingNonce,
+  TooMuchChaining,
   Error,
 }
 
@@ -50,17 +51,12 @@ interface TxSendResultSuccess {
   txId: string;
 }
 
-interface TxSendResultConflictingNonce {
-  status: TxSendResultStatus.ConflictingNonce;
-  error: Error;
-}
-
 interface TxSendResultError {
-  status: TxSendResultStatus.Error;
+  status: TxSendResultStatus;
   error: Error;
 }
 
-type TxSendResult = TxSendResultSuccess | TxSendResultConflictingNonce | TxSendResultError;
+type TxSendResult = TxSendResultSuccess | TxSendResultError;
 
 function clientFromNetwork(network: StacksNetwork): StacksCoreRpcClient {
   const coreUrl = new URL(network.coreApiUrl);
@@ -148,6 +144,10 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
+  const STX_FAUCET_NETWORKS = getStxFaucetNetworks();
+  const STX_FAUCET_KEYS = (process.env.FAUCET_PRIVATE_KEY ?? testnetKeys[0].secretKey).split(',');
+  let stxKeyIndex = 0;
+
   router.post(
     '/stx',
     asyncHandler(async (req, res) => {
@@ -166,8 +166,6 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         const address: string = req.query.address as string;
         const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
         const lastRequests = await db.getSTXFaucetRequests(address);
-
-        const privateKey = process.env.FAUCET_PRIVATE_KEY || testnetKeys[0].secretKey;
 
         const isStackingReq = req.query['stacking'] === 'true';
 
@@ -191,10 +189,8 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           return;
         }
 
-        const networks = getStxFaucetNetworks();
-
         const stxAmounts: bigint[] = [];
-        for (const network of networks) {
+        for (const network of STX_FAUCET_NETWORKS) {
           try {
             let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
             if (isStackingReq) {
@@ -222,7 +218,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           const txOpts: SignedTokenTransferOptions = {
             recipient: address,
             amount: stxAmount,
-            senderKey: privateKey,
+            senderKey: STX_FAUCET_KEYS[stxKeyIndex],
             network: network,
             memo: 'Faucet',
             anchorMode: AnchorMode.Any,
@@ -251,7 +247,7 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         const nonces: bigint[] = [];
         const fees: bigint[] = [];
         let txGenFetchError: Error | undefined;
-        for (const network of networks) {
+        for (const network of STX_FAUCET_NETWORKS) {
           try {
             const tx = await generateTx(network);
             nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
@@ -271,9 +267,9 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
         let sendSuccess: { txId: string; txRaw: string } | undefined;
         let lastSendError: Error | undefined;
         do {
-          const tx = await generateTx(networks[0], nextNonce, fee);
+          const tx = await generateTx(STX_FAUCET_NETWORKS[0], nextNonce, fee);
           const rawTx = Buffer.from(tx.serialize());
-          for (const network of networks) {
+          for (const network of STX_FAUCET_NETWORKS) {
             const rpcClient = clientFromNetwork(network);
             try {
               const res = await rpcClient.sendTransaction(rawTx);
@@ -289,6 +285,11 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
                   status: TxSendResultStatus.ConflictingNonce,
                   error,
                 });
+              } else if (error.message?.includes('TooMuchChaining')) {
+                sendTxResults.push({
+                  status: TxSendResultStatus.TooMuchChaining,
+                  error,
+                });
               } else {
                 sendTxResults.push({
                   status: TxSendResultStatus.Error,
@@ -299,12 +300,18 @@ export function createFaucetRouter(db: PgWriteStore): express.Router {
           }
           if (sendTxResults.every(res => res.status === TxSendResultStatus.Success)) {
             retrySend = false;
+            stxKeyIndex++;
           } else if (
             sendTxResults.every(res => res.status === TxSendResultStatus.ConflictingNonce)
           ) {
             retrySend = true;
             sendTxResults.length = 0;
             nextNonce = nextNonce + 1n;
+          } else if (
+            sendTxResults.every(res => res.status === TxSendResultStatus.TooMuchChaining)
+          ) {
+            retrySend = true;
+            stxKeyIndex++;
           } else {
             retrySend = false;
           }
