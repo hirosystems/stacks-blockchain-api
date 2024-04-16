@@ -851,13 +851,6 @@ jobs:
 
   build-publish:
     runs-on: ubuntu-latest
-    needs:
-      - lint
-      - lint-docs
-      - test
-      - test-bns
-      - test-rosetta
-      - test-rosetta-cli-construction
     steps:
       - uses: actions/checkout@v3
         with:
