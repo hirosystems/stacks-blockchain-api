@@ -1,3 +1,11 @@
+## [7.11.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.1...v7.11.0-beta.2) (2024-04-16)
+
+
+### Features
+
+* docker build for arm ([#1947](https://github.com/hirosystems/stacks-blockchain-api/issues/1947)) ([2c526fc](https://github.com/hirosystems/stacks-blockchain-api/commit/2c526fcf8ead66ff3055bbd77e37f663726503af))
+* support multiple STX faucet source accounts ([#1946](https://github.com/hirosystems/stacks-blockchain-api/issues/1946)) ([5d69c7c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d69c7c1b5ccbd6020b436c379f0ae9b6f9982bb))
+
 ## [7.11.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0...v7.11.0-beta.1) (2024-04-15)
 
 
