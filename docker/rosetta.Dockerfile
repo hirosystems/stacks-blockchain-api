@@ -1,6 +1,6 @@
 # Running with `SEED_CHAINSTATE=true` will require the container to be launched with `--shm-size=xxxxMB` where at least 256MB is recommended
 ARG STACKS_API_VERSION=v7.1.10
-ARG STACKS_BLOCKCHAIN_VERSION=2.3.0.0.2
+ARG STACKS_BLOCKCHAIN_VERSION=2.5.0.0.2
 ARG PG_VERSION=15
 ARG STACKS_NETWORK=mainnet
 ARG PG_HOST=127.0.0.1
