@@ -39,7 +39,10 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           let blockHash: string = '0x';
           // we need to return the block height/hash in the response, so we
           // need to fetch the block first.
-          if (blockIdentifier === undefined) {
+          if (
+            (!blockIdentifier?.hash && !blockIdentifier?.index) ||
+            (blockIdentifier && blockIdentifier.index <= 0)
+          ) {
             blockQuery = await db.getCurrentBlock();
           } else if (blockIdentifier.index > 0) {
             blockQuery = await db.getBlock({ height: blockIdentifier.index });
