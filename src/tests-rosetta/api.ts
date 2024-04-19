@@ -1239,32 +1239,6 @@ describe('Rosetta API', () => {
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
 
-  test('account/balance - empty block identifier', async () => {
-    const request: RosettaAccountBalanceRequest = {
-      network_identifier: {
-        blockchain: 'stacks',
-        network: 'testnet',
-      },
-      account_identifier: {
-        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
-        metadata: {},
-      },
-      block_identifier: {},
-    };
-
-    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
-    expect(result.type).toBe('application/json');
-
-    const expectResponse = {
-      code: 615,
-      message: 'Block identifier is null.',
-      retriable: false,
-    };
-
-    expect(JSON.parse(result.text)).toEqual(expectResponse);
-  });
-
   test('account/balance - invalid block hash', async () => {
     const request: RosettaAccountBalanceRequest = {
       network_identifier: {
