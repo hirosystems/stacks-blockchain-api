@@ -1,3 +1,10 @@
+## [7.11.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.2...v7.11.0-beta.3) (2024-04-19)
+
+
+### Bug Fixes
+
+* rosetta account endpoint should assume chain tip if block not specified ([#1956](https://github.com/hirosystems/stacks-blockchain-api/issues/1956)) ([4bba526](https://github.com/hirosystems/stacks-blockchain-api/commit/4bba526327db0ae9cf778df69db0d7505e280ea3))
+
 ## [7.11.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.1...v7.11.0-beta.2) (2024-04-16)
 
 
