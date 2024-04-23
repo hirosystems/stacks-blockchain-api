@@ -146,6 +146,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     const dbTx = await standByForTxSuccess(expectedTxId);
 
     const tx1Event = await testEnv.api.datastore.getTxEvents({
+      sql: testEnv.db.sql,
       txId: expectedTxId,
       indexBlockHash: dbTx.index_block_hash,
       limit: 99999,
@@ -255,6 +256,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     const dbTx = await standByForTxSuccess(sendTxResult.txId);
 
     const txEvents = await testEnv.api.datastore.getTxEvents({
+      sql: testEnv.db.sql,
       txId: dbTx.tx_id,
       indexBlockHash: dbTx.index_block_hash,
       limit: 99999,
@@ -370,6 +372,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     const dbTx = await standByForTxSuccess(expectedTxId);
 
     const txEvents = await testEnv.api.datastore.getTxEvents({
+      sql: testEnv.db.sql,
       txId: dbTx.tx_id,
       indexBlockHash: dbTx.index_block_hash,
       limit: 99999,
@@ -565,7 +568,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
   });
 
   test('BTC stacking reward received', async () => {
-    const curBlock = await testEnv.db.getCurrentBlock();
+    const curBlock = await testEnv.db.getCurrentBlock(testEnv.db.sql);
     assert(curBlock.found);
     await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
 

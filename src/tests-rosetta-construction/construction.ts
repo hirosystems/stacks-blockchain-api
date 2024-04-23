@@ -1996,9 +1996,9 @@ describe('Rosetta Construction', () => {
     const stxLockedTransaction = await standByForTx(submitResult.body.transaction_identifier.hash);
 
     const blockHeight = stxLockedTransaction.block_height;
-    let block = await api.datastore.getBlock({ height: blockHeight });
+    let block = await api.datastore.getBlock(api.datastore.sql, { height: blockHeight });
     assert(block.found);
-    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    const txs = await api.datastore.getBlockTxsRows(api.datastore.sql, block.result.block_hash);
     assert(txs.found);
 
     const blockStxOpsQuery = await supertest(api.address)
@@ -2469,9 +2469,9 @@ describe('Rosetta Construction', () => {
     const delegateStx = await standByForTx(submitResult.body.transaction_identifier.hash);
 
     const blockHeight = delegateStx.block_height;
-    const block = await api.datastore.getBlock({ height: blockHeight });
+    const block = await api.datastore.getBlock(api.datastore.sql, { height: blockHeight });
     assert(block.found);
-    const txs = await api.datastore.getBlockTxsRows(block.result.block_hash);
+    const txs = await api.datastore.getBlockTxsRows(api.datastore.sql, block.result.block_hash);
     assert(txs.found);
 
     const blockStxOpsQuery = await supertest(api.address)
@@ -2577,7 +2577,7 @@ describe('Rosetta Construction', () => {
     test('network/status', async () => {
       let genesisData: FoundOrNot<DbBlock>;
       do {
-        genesisData = await db.getBlock({ height: 1 });
+        genesisData = await db.getBlock(db.sql, { height: 1 });
         if (!genesisData.found) {
           await timeout(150);
         }
@@ -2591,7 +2591,7 @@ describe('Rosetta Construction', () => {
       expect(query1.status).toBe(200);
       expect(query1.type).toBe('application/json');
 
-      const blockQuery = await db.getCurrentBlock();
+      const blockQuery = await db.getCurrentBlock(db.sql);
       if (!blockQuery.found) {
         throw new Error(`Could not get current block`);
       }

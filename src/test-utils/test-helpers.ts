@@ -205,7 +205,7 @@ export async function standByUntilBurnBlock(
   let blockFound = false;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock(api.datastore.sql, { hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.burn_block_height < burnBlockHeight) {
         return;
       }
@@ -217,9 +217,9 @@ export async function standByUntilBurnBlock(
 
     // Check if block height already reached
     while (!blockFound) {
-      const curHeight = await api.datastore.getCurrentBlock();
+      const curHeight = await api.datastore.getCurrentBlock(api.datastore.sql);
       if (curHeight.found && curHeight.result.burn_block_height >= burnBlockHeight) {
-        const dbBlock = await api.datastore.getBlock({
+        const dbBlock = await api.datastore.getBlock(api.datastore.sql, {
           height: curHeight.result.block_height,
         });
         if (!dbBlock.found) {
@@ -271,6 +271,7 @@ export async function standByForTx(
           return;
         }
         const dbTxQuery = await api.datastore.getTx({
+          sql: api.datastore.sql,
           txId: expectedTxId,
           includeUnanchored: false,
         });
@@ -286,6 +287,7 @@ export async function standByForTx(
       // Check if tx is already received
       do {
         const dbTxQuery = await api.datastore.getTx({
+          sql: api.datastore.sql,
           txId: expectedTxId,
           includeUnanchored: false,
         });
@@ -353,7 +355,7 @@ export async function standByUntilBlock(
   const api = apiArg ?? testEnv.api;
   const dbBlock = await new Promise<DbBlock>(async resolve => {
     const listener: (blockHash: string) => void = async blockHash => {
-      const dbBlockQuery = await api.datastore.getBlock({ hash: blockHash });
+      const dbBlockQuery = await api.datastore.getBlock(api.datastore.sql, { hash: blockHash });
       if (!dbBlockQuery.found || dbBlockQuery.result.block_height < blockHeight) {
         return;
       }
@@ -365,9 +367,11 @@ export async function standByUntilBlock(
 
     // Check if block height already reached
     while (!blockFound) {
-      const curHeight = await api.datastore.getCurrentBlockHeight();
+      const curHeight = await api.datastore.getCurrentBlockHeight(api.datastore.sql);
       if (curHeight.found && curHeight.result >= blockHeight) {
-        const dbBlock = await api.datastore.getBlock({ height: curHeight.result });
+        const dbBlock = await api.datastore.getBlock(api.datastore.sql, {
+          height: curHeight.result,
+        });
         if (!dbBlock.found) {
           throw new Error('Unhandled missing block');
         }

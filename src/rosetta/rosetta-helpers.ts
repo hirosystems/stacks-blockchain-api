@@ -70,7 +70,7 @@ import { PgStore } from '../datastore/pg-store';
 import { poxAddressToBtcAddress } from '@stacks/stacking';
 import { parseRecoverableSignatureVrs } from '@stacks/common';
 import { logger } from '../logger';
-import { hexToBuffer } from '@hirosystems/api-toolkit';
+import { PgSqlClient, hexToBuffer } from '@hirosystems/api-toolkit';
 import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
 import { PoxContractIdentifiers } from '../pox-helpers';
 
@@ -118,23 +118,7 @@ export function parseTransactionMemo(memoHex: string | undefined): string | null
 }
 
 export async function getOperations(
-  tx: DbTx | DbMempoolTx | BaseTx,
-  db: PgStore,
-  chainID: ChainID,
-  minerRewards?: DbMinerReward[],
-  events?: DbEvent[],
-  stxUnlockEvents?: StxUnlockEvent[]
-): Promise<RosettaOperation[]> {
-  // Offline store does not support transactions
-  if (db instanceof PgStore) {
-    return await db.sqlTransaction(async sql => {
-      return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
-    });
-  }
-  return await getOperationsInternal(tx, db, chainID, minerRewards, events, stxUnlockEvents);
-}
-
-async function getOperationsInternal(
+  sql: PgSqlClient,
   tx: DbTx | DbMempoolTx | BaseTx,
   db: PgStore,
   chainID: ChainID,
@@ -152,7 +136,7 @@ async function getOperationsInternal(
       break;
     case RosettaOperationType.ContractCall:
       operations.push(makeFeeOperation(tx));
-      operations.push(await makeCallContractOperation(tx, db, operations.length));
+      operations.push(await makeCallContractOperation(sql, tx, db, operations.length));
       break;
     case RosettaOperationType.SmartContract:
       operations.push(makeFeeOperation(tx));
@@ -175,7 +159,7 @@ async function getOperationsInternal(
   }
 
   if (events !== undefined) {
-    await processEvents(db, events, tx, operations, chainID);
+    await processEvents(events, tx, operations, chainID);
   }
 
   return operations;
@@ -222,7 +206,6 @@ function decodeSendManyContractCallMemos(tx: BaseTx, chainID: ChainID): string[]
 }
 
 async function processEvents(
-  db: PgStore,
   events: DbEvent[],
   baseTx: BaseTx,
   operations: RosettaOperation[],
@@ -664,6 +647,7 @@ function makeDeployContractOperation(tx: BaseTx, index: number): RosettaOperatio
 }
 
 async function makeCallContractOperation(
+  sql: PgSqlClient,
   tx: BaseTx,
   db: PgStore,
   index: number
@@ -677,7 +661,7 @@ async function makeCallContractOperation(
     },
   };
 
-  const parsed_tx = await getTxFromDataStore(db, { txId: tx.tx_id, includeUnanchored: false });
+  const parsed_tx = await getTxFromDataStore(sql, db, { txId: tx.tx_id, includeUnanchored: false });
   if (!parsed_tx.found) {
     throw new Error('unexpected tx not found -- could not get contract from data store');
   }
@@ -696,9 +680,9 @@ async function makeCallContractOperation(
     default:
       parseGenericContractCall(contractCallOp, tx);
   }
-
   return contractCallOp;
 }
+
 function makeCoinbaseOperation(tx: BaseTx, index: number): RosettaOperation {
   // TODO : Add more mappings in operations for coinbase
   const sender: RosettaOperation = {
@@ -1101,6 +1085,7 @@ export function rawTxToBaseTx(raw_tx: string): BaseTx {
       transactionType = DbTxTypeId.TokenTransfer;
       break;
     case TxPayloadTypeID.SmartContract:
+      throw new Error('TODO: should populate smart contract tx data here...');
       transactionType = DbTxTypeId.SmartContract;
       break;
     case TxPayloadTypeID.VersionedSmartContract:

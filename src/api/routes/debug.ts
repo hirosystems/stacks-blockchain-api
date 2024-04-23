@@ -480,7 +480,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (Number.isInteger(Number.parseInt(nonce))) {
         txNonce = Number.parseInt(nonce);
       } else {
-        const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
+        const latestNonces = await db.getAddressNonces({ sql: db.sql, stxAddress: senderAddress });
         txNonce = latestNonces.possibleNextNonce;
       }
 

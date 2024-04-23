@@ -2242,7 +2242,7 @@ describe('address tests', () => {
       execution_cost_write_length: 0,
     };
 
-    const blockTxsRows = await api.datastore.getBlockTxsRows(block.block_hash);
+    const blockTxsRows = await api.datastore.getBlockTxsRows(api.datastore.sql, block.block_hash);
     expect(blockTxsRows.found).toBe(true);
     const blockTxsRowsResult = blockTxsRows.result as DbTxRaw[];
     const contractCallResult1 = blockTxsRowsResult.find(tx => tx.tx_id === contractCall.tx_id);

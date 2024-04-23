@@ -39,9 +39,10 @@ import {
 } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
-import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
+import { has0xPrefix, isProdEnv, PgSqlClient } from '@hirosystems/api-toolkit';
 
 async function getBlockHeight(
+  sql: PgSqlClient,
   untilBlock: number | string | undefined,
   req: Request,
   res: Response,
@@ -52,7 +53,7 @@ async function getBlockHeight(
   if (typeof untilBlock === 'number') {
     blockHeight = untilBlock;
   } else if (typeof untilBlock === 'string') {
-    const block = await db.getBlock({ hash: untilBlock });
+    const block = await db.getBlock(sql, { hash: untilBlock });
     if (!block.found) {
       const error = `block not found with hash ${untilBlock}`;
       res.status(404).json({ error: error });
@@ -62,7 +63,7 @@ async function getBlockHeight(
     blockHeight = block.result.block_height;
   } else {
     const includeUnanchored = isUnanchoredRequest(req, res, next);
-    const currentBlockHeight = await db.getCurrentBlockHeight();
+    const currentBlockHeight = await db.getCurrentBlockHeight(sql);
     if (!currentBlockHeight.found) {
       const error = `no current block`;
       res.status(404).json({ error: error });
@@ -97,10 +98,10 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
       const result = await db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
         // Get balance info for STX token
-        const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
-        const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
+        const stxBalanceResult = await db.getStxBalanceAtBlock(sql, stxAddress, blockHeight);
+        const tokenOfferingLocked = await db.getTokenOfferingLocked(sql, stxAddress, blockHeight);
         const result: AddressStxBalanceResponse = {
           balance: stxBalanceResult.balance.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
@@ -133,14 +134,15 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const untilBlock = parseUntilBlockQuery(req, res, next);
 
       const result = await db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
 
         // Get balance info for STX token
-        const stxBalanceResult = await db.getStxBalanceAtBlock(stxAddress, blockHeight);
-        const tokenOfferingLocked = await db.getTokenOfferingLocked(stxAddress, blockHeight);
+        const stxBalanceResult = await db.getStxBalanceAtBlock(sql, stxAddress, blockHeight);
+        const tokenOfferingLocked = await db.getTokenOfferingLocked(sql, stxAddress, blockHeight);
 
         // Get balances for fungible tokens
         const ftBalancesResult = await db.getFungibleTokenBalances({
+          sql,
           stxAddress,
           untilBlock: blockHeight,
         });
@@ -220,10 +222,11 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+          blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
         }
 
         const { results: txResults, total } = await db.getAddressTxs({
+          sql,
           stxAddress: principal,
           limit,
           offset,
@@ -253,9 +256,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         tx_id = '0x' + tx_id;
       }
       const result = await db.sqlTransaction(async sql => {
-        const results = await db.getInformationTxsWithStxTransfers({ stxAddress, tx_id });
+        const results = await db.getInformationTxsWithStxTransfers({ sql, stxAddress, tx_id });
         if (results && results.tx) {
-          const txQuery = await getTxFromDataStore(db, {
+          const txQuery = await getTxFromDataStore(sql, db, {
             txId: results.tx.tx_id,
             dbTx: results.tx,
             includeUnanchored: false,
@@ -310,12 +313,13 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           atSingleBlock = true;
           blockHeight = blockParams.blockHeight;
         } else {
-          blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+          blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
         }
 
         const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
         const offset = parsePagingQueryInput(req.query.offset ?? 0);
         const { results: txResults, total } = await db.getAddressTxsWithAssetTransfers({
+          sql,
           stxAddress: stxAddress,
           limit,
           offset,
@@ -324,7 +328,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         });
 
         const results = await Bluebird.mapSeries(txResults, async entry => {
-          const txQuery = await getTxFromDataStore(db, {
+          const txQuery = await getTxFromDataStore(sql, db, {
             txId: entry.tx.tx_id,
             dbTx: entry.tx,
             includeUnanchored: blockParams.includeUnanchored ?? false,
@@ -390,8 +394,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
       const response = await db.sqlTransaction(async sql => {
-        const blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+        const blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
         const { results: assetEvents, total } = await db.getAddressAssetEvents({
+          sql,
           stxAddress,
           limit,
           offset,
@@ -436,12 +441,13 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             atSingleBlock = true;
             blockHeight = blockParams.blockHeight;
           } else {
-            blockHeight = await getBlockHeight(untilBlock, req, res, next, db);
+            blockHeight = await getBlockHeight(sql, untilBlock, req, res, next, db);
           }
 
           const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
           const offset = parsePagingQueryInput(req.query.offset ?? 0);
           const { results, total } = await db.getInboundTransfers({
+            sql,
             stxAddress,
             limit,
             offset,
@@ -539,36 +545,38 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         }
         blockIdentifier = { hash: blockHashQuery };
       }
-      if (blockIdentifier) {
-        const nonceQuery = await db.getAddressNonceAtBlock({ stxAddress, blockIdentifier });
-        if (!nonceQuery.found) {
-          res.status(404).json({
-            error: `No block found for ${JSON.stringify(blockIdentifier)}`,
-          });
-          return;
+      await db.sqlTransaction(async sql => {
+        if (blockIdentifier) {
+          const nonceQuery = await db.getAddressNonceAtBlock({ sql, stxAddress, blockIdentifier });
+          if (!nonceQuery.found) {
+            res.status(404).json({
+              error: `No block found for ${JSON.stringify(blockIdentifier)}`,
+            });
+            return;
+          }
+          const results: AddressNonces = {
+            last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
+            possible_next_nonce: nonceQuery.result.possibleNextNonce,
+            // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
+            last_mempool_tx_nonce: null as unknown as number,
+            detected_missing_nonces: [],
+            detected_mempool_nonces: [],
+          };
+          setETagCacheHeaders(res);
+          res.json(results);
+        } else {
+          const nonces = await db.getAddressNonces({ sql, stxAddress });
+          const results: AddressNonces = {
+            last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
+            last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
+            possible_next_nonce: nonces.possibleNextNonce,
+            detected_missing_nonces: nonces.detectedMissingNonces,
+            detected_mempool_nonces: nonces.detectedMempoolNonces,
+          };
+          setETagCacheHeaders(res);
+          res.json(results);
         }
-        const results: AddressNonces = {
-          last_executed_tx_nonce: nonceQuery.result.lastExecutedTxNonce as number,
-          possible_next_nonce: nonceQuery.result.possibleNextNonce,
-          // Note: OpenAPI type generator doesn't support `nullable: true` so force cast it here
-          last_mempool_tx_nonce: null as unknown as number,
-          detected_missing_nonces: [],
-          detected_mempool_nonces: [],
-        };
-        setETagCacheHeaders(res);
-        res.json(results);
-      } else {
-        const nonces = await db.getAddressNonces({ stxAddress });
-        const results: AddressNonces = {
-          last_executed_tx_nonce: nonces.lastExecutedTxNonce as number,
-          last_mempool_tx_nonce: nonces.lastMempoolTxNonce as number,
-          possible_next_nonce: nonces.possibleNextNonce,
-          detected_missing_nonces: nonces.detectedMissingNonces,
-          detected_mempool_nonces: nonces.detectedMempoolNonces,
-        };
-        setETagCacheHeaders(res);
-        res.json(results);
-      }
+      });
     })
   );
 

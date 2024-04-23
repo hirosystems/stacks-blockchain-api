@@ -149,7 +149,7 @@ export class WebSocketTransmitter {
   private async txUpdate(txId: string) {
     if (this.channels.find(c => c.hasListeners('mempool'))) {
       try {
-        const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
+        const mempoolTxs = await getMempoolTxsFromDataStore(this.db.sql, this.db, {
           txIds: [txId],
           includeUnanchored: true,
         });
@@ -165,7 +165,7 @@ export class WebSocketTransmitter {
       try {
         const result = await this.db.sqlTransaction(async sql => {
           // Look at the `txs` table first so we always prefer the confirmed transaction.
-          const txQuery = await getTxFromDataStore(this.db, {
+          const txQuery = await getTxFromDataStore(sql, this.db, {
             txId: txId,
             includeUnanchored: true,
           });
@@ -173,7 +173,7 @@ export class WebSocketTransmitter {
             return txQuery.result;
           } else {
             // Tx is not yet confirmed, look at `mempool_txs`.
-            const mempoolTxs = await getMempoolTxsFromDataStore(this.db, {
+            const mempoolTxs = await getMempoolTxsFromDataStore(this.db.sql, this.db, {
               txIds: [txId],
               includeUnanchored: true,
             });
@@ -218,10 +218,13 @@ export class WebSocketTransmitter {
   private async addressUpdate(address: string, blockHeight: number) {
     if (this.channels.find(c => c.hasListeners('principalTransactions', address))) {
       try {
-        const dbTxsQuery = await this.db.getAddressTxsWithAssetTransfers({
-          stxAddress: address,
-          blockHeight: blockHeight,
-          atSingleBlock: true,
+        const dbTxsQuery = await this.db.sqlTransaction(async sql => {
+          return await this.db.getAddressTxsWithAssetTransfers({
+            sql,
+            stxAddress: address,
+            blockHeight: blockHeight,
+            atSingleBlock: true,
+          });
         });
         if (dbTxsQuery.total == 0) {
           return;
@@ -251,8 +254,12 @@ export class WebSocketTransmitter {
     if (this.channels.find(c => c.hasListeners('principalStxBalance', address))) {
       try {
         const balance = await this.db.sqlTransaction(async sql => {
-          const stxBalanceResult = await this.db.getStxBalanceAtBlock(address, blockHeight);
-          const tokenOfferingLocked = await this.db.getTokenOfferingLocked(address, blockHeight);
+          const stxBalanceResult = await this.db.getStxBalanceAtBlock(sql, address, blockHeight);
+          const tokenOfferingLocked = await this.db.getTokenOfferingLocked(
+            sql,
+            address,
+            blockHeight
+          );
           const balance: AddressStxBalanceResponse = {
             balance: stxBalanceResult.balance.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),

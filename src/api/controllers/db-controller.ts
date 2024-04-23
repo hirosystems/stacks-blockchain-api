@@ -67,6 +67,7 @@ import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpe
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
+import { PgSqlClient } from '@hirosystems/api-toolkit';
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -460,68 +461,68 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
  * @param blockHeight -- number
  */
 export async function getRosettaBlockFromDataStore(
+  sql: PgSqlClient,
   db: PgStore,
   fetchTransactions: boolean,
   chainId: ChainID,
   blockHash?: string,
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
-  return await db.sqlTransaction(async sql => {
-    let query;
-    if (blockHash) {
-      query = db.getBlock({ hash: blockHash });
-    } else if (blockHeight && blockHeight > 0) {
-      query = db.getBlock({ height: blockHeight });
-    } else {
-      query = db.getCurrentBlock();
-    }
-    const blockQuery = await query;
+  let blockQuery: FoundOrNot<DbBlock>;
+  if (blockHash) {
+    blockQuery = await db.getBlock(sql, { hash: blockHash });
+  } else if (blockHeight && blockHeight > 0) {
+    blockQuery = await db.getBlock(sql, { height: blockHeight });
+  } else {
+    blockQuery = await db.getCurrentBlock(sql);
+  }
 
-    if (!blockQuery.found) {
-      return { found: false };
-    }
-    const dbBlock = blockQuery.result;
-    let blockTxs = {} as FoundOrNot<RosettaTransaction[]>;
-    blockTxs.found = false;
-    if (fetchTransactions) {
-      blockTxs = await getRosettaBlockTransactionsFromDataStore({
-        blockHash: dbBlock.block_hash,
-        indexBlockHash: dbBlock.index_block_hash,
-        db,
-        chainId,
-      });
-    }
+  if (!blockQuery.found) {
+    return { found: false };
+  }
+  const dbBlock = blockQuery.result;
+  let blockTxs: FoundOrNot<RosettaTransaction[]> = {
+    found: false,
+  };
+  if (fetchTransactions) {
+    blockTxs = await getRosettaBlockTransactionsFromDataStore({
+      sql,
+      blockHash: dbBlock.block_hash,
+      indexBlockHash: dbBlock.index_block_hash,
+      db,
+      chainId,
+    });
+  }
 
-    const parentBlockHash = dbBlock.parent_block_hash;
-    let parent_block_identifier: RosettaParentBlockIdentifier;
+  const parentBlockHash = dbBlock.parent_block_hash;
+  let parent_block_identifier: RosettaParentBlockIdentifier;
 
-    if (dbBlock.block_height <= 1) {
-      // case for genesis block
+  if (dbBlock.block_height <= 1) {
+    // case for genesis block
+    parent_block_identifier = {
+      index: dbBlock.block_height,
+      hash: dbBlock.block_hash,
+    };
+  } else {
+    const parentBlockQuery = await db.getBlock(sql, { hash: parentBlockHash });
+    if (parentBlockQuery.found) {
+      const parentBlock = parentBlockQuery.result;
       parent_block_identifier = {
-        index: dbBlock.block_height,
-        hash: dbBlock.block_hash,
+        index: parentBlock.block_height,
+        hash: parentBlock.block_hash,
       };
     } else {
-      const parentBlockQuery = await db.getBlock({ hash: parentBlockHash });
-      if (parentBlockQuery.found) {
-        const parentBlock = parentBlockQuery.result;
-        parent_block_identifier = {
-          index: parentBlock.block_height,
-          hash: parentBlock.block_hash,
-        };
-      } else {
-        return { found: false };
-      }
+      return { found: false };
     }
+  }
 
-    const apiBlock: RosettaBlock = {
-      block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
-      parent_block_identifier,
-      timestamp: dbBlock.burn_block_time * 1000,
-      transactions: blockTxs.found ? blockTxs.result : [],
-    };
-    return { found: true, result: apiBlock };
-  });
+  const apiBlock: RosettaBlock = {
+    block_identifier: { index: dbBlock.block_height, hash: dbBlock.block_hash },
+    parent_block_identifier,
+    timestamp: dbBlock.burn_block_time * 1000,
+    transactions: blockTxs.found ? blockTxs.result : [],
+  };
+  return { found: true, result: apiBlock };
 }
 
 export async function getUnanchoredTxsFromDataStore(db: PgStore): Promise<Transaction[]> {
@@ -611,22 +612,24 @@ export async function getBlockFromDataStore({
   blockIdentifer: BlockIdentifier;
   db: PgStore;
 }): Promise<FoundOrNot<Block>> {
-  const blockQuery = await db.getBlockWithMetadata(blockIdentifer, {
-    txs: true,
-    microblocks: true,
+  return await db.sqlTransaction(async sql => {
+    const blockQuery = await db.getBlockWithMetadata(sql, blockIdentifer, {
+      txs: true,
+      microblocks: true,
+    });
+    if (!blockQuery.found) {
+      return { found: false };
+    }
+    const result = blockQuery.result;
+    const apiBlock = parseDbBlock(
+      result.block,
+      result.txs.map(tx => tx.tx_id),
+      result.microblocks.accepted.map(mb => mb.microblock_hash),
+      result.microblocks.streamed.map(mb => mb.microblock_hash),
+      result.microblock_tx_count
+    );
+    return { found: true, result: apiBlock };
   });
-  if (!blockQuery.found) {
-    return { found: false };
-  }
-  const result = blockQuery.result;
-  const apiBlock = parseDbBlock(
-    result.block,
-    result.txs.map(tx => tx.tx_id),
-    result.microblocks.accepted.map(mb => mb.microblock_hash),
-    result.microblocks.streamed.map(mb => mb.microblock_hash),
-    result.microblock_tx_count
-  );
-  return { found: true, result: apiBlock };
 }
 
 function parseDbBlock(
@@ -670,6 +673,7 @@ function parseDbBlock(
 }
 
 async function parseRosettaTxDetail(opts: {
+  sql: PgSqlClient;
   block_height: number;
   indexBlockHash: string;
   tx: DbTx;
@@ -678,113 +682,115 @@ async function parseRosettaTxDetail(opts: {
   unlockingEvents: StxUnlockEvent[];
   chainId: ChainID;
 }): Promise<RosettaTransaction> {
-  return await opts.db.sqlTransaction(async sql => {
-    let events: DbEvent[] = [];
-    if (opts.block_height > 1) {
-      // only return events of blocks at height greater than 1
-      const eventsQuery = await opts.db.getTxEvents({
-        txId: opts.tx.tx_id,
-        indexBlockHash: opts.indexBlockHash,
-        limit: 5000,
-        offset: 0,
-      });
-      events = eventsQuery.results;
-    }
-    const operations = await getOperations(
-      opts.tx,
-      opts.db,
-      opts.chainId,
-      opts.minerRewards,
-      events,
-      opts.unlockingEvents
-    );
-    const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
-    const rosettaTx: RosettaTransaction = {
-      transaction_identifier: { hash: opts.tx.tx_id },
-      operations: operations,
+  let events: DbEvent[] = [];
+  if (opts.block_height > 1) {
+    // only return events of blocks at height greater than 1
+    const eventsQuery = await opts.db.getTxEvents({
+      sql: opts.sql,
+      txId: opts.tx.tx_id,
+      indexBlockHash: opts.indexBlockHash,
+      limit: 5000,
+      offset: 0,
+    });
+    events = eventsQuery.results;
+  }
+  const operations = await getOperations(
+    opts.sql,
+    opts.tx,
+    opts.db,
+    opts.chainId,
+    opts.minerRewards,
+    events,
+    opts.unlockingEvents
+  );
+  const txMemo = parseTransactionMemo(opts.tx.token_transfer_memo);
+  const rosettaTx: RosettaTransaction = {
+    transaction_identifier: { hash: opts.tx.tx_id },
+    operations: operations,
+  };
+  if (txMemo) {
+    rosettaTx.metadata = {
+      memo: txMemo,
     };
-    if (txMemo) {
-      rosettaTx.metadata = {
-        memo: txMemo,
-      };
-    }
-    return rosettaTx;
-  });
+  }
+  return rosettaTx;
 }
 
 async function getRosettaBlockTxFromDataStore(opts: {
+  sql: PgSqlClient;
   tx: DbTx;
   block: DbBlock;
   db: PgStore;
   chainId: ChainID;
 }): Promise<FoundOrNot<RosettaTransaction>> {
-  return await opts.db.sqlTransaction(async sql => {
-    let minerRewards: DbMinerReward[] = [],
-      unlockingEvents: StxUnlockEvent[] = [];
+  let minerRewards: DbMinerReward[] = [],
+    unlockingEvents: StxUnlockEvent[] = [];
 
-    if (
-      opts.tx.type_id === DbTxTypeId.Coinbase ||
-      opts.tx.type_id === DbTxTypeId.CoinbaseToAltRecipient
-    ) {
-      minerRewards = await opts.db.getMinersRewardsAtHeight({
-        blockHeight: opts.block.block_height,
-      });
-      unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.block);
-    }
-
-    const rosettaTx = await parseRosettaTxDetail({
-      block_height: opts.block.block_height,
-      indexBlockHash: opts.tx.index_block_hash,
-      tx: opts.tx,
-      db: opts.db,
-      minerRewards,
-      unlockingEvents,
-      chainId: opts.chainId,
+  if (
+    opts.tx.type_id === DbTxTypeId.Coinbase ||
+    opts.tx.type_id === DbTxTypeId.CoinbaseToAltRecipient
+  ) {
+    minerRewards = await opts.db.getMinersRewardsAtHeight({
+      sql: opts.sql,
+      blockHeight: opts.block.block_height,
     });
-    return { found: true, result: rosettaTx };
+    unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.sql, opts.block);
+  }
+
+  const rosettaTx = await parseRosettaTxDetail({
+    sql: opts.sql,
+    block_height: opts.block.block_height,
+    indexBlockHash: opts.tx.index_block_hash,
+    tx: opts.tx,
+    db: opts.db,
+    minerRewards,
+    unlockingEvents,
+    chainId: opts.chainId,
   });
+  return { found: true, result: rosettaTx };
 }
 
 async function getRosettaBlockTransactionsFromDataStore(opts: {
+  sql: PgSqlClient;
   blockHash: string;
   indexBlockHash: string;
   db: PgStore;
   chainId: ChainID;
 }): Promise<FoundOrNot<RosettaTransaction[]>> {
-  return await opts.db.sqlTransaction(async sql => {
-    const blockQuery = await opts.db.getBlock({ hash: opts.blockHash });
-    if (!blockQuery.found) {
-      return { found: false };
-    }
+  const blockQuery = await opts.db.getBlock(opts.sql, { hash: opts.blockHash });
+  if (!blockQuery.found) {
+    return { found: false };
+  }
 
-    const txsQuery = await opts.db.getBlockTxsRows(opts.blockHash);
-    const minerRewards = await opts.db.getMinersRewardsAtHeight({
-      blockHeight: blockQuery.result.block_height,
-    });
-
-    if (!txsQuery.found) {
-      return { found: false };
-    }
-
-    const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(blockQuery.result);
-
-    const transactions: RosettaTransaction[] = [];
-
-    for (const tx of txsQuery.result) {
-      const rosettaTx = await parseRosettaTxDetail({
-        block_height: blockQuery.result.block_height,
-        indexBlockHash: opts.indexBlockHash,
-        tx,
-        db: opts.db,
-        minerRewards,
-        unlockingEvents,
-        chainId: opts.chainId,
-      });
-      transactions.push(rosettaTx);
-    }
-
-    return { found: true, result: transactions };
+  const txsQuery = await opts.db.getBlockTxsRows(opts.sql, opts.blockHash);
+  const minerRewards = await opts.db.getMinersRewardsAtHeight({
+    sql: opts.sql,
+    blockHeight: blockQuery.result.block_height,
   });
+
+  if (!txsQuery.found) {
+    return { found: false };
+  }
+
+  const unlockingEvents = await opts.db.getUnlockedAddressesAtBlock(opts.sql, blockQuery.result);
+
+  const transactions: RosettaTransaction[] = [];
+
+  for (const tx of txsQuery.result) {
+    const rosettaTx = await parseRosettaTxDetail({
+      sql: opts.sql,
+      block_height: blockQuery.result.block_height,
+      indexBlockHash: opts.indexBlockHash,
+      tx,
+      db: opts.db,
+      minerRewards,
+      unlockingEvents,
+      chainId: opts.chainId,
+    });
+    transactions.push(rosettaTx);
+  }
+
+  return { found: true, result: transactions };
 }
 
 export async function getRosettaTransactionFromDataStore(
@@ -793,12 +799,12 @@ export async function getRosettaTransactionFromDataStore(
   chainId: ChainID
 ): Promise<FoundOrNot<RosettaTransaction>> {
   return await db.sqlTransaction(async sql => {
-    const txQuery = await db.getTx({ txId, includeUnanchored: false });
+    const txQuery = await db.getTx({ sql, txId, includeUnanchored: false });
     if (!txQuery.found) {
       return { found: false };
     }
 
-    const blockQuery = await db.getBlock({ hash: txQuery.result.block_hash });
+    const blockQuery = await db.getBlock(sql, { hash: txQuery.result.block_hash });
     if (!blockQuery.found) {
       throw new Error(
         `Could not find block for tx: ${txId}, block_hash: ${txQuery.result.block_hash}, index_block_hash: ${txQuery.result.index_block_hash}`
@@ -806,6 +812,7 @@ export async function getRosettaTransactionFromDataStore(
     }
 
     const rosettaTx = await getRosettaBlockTxFromDataStore({
+      sql,
       tx: txQuery.result,
       block: blockQuery.result,
       db,
@@ -1135,10 +1142,12 @@ export function parseDbMempoolTx(dbMempoolTx: DbMempoolTx): MempoolTransaction {
 }
 
 export async function getMempoolTxsFromDataStore(
+  sql: PgSqlClient,
   db: PgStore,
   args: GetTxsArgs
 ): Promise<MempoolTransaction[]> {
   const mempoolTxsQuery = await db.getMempoolTxs({
+    sql,
     txIds: args.txIds,
     includePruned: true,
     includeUnanchored: args.includeUnanchored,
@@ -1153,94 +1162,95 @@ export async function getMempoolTxsFromDataStore(
 }
 
 async function getTxsFromDataStore(
+  sql: PgSqlClient,
   db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<Transaction[]> {
-  return await db.sqlTransaction(async sql => {
-    // fetching all requested transactions from db
-    const txQuery = await db.getTxListDetails({
-      txIds: args.txIds,
-      includeUnanchored: args.includeUnanchored,
-    });
-
-    // returning empty array if no transaction was found
-    if (txQuery.length === 0) {
-      return [];
-    }
-
-    // parsing txQuery
-    const parsedTxs = txQuery.map(tx => parseDbTx(tx));
-
-    // incase transaction events are requested
-    if ('eventLimit' in args) {
-      const txIdsAndIndexHash = txQuery.map(tx => {
-        return {
-          txId: tx.tx_id,
-          indexBlockHash: tx.index_block_hash,
-        };
-      });
-      const txListEvents = await db.getTxListEvents({
-        txs: txIdsAndIndexHash,
-        limit: args.eventLimit,
-        offset: args.eventOffset,
-      });
-      // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
-      const txsWithEvents: Transaction[] = parsedTxs.map(ptx => {
-        return {
-          ...ptx,
-          events: txListEvents.results
-            .filter(event => event.tx_id === ptx.tx_id)
-            .map(event => parseDbEvent(event)),
-        };
-      });
-      return txsWithEvents;
-    } else {
-      return parsedTxs;
-    }
+  // fetching all requested transactions from db
+  const txQuery = await db.getTxListDetails({
+    sql,
+    txIds: args.txIds,
+    includeUnanchored: args.includeUnanchored,
   });
+
+  // returning empty array if no transaction was found
+  if (txQuery.length === 0) {
+    return [];
+  }
+
+  // parsing txQuery
+  const parsedTxs = txQuery.map(tx => parseDbTx(tx));
+
+  // incase transaction events are requested
+  if ('eventLimit' in args) {
+    const txIdsAndIndexHash = txQuery.map(tx => {
+      return {
+        txId: tx.tx_id,
+        indexBlockHash: tx.index_block_hash,
+      };
+    });
+    const txListEvents = await db.getTxListEvents({
+      txs: txIdsAndIndexHash,
+      limit: args.eventLimit,
+      offset: args.eventOffset,
+    });
+    // this will insert all events in a single parsedTransaction. Only specific ones are to be added.
+    const txsWithEvents: Transaction[] = parsedTxs.map(ptx => {
+      return {
+        ...ptx,
+        events: txListEvents.results
+          .filter(event => event.tx_id === ptx.tx_id)
+          .map(event => parseDbEvent(event)),
+      };
+    });
+    return txsWithEvents;
+  } else {
+    return parsedTxs;
+  }
 }
 
 export async function getTxFromDataStore(
+  sql: PgSqlClient,
   db: PgStore,
   args: GetTxArgs | GetTxWithEventsArgs | GetTxFromDbTxArgs
 ): Promise<FoundOrNot<Transaction>> {
-  return await db.sqlTransaction(async sql => {
-    let dbTx: DbTx;
-    if ('dbTx' in args) {
-      dbTx = args.dbTx;
-    } else {
-      const txQuery = await db.getTx({
-        txId: args.txId,
-        includeUnanchored: args.includeUnanchored,
-      });
-      if (!txQuery.found) {
-        return { found: false };
-      }
-      dbTx = txQuery.result;
+  let dbTx: DbTx;
+  if ('dbTx' in args) {
+    dbTx = args.dbTx;
+  } else {
+    const txQuery = await db.getTx({
+      sql: sql,
+      txId: args.txId,
+      includeUnanchored: args.includeUnanchored,
+    });
+    if (!txQuery.found) {
+      return { found: false };
     }
+    dbTx = txQuery.result;
+  }
 
-    const parsedTx = parseDbTx(dbTx);
+  const parsedTx = parseDbTx(dbTx);
 
-    // If tx events are requested
-    if ('eventLimit' in args) {
-      const eventsQuery = await db.getTxEvents({
-        txId: args.txId,
-        indexBlockHash: dbTx.index_block_hash,
-        limit: args.eventLimit,
-        offset: args.eventOffset,
-      });
-      const txWithEvents: Transaction = {
-        ...parsedTx,
-        events: eventsQuery.results.map(event => parseDbEvent(event)),
-      };
-      return { found: true, result: txWithEvents };
-    } else {
-      return {
-        found: true,
-        result: parsedTx,
-      };
-    }
-  });
+  // If tx events are requested
+  if ('eventLimit' in args) {
+    const eventsQuery = await db.getTxEvents({
+      sql,
+      txId: args.txId,
+      indexBlockHash: dbTx.index_block_hash,
+      limit: args.eventLimit,
+      offset: args.eventOffset,
+    });
+    const txWithEvents: Transaction = {
+      ...parsedTx,
+      events: eventsQuery.results.map(event => parseDbEvent(event)),
+    };
+    return { found: true, result: txWithEvents };
+  } else {
+    return {
+      found: true,
+      result: parsedTx,
+    };
+  }
 }
 
 export async function searchTxs(
@@ -1248,7 +1258,7 @@ export async function searchTxs(
   args: GetTxsArgs | GetTxsWithEventsArgs
 ): Promise<TransactionList> {
   return await db.sqlTransaction(async sql => {
-    const minedTxs = await getTxsFromDataStore(db, args);
+    const minedTxs = await getTxsFromDataStore(sql, db, args);
 
     const foundTransactions: TransactionFound[] = [];
     const mempoolTxs: string[] = [];
@@ -1270,7 +1280,7 @@ export async function searchTxs(
 
     // finding transactions that are not mined and are not canonical in mempool
     mempoolTxs.push(...notMinedTransactions);
-    const mempoolTxsQuery = await getMempoolTxsFromDataStore(db, {
+    const mempoolTxsQuery = await getMempoolTxsFromDataStore(sql, db, {
       txIds: mempoolTxs,
       includeUnanchored: args.includeUnanchored,
     });
@@ -1309,13 +1319,13 @@ export async function searchTx(
 ): Promise<FoundOrNot<Transaction | MempoolTransaction>> {
   return await db.sqlTransaction(async sql => {
     // First, check the happy path: the tx is mined and in the canonical chain.
-    const minedTxs = await getTxsFromDataStore(db, { ...args, txIds: [args.txId] });
+    const minedTxs = await getTxsFromDataStore(sql, db, { ...args, txIds: [args.txId] });
     const minedTx = minedTxs[0] ?? undefined;
     if (minedTx && minedTx.canonical && minedTx.microblock_canonical) {
       return { found: true, result: minedTx };
     } else {
       // Otherwise, if not mined or not canonical, check in the mempool.
-      const mempoolTxQuery = await getMempoolTxsFromDataStore(db, {
+      const mempoolTxQuery = await getMempoolTxsFromDataStore(sql, db, {
         ...args,
         txIds: [args.txId],
       });
@@ -1342,7 +1352,7 @@ export async function searchHashWithMetadata(
 ): Promise<FoundOrNot<DbSearchResultWithMetadata>> {
   return await db.sqlTransaction(async sql => {
     // checking for tx
-    const txQuery = await db.getTxListDetails({ txIds: [hash], includeUnanchored: true });
+    const txQuery = await db.getTxListDetails({ sql, txIds: [hash], includeUnanchored: true });
     if (txQuery.length > 0) {
       // tx found
       const tx = txQuery[0];
@@ -1357,6 +1367,7 @@ export async function searchHashWithMetadata(
     }
     // checking for mempool tx
     const mempoolTxQuery = await db.getMempoolTxs({
+      sql,
       txIds: [hash],
       includeUnanchored: true,
       includePruned: true,
@@ -1374,7 +1385,11 @@ export async function searchHashWithMetadata(
       };
     }
     // checking for block
-    const blockQuery = await db.getBlockWithMetadata({ hash }, { txs: true, microblocks: true });
+    const blockQuery = await db.getBlockWithMetadata(
+      sql,
+      { hash },
+      { txs: true, microblocks: true }
+    );
     if (blockQuery.found) {
       // block found
       const result = parseDbBlock(

@@ -266,7 +266,7 @@ export class PgWriteStore extends PgStore {
       // if so, update their properties to correspond to "block 1", since we treat
       // the "block 0" concept as an internal implementation detail.
       if (data.block.block_height === 1) {
-        const blockZero = await this.getBlockInternal(sql, { height: 0 });
+        const blockZero = await this.getBlock(sql, { height: 0 });
         if (blockZero.found) {
           await this.fixBlockZeroData(sql, data.block);
         }

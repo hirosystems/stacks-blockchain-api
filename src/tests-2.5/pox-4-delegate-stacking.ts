@@ -476,7 +476,7 @@ describe('PoX-4 - Delegate Stacking operations', () => {
   });
 
   test('BTC stacking reward received', async () => {
-    const curBlock = await testEnv.db.getCurrentBlock();
+    const curBlock = await testEnv.db.getCurrentBlock(testEnv.db.sql);
     assert(curBlock.found);
     await standByUntilBurnBlock(curBlock.result.burn_block_height + 1);
 

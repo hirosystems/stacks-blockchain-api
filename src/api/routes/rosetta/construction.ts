@@ -1,4 +1,4 @@
-import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import { PgSqlClient, has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';
 import { StacksMainnet, StacksTestnet } from '@stacks/network';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
@@ -534,7 +534,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       const accountInfo = await new StacksCoreRpcClient().getAccount(stxAddress);
 
       let recentBlockHash = undefined;
-      const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock();
+      const blockQuery: FoundOrNot<DbBlock> = await db.getCurrentBlock(db.sql);
       if (blockQuery.found) {
         recentBlockHash = blockQuery.result.block_hash;
       }
@@ -643,7 +643,10 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       }
       try {
         const baseTx = rawTxToBaseTx(inputTx);
-        const operations = await getOperations(baseTx, db, chainId);
+        // NOTE: this endpoint has to work "Completely offline" (no access to database), so pass null for the sql object,
+        // and the parts of getOperations function that need it will throw an error.
+        const sql: PgSqlClient = null as any;
+        const operations = await getOperations(sql, baseTx, db, chainId);
         const txMemo = parseTransactionMemo(baseTx.token_transfer_memo);
         let response: RosettaConstructionParseResponse;
         if (signed) {

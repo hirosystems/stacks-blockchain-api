@@ -157,109 +157,115 @@ export function createSearchRouter(db: PgStore): express.Router {
     //   `ST2TJRHDHMYBQ417HFB0BDX430TQA5PXRX6495G1V.contract-name`
     const principalCheck = isValidPrincipal(term);
     if (principalCheck) {
-      const principalResult = await db.searchPrincipal({ principal: term });
-      const entityType =
-        principalCheck.type === 'contractAddress'
-          ? SearchResultType.ContractAddress
-          : SearchResultType.StandardAddress;
+      return await db.sqlTransaction(async sql => {
+        const principalResult = await db.searchPrincipal({ sql, principal: term });
+        const entityType =
+          principalCheck.type === 'contractAddress'
+            ? SearchResultType.ContractAddress
+            : SearchResultType.StandardAddress;
 
-      if (principalResult.found) {
-        // Check if the contract has an associated tx
-        if (entityType === SearchResultType.ContractAddress && principalResult.result.entity_data) {
-          // Check if associated tx is mined (non-mempool)
-          if ((principalResult.result.entity_data as DbTx).block_hash) {
-            const txData = principalResult.result.entity_data as DbTx;
-            const contractResult: ContractSearchResult = {
+        if (principalResult.found) {
+          // Check if the contract has an associated tx
+          if (
+            entityType === SearchResultType.ContractAddress &&
+            principalResult.result.entity_data
+          ) {
+            // Check if associated tx is mined (non-mempool)
+            if ((principalResult.result.entity_data as DbTx).block_hash) {
+              const txData = principalResult.result.entity_data as DbTx;
+              const contractResult: ContractSearchResult = {
+                found: true,
+                result: {
+                  entity_id: principalResult.result.entity_id,
+                  entity_type: entityType,
+                  tx_data: {
+                    canonical: txData.canonical,
+                    block_hash: txData.block_hash,
+                    burn_block_time: txData.burn_block_time,
+                    block_height: txData.block_height,
+                    tx_type: getTxTypeString(txData.type_id),
+                    tx_id: txData.tx_id,
+                  },
+                },
+              };
+              if (includeMetadata) {
+                contractResult.result.metadata = parseDbTx(txData);
+              }
+              return contractResult;
+            } else {
+              // Associated tx is a mempool tx
+              const txData = principalResult.result.entity_data as DbMempoolTx;
+              const contractResult: ContractSearchResult = {
+                found: true,
+                result: {
+                  entity_id: principalResult.result.entity_id,
+                  entity_type: entityType,
+                  tx_data: {
+                    tx_type: getTxTypeString(txData.type_id),
+                    tx_id: txData.tx_id,
+                  },
+                },
+              };
+              if (includeMetadata) {
+                contractResult.result.metadata = parseDbMempoolTx(txData);
+              }
+              return contractResult;
+            }
+          } else if (entityType === SearchResultType.ContractAddress) {
+            // Contract has no associated tx.
+            // TODO: Can a non-materialized contract principal be an asset transfer recipient?
+            const addrResult: ContractSearchResult = {
               found: true,
               result: {
                 entity_id: principalResult.result.entity_id,
                 entity_type: entityType,
-                tx_data: {
-                  canonical: txData.canonical,
-                  block_hash: txData.block_hash,
-                  burn_block_time: txData.burn_block_time,
-                  block_height: txData.block_height,
-                  tx_type: getTxTypeString(txData.type_id),
-                  tx_id: txData.tx_id,
-                },
               },
             };
-            if (includeMetadata) {
-              contractResult.result.metadata = parseDbTx(txData);
-            }
-            return contractResult;
-          } else {
-            // Associated tx is a mempool tx
-            const txData = principalResult.result.entity_data as DbMempoolTx;
-            const contractResult: ContractSearchResult = {
-              found: true,
-              result: {
-                entity_id: principalResult.result.entity_id,
-                entity_type: entityType,
-                tx_data: {
-                  tx_type: getTxTypeString(txData.type_id),
-                  tx_id: txData.tx_id,
-                },
-              },
-            };
-            if (includeMetadata) {
-              contractResult.result.metadata = parseDbMempoolTx(txData);
-            }
-            return contractResult;
+            return addrResult;
           }
-        } else if (entityType === SearchResultType.ContractAddress) {
-          // Contract has no associated tx.
-          // TODO: Can a non-materialized contract principal be an asset transfer recipient?
-          const addrResult: ContractSearchResult = {
+          const addrResult: AddressSearchResult = {
             found: true,
             result: {
               entity_id: principalResult.result.entity_id,
               entity_type: entityType,
             },
           };
-          return addrResult;
-        }
-        const addrResult: AddressSearchResult = {
-          found: true,
-          result: {
-            entity_id: principalResult.result.entity_id,
-            entity_type: entityType,
-          },
-        };
-        if (includeMetadata) {
-          const currentBlockHeight = await db.getCurrentBlockHeight();
-          if (!currentBlockHeight.found) {
-            throw new Error('No current block');
+          if (includeMetadata) {
+            const currentBlockHeight = await db.getCurrentBlockHeight(sql);
+            if (!currentBlockHeight.found) {
+              throw new Error('No current block');
+            }
+
+            const blockHeight = currentBlockHeight.result + 1;
+
+            const stxBalanceResult = await db.getStxBalanceAtBlock(
+              sql,
+              principalResult.result.entity_id,
+              blockHeight
+            );
+            const result: AddressStxBalanceResponse = {
+              balance: stxBalanceResult.balance.toString(),
+              total_sent: stxBalanceResult.totalSent.toString(),
+              total_received: stxBalanceResult.totalReceived.toString(),
+              total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
+              total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
+              lock_tx_id: stxBalanceResult.lockTxId,
+              locked: stxBalanceResult.locked.toString(),
+              lock_height: stxBalanceResult.lockHeight,
+              burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
+              burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+            };
+            addrResult.result.metadata = result;
           }
-
-          const blockHeight = currentBlockHeight.result + 1;
-
-          const stxBalanceResult = await db.getStxBalanceAtBlock(
-            principalResult.result.entity_id,
-            blockHeight
-          );
-          const result: AddressStxBalanceResponse = {
-            balance: stxBalanceResult.balance.toString(),
-            total_sent: stxBalanceResult.totalSent.toString(),
-            total_received: stxBalanceResult.totalReceived.toString(),
-            total_fees_sent: stxBalanceResult.totalFeesSent.toString(),
-            total_miner_rewards_received: stxBalanceResult.totalMinerRewardsReceived.toString(),
-            lock_tx_id: stxBalanceResult.lockTxId,
-            locked: stxBalanceResult.locked.toString(),
-            lock_height: stxBalanceResult.lockHeight,
-            burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
-            burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
+          return addrResult;
+        } else {
+          return {
+            found: false,
+            result: { entity_type: entityType },
+            error: `No principal found with address "${term}"`,
           };
-          addrResult.result.metadata = result;
         }
-        return addrResult;
-      } else {
-        return {
-          found: false,
-          result: { entity_type: entityType },
-          error: `No principal found with address "${term}"`,
-        };
-      }
+      });
     }
 
     return {

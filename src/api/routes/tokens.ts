@@ -122,7 +122,7 @@ export function createTokenRouter(db: PgStore): express.Router {
 
       await db
         .sqlTransaction(async sql => {
-          const chainTip = await db.getCurrentBlockHeight();
+          const chainTip = await db.getCurrentBlockHeight(sql);
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };
           }
@@ -184,7 +184,7 @@ export function createTokenRouter(db: PgStore): express.Router {
 
       await db
         .sqlTransaction(async sql => {
-          const chainTip = await db.getCurrentBlockHeight();
+          const chainTip = await db.getCurrentBlockHeight(sql);
           if (!chainTip.found) {
             throw { error: `Unable to find a valid block to query` };
           }

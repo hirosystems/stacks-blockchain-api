@@ -33,7 +33,7 @@ export async function findTsvBlockHeight(filePath: string): Promise<number> {
 export async function getBnsGenesisBlockFromBlockMessage(
   db: PgWriteStore
 ): Promise<DataStoreBnsBlockTxData> {
-  const genesisBlock = await db.getBlock({ height: 1 });
+  const genesisBlock = await db.getBlock(db.sql, { height: 1 });
   if (!genesisBlock.found) {
     throw new Error('Could not find genesis block');
   }

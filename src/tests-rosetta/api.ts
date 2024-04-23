@@ -878,7 +878,7 @@ describe('Rosetta API', () => {
     expect(result1.status).toBe(200);
     expect(result1.type).toBe('application/json');
 
-    const curren_block = await api.datastore.getCurrentBlock();
+    const curren_block = await api.datastore.getCurrentBlock(api.datastore.sql);
     assert(curren_block.found);
 
     const amount: RosettaAmount = {

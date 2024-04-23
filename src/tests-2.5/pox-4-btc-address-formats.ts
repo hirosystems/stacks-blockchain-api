@@ -153,6 +153,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       const dbTx = await standByForTxSuccess(expectedTxId);
 
       const txEvents = await testEnv.api.datastore.getTxEvents({
+        sql: testEnv.db.sql,
         txId: expectedTxId,
         indexBlockHash: dbTx.index_block_hash,
         limit: 99999,

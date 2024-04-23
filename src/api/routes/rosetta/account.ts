@@ -33,8 +33,8 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
       const subAccountIdentifier: RosettaSubAccount = req.body.account_identifier.sub_account;
       const blockIdentifier: RosettaBlockIdentifier = req.body.block_identifier;
 
-      await db
-        .sqlTransaction(async sql => {
+      try {
+        await db.sqlTransaction(async sql => {
           let blockQuery: FoundOrNot<DbBlock>;
           let blockHash: string = '0x';
           // we need to return the block height/hash in the response, so we
@@ -43,15 +43,15 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
             (!blockIdentifier?.hash && !blockIdentifier?.index) ||
             (blockIdentifier && blockIdentifier.index <= 0)
           ) {
-            blockQuery = await db.getCurrentBlock();
+            blockQuery = await db.getCurrentBlock(sql);
           } else if (blockIdentifier.index > 0) {
-            blockQuery = await db.getBlock({ height: blockIdentifier.index });
+            blockQuery = await db.getBlock(sql, { height: blockIdentifier.index });
           } else if (blockIdentifier.hash !== undefined) {
             blockHash = blockIdentifier.hash;
             if (!has0xPrefix(blockHash)) {
               blockHash = '0x' + blockHash;
             }
-            blockQuery = await db.getBlock({ hash: blockHash });
+            blockQuery = await db.getBlock(sql, { hash: blockHash });
           } else {
             throw RosettaErrors[RosettaErrorsTypes.invalidBlockIdentifier];
           }
@@ -67,6 +67,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           }
 
           const stxBalance = await db.getStxBalanceAtBlock(
+            sql,
             accountIdentifier.address,
             block.block_height
           );
@@ -74,6 +75,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
           let balance = (stxBalance.balance - stxBalance.locked).toString();
 
           const accountNonceQuery = await db.getAddressNonceAtBlock({
+            sql,
             stxAddress: accountIdentifier.address,
             blockIdentifier: { height: block.block_height },
           });
@@ -96,6 +98,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
               case RosettaConstants.VestingLockedBalance:
               case RosettaConstants.VestingUnlockedBalance:
                 const stxVesting = await db.getTokenOfferingLocked(
+                  sql,
                   accountIdentifier.address,
                   block.block_height
                 );
@@ -125,6 +128,7 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
 
           // Add Fungible Token balances.
           const ftBalances = await db.getFungibleTokenBalances({
+            sql,
             stxAddress: accountIdentifier.address,
             untilBlock: block.block_height,
           });
@@ -152,14 +156,11 @@ export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): expre
               sequence_number: sequenceNumber,
             },
           };
-          return response;
-        })
-        .catch(error => {
-          res.status(400).json(error);
-        })
-        .then(response => {
           res.json(response);
         });
+      } catch (error) {
+        res.status(400).json(error);
+      }
     })
   );
 
