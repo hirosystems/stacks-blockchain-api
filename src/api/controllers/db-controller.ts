@@ -467,15 +467,14 @@ export async function getRosettaBlockFromDataStore(
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
   return await db.sqlTransaction(async sql => {
-    let query;
+    let blockQuery: FoundOrNot<DbBlock>;
     if (blockHash) {
-      query = db.getBlock({ hash: blockHash });
+      blockQuery = await db.getBlock({ hash: blockHash });
     } else if (blockHeight && blockHeight > 0) {
-      query = db.getBlock({ height: blockHeight });
+      blockQuery = await db.getBlock({ height: blockHeight });
     } else {
-      query = db.getCurrentBlock();
+      blockQuery = await db.getCurrentBlock();
     }
-    const blockQuery = await query;
 
     if (!blockQuery.found) {
       return { found: false };
