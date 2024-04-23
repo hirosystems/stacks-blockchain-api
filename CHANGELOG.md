@@ -1,3 +1,10 @@
+## [7.11.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.3...v7.11.0-beta.4) (2024-04-23)
+
+
+### Bug Fixes
+
+* inconsistent block transaction results in Rosetta response ([#1958](https://github.com/hirosystems/stacks-blockchain-api/issues/1958)) ([a5bec61](https://github.com/hirosystems/stacks-blockchain-api/commit/a5bec614ec99d0729e89200c56525cf062cdda23))
+
 ## [7.11.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.2...v7.11.0-beta.3) (2024-04-19)
 
 
