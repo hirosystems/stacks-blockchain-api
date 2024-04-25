@@ -465,6 +465,7 @@ export class PgWriteStore extends PgStore {
       parent_microblock_hash: block.parent_microblock_hash,
       parent_microblock_sequence: block.parent_microblock_sequence,
       block_height: block.block_height,
+      block_time: block.block_time,
       burn_block_time: block.burn_block_time,
       burn_block_hash: block.burn_block_hash,
       burn_block_height: block.burn_block_height,
@@ -3056,6 +3057,7 @@ export class PgWriteStore extends PgStore {
   async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
     const values: BlockInsertValues[] = blocks.map(block => ({
       block_hash: block.block_hash,
+      block_time: block.block_time,
       index_block_hash: block.index_block_hash,
       parent_index_block_hash: block.parent_index_block_hash,
       parent_block_hash: block.parent_block_hash,
