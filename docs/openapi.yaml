@@ -779,7 +779,25 @@ paths:
                 $ref: ./api/blocks/get-nakamoto-blocks.schema.json
               example:
                 $ref: ./api/blocks/get-nakamoto-blocks.example.json
-  
+
+  /extended/v2/blocks/average-times:
+    get:
+      summary: Get average block times
+      description: |
+        Retrieves average block times (in seconds)
+      tags:
+        - Blocks
+      operationId: get_average_block_times
+      responses:
+        200:
+          description: Average block times (in seconds)
+          content:
+            application/json:
+              schema:
+                $ref: ./api/blocks/get-average-times.schema.json
+              example:
+                $ref: ./api/blocks/get-average-times.example.json
+
   /extended/v2/blocks/{height_or_hash}:
     get:
       summary: Get block
