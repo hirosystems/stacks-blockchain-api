@@ -1257,6 +1257,7 @@ export interface BlockInsertValues {
   parent_microblock_hash: PgBytea;
   parent_microblock_sequence: number;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   burn_block_hash: PgBytea;
   burn_block_height: number;

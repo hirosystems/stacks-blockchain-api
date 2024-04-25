@@ -257,8 +257,8 @@ describe('block tests', () => {
           canonical: true,
           height: 1,
           hash: block_hash,
-          block_time: 94869286,
-          block_time_iso: '1973-01-03T00:34:46.000Z',
+          block_time: 94869287,
+          block_time_iso: '1973-01-03T00:34:47.000Z',
           parent_block_hash: '0x',
           burn_block_time: 94869286,
           burn_block_time_iso: '1973-01-03T00:34:46.000Z',
@@ -440,8 +440,8 @@ describe('block tests', () => {
       index_block_hash: '0x0001',
       hash: '0x0001',
       height: 1,
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       microblocks_accepted: [],
       microblocks_streamed: [
         microblock1.microblocks[0].microblock_hash,
@@ -492,8 +492,8 @@ describe('block tests', () => {
       index_block_hash: '0x0002',
       hash: '0x0002',
       height: 2,
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
       microblocks_streamed: [],
       miner_txid: '0x4321',
@@ -672,8 +672,8 @@ describe('block tests', () => {
 
     // Filter by burn hash
     const block5 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       burn_block_height: 700000,
       burn_block_time: 94869286,
@@ -709,8 +709,8 @@ describe('block tests', () => {
 
     // Get latest block
     const block8 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
       burn_block_height: 700001,
       burn_block_time: 94869286,
@@ -762,8 +762,8 @@ describe('block tests', () => {
 
     // Get latest
     const block5 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       burn_block_height: 700000,
       burn_block_time: 94869286,
