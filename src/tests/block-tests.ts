@@ -14,6 +14,7 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { AverageBlockTimesResponse } from '@stacks/stacks-blockchain-api-types';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -808,5 +809,43 @@ describe('block tests', () => {
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json).toStrictEqual(block5);
+  });
+
+  test('blocks average time', async () => {
+    const blockCount = 50;
+    const now = Math.round(Date.now() / 1000);
+    const thirtyMinutes = 30 * 60;
+    // Return timestamp in seconds for block, latest block will be now(), and previous blocks will be 30 minutes apart
+    const timeForBlock = (blockHeight: number) => {
+      const blockDistance = blockCount - blockHeight;
+      return now - thirtyMinutes * blockDistance;
+    };
+    for (let i = 1; i <= blockCount; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_time: timeForBlock(i),
+        block_hash: `0x${i.toString().padStart(64, '0')}`,
+        index_block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        parent_index_block_hash: `0x11${(i - 1).toString().padStart(62, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    const fetch = await supertest(api.server).get(`/extended/v2/blocks/average-times`);
+    const response: AverageBlockTimesResponse = fetch.body;
+    expect(fetch.status).toBe(200);
+
+    // All block time averages should be about 30 minutes
+    const getRatio = (time: number) =>
+      Math.min(thirtyMinutes, time) / Math.max(thirtyMinutes, time);
+    expect(getRatio(response.last_1h)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_24h)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_7d)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_30d)).toBeGreaterThanOrEqual(0.9);
   });
 });

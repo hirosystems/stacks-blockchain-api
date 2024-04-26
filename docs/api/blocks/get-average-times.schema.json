@@ -1,6 +1,6 @@
 {
   "type": "object",
-  "title": "AverageBlockTimesRequest",
+  "title": "AverageBlockTimesResponse",
   "description": "Request to fetch average block times (in seconds)",
   "additionalProperties": false,
   "required": [
