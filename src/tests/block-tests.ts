@@ -297,8 +297,11 @@ describe('block tests', () => {
       burn_block_time: 1702386678,
     };
 
+    const tenMinutes = 10 * 60;
+    let blockStartTime = 1714139800;
     const stacksBlock1 = {
       block_height: 1,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234111111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd111111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
@@ -308,6 +311,7 @@ describe('block tests', () => {
     };
     const stacksBlock2 = {
       block_height: 2,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234211111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd211111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock1.index_block_hash,
@@ -317,6 +321,7 @@ describe('block tests', () => {
     };
     const stacksBlock3 = {
       block_height: 3,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234311111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd311111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock2.index_block_hash,
@@ -326,6 +331,7 @@ describe('block tests', () => {
     };
     const stacksBlock4 = {
       block_height: 4,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234411111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd411111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock3.index_block_hash,
@@ -339,6 +345,7 @@ describe('block tests', () => {
     for (const block of stacksBlocks) {
       const dbBlock = new TestBlockBuilder({
         block_hash: block.block_hash,
+        block_time: block.block_time,
         index_block_hash: block.index_block_hash,
         parent_index_block_hash: block.parent_index_block_hash,
         block_height: block.block_height,
@@ -352,6 +359,7 @@ describe('block tests', () => {
     const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
     expect(result.body.results).toEqual([
       {
+        avg_block_time: tenMinutes,
         burn_block_hash: burnBlock2.burn_block_hash,
         burn_block_height: burnBlock2.burn_block_height,
         burn_block_time: burnBlock2.burn_block_time,
@@ -359,6 +367,7 @@ describe('block tests', () => {
         stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
       },
       {
+        avg_block_time: 0,
         burn_block_hash: burnBlock1.burn_block_hash,
         burn_block_height: burnBlock1.burn_block_height,
         burn_block_time: burnBlock1.burn_block_time,
@@ -370,6 +379,7 @@ describe('block tests', () => {
     // test 'latest' filter
     const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
     expect(result2.body).toEqual({
+      avg_block_time: tenMinutes,
       burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
       burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
       burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
@@ -382,6 +392,7 @@ describe('block tests', () => {
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
     );
     expect(result3.body).toEqual({
+      avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
       burn_block_time: stacksBlock1.burn_block_time,
@@ -394,6 +405,7 @@ describe('block tests', () => {
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
     );
     expect(result4.body).toEqual({
+      avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
       burn_block_time: stacksBlock1.burn_block_time,

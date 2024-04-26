@@ -269,24 +269,53 @@ export class PgStoreV2 extends BasePgStoreModule {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const blocksQuery = await sql<(DbBurnBlock & { total: number })[]>`
-        WITH block_count AS (
-          SELECT burn_block_height, block_count AS count FROM chain_tip
+        WITH RelevantBlocks AS (
+          SELECT DISTINCT ON (burn_block_height)
+            burn_block_time,
+            burn_block_hash,
+            burn_block_height
+          FROM blocks
+          WHERE canonical = true
+          ORDER BY burn_block_height DESC, block_height DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        ),
+        BlocksWithPrevTime AS (
+          SELECT
+            b.burn_block_time,
+            b.burn_block_hash,
+            b.burn_block_height,
+            b.block_hash,
+            b.block_time,
+            b.block_height,
+            LAG(b.block_time) OVER (PARTITION BY b.burn_block_height ORDER BY b.block_height) AS previous_block_time
+          FROM blocks b
+          WHERE
+            canonical = true AND
+            b.burn_block_height IN (SELECT burn_block_height FROM RelevantBlocks)
+        ),
+        AverageTimes AS (
+          SELECT
+            burn_block_height,
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time
+          FROM BlocksWithPrevTime
+          GROUP BY burn_block_height
         )
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
+        SELECT DISTINCT ON (r.burn_block_height)
+          r.burn_block_time,
+          r.burn_block_hash,
+          r.burn_block_height,
+          ARRAY_AGG(b.block_hash) OVER (
+            PARTITION BY r.burn_block_height
+            ORDER BY b.block_height DESC
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks,
-          (SELECT count FROM block_count)::int AS total
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY burn_block_height DESC, block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
+          (SELECT block_count FROM chain_tip)::int AS total,
+          a.avg_block_time
+        FROM RelevantBlocks r
+        JOIN BlocksWithPrevTime b ON b.burn_block_height = r.burn_block_height
+        JOIN AverageTimes a ON a.burn_block_height = r.burn_block_height
+        ORDER BY r.burn_block_height DESC, b.block_height DESC;
       `;
       return {
         limit,
@@ -306,17 +335,37 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = ${args.height_or_hash}`
           : sql`burn_block_height = ${args.height_or_hash}`;
       const blockQuery = await sql<DbBurnBlock[]>`
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
+        WITH BlocksWithPrevTime AS (
+          SELECT
+            burn_block_time,
+            burn_block_hash,
+            burn_block_height,
+            block_hash,
+            block_time,
+            block_height,
+            LAG(block_time) OVER (PARTITION BY burn_block_height ORDER BY block_height) AS previous_block_time
+          FROM blocks
+          WHERE canonical = true AND ${filter}
+        ),
+        AverageTimes AS (
+          SELECT
+            burn_block_height,
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time
+          FROM BlocksWithPrevTime
+          GROUP BY burn_block_height
+        )
+        SELECT DISTINCT ON (b.burn_block_height)
+          b.burn_block_time,
+          b.burn_block_hash,
+          b.burn_block_height,
+          ARRAY_AGG(b.block_hash) OVER (
+            PARTITION BY b.burn_block_height
+            ORDER BY b.block_height DESC
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-          ) AS stacks_blocks
-        FROM blocks
-        WHERE canonical = true AND ${filter}
+          ) AS stacks_blocks,
+          a.avg_block_time
+        FROM BlocksWithPrevTime b
+        JOIN AverageTimes a ON a.burn_block_height = b.burn_block_height
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
