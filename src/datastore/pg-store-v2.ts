@@ -163,6 +163,60 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  async getAverageBlockTimes(): Promise<{
+    last_1h: number;
+    last_24h: number;
+    last_7d: number;
+    last_30d: number;
+  }> {
+    return await this.sqlTransaction(async sql => {
+      // Query against block_time but fallback to burn_block_time if block_time is 0 (work around for recent bug).
+      // TODO: remove the burn_block_time fallback once all blocks for last N time have block_time set.
+      const avgBlockTimeQuery = await sql<
+        {
+          last_1h: string | null;
+          last_24h: string | null;
+          last_7d: string | null;
+          last_30d: string | null;
+        }[]
+      >`
+        WITH TimeThresholds AS (
+          SELECT
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '1 HOUR'))::INT AS h1,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '24 HOURS'))::INT AS h24,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '7 DAYS'))::INT AS d7,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '30 DAYS'))::INT AS d30
+        ),
+        OrderedCanonicalBlocks AS (
+          SELECT
+            CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END AS effective_time,
+            LAG(CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END) OVER (ORDER BY block_height) AS prev_time
+          FROM
+            blocks
+          WHERE
+            canonical = true AND
+            (CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END) >= (SELECT d30 FROM TimeThresholds)
+        )
+        SELECT
+          AVG(CASE WHEN effective_time >= (SELECT h1 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_1h,
+          AVG(CASE WHEN effective_time >= (SELECT h24 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_24h,
+          AVG(CASE WHEN effective_time >= (SELECT d7 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_7d,
+          AVG(effective_time - prev_time) AS last_30d
+        FROM
+          OrderedCanonicalBlocks
+        WHERE
+          prev_time IS NOT NULL
+      `;
+      const times = {
+        last_1h: Number.parseFloat(avgBlockTimeQuery[0]?.last_1h ?? '0'),
+        last_24h: Number.parseFloat(avgBlockTimeQuery[0]?.last_24h ?? '0'),
+        last_7d: Number.parseFloat(avgBlockTimeQuery[0]?.last_7d ?? '0'),
+        last_30d: Number.parseFloat(avgBlockTimeQuery[0]?.last_30d ?? '0'),
+      };
+      return times;
+    });
+  }
+
   async getBlockTransactions(
     args: BlockParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbTx>> {
