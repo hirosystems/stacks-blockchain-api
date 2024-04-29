@@ -60,6 +60,7 @@ export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {
     burn_block_hash: block.burn_block_hash,
     burn_block_height: block.burn_block_height,
     stacks_blocks: block.stacks_blocks,
+    avg_block_time: parseFloat(parseFloat(block.avg_block_time ?? '0').toFixed(2)),
   };
   return burnBlock;
 }

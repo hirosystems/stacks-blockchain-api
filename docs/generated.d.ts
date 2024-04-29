@@ -1466,6 +1466,10 @@ export interface BurnBlock {
    * Hashes of the Stacks blocks included in the burn block
    */
   stacks_blocks: string[];
+  /**
+   * Average time between blocks in seconds. Returns 0 if there is only one block in the burn block.
+   */
+  avg_block_time: number;
 }
 /**
  * GET request that returns blocks
