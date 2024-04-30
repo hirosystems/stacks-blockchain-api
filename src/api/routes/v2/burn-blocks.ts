@@ -1,6 +1,7 @@
 import * as express from 'express';
 import {
   BurnBlockListResponse,
+  BurnBlock,
   NakamotoBlockListResponse,
 } from '@stacks/stacks-blockchain-api-types';
 import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
@@ -52,8 +53,9 @@ export function createV2BurnBlocksRouter(db: PgStore): express.Router {
         res.status(404).json({ errors: 'Not found' });
         return;
       }
+      const response: BurnBlock = parseDbBurnBlock(block);
       setETagCacheHeaders(res);
-      res.json(parseDbBurnBlock(block));
+      res.json(response);
     })
   );
 
