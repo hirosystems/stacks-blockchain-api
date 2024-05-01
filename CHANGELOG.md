@@ -1,3 +1,17 @@
+## [7.11.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.4...v7.11.0-beta.5) (2024-05-01)
+
+
+### Features
+
+* add average stacks block time to burn block endpoints ([#1963](https://github.com/hirosystems/stacks-blockchain-api/issues/1963)) ([31c2eed](https://github.com/hirosystems/stacks-blockchain-api/commit/31c2eedfb5f778d5f0bf61bf3dd8effbf80511c4))
+* add total tx count to burn block endpoints ([#1965](https://github.com/hirosystems/stacks-blockchain-api/issues/1965)) ([d38b78a](https://github.com/hirosystems/stacks-blockchain-api/commit/d38b78a53e6dfa1774ba61a149a5931f29f64230))
+* average block times endpoint ([#1962](https://github.com/hirosystems/stacks-blockchain-api/issues/1962)) ([cd151aa](https://github.com/hirosystems/stacks-blockchain-api/commit/cd151aaa289c679fc20b82ee751e55776a8d6c42))
+
+
+### Bug Fixes
+
+* issue with block_time receipt not being written to db ([#1961](https://github.com/hirosystems/stacks-blockchain-api/issues/1961)) ([74c06c6](https://github.com/hirosystems/stacks-blockchain-api/commit/74c06c68574ef38400c0d4e4b8e3378adb6fbbf2))
+
 ## [7.11.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.3...v7.11.0-beta.4) (2024-04-23)
 
 
