@@ -13,6 +13,7 @@ export type SchemaMergeRootStub =
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | AddressTransactionsV2ListResponse
+  | AverageBlockTimesResponse
   | BlockListResponse
   | BurnBlockListResponse
   | NakamotoBlockListResponse
@@ -1286,6 +1287,27 @@ export interface AddressTransaction {
   };
 }
 /**
+ * Request to fetch average block times (in seconds)
+ */
+export interface AverageBlockTimesResponse {
+  /**
+   * Average block times over the last hour (in seconds)
+   */
+  last_1h: number;
+  /**
+   * Average block times over the last 24 hours (in seconds)
+   */
+  last_24h: number;
+  /**
+   * Average block times over the last 7 days (in seconds)
+   */
+  last_7d: number;
+  /**
+   * Average block times over the last 30 days (in seconds)
+   */
+  last_30d: number;
+}
+/**
  * GET request that returns blocks
  */
 export interface BlockListResponse {
@@ -1444,6 +1466,14 @@ export interface BurnBlock {
    * Hashes of the Stacks blocks included in the burn block
    */
   stacks_blocks: string[];
+  /**
+   * Average time between blocks in seconds. Returns 0 if there is only one block in the burn block.
+   */
+  avg_block_time: number;
+  /**
+   * Total number of transactions in the Stacks blocks associated with this burn block
+   */
+  total_tx_count: number;
 }
 /**
  * GET request that returns blocks

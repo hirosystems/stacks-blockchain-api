@@ -252,7 +252,7 @@ async function handleBlockMessage(
     // TODO: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
     // increment this by that value so that timestampts increase monotonically.
     const stacksBlockReceiptDate = db.isEventReplay
-      ? msg.parent_burn_block_timestamp
+      ? msg.burn_block_time
       : Math.round(Date.now() / 1000);
     blockData.block_time = stacksBlockReceiptDate;
   }
@@ -320,7 +320,7 @@ async function handleBlockMessage(
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
     tx_count: msg.transactions.length,
-    block_time: msg.block_time,
+    block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
   };
 

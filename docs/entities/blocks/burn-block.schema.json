@@ -8,7 +8,9 @@
     "burn_block_time_iso",
     "burn_block_hash",
     "burn_block_height",
-    "stacks_blocks"
+    "stacks_blocks",
+    "avg_block_time",
+    "total_tx_count"
   ],
   "properties": {
     "burn_block_time": {
@@ -33,6 +35,14 @@
         "type": "string"
       },
       "description": "Hashes of the Stacks blocks included in the burn block"
+    },
+    "avg_block_time": {
+      "type": "number",
+      "description": "Average time between blocks in seconds. Returns 0 if there is only one block in the burn block."
+    },
+    "total_tx_count": {
+      "type": "integer",
+      "description": "Total number of transactions in the Stacks blocks associated with this burn block"
     }
   }
 }

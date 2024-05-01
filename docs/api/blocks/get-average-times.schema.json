@@ -1,0 +1,30 @@
+{
+  "type": "object",
+  "title": "AverageBlockTimesResponse",
+  "description": "Request to fetch average block times (in seconds)",
+  "additionalProperties": false,
+  "required": [
+    "last_1h",
+    "last_24h",
+    "last_7d",
+    "last_30d"
+  ],
+  "properties": {
+    "last_1h": {
+      "type": "number",
+      "description": "Average block times over the last hour (in seconds)"
+    },
+    "last_24h": {
+      "type": "number",
+      "description": "Average block times over the last 24 hours (in seconds)"
+    },
+    "last_7d": {
+      "type": "number",
+      "description": "Average block times over the last 7 days (in seconds)"
+    },
+    "last_30d": {
+      "type": "number",
+      "description": "Average block times over the last 30 days (in seconds)"
+    }
+  }
+}

@@ -55,6 +55,8 @@ export interface DbBurnBlock {
   burn_block_hash: string;
   burn_block_height: number;
   stacks_blocks: string[];
+  avg_block_time: string | null;
+  total_tx_count: string;
 }
 
 export interface DbBurnchainReward {
@@ -1257,6 +1259,7 @@ export interface BlockInsertValues {
   parent_microblock_hash: PgBytea;
   parent_microblock_sequence: number;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   burn_block_hash: PgBytea;
   burn_block_height: number;
