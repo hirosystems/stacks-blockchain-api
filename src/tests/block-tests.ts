@@ -342,7 +342,8 @@ describe('block tests', () => {
 
     const stacksBlocks = [stacksBlock1, stacksBlock2, stacksBlock3, stacksBlock4];
 
-    for (const block of stacksBlocks) {
+    for (let i = 0; i < stacksBlocks.length; i++) {
+      const block = stacksBlocks[i];
       const dbBlock = new TestBlockBuilder({
         block_hash: block.block_hash,
         block_time: block.block_time,
@@ -352,7 +353,9 @@ describe('block tests', () => {
         burn_block_hash: block.burn_block_hash,
         burn_block_height: block.burn_block_height,
         burn_block_time: block.burn_block_time,
-      }).build();
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
       await db.update(dbBlock);
     }
 
@@ -365,6 +368,7 @@ describe('block tests', () => {
         burn_block_time: burnBlock2.burn_block_time,
         burn_block_time_iso: unixEpochToIso(burnBlock2.burn_block_time),
         stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+        total_tx_count: 3,
       },
       {
         avg_block_time: 0,
@@ -373,6 +377,7 @@ describe('block tests', () => {
         burn_block_time: burnBlock1.burn_block_time,
         burn_block_time_iso: unixEpochToIso(burnBlock1.burn_block_time),
         stacks_blocks: [stacksBlock1.block_hash],
+        total_tx_count: 1,
       },
     ]);
 
@@ -385,6 +390,7 @@ describe('block tests', () => {
       burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
       stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      total_tx_count: 3,
     });
 
     // test hash filter
@@ -398,6 +404,7 @@ describe('block tests', () => {
       burn_block_time: stacksBlock1.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
       stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
     });
 
     // test height filter
@@ -411,6 +418,7 @@ describe('block tests', () => {
       burn_block_time: stacksBlock1.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
       stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
     });
   });
 

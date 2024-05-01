@@ -288,16 +288,18 @@ export class PgStoreV2 extends BasePgStoreModule {
             b.block_hash,
             b.block_time,
             b.block_height,
+            b.tx_count,
             LAG(b.block_time) OVER (PARTITION BY b.burn_block_height ORDER BY b.block_height) AS previous_block_time
           FROM blocks b
           WHERE
             canonical = true AND
             b.burn_block_height IN (SELECT burn_block_height FROM RelevantBlocks)
         ),
-        AverageTimes AS (
+        BlockStatistics AS (
           SELECT
             burn_block_height,
-            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time,
+            SUM(tx_count) AS total_tx_count
           FROM BlocksWithPrevTime
           GROUP BY burn_block_height
         )
@@ -311,10 +313,11 @@ export class PgStoreV2 extends BasePgStoreModule {
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks,
           (SELECT block_count FROM chain_tip)::int AS total,
-          a.avg_block_time
+          a.avg_block_time,
+          a.total_tx_count
         FROM RelevantBlocks r
         JOIN BlocksWithPrevTime b ON b.burn_block_height = r.burn_block_height
-        JOIN AverageTimes a ON a.burn_block_height = r.burn_block_height
+        JOIN BlockStatistics a ON a.burn_block_height = r.burn_block_height
         ORDER BY r.burn_block_height DESC, b.block_height DESC;
       `;
       return {
@@ -343,14 +346,16 @@ export class PgStoreV2 extends BasePgStoreModule {
             block_hash,
             block_time,
             block_height,
+            tx_count,
             LAG(block_time) OVER (PARTITION BY burn_block_height ORDER BY block_height) AS previous_block_time
           FROM blocks
           WHERE canonical = true AND ${filter}
         ),
-        AverageTimes AS (
+        BlockStatistics AS (
           SELECT
             burn_block_height,
-            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time,
+            SUM(tx_count) AS total_tx_count
           FROM BlocksWithPrevTime
           GROUP BY burn_block_height
         )
@@ -363,9 +368,10 @@ export class PgStoreV2 extends BasePgStoreModule {
             ORDER BY b.block_height DESC
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks,
-          a.avg_block_time
+          a.avg_block_time,
+          a.total_tx_count
         FROM BlocksWithPrevTime b
-        JOIN AverageTimes a ON a.burn_block_height = b.burn_block_height
+        JOIN BlockStatistics a ON a.burn_block_height = b.burn_block_height
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];

@@ -9,5 +9,6 @@
     "0xb9e9b308cf9621ecbf66ca7b4689fe384b9b67c4588ec827d8163ab602fb935e",
     "0x754562cba6ec243f90485e97778ab472f462fd123ef5b83cc79d8759ca8875f5"
   ],
-  "avg_block_time": 15.3
+  "avg_block_time": 15.3,
+  "total_tx_count": 728
 }

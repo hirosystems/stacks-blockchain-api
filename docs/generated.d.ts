@@ -1470,6 +1470,10 @@ export interface BurnBlock {
    * Average time between blocks in seconds. Returns 0 if there is only one block in the burn block.
    */
   avg_block_time: number;
+  /**
+   * Total number of transactions in the Stacks blocks associated with this burn block
+   */
+  total_tx_count: number;
 }
 /**
  * GET request that returns blocks
