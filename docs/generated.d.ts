@@ -440,6 +440,7 @@ export type AbstractTransaction = BaseTransaction & {
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   block_time_iso: string;
+  burn_block_height: number;
   /**
    * Unix timestamp (in seconds) indicating when this block was mined
    */

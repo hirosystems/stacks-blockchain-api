@@ -205,6 +205,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
+      burn_block_height: args?.block_height ?? BLOCK_HEIGHT,
       burn_block_time: args?.burn_block_time ?? BURN_BLOCK_TIME,
       block_time: args?.block_time ?? STACKS_BLOCK_TIME,
       parent_burn_block_time: BURN_BLOCK_TIME,

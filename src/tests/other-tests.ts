@@ -74,6 +74,7 @@ describe('other tests', () => {
       block_hash: dbBlock1.block_hash,
       block_height: dbBlock1.block_height,
       block_time: dbBlock1.burn_block_time,
+      burn_block_height: dbBlock1.burn_block_height,
       burn_block_time: dbBlock1.burn_block_time,
       parent_burn_block_time: 0,
       type_id: DbTxTypeId.Coinbase,
