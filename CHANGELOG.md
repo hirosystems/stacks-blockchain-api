@@ -1,3 +1,10 @@
+## [7.11.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.5...v7.11.0-beta.6) (2024-05-03)
+
+
+### Features
+
+* add burn_block_height to transactions ([#1969](https://github.com/hirosystems/stacks-blockchain-api/issues/1969)) ([3e2d524](https://github.com/hirosystems/stacks-blockchain-api/commit/3e2d524ca369b88a53fc4dfc2287aa3f0fb92e64))
+
 ## [7.11.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.4...v7.11.0-beta.5) (2024-05-01)
 
 
