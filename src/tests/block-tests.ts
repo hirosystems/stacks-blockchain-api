@@ -99,6 +99,7 @@ describe('block tests', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       block_time: 1594647995,
+      burn_block_height: 68456,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
