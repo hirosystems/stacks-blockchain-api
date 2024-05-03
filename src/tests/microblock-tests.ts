@@ -297,6 +297,7 @@ describe('microblock tests', () => {
           block_hash: block1.block_hash,
           block_height: block1.block_height,
           block_time: block1.burn_block_time,
+          burn_block_height: block1.burn_block_height,
           burn_block_time: block1.burn_block_time,
           parent_burn_block_time: 1626122935,
           type_id: DbTxTypeId.Coinbase,
@@ -441,6 +442,7 @@ describe('microblock tests', () => {
           // These properties aren't known until the next anchor block that accepts this microblock.
           index_block_hash: '',
           block_hash: '',
+          burn_block_height: -1,
           burn_block_time: -1,
           block_time: -1,
 
@@ -489,6 +491,7 @@ describe('microblock tests', () => {
           index_block_hash: '',
           block_hash: '',
           burn_block_time: -1,
+          burn_block_height: -1,
           block_time: -1,
 
           // These properties can be determined with a db query, they are set while the db is inserting them.

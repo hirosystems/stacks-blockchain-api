@@ -16,6 +16,7 @@
       "block_hash": "0x28a9e2749b82bdc058776781a5abd5c9a6efed38f05545a8a51152655b8e1f4b",
       "parent_block_hash": "0x3789b75ccfe7f2acf85c3f069fd5b8f95f73aba5332fa618243957d1c017a2a3",
       "block_height": 21709,
+      "burn_block_height": 51396,
       "burn_block_time": 1626286436,
       "burn_block_time_iso": "2021-07-14T18:13:56.000Z",
       "canonical": true,
