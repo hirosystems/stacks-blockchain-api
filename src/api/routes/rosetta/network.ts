@@ -98,6 +98,7 @@ export function createRosettaNetworkRouter(db: PgStore, chainId: ChainID): expre
           hash: genesis.block_identifier.hash,
         },
         peers,
+        current_burn_block_height: block.metadata?.burn_block_height ?? 0,
       };
       const nodeInfo = await stacksCoreRpcClient.getInfo();
       const referenceNodeTipHeight = nodeInfo.stacks_tip_height;

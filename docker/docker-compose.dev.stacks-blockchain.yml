@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   stacks-blockchain:
-    image: 'hirosystems/stacks-api-e2e:stacks3.0-4d11d85'
+    image: 'hirosystems/stacks-api-e2e:stacks3.0-0a2c0e2'
     restart: on-failure
     environment:
       STACKS_EVENT_OBSERVER: host.docker.internal:3700
