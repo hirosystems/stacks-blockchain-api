@@ -6,7 +6,8 @@
     "current_block_identifier",
     "current_block_timestamp",
     "genesis_block_identifier",
-    "peers"
+    "peers",
+    "current_burn_block_height"
   ],
   "properties": {
     "current_block_identifier": {
@@ -31,6 +32,10 @@
       "items": {
         "$ref": "./../../entities/rosetta/rosetta-network-peers.schema.json"
       }
+    },
+    "current_burn_block_height": {
+      "type": "integer",
+      "description": "The latest burn block height"
     }
   },
   "additionalProperties": false

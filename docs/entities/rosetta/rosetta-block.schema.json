@@ -2,7 +2,7 @@
   "type": "object",
   "title": "RosettaBlock",
   "description": "Blocks contain an array of Transactions that occurred at a particular BlockIdentifier. A hard requirement for blocks returned by Rosetta implementations is that they MUST be inalterable: once a client has requested and received a block identified by a specific BlockIndentifier, all future calls for that same BlockIdentifier must return the same block contents.",
-  "required": ["block_identifier", "parent_block_identifier", "timestamp", "transactions"],
+  "required": ["block_identifier", "parent_block_identifier", "timestamp", "transactions", "metadata"],
   "additionalProperties": false,
   "properties": {
     "block_identifier": {
@@ -25,14 +25,10 @@
     "metadata": {
       "type": "object",
       "description": "meta data",
-      "required": ["transactions_root", "difficulty"],
+      "required": ["burn_block_height"],
       "properties": {
-        "transactions_root": {
-          "type": "string",
-          "description": ""
-        },
-        "difficulty": {
-          "type": "string",
+        "burn_block_height": {
+          "type": "number",
           "description": ""
         }
       }
