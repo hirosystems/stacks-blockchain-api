@@ -27,6 +27,7 @@ import {
   parseDbTx,
 } from '../../../api/controllers/db-controller';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -175,9 +176,14 @@ export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
   return result;
 }
 
-export function parseDbPoxSigner(signer: DbPoxCycleSigner): PoxSigner {
+export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): PoxSigner {
+  const signerAddress = getAddressFromPublicKey(
+    Buffer.from(signer.signing_key.slice(2), 'hex'),
+    isMainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+  );
   const result: PoxSigner = {
     signing_key: signer.signing_key,
+    signer_address: signerAddress,
     weight: signer.weight,
     stacked_amount: signer.stacked_amount,
     weight_percent: signer.weight_percent,
