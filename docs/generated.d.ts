@@ -3393,6 +3393,10 @@ export interface PoxCycleSignersListResponse {
 }
 export interface PoxSigner {
   signing_key: string;
+  /**
+   * The Stacks address derived from the signing_key.
+   */
+  signer_address: string;
   weight: number;
   stacked_amount: string;
   weight_percent: number;

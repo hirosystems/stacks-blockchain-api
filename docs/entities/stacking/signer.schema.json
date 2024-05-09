@@ -4,6 +4,7 @@
   "additionalProperties": false,
   "required": [
     "signing_key",
+    "signer_address",
     "weight",
     "stacked_amount",
     "weight_percent",
@@ -12,6 +13,10 @@
   "properties": {
     "signing_key": {
       "type": "string"
+    },
+    "signer_address": {
+      "type": "string",
+      "description": "The Stacks address derived from the signing_key."
     },
     "weight": {
       "type": "integer"
