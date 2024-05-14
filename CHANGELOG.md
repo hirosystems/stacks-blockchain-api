@@ -1,3 +1,17 @@
+## [7.11.0-beta.7](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.6...v7.11.0-beta.7) (2024-05-14)
+
+
+### Features
+
+* add burn_block_height to Rosetta endpoints ([#1974](https://github.com/hirosystems/stacks-blockchain-api/issues/1974)) ([9648ac8](https://github.com/hirosystems/stacks-blockchain-api/commit/9648ac8a373229b384089339545e49e5164bc165))
+* add signer_address to pox signer endpoints ([#1975](https://github.com/hirosystems/stacks-blockchain-api/issues/1975)) ([7d3444b](https://github.com/hirosystems/stacks-blockchain-api/commit/7d3444b96541e8883aa7f858cf56dd457d50a2b0))
+
+
+### Bug Fixes
+
+* pox4 properties missing in various endpoints ([#1977](https://github.com/hirosystems/stacks-blockchain-api/issues/1977)) ([521d771](https://github.com/hirosystems/stacks-blockchain-api/commit/521d7712409a9d9bffa3278ca44c21394167a085))
+* socket-io client must only use websocket transport ([#1976](https://github.com/hirosystems/stacks-blockchain-api/issues/1976)) ([85ea5af](https://github.com/hirosystems/stacks-blockchain-api/commit/85ea5afef4b3134b1481e5b001c1f45619ccdb62))
+
 ## [7.11.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.5...v7.11.0-beta.6) (2024-05-03)
 
 
