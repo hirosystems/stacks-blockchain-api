@@ -198,5 +198,12 @@ export function parseDbPoxSignerStacker(stacker: DbPoxCycleSignerStacker): PoxSt
     stacked_amount: stacker.locked,
     pox_address: stacker.pox_addr,
   };
+  // Special handling for pool operator stackers
+  if (
+    stacker.name === 'stack-aggregation-commit-indexed' ||
+    stacker.name === 'stack-aggregation-commit'
+  ) {
+    result.stacked_amount = stacker.amount_ustx;
+  }
   return result;
 }

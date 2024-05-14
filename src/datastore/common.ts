@@ -1094,6 +1094,8 @@ export interface DbPoxCycleSignerStacker {
   stacker: string;
   locked: string;
   pox_addr: string;
+  name: string;
+  amount_ustx: string;
 }
 
 interface ReOrgEntities {

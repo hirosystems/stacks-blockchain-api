@@ -688,7 +688,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         );
       const results = await sql<(DbPoxCycleSignerStacker & { total: number })[]>`
         WITH stackers AS (
-          SELECT DISTINCT ON (stacker) stacker, locked, pox_addr
+          SELECT DISTINCT ON (stacker) stacker, locked, pox_addr, amount_ustx, name
           FROM pox4_events
           WHERE canonical = true
             AND microblock_canonical = true
