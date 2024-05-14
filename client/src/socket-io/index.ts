@@ -46,6 +46,9 @@ function createStacksApiSocket(opts?: StacksApiSocketConnectionOptions) {
       subscriptions: Array.from(new Set(opts?.subscriptions)).join(','),
     },
   };
+  if (!socketOpts.transports) {
+    socketOpts.transports = ['websocket'];
+  }
   const socket: StacksApiSocket = io(getWsUrl(opts?.url ?? BASE_PATH).href, socketOpts);
   return socket;
 }

@@ -319,6 +319,26 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
         name: 'stack-aggregation-commit-indexed',
         pox_addr: delegateeAccount.btcTestnetAddr,
         stacker: delegatorAccount.stxAddr,
+        data: expect.objectContaining({
+          signer_key: `0x${signerPubKey}`,
+          end_cycle_id: expect.stringMatching(/\d+/),
+          start_cycle_id: expect.stringMatching(/\d+/),
+        }),
+      })
+    );
+
+    const stackerRes: any = await fetchGet(`/extended/v1/pox4/stacker/${delegatorAccount.stxAddr}`);
+    expect(stackerRes).toBeDefined();
+    expect(stackerRes.results[0]).toEqual(
+      expect.objectContaining({
+        name: 'stack-aggregation-commit-indexed',
+        pox_addr: delegateeAccount.btcTestnetAddr,
+        stacker: delegatorAccount.stxAddr,
+        data: expect.objectContaining({
+          signer_key: `0x${signerPubKey}`,
+          end_cycle_id: expect.stringMatching(/\d+/),
+          start_cycle_id: expect.stringMatching(/\d+/),
+        }),
       })
     );
   });

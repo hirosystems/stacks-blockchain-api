@@ -18,13 +18,16 @@ import {
   PoxCycleListResponse,
   PoxCycleSignerStackersListResponse,
   PoxCycleSignersListResponse,
-} from 'docs/generated';
+  PoxSigner,
+} from '@stacks/stacks-blockchain-api-types';
 import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers';
 import { InvalidRequestError } from '../../../errors';
+import { ChainID, getChainIDNetwork } from '../../../helpers';
 
-export function createPoxRouter(db: PgStore): express.Router {
+export function createPoxRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();
   const cacheHandler = getETagCacheHandler(db);
+  const isMainnet = getChainIDNetwork(chainId) === 'mainnet';
 
   router.get(
     '/cycles',
@@ -83,7 +86,7 @@ export function createPoxRouter(db: PgStore): express.Router {
           limit,
           offset,
           total,
-          results: results.map(r => parseDbPoxSigner(r)),
+          results: results.map(r => parseDbPoxSigner(r, isMainnet)),
         };
         setETagCacheHeaders(res);
         res.json(response);
@@ -110,8 +113,9 @@ export function createPoxRouter(db: PgStore): express.Router {
           res.status(404).json({ error: `Not found` });
           return;
         }
+        const response: PoxSigner = parseDbPoxSigner(signer, isMainnet);
         setETagCacheHeaders(res);
-        res.json(parseDbPoxSigner(signer));
+        res.json(response);
       } catch (error) {
         if (error instanceof InvalidRequestError) {
           res.status(404).json({ errors: error.message });

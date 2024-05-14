@@ -440,6 +440,9 @@ export type AbstractTransaction = BaseTransaction & {
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   block_time_iso: string;
+  /**
+   * Height of the anchor burn block.
+   */
   burn_block_height: number;
   /**
    * Unix timestamp (in seconds) indicating when this block was mined
@@ -2361,9 +2364,8 @@ export interface RosettaBlock {
   /**
    * meta data
    */
-  metadata?: {
-    transactions_root: string;
-    difficulty: string;
+  metadata: {
+    burn_block_height: number;
     [k: string]: unknown | undefined;
   };
 }
@@ -3029,6 +3031,10 @@ export interface RosettaNetworkStatusResponse {
    * Peers information
    */
   peers: RosettaPeers[];
+  /**
+   * The latest burn block height
+   */
+  current_burn_block_height: number;
 }
 /**
  * The block_identifier uniquely identifies a block in a particular network.
@@ -3387,6 +3393,10 @@ export interface PoxCycleSignersListResponse {
 }
 export interface PoxSigner {
   signing_key: string;
+  /**
+   * The Stacks address derived from the signing_key.
+   */
+  signer_address: string;
   weight: number;
   stacked_amount: string;
   weight_percent: number;

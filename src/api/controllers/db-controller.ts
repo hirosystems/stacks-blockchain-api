@@ -518,6 +518,9 @@ export async function getRosettaBlockFromDataStore(
       parent_block_identifier,
       timestamp: dbBlock.burn_block_time * 1000,
       transactions: blockTxs.found ? blockTxs.result : [],
+      metadata: {
+        burn_block_height: dbBlock.burn_block_height,
+      },
     };
     return { found: true, result: apiBlock };
   });
