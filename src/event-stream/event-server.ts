@@ -1018,13 +1018,12 @@ export async function startEventServer(opts: {
 
   app.post(
     '/drop_mempool_tx',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
         await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /drop_mempool_tx');
         res.status(500).json({ error: error });
