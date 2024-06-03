@@ -629,12 +629,52 @@ export class PgStoreV2 extends BasePgStoreModule {
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const results = await sql<(DbPoxCycleSigner & { total: number })[]>`
-        SELECT
-          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent,
-          COUNT(*) OVER()::int AS total
-        FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
-        ORDER BY weight DESC, stacked_amount DESC, signing_key
+        WITH signer_keys AS (
+            SELECT DISTINCT ON (stacker) stacker, signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
+                AND start_cycle_id <= ${args.cycle_number}
+                AND end_cycle_id >= ${args.cycle_number}
+            ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        ), delegated_stackers AS (
+            SELECT DISTINCT ON (main.stacker) 
+                main.stacker, 
+                sk.signer_key
+            FROM pox4_events main
+            LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
+            WHERE main.canonical = true 
+                AND main.microblock_canonical = true
+                AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
+                AND main.start_cycle_id <= ${args.cycle_number} 
+                AND main.end_cycle_id >= ${args.cycle_number}
+            ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
+        ), solo_stackers AS (
+            SELECT DISTINCT ON (stacker) 
+                stacker, 
+                signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
+                AND start_cycle_id <= ${args.cycle_number} 
+                AND end_cycle_id >= ${args.cycle_number}
+            ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT 
+            ps.signing_key,
+            ps.weight, 
+            ps.stacked_amount, 
+            ps.weight_percent, 
+            ps.stacked_amount_percent,
+            COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
+            COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count,
+            COUNT(*) OVER()::int AS total
+        FROM pox_sets ps
+        LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
+        LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number}
+        GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
+        ORDER BY ps.weight DESC, ps.stacked_amount DESC, ps.signing_key;
         OFFSET ${offset}
         LIMIT ${limit}
       `;
@@ -654,10 +694,50 @@ export class PgStoreV2 extends BasePgStoreModule {
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const results = await sql<DbPoxCycleSigner[]>`
-        SELECT
-          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
-        FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        WITH signer_keys AS (
+            SELECT DISTINCT ON (stacker) stacker, signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
+                AND start_cycle_id <= ${args.cycle_number}
+                AND end_cycle_id >= ${args.cycle_number}
+            ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        ), delegated_stackers AS (
+            SELECT DISTINCT ON (main.stacker) 
+                main.stacker, 
+                sk.signer_key
+            FROM pox4_events main
+            LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
+            WHERE main.canonical = true 
+                AND main.microblock_canonical = true
+                AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
+                AND main.start_cycle_id <= ${args.cycle_number} 
+                AND main.end_cycle_id >= ${args.cycle_number}
+            ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
+        ), solo_stackers AS (
+            SELECT DISTINCT ON (stacker) 
+                stacker, 
+                signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
+                AND start_cycle_id <= ${args.cycle_number}
+                AND end_cycle_id >= ${args.cycle_number}
+            ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT 
+            ps.signing_key,
+            ps.weight, 
+            ps.stacked_amount, 
+            ps.weight_percent, 
+            ps.stacked_amount_percent,
+            COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
+            COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count
+        FROM pox_sets ps
+        LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
+        LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number} AND ps.signing_key = ${args.signer_key}
+        GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
