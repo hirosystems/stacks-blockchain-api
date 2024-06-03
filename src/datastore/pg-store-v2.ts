@@ -674,7 +674,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
         WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number}
         GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
-        ORDER BY ps.weight DESC, ps.stacked_amount DESC, ps.signing_key;
+        ORDER BY ps.weight DESC, ps.stacked_amount DESC, ps.signing_key
         OFFSET ${offset}
         LIMIT ${limit}
       `;
