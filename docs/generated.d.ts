@@ -3372,6 +3372,7 @@ export interface PoxStacker {
   stacker_address: string;
   stacked_amount: string;
   pox_address: string;
+  stacker_type: "solo" | "pooled";
 }
 /**
  * GET request that returns signers for a PoX cycle

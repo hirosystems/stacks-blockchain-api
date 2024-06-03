@@ -6,7 +6,8 @@
     {
       "pox_address": "15Z2sAvjgVDpcBh4vx9g2XKU8FVHYcXNaj",
       "stacked_amount": "686251350000000000",
-      "stacker_address": "STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP"
+      "stacker_address": "STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP",
+      "stacker_type": "solo"
     }
   ]
 }
