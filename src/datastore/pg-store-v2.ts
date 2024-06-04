@@ -647,7 +647,7 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
                 AND main.start_cycle_id <= ${args.cycle_number} 
-                AND main.end_cycle_id >= ${args.cycle_number}
+                AND main.end_cycle_id > ${args.cycle_number}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -657,7 +657,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
                 AND start_cycle_id <= ${args.cycle_number} 
-                AND end_cycle_id >= ${args.cycle_number}
+                AND end_cycle_id > ${args.cycle_number}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT 
@@ -712,7 +712,7 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
                 AND main.start_cycle_id <= ${args.cycle_number} 
-                AND main.end_cycle_id >= ${args.cycle_number}
+                AND main.end_cycle_id > ${args.cycle_number}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -722,7 +722,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
                 AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id >= ${args.cycle_number}
+                AND end_cycle_id > ${args.cycle_number}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT 
@@ -792,7 +792,7 @@ export class PgStoreV2 extends BasePgStoreModule {
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
                 AND main.start_cycle_id <= ${args.cycle_number}
-                AND main.end_cycle_id >= ${args.cycle_number}
+                AND main.end_cycle_id > ${args.cycle_number}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -807,7 +807,7 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
                 AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id >= ${args.cycle_number}
+                AND end_cycle_id > ${args.cycle_number}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ), combined_stackers AS (
             SELECT * FROM delegated_stackers
