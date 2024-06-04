@@ -736,7 +736,9 @@ export class PgStoreV2 extends BasePgStoreModule {
         FROM pox_sets ps
         LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
         LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
-        WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number} AND ps.signing_key = ${args.signer_key}
+        WHERE ps.canonical = TRUE 
+          AND ps.cycle_number = ${args.cycle_number} 
+          AND ps.signing_key = ${args.signer_key}
         GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         LIMIT 1
       `;
@@ -812,8 +814,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             UNION ALL
             SELECT * FROM solo_stackers
         )
-        SELECT 
-            encode(ps.signing_key, 'hex') as signing_key,
+        SELECT
+            ps.signing_key,
             cs.stacker,
             cs.locked,
             cs.pox_addr,
@@ -823,7 +825,9 @@ export class PgStoreV2 extends BasePgStoreModule {
             COUNT(*) OVER()::int AS total
         FROM pox_sets ps
         LEFT JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
-        WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number} AND ps.signing_key = ${args.signer_key}
+        WHERE ps.canonical = TRUE 
+          AND ps.cycle_number = ${args.cycle_number} 
+          AND ps.signing_key = ${args.signer_key}
         ORDER BY locked DESC
         LIMIT ${limit}
         OFFSET ${offset}
