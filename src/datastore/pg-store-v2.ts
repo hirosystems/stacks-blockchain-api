@@ -634,8 +634,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id >= ${args.cycle_number}
+                AND start_cycle_id = ${args.cycle_number}
+                AND end_cycle_id = ${args.cycle_number + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
@@ -699,8 +699,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id >= ${args.cycle_number}
+                AND start_cycle_id = ${args.cycle_number}
+                AND end_cycle_id = ${args.cycle_number + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
@@ -772,8 +772,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id >= ${args.cycle_number}
+                AND start_cycle_id = ${args.cycle_number}
+                AND end_cycle_id = ${args.cycle_number + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
