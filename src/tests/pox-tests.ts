@@ -111,6 +111,8 @@ describe('PoX tests', () => {
           stacked_amount_percent: 50,
           weight: 5,
           weight_percent: 55.55555555555556,
+          pooled_stacker_count: 0,
+          solo_stacker_count: 1,
         },
         {
           signing_key: '0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09',
@@ -119,6 +121,8 @@ describe('PoX tests', () => {
           stacked_amount_percent: 33.333333333333336,
           weight: 3,
           weight_percent: 33.33333333333333,
+          pooled_stacker_count: 0,
+          solo_stacker_count: 1,
         },
         {
           signing_key: '0x02dcde79b38787b72d8e5e0af81cffa802f0a3c8452d6b46e08859165f49a72736',
@@ -127,6 +131,8 @@ describe('PoX tests', () => {
           stacked_amount_percent: 16.666666666666668,
           weight: 1,
           weight_percent: 11.11111111111111,
+          pooled_stacker_count: 0,
+          solo_stacker_count: 1,
         },
       ],
       total: 3,
@@ -143,6 +149,8 @@ describe('PoX tests', () => {
       stacked_amount_percent: 50,
       weight: 5,
       weight_percent: 55.55555555555556,
+      pooled_stacker_count: 0,
+      solo_stacker_count: 1,
     });
     const stackers = await supertest(api.server).get(
       `/extended/v2/pox/cycles/14/signers/0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d/stackers`
@@ -157,6 +165,7 @@ describe('PoX tests', () => {
           pox_address: 'mk4zAE1iVWf5PJAgeX83rSXnzF5zQBiqf1',
           stacked_amount: '686251350000000000',
           stacker_address: 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP',
+          stacker_type: 'solo',
         },
       ],
       total: 1,
@@ -262,6 +271,8 @@ describe('PoX tests', () => {
             stacked_amount_percent: 42.857142857142854,
             weight: 9,
             weight_percent: 42.857142857142854,
+            pooled_stacker_count: 0,
+            solo_stacker_count: 1,
           },
           {
             signing_key: '0x023f19d77c842b675bd8c858e9ac8b0ca2efa566f17accf8ef9ceb5a992dc67836',
@@ -270,6 +281,8 @@ describe('PoX tests', () => {
             stacked_amount_percent: 28.571428571428573,
             weight: 6,
             weight_percent: 28.57142857142857,
+            pooled_stacker_count: 0,
+            solo_stacker_count: 1,
           },
           {
             // steph doubled the weight of this signer
@@ -279,6 +292,8 @@ describe('PoX tests', () => {
             stacked_amount_percent: 28.571428571428573,
             weight: 6,
             weight_percent: 28.57142857142857,
+            pooled_stacker_count: 0,
+            solo_stacker_count: 2,
           },
         ],
         total: 3,
@@ -296,6 +311,8 @@ describe('PoX tests', () => {
         stacked_amount_percent: 28.571428571428573,
         weight: 6,
         weight_percent: 28.57142857142857,
+        pooled_stacker_count: 0,
+        solo_stacker_count: 2,
       });
 
       const stackers = await supertest(api.server).get(
@@ -311,11 +328,13 @@ describe('PoX tests', () => {
             pox_address: 'n2v875jbJ4RjBnTjgbfikDfnwsDV5iUByw',
             stacked_amount: '2500170000000000',
             stacker_address: 'ST3NBRSFKX28FQ2ZJ1MAKX58HKHSDGNV5N7R21XCP', // signer
+            stacker_type: 'solo',
           },
           {
             pox_address: 'mhYeZXrSEuyf2wbJ14qZ2apG7ofMLDj9Ss',
             stacked_amount: '2500170000000000',
             stacker_address: 'STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6', // steph
+            stacker_type: 'solo',
           },
         ],
         total: 2,

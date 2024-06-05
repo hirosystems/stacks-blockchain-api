@@ -188,6 +188,8 @@ export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): 
     stacked_amount: signer.stacked_amount,
     weight_percent: signer.weight_percent,
     stacked_amount_percent: signer.stacked_amount_percent,
+    pooled_stacker_count: signer.pooled_stacker_count,
+    solo_stacker_count: signer.solo_stacker_count,
   };
   return result;
 }
@@ -197,6 +199,7 @@ export function parseDbPoxSignerStacker(stacker: DbPoxCycleSignerStacker): PoxSt
     stacker_address: stacker.stacker,
     stacked_amount: stacker.locked,
     pox_address: stacker.pox_addr,
+    stacker_type: stacker.stacker_type,
   };
   // Special handling for pool operator stackers
   if (
