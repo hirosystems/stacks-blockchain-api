@@ -1,3 +1,15 @@
+## [7.11.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.7...v7.11.0-beta.8) (2024-06-05)
+
+
+### Features
+
+* include solo and pooled stackers in signer stacker endpoints ([#1987](https://github.com/hirosystems/stacks-blockchain-api/issues/1987)) ([302a5d8](https://github.com/hirosystems/stacks-blockchain-api/commit/302a5d830bc15ecf060e875d6336d0b530ff4af0))
+
+
+### Bug Fixes
+
+* ensure events are inserted into the raw event request table ([#1925](https://github.com/hirosystems/stacks-blockchain-api/issues/1925)) ([34a8454](https://github.com/hirosystems/stacks-blockchain-api/commit/34a8454db3d76cd67f1d3310894b175d23bb4411))
+
 ## [7.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.1...v7.10.0) (2024-04-15)
 
 
