@@ -3372,6 +3372,7 @@ export interface PoxStacker {
   stacker_address: string;
   stacked_amount: string;
   pox_address: string;
+  stacker_type: "solo" | "pooled";
 }
 /**
  * GET request that returns signers for a PoX cycle
@@ -3401,6 +3402,14 @@ export interface PoxSigner {
   stacked_amount: string;
   weight_percent: number;
   stacked_amount_percent: number;
+  /**
+   * The number of solo stackers associated with this signer.
+   */
+  solo_stacker_count: number;
+  /**
+   * The number of pooled stackers associated with this signer.
+   */
+  pooled_stacker_count: number;
 }
 /**
  * GET request that returns PoX cycles

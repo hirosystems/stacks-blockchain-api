@@ -5,7 +5,8 @@
   "required": [
     "stacker_address",
     "stacked_amount",
-    "pox_address"
+    "pox_address",
+    "stacker_type"
   ],
   "properties": {
     "stacker_address": {
@@ -16,6 +17,10 @@
     },
     "pox_address": {
       "type": "string"
+    },
+    "stacker_type": {
+      "type": "string",
+      "enum": ["solo", "pooled"]
     }
   }
 }

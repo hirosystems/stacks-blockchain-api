@@ -1086,8 +1086,8 @@ export interface DbPoxCycleSigner {
   stacked_amount: string;
   weight_percent: number;
   stacked_amount_percent: number;
-  // TODO: Figure this out
-  // total_stackers: number;
+  pooled_stacker_count: number;
+  solo_stacker_count: number;
 }
 
 export interface DbPoxCycleSignerStacker {
@@ -1096,6 +1096,7 @@ export interface DbPoxCycleSignerStacker {
   pox_addr: string;
   name: string;
   amount_ustx: string;
+  stacker_type: 'solo' | 'pooled';
 }
 
 interface ReOrgEntities {
