@@ -1,4 +1,4 @@
-import { BasePgStoreModule, PgSqlClient } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@hirosystems/api-toolkit';
 import {
   BlockLimitParamSchema,
   CompiledBurnBlockHashParam,
@@ -624,6 +624,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
       if (cycleCheck.count === 0)
@@ -634,8 +635,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id = ${args.cycle_number}
-                AND end_cycle_id = ${args.cycle_number + 1}
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
@@ -646,8 +647,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE main.canonical = true 
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
-                AND main.start_cycle_id <= ${args.cycle_number} 
-                AND main.end_cycle_id > ${args.cycle_number}
+                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -656,8 +657,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
-                AND start_cycle_id <= ${args.cycle_number} 
-                AND end_cycle_id > ${args.cycle_number}
+                AND start_cycle_id <= ${cycleNumber} 
+                AND end_cycle_id > ${cycleNumber}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT 
@@ -672,7 +673,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         FROM pox_sets ps
         LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
         LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
-        WHERE ps.canonical = TRUE AND ps.cycle_number = ${args.cycle_number}
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
         GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         ORDER BY ps.weight DESC, ps.stacked_amount DESC, ps.signing_key
         OFFSET ${offset}
@@ -689,8 +690,10 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
     return this.sqlTransaction(async sql => {
+      const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck =
-        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1`;
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const results = await sql<DbPoxCycleSigner[]>`
@@ -699,8 +702,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id = ${args.cycle_number}
-                AND end_cycle_id = ${args.cycle_number + 1}
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
@@ -711,8 +714,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE main.canonical = true 
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
-                AND main.start_cycle_id <= ${args.cycle_number} 
-                AND main.end_cycle_id > ${args.cycle_number}
+                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -721,8 +724,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
-                AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id > ${args.cycle_number}
+                AND start_cycle_id <= ${cycleNumber}
+                AND end_cycle_id > ${cycleNumber}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         )
         SELECT 
@@ -737,8 +740,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
         LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
         WHERE ps.canonical = TRUE 
-          AND ps.cycle_number = ${args.cycle_number} 
-          AND ps.signing_key = ${args.signer_key}
+          AND ps.cycle_number = ${cycleNumber} 
+          AND ps.signing_key = ${signerKey}
         GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         LIMIT 1
       `;
@@ -752,15 +755,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
+      const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck = await sql`
-        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1
+        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1
       `;
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const signerCheck = await sql`
         SELECT signing_key
         FROM pox_sets
-        WHERE cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        WHERE cycle_number = ${cycleNumber} AND signing_key = ${args.signer_key}
         LIMIT 1
       `;
       if (signerCheck.count === 0)
@@ -774,8 +779,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
-                AND start_cycle_id = ${args.cycle_number}
-                AND end_cycle_id = ${args.cycle_number + 1}
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
             ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
         ), delegated_stackers AS (
             SELECT DISTINCT ON (main.stacker) 
@@ -791,8 +796,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             WHERE main.canonical = true 
                 AND main.microblock_canonical = true
                 AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
-                AND main.start_cycle_id <= ${args.cycle_number}
-                AND main.end_cycle_id > ${args.cycle_number}
+                AND main.start_cycle_id <= ${cycleNumber}
+                AND main.end_cycle_id > ${cycleNumber}
             ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
         ), solo_stackers AS (
             SELECT DISTINCT ON (stacker) 
@@ -806,8 +811,8 @@ export class PgStoreV2 extends BasePgStoreModule {
             FROM pox4_events
             WHERE canonical = true AND microblock_canonical = true
                 AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
-                AND start_cycle_id <= ${args.cycle_number}
-                AND end_cycle_id > ${args.cycle_number}
+                AND start_cycle_id <= ${cycleNumber}
+                AND end_cycle_id > ${cycleNumber}
             ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
         ), combined_stackers AS (
             SELECT * FROM delegated_stackers
@@ -826,8 +831,8 @@ export class PgStoreV2 extends BasePgStoreModule {
         FROM pox_sets ps
         LEFT JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
         WHERE ps.canonical = TRUE 
-          AND ps.cycle_number = ${args.cycle_number} 
-          AND ps.signing_key = ${args.signer_key}
+          AND ps.cycle_number = ${cycleNumber} 
+          AND ps.signing_key = ${signerKey}
         ORDER BY locked DESC
         LIMIT ${limit}
         OFFSET ${offset}
