@@ -1,3 +1,10 @@
+## [7.11.0-beta.9](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.8...v7.11.0-beta.9) (2024-06-07)
+
+
+### Bug Fixes
+
+* signer stacker query using string instead of int for cycle_id ([#1991](https://github.com/hirosystems/stacks-blockchain-api/issues/1991)) ([5ce9b44](https://github.com/hirosystems/stacks-blockchain-api/commit/5ce9b448d30a4c59fcdd6dbaececda546e2d6f6c))
+
 ## [7.11.0-beta.8](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0-beta.7...v7.11.0-beta.8) (2024-06-05)
 
 
