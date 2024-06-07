@@ -5,24 +5,33 @@
   "results": [
     {
       "signing_key": "0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d",
+      "signer_address": "STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP",
       "stacked_amount": "686251350000000000",
       "stacked_amount_percent": 50,
       "weight": 5,
-      "weight_percent": 55.55555555555556
+      "weight_percent": 55.55555555555556,
+      "solo_stacker_count": 16,
+      "pooled_stacker_count": 3615
     },
     {
       "signing_key": "0x029874497a7952483aa23890e9d0898696f33864d3df90939930a1f45421fe3b09",
+      "signer_address": "STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2",
       "stacked_amount": "457500900000000000",
       "stacked_amount_percent": 33.333333333333336,
       "weight": 3,
-      "weight_percent": 33.33333333333333
+      "weight_percent": 33.33333333333333,
+      "solo_stacker_count": 0,
+      "pooled_stacker_count": 1456
     },
     {
       "signing_key": "0x02dcde79b38787b72d8e5e0af81cffa802f0a3c8452d6b46e08859165f49a72736",
+      "signer_address": "ST18MDW2PDTBSCR1ACXYRJP2JX70FWNM6YY2VX4SS",
       "stacked_amount": "228750450000000000",
       "stacked_amount_percent": 16.666666666666668,
       "weight": 1,
-      "weight_percent": 11.11111111111111
+      "weight_percent": 11.11111111111111,
+      "solo_stacker_count": 637,
+      "pooled_stacker_count": 0
     }
   ]
 }

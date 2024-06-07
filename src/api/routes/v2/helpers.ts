@@ -27,6 +27,7 @@ import {
   parseDbTx,
 } from '../../../api/controllers/db-controller';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
+import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -60,6 +61,8 @@ export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {
     burn_block_hash: block.burn_block_hash,
     burn_block_height: block.burn_block_height,
     stacks_blocks: block.stacks_blocks,
+    avg_block_time: parseFloat(parseFloat(block.avg_block_time ?? '0').toFixed(2)),
+    total_tx_count: parseInt(block.total_tx_count),
   };
   return burnBlock;
 }
@@ -173,13 +176,20 @@ export function parseDbPoxCycle(cycle: DbPoxCycle): PoxCycle {
   return result;
 }
 
-export function parseDbPoxSigner(signer: DbPoxCycleSigner): PoxSigner {
+export function parseDbPoxSigner(signer: DbPoxCycleSigner, isMainnet: boolean): PoxSigner {
+  const signerAddress = getAddressFromPublicKey(
+    Buffer.from(signer.signing_key.slice(2), 'hex'),
+    isMainnet ? TransactionVersion.Mainnet : TransactionVersion.Testnet
+  );
   const result: PoxSigner = {
     signing_key: signer.signing_key,
+    signer_address: signerAddress,
     weight: signer.weight,
     stacked_amount: signer.stacked_amount,
     weight_percent: signer.weight_percent,
     stacked_amount_percent: signer.stacked_amount_percent,
+    pooled_stacker_count: signer.pooled_stacker_count,
+    solo_stacker_count: signer.solo_stacker_count,
   };
   return result;
 }
@@ -189,6 +199,14 @@ export function parseDbPoxSignerStacker(stacker: DbPoxCycleSignerStacker): PoxSt
     stacker_address: stacker.stacker,
     stacked_amount: stacker.locked,
     pox_address: stacker.pox_addr,
+    stacker_type: stacker.stacker_type,
   };
+  // Special handling for pool operator stackers
+  if (
+    stacker.name === 'stack-aggregation-commit-indexed' ||
+    stacker.name === 'stack-aggregation-commit'
+  ) {
+    result.stacked_amount = stacker.amount_ustx;
+  }
   return result;
 }

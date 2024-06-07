@@ -252,7 +252,7 @@ async function handleBlockMessage(
     // TODO: if the core node can give use the stacks-block count/index for the current tenure/burn_block then we should
     // increment this by that value so that timestampts increase monotonically.
     const stacksBlockReceiptDate = db.isEventReplay
-      ? msg.parent_burn_block_timestamp
+      ? msg.burn_block_time
       : Math.round(Date.now() / 1000);
     blockData.block_time = stacksBlockReceiptDate;
   }
@@ -320,7 +320,7 @@ async function handleBlockMessage(
     execution_cost_write_count: 0,
     execution_cost_write_length: 0,
     tx_count: msg.transactions.length,
-    block_time: msg.block_time,
+    block_time: blockData.block_time,
     signer_bitvec: signerBitvec,
   };
 
@@ -926,7 +926,7 @@ export async function startEventServer(opts: {
 
   const app = express();
 
-  const handleRawEventRequest = asyncHandler(async req => {
+  const handleRawEventRequest = async (req: express.Request) => {
     await messageHandler.handleRawEventRequest(req.path, req.body, db);
 
     if (logger.level === 'debug') {
@@ -938,10 +938,9 @@ export async function startEventServer(opts: {
       }
       logger.debug(`${eventPath} ${payload}`, { component: 'stacks-node-event' });
     }
-  });
+  };
 
   app.use(loggerMiddleware);
-
   app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
 
   const ibdHeight = getIbdBlockHeight();
@@ -952,7 +951,7 @@ export async function startEventServer(opts: {
         if (chainTip.block_height > ibdHeight) {
           next();
         } else {
-          handleRawEventRequest(req, res, next);
+          await handleRawEventRequest(req);
           res.status(200).send(`IBD`);
         }
       } catch (error) {
@@ -971,101 +970,95 @@ export async function startEventServer(opts: {
 
   app.post(
     '/new_block',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const blockMessage: CoreNodeBlockMessage = req.body;
         await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
         if (blockMessage.block_height === 1) {
           await handleBnsImport(db);
         }
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_block');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/new_burn_block',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeBurnBlockMessage = req.body;
         await messageHandler.handleBurnBlock(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_burn_block');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/new_mempool_tx',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const rawTxs: string[] = req.body;
         await messageHandler.handleMempoolTxs(rawTxs, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_mempool_tx');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/drop_mempool_tx',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeDropMempoolTxMessage = req.body;
         await messageHandler.handleDroppedMempoolTxs(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /drop_mempool_tx');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/attachments/new',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeAttachmentMessage[] = req.body;
         await messageHandler.handleNewAttachment(msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /attachments/new');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post(
     '/new_microblocks',
-    asyncHandler(async (req, res, next) => {
+    asyncHandler(async (req, res) => {
       try {
         const msg: CoreNodeMicroblockMessage = req.body;
         await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
+        await handleRawEventRequest(req);
         res.status(200).json({ result: 'ok' });
-        next();
       } catch (error) {
         logger.error(error, 'error processing core-node /new_microblocks');
         res.status(500).json({ error: error });
       }
-    }),
-    handleRawEventRequest
+    })
   );
 
   app.post('*', (req, res, next) => {

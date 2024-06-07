@@ -2,27 +2,25 @@
 
 [![CI](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml/badge.svg)](https://github.com/hirosystems/stacks-blockchain-api/actions/workflows/ci.yml)
 [![GitHub Releases](https://img.shields.io/github/v/release/hirosystems/stacks-blockchain-api?display_name=release)](https://github.com/hirosystems/stacks-blockchain-api/releases/latest)
-[![Docker Pulls](https://img.shields.io/docker/pulls/blockstack/stacks-blockchain-api-standalone)](https://hub.docker.com/r/hirosystems/stacks-blockchain-api-standalone/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/blockstack/stacks-blockchain-api)](https://hub.docker.com/r/hirosystems/stacks-blockchain-api/)
 [![NPM client package](https://img.shields.io/badge/npm-%40stacks%2Fblockchain--api--client-blue)](https://www.npmjs.org/package/@stacks/blockchain-api-client)
 
 ## Quick start
 
-A self-contained Docker image is provided, which starts a Stacks 2.05 blockchain and API instance.
+### Local
 
-Ensure Docker is installed, then run the command:
+This service requires `postgres`, `stacks-node`, `bitcoind`, and a few other components in order to run. 
+The [`clarinet`](https://github.com/hirosystems/clarinet) project provides an easy way to spin up the API and all these services:
+> clarinet devnet - a local standalone development environment that simulates Bitcoin, Stacks node and other helpful components, similar to a staging environment.
 
-```shell
-docker run -p 3999:3999 hirosystems/stacks-blockchain-api-standalone
-```
+Get started at https://docs.hiro.so/clarinet/getting-started 
 
-Similarly, a "mocknet" instance can be started. This runs a local node, isolated from the testnet/mainnet:
+### Production
 
-```shell
-docker run -p 3999:3999 -e STACKS_NETWORK=mocknet hirosystems/stacks-blockchain-api-standalone
-```
+The docker image `hirosystems/stacks-blockchain-api` is recommended when running the API in a mainnet or testnet environment.
 
-Once the blockchain has synced with the network, the API will be available at:
-[http://localhost:3999](http://localhost:3999)
+Note that this image cannot be ran standalone. Other services need to be configured correctly and running. For more information see https://docs.hiro.so/stacks-blockchain-api/how-to-guides/how-to-run-api-node
+
 
 ## Development quick start
 
@@ -30,21 +28,17 @@ First, ensure Docker is installed on your machine.
 
 Clone repo and install dependencies with `npm install`.
 
-Run `npm run dev:integrated`.
+VSCode is recommended for development. Pre-configured "run and debug" configurations are included. Run using `Launch: w/ postgres`.
 
-This command will concurrently start the API server app and the service dependencies.
+Alternatively, use the command `npm run dev:integrated` -- this command will concurrently start the API server app and the service dependencies.
 
 Check to see if the server started successfully by visiting http://localhost:3999/extended/v1/status
 
 ## Local Development
 
-### Setup Services
+To run the server, run `npm run dev:integrated`, which uses docker-compose to deploy the service dependencies (e.g., PostgreSQL, Stacks core node, etc.). 
 
-Then run `npm run devenv:deploy`, which uses docker-compose to deploy the service dependencies (e.g., PostgreSQL, Stacks core node, etc.)
-
-### Running the server
-
-To run the server in 'watch' mode (restart for every code change), run `npm run dev:watch`. You'll have a server on port 3999.
+You'll have a server on port 3999.
 
 # Architecture
 

@@ -1938,8 +1938,10 @@ export class PgStore extends BasePgStore {
       if (!dbTx.found) {
         return { found: false };
       }
+      const cols =
+        poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
       const queryResults = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+        SELECT ${sql(cols)}
         FROM ${sql(poxTable)}
         WHERE canonical = true AND microblock_canonical = true AND tx_id = ${txId}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -1957,8 +1959,10 @@ export class PgStore extends BasePgStore {
     poxTable: PoxSyntheticEventTable;
   }): Promise<FoundOrNot<DbPoxSyntheticEvent[]>> {
     return await this.sqlTransaction(async sql => {
+      const cols =
+        poxTable === 'pox4_events' ? POX4_SYNTHETIC_EVENT_COLUMNS : POX_SYNTHETIC_EVENT_COLUMNS;
       const queryResults = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+        SELECT ${sql(cols)}
         FROM ${sql(poxTable)}
         WHERE canonical = true AND microblock_canonical = true AND stacker = ${principal}
         ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
@@ -2349,7 +2353,7 @@ export class PgStore extends BasePgStore {
     // Special case for `handle-unlock` which should be returned if it is the last received event.
 
     const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+        SELECT ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
         FROM pox4_events
         WHERE canonical = true AND microblock_canonical = true AND stacker = ${stxAddress}
         AND block_height <= ${blockHeight}
@@ -4243,7 +4247,7 @@ export class PgStore extends BasePgStore {
 
     let poxV4Unlocks: StxLockEventResult[] = [];
     const pox4EventQuery = await sql<PoxSyntheticEventQueryResult[]>`
-        SELECT DISTINCT ON (stacker) stacker, ${sql(POX_SYNTHETIC_EVENT_COLUMNS)}
+        SELECT DISTINCT ON (stacker) stacker, ${sql(POX4_SYNTHETIC_EVENT_COLUMNS)}
         FROM pox4_events
         WHERE canonical = true AND microblock_canonical = true
         AND block_height <= ${block.block_height}

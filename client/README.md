@@ -45,14 +45,12 @@ await sub.unsubscribe();
 ### Socket.io
 
 ```js
-import { io } from "socket.io-client";
-import * as stacks from '@stacks/blockchain-api-client';
+import { StacksApiSocketClient } from '@stacks/blockchain-api-client';
 
-// for testnet, replace with https://api.testnet.hiro.so/
-const socketUrl = "https://api.mainnet.hiro.so/";
+// for testnet, replace with https://api.testnet.hiro.so
+const socketUrl = "https://api.mainnet.hiro.so";
 
-const socket = io(socketUrl);
-const sc = new stacks.StacksApiSocketClient(socket);
+const sc = new StacksApiSocketClient({ url: socketUrl });
 
 sc.subscribeAddressTransactions('ST3GQB6WGCWKDNFNPSQRV8DY93JN06XPZ2ZE9EVMA', (address, tx) => {
   console.log('address:', address);

@@ -13,6 +13,7 @@ export type SchemaMergeRootStub =
   | AddressTransactionsWithTransfersListResponse
   | AddressTransactionsListResponse
   | AddressTransactionsV2ListResponse
+  | AverageBlockTimesResponse
   | BlockListResponse
   | BurnBlockListResponse
   | NakamotoBlockListResponse
@@ -439,6 +440,10 @@ export type AbstractTransaction = BaseTransaction & {
    * An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.
    */
   block_time_iso: string;
+  /**
+   * Height of the anchor burn block.
+   */
+  burn_block_height: number;
   /**
    * Unix timestamp (in seconds) indicating when this block was mined
    */
@@ -1286,6 +1291,27 @@ export interface AddressTransaction {
   };
 }
 /**
+ * Request to fetch average block times (in seconds)
+ */
+export interface AverageBlockTimesResponse {
+  /**
+   * Average block times over the last hour (in seconds)
+   */
+  last_1h: number;
+  /**
+   * Average block times over the last 24 hours (in seconds)
+   */
+  last_24h: number;
+  /**
+   * Average block times over the last 7 days (in seconds)
+   */
+  last_7d: number;
+  /**
+   * Average block times over the last 30 days (in seconds)
+   */
+  last_30d: number;
+}
+/**
  * GET request that returns blocks
  */
 export interface BlockListResponse {
@@ -1444,6 +1470,14 @@ export interface BurnBlock {
    * Hashes of the Stacks blocks included in the burn block
    */
   stacks_blocks: string[];
+  /**
+   * Average time between blocks in seconds. Returns 0 if there is only one block in the burn block.
+   */
+  avg_block_time: number;
+  /**
+   * Total number of transactions in the Stacks blocks associated with this burn block
+   */
+  total_tx_count: number;
 }
 /**
  * GET request that returns blocks
@@ -2330,9 +2364,8 @@ export interface RosettaBlock {
   /**
    * meta data
    */
-  metadata?: {
-    transactions_root: string;
-    difficulty: string;
+  metadata: {
+    burn_block_height: number;
     [k: string]: unknown | undefined;
   };
 }
@@ -2998,6 +3031,10 @@ export interface RosettaNetworkStatusResponse {
    * Peers information
    */
   peers: RosettaPeers[];
+  /**
+   * The latest burn block height
+   */
+  current_burn_block_height: number;
 }
 /**
  * The block_identifier uniquely identifies a block in a particular network.
@@ -3335,6 +3372,7 @@ export interface PoxStacker {
   stacker_address: string;
   stacked_amount: string;
   pox_address: string;
+  stacker_type: "solo" | "pooled";
 }
 /**
  * GET request that returns signers for a PoX cycle
@@ -3356,10 +3394,22 @@ export interface PoxCycleSignersListResponse {
 }
 export interface PoxSigner {
   signing_key: string;
+  /**
+   * The Stacks address derived from the signing_key.
+   */
+  signer_address: string;
   weight: number;
   stacked_amount: string;
   weight_percent: number;
   stacked_amount_percent: number;
+  /**
+   * The number of solo stackers associated with this signer.
+   */
+  solo_stacker_count: number;
+  /**
+   * The number of pooled stackers associated with this signer.
+   */
+  pooled_stacker_count: number;
 }
 /**
  * GET request that returns PoX cycles

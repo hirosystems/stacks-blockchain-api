@@ -14,6 +14,7 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { AverageBlockTimesResponse } from '@stacks/stacks-blockchain-api-types';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -98,6 +99,7 @@ describe('block tests', () => {
       block_hash: block.block_hash,
       block_height: 68456,
       block_time: 1594647995,
+      burn_block_height: 68456,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -257,8 +259,8 @@ describe('block tests', () => {
           canonical: true,
           height: 1,
           hash: block_hash,
-          block_time: 94869286,
-          block_time_iso: '1973-01-03T00:34:46.000Z',
+          block_time: 94869287,
+          block_time_iso: '1973-01-03T00:34:47.000Z',
           parent_block_hash: '0x',
           burn_block_time: 94869286,
           burn_block_time_iso: '1973-01-03T00:34:46.000Z',
@@ -296,8 +298,11 @@ describe('block tests', () => {
       burn_block_time: 1702386678,
     };
 
+    const tenMinutes = 10 * 60;
+    let blockStartTime = 1714139800;
     const stacksBlock1 = {
       block_height: 1,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234111111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd111111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
@@ -307,6 +312,7 @@ describe('block tests', () => {
     };
     const stacksBlock2 = {
       block_height: 2,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234211111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd211111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock1.index_block_hash,
@@ -316,6 +322,7 @@ describe('block tests', () => {
     };
     const stacksBlock3 = {
       block_height: 3,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234311111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd311111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock2.index_block_hash,
@@ -325,6 +332,7 @@ describe('block tests', () => {
     };
     const stacksBlock4 = {
       block_height: 4,
+      block_time: (blockStartTime += tenMinutes),
       block_hash: '0x1234411111111111111111111111111111111111111111111111111111111111',
       index_block_hash: '0xabcd411111111111111111111111111111111111111111111111111111111111',
       parent_index_block_hash: stacksBlock3.index_block_hash,
@@ -335,45 +343,55 @@ describe('block tests', () => {
 
     const stacksBlocks = [stacksBlock1, stacksBlock2, stacksBlock3, stacksBlock4];
 
-    for (const block of stacksBlocks) {
+    for (let i = 0; i < stacksBlocks.length; i++) {
+      const block = stacksBlocks[i];
       const dbBlock = new TestBlockBuilder({
         block_hash: block.block_hash,
+        block_time: block.block_time,
         index_block_hash: block.index_block_hash,
         parent_index_block_hash: block.parent_index_block_hash,
         block_height: block.block_height,
         burn_block_hash: block.burn_block_hash,
         burn_block_height: block.burn_block_height,
         burn_block_time: block.burn_block_time,
-      }).build();
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
       await db.update(dbBlock);
     }
 
     const result = await supertest(api.server).get(`/extended/v2/burn-blocks`);
     expect(result.body.results).toEqual([
       {
+        avg_block_time: tenMinutes,
         burn_block_hash: burnBlock2.burn_block_hash,
         burn_block_height: burnBlock2.burn_block_height,
         burn_block_time: burnBlock2.burn_block_time,
         burn_block_time_iso: unixEpochToIso(burnBlock2.burn_block_time),
         stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+        total_tx_count: 3,
       },
       {
+        avg_block_time: 0,
         burn_block_hash: burnBlock1.burn_block_hash,
         burn_block_height: burnBlock1.burn_block_height,
         burn_block_time: burnBlock1.burn_block_time,
         burn_block_time_iso: unixEpochToIso(burnBlock1.burn_block_time),
         stacks_blocks: [stacksBlock1.block_hash],
+        total_tx_count: 1,
       },
     ]);
 
     // test 'latest' filter
     const result2 = await supertest(api.server).get(`/extended/v2/burn-blocks/latest`);
     expect(result2.body).toEqual({
+      avg_block_time: tenMinutes,
       burn_block_hash: stacksBlocks.at(-1)?.burn_block_hash,
       burn_block_height: stacksBlocks.at(-1)?.burn_block_height,
       burn_block_time: stacksBlocks.at(-1)?.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlocks.at(-1)?.burn_block_time ?? 0),
       stacks_blocks: [stacksBlock4.block_hash, stacksBlock3.block_hash, stacksBlock2.block_hash],
+      total_tx_count: 3,
     });
 
     // test hash filter
@@ -381,11 +399,13 @@ describe('block tests', () => {
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_hash}`
     );
     expect(result3.body).toEqual({
+      avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
       burn_block_time: stacksBlock1.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
       stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
     });
 
     // test height filter
@@ -393,11 +413,13 @@ describe('block tests', () => {
       `/extended/v2/burn-blocks/${stacksBlock1.burn_block_height}`
     );
     expect(result4.body).toEqual({
+      avg_block_time: 0,
       burn_block_hash: stacksBlock1.burn_block_hash,
       burn_block_height: stacksBlock1.burn_block_height,
       burn_block_time: stacksBlock1.burn_block_time,
       burn_block_time_iso: unixEpochToIso(stacksBlock1.burn_block_time),
       stacks_blocks: [stacksBlock1.block_hash],
+      total_tx_count: 1,
     });
   });
 
@@ -440,8 +462,8 @@ describe('block tests', () => {
       index_block_hash: '0x0001',
       hash: '0x0001',
       height: 1,
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       microblocks_accepted: [],
       microblocks_streamed: [
         microblock1.microblocks[0].microblock_hash,
@@ -492,8 +514,8 @@ describe('block tests', () => {
       index_block_hash: '0x0002',
       hash: '0x0002',
       height: 2,
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       microblocks_accepted: [microblock1.microblocks[0].microblock_hash],
       microblocks_streamed: [],
       miner_txid: '0x4321',
@@ -672,8 +694,8 @@ describe('block tests', () => {
 
     // Filter by burn hash
     const block5 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       burn_block_height: 700000,
       burn_block_time: 94869286,
@@ -709,8 +731,8 @@ describe('block tests', () => {
 
     // Get latest block
     const block8 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x000000000000000000028eacd4e6e58405d5a37d06b5d7b93776f1eab68d2494',
       burn_block_height: 700001,
       burn_block_time: 94869286,
@@ -762,8 +784,8 @@ describe('block tests', () => {
 
     // Get latest
     const block5 = {
-      block_time: 94869286,
-      block_time_iso: '1973-01-03T00:34:46.000Z',
+      block_time: 94869287,
+      block_time_iso: '1973-01-03T00:34:47.000Z',
       burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
       burn_block_height: 700000,
       burn_block_time: 94869286,
@@ -808,5 +830,43 @@ describe('block tests', () => {
     json = JSON.parse(fetch.text);
     expect(fetch.status).toBe(200);
     expect(json).toStrictEqual(block5);
+  });
+
+  test('blocks average time', async () => {
+    const blockCount = 50;
+    const now = Math.round(Date.now() / 1000);
+    const thirtyMinutes = 30 * 60;
+    // Return timestamp in seconds for block, latest block will be now(), and previous blocks will be 30 minutes apart
+    const timeForBlock = (blockHeight: number) => {
+      const blockDistance = blockCount - blockHeight;
+      return now - thirtyMinutes * blockDistance;
+    };
+    for (let i = 1; i <= blockCount; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_time: timeForBlock(i),
+        block_hash: `0x${i.toString().padStart(64, '0')}`,
+        index_block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        parent_index_block_hash: `0x11${(i - 1).toString().padStart(62, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    const fetch = await supertest(api.server).get(`/extended/v2/blocks/average-times`);
+    const response: AverageBlockTimesResponse = fetch.body;
+    expect(fetch.status).toBe(200);
+
+    // All block time averages should be about 30 minutes
+    const getRatio = (time: number) =>
+      Math.min(thirtyMinutes, time) / Math.max(thirtyMinutes, time);
+    expect(getRatio(response.last_1h)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_24h)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_7d)).toBeGreaterThanOrEqual(0.9);
+    expect(getRatio(response.last_30d)).toBeGreaterThanOrEqual(0.9);
   });
 });

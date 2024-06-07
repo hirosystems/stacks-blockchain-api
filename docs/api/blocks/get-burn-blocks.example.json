@@ -13,7 +13,9 @@
         "0xdaf61d2b355f35c94cf019af99aeb73d8e7db7301c7cd693a464ebd1cfc2228c",
         "0xb9e9b308cf9621ecbf66ca7b4689fe384b9b67c4588ec827d8163ab602fb935e",
         "0x754562cba6ec243f90485e97778ab472f462fd123ef5b83cc79d8759ca8875f5"
-      ]
+      ],
+      "avg_block_time": 15.3,
+      "total_tx_count": 728
     }
   ]
 }

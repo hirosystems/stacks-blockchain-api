@@ -1,4 +1,4 @@
-import { BasePgStoreModule, PgSqlClient } from '@hirosystems/api-toolkit';
+import { BasePgStoreModule, PgSqlClient, has0xPrefix } from '@hirosystems/api-toolkit';
 import {
   BlockLimitParamSchema,
   CompiledBurnBlockHashParam,
@@ -163,6 +163,60 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
+  async getAverageBlockTimes(): Promise<{
+    last_1h: number;
+    last_24h: number;
+    last_7d: number;
+    last_30d: number;
+  }> {
+    return await this.sqlTransaction(async sql => {
+      // Query against block_time but fallback to burn_block_time if block_time is 0 (work around for recent bug).
+      // TODO: remove the burn_block_time fallback once all blocks for last N time have block_time set.
+      const avgBlockTimeQuery = await sql<
+        {
+          last_1h: string | null;
+          last_24h: string | null;
+          last_7d: string | null;
+          last_30d: string | null;
+        }[]
+      >`
+        WITH TimeThresholds AS (
+          SELECT
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '1 HOUR'))::INT AS h1,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '24 HOURS'))::INT AS h24,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '7 DAYS'))::INT AS d7,
+            FLOOR(EXTRACT(EPOCH FROM NOW() - INTERVAL '30 DAYS'))::INT AS d30
+        ),
+        OrderedCanonicalBlocks AS (
+          SELECT
+            CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END AS effective_time,
+            LAG(CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END) OVER (ORDER BY block_height) AS prev_time
+          FROM
+            blocks
+          WHERE
+            canonical = true AND
+            (CASE WHEN block_time = 0 THEN burn_block_time ELSE block_time END) >= (SELECT d30 FROM TimeThresholds)
+        )
+        SELECT
+          AVG(CASE WHEN effective_time >= (SELECT h1 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_1h,
+          AVG(CASE WHEN effective_time >= (SELECT h24 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_24h,
+          AVG(CASE WHEN effective_time >= (SELECT d7 FROM TimeThresholds) THEN effective_time - prev_time ELSE NULL END) AS last_7d,
+          AVG(effective_time - prev_time) AS last_30d
+        FROM
+          OrderedCanonicalBlocks
+        WHERE
+          prev_time IS NOT NULL
+      `;
+      const times = {
+        last_1h: Number.parseFloat(avgBlockTimeQuery[0]?.last_1h ?? '0'),
+        last_24h: Number.parseFloat(avgBlockTimeQuery[0]?.last_24h ?? '0'),
+        last_7d: Number.parseFloat(avgBlockTimeQuery[0]?.last_7d ?? '0'),
+        last_30d: Number.parseFloat(avgBlockTimeQuery[0]?.last_30d ?? '0'),
+      };
+      return times;
+    });
+  }
+
   async getBlockTransactions(
     args: BlockParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbTx>> {
@@ -215,24 +269,56 @@ export class PgStoreV2 extends BasePgStoreModule {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const blocksQuery = await sql<(DbBurnBlock & { total: number })[]>`
-        WITH block_count AS (
-          SELECT burn_block_height, block_count AS count FROM chain_tip
+        WITH RelevantBlocks AS (
+          SELECT DISTINCT ON (burn_block_height)
+            burn_block_time,
+            burn_block_hash,
+            burn_block_height
+          FROM blocks
+          WHERE canonical = true
+          ORDER BY burn_block_height DESC, block_height DESC
+          LIMIT ${limit}
+          OFFSET ${offset}
+        ),
+        BlocksWithPrevTime AS (
+          SELECT
+            b.burn_block_time,
+            b.burn_block_hash,
+            b.burn_block_height,
+            b.block_hash,
+            b.block_time,
+            b.block_height,
+            b.tx_count,
+            LAG(b.block_time) OVER (PARTITION BY b.burn_block_height ORDER BY b.block_height) AS previous_block_time
+          FROM blocks b
+          WHERE
+            canonical = true AND
+            b.burn_block_height IN (SELECT burn_block_height FROM RelevantBlocks)
+        ),
+        BlockStatistics AS (
+          SELECT
+            burn_block_height,
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time,
+            SUM(tx_count) AS total_tx_count
+          FROM BlocksWithPrevTime
+          GROUP BY burn_block_height
         )
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
+        SELECT DISTINCT ON (r.burn_block_height)
+          r.burn_block_time,
+          r.burn_block_hash,
+          r.burn_block_height,
+          ARRAY_AGG(b.block_hash) OVER (
+            PARTITION BY r.burn_block_height
+            ORDER BY b.block_height DESC
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
           ) AS stacks_blocks,
-          (SELECT count FROM block_count)::int AS total
-        FROM blocks
-        WHERE canonical = true
-        ORDER BY burn_block_height DESC, block_height DESC
-        LIMIT ${limit}
-        OFFSET ${offset}
+          (SELECT block_count FROM chain_tip)::int AS total,
+          a.avg_block_time,
+          a.total_tx_count
+        FROM RelevantBlocks r
+        JOIN BlocksWithPrevTime b ON b.burn_block_height = r.burn_block_height
+        JOIN BlockStatistics a ON a.burn_block_height = r.burn_block_height
+        ORDER BY r.burn_block_height DESC, b.block_height DESC;
       `;
       return {
         limit,
@@ -252,17 +338,40 @@ export class PgStoreV2 extends BasePgStoreModule {
           ? sql`burn_block_hash = ${args.height_or_hash}`
           : sql`burn_block_height = ${args.height_or_hash}`;
       const blockQuery = await sql<DbBurnBlock[]>`
-        SELECT DISTINCT ON (burn_block_height)
-          burn_block_time,
-          burn_block_hash,
-          burn_block_height,
-          ARRAY_AGG(block_hash) OVER (
-            PARTITION BY burn_block_height
-            ORDER BY block_height DESC
+        WITH BlocksWithPrevTime AS (
+          SELECT
+            burn_block_time,
+            burn_block_hash,
+            burn_block_height,
+            block_hash,
+            block_time,
+            block_height,
+            tx_count,
+            LAG(block_time) OVER (PARTITION BY burn_block_height ORDER BY block_height) AS previous_block_time
+          FROM blocks
+          WHERE canonical = true AND ${filter}
+        ),
+        BlockStatistics AS (
+          SELECT
+            burn_block_height,
+            AVG(block_time - previous_block_time) FILTER (WHERE previous_block_time IS NOT NULL) AS avg_block_time,
+            SUM(tx_count) AS total_tx_count
+          FROM BlocksWithPrevTime
+          GROUP BY burn_block_height
+        )
+        SELECT DISTINCT ON (b.burn_block_height)
+          b.burn_block_time,
+          b.burn_block_hash,
+          b.burn_block_height,
+          ARRAY_AGG(b.block_hash) OVER (
+            PARTITION BY b.burn_block_height
+            ORDER BY b.block_height DESC
             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-          ) AS stacks_blocks
-        FROM blocks
-        WHERE canonical = true AND ${filter}
+          ) AS stacks_blocks,
+          a.avg_block_time,
+          a.total_tx_count
+        FROM BlocksWithPrevTime b
+        JOIN BlockStatistics a ON a.burn_block_height = b.burn_block_height
         LIMIT 1
       `;
       if (blockQuery.count > 0) return blockQuery[0];
@@ -515,17 +624,58 @@ export class PgStoreV2 extends BasePgStoreModule {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const results = await sql<(DbPoxCycleSigner & { total: number })[]>`
-        SELECT
-          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent,
-          COUNT(*) OVER()::int AS total
-        FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number}
-        ORDER BY weight DESC, stacked_amount DESC, signing_key
+        WITH signer_keys AS (
+            SELECT DISTINCT ON (stacker) stacker, signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
+            ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        ), delegated_stackers AS (
+            SELECT DISTINCT ON (main.stacker) 
+                main.stacker, 
+                sk.signer_key
+            FROM pox4_events main
+            LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
+            WHERE main.canonical = true 
+                AND main.microblock_canonical = true
+                AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
+                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.end_cycle_id > ${cycleNumber}
+            ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
+        ), solo_stackers AS (
+            SELECT DISTINCT ON (stacker) 
+                stacker, 
+                signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
+                AND start_cycle_id <= ${cycleNumber} 
+                AND end_cycle_id > ${cycleNumber}
+            ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT 
+            ps.signing_key,
+            ps.weight, 
+            ps.stacked_amount, 
+            ps.weight_percent, 
+            ps.stacked_amount_percent,
+            COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
+            COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count,
+            COUNT(*) OVER()::int AS total
+        FROM pox_sets ps
+        LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
+        LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
+        WHERE ps.canonical = TRUE AND ps.cycle_number = ${cycleNumber}
+        GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
+        ORDER BY ps.weight DESC, ps.stacked_amount DESC, ps.signing_key
         OFFSET ${offset}
         LIMIT ${limit}
       `;
@@ -540,15 +690,59 @@ export class PgStoreV2 extends BasePgStoreModule {
 
   async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
     return this.sqlTransaction(async sql => {
+      const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck =
-        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
+        await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1`;
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const results = await sql<DbPoxCycleSigner[]>`
-        SELECT
-          signing_key, weight, stacked_amount, weight_percent, stacked_amount_percent
-        FROM pox_sets
-        WHERE canonical = TRUE AND cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        WITH signer_keys AS (
+            SELECT DISTINCT ON (stacker) stacker, signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
+            ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        ), delegated_stackers AS (
+            SELECT DISTINCT ON (main.stacker) 
+                main.stacker, 
+                sk.signer_key
+            FROM pox4_events main
+            LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
+            WHERE main.canonical = true 
+                AND main.microblock_canonical = true
+                AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
+                AND main.start_cycle_id <= ${cycleNumber} 
+                AND main.end_cycle_id > ${cycleNumber}
+            ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
+        ), solo_stackers AS (
+            SELECT DISTINCT ON (stacker) 
+                stacker, 
+                signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
+                AND start_cycle_id <= ${cycleNumber}
+                AND end_cycle_id > ${cycleNumber}
+            ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        )
+        SELECT 
+            ps.signing_key,
+            ps.weight, 
+            ps.stacked_amount, 
+            ps.weight_percent, 
+            ps.stacked_amount_percent,
+            COUNT(DISTINCT ds.stacker)::int AS pooled_stacker_count,
+            COUNT(DISTINCT ss.stacker)::int AS solo_stacker_count
+        FROM pox_sets ps
+        LEFT JOIN delegated_stackers ds ON ps.signing_key = ds.signer_key
+        LEFT JOIN solo_stackers ss ON ps.signing_key = ss.signer_key
+        WHERE ps.canonical = TRUE 
+          AND ps.cycle_number = ${cycleNumber} 
+          AND ps.signing_key = ${signerKey}
+        GROUP BY ps.signing_key, ps.weight, ps.stacked_amount, ps.weight_percent, ps.stacked_amount_percent
         LIMIT 1
       `;
       if (results.count > 0) return results[0];
@@ -561,15 +755,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
+      const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
+      const cycleNumber = parseInt(args.cycle_number);
       const cycleCheck = await sql`
-        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1
+        SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1
       `;
       if (cycleCheck.count === 0)
         throw new InvalidRequestError(`PoX cycle not found`, InvalidRequestErrorType.invalid_param);
       const signerCheck = await sql`
         SELECT signing_key
         FROM pox_sets
-        WHERE cycle_number = ${args.cycle_number} AND signing_key = ${args.signer_key}
+        WHERE cycle_number = ${cycleNumber} AND signing_key = ${args.signer_key}
         LIMIT 1
       `;
       if (signerCheck.count === 0)
@@ -578,19 +774,68 @@ export class PgStoreV2 extends BasePgStoreModule {
           InvalidRequestErrorType.invalid_param
         );
       const results = await sql<(DbPoxCycleSignerStacker & { total: number })[]>`
-        WITH stackers AS (
-          SELECT DISTINCT ON (stacker) stacker, locked, pox_addr
-          FROM pox4_events
-          WHERE canonical = true
-            AND microblock_canonical = true
-            AND start_cycle_id <= ${args.cycle_number}
-            AND (end_cycle_id >= ${args.cycle_number} OR end_cycle_id IS NULL)
-            AND signer_key = ${args.signer_key}
-          ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        WITH signer_keys AS (
+            SELECT DISTINCT ON (stacker) stacker, signer_key
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-aggregation-commit-indexed', 'stack-aggregation-commit')
+                AND start_cycle_id = ${cycleNumber}
+                AND end_cycle_id = ${cycleNumber + 1}
+            ORDER BY stacker, block_height DESC, tx_index DESC, event_index DESC
+        ), delegated_stackers AS (
+            SELECT DISTINCT ON (main.stacker) 
+                main.stacker, 
+                sk.signer_key,
+                main.locked,
+                main.pox_addr,
+                main.name,
+                main.amount_ustx,
+                'pooled' as stacker_type
+            FROM pox4_events main
+            LEFT JOIN signer_keys sk ON main.delegator = sk.stacker
+            WHERE main.canonical = true 
+                AND main.microblock_canonical = true
+                AND main.name IN ('delegate-stack-stx', 'delegate-stack-increase', 'delegate-stack-extend')
+                AND main.start_cycle_id <= ${cycleNumber}
+                AND main.end_cycle_id > ${cycleNumber}
+            ORDER BY main.stacker, main.block_height DESC, main.microblock_sequence DESC, main.tx_index DESC, main.event_index DESC
+        ), solo_stackers AS (
+            SELECT DISTINCT ON (stacker) 
+                stacker, 
+                signer_key,
+                locked,
+                pox_addr,
+                name,
+                amount_ustx,
+                'solo' as stacker_type
+            FROM pox4_events
+            WHERE canonical = true AND microblock_canonical = true
+                AND name in ('stack-stx', 'stacks-increase', 'stack-extend')
+                AND start_cycle_id <= ${cycleNumber}
+                AND end_cycle_id > ${cycleNumber}
+            ORDER BY stacker, block_height DESC, microblock_sequence DESC, tx_index DESC, event_index DESC
+        ), combined_stackers AS (
+            SELECT * FROM delegated_stackers
+            UNION ALL
+            SELECT * FROM solo_stackers
         )
-        SELECT *, COUNT(*) OVER()::int AS total FROM stackers
-        OFFSET ${offset}
+        SELECT
+            ps.signing_key,
+            cs.stacker,
+            cs.locked,
+            cs.pox_addr,
+            cs.name,
+            cs.amount_ustx,
+            cs.stacker_type,
+            COUNT(*) OVER()::int AS total
+        FROM pox_sets ps
+        LEFT JOIN combined_stackers cs ON ps.signing_key = cs.signer_key
+        WHERE ps.canonical = TRUE 
+          AND ps.cycle_number = ${cycleNumber} 
+          AND ps.signing_key = ${signerKey}
+        ORDER BY locked DESC
         LIMIT ${limit}
+        OFFSET ${offset}
       `;
       return {
         limit,

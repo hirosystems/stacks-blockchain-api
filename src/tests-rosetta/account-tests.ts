@@ -74,17 +74,7 @@ describe('/account tests', () => {
       .build();
     await db.update(block2);
 
-    const query1 = await supertest(api.server)
-      .post(`/rosetta/v1/account/balance`)
-      .send({
-        network_identifier: { blockchain: 'stacks', network: 'testnet' },
-        block_identifier: { index: 2, hash: '0xf1f1' },
-        account_identifier: { address: addr2 },
-      });
-    expect(query1.status).toBe(200);
-    expect(query1.type).toBe('application/json');
-    const result1 = JSON.parse(query1.text);
-    expect(result1.balances).toEqual([
+    const expectedBalance = [
       {
         currency: {
           decimals: 6,
@@ -99,7 +89,30 @@ describe('/account tests', () => {
         },
         value: '7500'
       }
-    ]);
+    ];
+    const query1 = await supertest(api.server)
+      .post(`/rosetta/v1/account/balance`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        block_identifier: { index: 2, hash: '0xf1f1' },
+        account_identifier: { address: addr2 },
+      });
+    expect(query1.status).toBe(200);
+    expect(query1.type).toBe('application/json');
+    expect(JSON.parse(query1.text).balances).toEqual(expectedBalance);
+
+    // ensure query works with block identifier omitted
+    const query2 = await supertest(api.server)
+      .post(`/rosetta/v1/account/balance`)
+      .send({
+        network_identifier: { blockchain: 'stacks', network: 'testnet' },
+        account_identifier: { address: addr2 },
+      });
+    expect(query2.status).toBe(200);
+    expect(query2.type).toBe('application/json');
+    expect(JSON.parse(query2.text).balances).toEqual(expectedBalance);
+
     nock.cleanAll();
   });
+
 });

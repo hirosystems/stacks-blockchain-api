@@ -4,14 +4,21 @@
   "additionalProperties": false,
   "required": [
     "signing_key",
+    "signer_address",
     "weight",
     "stacked_amount",
     "weight_percent",
-    "stacked_amount_percent"
+    "stacked_amount_percent",
+    "solo_stacker_count",
+    "pooled_stacker_count"
   ],
   "properties": {
     "signing_key": {
       "type": "string"
+    },
+    "signer_address": {
+      "type": "string",
+      "description": "The Stacks address derived from the signing_key."
     },
     "weight": {
       "type": "integer"
@@ -24,6 +31,14 @@
     },
     "stacked_amount_percent": {
       "type": "number"
+    },
+    "solo_stacker_count": {
+      "type": "integer",
+      "description": "The number of solo stackers associated with this signer."
+    },
+    "pooled_stacker_count": {
+      "type": "integer",
+      "description": "The number of pooled stackers associated with this signer."
     }
   }
 }

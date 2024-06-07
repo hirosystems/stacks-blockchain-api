@@ -55,6 +55,8 @@ export interface DbBurnBlock {
   burn_block_hash: string;
   burn_block_height: number;
   stacks_blocks: string[];
+  avg_block_time: string | null;
+  total_tx_count: string;
 }
 
 export interface DbBurnchainReward {
@@ -182,6 +184,7 @@ export interface DbTx extends BaseTx {
   parent_block_hash: string;
   block_height: number;
   burn_block_time: number;
+  burn_block_height: number;
   parent_burn_block_time: number;
   block_time: number;
 
@@ -951,6 +954,7 @@ export interface TxQueryResult {
   block_time: number;
   parent_block_hash: string;
   block_height: number;
+  burn_block_height: number;
   burn_block_time: number;
   parent_burn_block_time: number;
   nonce: number;
@@ -1082,14 +1086,17 @@ export interface DbPoxCycleSigner {
   stacked_amount: string;
   weight_percent: number;
   stacked_amount_percent: number;
-  // TODO: Figure this out
-  // total_stackers: number;
+  pooled_stacker_count: number;
+  solo_stacker_count: number;
 }
 
 export interface DbPoxCycleSignerStacker {
   stacker: string;
   locked: string;
   pox_addr: string;
+  name: string;
+  amount_ustx: string;
+  stacker_type: 'solo' | 'pooled';
 }
 
 interface ReOrgEntities {
@@ -1257,6 +1264,7 @@ export interface BlockInsertValues {
   parent_microblock_hash: PgBytea;
   parent_microblock_sequence: number;
   block_height: number;
+  block_time: number;
   burn_block_time: number;
   burn_block_hash: PgBytea;
   burn_block_height: number;

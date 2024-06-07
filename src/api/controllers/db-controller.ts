@@ -467,15 +467,14 @@ export async function getRosettaBlockFromDataStore(
   blockHeight?: number
 ): Promise<FoundOrNot<RosettaBlock>> {
   return await db.sqlTransaction(async sql => {
-    let query;
+    let blockQuery: FoundOrNot<DbBlock>;
     if (blockHash) {
-      query = db.getBlock({ hash: blockHash });
+      blockQuery = await db.getBlock({ hash: blockHash });
     } else if (blockHeight && blockHeight > 0) {
-      query = db.getBlock({ height: blockHeight });
+      blockQuery = await db.getBlock({ height: blockHeight });
     } else {
-      query = db.getCurrentBlock();
+      blockQuery = await db.getCurrentBlock();
     }
-    const blockQuery = await query;
 
     if (!blockQuery.found) {
       return { found: false };
@@ -519,6 +518,9 @@ export async function getRosettaBlockFromDataStore(
       parent_block_identifier,
       timestamp: dbBlock.burn_block_time * 1000,
       transactions: blockTxs.found ? blockTxs.result : [],
+      metadata: {
+        burn_block_height: dbBlock.burn_block_height,
+      },
     };
     return { found: true, result: apiBlock };
   });
@@ -1073,6 +1075,7 @@ function parseDbAbstractTx(dbTx: DbTx, baseTx: BaseTransaction): AbstractTransac
       : dbTx.burn_block_time > 0
       ? unixEpochToIso(dbTx.burn_block_time)
       : '',
+    burn_block_height: dbTx.burn_block_height,
     burn_block_time: dbTx.burn_block_time,
     burn_block_time_iso: dbTx.burn_block_time > 0 ? unixEpochToIso(dbTx.burn_block_time) : '',
     parent_burn_block_time: dbTx.parent_burn_block_time,

@@ -11,10 +11,12 @@ import {
   RosettaAccountBalanceRequest,
   RosettaAccountBalanceResponse,
   RosettaAmount,
+  RosettaBlockResponse,
   RosettaMempoolRequest,
   RosettaMempoolResponse,
   RosettaMempoolTransactionRequest,
   RosettaMempoolTransactionResponse,
+  RosettaNetworkStatusResponse,
   RosettaOperation,
   RosettaTransaction,
 } from '@stacks/stacks-blockchain-api-types';
@@ -133,7 +135,8 @@ describe('Rosetta API', () => {
       parent_block_hash: genesisData.block.block_hash,
       parent_index_block_hash: genesisData.block.index_block_hash,
       block_height: 2,
-      index_block_hash: '0x12345678'
+      index_block_hash: '0x12345678',
+      burn_block_height: 13334,
     } 
     const blockData = new TestBlockBuilder(blockBuilderData).build();
 
@@ -172,7 +175,7 @@ describe('Rosetta API', () => {
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
 
-    const expectResponse = {
+    const expectResponse: RosettaNetworkStatusResponse = {
       current_block_identifier: {
         index: block.block_height,
         hash: block.block_hash,
@@ -183,18 +186,14 @@ describe('Rosetta API', () => {
         hash: genesisBlock.block_hash,
       },
       peers: [],
+      current_burn_block_height: blockBuilderData.burn_block_height,
+      sync_status: {
+        current_index: 2,
+        synced: true,
+        target_index: 2,
+      }
     };
-
-    expect(JSON.parse(query1.text)).toHaveProperty('sync_status');
-    expect(JSON.parse(query1.text).current_block_identifier).toEqual(
-      expectResponse.current_block_identifier
-    );
-    expect(JSON.parse(query1.text).current_block_timestamp).toEqual(
-      expectResponse.current_block_timestamp
-    );
-    expect(JSON.parse(query1.text).genesis_block_identifier).toEqual(
-      expectResponse.genesis_block_identifier
-    );
+    expect(query1.body).toEqual(expectResponse);
   });
 
   test('block - by index', async () => {
@@ -224,7 +223,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    const expected: RosettaBlockResponse = {
       block: {
         block_identifier: {
           index: blockHeight,
@@ -250,8 +249,12 @@ describe('Rosetta API', () => {
             ],
           },
         ],
+        metadata: {
+          burn_block_height: data.block.burn_block_height,
+        }
       },
-    });
+    };
+    expect(JSON.parse(query1.text)).toEqual(expected);
   });
 
   test('block - by hash', async () => {
@@ -281,7 +284,7 @@ describe('Rosetta API', () => {
       });
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    const expected: RosettaBlockResponse = {
       block: {
         block_identifier: {
           index: blockHeight,
@@ -307,8 +310,12 @@ describe('Rosetta API', () => {
             ],
           },
         ],
+        metadata: {
+          burn_block_height: data.block.burn_block_height,
+        }
       },
-    });
+    };
+    expect(JSON.parse(query1.text)).toEqual(expected);
   });
 
   test('block - get latest', async () => {
@@ -327,6 +334,7 @@ describe('Rosetta API', () => {
       block_height: 2,
       burn_block_time: 94869286,
       burn_block_hash: '0xfe15c0d3ebe314fad720a08b839a004c2e6386f5aecc19ec74807d1920cb6aeb',
+      burn_block_height: 1222,
     }
 
     await db.update(new TestBlockBuilder(block1).addTx().build());
@@ -341,7 +349,7 @@ describe('Rosetta API', () => {
 
     expect(query1.status).toBe(200);
     expect(query1.type).toBe('application/json');
-    expect(JSON.parse(query1.text)).toEqual({
+    const expected: RosettaBlockResponse = {
       block: {
         block_identifier: {
           index: block2.block_height,
@@ -353,8 +361,12 @@ describe('Rosetta API', () => {
         },
         timestamp: block2.burn_block_time * 1000,
         transactions: expect.objectContaining({}),
+        metadata: {
+          burn_block_height: block2.burn_block_height,
+        }
       },
-    });
+    };
+    expect(JSON.parse(query1.text)).toEqual(expected);
   });
 
   test('block/transaction', async () => {
@@ -1234,32 +1246,6 @@ describe('Rosetta API', () => {
       code: 601,
       message: 'Invalid Account.',
       retriable: true,
-    };
-
-    expect(JSON.parse(result.text)).toEqual(expectResponse);
-  });
-
-  test('account/balance - empty block identifier', async () => {
-    const request: RosettaAccountBalanceRequest = {
-      network_identifier: {
-        blockchain: 'stacks',
-        network: 'testnet',
-      },
-      account_identifier: {
-        address: 'SP2QXJDSWYFGT9022M6NCA9SS4XNQM79D8E7EDSPQ',
-        metadata: {},
-      },
-      block_identifier: {},
-    };
-
-    const result = await supertest(api.server).post(`/rosetta/v1/account/balance/`).send(request);
-    expect(result.status).toBe(400);
-    expect(result.type).toBe('application/json');
-
-    const expectResponse = {
-      code: 615,
-      message: 'Block identifier is null.',
-      retriable: false,
     };
 
     expect(JSON.parse(result.text)).toEqual(expectResponse);

@@ -44,6 +44,23 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
   );
 
   router.get(
+    '/average-times',
+    cacheHandler,
+    asyncHandler(async (_req, res) => {
+      const query = await db.v2.getAverageBlockTimes();
+      // Round to 2 decimal places
+      const times = {
+        last_1h: parseFloat(query.last_1h.toFixed(2)),
+        last_24h: parseFloat(query.last_24h.toFixed(2)),
+        last_7d: parseFloat(query.last_7d.toFixed(2)),
+        last_30d: parseFloat(query.last_30d.toFixed(2)),
+      };
+      setETagCacheHeaders(res);
+      res.json(times);
+    })
+  );
+
+  router.get(
     '/:height_or_hash',
     cacheHandler,
     asyncHandler(async (req, res) => {

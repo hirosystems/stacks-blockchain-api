@@ -109,6 +109,7 @@ describe('cache-control tests', () => {
       block_hash: block1.block_hash,
       block_height: 68456,
       block_time: 1594647995,
+      burn_block_height: 68456,
       burn_block_time: 1594647995,
       parent_burn_block_time: 1626122935,
       type_id: DbTxTypeId.Coinbase,
@@ -301,6 +302,7 @@ describe('cache-control tests', () => {
       index_block_hash: '',
       block_hash: '',
       burn_block_time: -1,
+      burn_block_height: -1,
       block_time: -1,
 
       // These properties can be determined with a db query, they are set while the db is inserting them.

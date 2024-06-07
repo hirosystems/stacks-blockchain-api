@@ -242,7 +242,7 @@ export async function startApiServer(opts: {
           v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
           v2.use('/addresses', createV2AddressesRouter(datastore));
-          v2.use('/pox', createPoxRouter(datastore));
+          v2.use('/pox', createPoxRouter(datastore, chainId));
           return v2;
         })()
       );

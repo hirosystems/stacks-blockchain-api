@@ -941,6 +941,7 @@ export function parseMessageTransaction(
       parent_burn_block_hash: blockData.parent_burn_block_hash,
       parent_burn_block_time: blockData.parent_burn_block_timestamp,
       block_height: blockData.block_height,
+      burn_block_height: blockData.burn_block_height,
       burn_block_time: blockData.burn_block_time,
       microblock_sequence: coreTx.microblock_sequence ?? I32_MAX,
       microblock_hash: coreTx.microblock_hash ?? '',

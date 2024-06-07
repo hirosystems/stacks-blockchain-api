@@ -176,27 +176,25 @@ export class PgWriteStore extends PgStore {
     return store;
   }
 
-  async storeRawEventRequest(eventPath: string, payload: PgJsonb): Promise<void> {
-    // To avoid depending on the DB more than once and to allow the query transaction to settle,
-    // we'll take the complete insert result and move that to the output TSV file instead of taking
-    // only the `id` and performing a `COPY` of that row later.
-    const insertResult = await this.sql<
-      {
-        id: string;
-        receive_timestamp: string;
-        event_path: string;
-        payload: string;
-      }[]
-    >`INSERT INTO event_observer_requests(
-        event_path, payload
-      ) values(${eventPath}, ${payload})
-      RETURNING id, receive_timestamp::text, event_path, payload::text
-    `;
-    if (insertResult.length !== 1) {
-      throw new Error(
-        `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
-      );
-    }
+  async storeRawEventRequest(eventPath: string, payload: any): Promise<void> {
+    await this.sqlWriteTransaction(async sql => {
+      const insertResult = await sql<
+        {
+          id: string;
+          receive_timestamp: string;
+          event_path: string;
+        }[]
+      >`INSERT INTO event_observer_requests(
+          event_path, payload
+        ) values(${eventPath}, ${payload})
+        RETURNING id, receive_timestamp::text, event_path
+      `;
+      if (insertResult.length !== 1) {
+        throw new Error(
+          `Unexpected row count ${insertResult.length} when storing event_observer_requests entry`
+        );
+      }
+    });
   }
 
   async update(data: DataStoreBlockUpdateData): Promise<void> {
@@ -236,6 +234,7 @@ export class PgWriteStore extends PgStore {
             parentMicroblockHash: data.block.parent_microblock_hash,
             parentMicroblockSequence: data.block.parent_microblock_sequence,
             burnBlockTime: data.block.burn_block_time,
+            burnBlockHeight: data.block.burn_block_height,
           }
         );
 
@@ -465,6 +464,7 @@ export class PgWriteStore extends PgStore {
       parent_microblock_hash: block.parent_microblock_hash,
       parent_microblock_sequence: block.parent_microblock_sequence,
       block_height: block.block_height,
+      block_time: block.block_time,
       burn_block_time: block.burn_block_time,
       burn_block_hash: block.burn_block_hash,
       burn_block_height: block.burn_block_height,
@@ -677,6 +677,7 @@ export class PgWriteStore extends PgStore {
           indexBlockHash: '',
           blockHash: '',
           burnBlockTime: -1,
+          burnBlockHeight: -1,
           microblocks: orphanedMicroblocks,
         });
         const microOrphanedTxs = microOrphanResult.updatedTxs;
@@ -747,6 +748,7 @@ export class PgWriteStore extends PgStore {
         tx_index = tx_index + 1,
         block_hash = ${blockOne.block_hash},
         index_block_hash = ${blockOne.index_block_hash},
+        burn_block_height = ${blockOne.burn_block_height},
         burn_block_time = ${blockOne.burn_block_time},
         parent_block_hash = ${blockOne.parent_block_hash}
       WHERE block_height = 0
@@ -1526,6 +1528,7 @@ export class PgWriteStore extends PgStore {
       parentMicroblockHash: string;
       parentMicroblockSequence: number;
       burnBlockTime: number;
+      burnBlockHeight: number;
     }
   ): Promise<{
     acceptedMicroblockTxs: DbTx[];
@@ -1582,6 +1585,7 @@ export class PgWriteStore extends PgStore {
         indexBlockHash: blockData.indexBlockHash,
         blockHash: blockData.blockHash,
         burnBlockTime: blockData.burnBlockTime,
+        burnBlockHeight: blockData.burnBlockHeight,
         microblocks: orphanedMicroblocks,
       });
       orphanedMicroblockTxs = microOrphanResult.updatedTxs;
@@ -1594,6 +1598,7 @@ export class PgWriteStore extends PgStore {
         indexBlockHash: blockData.indexBlockHash,
         blockHash: blockData.blockHash,
         burnBlockTime: blockData.burnBlockTime,
+        burnBlockHeight: blockData.burnBlockHeight,
         microblocks: acceptedMicroblocks,
       });
       acceptedMicroblockTxs = microAcceptResult.updatedTxs;
@@ -1706,6 +1711,7 @@ export class PgWriteStore extends PgStore {
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
       block_time: tx.block_time,
+      burn_block_height: tx.burn_block_height,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
@@ -2327,6 +2333,7 @@ export class PgWriteStore extends PgStore {
       indexBlockHash: string;
       blockHash: string;
       burnBlockTime: number;
+      burnBlockHeight: number;
       microblocks: string[];
     }
   ): Promise<{ updatedTxs: DbTx[] }> {
@@ -2348,7 +2355,8 @@ export class PgWriteStore extends PgStore {
       UPDATE txs
       SET microblock_canonical = ${args.isMicroCanonical},
         canonical = ${args.isCanonical}, index_block_hash = ${args.indexBlockHash},
-        block_hash = ${args.blockHash}, burn_block_time = ${args.burnBlockTime}
+        block_hash = ${args.blockHash}, burn_block_time = ${args.burnBlockTime},
+        burn_block_height = ${args.burnBlockHeight}
       WHERE microblock_hash IN ${sql(args.microblocks)}
         AND (index_block_hash = ${args.indexBlockHash} OR index_block_hash = '\\x'::bytea)
       RETURNING ${sql(TX_COLUMNS)}
@@ -2919,6 +2927,7 @@ export class PgWriteStore extends PgStore {
           parentMicroblockHash: orphanedBlock.parent_microblock_hash,
           parentMicroblockSequence: orphanedBlock.parent_microblock_sequence,
           burnBlockTime: orphanedBlock.burn_block_time,
+          burnBlockHeight: orphanedBlock.burn_block_height,
         });
         microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
           microblocksOrphaned.add(mb);
@@ -2957,6 +2966,7 @@ export class PgWriteStore extends PgStore {
       parentMicroblockHash: restoredBlock.parent_microblock_hash,
       parentMicroblockSequence: restoredBlock.parent_microblock_sequence,
       burnBlockTime: restoredBlock.burn_block_time,
+      burnBlockHeight: restoredBlock.burn_block_height,
     });
     microCanonicalUpdateResult.orphanedMicroblocks.forEach(mb => {
       microblocksOrphaned.add(mb);
@@ -3056,6 +3066,7 @@ export class PgWriteStore extends PgStore {
   async insertBlockBatch(sql: PgSqlClient, blocks: DbBlock[]) {
     const values: BlockInsertValues[] = blocks.map(block => ({
       block_hash: block.block_hash,
+      block_time: block.block_time,
       index_block_hash: block.index_block_hash,
       parent_index_block_hash: block.parent_index_block_hash,
       parent_block_hash: block.parent_block_hash,
@@ -3123,6 +3134,7 @@ export class PgWriteStore extends PgStore {
       parent_block_hash: tx.parent_block_hash,
       block_height: tx.block_height,
       block_time: tx.block_time ?? 0,
+      burn_block_height: tx.burn_block_height,
       burn_block_time: tx.burn_block_time,
       parent_burn_block_time: tx.parent_burn_block_time,
       type_id: tx.type_id,
