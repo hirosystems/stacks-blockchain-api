@@ -1,3 +1,30 @@
+## [7.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0...v7.11.0) (2024-06-07)
+
+
+### Features
+
+* add average stacks block time to burn block endpoints ([#1963](https://github.com/hirosystems/stacks-blockchain-api/issues/1963)) ([31c2eed](https://github.com/hirosystems/stacks-blockchain-api/commit/31c2eedfb5f778d5f0bf61bf3dd8effbf80511c4))
+* add burn_block_height to Rosetta endpoints ([#1974](https://github.com/hirosystems/stacks-blockchain-api/issues/1974)) ([9648ac8](https://github.com/hirosystems/stacks-blockchain-api/commit/9648ac8a373229b384089339545e49e5164bc165))
+* add burn_block_height to transactions ([#1969](https://github.com/hirosystems/stacks-blockchain-api/issues/1969)) ([3e2d524](https://github.com/hirosystems/stacks-blockchain-api/commit/3e2d524ca369b88a53fc4dfc2287aa3f0fb92e64))
+* add signer_address to pox signer endpoints ([#1975](https://github.com/hirosystems/stacks-blockchain-api/issues/1975)) ([7d3444b](https://github.com/hirosystems/stacks-blockchain-api/commit/7d3444b96541e8883aa7f858cf56dd457d50a2b0))
+* add total tx count to burn block endpoints ([#1965](https://github.com/hirosystems/stacks-blockchain-api/issues/1965)) ([d38b78a](https://github.com/hirosystems/stacks-blockchain-api/commit/d38b78a53e6dfa1774ba61a149a5931f29f64230))
+* average block times endpoint ([#1962](https://github.com/hirosystems/stacks-blockchain-api/issues/1962)) ([cd151aa](https://github.com/hirosystems/stacks-blockchain-api/commit/cd151aaa289c679fc20b82ee751e55776a8d6c42))
+* docker build for arm ([#1947](https://github.com/hirosystems/stacks-blockchain-api/issues/1947)) ([2c526fc](https://github.com/hirosystems/stacks-blockchain-api/commit/2c526fcf8ead66ff3055bbd77e37f663726503af))
+* include solo and pooled stackers in signer stacker endpoints ([#1987](https://github.com/hirosystems/stacks-blockchain-api/issues/1987)) ([302a5d8](https://github.com/hirosystems/stacks-blockchain-api/commit/302a5d830bc15ecf060e875d6336d0b530ff4af0))
+* support multiple STX faucet source accounts ([#1946](https://github.com/hirosystems/stacks-blockchain-api/issues/1946)) ([be5db0c](https://github.com/hirosystems/stacks-blockchain-api/commit/be5db0c5fadb0d0278e10b6de3586bbd7f5c85be))
+* support multiple STX faucet source accounts ([#1946](https://github.com/hirosystems/stacks-blockchain-api/issues/1946)) ([5d69c7c](https://github.com/hirosystems/stacks-blockchain-api/commit/5d69c7c1b5ccbd6020b436c379f0ae9b6f9982bb))
+
+
+### Bug Fixes
+
+* ensure events are inserted into the raw event request table ([#1925](https://github.com/hirosystems/stacks-blockchain-api/issues/1925)) ([34a8454](https://github.com/hirosystems/stacks-blockchain-api/commit/34a8454db3d76cd67f1d3310894b175d23bb4411))
+* inconsistent block transaction results in Rosetta response ([#1958](https://github.com/hirosystems/stacks-blockchain-api/issues/1958)) ([a5bec61](https://github.com/hirosystems/stacks-blockchain-api/commit/a5bec614ec99d0729e89200c56525cf062cdda23))
+* issue with block_time receipt not being written to db ([#1961](https://github.com/hirosystems/stacks-blockchain-api/issues/1961)) ([74c06c6](https://github.com/hirosystems/stacks-blockchain-api/commit/74c06c68574ef38400c0d4e4b8e3378adb6fbbf2))
+* pox4 properties missing in various endpoints ([#1977](https://github.com/hirosystems/stacks-blockchain-api/issues/1977)) ([521d771](https://github.com/hirosystems/stacks-blockchain-api/commit/521d7712409a9d9bffa3278ca44c21394167a085))
+* rosetta account endpoint should assume chain tip if block not specified ([#1956](https://github.com/hirosystems/stacks-blockchain-api/issues/1956)) ([4bba526](https://github.com/hirosystems/stacks-blockchain-api/commit/4bba526327db0ae9cf778df69db0d7505e280ea3))
+* signer stacker query using string instead of int for cycle_id ([#1991](https://github.com/hirosystems/stacks-blockchain-api/issues/1991)) ([5ce9b44](https://github.com/hirosystems/stacks-blockchain-api/commit/5ce9b448d30a4c59fcdd6dbaececda546e2d6f6c))
+* socket-io client must only use websocket transport ([#1976](https://github.com/hirosystems/stacks-blockchain-api/issues/1976)) ([85ea5af](https://github.com/hirosystems/stacks-blockchain-api/commit/85ea5afef4b3134b1481e5b001c1f45619ccdb62))
+
 ## [7.10.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.9.1...v7.10.0) (2024-04-15)
 
 
