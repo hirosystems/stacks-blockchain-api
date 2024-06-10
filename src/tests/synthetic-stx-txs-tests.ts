@@ -4,6 +4,7 @@ import * as path from 'path';
 import { DecodedTxResult, TxPayloadTypeID } from 'stacks-encoding-native-js';
 import { CoreNodeBlockMessage } from '../event-stream/core-node-message';
 import { parseMessageTransaction } from '../event-stream/reader';
+import { parseNewBlockMessage } from '../event-stream/event-server';
 
 // Test processing of the psuedo-Stacks transactions, i.e. the ones that
 // originate on the Bitcoin chain, and have a `raw_tx == '0x00'.
@@ -192,6 +193,34 @@ describe('synthetic stx txs', () => {
     };
 
     expect(parsed.parsed_tx).toEqual(expect.objectContaining(expected));
+  });
+
+  test('test synthetic tx stx lock 3', () => {
+    const file =
+      'synthetic-tx-payloads/stx_lock-1994-0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc.json';
+    const txid = file.split('-').slice(-1)[0].split('.')[0];
+    const payloadStr = fs.readFileSync(path.join(__dirname, file), { encoding: 'utf8' });
+    const blockMsg = JSON.parse(payloadStr) as CoreNodeBlockMessage;
+    const txMsg = blockMsg.transactions.find(t => t.txid === txid);
+    if (!txMsg) {
+      throw new Error(`Cound not find tx ${txid}`);
+    }
+    const parsed = parseNewBlockMessage(ChainID.Mainnet, blockMsg);
+    if (!parsed) {
+      throw new Error(`Failed to parse ${txid}`);
+    }
+    // Ensure real contract event indexes are contiguous
+    const events = [parsed.txs[0].contractLogEvents, parsed.txs[0].stxLockEvents]
+      .flat()
+      .sort((a, b) => a.event_index - b.event_index);
+    expect(events).toHaveLength(13);
+    for (let i = 0; i < events.length; i++) {
+      expect(events[i].event_index).toEqual(i);
+    }
+    // Ensure synthetic pox event indexes are in expected range
+    for (const poxEvent of parsed.txs[0].pox4Events) {
+      expect(poxEvent.event_index).toBeLessThan(events.length);
+    }
   });
 
   test('test synthetic tx stx lock 2', () => {
