@@ -1471,11 +1471,13 @@ export class PgStore extends BasePgStore {
   }): Promise<{ results: DbEvent[] }> {
     return await this.sqlTransaction(async sql => {
       if (args.txs.length === 0) return { results: [] };
-      // TODO: This hack has to be done because postgres.js can't figure out how to interpolate
-      // these `bytea` VALUES comparisons yet.
-      const transactionValues = args.txs
-        .map(tx => `('\\x${tx.txId.slice(2)}'::bytea, '\\x${tx.indexBlockHash.slice(2)}'::bytea)`)
-        .join(', ');
+
+      const transactionValues = args.txs.map(tx => [
+        `\\x${tx.txId.slice(2)}`,
+        `\\x${tx.indexBlockHash.slice(2)}`,
+      ]);
+      const txValuesSql = sql(transactionValues.map(tx => sql`(${tx[0]}::bytea, ${tx[1]}::bytea)`));
+
       const eventIndexStart = args.offset;
       const eventIndexEnd = args.offset + args.limit - 1;
       const stxLockResults = await sql<
@@ -1494,7 +1496,7 @@ export class PgStore extends BasePgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, locked_amount, unlock_height, locked_address, contract_name
         FROM stx_lock_events
-        WHERE (tx_id, index_block_hash) IN (VALUES ${sql.unsafe(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN ${txValuesSql}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const stxResults = await sql<
@@ -1514,7 +1516,7 @@ export class PgStore extends BasePgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, amount, memo
         FROM stx_events
-        WHERE (tx_id, index_block_hash) IN (VALUES ${sql.unsafe(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN ${txValuesSql}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const ftResults = await sql<
@@ -1534,7 +1536,7 @@ export class PgStore extends BasePgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, amount
         FROM ft_events
-        WHERE (tx_id, index_block_hash) IN (VALUES ${sql.unsafe(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN ${txValuesSql}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const nftResults = await sql<
@@ -1554,7 +1556,7 @@ export class PgStore extends BasePgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, asset_event_type_id, sender, recipient, asset_identifier, value
         FROM nft_events
-        WHERE (tx_id, index_block_hash) = ANY(VALUES ${sql.unsafe(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN ${txValuesSql}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       const logResults = await sql<
@@ -1572,7 +1574,7 @@ export class PgStore extends BasePgStore {
         SELECT
           event_index, tx_id, tx_index, block_height, canonical, contract_identifier, topic, value
         FROM contract_logs
-        WHERE (tx_id, index_block_hash) IN (VALUES ${sql.unsafe(transactionValues)})
+        WHERE (tx_id, index_block_hash) IN ${txValuesSql}
           AND microblock_canonical = true AND event_index BETWEEN ${eventIndexStart} AND ${eventIndexEnd}
       `;
       return {
@@ -3263,7 +3265,7 @@ export class PgStore extends BasePgStore {
               'nft.value',
               ...prefixedCols(TX_COLUMNS, 'txs'),
               'nft.count',
-            ])}, ${abiColumn(this.sql)},
+            ])}, ${abiColumn(this.sql)}
             FROM nft
             INNER JOIN txs USING (tx_id)
             WHERE txs.canonical = TRUE AND txs.microblock_canonical = TRUE
