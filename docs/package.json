@@ -44,7 +44,7 @@
     "chalk": "4.1.1",
     "del": "5.1.0",
     "glob": "7.1.6",
-    "gulp": "4.0.2",
+    "gulp": "5.0.0",
     "gulp-gh-pages": "0.6.0-6",
     "gulp-jsonschema-deref": "0.0.3",
     "json-schema": "0.2.5",
