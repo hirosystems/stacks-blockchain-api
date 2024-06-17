@@ -219,6 +219,24 @@ paths:
             items:
               type: string
               enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock, tenure_change]
+        - name: sort_by
+          in: query
+          description: Option to sort results by block height, timestamp, or fee
+          required: false
+          schema:
+            type: string
+            enum: [block_height, burn_block_time, fee]
+            example: burn_block_time
+            default: block_height
+        - name: order
+          in: query
+          description: Option to sort results in ascending or descending order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            example: desc
+            default: desc
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks
