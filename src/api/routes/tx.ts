@@ -65,12 +65,43 @@ export function createTxRouter(db: PgStore): express.Router {
         txTypeFilter = [];
       }
 
+      let order: 'asc' | 'desc' | undefined;
+      if (req.query.order) {
+        if (
+          typeof req.query.order === 'string' &&
+          (req.query.order === 'asc' || req.query.order === 'desc')
+        ) {
+          order = req.query.order;
+        } else {
+          throw new InvalidRequestError(
+            `The "order" query parameter must be a 'desc' or 'asc'`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+      }
+
+      let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
+      if (req.query.sort_by) {
+        if (
+          typeof req.query.sort_by === 'string' &&
+          ['block_height', 'burn_block_time', 'fee'].includes(req.query.sort_by)
+        ) {
+          sortBy = req.query.sort_by as typeof sortBy;
+        } else {
+          throw new InvalidRequestError(
+            `The "sort_by" query parameter must be 'block_height', 'burn_block_time', or 'fee'`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+      }
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results: txResults, total } = await db.getTxList({
         offset,
         limit,
         txTypeFilter,
         includeUnanchored,
+        order,
+        sortBy,
       });
       const results = txResults.map(tx => parseDbTx(tx));
       const response: TransactionResults = { limit, offset, total, results };
