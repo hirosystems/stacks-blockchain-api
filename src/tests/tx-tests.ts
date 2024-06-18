@@ -1938,6 +1938,158 @@ describe('tx tests', () => {
     expect(JSON.parse(fetchTx.text)).toEqual(expectedResp);
   });
 
+  test('tx list - order by', async () => {
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x1234',
+        fee_rate: 1n,
+        burn_block_time: 2,
+      })
+      .build();
+
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    })
+      .addTx({
+        tx_id: '0x2234',
+        fee_rate: 3n,
+        burn_block_time: 1,
+      })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+    })
+      .addTx({
+        tx_id: '0x3234',
+        fee_rate: 2n,
+        burn_block_time: 3,
+      })
+      .build();
+    await db.update(block3);
+
+    const txsReqAsc = await supertest(api.server).get(`/extended/v1/tx?order=asc`);
+    expect(txsReqAsc.status).toBe(200);
+    expect(txsReqAsc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqDesc = await supertest(api.server).get(`/extended/v1/tx?order=desc`);
+    expect(txsReqDesc.status).toBe(200);
+    expect(txsReqDesc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqTimeDesc = await supertest(api.server).get(
+      `/extended/v1/tx?sort_by=burn_block_time&order=desc`
+    );
+    expect(txsReqTimeDesc.status).toBe(200);
+    expect(txsReqTimeDesc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqTimeAsc = await supertest(api.server).get(
+      `/extended/v1/tx?sort_by=burn_block_time&order=asc`
+    );
+    expect(txsReqTimeAsc.status).toBe(200);
+    expect(txsReqTimeAsc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqFeeDesc = await supertest(api.server).get(`/extended/v1/tx?sort_by=fee&order=desc`);
+    expect(txsReqFeeDesc.status).toBe(200);
+    expect(txsReqFeeDesc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqFeeAsc = await supertest(api.server).get(`/extended/v1/tx?sort_by=fee&order=asc`);
+    expect(txsReqFeeAsc.status).toBe(200);
+    expect(txsReqFeeAsc.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+  });
+
   test('fetch raw tx', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
