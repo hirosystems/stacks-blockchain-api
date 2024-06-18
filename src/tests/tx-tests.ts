@@ -2090,6 +2090,114 @@ describe('tx tests', () => {
     );
   });
 
+  test('tx list - filter by to/from address', async () => {
+    const fromAddress = 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR';
+    const toAddress = 'STRYYQQ9M8KAF4NS7WNZQYY59X93XEKR31JP64CP';
+    const differentAddress = 'STF9B75ADQAVXQHNEQ6KGHXTG7JP305J2GRWF3A2';
+
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({
+        tx_id: '0x0001',
+        sender_address: fromAddress,
+        token_transfer_recipient_address: toAddress,
+      })
+      .build();
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+    })
+      .addTx({
+        tx_id: '0x0002',
+        sender_address: fromAddress,
+        token_transfer_recipient_address: toAddress,
+      })
+      .addTx({
+        tx_id: '0x0003',
+        sender_address: fromAddress,
+        token_transfer_recipient_address: toAddress,
+      })
+      .addTx({
+        tx_id: '0x0004',
+        sender_address: fromAddress,
+        token_transfer_recipient_address: differentAddress,
+      })
+      .addTx({
+        tx_id: '0x0005',
+        sender_address: differentAddress,
+        token_transfer_recipient_address: toAddress,
+      })
+      .build();
+    await db.update(block2);
+
+    const txsReqFrom = await supertest(api.server).get(
+      `/extended/v1/tx?from_address=${fromAddress}`
+    );
+    expect(txsReqFrom.status).toBe(200);
+    expect(txsReqFrom.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[2].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[1].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqTo = await supertest(api.server).get(`/extended/v1/tx?to_address=${toAddress}`);
+    expect(txsReqTo.status).toBe(200);
+    expect(txsReqTo.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[3].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[1].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReqFromTo = await supertest(api.server).get(
+      `/extended/v1/tx?from_address=${fromAddress}&to_address=${toAddress}`
+    );
+    expect(txsReqFromTo.status).toBe(200);
+    expect(txsReqFromTo.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[1].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+  });
+
   test('fetch raw tx', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',

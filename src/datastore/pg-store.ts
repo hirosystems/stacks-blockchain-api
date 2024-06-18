@@ -1416,6 +1416,8 @@ export class PgStore extends BasePgStore {
     offset,
     txTypeFilter,
     includeUnanchored,
+    fromAddress,
+    toAddress,
     order,
     sortBy,
   }: {
@@ -1423,11 +1425,11 @@ export class PgStore extends BasePgStore {
     offset: number;
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
+    fromAddress?: string;
+    toAddress?: string;
     order?: 'desc' | 'asc';
     sortBy?: 'block_height' | 'burn_block_time' | 'fee';
   }): Promise<{ results: DbTx[]; total: number }> {
-    let totalQuery: { count: number }[];
-    let resultQuery: ContractTxQueryResult[];
     return await this.sqlTransaction(async sql => {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
       const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
@@ -1448,37 +1450,44 @@ export class PgStore extends BasePgStore {
           throw new Error(`Invalid sortBy param: ${sortBy}`);
       }
 
-      if (txTypeFilter.length === 0) {
-        totalQuery = await sql<{ count: number }[]>`
-          SELECT ${includeUnanchored ? sql('tx_count_unanchored') : sql('tx_count')} AS count
-          FROM chain_tip
-        `;
-        resultQuery = await sql<ContractTxQueryResult[]>`
-          SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
-          ${orderBySql}
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `;
-      } else {
-        const txTypeIds = txTypeFilter.flatMap<number>(t => getTxTypeId(t));
-        totalQuery = await sql<{ count: number }[]>`
-          SELECT COUNT(*)::integer
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-            AND type_id IN ${sql(txTypeIds)} AND block_height <= ${maxHeight}
-        `;
-        resultQuery = await sql<ContractTxQueryResult[]>`
-          SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
-          FROM txs
-          WHERE canonical = true AND microblock_canonical = true
-            AND type_id IN ${sql(txTypeIds)} AND block_height <= ${maxHeight}
-          ${orderBySql}
-          LIMIT ${limit}
-          OFFSET ${offset}
-        `;
-      }
+      const txTypeFilterSql =
+        txTypeFilter.length > 0
+          ? sql`AND type_id IN ${sql(txTypeFilter.flatMap<number>(t => getTxTypeId(t)))}`
+          : sql``;
+      const fromAddressFilterSql = fromAddress ? sql`AND sender_address = ${fromAddress}` : sql``;
+      const toAddressFilterSql = toAddress
+        ? sql`AND token_transfer_recipient_address = ${toAddress}`
+        : sql``;
+
+      const noFilters = txTypeFilter.length === 0 && !fromAddress && !toAddress;
+
+      const totalQuery: { count: number }[] = noFilters
+        ? await sql<{ count: number }[]>`
+        SELECT ${includeUnanchored ? sql('tx_count_unanchored') : sql('tx_count')} AS count
+        FROM chain_tip
+      `
+        : await sql<{ count: number }[]>`
+        SELECT COUNT(*)::integer AS count
+        FROM txs
+        WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
+        ${txTypeFilterSql}
+        ${fromAddressFilterSql}
+        ${toAddressFilterSql}
+    
+      `;
+
+      const resultQuery: ContractTxQueryResult[] = await sql<ContractTxQueryResult[]>`
+        SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
+        FROM txs
+        WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
+        ${txTypeFilterSql}
+        ${fromAddressFilterSql}
+        ${toAddressFilterSql}
+        ${orderBySql}
+        LIMIT ${limit}
+        OFFSET ${offset}
+      `;
+
       const parsed = resultQuery.map(r => parseTxQueryResult(r));
       return { results: parsed, total: totalQuery[0].count };
     });

@@ -219,6 +219,18 @@ paths:
             items:
               type: string
               enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock, tenure_change]
+        - name: from_address
+          in: query
+          description: Option to filter results by sender address
+          required: false
+          schema:
+            type: string
+        - name: to_address
+          in: query
+          description: Option to filter results by recipient address
+          required: false
+          schema:
+            type: string
         - name: sort_by
           in: query
           description: Option to sort results by block height, timestamp, or fee
