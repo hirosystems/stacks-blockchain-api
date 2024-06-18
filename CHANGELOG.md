@@ -1,3 +1,15 @@
+## [7.12.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0...v7.12.0-beta.1) (2024-06-18)
+
+
+### Features
+
+* tx ordering options ([#2005](https://github.com/hirosystems/stacks-blockchain-api/issues/2005)) ([ae78773](https://github.com/hirosystems/stacks-blockchain-api/commit/ae78773930c92819709c148933d3daae32f87d4c))
+
+
+### Bug Fixes
+
+* pox events should use same index as associated contract log event ([#1994](https://github.com/hirosystems/stacks-blockchain-api/issues/1994)) ([b1d6be9](https://github.com/hirosystems/stacks-blockchain-api/commit/b1d6be9b91b77f3e24abf1976bdf53158cf28d17)), closes [#1983](https://github.com/hirosystems/stacks-blockchain-api/issues/1983)
+
 ## [7.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0...v7.11.0) (2024-06-07)
 
 
