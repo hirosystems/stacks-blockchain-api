@@ -102,6 +102,7 @@ import {
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
 import { MempoolOrderByParam, OrderParam } from '../api/query-helpers';
+import { Fragment } from 'postgres';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
 
@@ -1415,16 +1416,38 @@ export class PgStore extends BasePgStore {
     offset,
     txTypeFilter,
     includeUnanchored,
+    order,
+    sortBy,
   }: {
     limit: number;
     offset: number;
     txTypeFilter: TransactionType[];
     includeUnanchored: boolean;
+    order?: 'desc' | 'asc';
+    sortBy?: 'block_height' | 'burn_block_time' | 'fee';
   }): Promise<{ results: DbTx[]; total: number }> {
     let totalQuery: { count: number }[];
     let resultQuery: ContractTxQueryResult[];
     return await this.sqlTransaction(async sql => {
       const maxHeight = await this.getMaxBlockHeight(sql, { includeUnanchored });
+      const orderSql = order === 'asc' ? sql`ASC` : sql`DESC`;
+
+      let orderBySql: Fragment;
+      switch (sortBy) {
+        case undefined:
+        case 'block_height':
+          orderBySql = sql`ORDER BY block_height ${orderSql}, microblock_sequence ${orderSql}, tx_index ${orderSql}`;
+          break;
+        case 'burn_block_time':
+          orderBySql = sql`ORDER BY burn_block_time ${orderSql}, block_height ${orderSql}, microblock_sequence ${orderSql}, tx_index ${orderSql}`;
+          break;
+        case 'fee':
+          orderBySql = sql`ORDER BY fee_rate ${orderSql}, block_height ${orderSql}, microblock_sequence ${orderSql}, tx_index ${orderSql}`;
+          break;
+        default:
+          throw new Error(`Invalid sortBy param: ${sortBy}`);
+      }
+
       if (txTypeFilter.length === 0) {
         totalQuery = await sql<{ count: number }[]>`
           SELECT ${includeUnanchored ? sql('tx_count_unanchored') : sql('tx_count')} AS count
@@ -1434,7 +1457,7 @@ export class PgStore extends BasePgStore {
           SELECT ${sql(TX_COLUMNS)}, ${abiColumn(sql)}
           FROM txs
           WHERE canonical = true AND microblock_canonical = true AND block_height <= ${maxHeight}
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          ${orderBySql}
           LIMIT ${limit}
           OFFSET ${offset}
         `;
@@ -1451,7 +1474,7 @@ export class PgStore extends BasePgStore {
           FROM txs
           WHERE canonical = true AND microblock_canonical = true
             AND type_id IN ${sql(txTypeIds)} AND block_height <= ${maxHeight}
-          ORDER BY block_height DESC, microblock_sequence DESC, tx_index DESC
+          ${orderBySql}
           LIMIT ${limit}
           OFFSET ${offset}
         `;
