@@ -80,6 +80,28 @@ export function createTxRouter(db: PgStore): express.Router {
         }
       }
 
+      let fromAddress: string | undefined;
+      if (typeof req.query.from_address === 'string') {
+        if (!isValidC32Address(req.query.from_address)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "from_address": "${req.query.from_address}" is not a valid STX address`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        fromAddress = req.query.from_address;
+      }
+
+      let toAddress: string | undefined;
+      if (typeof req.query.to_address === 'string') {
+        if (!isValidPrincipal(req.query.to_address)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "to_address": "${req.query.to_address}" is not a valid STX address`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        toAddress = req.query.to_address;
+      }
+
       let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
       if (req.query.sort_by) {
         if (
@@ -100,6 +122,8 @@ export function createTxRouter(db: PgStore): express.Router {
         limit,
         txTypeFilter,
         includeUnanchored,
+        fromAddress,
+        toAddress,
         order,
         sortBy,
       });
