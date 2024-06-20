@@ -254,6 +254,20 @@ paths:
           schema:
             type: integer
             example: 1706745599
+        - name: contract_id
+          in: query
+          description: Filter by contract call transactions involving this contract ID
+          required: false
+          schema:
+            type: string
+            example: "SP000000000000000000002Q6VF78.pox-4"
+        - name: function_name
+          in: query
+          description: Filter by contract call transactions involving this function name
+          required: false
+          schema:
+            type: string
+            example: "delegate-stx"
         - name: order
           in: query
           description: Option to sort results in ascending or descending order

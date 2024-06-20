@@ -124,6 +124,22 @@ export function createTxRouter(db: PgStore): express.Router {
         endTime = parseInt(req.query.end_time);
       }
 
+      let contractId: string | undefined;
+      if (typeof req.query.contract_id === 'string') {
+        if (!isValidPrincipal(req.query.contract_id)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "contract_id": "${req.query.contract_id}" is not a valid principal`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        contractId = req.query.contract_id;
+      }
+
+      let functionName: string | undefined;
+      if (typeof req.query.function_name === 'string') {
+        functionName = req.query.function_name;
+      }
+
       let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
       if (req.query.sort_by) {
         if (
@@ -148,6 +164,8 @@ export function createTxRouter(db: PgStore): express.Router {
         toAddress,
         startTime,
         endTime,
+        contractId,
+        functionName,
         order,
         sortBy,
       });

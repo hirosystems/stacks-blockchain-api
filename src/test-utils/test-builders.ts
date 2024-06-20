@@ -256,6 +256,20 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     pox3Events: [],
     pox4Events: [],
   };
+  if (
+    data.tx.type_id === DbTxTypeId.SmartContract ||
+    data.tx.type_id === DbTxTypeId.VersionedSmartContract
+  ) {
+    data.smartContracts.push({
+      tx_id: data.tx.tx_id,
+      canonical: data.tx.canonical,
+      contract_id: data.tx.smart_contract_contract_id as string,
+      block_height: data.tx.block_height,
+      clarity_version: data.tx.smart_contract_clarity_version as number,
+      source_code: data.tx.smart_contract_source_code as string,
+      abi: data.tx.abi as string,
+    });
+  }
   return data;
 }
 
