@@ -1418,6 +1418,8 @@ export class PgStore extends BasePgStore {
     includeUnanchored,
     fromAddress,
     toAddress,
+    startTime,
+    endTime,
     order,
     sortBy,
   }: {
@@ -1427,6 +1429,8 @@ export class PgStore extends BasePgStore {
     includeUnanchored: boolean;
     fromAddress?: string;
     toAddress?: string;
+    startTime?: number;
+    endTime?: number;
     order?: 'desc' | 'asc';
     sortBy?: 'block_height' | 'burn_block_time' | 'fee';
   }): Promise<{ results: DbTx[]; total: number }> {
@@ -1458,8 +1462,10 @@ export class PgStore extends BasePgStore {
       const toAddressFilterSql = toAddress
         ? sql`AND token_transfer_recipient_address = ${toAddress}`
         : sql``;
-
-      const noFilters = txTypeFilter.length === 0 && !fromAddress && !toAddress;
+      const startTimeFilterSql = startTime ? sql`AND burn_block_time >= ${startTime}` : sql``;
+      const endTimeFilterSql = endTime ? sql`AND burn_block_time <= ${endTime}` : sql``;
+      const noFilters =
+        txTypeFilter.length === 0 && !fromAddress && !toAddress && !startTime && !endTime;
 
       const totalQuery: { count: number }[] = noFilters
         ? await sql<{ count: number }[]>`
@@ -1473,7 +1479,8 @@ export class PgStore extends BasePgStore {
         ${txTypeFilterSql}
         ${fromAddressFilterSql}
         ${toAddressFilterSql}
-    
+        ${startTimeFilterSql}
+        ${endTimeFilterSql}
       `;
 
       const resultQuery: ContractTxQueryResult[] = await sql<ContractTxQueryResult[]>`
@@ -1483,6 +1490,8 @@ export class PgStore extends BasePgStore {
         ${txTypeFilterSql}
         ${fromAddressFilterSql}
         ${toAddressFilterSql}
+        ${startTimeFilterSql}
+        ${endTimeFilterSql}
         ${orderBySql}
         LIMIT ${limit}
         OFFSET ${offset}

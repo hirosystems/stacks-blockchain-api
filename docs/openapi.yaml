@@ -240,6 +240,20 @@ paths:
             enum: [block_height, burn_block_time, fee]
             example: burn_block_time
             default: block_height
+        - name: start_time
+          in: query
+          description: Filter by transactions after this timestamp (unix timestamp in seconds)
+          required: false
+          schema:
+            type: integer
+            example: 1704067200
+        - name: end_time
+          in: query
+          description: Filter by transactions before this timestamp (unix timestamp in seconds)
+          required: false
+          schema:
+            type: integer
+            example: 1706745599
         - name: order
           in: query
           description: Option to sort results in ascending or descending order

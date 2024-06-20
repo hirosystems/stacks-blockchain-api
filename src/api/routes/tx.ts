@@ -102,6 +102,28 @@ export function createTxRouter(db: PgStore): express.Router {
         toAddress = req.query.to_address;
       }
 
+      let startTime: number | undefined;
+      if (typeof req.query.start_time === 'string') {
+        if (!/^\d{10}$/.test(req.query.start_time)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "start_time": "${req.query.start_time}" is not a valid timestamp`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        startTime = parseInt(req.query.start_time);
+      }
+
+      let endTime: number | undefined;
+      if (typeof req.query.end_time === 'string') {
+        if (!/^\d{10}$/.test(req.query.end_time)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "end_time": "${req.query.end_time}" is not a valid timestamp`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        endTime = parseInt(req.query.end_time);
+      }
+
       let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
       if (req.query.sort_by) {
         if (
@@ -124,6 +146,8 @@ export function createTxRouter(db: PgStore): express.Router {
         includeUnanchored,
         fromAddress,
         toAddress,
+        startTime,
+        endTime,
         order,
         sortBy,
       });
