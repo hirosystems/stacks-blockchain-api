@@ -1,3 +1,10 @@
+## [7.11.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0...v7.11.1) (2024-06-21)
+
+
+### Bug Fixes
+
+* package.json & package-lock.json to reduce vulnerabilities ([#2020](https://github.com/hirosystems/stacks-blockchain-api/issues/2020)) ([9f63d8c](https://github.com/hirosystems/stacks-blockchain-api/commit/9f63d8c70978605bca44dde0e3aea09c396ef24e))
+
 ## [7.11.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.10.0...v7.11.0) (2024-06-07)
 
 
