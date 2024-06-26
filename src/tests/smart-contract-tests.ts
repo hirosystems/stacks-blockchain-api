@@ -1740,12 +1740,8 @@ describe('smart contract tests', () => {
         type_id: DbTxTypeId.SmartContract,
         smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
         smart_contract_source_code: '(some-contract-src)',
-      })
-      .addTxSmartContract({
-        tx_id: '0x1234',
-        block_height: 1,
-        contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-1',
-        contract_source: '(some-contract-src)',
+        smart_contract_clarity_version: 1,
+        abi: JSON.stringify({ some: 'abi' }),
       })
       .build();
     await db.update(block1);
@@ -1759,12 +1755,8 @@ describe('smart contract tests', () => {
         type_id: DbTxTypeId.SmartContract,
         smart_contract_contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
         smart_contract_source_code: '(some-contract-src)',
-      })
-      .addTxSmartContract({
-        tx_id: '0x1222',
-        block_height: 2,
-        contract_id: 'SP3K8BC0PPEVCV7NZ6QSRWPQ2JE9E5B6N3PA0KBR9.contract-2',
-        contract_source: '(some-contract-src)',
+        smart_contract_clarity_version: 1,
+        abi: JSON.stringify({ some: 'abi' }),
       })
       .build();
     await db.update(block2);

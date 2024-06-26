@@ -18,6 +18,7 @@ import {
   publicKeyToAddress,
   AddressVersion,
   bufferCV,
+  stringAsciiCV,
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction, TxPayloadVersionedSmartContract } from 'stacks-encoding-native-js';
@@ -2317,6 +2318,153 @@ describe('tx tests', () => {
     expect(txsReq5.body).toEqual(
       expect.objectContaining({
         results: [],
+      })
+    );
+  });
+
+  test('tx list - filter by contract id/name', async () => {
+    const testContractAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y.hello-world';
+    const testContractFnName = 'test-contract-fn';
+    const testContractFnName2 = 'test-contract-fn-2';
+    const contractJsonAbi = {
+      maps: [],
+      functions: [
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: testContractFnName,
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+        {
+          args: [
+            { type: 'uint128', name: 'amount' },
+            { type: 'string-ascii', name: 'desc' },
+          ],
+          name: testContractFnName2,
+          access: 'public',
+          outputs: {
+            type: {
+              response: {
+                ok: 'uint128',
+                error: 'none',
+              },
+            },
+          },
+        },
+      ],
+      variables: [],
+      fungible_tokens: [],
+      non_fungible_tokens: [],
+    };
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      burn_block_time: 1710000000,
+    })
+      .addTx({
+        tx_id: '0x0001',
+        fee_rate: 1n,
+        type_id: DbTxTypeId.SmartContract,
+        smart_contract_contract_id: testContractAddr,
+        smart_contract_clarity_version: 1,
+        smart_contract_source_code: '(some-contract-src)',
+        abi: JSON.stringify(contractJsonAbi),
+      })
+      .build();
+
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      burn_block_time: 1720000000,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        fee_rate: 1n,
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: testContractAddr,
+        contract_call_function_name: testContractFnName,
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+        ),
+      })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+      burn_block_time: 1730000000,
+    })
+      .addTx({
+        tx_id: '0x2234',
+        type_id: DbTxTypeId.ContractCall,
+        contract_call_contract_id: testContractAddr,
+        contract_call_function_name: testContractFnName2,
+        contract_call_function_args: bufferToHex(
+          createClarityValueArray(uintCV(123456), stringAsciiCV('hello'))
+        ),
+      })
+      .build();
+    await db.update(block3);
+
+    const txsReq1 = await supertest(api.server).get(
+      `/extended/v1/tx?contract_id=${testContractAddr}&function_name=${testContractFnName}`
+    );
+    expect(txsReq1.status).toBe(200);
+    expect(txsReq1.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReq2 = await supertest(api.server).get(
+      `/extended/v1/tx?contract_id=${testContractAddr}`
+    );
+    expect(txsReq2.status).toBe(200);
+    expect(txsReq2.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReq3 = await supertest(api.server).get(
+      `/extended/v1/tx?function_name=${testContractFnName2}`
+    );
+    expect(txsReq3.status).toBe(200);
+    expect(txsReq3.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+        ],
       })
     );
   });
