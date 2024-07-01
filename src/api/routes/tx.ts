@@ -140,6 +140,17 @@ export function createTxRouter(db: PgStore): express.Router {
         functionName = req.query.function_name;
       }
 
+      let nonce: number | undefined;
+      if (typeof req.query.nonce === 'string') {
+        if (!/^\d{1,10}$/.test(req.query.nonce)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "nonce": "${req.query.nonce}" is not a valid nonce`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        nonce = parseInt(req.query.nonce);
+      }
+
       let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
       if (req.query.sort_by) {
         if (
@@ -166,6 +177,7 @@ export function createTxRouter(db: PgStore): express.Router {
         endTime,
         contractId,
         functionName,
+        nonce,
         order,
         sortBy,
       });
