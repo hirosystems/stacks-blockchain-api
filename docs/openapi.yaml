@@ -268,6 +268,13 @@ paths:
           schema:
             type: string
             example: "delegate-stx"
+        - name: nonce
+          in: query
+          description: Filter by transactions with this nonce
+          required: false
+          schema:
+            type: integer
+            example: 123
         - name: order
           in: query
           description: Option to sort results in ascending or descending order
