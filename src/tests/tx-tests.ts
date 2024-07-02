@@ -2469,6 +2469,84 @@ describe('tx tests', () => {
     );
   });
 
+  test('tx list - filter by nonce', async () => {
+    const testSendertAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      burn_block_time: 1710000000,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        fee_rate: 1n,
+        sender_address: testSendertAddr,
+        nonce: 1,
+      })
+      .build();
+
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      burn_block_time: 1720000000,
+    })
+      .addTx({
+        tx_id: '0x2234',
+        fee_rate: 3n,
+        sender_address: testSendertAddr,
+        nonce: 2,
+      })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+      burn_block_time: 1730000000,
+    })
+      .addTx({
+        tx_id: '0x3234',
+        fee_rate: 2n,
+        sender_address: testSendertAddr,
+        nonce: 3,
+      })
+      .build();
+    await db.update(block3);
+
+    const txsReq1 = await supertest(api.server).get(
+      `/extended/v1/tx?from_address=${testSendertAddr}&nonce=${1}`
+    );
+    expect(txsReq1.status).toBe(200);
+    expect(txsReq1.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+
+    const txsReq2 = await supertest(api.server).get(
+      `/extended/v1/tx?from_address=${testSendertAddr}&nonce=${2}`
+    );
+    expect(txsReq2.status).toBe(200);
+    expect(txsReq2.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+  });
+
   test('fetch raw tx', async () => {
     const block: DbBlock = {
       block_hash: '0x1234',
