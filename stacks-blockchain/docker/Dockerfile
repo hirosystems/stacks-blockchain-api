@@ -1,7 +1,7 @@
 # Pointed to stacks-blockchain `2.1.0.0.0` git tag
 FROM --platform=linux/amd64 hirosystems/stacks-api-e2e:stacks3.0-0a2c0e2 as build
 
-FROM --platform=linux/amd64 debian:bookworm
+FROM --platform=linux/amd64 debian:12.6
 
 COPY wait-for-it.sh /bin/wait-for-it.sh
 RUN chmod +x /bin/wait-for-it.sh
