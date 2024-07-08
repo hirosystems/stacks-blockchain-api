@@ -1,0 +1,2357 @@
+{
+  "block_hash": "0x5d53911701b66adcdda018001ebe1a7d54acd4f9a8d15d1f57cf4b2058b78f95",
+  "miner_txid": "0x22f30c8696f15dda1bf32cd1f5d0a44e242cf19f1ccc0613b8566cfdf79b5cfe",
+  "reward_set": null,
+  "block_height": 1,
+  "cycle_number": null,
+  "anchored_cost": {
+    "runtime": 402683495,
+    "read_count": 10185,
+    "read_length": 25959775,
+    "write_count": 700,
+    "write_length": 70075
+  },
+  "signer_bitvec": null,
+  "burn_block_hash": "0x00000000000000000002f2e8c7fd60addc520b09467f618667a841e2ceafa6cb",
+  "burn_block_time": 1716238792,
+  "index_block_hash": "0x80e73cd9a61876db38f4e02828241076d0a16670fc11646abb74d634804cc8d9",
+  "burn_block_height": 844350,
+  "parent_block_hash": "0x042cc20f6105fb9e742c4c2369a05999ee766bfa21fe66e465ebb2de75c3a36d",
+  "parent_microblock": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "pox_v1_unlock_height": 781552,
+  "pox_v2_unlock_height": 787652,
+  "pox_v3_unlock_height": 840361,
+  "matured_miner_rewards": [
+    {
+      "recipient": "SP11M3BVG5TGNWQ1FFE5EJM86TMV08YF3EK0JSMQ8",
+      "miner_address": "SP11M3BVG5TGNWQ1FFE5EJM86TMV08YF3EK0JSMQ8",
+      "coinbase_amount": "1000000000",
+      "tx_fees_anchored": "9511437",
+      "from_stacks_block_hash": "0x040516e4ae9bbbaf22c4b4e716f359bd9a7b90b29f47c17e8d0df24af8242e20",
+      "from_index_consensus_hash": "0xb94814bef09b858177fe471b917273a63d899c25f0eb0f6210a07733e8c0ea0e",
+      "tx_fees_streamed_produced": "0",
+      "tx_fees_streamed_confirmed": "0"
+    },
+    {
+      "recipient": "SP28YSGNKBZM8VE1ZQF8A3ANG9MZ7Q5893XASMGWM",
+      "miner_address": "SP28YSGNKBZM8VE1ZQF8A3ANG9MZ7Q5893XASMGWM",
+      "coinbase_amount": "0",
+      "tx_fees_anchored": "0",
+      "from_stacks_block_hash": "0x040516e4ae9bbbaf22c4b4e716f359bd9a7b90b29f47c17e8d0df24af8242e20",
+      "from_index_consensus_hash": "0xb94814bef09b858177fe471b917273a63d899c25f0eb0f6210a07733e8c0ea0e",
+      "tx_fees_streamed_produced": "0",
+      "tx_fees_streamed_confirmed": "0"
+    }
+  ],
+  "parent_burn_block_hash": "0x00000000000000000002dcef0ad9a999961f87665cbda4fc728fd8ba2b63c419",
+  "parent_index_block_hash": "0x6245f25fbfbdc9bc1e48e10c091930f6a25b3b77eb483e8b61b1c18a848f8599",
+  "parent_burn_block_height": 844349,
+  "confirmed_microblocks_cost": {
+    "runtime": 0,
+    "read_count": 0,
+    "read_length": 0,
+    "write_count": 0,
+    "write_length": 0
+  },
+  "parent_microblock_sequence": 0,
+  "parent_burn_block_timestamp": 1716237637,
+  "transactions": [
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "raw_tx": "0x0000000001040020a586c3f6c204b8429f5f2f50c384c101057ee9000000000000000e00000000000186a00000ed9a37094eabba548ba149245e4f1224c8194b3bff2084b5987d96d27707273e61691671ed12f06d80b8ebbf0706de458370bd2e3a9682a58db7db8a66ce9a9b0101000000000214e75dff23072877a139ecf7b7f899aa714b7fe97f207075626c69632d706f6f6c732d73747261746567792d6d616e616765722d76320d66756e642d7374726174656779000000010b0000000f0100000000000000000000027f59b6d40a010000000000000000000000e8d4a510000100000000000000000000003a35294400010000000000000000000000000000000001000000000000000000000002540be400010000000000000000000000000000000001000000000000000000000000000000000100000000000000000000000000000000010000000000000000000000000000000001000000000000000000000000000000000100000000000000000000027f59b6d40a01000000000000000000000000000000000100000000000000000000003a35294400010000000000000000000000174876e80001000000000000000000000002540be400",
+      "status": "success",
+      "tx_index": 40,
+      "raw_result": "0x070100000000000000000000000000000000",
+      "burnchain_op": null,
+      "contract_abi": null,
+      "execution_cost": {
+        "runtime": 6560983,
+        "read_count": 596,
+        "read_length": 4230411,
+        "write_count": 38,
+        "write_length": 3669
+      },
+      "microblock_hash": null,
+      "microblock_sequence": null,
+      "microblock_parent_hash": null
+    }
+  ],
+  "events": [
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 105,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "delegate-to": {
+                          "Principal": {
+                            "Contract": {
+                              "name": "pox4-fast-pool-v3",
+                              "issuer": [
+                                22,
+                                [
+                                  131,
+                                  237,
+                                  102,
+                                  134,
+                                  3,
+                                  21,
+                                  227,
+                                  52,
+                                  1,
+                                  11,
+                                  191,
+                                  183,
+                                  110,
+                                  179,
+                                  238,
+                                  248,
+                                  135,
+                                  239,
+                                  238,
+                                  10
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            114,
+                            101,
+                            118,
+                            111,
+                            107,
+                            101,
+                            45,
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 2745989256201
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "fastpool-v2-member1",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 19
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000030b64656c65676174652d746f061683ed66860315e334010bbfb76eb3eef887efee0a11706f78342d666173742d706f6f6c2d76330c656e642d6379636c652d6964090e73746172742d6379636c652d69640100000000000000000000000000000055066c6f636b65640100000000000000000000027f59b6d409046e616d650d000000137265766f6b652d64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f1366617374706f6f6c2d76322d6d656d62657231",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 111,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            114,
+                            101,
+                            118,
+                            111,
+                            107,
+                            101,
+                            45,
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 249999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member3",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 19
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000030b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d6964090e73746172742d6379636c652d69640100000000000000000000000000000055066c6f636b65640100000000000000000000003a351a01c0046e616d650d000000137265766f6b652d64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657233",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 115,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            114,
+                            101,
+                            118,
+                            111,
+                            107,
+                            101,
+                            45,
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 9999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member5",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 19
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000030b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d6964090e73746172742d6379636c652d69640100000000000000000000000000000055066c6f636b65640100000000000000000000000253fca1c0046e616d650d000000137265766f6b652d64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657235",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 112,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "pox-addr": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "amount-ustx": {
+                          "UInt": 250000000000
+                        },
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "Optional": {
+                            "data": null
+                          }
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 249999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member3",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 12
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000060b616d6f756e742d757374780100000000000000000000003a352944000b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d69640908706f782d61646472090e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687409066c6f636b65640100000000000000000000003a351a01c0046e616d650d0000000c64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657233",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 114,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "pox-addr": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "amount-ustx": {
+                          "UInt": 100000000000
+                        },
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "Optional": {
+                            "data": null
+                          }
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 99999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member4",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 12
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000060b616d6f756e742d75737478010000000000000000000000174876e8000b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d69640908706f782d61646472090e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687409066c6f636b6564010000000000000000000000174867a5c0046e616d650d0000000c64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657234",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 109,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            114,
+                            101,
+                            118,
+                            111,
+                            107,
+                            101,
+                            45,
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 2745989256201
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member1",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 19
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000030b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d6964090e73746172742d6379636c652d69640100000000000000000000000000000055066c6f636b65640100000000000000000000027f59b6d409046e616d650d000000137265766f6b652d64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657231",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 106,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "pox-addr": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "amount-ustx": {
+                          "UInt": 2745989256202
+                        },
+                        "delegate-to": {
+                          "Principal": {
+                            "Contract": {
+                              "name": "pox4-fast-pool-v3",
+                              "issuer": [
+                                22,
+                                [
+                                  131,
+                                  237,
+                                  102,
+                                  134,
+                                  3,
+                                  21,
+                                  227,
+                                  52,
+                                  1,
+                                  11,
+                                  191,
+                                  183,
+                                  110,
+                                  179,
+                                  238,
+                                  248,
+                                  135,
+                                  239,
+                                  238,
+                                  10
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "Optional": {
+                            "data": null
+                          }
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 2745989256201
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "fastpool-v2-member1",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 12
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000060b616d6f756e742d757374780100000000000000000000027f59b6d40a0b64656c65676174652d746f061683ed66860315e334010bbfb76eb3eef887efee0a11706f78342d666173742d706f6f6c2d76330c656e642d6379636c652d69640908706f782d61646472090e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687409066c6f636b65640100000000000000000000027f59b6d409046e616d650d0000000c64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f1366617374706f6f6c2d76322d6d656d62657231",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 116,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "pox-addr": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "amount-ustx": {
+                          "UInt": 10000000000
+                        },
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "Optional": {
+                            "data": null
+                          }
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 9999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member5",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 12
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000060b616d6f756e742d7573747801000000000000000000000002540be4000b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d69640908706f782d61646472090e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687409066c6f636b65640100000000000000000000000253fca1c0046e616d650d0000000c64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657235",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 113,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            114,
+                            101,
+                            118,
+                            111,
+                            107,
+                            101,
+                            45,
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 99999000000
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member4",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 19
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000030b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d6964090e73746172742d6379636c652d69640100000000000000000000000000000055066c6f636b6564010000000000000000000000174867a5c0046e616d650d000000137265766f6b652d64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657234",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 107,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "stacker": {
+                          "Principal": {
+                            "Contract": {
+                              "name": "fastpool-v2-member1",
+                              "issuer": [
+                                20,
+                                [
+                                  231,
+                                  93,
+                                  255,
+                                  35,
+                                  7,
+                                  40,
+                                  119,
+                                  161,
+                                  57,
+                                  236,
+                                  247,
+                                  183,
+                                  248,
+                                  153,
+                                  170,
+                                  113,
+                                  75,
+                                  127,
+                                  233,
+                                  127
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "pox-addr": {
+                          "Tuple": {
+                            "data_map": {
+                              "version": {
+                                "Sequence": {
+                                  "Buffer": {
+                                    "data": [
+                                      4
+                                    ]
+                                  }
+                                }
+                              },
+                              "hashbytes": {
+                                "Sequence": {
+                                  "Buffer": {
+                                    "data": [
+                                      131,
+                                      237,
+                                      102,
+                                      134,
+                                      3,
+                                      21,
+                                      227,
+                                      52,
+                                      1,
+                                      11,
+                                      191,
+                                      183,
+                                      110,
+                                      179,
+                                      238,
+                                      248,
+                                      135,
+                                      239,
+                                      238,
+                                      10
+                                    ]
+                                  }
+                                }
+                              }
+                            },
+                            "type_signature": {
+                              "type_map": {
+                                "version": {
+                                  "SequenceType": {
+                                    "BufferType": 1
+                                  }
+                                },
+                                "hashbytes": {
+                                  "SequenceType": {
+                                    "BufferType": 20
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "delegator": {
+                          "Principal": {
+                            "Contract": {
+                              "name": "pox4-fast-pool-v3",
+                              "issuer": [
+                                22,
+                                [
+                                  131,
+                                  237,
+                                  102,
+                                  134,
+                                  3,
+                                  21,
+                                  227,
+                                  52,
+                                  1,
+                                  11,
+                                  191,
+                                  183,
+                                  110,
+                                  179,
+                                  238,
+                                  248,
+                                  135,
+                                  239,
+                                  238,
+                                  10
+                                ]
+                              ]
+                            }
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": {
+                              "UInt": 86
+                            }
+                          }
+                        },
+                        "extend-count": {
+                          "UInt": 1
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "UInt": 846650
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "stacker": "PrincipalType",
+                          "pox-addr": {
+                            "TupleType": {
+                              "type_map": {
+                                "version": {
+                                  "SequenceType": {
+                                    "BufferType": 1
+                                  }
+                                },
+                                "hashbytes": {
+                                  "SequenceType": {
+                                    "BufferType": 20
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "delegator": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "UIntType"
+                          },
+                          "extend-count": "UIntType",
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": "UIntType"
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            97,
+                            99,
+                            107,
+                            45,
+                            101,
+                            120,
+                            116,
+                            101,
+                            110,
+                            100
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 2745989256201
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "fastpool-v2-member1",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "stacker": "PrincipalType",
+                          "pox-addr": {
+                            "TupleType": {
+                              "type_map": {
+                                "version": {
+                                  "SequenceType": {
+                                    "BufferType": 1
+                                  }
+                                },
+                                "hashbytes": {
+                                  "SequenceType": {
+                                    "BufferType": 20
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "delegator": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "UIntType"
+                          },
+                          "extend-count": "UIntType",
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": "UIntType"
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 21
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000070964656c656761746f72061683ed66860315e334010bbfb76eb3eef887efee0a11706f78342d666173742d706f6f6c2d76330c656e642d6379636c652d69640a01000000000000000000000000000000560c657874656e642d636f756e74010000000000000000000000000000000108706f782d616464720c0000000209686173686279746573020000001483ed66860315e334010bbfb76eb3eef887efee0a0776657273696f6e02000000010407737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f1366617374706f6f6c2d76322d6d656d626572310e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687401000000000000000000000000000ceb3a066c6f636b65640100000000000000000000027f59b6d409046e616d650d0000001564656c65676174652d737461636b2d657874656e6407737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f1366617374706f6f6c2d76322d6d656d62657231",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 110,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Response": {
+            "data": {
+              "Tuple": {
+                "data_map": {
+                  "data": {
+                    "Tuple": {
+                      "data_map": {
+                        "pox-addr": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "amount-ustx": {
+                          "UInt": 2745989256202
+                        },
+                        "delegate-to": {
+                          "Principal": {
+                            "Standard": [
+                              22,
+                              [
+                                59,
+                                188,
+                                101,
+                                209,
+                                18,
+                                231,
+                                158,
+                                169,
+                                210,
+                                0,
+                                30,
+                                21,
+                                248,
+                                166,
+                                21,
+                                136,
+                                86,
+                                149,
+                                216,
+                                182
+                              ]
+                            ]
+                          }
+                        },
+                        "end-cycle-id": {
+                          "Optional": {
+                            "data": null
+                          }
+                        },
+                        "start-cycle-id": {
+                          "UInt": 85
+                        },
+                        "unlock-burn-height": {
+                          "Optional": {
+                            "data": null
+                          }
+                        }
+                      },
+                      "type_signature": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "name": {
+                    "Sequence": {
+                      "String": {
+                        "ASCII": {
+                          "data": [
+                            100,
+                            101,
+                            108,
+                            101,
+                            103,
+                            97,
+                            116,
+                            101,
+                            45,
+                            115,
+                            116,
+                            120
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "locked": {
+                    "UInt": 2745989256201
+                  },
+                  "balance": {
+                    "UInt": 1000000
+                  },
+                  "stacker": {
+                    "Principal": {
+                      "Contract": {
+                        "name": "xverse-v2-member1",
+                        "issuer": [
+                          20,
+                          [
+                            231,
+                            93,
+                            255,
+                            35,
+                            7,
+                            40,
+                            119,
+                            161,
+                            57,
+                            236,
+                            247,
+                            183,
+                            248,
+                            153,
+                            170,
+                            113,
+                            75,
+                            127,
+                            233,
+                            127
+                          ]
+                        ]
+                      }
+                    }
+                  },
+                  "burnchain-unlock-height": {
+                    "UInt": 844550
+                  }
+                },
+                "type_signature": {
+                  "type_map": {
+                    "data": {
+                      "TupleType": {
+                        "type_map": {
+                          "pox-addr": {
+                            "OptionalType": "NoType"
+                          },
+                          "amount-ustx": "UIntType",
+                          "delegate-to": "PrincipalType",
+                          "end-cycle-id": {
+                            "OptionalType": "NoType"
+                          },
+                          "start-cycle-id": "UIntType",
+                          "unlock-burn-height": {
+                            "OptionalType": "NoType"
+                          }
+                        }
+                      }
+                    },
+                    "name": {
+                      "SequenceType": {
+                        "StringType": {
+                          "ASCII": 12
+                        }
+                      }
+                    },
+                    "locked": "UIntType",
+                    "balance": "UIntType",
+                    "stacker": "PrincipalType",
+                    "burnchain-unlock-height": "UIntType"
+                  }
+                }
+              }
+            },
+            "committed": true
+          }
+        },
+        "raw_value": "0x070c000000060762616c616e636501000000000000000000000000000f4240176275726e636861696e2d756e6c6f636b2d68656967687401000000000000000000000000000ce30604646174610c000000060b616d6f756e742d757374780100000000000000000000027f59b6d40a0b64656c65676174652d746f05163bbc65d112e79ea9d2001e15f8a615885695d8b60c656e642d6379636c652d69640908706f782d61646472090e73746172742d6379636c652d6964010000000000000000000000000000005512756e6c6f636b2d6275726e2d68656967687409066c6f636b65640100000000000000000000027f59b6d409046e616d650d0000000c64656c65676174652d73747807737461636b65720614e75dff23072877a139ecf7b7f899aa714b7fe97f117876657273652d76322d6d656d62657231",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "stx_lock_event",
+      "committed": true,
+      "event_index": 108,
+      "stx_lock_event": {
+        "locked_amount": "2745989256201",
+        "unlock_height": "846650",
+        "locked_address": "SM3KNVZS30WM7F89SXKVVFY4SN9RMPZZ9FX929N0V.fastpool-v2-member1",
+        "contract_identifier": "SP000000000000000000002Q6VF78.pox-4"
+      }
+    },
+    {
+      "txid": "0xd45e090ac442380cf50655e3d1c904c355a501d6dffa3b5e4799083062469dbc",
+      "type": "contract_event",
+      "committed": true,
+      "event_index": 117,
+      "contract_event": {
+        "topic": "print",
+        "value": {
+          "Sequence": {
+            "List": {
+              "data": [
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 0
+                    },
+                    "committed": true
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 603
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 603
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 34
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 603
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 18000
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 18000
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 18000
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 18000
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 18000
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 0
+                    },
+                    "committed": true
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 34
+                    },
+                    "committed": false
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 0
+                    },
+                    "committed": true
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 0
+                    },
+                    "committed": true
+                  }
+                },
+                {
+                  "Response": {
+                    "data": {
+                      "UInt": 0
+                    },
+                    "committed": true
+                  }
+                }
+              ],
+              "type_signature": {
+                "max_len": 15,
+                "entry_type": {
+                  "ResponseType": [
+                    "UIntType",
+                    "UIntType"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "raw_value": "0x0b0000000f07010000000000000000000000000000000008010000000000000000000000000000025b08010000000000000000000000000000025b08010000000000000000000000000000002208010000000000000000000000000000025b080100000000000000000000000000004650080100000000000000000000000000004650080100000000000000000000000000004650080100000000000000000000000000004650080100000000000000000000000000004650070100000000000000000000000000000000080100000000000000000000000000000022070100000000000000000000000000000000070100000000000000000000000000000000070100000000000000000000000000000000",
+        "contract_identifier": "SM3KNVZS30WM7F89SXKVVFY4SN9RMPZZ9FX929N0V.public-pools-strategy-v2"
+      }
+    }
+  ]
+}

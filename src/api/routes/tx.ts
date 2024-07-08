@@ -65,12 +65,121 @@ export function createTxRouter(db: PgStore): express.Router {
         txTypeFilter = [];
       }
 
+      let order: 'asc' | 'desc' | undefined;
+      if (req.query.order) {
+        if (
+          typeof req.query.order === 'string' &&
+          (req.query.order === 'asc' || req.query.order === 'desc')
+        ) {
+          order = req.query.order;
+        } else {
+          throw new InvalidRequestError(
+            `The "order" query parameter must be a 'desc' or 'asc'`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+      }
+
+      let fromAddress: string | undefined;
+      if (typeof req.query.from_address === 'string') {
+        if (!isValidC32Address(req.query.from_address)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "from_address": "${req.query.from_address}" is not a valid STX address`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        fromAddress = req.query.from_address;
+      }
+
+      let toAddress: string | undefined;
+      if (typeof req.query.to_address === 'string') {
+        if (!isValidPrincipal(req.query.to_address)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "to_address": "${req.query.to_address}" is not a valid STX address`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        toAddress = req.query.to_address;
+      }
+
+      let startTime: number | undefined;
+      if (typeof req.query.start_time === 'string') {
+        if (!/^\d{10}$/.test(req.query.start_time)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "start_time": "${req.query.start_time}" is not a valid timestamp`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        startTime = parseInt(req.query.start_time);
+      }
+
+      let endTime: number | undefined;
+      if (typeof req.query.end_time === 'string') {
+        if (!/^\d{10}$/.test(req.query.end_time)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "end_time": "${req.query.end_time}" is not a valid timestamp`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        endTime = parseInt(req.query.end_time);
+      }
+
+      let contractId: string | undefined;
+      if (typeof req.query.contract_id === 'string') {
+        if (!isValidPrincipal(req.query.contract_id)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "contract_id": "${req.query.contract_id}" is not a valid principal`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        contractId = req.query.contract_id;
+      }
+
+      let functionName: string | undefined;
+      if (typeof req.query.function_name === 'string') {
+        functionName = req.query.function_name;
+      }
+
+      let nonce: number | undefined;
+      if (typeof req.query.nonce === 'string') {
+        if (!/^\d{1,10}$/.test(req.query.nonce)) {
+          throw new InvalidRequestError(
+            `Invalid query parameter for "nonce": "${req.query.nonce}" is not a valid nonce`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+        nonce = parseInt(req.query.nonce);
+      }
+
+      let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
+      if (req.query.sort_by) {
+        if (
+          typeof req.query.sort_by === 'string' &&
+          ['block_height', 'burn_block_time', 'fee'].includes(req.query.sort_by)
+        ) {
+          sortBy = req.query.sort_by as typeof sortBy;
+        } else {
+          throw new InvalidRequestError(
+            `The "sort_by" query parameter must be 'block_height', 'burn_block_time', or 'fee'`,
+            InvalidRequestErrorType.invalid_param
+          );
+        }
+      }
       const includeUnanchored = isUnanchoredRequest(req, res, next);
       const { results: txResults, total } = await db.getTxList({
         offset,
         limit,
         txTypeFilter,
         includeUnanchored,
+        fromAddress,
+        toAddress,
+        startTime,
+        endTime,
+        contractId,
+        functionName,
+        nonce,
+        order,
+        sortBy,
       });
       const results = txResults.map(tx => parseDbTx(tx));
       const response: TransactionResults = { limit, offset, total, results };

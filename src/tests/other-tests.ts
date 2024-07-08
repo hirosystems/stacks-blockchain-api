@@ -247,10 +247,10 @@ describe('other tests', () => {
     const block_hash = '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb66313';
     const principal_addr = 'S.hello-world';
     const odd_tx_error = {
-      error: `Hex string is an odd number of digits: ${tx_id}`,
+      error: `Hex string is an odd number of digits`,
     };
     const odd_block_error = {
-      error: `Hex string is an odd number of digits: ${block_hash}`,
+      error: `Hex string is an odd number of digits`,
     };
     const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
     const principal_error = { error: 'invalid STX address "S.hello-world"' };

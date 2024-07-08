@@ -219,6 +219,71 @@ paths:
             items:
               type: string
               enum: [coinbase, token_transfer, smart_contract, contract_call, poison_microblock, tenure_change]
+        - name: from_address
+          in: query
+          description: Option to filter results by sender address
+          required: false
+          schema:
+            type: string
+        - name: to_address
+          in: query
+          description: Option to filter results by recipient address
+          required: false
+          schema:
+            type: string
+        - name: sort_by
+          in: query
+          description: Option to sort results by block height, timestamp, or fee
+          required: false
+          schema:
+            type: string
+            enum: [block_height, burn_block_time, fee]
+            example: burn_block_time
+            default: block_height
+        - name: start_time
+          in: query
+          description: Filter by transactions after this timestamp (unix timestamp in seconds)
+          required: false
+          schema:
+            type: integer
+            example: 1704067200
+        - name: end_time
+          in: query
+          description: Filter by transactions before this timestamp (unix timestamp in seconds)
+          required: false
+          schema:
+            type: integer
+            example: 1706745599
+        - name: contract_id
+          in: query
+          description: Filter by contract call transactions involving this contract ID
+          required: false
+          schema:
+            type: string
+            example: "SP000000000000000000002Q6VF78.pox-4"
+        - name: function_name
+          in: query
+          description: Filter by contract call transactions involving this function name
+          required: false
+          schema:
+            type: string
+            example: "delegate-stx"
+        - name: nonce
+          in: query
+          description: Filter by transactions with this nonce
+          required: false
+          schema:
+            type: integer
+            example: 123
+        - name: order
+          in: query
+          description: Option to sort results in ascending or descending order
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            example: desc
+            default: desc
         - name: unanchored
           in: query
           description: Include transaction data from unanchored (i.e. unconfirmed) microblocks

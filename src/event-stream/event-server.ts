@@ -480,6 +480,8 @@ function parseDataStoreTxEventData(
     return dbTx;
   });
 
+  const poxEventLogs: Map<DbPoxSyntheticEvent, DbSmartContractEvent> = new Map();
+
   for (const event of events) {
     if (!event.committed) {
       logger.debug(`Ignoring uncommitted tx event from tx ${event.txid}`);
@@ -548,6 +550,7 @@ function parseDataStoreTxEventData(
                 ...dbEvent,
                 ...poxEventData,
               };
+              poxEventLogs.set(dbPoxEvent, entry);
               switch (contractName) {
                 case POX_2_CONTRACT_NAME: {
                   dbTx.pox2Events.push(dbPoxEvent);
@@ -723,15 +726,19 @@ function parseDataStoreTxEventData(
       tx.nftEvents,
       tx.stxEvents,
       tx.stxLockEvents,
-      tx.pox2Events,
-      tx.pox3Events,
-      tx.pox4Events,
     ]
       .flat()
       .sort((a, b) => a.event_index - b.event_index);
     tx.tx.event_count = sortedEvents.length;
     for (let i = 0; i < sortedEvents.length; i++) {
       sortedEvents[i].event_index = i;
+    }
+    for (const poxEvent of [tx.pox2Events, tx.pox3Events, tx.pox4Events].flat()) {
+      const associatedLogEvent = poxEventLogs.get(poxEvent);
+      if (!associatedLogEvent) {
+        throw new Error(`Missing associated contract log event for pox event ${poxEvent.tx_id}`);
+      }
+      poxEvent.event_index = associatedLogEvent.event_index;
     }
   }
 

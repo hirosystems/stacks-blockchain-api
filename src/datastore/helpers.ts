@@ -274,28 +274,17 @@ export function prefixedCols(columns: string[], prefix: string): string[] {
 }
 
 /**
- * Concatenates column names to use on a query. Necessary when one or more of those columns is complex enough
- * so that postgres.js can't figure out how to list it (e.g. abi column, aggregates, partitions, etc.).
- * @param sql - SQL client
- * @param columns - list of columns
- * @returns raw SQL column list string
- */
-export function unsafeCols(sql: PgSqlClient, columns: string[]): postgres.PendingQuery<any> {
-  return sql.unsafe(columns.join(', '));
-}
-
-/**
  * Shorthand function that returns a column query to retrieve the smart contract abi when querying transactions
  * that may be of type `contract_call`. Usually used alongside `TX_COLUMNS` or `MEMPOOL_TX_COLUMNS`.
  * @param tableName - Name of the table that will determine the transaction type. Defaults to `txs`.
  * @returns `string` - abi column select statement portion
  */
-export function abiColumn(tableName: string = 'txs'): string {
-  return `
-    CASE WHEN ${tableName}.type_id = ${DbTxTypeId.ContractCall} THEN (
+export function abiColumn(sql: PgSqlClient, tableName: string = 'txs'): postgres.Fragment {
+  return sql`
+    CASE WHEN ${sql(tableName)}.type_id = ${DbTxTypeId.ContractCall} THEN (
       SELECT abi
       FROM smart_contracts
-      WHERE smart_contracts.contract_id = ${tableName}.contract_call_contract_id
+      WHERE smart_contracts.contract_id = ${sql(tableName)}.contract_call_contract_id
       ORDER BY abi != 'null' DESC, canonical DESC, microblock_canonical DESC, block_height DESC
       LIMIT 1
     ) END as abi
