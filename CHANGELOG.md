@@ -1,3 +1,20 @@
+## [7.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.1...v7.12.0) (2024-07-08)
+
+
+### Features
+
+* tx list contract id/name filter options ([#2018](https://github.com/hirosystems/stacks-blockchain-api/issues/2018)) ([9c2fd78](https://github.com/hirosystems/stacks-blockchain-api/commit/9c2fd78ba821afd98e52d11d999d22523d03e1f7))
+* tx list nonce filter option ([#2023](https://github.com/hirosystems/stacks-blockchain-api/issues/2023)) ([88fc5ce](https://github.com/hirosystems/stacks-blockchain-api/commit/88fc5ce66f7c8af9b7d19c4a432309e5da91bb10))
+* tx list timestamp filter options ([#2015](https://github.com/hirosystems/stacks-blockchain-api/issues/2015)) ([e7c224b](https://github.com/hirosystems/stacks-blockchain-api/commit/e7c224bf8bcf06ed37e50bf83a3a23a56751f851))
+* tx ordering options ([#2005](https://github.com/hirosystems/stacks-blockchain-api/issues/2005)) ([ae78773](https://github.com/hirosystems/stacks-blockchain-api/commit/ae78773930c92819709c148933d3daae32f87d4c))
+* tx to/from address options ([#2012](https://github.com/hirosystems/stacks-blockchain-api/issues/2012)) ([542973c](https://github.com/hirosystems/stacks-blockchain-api/commit/542973c080f75536fe6ad04421b0e329692af2cd))
+* update api toolkit ([71da884](https://github.com/hirosystems/stacks-blockchain-api/commit/71da88454c896d6678d8e962eb9573348e5779e8))
+
+
+### Bug Fixes
+
+* pox events should use same index as associated contract log event ([#1994](https://github.com/hirosystems/stacks-blockchain-api/issues/1994)) ([b1d6be9](https://github.com/hirosystems/stacks-blockchain-api/commit/b1d6be9b91b77f3e24abf1976bdf53158cf28d17)), closes [#1983](https://github.com/hirosystems/stacks-blockchain-api/issues/1983)
+
 ## [7.11.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.0...v7.11.1) (2024-06-21)
 
 
