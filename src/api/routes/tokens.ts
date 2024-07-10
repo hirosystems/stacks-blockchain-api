@@ -1,6 +1,7 @@
 import { asyncHandler } from '../async-handler';
 import * as express from 'express';
 import {
+  FungibleTokenHolderList,
   NonFungibleTokenHistoryEvent,
   NonFungibleTokenHistoryEventList,
   NonFungibleTokenHolding,
@@ -225,6 +226,25 @@ export function createTokenRouter(db: PgStore): express.Router {
         .catch(error => {
           res.status(400).json(error);
         });
+    })
+  );
+
+  router.get(
+    '/ft/holders/:token',
+    cacheHandler,
+    asyncHandler(async (req, res) => {
+      const token = req.params.token;
+      const limit = getPagingQueryLimit(ResourceType.TokenHolders, req.query.limit);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
+      const { results, total } = await db.getTokenHolders({ token, limit, offset });
+      const response: FungibleTokenHolderList = {
+        limit: limit,
+        offset: offset,
+        total: total,
+        results: results,
+      };
+      setETagCacheHeaders(res);
+      res.status(200).json(response);
     })
   );
 

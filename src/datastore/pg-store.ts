@@ -3288,6 +3288,24 @@ export class PgStore extends BasePgStore {
     return { found: true, result: queryResult };
   }
 
+  async getTokenHolders(args: {
+    token: string;
+    limit: number;
+    offset: number;
+  }): Promise<{ results: { address: string; balance: string }[]; total: number }> {
+    const holderResults = await this.sql<{ address: string; balance: string; count: number }[]>`
+      SELECT address, balance, (COUNT(*) OVER())::INTEGER AS count
+      FROM ft_balances
+      WHERE token = ${args.token}
+      ORDER BY balance DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset}
+    `;
+    const results = holderResults.map(row => ({ address: row.address, balance: row.balance }));
+    const total = holderResults.length > 0 ? holderResults[0].count : 0;
+    return { results, total };
+  }
+
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
    * including optional transaction metadata.
