@@ -4781,6 +4781,76 @@ describe('postgres datastore', () => {
       amount: 1111n,
     };
 
+    const ftBEvent1: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx1.tx_id,
+      tx_index: tx1.tx_index,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 8000n,
+      asset_identifier: 'my-ft-b',
+    };
+
+    const ftAEvent1: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx1.tx_id,
+      tx_index: tx1.tx_index,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 8000n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent2: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 1000n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent3: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Burn,
+      sender: 'addr1',
+      recipient: undefined,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 600n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent4: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'other-addr',
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 500n,
+      asset_identifier: 'my-ft-a',
+    };
+
     // Start canonical chain
     await db.update({
       block: block1,
@@ -4791,7 +4861,7 @@ describe('postgres datastore', () => {
           tx: tx1,
           stxLockEvents: [],
           stxEvents: [stxEvent1],
-          ftEvents: [],
+          ftEvents: [ftAEvent1, ftBEvent1],
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
@@ -4813,7 +4883,7 @@ describe('postgres datastore', () => {
           tx: tx2,
           stxLockEvents: [],
           stxEvents: [stxEvent2, stxEvent3, stxEvent4],
-          ftEvents: [],
+          ftEvents: [ftAEvent2, ftAEvent3, ftAEvent4],
           nftEvents: [],
           contractLogEvents: [],
           smartContracts: [],
@@ -4859,6 +4929,16 @@ describe('postgres datastore', () => {
         tx2.fee_rate -
         tx3.fee_rate
       ).toString()
+    );
+
+    const holdersFtABlock2 = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
+    expect(holdersFtABlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+      (ftAEvent1.amount + ftAEvent2.amount - ftAEvent3.amount + ftAEvent4.amount).toString()
+    );
+
+    const holdersFtBBlock2 = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
+    expect(holdersFtBBlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftBEvent1.amount.toString()
     );
 
     await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
@@ -4931,6 +5011,18 @@ describe('postgres datastore', () => {
       });
       expect(holder.balance).toBe(holderBalance.balance.toString());
     }
+
+    // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
+    const holdersFtTokenA = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
+    expect(holdersFtTokenA.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftAEvent1.amount.toString()
+    );
+
+    // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
+    const holdersFtTokenB = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
+    expect(holdersFtTokenB.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftBEvent1.amount.toString()
+    );
   });
 
   test('pg get raw tx', async () => {

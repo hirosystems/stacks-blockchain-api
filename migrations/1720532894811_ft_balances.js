@@ -90,6 +90,33 @@ exports.up = pgm => {
     LEFT JOIN rewards r ON aa.address = r.address
   `);
 
+  // Populate the table with the current FT balances
+  pgm.sql(`
+    WITH all_balances AS (
+        SELECT sender AS address, asset_identifier, -SUM(amount) AS balance_change
+        FROM ft_events
+        WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+          AND canonical = true 
+          AND microblock_canonical = true
+        GROUP BY sender, asset_identifier
+      UNION ALL
+        SELECT recipient AS address, asset_identifier, SUM(amount) AS balance_change
+        FROM ft_events
+        WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+          AND canonical = true 
+          AND microblock_canonical = true
+        GROUP BY recipient, asset_identifier
+    ),
+    net_balances AS (
+      SELECT address, asset_identifier, SUM(balance_change) AS balance
+      FROM all_balances
+      GROUP BY address, asset_identifier
+    )
+    INSERT INTO ft_balances (address, balance, token)
+    SELECT address, balance, asset_identifier AS token
+    FROM net_balances
+  `);
+
 };
 
 /** @param { import("node-pg-migrate").MigrationBuilder } pgm */
