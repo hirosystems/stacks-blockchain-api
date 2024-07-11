@@ -3,6 +3,7 @@
   "title": "FungibleTokenHolderList",
   "type": "object",
   "required": [
+    "total_supply",
     "results",
     "limit",
     "offset",
@@ -22,6 +23,10 @@
     "total": {
       "type": "integer",
       "description": "The number of holders available"
+    },
+    "total_supply": {
+      "type": "string",
+      "description": "The total supply of the token (the sum of all balances)"
     },
     "results": {
       "type": "array",

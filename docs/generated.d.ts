@@ -3455,6 +3455,10 @@ export interface FungibleTokenHolderList {
    * The number of holders available
    */
   total: number;
+  /**
+   * The total supply of the token (the sum of all balances)
+   */
+  total_supply: string;
   results: FtHolderEntry[];
 }
 export interface FtHolderEntry {

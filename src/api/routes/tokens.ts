@@ -236,11 +236,12 @@ export function createTokenRouter(db: PgStore): express.Router {
       const token = req.params.token;
       const limit = getPagingQueryLimit(ResourceType.TokenHolders, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results, total } = await db.getTokenHolders({ token, limit, offset });
+      const { results, total, totalSupply } = await db.getTokenHolders({ token, limit, offset });
       const response: FungibleTokenHolderList = {
         limit: limit,
         offset: offset,
         total: total,
+        total_supply: totalSupply,
         results: results,
       };
       setETagCacheHeaders(res);
