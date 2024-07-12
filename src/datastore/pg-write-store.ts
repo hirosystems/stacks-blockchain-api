@@ -2838,9 +2838,7 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
-      const minerRewardResults = await sql<
-        { updated_rewards_count: number; update_balances_count: number }[]
-      >`
+      const minerRewardResults = await sql<{ updated_rewards_count: number }[]>`
         WITH updated_rewards AS (
           UPDATE miner_rewards
           SET canonical = ${canonical}
@@ -2868,8 +2866,7 @@ export class PgWriteStore extends PgStore {
           RETURNING ft_balances.address
         )
         SELECT 
-          (SELECT COUNT(*)::int FROM updated_rewards) AS updated_rewards_count,
-          (SELECT COUNT(*)::int FROM update_balances) AS update_balances_count
+          (SELECT COUNT(*)::int FROM updated_rewards) AS updated_rewards_count
       `;
       const updateCount = minerRewardResults[0]?.updated_rewards_count ?? 0;
       if (canonical) {
@@ -2891,9 +2888,7 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
-      const stxResults = await sql<
-        { updated_events_count: number; update_balances_count: number }[]
-      >`
+      const stxResults = await sql<{ updated_events_count: number }[]>`
         WITH updated_events AS (
           UPDATE stx_events
           SET canonical = ${canonical}
@@ -2931,8 +2926,7 @@ export class PgWriteStore extends PgStore {
           RETURNING ft_balances.address
         )
         SELECT 
-          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count,
-          (SELECT COUNT(*)::int FROM update_balances) AS update_balances_count
+          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count
       `;
       const updateCount = stxResults[0]?.updated_events_count ?? 0;
       if (canonical) {
@@ -2942,7 +2936,7 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
-      const ftResult = await sql<{ updated_events_count: number; update_balances_count: number }[]>`
+      const ftResult = await sql<{ updated_events_count: number }[]>`
         WITH updated_events AS (
           UPDATE ft_events
           SET canonical = ${canonical}
@@ -2976,13 +2970,9 @@ export class PgWriteStore extends PgStore {
           RETURNING ft_balances.address
         )
         SELECT 
-          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count,
-          (SELECT COUNT(*)::int FROM update_balances) AS update_balances_count
+          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count
       `;
       const updateCount = ftResult[0]?.updated_events_count ?? 0;
-      if (updateCount > 0) {
-        console.log('wat');
-      }
       if (canonical) {
         updatedEntities.markedCanonical.ftEvents += updateCount;
       } else {
