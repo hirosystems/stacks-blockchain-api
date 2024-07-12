@@ -1023,7 +1023,7 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.update(block1);
 
-    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/holders/stx`);
+    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/stx/holders`);
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
 
@@ -1047,7 +1047,7 @@ describe('/extended/v1/tokens tests', () => {
       .build();
     await db.update(block1);
 
-    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/holders/${ftID}`);
+    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/${ftID}/holders`);
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
 

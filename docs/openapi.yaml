@@ -3678,7 +3678,7 @@ paths:
                   value:
                     $ref: ./api/tokens/get-non-fungible-token-mints-tx-metadata.example.schema.json
 
-  /extended/v1/tokens/ft/holders/{token}:
+  /extended/v1/tokens/ft/{token}/holders:
     get:
       operationId: get_ft_holders
       summary: Fungible token holders

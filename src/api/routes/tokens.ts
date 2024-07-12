@@ -230,7 +230,7 @@ export function createTokenRouter(db: PgStore): express.Router {
   );
 
   router.get(
-    '/ft/holders/:token',
+    '/ft/:token/holders',
     cacheHandler,
     asyncHandler(async (req, res) => {
       const token = req.params.token;
