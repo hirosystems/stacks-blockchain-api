@@ -4400,6 +4400,629 @@ describe('postgres datastore', () => {
 
     const sc1 = await db.getSmartContract(contract1.contract_id);
     expect(sc1.found && sc1.result?.canonical).toBe(true);
+
+    // Ensure STX holder balances have tracked correctly through the reorgs
+    const holders1 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
+    for (const holder of holders1.results) {
+      const holderBalance = await db.getStxBalance({
+        stxAddress: holder.address,
+        includeUnanchored: false,
+      });
+      expect(holder.balance).toBe(holderBalance.balance.toString());
+    }
+  });
+
+  test('pg balance reorg handling', async () => {
+    const block1: DbBlock = {
+      block_hash: '0x11',
+      index_block_hash: '0xaa',
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      parent_microblock_hash: '0x00',
+      block_height: 1,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const block2: DbBlock = {
+      block_hash: '0x22',
+      index_block_hash: '0xbb',
+      parent_index_block_hash: block1.index_block_hash,
+      parent_block_hash: block1.block_hash,
+      parent_microblock_hash: '0x00',
+      block_height: 2,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const block2b: DbBlock = {
+      block_hash: '0x22bb',
+      index_block_hash: '0xbbbb',
+      parent_index_block_hash: block1.index_block_hash,
+      parent_block_hash: block1.block_hash,
+      parent_microblock_hash: '0x00',
+      block_height: 2,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const block3: DbBlock = {
+      block_hash: '0x33',
+      index_block_hash: '0xcc',
+      parent_index_block_hash: block2.index_block_hash,
+      parent_block_hash: block2.block_hash,
+      parent_microblock_hash: '0x00',
+      block_height: 3,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const block3b: DbBlock = {
+      block_hash: '0x33bb',
+      index_block_hash: '0xccbb',
+      parent_index_block_hash: block2b.index_block_hash,
+      parent_block_hash: block2b.block_hash,
+      parent_microblock_hash: '0x00',
+      block_height: 3,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const block4b: DbBlock = {
+      block_hash: '0x44bb',
+      index_block_hash: '0xddbb',
+      parent_index_block_hash: block3b.index_block_hash,
+      parent_block_hash: block3b.block_hash,
+      parent_microblock_hash: '0x00',
+      block_height: 4,
+      block_time: 1234,
+      burn_block_time: 1234,
+      burn_block_hash: '0x1234',
+      burn_block_height: 123,
+      miner_txid: '0x4321',
+      canonical: true,
+      parent_microblock_sequence: 0,
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+      tx_count: 1,
+      signer_bitvec: null,
+    };
+
+    const minerReward1: DbMinerReward = {
+      ...block1,
+      mature_block_height: 3,
+      from_index_block_hash: '0x11',
+      recipient: 'addr1',
+      miner_address: 'addr1',
+      coinbase_amount: 2n,
+      tx_fees_anchored: 2n,
+      tx_fees_streamed_confirmed: 2n,
+      tx_fees_streamed_produced: 2n,
+    };
+
+    // test miner reward that gets orphaned
+    const minerReward2: DbMinerReward = {
+      ...block2,
+      mature_block_height: 4,
+      from_index_block_hash: '0x22',
+      recipient: 'addr1',
+      miner_address: 'addr1',
+      coinbase_amount: 3n,
+      tx_fees_anchored: 3n,
+      tx_fees_streamed_confirmed: 3n,
+      tx_fees_streamed_produced: 3n,
+    };
+
+    const tx1: DbTxRaw = {
+      tx_id: '0x01',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '0x',
+      index_block_hash: block1.index_block_hash,
+      block_hash: block1.block_hash,
+      block_height: block1.block_height,
+      block_time: block1.block_height,
+      burn_block_height: block1.burn_block_height,
+      burn_block_time: block1.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 10n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'addr1',
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      event_count: 0,
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const tx2: DbTxRaw = {
+      tx_id: '0x02',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '0x',
+      index_block_hash: block2.index_block_hash,
+      block_hash: block2.block_hash,
+      block_height: block2.block_height,
+      block_time: block2.burn_block_time,
+      burn_block_height: block2.burn_block_height,
+      burn_block_time: block2.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 10n,
+      sponsored: false,
+      sender_address: 'addr1',
+      sponsor_address: undefined,
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      event_count: 1,
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // test sponsored tx
+    const tx3: DbTxRaw = {
+      tx_id: '0x0201',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '0x',
+      index_block_hash: block2.index_block_hash,
+      block_hash: block2.block_hash,
+      block_height: block2.block_height,
+      block_time: block2.burn_block_time,
+      burn_block_height: block2.burn_block_height,
+      burn_block_time: block2.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 25n,
+      sponsored: true,
+      sender_address: 'other-addr',
+      sponsor_address: 'addr1',
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      event_count: 1,
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    const tx4: DbTxRaw = {
+      tx_id: '0x03',
+      tx_index: 0,
+      anchor_mode: 3,
+      nonce: 0,
+      raw_tx: '0x',
+      index_block_hash: block2b.index_block_hash,
+      block_hash: block2b.block_hash,
+      block_height: block2b.block_height,
+      block_time: block2b.burn_block_time,
+      burn_block_height: block2b.burn_block_height,
+      burn_block_time: block2b.burn_block_time,
+      parent_burn_block_time: 1626122935,
+      type_id: DbTxTypeId.Coinbase,
+      status: 1,
+      raw_result: '0x0100000000000000000000000000000001', // u1
+      canonical: true,
+      post_conditions: '0x',
+      fee_rate: 10n,
+      sponsored: false,
+      sponsor_address: undefined,
+      sender_address: 'addr1',
+      origin_hash_mode: 1,
+      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      event_count: 0,
+      parent_index_block_hash: '0x00',
+      parent_block_hash: '0x00',
+      microblock_canonical: true,
+      microblock_sequence: I32_MAX,
+      microblock_hash: '0x00',
+      execution_cost_read_count: 0,
+      execution_cost_read_length: 0,
+      execution_cost_runtime: 0,
+      execution_cost_write_count: 0,
+      execution_cost_write_length: 0,
+    };
+
+    // test stx mint
+    const stxEvent1: DbStxEvent = {
+      event_index: 1,
+      tx_id: tx1.tx_id,
+      tx_index: tx1.tx_index,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 1000n,
+    };
+
+    // test stx mint gets orphaned
+    const stxEvent2: DbStxEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 5555n,
+    };
+
+    // test stx transfer to addr
+    const stxEvent3: DbStxEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'other-addr',
+      recipient: 'addr1',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 4444n,
+    };
+
+    // test stx transfer from addr
+    const stxEvent4: DbStxEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'addr1',
+      recipient: 'other-addr',
+      event_type: DbEventTypeId.StxAsset,
+      amount: 1111n,
+    };
+
+    const ftBEvent1: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx1.tx_id,
+      tx_index: tx1.tx_index,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 8000n,
+      asset_identifier: 'my-ft-b',
+    };
+
+    const ftAEvent1: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx1.tx_id,
+      tx_index: tx1.tx_index,
+      block_height: block1.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 8000n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent2: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Mint,
+      sender: undefined,
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 1000n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent3: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Burn,
+      sender: 'addr1',
+      recipient: undefined,
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 600n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    const ftAEvent4: DbFtEvent = {
+      event_index: 1,
+      tx_id: tx2.tx_id,
+      tx_index: tx2.tx_index,
+      block_height: block2.block_height,
+      canonical: true,
+      asset_event_type_id: DbAssetEventTypeId.Transfer,
+      sender: 'other-addr',
+      recipient: 'addr1',
+      event_type: DbEventTypeId.FungibleTokenAsset,
+      amount: 500n,
+      asset_identifier: 'my-ft-a',
+    };
+
+    // Start canonical chain
+    await db.update({
+      block: block1,
+      microblocks: [],
+      minerRewards: [minerReward1],
+      txs: [
+        {
+          tx: tx1,
+          stxLockEvents: [],
+          stxEvents: [stxEvent1],
+          ftEvents: [ftAEvent1, ftBEvent1],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+      ],
+    });
+
+    await db.update({
+      block: block2,
+      microblocks: [],
+      minerRewards: [minerReward2],
+      txs: [
+        {
+          tx: tx2,
+          stxLockEvents: [],
+          stxEvents: [stxEvent2, stxEvent3, stxEvent4],
+          ftEvents: [ftAEvent2, ftAEvent3, ftAEvent4],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+        {
+          tx: tx3,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+      ],
+    });
+
+    const holdersBlock2 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
+    expect(holdersBlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+      (
+        minerReward1.coinbase_amount +
+        minerReward1.tx_fees_anchored +
+        minerReward1.tx_fees_streamed_confirmed +
+        minerReward1.tx_fees_streamed_produced +
+        minerReward2.coinbase_amount +
+        minerReward2.tx_fees_anchored +
+        minerReward2.tx_fees_streamed_confirmed +
+        minerReward2.tx_fees_streamed_produced +
+        stxEvent1.amount +
+        stxEvent2.amount +
+        stxEvent3.amount -
+        stxEvent4.amount -
+        tx1.fee_rate -
+        tx2.fee_rate -
+        tx3.fee_rate
+      ).toString()
+    );
+
+    const holdersFtABlock2 = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
+    expect(holdersFtABlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+      (ftAEvent1.amount + ftAEvent2.amount - ftAEvent3.amount + ftAEvent4.amount).toString()
+    );
+
+    const holdersFtBBlock2 = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
+    expect(holdersFtBBlock2.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftBEvent1.amount.toString()
+    );
+
+    await db.update({ block: block3, microblocks: [], minerRewards: [], txs: [] });
+
+    // Insert non-canonical block
+    await db.update({
+      block: block2b,
+      microblocks: [],
+      minerRewards: [],
+      txs: [
+        {
+          tx: tx4,
+          stxLockEvents: [],
+          stxEvents: [],
+          ftEvents: [],
+          nftEvents: [],
+          contractLogEvents: [],
+          smartContracts: [],
+          names: [],
+          namespaces: [],
+          pox2Events: [],
+          pox3Events: [],
+          pox4Events: [],
+        },
+      ],
+    });
+    await db.update({ block: block3b, microblocks: [], minerRewards: [], txs: [] });
+    await db.update({ block: block4b, microblocks: [], minerRewards: [], txs: [] });
+
+    const b1 = await db.getBlock({ hash: block1.block_hash });
+    const b2 = await db.getBlock({ hash: block2.block_hash });
+    const b2b = await db.getBlock({ hash: block2b.block_hash });
+    const b3 = await db.getBlock({ hash: block3.block_hash });
+    const b3b = await db.getBlock({ hash: block3b.block_hash });
+    const b4 = await db.getBlock({ hash: block4b.block_hash });
+    expect(b1.result?.canonical).toBe(true);
+    expect(b2.result?.canonical).toBe(false);
+    expect(b2b.result?.canonical).toBe(true);
+    expect(b3.result?.canonical).toBe(false);
+    expect(b3b.result?.canonical).toBe(true);
+    expect(b4.result?.canonical).toBe(true);
+
+    const t1 = await db.getTx({ txId: tx1.tx_id, includeUnanchored: false });
+    const t2 = await db.getTx({ txId: tx2.tx_id, includeUnanchored: false });
+    const t3 = await db.getTx({ txId: tx3.tx_id, includeUnanchored: false });
+    const t4 = await db.getTx({ txId: tx4.tx_id, includeUnanchored: false });
+    expect(t1.result?.canonical).toBe(true);
+    expect(t2.result?.canonical).toBe(false);
+    expect(t3.result?.canonical).toBe(false);
+    expect(t4.result?.canonical).toBe(true);
+
+    const holders1 = await db.getTokenHolders({ token: 'stx', limit: 100, offset: 0 });
+    expect(holders1.results.find(b => b.address === 'addr1')?.balance).toBe(
+      (
+        minerReward1.coinbase_amount +
+        minerReward1.tx_fees_anchored +
+        minerReward1.tx_fees_streamed_confirmed +
+        minerReward1.tx_fees_streamed_produced +
+        stxEvent1.amount -
+        tx1.fee_rate -
+        tx4.fee_rate
+      ).toString()
+    );
+
+    // Ensure STX holder balances have tracked correctly through the reorgs
+    for (const holder of holders1.results) {
+      const holderBalance = await db.getStxBalance({
+        stxAddress: holder.address,
+        includeUnanchored: false,
+      });
+      expect(holder.balance).toBe(holderBalance.balance.toString());
+    }
+
+    // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
+    const holdersFtTokenA = await db.getTokenHolders({ token: 'my-ft-a', limit: 100, offset: 0 });
+    expect(holdersFtTokenA.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftAEvent1.amount.toString()
+    );
+
+    // Ensure FT (token-a) holder balance have tracked correctly through the reorgs
+    const holdersFtTokenB = await db.getTokenHolders({ token: 'my-ft-b', limit: 100, offset: 0 });
+    expect(holdersFtTokenB.results.find(b => b.address === 'addr1')?.balance).toBe(
+      ftBEvent1.amount.toString()
+    );
   });
 
   test('pg get raw tx', async () => {

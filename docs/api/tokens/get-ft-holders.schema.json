@@ -1,0 +1,38 @@
+{
+  "description": "List of Fungible Token holders",
+  "title": "FungibleTokenHolderList",
+  "type": "object",
+  "required": [
+    "total_supply",
+    "results",
+    "limit",
+    "offset",
+    "total"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "maximum": 200,
+      "description": "The number of holders to return"
+    },
+    "offset": {
+      "type": "integer",
+      "description": "The number to holders to skip (starting at `0`)"
+    },
+    "total": {
+      "type": "integer",
+      "description": "The number of holders available"
+    },
+    "total_supply": {
+      "type": "string",
+      "description": "The total supply of the token (the sum of all balances)"
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "../../entities/tokens/ft-holder-entry.schema.json"
+      }
+    }
+  }
+}

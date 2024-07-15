@@ -1,0 +1,20 @@
+{
+  "limit": 100,
+  "offset": 0,
+  "total": 3,
+  "total_supply": "11700",
+  "results": [
+    {
+      "address": "SP3Y2ZSH8P7D50B0VBTSX11S7XSG24M1VB9YFQA2K",
+      "balance": "10000"
+    },
+    {
+      "address": "SP3WJYXJZ4QK2V5V9VX2VXVZ6VXVZ6V2V5V2V2V2V",
+      "balance": "900"
+    },
+    {
+      "address": "SP3WJYXJZ4QK2V5V9VX2VXVZ6VXVZ6V2V5V2V2V2V",
+      "balance": "800"
+    }
+  ]
+}

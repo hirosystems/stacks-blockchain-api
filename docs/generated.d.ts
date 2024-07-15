@@ -103,6 +103,7 @@ export type SchemaMergeRootStub =
   | PoxCycleSignerStackersListResponse
   | PoxCycleSignersListResponse
   | PoxCycleListResponse
+  | FungibleTokenHolderList
   | {
       [k: string]: unknown | undefined;
     }
@@ -193,6 +194,7 @@ export type SchemaMergeRootStub =
   | PoxCycle
   | PoxSigner
   | PoxStacker
+  | FtHolderEntry
   | NonFungibleTokenHistoryEventWithTxId
   | NonFungibleTokenHistoryEventWithTxMetadata
   | NonFungibleTokenHistoryEvent
@@ -3436,6 +3438,32 @@ export interface PoxCycle {
   total_weight: number;
   total_stacked_amount: string;
   total_signers: number;
+}
+/**
+ * List of Fungible Token holders
+ */
+export interface FungibleTokenHolderList {
+  /**
+   * The number of holders to return
+   */
+  limit: number;
+  /**
+   * The number to holders to skip (starting at `0`)
+   */
+  offset: number;
+  /**
+   * The number of holders available
+   */
+  total: number;
+  /**
+   * The total supply of the token (the sum of all balances)
+   */
+  total_supply: string;
+  results: FtHolderEntry[];
+}
+export interface FtHolderEntry {
+  address: string;
+  balance: string;
 }
 /**
  * List of Non-Fungible Token history events
