@@ -3288,6 +3288,39 @@ export class PgStore extends BasePgStore {
     return { found: true, result: queryResult };
   }
 
+  async getTokenHolders(args: { token: string; limit: number; offset: number }): Promise<{
+    results: { address: string; balance: string }[];
+    totalSupply: string;
+    total: number;
+  }> {
+    const holderResults = await this.sql<
+      { address: string; balance: string; count: number; total_supply: string }[]
+    >`
+      WITH totals AS (
+        SELECT 
+          SUM(balance) AS total,
+          COUNT(*)::int AS total_count
+        FROM ft_balances
+        WHERE token = ${args.token}
+      )
+      SELECT 
+        fb.address, 
+        fb.balance, 
+        ts.total AS total_supply,
+        ts.total_count AS count
+      FROM ft_balances fb
+      JOIN totals ts ON true
+      WHERE token = ${args.token}
+      ORDER BY balance DESC
+      LIMIT ${args.limit}
+      OFFSET ${args.offset}
+    `;
+    const results = holderResults.map(row => ({ address: row.address, balance: row.balance }));
+    const total = holderResults.length > 0 ? holderResults[0].count : 0;
+    const totalSupply = holderResults.length > 0 ? holderResults[0].total_supply : '0';
+    return { results, totalSupply, total };
+  }
+
   /**
    * Returns a list of NFTs owned by the given principal filtered by optional `asset_identifiers`,
    * including optional transaction metadata.

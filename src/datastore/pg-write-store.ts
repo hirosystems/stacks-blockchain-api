@@ -273,6 +273,10 @@ export class PgWriteStore extends PgStore {
       if ((await this.updateBlock(sql, data.block)) !== 0) {
         const q = new PgWriteQueue();
         q.enqueue(() => this.updateMinerRewards(sql, data.minerRewards));
+        if (isCanonical) {
+          q.enqueue(() => this.updateStxBalances(sql, batchedTxData, data.minerRewards));
+          q.enqueue(() => this.updateFtBalances(sql, batchedTxData));
+        }
         if (data.poxSetSigners && data.poxSetSigners.signers) {
           const poxSet = data.poxSetSigners;
           q.enqueue(() => this.updatePoxSetsBatch(sql, data.block, poxSet));
@@ -1012,6 +1016,110 @@ export class PgWriteStore extends PgStore {
         INSERT INTO stx_lock_events ${sql(batch)}
       `;
       assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
+    }
+  }
+
+  async updateStxBalances(
+    sql: PgSqlClient,
+    entries: { tx: DbTx; stxEvents: DbStxEvent[] }[],
+    minerRewards: DbMinerReward[]
+  ) {
+    const balanceMap = new Map<string, bigint>();
+
+    for (const { tx, stxEvents } of entries) {
+      if (tx.sponsored) {
+        // Decrease the tx sponsor balance by the fee
+        const balance = balanceMap.get(tx.sponsor_address as string) ?? BigInt(0);
+        balanceMap.set(tx.sponsor_address as string, balance - BigInt(tx.fee_rate));
+      } else {
+        // Decrease the tx sender balance by the fee
+        const balance = balanceMap.get(tx.sender_address) ?? BigInt(0);
+        balanceMap.set(tx.sender_address, balance - BigInt(tx.fee_rate));
+      }
+
+      for (const event of stxEvents) {
+        if (event.sender) {
+          // Decrease the tx sender balance by the transfer amount
+          const balance = balanceMap.get(event.sender) ?? BigInt(0);
+          balanceMap.set(event.sender, balance - BigInt(event.amount));
+        }
+        if (event.recipient) {
+          // Increase the tx recipient balance by the transfer amount
+          const balance = balanceMap.get(event.recipient) ?? BigInt(0);
+          balanceMap.set(event.recipient, balance + BigInt(event.amount));
+        }
+      }
+    }
+
+    for (const reward of minerRewards) {
+      const balance = balanceMap.get(reward.recipient) ?? BigInt(0);
+      const amount =
+        reward.coinbase_amount +
+        reward.tx_fees_anchored +
+        reward.tx_fees_streamed_confirmed +
+        reward.tx_fees_streamed_produced;
+      balanceMap.set(reward.recipient, balance + BigInt(amount));
+    }
+
+    const values = Array.from(balanceMap, ([address, balance]) => ({
+      address,
+      token: 'stx',
+      balance: balance.toString(),
+    }));
+
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO ft_balances ${sql(batch)}
+        ON CONFLICT (address, token)
+        DO UPDATE
+        SET balance = ft_balances.balance + EXCLUDED.balance
+      `;
+      assert(res.count === values.length, `Expecting ${values.length} inserts, got ${res.count}`);
+    }
+  }
+
+  async updateFtBalances(sql: PgSqlClient, entries: { ftEvents: DbFtEvent[] }[]) {
+    const balanceMap = new Map<string, { address: string; token: string; balance: bigint }>();
+
+    for (const { ftEvents } of entries) {
+      for (const event of ftEvents) {
+        if (event.sender) {
+          // Decrease the sender balance by the transfer amount
+          const key = `${event.sender}|${event.asset_identifier}`;
+          const balance = balanceMap.get(key)?.balance ?? BigInt(0);
+          balanceMap.set(key, {
+            address: event.sender,
+            token: event.asset_identifier,
+            balance: balance - BigInt(event.amount),
+          });
+        }
+        if (event.recipient) {
+          // Increase the recipient balance by the transfer amount
+          const key = `${event.recipient}|${event.asset_identifier}`;
+          const balance = balanceMap.get(key)?.balance ?? BigInt(0);
+          balanceMap.set(key, {
+            address: event.recipient,
+            token: event.asset_identifier,
+            balance: balance + BigInt(event.amount),
+          });
+        }
+      }
+    }
+
+    const values = Array.from(balanceMap, ([, entry]) => ({
+      address: entry.address,
+      token: entry.token,
+      balance: entry.balance.toString(),
+    }));
+
+    for (const batch of batchIterate(values, INSERT_BATCH_SIZE)) {
+      const res = await sql`
+        INSERT INTO ft_balances ${sql(batch)}
+        ON CONFLICT (address, token)
+        DO UPDATE
+        SET balance = ft_balances.balance + EXCLUDED.balance
+      `;
+      assert(res.count === values.length, `Expecting ${values.length} inserts, got ${res.count}`);
     }
   }
 
@@ -2669,11 +2777,48 @@ export class PgWriteStore extends PgStore {
 
     const q = new PgWriteQueue();
     q.enqueue(async () => {
-      const txResult = await sql<{ tx_id: string }[]>`
-        UPDATE txs
-        SET canonical = ${canonical}
-        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
-        RETURNING tx_id
+      const txResult = await sql<{ tx_id: string; update_balances_count: number }[]>`
+        WITH updated_txs AS (
+          UPDATE txs
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING tx_id, sender_address, sponsor_address, fee_rate, sponsored, canonical
+        ),
+        affected_addresses AS (
+            SELECT 
+              sender_address AS address,
+              fee_rate AS fee_change,
+              canonical,
+              sponsored
+            FROM updated_txs
+            WHERE sponsored = false
+          UNION ALL
+            SELECT 
+              sponsor_address AS address,
+              fee_rate AS fee_change,
+              canonical,
+              sponsored
+            FROM updated_txs
+            WHERE sponsored = true
+        ),
+        balances_update AS (
+          SELECT
+            a.address,
+            SUM(CASE WHEN a.canonical THEN -a.fee_change ELSE a.fee_change END) AS balance_change
+          FROM affected_addresses a
+          GROUP BY a.address
+        ),
+        update_ft_balances AS (
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT b.address, 'stx', b.balance_change
+          FROM balances_update b
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        )
+        SELECT tx_id, (SELECT COUNT(*)::int FROM update_ft_balances) AS update_balances_count
+        FROM updated_txs
       `;
       const txIds = txResult.map(row => row.tx_id);
       if (canonical) {
@@ -2683,24 +2828,51 @@ export class PgWriteStore extends PgStore {
         updatedEntities.markedNonCanonical.txs += txResult.count;
         result.txsMarkedNonCanonical = txIds;
       }
-      if (txResult.count)
+      if (txResult.count) {
         await sql`
           UPDATE principal_stx_txs
           SET canonical = ${canonical}
           WHERE tx_id IN ${sql(txIds)}
             AND index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
         `;
+      }
     });
     q.enqueue(async () => {
-      const minerRewardResults = await sql`
-        UPDATE miner_rewards
-        SET canonical = ${canonical}
-        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      const minerRewardResults = await sql<{ updated_rewards_count: number }[]>`
+        WITH updated_rewards AS (
+          UPDATE miner_rewards
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING recipient, coinbase_amount, tx_fees_anchored, tx_fees_streamed_confirmed, tx_fees_streamed_produced, canonical
+        ),
+        reward_changes AS (
+          SELECT 
+            recipient AS address,
+            SUM(CASE WHEN canonical THEN 
+                (coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced) 
+              ELSE 
+                -(coinbase_amount + tx_fees_anchored + tx_fees_streamed_confirmed + tx_fees_streamed_produced) 
+              END) AS balance_change
+          FROM updated_rewards
+          GROUP BY recipient
+        ),
+        update_balances AS (
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT rc.address, 'stx', rc.balance_change
+          FROM reward_changes rc
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        )
+        SELECT 
+          (SELECT COUNT(*)::int FROM updated_rewards) AS updated_rewards_count
       `;
+      const updateCount = minerRewardResults[0]?.updated_rewards_count ?? 0;
       if (canonical) {
-        updatedEntities.markedCanonical.minerRewards += minerRewardResults.count;
+        updatedEntities.markedCanonical.minerRewards += updateCount;
       } else {
-        updatedEntities.markedNonCanonical.minerRewards += minerRewardResults.count;
+        updatedEntities.markedNonCanonical.minerRewards += updateCount;
       }
     });
     q.enqueue(async () => {
@@ -2716,27 +2888,95 @@ export class PgWriteStore extends PgStore {
       }
     });
     q.enqueue(async () => {
-      const stxResults = await sql`
-        UPDATE stx_events
-        SET canonical = ${canonical}
-        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      const stxResults = await sql<{ updated_events_count: number }[]>`
+        WITH updated_events AS (
+          UPDATE stx_events
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING sender, recipient, amount, asset_event_type_id, canonical
+        ),
+        event_changes AS (
+          SELECT 
+            address,
+            SUM(balance_change) AS balance_change
+          FROM (
+              SELECT 
+                sender AS address,
+                SUM(CASE WHEN canonical THEN -amount ELSE amount END) AS balance_change
+              FROM updated_events
+              WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+              GROUP BY sender
+            UNION ALL
+              SELECT 
+                recipient AS address,
+                SUM(CASE WHEN canonical THEN amount ELSE -amount END) AS balance_change
+              FROM updated_events
+              WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+              GROUP BY recipient
+          ) AS subquery
+          GROUP BY address
+        ),
+        update_balances AS (
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT ec.address, 'stx', ec.balance_change
+          FROM event_changes ec
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        )
+        SELECT 
+          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count
       `;
+      const updateCount = stxResults[0]?.updated_events_count ?? 0;
       if (canonical) {
-        updatedEntities.markedCanonical.stxEvents += stxResults.count;
+        updatedEntities.markedCanonical.stxEvents += updateCount;
       } else {
-        updatedEntities.markedNonCanonical.stxEvents += stxResults.count;
+        updatedEntities.markedNonCanonical.stxEvents += updateCount;
       }
     });
     q.enqueue(async () => {
-      const ftResult = await sql`
-        UPDATE ft_events
-        SET canonical = ${canonical}
-        WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+      const ftResult = await sql<{ updated_events_count: number }[]>`
+        WITH updated_events AS (
+          UPDATE ft_events
+          SET canonical = ${canonical}
+          WHERE index_block_hash = ${indexBlockHash} AND canonical != ${canonical}
+          RETURNING sender, recipient, amount, asset_event_type_id, asset_identifier, canonical
+        ),
+        event_changes AS (
+          SELECT address, asset_identifier, SUM(balance_change) AS balance_change
+          FROM (
+              SELECT sender AS address, asset_identifier,
+                SUM(CASE WHEN canonical THEN -amount ELSE amount END) AS balance_change
+              FROM updated_events
+              WHERE asset_event_type_id IN (1, 3) -- Transfers and Burns affect the sender's balance
+              GROUP BY sender, asset_identifier
+            UNION ALL
+              SELECT recipient AS address, asset_identifier,
+                SUM(CASE WHEN canonical THEN amount ELSE -amount END) AS balance_change
+              FROM updated_events
+              WHERE asset_event_type_id IN (1, 2) -- Transfers and Mints affect the recipient's balance
+              GROUP BY recipient, asset_identifier
+          ) AS subquery
+          GROUP BY address, asset_identifier
+        ),
+        update_balances AS (
+          INSERT INTO ft_balances (address, token, balance)
+          SELECT ec.address, ec.asset_identifier, ec.balance_change
+          FROM event_changes ec
+          ON CONFLICT (address, token)
+          DO UPDATE
+          SET balance = ft_balances.balance + EXCLUDED.balance
+          RETURNING ft_balances.address
+        )
+        SELECT 
+          (SELECT COUNT(*)::int FROM updated_events) AS updated_events_count
       `;
+      const updateCount = ftResult[0]?.updated_events_count ?? 0;
       if (canonical) {
-        updatedEntities.markedCanonical.ftEvents += ftResult.count;
+        updatedEntities.markedCanonical.ftEvents += updateCount;
       } else {
-        updatedEntities.markedNonCanonical.ftEvents += ftResult.count;
+        updatedEntities.markedNonCanonical.ftEvents += updateCount;
       }
     });
     q.enqueue(async () => {
