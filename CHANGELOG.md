@@ -1,3 +1,10 @@
+## [7.13.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.12.0...v7.13.0-beta.1) (2024-07-15)
+
+
+### Features
+
+* ft holder indexing ([#2030](https://github.com/hirosystems/stacks-blockchain-api/issues/2030)) ([815c16f](https://github.com/hirosystems/stacks-blockchain-api/commit/815c16fcc6e87b63ff74fa034dc8cd6d725eb174))
+
 ## [7.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.1...v7.12.0) (2024-07-08)
 
 
