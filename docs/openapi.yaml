@@ -1938,9 +1938,11 @@ paths:
     get:
       summary: Get account transactions
       description: |
-          Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+        **NOTE:** This endpoint is deprecated in favor of [Get address transactions](/api/get-address-transactions).
 
-          If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
+        Retrieves a list of all Transactions for a given Address or Contract Identifier. More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).
+
+        If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.
       deprecated: true
       tags:
         - Accounts
@@ -2002,7 +2004,10 @@ paths:
   /extended/v1/address/{principal}/{tx_id}/with_transfers:
     get:
       summary: Get account transaction information for specific transaction
-      description: Retrieves transaction details for a given Transaction Id `tx_id`, for a given account or contract Identifier.
+      description: |
+        **NOTE:** This endpoint is deprecated in favor of [Get events for an address transaction](/api/get-address-transaction-events).
+
+        Retrieves transaction details for a given Transaction Id `tx_id`, for a given account or contract Identifier.
       deprecated: true
       tags:
         - Accounts
