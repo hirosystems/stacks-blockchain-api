@@ -1,3 +1,15 @@
+## [7.13.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.12.0...v7.13.0) (2024-07-18)
+
+
+### Features
+
+* ft holder indexing ([#2030](https://github.com/hirosystems/stacks-blockchain-api/issues/2030)) ([815c16f](https://github.com/hirosystems/stacks-blockchain-api/commit/815c16fcc6e87b63ff74fa034dc8cd6d725eb174))
+
+
+### Bug Fixes
+
+* `/v2/addresses/{addr}/transactions` incorrect when address only involved with token events ([#2033](https://github.com/hirosystems/stacks-blockchain-api/issues/2033)) ([1d9d0a6](https://github.com/hirosystems/stacks-blockchain-api/commit/1d9d0a681458addaaf556c988e1b11975b9d0371))
+
 ## [7.12.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.11.1...v7.12.0) (2024-07-08)
 
 
