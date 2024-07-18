@@ -417,7 +417,6 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: AddressParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbTxWithAddressTransfers>> {
     return await this.sqlTransaction(async sql => {
-      await assertAddressExists(sql, args.address);
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
 
@@ -461,7 +460,12 @@ export class PgStoreV2 extends BasePgStoreModule {
             SELECT COALESCE(SUM(amount), 0)
             FROM stx_events
             WHERE ${eventCond} AND sender = ${args.address}
-          ) + txs.fee_rate AS stx_sent,
+          ) +
+          CASE
+            WHEN (txs.sponsored = false AND txs.sender_address = ${args.address})
+              OR (txs.sponsored = true AND txs.sponsor_address = ${args.address})
+            THEN txs.fee_rate ELSE 0
+          END AS stx_sent,
           (
             SELECT COALESCE(SUM(amount), 0)
             FROM stx_events
@@ -526,7 +530,6 @@ export class PgStoreV2 extends BasePgStoreModule {
     args: AddressTransactionParams & TransactionPaginationQueryParams
   ): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
-      await assertAddressExists(sql, args.address);
       await assertTxIdExists(sql, args.tx_id);
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;

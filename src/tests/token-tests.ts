@@ -5,6 +5,7 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { DbAssetEventTypeId } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
+import { FungibleTokenHolderList } from '@stacks/stacks-blockchain-api-types';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
@@ -1010,5 +1011,48 @@ describe('/extended/v1/tokens tests', () => {
     expect(result11.total).toEqual(7);
     expect(result11.results[0].value.hex).toEqual('0x01000000000000000000000000000009cb');
     expect(result11.results[1].value.hex).toEqual('0x01000000000000000000000000000009ca');
+  });
+
+  test('/ft/holders - stx', async () => {
+    const addr1 = 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR';
+
+    // Transfer stx to addr
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({ tx_id: '0x5454' })
+      .addTxStxEvent({ recipient: addr1, amount: 1000n })
+      .build();
+    await db.update(block1);
+
+    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/stx/holders`);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+
+    const request1Body: FungibleTokenHolderList = request1.body;
+    const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
+    expect(balance1).toBe('1000');
+  });
+
+  test('/ft/holders - ft', async () => {
+    const addr1 = 'SP2C2YFP12AJZB4MABJBAJ55XECVS7E4PMMZ89YZR';
+    const ftID = 'SPA0SZQ6KCCYMJV5XVKSNM7Y1DGDXH39A11ZX2Y8.gamestop::GME';
+
+    // Transfer ft to addr
+    const block1 = new TestBlockBuilder({ block_height: 1, index_block_hash: '0x01' })
+      .addTx({ tx_id: '0x5454' })
+      .addTxFtEvent({
+        recipient: addr1,
+        amount: 1000n,
+        asset_identifier: ftID,
+      })
+      .build();
+    await db.update(block1);
+
+    const request1 = await supertest(api.server).get(`/extended/v1/tokens/ft/${ftID}/holders`);
+    expect(request1.status).toBe(200);
+    expect(request1.type).toBe('application/json');
+
+    const request1Body: FungibleTokenHolderList = request1.body;
+    const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
+    expect(balance1).toBe('1000');
   });
 });
