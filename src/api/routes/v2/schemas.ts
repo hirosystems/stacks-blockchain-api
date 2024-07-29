@@ -2,9 +2,25 @@ import { Type, Static, TSchema } from '@sinclair/typebox';
 import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
 import { Request, Response } from 'express';
-import * as Ajv from 'ajv';
+import Ajv, { ValidateFunction } from 'ajv';
+import addFormats from 'ajv-formats';
 
-const ajv = new Ajv({ coerceTypes: true });
+const ajv = addFormats(new Ajv({ coerceTypes: true }), [
+  'date-time',
+  'time',
+  'date',
+  'email',
+  'hostname',
+  'ipv4',
+  'ipv6',
+  'uri',
+  'uri-reference',
+  'uuid',
+  'uri-template',
+  'json-pointer',
+  'relative-json-pointer',
+  'regex',
+]);
 
 /**
  * Validate request query parameters with a TypeBox compiled schema
@@ -16,7 +32,7 @@ const ajv = new Ajv({ coerceTypes: true });
 export function validRequestQuery(
   req: Request,
   res: Response,
-  compiledType: Ajv.ValidateFunction
+  compiledType: ValidateFunction
 ): boolean {
   if (!compiledType(req.query)) {
     // TODO: Return a more user-friendly error
@@ -36,7 +52,7 @@ export function validRequestQuery(
 export function validRequestParams(
   req: Request,
   res: Response,
-  compiledType: Ajv.ValidateFunction
+  compiledType: ValidateFunction
 ): boolean {
   if (!compiledType(req.params)) {
     // TODO: Return a more user-friendly error
@@ -88,35 +104,37 @@ export const PoxSignerLimitParamSchema = Type.Integer({
   description: 'PoX signers per page',
 });
 
-const BurnBlockHashParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
+const BurnBlockHashParamSchema = Type.String({
+  pattern: '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Burn block hash',
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
 });
 export const CompiledBurnBlockHashParam = ajv.compile(BurnBlockHashParamSchema);
 
-const BurnBlockHeightParamSchema = Type.RegExp(/^[0-9]+$/, {
+const BurnBlockHeightParamSchema = Type.String({
+  pattern: '^[0-9]+$',
   title: 'Burn block height',
   description: 'Burn block height',
   examples: ['777678'],
 });
 
-const AddressParamSchema = Type.RegExp(/^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}/, {
+const AddressParamSchema = Type.String({
+  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'STX Address',
   description: 'STX Address',
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
 
-const SmartContractIdParamSchema = Type.RegExp(
-  /^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}\.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$/,
-  {
-    title: 'Smart Contract ID',
-    description: 'Smart Contract ID',
-    examples: ['SP000000000000000000002Q6VF78.pox-3'],
-  }
-);
+const SmartContractIdParamSchema = Type.String({
+  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
+  title: 'Smart Contract ID',
+  description: 'Smart Contract ID',
+  examples: ['SP000000000000000000002Q6VF78.pox-3'],
+});
 
-const TransactionIdParamSchema = Type.RegExp(/^(0x)?[a-fA-F0-9]{64}$/i, {
+const TransactionIdParamSchema = Type.String({
+  pattern: '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Transaction ID',
   description: 'Transaction ID',
   examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],
@@ -176,9 +194,7 @@ export type BlockParams = Static<typeof BlockParamsSchema>;
 export const CompiledBlockParams = ajv.compile(BlockParamsSchema);
 
 const PoxCycleParamsSchema = Type.Object(
-  {
-    cycle_number: Type.RegExp(/^[0-9]+$/),
-  },
+  { cycle_number: Type.String({ pattern: '^[0-9]+$' }) },
   { additionalProperties: false }
 );
 export type PoxCycleParams = Static<typeof PoxCycleParamsSchema>;
@@ -186,8 +202,10 @@ export const CompiledPoxCycleParams = ajv.compile(PoxCycleParamsSchema);
 
 const PoxCycleSignerParamsSchema = Type.Object(
   {
-    cycle_number: Type.RegExp(/^[0-9]+$/),
-    signer_key: Type.RegExp(/^(0x)?[a-fA-F0-9]{66}$/i),
+    cycle_number: Type.String({ pattern: '^[0-9]+$' }),
+    signer_key: Type.String({
+      pattern: '^(0x)?[a-fA-F0-9]{66}$',
+    }),
   },
   { additionalProperties: false }
 );

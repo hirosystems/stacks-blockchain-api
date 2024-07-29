@@ -1,5 +1,5 @@
 import * as path from 'path';
-import * as Ajv from 'ajv';
+import Ajv from 'ajv';
 import * as RefParser from '@apidevtools/json-schema-ref-parser';
 import { getOrAddAsync, REPO_DIR } from '../helpers';
 import { logger } from '../logger';
@@ -15,8 +15,8 @@ export async function validate(schemaFilePath: string, data: any) {
   if (process.env.NODE_ENV !== 'development') return;
   const resolvedFilePath = getDocSchemaFile(schemaFilePath);
   const schemaDef = await dereferenceSchema(resolvedFilePath);
-  const ajv = new Ajv({ schemaId: 'auto' });
-  const valid = await ajv.validate(schemaDef, data);
+  const ajv = new Ajv();
+  const valid = ajv.validate(schemaDef, data);
   if (!valid) {
     logger.warn(`Schema validation:\n\n ${JSON.stringify(ajv.errors, null, 2)}`);
   }

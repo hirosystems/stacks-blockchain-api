@@ -5,11 +5,11 @@ import {
   chainIdConfigurationCheck,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
-import { startApiServer } from './api/init';
+import { ApiServer, startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import { createServer as createPrometheusServer } from '@promster/server';
+import { getSummary } from '@promster/metrics';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import { Socket } from 'net';
 import * as getopts from 'getopts';
@@ -24,9 +24,11 @@ import {
   isProdEnv,
   numberToHex,
   parseBoolean,
+  PINO_LOGGER_CONFIG,
   registerShutdownConfig,
   timeout,
 } from '@hirosystems/api-toolkit';
+import Fastify from 'fastify';
 
 enum StacksApiMode {
   /**
@@ -161,16 +163,18 @@ async function init(): Promise<void> {
     });
   }
 
+  let apiServer: ApiServer;
   if (
     apiMode === StacksApiMode.default ||
     apiMode === StacksApiMode.readOnly ||
     apiMode === StacksApiMode.offline
   ) {
-    const apiServer = await startApiServer({
+    apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
       chainId: getApiConfiguredChainID(),
     });
+    apiServer.fastifyApp.metrics;
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
@@ -202,24 +206,31 @@ async function init(): Promise<void> {
   }
 
   if (isProdEnv) {
-    const prometheusServer = await createPrometheusServer({ port: 9153 });
-    logger.info(`@promster/server started on port 9153.`);
-    const sockets = new Set<Socket>();
-    prometheusServer.on('connection', socket => {
-      sockets.add(socket);
-      socket.once('close', () => sockets.delete(socket));
+    const promServer = Fastify({
+      trustProxy: true,
+      logger: PINO_LOGGER_CONFIG,
+    });
+    promServer.route({
+      url: '/metrics',
+      method: 'GET',
+      logLevel: 'info',
+      handler: async (_, reply) => {
+        let fastifyMetrics: string = '';
+        if (apiServer) {
+          fastifyMetrics = await apiServer.fastifyApp.metrics.client.register.metrics();
+        }
+        const metrics: string = await getSummary();
+        await reply.type('text/plain').send(metrics + '\n\n' + fastifyMetrics);
+      },
     });
     registerShutdownConfig({
-      name: 'Prometheus',
+      name: 'Prometheus Server',
+      forceKillable: false,
       handler: async () => {
-        for (const socket of sockets) {
-          socket.destroy();
-          sockets.delete(socket);
-        }
-        await Promise.resolve(prometheusServer.close());
+        await promServer.close();
       },
-      forceKillable: true,
     });
+    await promServer.listen({ host: '0.0.0.0', port: 9153 });
   }
 }
 

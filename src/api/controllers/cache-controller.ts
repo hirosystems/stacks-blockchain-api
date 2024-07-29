@@ -5,6 +5,7 @@ import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
 import { sha256 } from '@hirosystems/api-toolkit';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
 const CACHE_OK = Symbol('cache_ok');
 
@@ -247,7 +248,7 @@ export function getETagCacheHandler(
 async function calculateETag(
   db: PgStore,
   etagType: ETagType,
-  req: Request
+  req: Request | FastifyRequest
 ): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:
@@ -284,7 +285,7 @@ async function calculateETag(
 
     case ETagType.transaction:
       try {
-        const { tx_id } = req.params;
+        const tx_id = (req.params as { tx_id: string }).tx_id;
         const normalizedTxId = normalizeHashString(tx_id);
         if (normalizedTxId === false) {
           return ETAG_EMPTY;
@@ -305,4 +306,37 @@ async function calculateETag(
         return;
       }
   }
+}
+
+async function handleCache(type: ETagType, request: FastifyRequest, reply: FastifyReply) {
+  const metrics = getETagMetrics();
+  const ifNoneMatch = parseIfNoneMatchHeader(request.headers['if-none-match']);
+  const etag = await calculateETag(request.server.db, type, request);
+  switch (type) {
+    case ETagType.chainTip:
+      if (!ifNoneMatch) metrics.chainTipCacheNoHeader.inc();
+      else if (etag && typeof etag === 'string' && ifNoneMatch.includes(etag))
+        metrics.chainTipCacheHits.inc();
+      else metrics.chainTipCacheMisses.inc();
+      break;
+    case ETagType.mempool:
+      if (!ifNoneMatch) metrics.mempoolCacheNoHeader.inc();
+      else if (etag && typeof etag === 'string' && ifNoneMatch.includes(etag))
+        metrics.mempoolCacheHits.inc();
+      else metrics.mempoolCacheMisses.inc();
+      break;
+    case ETagType.transaction:
+      break;
+  }
+  if (etag) {
+    if (ifNoneMatch && typeof etag === 'string' && ifNoneMatch.includes(etag)) {
+      await reply.header('Cache-Control', CACHE_CONTROL_MUST_REVALIDATE).code(304).send();
+    } else if (typeof etag === 'string') {
+      void reply.headers({ 'Cache-Control': CACHE_CONTROL_MUST_REVALIDATE, ETag: `"${etag}"` });
+    }
+  }
+}
+
+export function handleChainTipCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.chainTip, request, reply);
 }

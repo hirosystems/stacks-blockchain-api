@@ -30,7 +30,7 @@ import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { createMicroblockRouter } from './routes/microblock';
-import { createStatusRouter } from './routes/status';
+import { StatusRoutes } from './routes/status';
 import { createTokenRouter } from './routes/tokens';
 import { createFeeRateRouter } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
@@ -43,6 +43,7 @@ import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
 import { createPoxEventsRouter } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
 import {
+  PINO_LOGGER_CONFIG,
   SERVER_VERSION,
   isPgConnectionError,
   isProdEnv,
@@ -57,8 +58,21 @@ import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
 import { createV2AddressesRouter } from './routes/v2/addresses';
 import { createPoxRouter } from './routes/v2/pox';
 
+import Fastify, { FastifyInstance } from 'fastify';
+import FastifyMetrics from 'fastify-metrics';
+import FastifyCors from '@fastify/cors';
+import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+
+declare module 'fastify' {
+  interface FastifyInstance {
+    db: PgStore;
+    writeDb?: PgWriteStore;
+  }
+}
+
 export interface ApiServer {
   expressApp: express.Express;
+  fastifyApp: FastifyInstance;
   server: Server;
   ws: WebSocketTransmitter;
   address: string;
@@ -191,7 +205,6 @@ export async function startApiServer(opts: {
         res.set('Cache-Control', 'no-store');
         next();
       });
-      router.use('/', createStatusRouter(datastore));
       router.use(
         '/v1',
         (() => {
@@ -383,7 +396,60 @@ export async function startApiServer(opts: {
     regexp: /^\/v2(.*)/,
   });
 
-  const server = createServer(app);
+  const fastify = Fastify({
+    trustProxy: true,
+    logger: PINO_LOGGER_CONFIG,
+  }).withTypeProvider<TypeBoxTypeProvider>();
+  fastify.decorate('db', opts.datastore);
+  fastify.decorate('writeDb', opts.writeDatastore);
+  await fastify.register(FastifyMetrics, { endpoint: null });
+  await fastify.register(FastifyCors, { exposedHeaders: ['X-API-Version'] });
+  fastify.addHook('preHandler', async (_, reply) => {
+    // Set API version in all responses.
+    void reply.header(
+      'X-API-Version',
+      `${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`
+    );
+    // Set caching on all routes to be disabled by default, individual routes can override.
+    void reply.header('Cache-Control', 'no-store');
+  });
+  fastify.get('/', async (_, reply) => {
+    await reply.code(301).redirect('/extended');
+  });
+  fastify.get('/extended/v1/status', async (_, reply) => {
+    await reply.code(301).redirect('/extended');
+  });
+  await fastify.register(StatusRoutes);
+
+  // This will be a messy list as routes are migrated to Fastify,
+  // However, it's the most straightforward way to split between Fastify and Express without
+  // introducing a bunch of problamatic middleware side-effects.
+  // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
+  const fastifyPaths = new RegExp(
+    [
+      '^/fastify',
+      '^/$',
+      '^/extended$',
+      '^/extended/v1/status',
+      // '^/extended/v1/TODO',
+      // '^/extended/v1/TODO',
+      // '^/extended/v1/TODO',
+      // '^/extended/v1/TODO',
+    ].join('|'),
+    'i'
+  );
+
+  const server = createServer(async (req, res) => {
+    const path = new URL(req.url as string, 'http://x').pathname;
+    if (fastifyPaths.test(path)) {
+      // handle with fastify
+      await fastify.ready();
+      fastify.server.emit('request', req, res);
+    } else {
+      // handle with express
+      app(req, res);
+    }
+  });
 
   const serverSockets = new Set<Socket>();
   server.on('connection', socket => {
@@ -452,6 +518,7 @@ export async function startApiServer(opts: {
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
   return {
     expressApp: app,
+    fastifyApp: fastify,
     server: server,
     ws: ws,
     address: addrStr,

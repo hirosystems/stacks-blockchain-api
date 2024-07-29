@@ -1,4 +1,4 @@
-import * as Ajv from 'ajv';
+import Ajv from 'ajv';
 import { isValidPrincipal } from '../helpers';
 import {
   RosettaConstants,
@@ -24,7 +24,7 @@ export interface ValidSchema {
 export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
   const resolvedFilePath = getDocSchemaFile(schemaFilePath);
   const schemaDef = await dereferenceSchema(resolvedFilePath);
-  const ajv = new Ajv({ schemaId: 'auto' });
+  const ajv = new Ajv();
   const valid = await ajv.validate(schemaDef, data);
   if (!valid) {
     logger.error(`Schema validation:\n\n ${JSON.stringify(ajv.errors, null, 2)}`);
