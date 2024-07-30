@@ -340,3 +340,11 @@ async function handleCache(type: ETagType, request: FastifyRequest, reply: Fasti
 export function handleChainTipCache(request: FastifyRequest, reply: FastifyReply) {
   return handleCache(ETagType.chainTip, request, reply);
 }
+
+export async function handleMempoolCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.mempool, request, reply);
+}
+
+export async function handleTransactionCache(request: FastifyRequest, reply: FastifyReply) {
+  return handleCache(ETagType.transaction, request, reply);
+}

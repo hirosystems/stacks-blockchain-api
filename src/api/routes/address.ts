@@ -230,7 +230,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
           blockHeight,
           atSingleBlock,
         });
-        const results = txResults.map(dbTx => parseDbTx(dbTx));
+        const results = txResults.map(dbTx =>
+          parseDbTx(dbTx)
+        ) as import('@stacks/stacks-blockchain-api-types').Transaction[];
         const response: TransactionResults = { limit, offset, total, results };
         return response;
       });
@@ -264,7 +266,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             throw new Error('unexpected tx not found -- fix tx enumeration query');
           }
           const result: AddressTransactionWithTransfers = {
-            tx: txQuery.result,
+            tx: txQuery.result as import('@stacks/stacks-blockchain-api-types').Transaction,
             stx_sent: results.stx_sent.toString(),
             stx_received: results.stx_received.toString(),
             stx_transfers: results.stx_transfers.map(transfer => ({
@@ -333,7 +335,7 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
             throw new Error('unexpected tx not found -- fix tx enumeration query');
           }
           const result: AddressTransactionWithTransfers = {
-            tx: txQuery.result,
+            tx: txQuery.result as import('@stacks/stacks-blockchain-api-types').Transaction,
             stx_sent: entry.stx_sent.toString(),
             stx_received: entry.stx_received.toString(),
             stx_transfers: entry.stx_transfers.map(transfer => ({
@@ -495,7 +497,9 @@ export function createAddressRouter(db: PgStore, chainId: ChainID): express.Rout
         address,
         includeUnanchored,
       });
-      const results = txResults.map(tx => parseDbMempoolTx(tx));
+      const results = txResults.map(tx =>
+        parseDbMempoolTx(tx)
+      ) as import('@stacks/stacks-blockchain-api-types').MempoolTransaction[];
       const response: MempoolTransactionListResponse = { limit, offset, total, results };
       if (!isProdEnv) {
         const schemaPath =

@@ -12,36 +12,11 @@ import {
 } from 'stacks-encoding-native-js';
 
 import {
-  AbstractMempoolTransaction,
-  AbstractTransaction,
-  BaseTransaction,
   Block,
-  CoinbaseTransactionMetadata,
-  ContractCallTransactionMetadata,
-  MempoolTransaction,
-  MempoolTransactionStatus,
   Microblock,
-  PoisonMicroblockTransactionMetadata,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
-  SmartContractTransactionMetadata,
-  TenureChangeTransactionMetadata,
-  TokenTransferTransactionMetadata,
-  Transaction,
-  TransactionAnchorModeType,
-  TransactionEvent,
-  TransactionEventFungibleAsset,
-  TransactionEventNonFungibleAsset,
-  TransactionEventSmartContractLog,
-  TransactionEventStxAsset,
-  TransactionEventStxLock,
-  TransactionFound,
-  TransactionList,
-  TransactionMetadata,
-  TransactionNotFound,
-  TransactionStatus,
-  TransactionType,
 } from '@stacks/stacks-blockchain-api-types';
 
 import {
@@ -67,6 +42,64 @@ import { getOperations, parseTransactionMemo } from '../../rosetta/rosetta-helpe
 import { PgStore } from '../../datastore/pg-store';
 import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
+
+import {
+  AbstractTransaction,
+  BaseTransaction,
+  CoinbaseTransactionMetadata,
+  ContractCallTransactionMetadata,
+  PoisonMicroblockTransactionMetadata,
+  SmartContractTransactionMetadata,
+  TenureChangeTransactionMetadata,
+  TokenTransferTransactionMetadata,
+  Transaction,
+  TransactionFound,
+  TransactionMetadata,
+  TransactionNotFound,
+  TransactionSearchResponse,
+} from '../schemas/entities/transactions';
+import {
+  AbstractMempoolTransaction,
+  MempoolTransaction,
+} from '../schemas/entities/mempool-transactions';
+import {
+  FungibleTokenAssetTransactionEvent,
+  NonFungibleTokenAssetTransactionEvent,
+  SmartContractLogTransactionEvent,
+  StxAssetTransactionEvent,
+  StxLockTransactionEvent,
+  TransactionEvent,
+} from '../schemas/entities/transaction-events';
+
+export const TransactionTypes = [
+  'contract_call',
+  'smart_contract',
+  'token_transfer',
+  'coinbase',
+  'poison_microblock',
+  'tenure_change',
+] as const;
+export type TransactionType = (typeof TransactionTypes)[number];
+
+export const TransactionAnchorModeTypes = ['on_chain_only', 'off_chain_only', 'any'] as const;
+export type TransactionAnchorModeType = (typeof TransactionAnchorModeTypes)[number];
+
+export const TransactionStatuses = [
+  'success',
+  'abort_by_response',
+  'abort_by_post_condition',
+] as const;
+export type TransactionStatus = (typeof TransactionStatuses)[number];
+
+export const MempoolTransactionStatuses = [
+  'pending',
+  'dropped_replace_by_fee',
+  'dropped_replace_across_fork',
+  'dropped_too_expensive',
+  'dropped_stale_garbage_collect',
+  'dropped_problematic',
+] as const;
+export type MempoolTransactionStatus = (typeof MempoolTransactionStatuses)[number];
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {
@@ -365,7 +398,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
   switch (dbEvent.event_type) {
     case DbEventTypeId.SmartContractLog: {
       const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
-      const event: TransactionEventSmartContractLog = {
+      const event: SmartContractLogTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'smart_contract_log',
         tx_id: dbEvent.tx_id,
@@ -381,7 +414,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.StxLock: {
-      const event: TransactionEventStxLock = {
+      const event: StxLockTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'stx_lock',
         tx_id: dbEvent.tx_id,
@@ -394,7 +427,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.StxAsset: {
-      const event: TransactionEventStxAsset = {
+      const event: StxAssetTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'stx_asset',
         tx_id: dbEvent.tx_id,
@@ -411,7 +444,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
       return event;
     }
     case DbEventTypeId.FungibleTokenAsset: {
-      const event: TransactionEventFungibleAsset = {
+      const event: FungibleTokenAssetTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'fungible_token_asset',
         tx_id: dbEvent.tx_id,
@@ -427,7 +460,7 @@ export function parseDbEvent(dbEvent: DbEvent): TransactionEvent {
     }
     case DbEventTypeId.NonFungibleTokenAsset: {
       const parsedClarityValue = decodeClarityValueToRepr(dbEvent.value);
-      const event: TransactionEventNonFungibleAsset = {
+      const event: NonFungibleTokenAssetTransactionEvent = {
         event_index: dbEvent.event_index,
         event_type: 'non_fungible_token_asset',
         tx_id: dbEvent.tx_id,
@@ -1249,7 +1282,7 @@ export async function getTxFromDataStore(
 export async function searchTxs(
   db: PgStore,
   args: GetTxsArgs | GetTxsWithEventsArgs
-): Promise<TransactionList> {
+): Promise<TransactionSearchResponse> {
   return await db.sqlTransaction(async sql => {
     const minedTxs = await getTxsFromDataStore(db, args);
 
@@ -1294,7 +1327,7 @@ export async function searchTxs(
 
     // generating response
     const resp = [...foundTransactions, ...notFoundTransactions].reduce(
-      (map: TransactionList, obj) => {
+      (map: TransactionSearchResponse, obj) => {
         if (obj.result) {
           map[obj.result.tx_id] = obj;
         }

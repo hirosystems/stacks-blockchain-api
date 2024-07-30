@@ -4,7 +4,7 @@ import * as express from 'express';
 import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 
-import { createTxRouter } from './routes/tx';
+import { TxRoutes } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { createInfoRouter } from './routes/info';
 import { createContractRouter } from './routes/contract';
@@ -209,7 +209,6 @@ export async function startApiServer(opts: {
         '/v1',
         (() => {
           const v1 = express.Router();
-          v1.use('/tx', createTxRouter(datastore));
           v1.use('/block', createBlockRouter(datastore));
           v1.use('/microblock', createMicroblockRouter(datastore));
           v1.use('/burnchain', createBurnchainRouter(datastore));
@@ -420,6 +419,7 @@ export async function startApiServer(opts: {
     await reply.code(301).redirect('/extended');
   });
   await fastify.register(StatusRoutes);
+  await fastify.register(TxRoutes, { prefix: '/extended/v1/tx' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -431,6 +431,7 @@ export async function startApiServer(opts: {
       '^/$',
       '^/extended$',
       '^/extended/v1/status',
+      '^/extended/v1/tx',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',

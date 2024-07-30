@@ -154,7 +154,10 @@ export class WebSocketTransmitter {
           includeUnanchored: true,
         });
         if (mempoolTxs.length > 0) {
-          await this.send('mempoolTransaction', mempoolTxs[0]);
+          await this.send(
+            'mempoolTransaction',
+            mempoolTxs[0] as import('@stacks/stacks-blockchain-api-types').MempoolTransaction
+          );
         }
       } catch (error) {
         logger.error(error);
@@ -183,7 +186,10 @@ export class WebSocketTransmitter {
           }
         });
         if (result) {
-          await this.send('transaction', result);
+          await this.send(
+            'transaction',
+            result as import('@stacks/stacks-blockchain-api-types').Transaction
+          );
         }
       } catch (error) {
         logger.error(error);
@@ -230,7 +236,7 @@ export class WebSocketTransmitter {
         for (const addressTx of addressTxs) {
           const parsedTx = parseDbTx(addressTx.tx);
           const result: AddressTransactionWithTransfers = {
-            tx: parsedTx,
+            tx: parsedTx as import('@stacks/stacks-blockchain-api-types').Transaction,
             stx_sent: addressTx.stx_sent.toString(),
             stx_received: addressTx.stx_received.toString(),
             stx_transfers: addressTx.stx_transfers.map(value => {

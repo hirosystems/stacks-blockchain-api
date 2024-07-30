@@ -65,7 +65,7 @@ export function createMicroblockRouter(db: PgStore): express.Router {
       const txs = await getUnanchoredTxsFromDataStore(db);
       const response: UnanchoredTransactionListResponse = {
         total: txs.length,
-        results: txs,
+        results: txs as import('@stacks/stacks-blockchain-api-types').Transaction[],
       };
       res.json(response);
     })

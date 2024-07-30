@@ -1301,8 +1301,8 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-    orderBy?: MempoolOrderByParam;
-    order?: OrderParam;
+    orderBy?: 'fee' | 'size' | 'age';
+    order?: 'asc' | 'desc';
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;

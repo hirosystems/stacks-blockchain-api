@@ -116,7 +116,9 @@ export function createSearchRouter(db: PgStore): express.Router {
             },
           };
           if (includeMetadata) {
-            txResult.result.metadata = parseDbTx(txData);
+            txResult.result.metadata = parseDbTx(
+              txData
+            ) as import('@stacks/stacks-blockchain-api-types').Transaction;
           }
           return txResult;
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
@@ -132,7 +134,9 @@ export function createSearchRouter(db: PgStore): express.Router {
             },
           };
           if (includeMetadata) {
-            txResult.result.metadata = parseDbMempoolTx(txData);
+            txResult.result.metadata = parseDbMempoolTx(
+              txData
+            ) as import('@stacks/stacks-blockchain-api-types').MempoolTransaction;
           }
           return txResult;
         } else {
@@ -185,7 +189,9 @@ export function createSearchRouter(db: PgStore): express.Router {
               },
             };
             if (includeMetadata) {
-              contractResult.result.metadata = parseDbTx(txData);
+              contractResult.result.metadata = parseDbTx(
+                txData
+              ) as import('@stacks/stacks-blockchain-api-types').Transaction;
             }
             return contractResult;
           } else {
@@ -203,7 +209,9 @@ export function createSearchRouter(db: PgStore): express.Router {
               },
             };
             if (includeMetadata) {
-              contractResult.result.metadata = parseDbMempoolTx(txData);
+              contractResult.result.metadata = parseDbMempoolTx(
+                txData
+              ) as import('@stacks/stacks-blockchain-api-types').MempoolTransaction;
             }
             return contractResult;
           }

@@ -78,7 +78,10 @@ export function createTokenRouter(db: PgStore): express.Router {
           block_height: result.nft_holding_info.block_height,
         };
         if (includeTxMetadata && result.tx) {
-          return { ...parsedNftData, tx: parseDbTx(result.tx) };
+          return {
+            ...parsedNftData,
+            tx: parseDbTx(result.tx) as import('@stacks/stacks-blockchain-api-types').Transaction,
+          };
         }
         return { ...parsedNftData, tx_id: result.nft_holding_info.tx_id };
       });
@@ -143,7 +146,12 @@ export function createTokenRouter(db: PgStore): express.Router {
               asset_event_type: getAssetEventTypeString(result.nft_event.asset_event_type_id),
             };
             if (includeTxMetadata && result.tx) {
-              return { ...parsedNftData, tx: parseDbTx(result.tx) };
+              return {
+                ...parsedNftData,
+                tx: parseDbTx(
+                  result.tx
+                ) as import('@stacks/stacks-blockchain-api-types').Transaction,
+              };
             }
             return { ...parsedNftData, tx_id: result.nft_event.tx_id };
           });
@@ -207,7 +215,12 @@ export function createTokenRouter(db: PgStore): express.Router {
               },
             };
             if (includeTxMetadata && result.tx) {
-              return { ...parsedNftData, tx: parseDbTx(result.tx) };
+              return {
+                ...parsedNftData,
+                tx: parseDbTx(
+                  result.tx
+                ) as import('@stacks/stacks-blockchain-api-types').Transaction,
+              };
             }
             return { ...parsedNftData, tx_id: result.nft_event.tx_id };
           });

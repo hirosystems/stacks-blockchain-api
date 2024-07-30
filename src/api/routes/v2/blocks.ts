@@ -98,7 +98,9 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
           limit,
           offset,
           total,
-          results: results.map(r => parseDbTx(r)),
+          results: results.map(
+            r => parseDbTx(r) as import('@stacks/stacks-blockchain-api-types').Transaction
+          ),
         };
         setETagCacheHeaders(res);
         res.json(response);

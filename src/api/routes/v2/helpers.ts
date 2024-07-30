@@ -95,7 +95,7 @@ export function parseDbTxWithAccountTransferSummary(
   tx: DbTxWithAddressTransfers
 ): AddressTransaction {
   return {
-    tx: parseDbTx(tx),
+    tx: parseDbTx(tx) as import('@stacks/stacks-blockchain-api-types').Transaction,
     stx_sent: tx.stx_sent.toString(),
     stx_received: tx.stx_received.toString(),
     events: {

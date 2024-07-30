@@ -1,7 +1,13 @@
-import { Static, TSchema, Type } from '@sinclair/typebox';
+import { Static, Type } from '@sinclair/typebox';
+import { OptionalNullable } from '../util';
+import { MempoolStatsSchema } from '../entities/mempool-transactions';
 
-const Nullable = <T extends TSchema>(schema: T) => Type.Union([schema, Type.Null()]);
-const OptionalNullable = <T extends TSchema>(schema: T) => Type.Optional(Nullable(schema));
+export const ErrorResponseSchema = Type.Object(
+  {
+    error: Type.String(),
+  },
+  { title: 'Error Response' }
+);
 
 export const ServerStatusResponseSchema = Type.Object(
   {
@@ -44,3 +50,35 @@ export const ServerStatusResponseSchema = Type.Object(
   { title: 'Api Status Response' }
 );
 export type ServerStatusResponse = Static<typeof ServerStatusResponseSchema>;
+
+export const MempoolStatsResponseSchema = Type.Object(
+  {
+    tx_type_counts: Type.Record(Type.String(), Type.Integer(), {
+      additionalProperties: false,
+      description: 'Number of tranasction in the mempool, broken down by transaction type.',
+    }),
+    tx_simple_fee_averages: Type.Record(Type.String(), MempoolStatsSchema, {
+      description:
+        'The simple mean (average) transaction fee, broken down by transaction type. Note that this does not factor in actual execution costs. The average fee is not a reliable metric for calculating a fee for a new transaction.',
+    }),
+    tx_ages: Type.Record(Type.String(), MempoolStatsSchema, {
+      description:
+        'The average time (in blocks) that transactions have lived in the mempool. The start block height is simply the current chain-tip of when the attached Stacks node receives the transaction. This timing can be different across Stacks nodes / API instances due to propagation timing differences in the p2p network.',
+    }),
+    tx_byte_sizes: Type.Record(Type.String(), MempoolStatsSchema, {
+      description:
+        'The average byte size of transactions in the mempool, broken down by transaction type.',
+    }),
+  },
+  {
+    title: 'MempoolTransactionStatsResponse',
+    description: 'GET request that returns stats on mempool transactions',
+  }
+);
+
+export const RawTransactionResponseSchema = Type.Object(
+  {
+    raw_tx: Type.String(),
+  },
+  { title: 'GetRawTransactionResult', description: 'GET raw transaction' }
+);
