@@ -1,33 +1,16 @@
-import { asyncHandler } from '../async-handler';
-import * as express from 'express';
-import {
-  FungibleTokenHolderList,
-  NonFungibleTokenHistoryEvent,
-  NonFungibleTokenHistoryEventList,
-  NonFungibleTokenHolding,
-  NonFungibleTokenHoldingsList,
-  NonFungibleTokenMint,
-  NonFungibleTokenMintList,
-} from '@stacks/stacks-blockchain-api-types';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { isValidPrincipal } from '../../helpers';
-import { booleanValueForParam, isUnanchoredRequest } from '../query-helpers';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { getAssetEventTypeString, parseDbTx } from '../controllers/db-controller';
-import {
-  getETagCacheHandler,
-  handleChainTipCache,
-  setETagCacheHeaders,
-} from '../controllers/cache-controller';
-import { PgStore } from '../../datastore/pg-store';
+import { handleChainTipCache } from '../controllers/cache-controller';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
 import { PaginatedResponse } from '../schemas/util';
-import { TransactionSchema } from '../schemas/entities/transactions';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
   NonFungibleTokenHistoryEventWithTxMetadataSchema,
@@ -36,7 +19,6 @@ import {
   NonFungibleTokenMintWithTxIdSchema,
   NonFungibleTokenMintWithTxMetadataSchema,
 } from '../schemas/entities/tokens';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 
 export const TokenRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -377,33 +359,71 @@ export const TokenRoutes: FastifyPluginAsync<
     }
   );
 
-  await Promise.resolve();
-};
-
-export function createTokenRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-  router.use(express.json());
-
-  router.get(
+  fastify.get(
     '/ft/:token/holders',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_ft_holders',
+        summary: 'Fungible token holders',
+        description:
+          'Retrieves the list of Fungible Token holders for a given token ID. Specify `stx` for the `token` parameter to get the list of STX holders.',
+        tags: ['Fungible Tokens'],
+        params: Type.Object({
+          token: Type.String({
+            description: 'fungible token identifier',
+            examples: ['stx', 'SP3Y2ZSH8P7D50B0VBTSX11S7XSG24M1VB9YFQA4K.token-aeusdc::aeUSDC'],
+          }),
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.TokenHolders, 'Limit', 'max number of holders to fetch'),
+          offset: OffsetParam('Offset', 'index of first holder to fetch'),
+        }),
+        response: {
+          200: Type.Composite([
+            Type.Object({
+              total_supply: Type.String({
+                description: 'The total supply of the token (the sum of all balances)',
+                examples: ['5817609278457'],
+              }),
+            }),
+            PaginatedResponse(
+              Type.Object(
+                {
+                  address: Type.String({
+                    description: 'Principal of the token holder',
+                    examples: ['SP3G2QZHYDZPJ2FBN2V2MB74T5ZQ6FQK2P5QJ2K6'],
+                  }),
+                  balance: Type.String({
+                    description: 'The balance of the token held by the address',
+                    examples: ['174823763'],
+                  }),
+                },
+                { title: 'FtHolderEntry' }
+              )
+            ),
+          ]),
+        },
+      },
+    },
+    async (req, reply) => {
       const token = req.params.token;
-      const limit = getPagingQueryLimit(ResourceType.TokenHolders, req.query.limit);
-      const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results, total, totalSupply } = await db.getTokenHolders({ token, limit, offset });
-      const response: FungibleTokenHolderList = {
+      const limit = req.query.limit;
+      const offset = req.query.offset ?? 0;
+      const { results, total, totalSupply } = await fastify.db.getTokenHolders({
+        token,
+        limit,
+        offset,
+      });
+      await reply.send({
         limit: limit,
         offset: offset,
         total: total,
         total_supply: totalSupply,
         results: results,
-      };
-      setETagCacheHeaders(res);
-      res.status(200).json(response);
-    })
+      });
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};
