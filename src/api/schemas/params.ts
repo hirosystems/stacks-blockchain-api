@@ -21,6 +21,7 @@ export const LimitParam = (resource: ResourceType, title?: string, description?:
 export const UnanchoredParamSchema = Type.Boolean({
   default: false,
   description: 'Include data from unanchored (i.e. unconfirmed) microblocks',
+  examples: [true],
 });
 
 export const TransactionIdParamSchema = Type.String({

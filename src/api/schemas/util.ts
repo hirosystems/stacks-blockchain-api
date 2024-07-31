@@ -1,8 +1,15 @@
-import { StringOptions, TEnumKey, TEnumValue, TSchema, Type } from '@sinclair/typebox';
+import {
+  ObjectOptions,
+  StringOptions,
+  TEnumKey,
+  TEnumValue,
+  TSchema,
+  Type,
+} from '@sinclair/typebox';
 
 export const Nullable = <T extends TSchema>(schema: T) => Type.Union([schema, Type.Null()]);
 export const OptionalNullable = <T extends TSchema>(schema: T) => Type.Optional(Nullable(schema));
-export const PaginatedResponse = <T extends TSchema>(type: T, title?: string) =>
+export const PaginatedResponse = <T extends TSchema>(type: T, options?: ObjectOptions) =>
   Type.Object(
     {
       limit: Type.Integer({ examples: [20] }),
@@ -10,7 +17,7 @@ export const PaginatedResponse = <T extends TSchema>(type: T, title?: string) =>
       total: Type.Integer({ examples: [1] }),
       results: Type.Array(type),
     },
-    { title }
+    options
   );
 
 // Comma-separated list of enum values, e.g. `age,size,fee`

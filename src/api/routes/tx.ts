@@ -134,7 +134,7 @@ export const TxRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema, 'List of transactions'),
+          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
         },
       },
     },
@@ -281,7 +281,9 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
         }),
         response: {
-          200: PaginatedResponse(MempoolTransactionSchema, 'List of mempool transactions'),
+          200: PaginatedResponse(MempoolTransactionSchema, {
+            description: 'List of mempool transactions',
+          }),
         },
       },
     },
@@ -357,7 +359,9 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
         }),
         response: {
-          200: PaginatedResponse(MempoolTransactionSchema, 'List of mempool transactions'),
+          200: PaginatedResponse(MempoolTransactionSchema, {
+            description: 'List of dropped mempool transactions',
+          }),
         },
       },
     },
@@ -610,7 +614,7 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema, 'List of transactions'),
+          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
           404: ErrorResponseSchema,
         },
       },
@@ -658,7 +662,7 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema, 'List of transactions'),
+          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
           404: ErrorResponseSchema,
         },
       },
