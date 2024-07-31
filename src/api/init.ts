@@ -13,7 +13,7 @@ import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
-import { createStxSupplyRouter } from './routes/stx-supply';
+import { StxSupplyRoutes } from './routes/stx-supply';
 import { createRosettaNetworkRouter } from './routes/rosetta/network';
 import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
@@ -216,7 +216,6 @@ export async function startApiServer(opts: {
           v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
           v1.use('/info', createInfoRouter(datastore));
-          v1.use('/stx_supply', createStxSupplyRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
           v1.use('/status', (req, res) =>
             res.redirect(`${req.baseUrl.replace(/v1\/status/, '')}${getReqQuery(req)}`)
@@ -420,6 +419,7 @@ export async function startApiServer(opts: {
   });
   await fastify.register(StatusRoutes);
   await fastify.register(TxRoutes, { prefix: '/extended/v1/tx' });
+  await fastify.register(StxSupplyRoutes, { prefix: '/extended/v1/stx_supply' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -432,6 +432,7 @@ export async function startApiServer(opts: {
       '^/extended$',
       '^/extended/v1/status',
       '^/extended/v1/tx',
+      '^/extended/v1/stx_supply',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',
