@@ -1,3 +1,10 @@
+## [7.13.1-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.0...v7.13.1-beta.1) (2024-07-31)
+
+
+### Bug Fixes
+
+* support parsing Clarity3 version contract deploy txs ([#2038](https://github.com/hirosystems/stacks-blockchain-api/issues/2038)) ([d3ba753](https://github.com/hirosystems/stacks-blockchain-api/commit/d3ba753f49f7cbf1157e925fafac53ac5f7a1a51))
+
 ## [7.13.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.12.0...v7.13.0) (2024-07-18)
 
 
