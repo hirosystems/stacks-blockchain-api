@@ -109,7 +109,10 @@ export function createPoxEventsRouter(
       const afterBlock = getBlockHeightQueryParam('after_block', false, req, res, next) || 0;
 
       const response = await db.sqlTransaction(async sql => {
-        const blockParams = getBlockParams(req, res, next);
+        const blockParams = getBlockParams(
+          req.query.height ? parseInt(req.query.height as string) : undefined,
+          req.query.unnachored ? req.query.unnachored === 'true' : undefined
+        );
         let blockHeight: number;
         if (blockParams.blockHeight !== undefined) {
           blockHeight = blockParams.blockHeight;

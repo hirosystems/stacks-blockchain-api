@@ -79,9 +79,8 @@ export function isUnanchoredRequest(
  * If an error is encountered while parsing the params then a 400 response with an error message is sent and the function throws.
  */
 export function getBlockParams(
-  req: Request,
-  res: Response,
-  next: NextFunction
+  height: number | undefined,
+  unanchored: boolean | undefined
 ):
   | {
       blockHeight: number;
@@ -92,33 +91,10 @@ export function getBlockParams(
       blockHeight?: number;
     }
   | never {
-  if ('height' in req.query || 'block_height' in req.query) {
-    const heightQueryValue = req.query['height'] ?? req.query['block_height'];
-    if (typeof heightQueryValue !== 'string') {
-      handleBadRequest(
-        res,
-        next,
-        `Unexpected type for 'height' parameter: ${JSON.stringify(heightQueryValue)}`
-      );
-    }
-    const heightFilter = parseInt(heightQueryValue, 10);
-    if (!Number.isInteger(heightFilter)) {
-      handleBadRequest(
-        res,
-        next,
-        `Query parameter 'height' is not a valid integer: ${req.query['height']}`
-      );
-    }
-    if (heightFilter < 1) {
-      handleBadRequest(
-        res,
-        next,
-        `Query parameter 'height' is not a positive integer: ${heightFilter}`
-      );
-    }
-    return { blockHeight: heightFilter };
+  if (height !== undefined) {
+    return { blockHeight: height };
   } else {
-    return { includeUnanchored: isUnanchoredRequest(req, res, next) };
+    return { includeUnanchored: unanchored ?? false };
   }
 }
 
@@ -217,19 +193,16 @@ export function getBlockHeightPathParam(
  * @returns `undefined` if param does not exist || block_height if number || block_hash if string || never if error
  */
 export function parseUntilBlockQuery(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): undefined | number | string | never {
-  const untilBlock = req.query.until_block;
+  untilBlock: string | undefined,
+  unanchored: boolean | undefined
+): undefined | number | string {
   if (!untilBlock) return;
   if (typeof untilBlock === 'string') {
-    //if mutually exclusive unachored is also specified, throw bad request error
-    if (isUnanchoredRequest(req, res, next)) {
-      handleBadRequest(
-        res,
-        next,
-        `can't handle both 'unanchored' and 'until_block' in the same request `
+    if (unanchored !== undefined) {
+      // if mutually exclusive unachored is also specified, throw bad request error
+      throw new InvalidRequestError(
+        `can't handle both 'unanchored' and 'until_block' in the same request`,
+        InvalidRequestErrorType.bad_request
       );
     }
     if (has0xPrefix(untilBlock)) {
@@ -239,16 +212,14 @@ export function parseUntilBlockQuery(
       //parse int to check if it is a block_height
       const block_height = Number.parseInt(untilBlock, 10);
       if (isNaN(block_height) || block_height < 1) {
-        handleBadRequest(
-          res,
-          next,
-          `Unexpected integer value for block height path parameter: ${block_height}`
+        throw new InvalidRequestError(
+          `Unexpected integer value for block height path parameter`,
+          InvalidRequestErrorType.bad_request
         );
       }
       return block_height;
     }
   }
-  handleBadRequest(res, next, 'until_block must be either `string` or `number`');
 }
 
 export function parseTraitAbi(req: Request, res: Response, next: NextFunction): ClarityAbi | never {

@@ -52,7 +52,7 @@ export const TokenRoutes: FastifyPluginAsync<
           ),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of tokens to fetch'),
           offset: OffsetParam('Offset', 'index of first tokens to fetch'),
-          unanchored: UnanchoredParamSchema,
+          unanchored: Type.Optional(UnanchoredParamSchema),
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -162,7 +162,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: UnanchoredParamSchema,
+          unanchored: Type.Optional(UnanchoredParamSchema),
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -273,7 +273,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: UnanchoredParamSchema,
+          unanchored: Type.Optional(UnanchoredParamSchema),
           tx_metadata: Type.Boolean({
             default: false,
             description:

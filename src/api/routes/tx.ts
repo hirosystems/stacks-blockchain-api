@@ -516,7 +516,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
+          unanchored: Type.Optional(UnanchoredParamSchema),
         }),
         response: {
           200: Type.Union([TransactionSchema, MempoolTransactionSchema]),
@@ -566,7 +566,6 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: RawTransactionResponseSchema,

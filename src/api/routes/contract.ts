@@ -5,7 +5,7 @@ import { handleChainTipCache } from '../controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
+import { LimitParam, OffsetParam } from '../schemas/params';
 import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { ClarityAbi } from '@stacks/transactions';
 import { SmartContractSchema } from '../schemas/entities/smart-contracts';
@@ -81,9 +81,6 @@ export const ContractRoutes: FastifyPluginAsync<
             examples: ['SP6P4EJF0VG8V0RB3TQQKJBHDQKEF6NVRD1KZE3C.satoshibles'],
           }),
         }),
-        querystring: Type.Object({
-          unanchored: UnanchoredParamSchema,
-        }),
         response: {
           200: SmartContractSchema,
         },
@@ -117,7 +114,6 @@ export const ContractRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Contract, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam(),
-          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Object(

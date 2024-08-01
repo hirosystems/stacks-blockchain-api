@@ -11,7 +11,7 @@ import { ContractRoutes } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { BlockRoutes } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
-import { createAddressRouter } from './routes/address';
+import { AddressRoutes } from './routes/address';
 import { createSearchRouter } from './routes/search';
 import { StxSupplyRoutes } from './routes/stx-supply';
 import { createRosettaNetworkRouter } from './routes/rosetta/network';
@@ -67,6 +67,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     db: PgStore;
     writeDb?: PgWriteStore;
+    chainId: ChainID;
   }
 }
 
@@ -209,7 +210,6 @@ export async function startApiServer(opts: {
         '/v1',
         (() => {
           const v1 = express.Router();
-          v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
 
@@ -390,6 +390,7 @@ export async function startApiServer(opts: {
   }).withTypeProvider<TypeBoxTypeProvider>();
   fastify.decorate('db', opts.datastore);
   fastify.decorate('writeDb', opts.writeDatastore);
+  fastify.decorate('chainId', opts.chainId);
   await fastify.register(FastifyMetrics, { endpoint: null });
   await fastify.register(FastifyCors, { exposedHeaders: ['X-API-Version'] });
   fastify.addHook('preHandler', async (_, reply) => {
@@ -417,6 +418,7 @@ export async function startApiServer(opts: {
   await fastify.register(MicroblockRoutes, { prefix: '/extended/v1/microblock' });
   await fastify.register(BlockRoutes, { prefix: '/extended/v1/block' });
   await fastify.register(BurnchainRoutes, { prefix: '/extended/v1/burnchain' });
+  await fastify.register(AddressRoutes, { prefix: '/extended/v1/address' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -437,6 +439,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/microblock',
       '^/extended/v1/block',
       '^/extended/v1/burnchain',
+      '^/extended/v1/address',
     ].join('|'),
     'i'
   );
