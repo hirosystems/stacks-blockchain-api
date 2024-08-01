@@ -40,7 +40,7 @@ import * as fs from 'fs';
 import { PgStore } from '../datastore/pg-store';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { WebSocketTransmitter } from './routes/ws/web-socket-transmitter';
-import { createPoxEventsRouter } from './routes/pox';
+import { PoxEventRoutes, PoxRoutes } from './routes/pox';
 import { logger, loggerMiddleware } from '../logger';
 import {
   PINO_LOGGER_CONFIG,
@@ -211,22 +211,6 @@ export async function startApiServer(opts: {
         (() => {
           const v1 = express.Router();
           v1.use('/debug', createDebugRouter(datastore));
-
-          // These could be defined in one route but a url reporting library breaks with regex in middleware paths
-          v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
-          v1.use('/pox3', createPoxEventsRouter(datastore, 'pox3'));
-          v1.use('/pox4', createPoxEventsRouter(datastore, 'pox4'));
-          const legacyPoxPathRouter: express.RequestHandler = (req, res) => {
-            // Redirect old pox routes paths to new one above
-            const newPath = req.path === '/' ? '/events' : req.path;
-            const baseUrl = req.baseUrl.replace(/(pox[\d])_events/, '$1');
-            const redirectPath = `${baseUrl}${newPath}${getReqQuery(req)}`;
-            return res.redirect(redirectPath);
-          };
-          v1.use('/pox2_events', legacyPoxPathRouter);
-          v1.use('/pox3_events', legacyPoxPathRouter);
-          v1.use('/pox4_events', legacyPoxPathRouter);
-
           if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
             v1.use('/faucets', createFaucetRouter(writeDatastore));
           }
@@ -413,6 +397,8 @@ export async function startApiServer(opts: {
   await fastify.register(BurnchainRoutes, { prefix: '/extended/v1/burnchain' });
   await fastify.register(AddressRoutes, { prefix: '/extended/v1/address' });
   await fastify.register(SearchRoutes, { prefix: '/extended/v1/search' });
+  await fastify.register(PoxRoutes, { prefix: '/extended/v1/:pox(pox\\d)' });
+  await fastify.register(PoxEventRoutes, { prefix: '/extended/v1/:(pox\\d_events)' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -434,6 +420,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/burnchain',
       '^/extended/v1/address',
       '^/extended/v1/search',
+      '^/extended/v1/pox',
     ].join('|'),
     'i'
   );
