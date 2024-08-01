@@ -32,7 +32,7 @@ import { createMiddleware as createPrometheusMiddleware } from '@promster/expres
 import { createMicroblockRouter } from './routes/microblock';
 import { StatusRoutes } from './routes/status';
 import { TokenRoutes } from './routes/tokens';
-import { createFeeRateRouter } from './routes/fee-rate';
+import { FeeRateRoutes } from './routes/fee-rate';
 import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
@@ -218,7 +218,6 @@ export async function startApiServer(opts: {
           v1.use('/status', (req, res) =>
             res.redirect(`${req.baseUrl.replace(/v1\/status/, '')}${getReqQuery(req)}`)
           );
-          v1.use('/fee_rate', createFeeRateRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
           v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
@@ -420,6 +419,7 @@ export async function startApiServer(opts: {
   await fastify.register(InfoRoutes, { prefix: '/extended/v1/info' });
   await fastify.register(TokenRoutes, { prefix: '/extended/v1/tokens' });
   await fastify.register(ContractRoutes, { prefix: '/extended/v1/contract' });
+  await fastify.register(FeeRateRoutes, { prefix: '/extended/v1/fee_rate' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -436,10 +436,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/info',
       '^/extended/v1/tokens',
       '^/extended/v1/contract',
-      // '^/extended/v1/TODO',
-      // '^/extended/v1/TODO',
-      // '^/extended/v1/TODO',
-      // '^/extended/v1/TODO',
+      '^/extended/v1/fee_rate',
     ].join('|'),
     'i'
   );
