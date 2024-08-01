@@ -12,7 +12,7 @@ import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { BlockRoutes } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { AddressRoutes } from './routes/address';
-import { createSearchRouter } from './routes/search';
+import { SearchRoutes } from './routes/search';
 import { StxSupplyRoutes } from './routes/stx-supply';
 import { createRosettaNetworkRouter } from './routes/rosetta/network';
 import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
@@ -210,7 +210,6 @@ export async function startApiServer(opts: {
         '/v1',
         (() => {
           const v1 = express.Router();
-          v1.use('/search', createSearchRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
@@ -402,12 +401,6 @@ export async function startApiServer(opts: {
     // Set caching on all routes to be disabled by default, individual routes can override.
     void reply.header('Cache-Control', 'no-store');
   });
-  fastify.get('/', async (_, reply) => {
-    await reply.code(301).redirect('/extended');
-  });
-  fastify.get('/extended/v1/status', async (_, reply) => {
-    await reply.code(301).redirect('/extended');
-  });
   await fastify.register(StatusRoutes);
   await fastify.register(TxRoutes, { prefix: '/extended/v1/tx' });
   await fastify.register(StxSupplyRoutes, { prefix: '/extended/v1/stx_supply' });
@@ -419,6 +412,7 @@ export async function startApiServer(opts: {
   await fastify.register(BlockRoutes, { prefix: '/extended/v1/block' });
   await fastify.register(BurnchainRoutes, { prefix: '/extended/v1/burnchain' });
   await fastify.register(AddressRoutes, { prefix: '/extended/v1/address' });
+  await fastify.register(SearchRoutes, { prefix: '/extended/v1/search' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -426,7 +420,6 @@ export async function startApiServer(opts: {
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
   const fastifyPaths = new RegExp(
     [
-      '^/fastify',
       '^/$',
       '^/extended$',
       '^/extended/v1/status',
@@ -440,6 +433,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/block',
       '^/extended/v1/burnchain',
       '^/extended/v1/address',
+      '^/extended/v1/search',
     ].join('|'),
     'i'
   );

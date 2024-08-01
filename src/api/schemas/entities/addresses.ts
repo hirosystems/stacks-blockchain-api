@@ -302,3 +302,17 @@ export const InboundStxTransferSchema = Type.Object(
   { title: 'InboundStxTransfer' }
 );
 export type InboundStxTransfer = Static<typeof InboundStxTransferSchema>;
+
+export const AddressStxBalanceSchema = Type.Intersect(
+  [
+    StxBalanceSchema,
+    Type.Object({
+      token_offering_locked: Type.Optional(AddressTokenOfferingLockedSchema),
+    }),
+  ],
+  {
+    title: 'AddressStxBalance',
+    description: 'GET request that returns address balances',
+  }
+);
+export type AddressStxBalance = Static<typeof AddressStxBalanceSchema>;

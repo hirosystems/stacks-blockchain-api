@@ -58,5 +58,12 @@ export const StatusRoutes: FastifyPluginAsync<
     await reply.send(await getStatus());
   });
 
+  fastify.get('/', async (_, reply) => {
+    await reply.code(301).redirect('/extended');
+  });
+  fastify.get('/extended/v1/status', async (_, reply) => {
+    await reply.code(301).redirect('/extended');
+  });
+
   await Promise.resolve();
 };

@@ -14,20 +14,19 @@ import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { handleChainTipCache, handleMempoolCache } from '../controllers/cache-controller';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
-import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
-import { StxBalance, StxBalanceSchema } from '../schemas/entities/balances';
 import {
   AddressBalance,
   AddressBalanceSchema,
   AddressNonces,
   AddressNoncesSchema,
-  AddressTokenOfferingLocked,
-  AddressTokenOfferingLockedSchema,
+  AddressStxBalance,
+  AddressStxBalanceSchema,
   AddressTransactionWithTransfers,
   AddressTransactionWithTransfersSchema,
   InboundStxTransfer,
@@ -102,18 +101,7 @@ export const AddressRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: Type.Intersect(
-            [
-              StxBalanceSchema,
-              Type.Object({
-                token_offering_locked: Type.Optional(AddressTokenOfferingLockedSchema),
-              }),
-            ],
-            {
-              title: 'AddressStxBalanceResponse',
-              description: 'GET request that returns address balances',
-            }
-          ),
+          200: AddressStxBalanceSchema,
         },
       },
     },
@@ -130,7 +118,7 @@ export const AddressRoutes: FastifyPluginAsync<
           stxAddress,
           blockHeight
         );
-        const result: StxBalance & { token_offering_locked?: AddressTokenOfferingLocked } = {
+        const result: AddressStxBalance = {
           balance: stxBalanceResult.balance.toString(),
           total_sent: stxBalanceResult.totalSent.toString(),
           total_received: stxBalanceResult.totalReceived.toString(),
