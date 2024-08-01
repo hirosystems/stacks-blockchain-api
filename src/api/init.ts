@@ -21,7 +21,7 @@ import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
 import { InvalidRequestError } from '../errors';
-import { createBurnchainRouter } from './routes/burnchain';
+import { BurnchainRoutes } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { createBnsNamesRouter } from './routes/bns/names';
@@ -209,7 +209,6 @@ export async function startApiServer(opts: {
         '/v1',
         (() => {
           const v1 = express.Router();
-          v1.use('/burnchain', createBurnchainRouter(datastore));
           v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
@@ -417,6 +416,7 @@ export async function startApiServer(opts: {
   await fastify.register(FeeRateRoutes, { prefix: '/extended/v1/fee_rate' });
   await fastify.register(MicroblockRoutes, { prefix: '/extended/v1/microblock' });
   await fastify.register(BlockRoutes, { prefix: '/extended/v1/block' });
+  await fastify.register(BurnchainRoutes, { prefix: '/extended/v1/burnchain' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -436,6 +436,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/fee_rate',
       '^/extended/v1/microblock',
       '^/extended/v1/block',
+      '^/extended/v1/burnchain',
     ].join('|'),
     'i'
   );
