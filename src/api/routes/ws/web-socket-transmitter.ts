@@ -154,10 +154,7 @@ export class WebSocketTransmitter {
           includeUnanchored: true,
         });
         if (mempoolTxs.length > 0) {
-          await this.send(
-            'mempoolTransaction',
-            mempoolTxs[0] as import('@stacks/stacks-blockchain-api-types').MempoolTransaction
-          );
+          await this.send('mempoolTransaction', mempoolTxs[0]);
         }
       } catch (error) {
         logger.error(error);
@@ -186,10 +183,7 @@ export class WebSocketTransmitter {
           }
         });
         if (result) {
-          await this.send(
-            'transaction',
-            result as import('@stacks/stacks-blockchain-api-types').Transaction
-          );
+          await this.send('transaction', result);
         }
       } catch (error) {
         logger.error(error);

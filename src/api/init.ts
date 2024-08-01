@@ -9,7 +9,7 @@ import { createDebugRouter } from './routes/debug';
 import { InfoRoutes } from './routes/info';
 import { ContractRoutes } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
-import { createBlockRouter } from './routes/block';
+import { BlockRoutes } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
 import { createAddressRouter } from './routes/address';
 import { createSearchRouter } from './routes/search';
@@ -209,7 +209,6 @@ export async function startApiServer(opts: {
         '/v1',
         (() => {
           const v1 = express.Router();
-          v1.use('/block', createBlockRouter(datastore));
           v1.use('/burnchain', createBurnchainRouter(datastore));
           v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
@@ -417,6 +416,7 @@ export async function startApiServer(opts: {
   await fastify.register(ContractRoutes, { prefix: '/extended/v1/contract' });
   await fastify.register(FeeRateRoutes, { prefix: '/extended/v1/fee_rate' });
   await fastify.register(MicroblockRoutes, { prefix: '/extended/v1/microblock' });
+  await fastify.register(BlockRoutes, { prefix: '/extended/v1/block' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -435,6 +435,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/contract',
       '^/extended/v1/fee_rate',
       '^/extended/v1/microblock',
+      '^/extended/v1/block',
     ].join('|'),
     'i'
   );

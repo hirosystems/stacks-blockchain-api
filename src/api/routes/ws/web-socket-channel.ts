@@ -2,13 +2,13 @@ import * as http from 'http';
 import {
   AddressStxBalanceResponse,
   AddressTransactionWithTransfers,
-  Block,
-  MempoolTransaction,
-  Microblock,
   NftEvent,
-  Transaction,
 } from 'docs/generated';
 import { WebSocketPrometheus } from './web-socket-prometheus';
+import { Block } from '../../schemas/entities/block';
+import { Microblock } from '../../schemas/entities/microblock';
+import { MempoolTransaction } from '../../schemas/entities/mempool-transactions';
+import { Transaction } from '../../schemas/entities/transactions';
 
 /**
  * Topics that external API users may subscribe to when looking for real time updates.

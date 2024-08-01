@@ -25,10 +25,6 @@ import {
   RpcBlockSubscriptionParams,
   RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
-  Block,
-  Microblock,
-  MempoolTransaction,
-  Transaction,
   AddressTransactionWithTransfers,
   AddressStxBalanceResponse,
   RpcNftEventSubscriptionParams,
@@ -39,6 +35,11 @@ import {
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
 import { logger } from '../../../../logger';
 import { isProdEnv, resolveOrTimeout } from '@hirosystems/api-toolkit';
+
+import { Transaction } from '../../../schemas/entities/transactions';
+import { MempoolTransaction } from '../../..//schemas/entities/mempool-transactions';
+import { Block } from '../../..//schemas/entities/block';
+import { Microblock } from '../../..//schemas/entities/microblock';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

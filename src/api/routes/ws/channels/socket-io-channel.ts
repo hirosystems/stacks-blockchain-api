@@ -187,20 +187,29 @@ export class SocketIOChannel extends WebSocketChannel {
       case 'microblock': {
         const [microblock] = args as ListenerType<WebSocketPayload['microblock']>;
         this.prometheus?.sendEvent('microblock');
-        this.io?.to('microblock').emit('microblock', microblock);
+        this.io
+          ?.to('microblock')
+          .emit(
+            'microblock',
+            microblock as import('@stacks/stacks-blockchain-api-types').Microblock
+          );
         break;
       }
       case 'mempoolTransaction': {
         const [tx] = args as ListenerType<WebSocketPayload['mempoolTransaction']>;
         this.prometheus?.sendEvent('mempool');
-        this.io?.to('mempool').emit('mempool', tx);
+        this.io
+          ?.to('mempool')
+          .emit('mempool', tx as import('@stacks/stacks-blockchain-api-types').MempoolTransaction);
         break;
       }
       case 'transaction': {
         const [tx] = args as ListenerType<WebSocketPayload['transaction']>;
         this.prometheus?.sendEvent('transaction');
         const topic: TransactionTopic = `transaction:${tx.tx_id}`;
-        this.io?.to(topic).emit(topic, tx);
+        this.io
+          ?.to(topic)
+          .emit(topic, tx as import('@stacks/stacks-blockchain-api-types').Transaction);
         break;
       }
       case 'nftEvent': {

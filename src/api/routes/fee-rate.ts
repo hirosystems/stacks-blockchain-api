@@ -14,6 +14,7 @@ export const FeeRateRoutes: FastifyPluginAsync<
     '/',
     {
       schema: {
+        deprecated: true,
         operationId: 'fetch_fee_rate',
         summary: 'Fetch fee rate',
         description: `**NOTE:** This endpoint is deprecated in favor of [Get approximate fees for a given transaction](/api/get-approximate-fees-for-a-given-transaction).

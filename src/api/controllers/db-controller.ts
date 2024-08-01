@@ -12,8 +12,6 @@ import {
 } from 'stacks-encoding-native-js';
 
 import {
-  Block,
-  Microblock,
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
@@ -70,6 +68,8 @@ import {
   StxLockTransactionEvent,
   TransactionEvent,
 } from '../schemas/entities/transaction-events';
+import { Microblock } from '../schemas/entities/microblock';
+import { Block } from '../schemas/entities/block';
 
 export const TransactionTypes = [
   'contract_call',
