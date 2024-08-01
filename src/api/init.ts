@@ -29,7 +29,7 @@ import { createBnsAddressesRouter } from './routes/bns/addresses';
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
-import { createMicroblockRouter } from './routes/microblock';
+import { MicroblockRoutes } from './routes/microblock';
 import { StatusRoutes } from './routes/status';
 import { TokenRoutes } from './routes/tokens';
 import { FeeRateRoutes } from './routes/fee-rate';
@@ -210,14 +210,10 @@ export async function startApiServer(opts: {
         (() => {
           const v1 = express.Router();
           v1.use('/block', createBlockRouter(datastore));
-          v1.use('/microblock', createMicroblockRouter(datastore));
           v1.use('/burnchain', createBurnchainRouter(datastore));
           v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
-          v1.use('/status', (req, res) =>
-            res.redirect(`${req.baseUrl.replace(/v1\/status/, '')}${getReqQuery(req)}`)
-          );
 
           // These could be defined in one route but a url reporting library breaks with regex in middleware paths
           v1.use('/pox2', createPoxEventsRouter(datastore, 'pox2'));
@@ -420,6 +416,7 @@ export async function startApiServer(opts: {
   await fastify.register(TokenRoutes, { prefix: '/extended/v1/tokens' });
   await fastify.register(ContractRoutes, { prefix: '/extended/v1/contract' });
   await fastify.register(FeeRateRoutes, { prefix: '/extended/v1/fee_rate' });
+  await fastify.register(MicroblockRoutes, { prefix: '/extended/v1/microblock' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -437,6 +434,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/tokens',
       '^/extended/v1/contract',
       '^/extended/v1/fee_rate',
+      '^/extended/v1/microblock',
     ].join('|'),
     'i'
   );
