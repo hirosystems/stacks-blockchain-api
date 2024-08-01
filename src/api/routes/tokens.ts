@@ -162,7 +162,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unachored: UnanchoredParamSchema,
+          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -204,7 +204,7 @@ export const TokenRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = req.query.unachored ?? false;
+      const includeUnanchored = req.query.unanchored ?? false;
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db
@@ -273,7 +273,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unachored: UnanchoredParamSchema,
+          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -308,7 +308,7 @@ export const TokenRoutes: FastifyPluginAsync<
 
       const limit = getPagingQueryLimit(ResourceType.Token, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const includeUnanchored = req.query.unachored ?? false;
+      const includeUnanchored = req.query.unanchored ?? false;
       const includeTxMetadata = req.query.tx_metadata ?? false;
 
       await fastify.db

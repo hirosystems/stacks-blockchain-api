@@ -7,7 +7,7 @@ import * as cors from 'cors';
 import { TxRoutes } from './routes/tx';
 import { createDebugRouter } from './routes/debug';
 import { InfoRoutes } from './routes/info';
-import { createContractRouter } from './routes/contract';
+import { ContractRoutes } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { createBlockRouter } from './routes/block';
 import { createFaucetRouter } from './routes/faucets';
@@ -212,7 +212,6 @@ export async function startApiServer(opts: {
           v1.use('/block', createBlockRouter(datastore));
           v1.use('/microblock', createMicroblockRouter(datastore));
           v1.use('/burnchain', createBurnchainRouter(datastore));
-          v1.use('/contract', createContractRouter(datastore));
           v1.use('/address', createAddressRouter(datastore, chainId));
           v1.use('/search', createSearchRouter(datastore));
           v1.use('/debug', createDebugRouter(datastore));
@@ -420,6 +419,7 @@ export async function startApiServer(opts: {
   await fastify.register(StxSupplyRoutes, { prefix: '/extended/v1/stx_supply' });
   await fastify.register(InfoRoutes, { prefix: '/extended/v1/info' });
   await fastify.register(TokenRoutes, { prefix: '/extended/v1/tokens' });
+  await fastify.register(ContractRoutes, { prefix: '/extended/v1/contract' });
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -435,6 +435,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/stx_supply',
       '^/extended/v1/info',
       '^/extended/v1/tokens',
+      '^/extended/v1/contract',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',
       // '^/extended/v1/TODO',

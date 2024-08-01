@@ -31,3 +31,11 @@ export class BtcFaucetConfigError extends Error {
     this.name = this.constructor.name;
   }
 }
+
+export class NotFoundError extends Error {
+  status: number;
+  constructor(msg: string = 'Not found', status: number = 404) {
+    super(msg);
+    this.status = status;
+  }
+}
