@@ -10,52 +10,48 @@ export const StatusRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  const schema = {
-    operationId: 'get_status',
-    summary: 'API status',
-    description:
-      'Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.',
-    tags: ['Info'],
-    response: {
-      200: ServerStatusResponseSchema,
+  fastify.route({
+    method: ['GET', 'POST'],
+    url: '/extended',
+    schema: {
+      operationId: 'get_status',
+      summary: 'API status',
+      description:
+        'Retrieves the running status of the Stacks Blockchain API, including the server version and current chain tip information.',
+      tags: ['Info'],
+      response: {
+        200: ServerStatusResponseSchema,
+      },
     },
-  };
-
-  const getStatus = async () => {
-    const response: ServerStatusResponse = {
-      server_version: `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`,
-      status: 'ready',
-    };
-    try {
-      const poxForceUnlockHeights = await fastify.db.getPoxForceUnlockHeights();
-      if (poxForceUnlockHeights.found) {
-        response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
-        response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
-        response.pox_v3_unlock_height = poxForceUnlockHeights.result.pox3UnlockHeight as number;
+    preHandler: handleChainTipCache,
+    handler: async (_, reply) => {
+      const response: ServerStatusResponse = {
+        server_version: `stacks-blockchain-api ${SERVER_VERSION.tag} (${SERVER_VERSION.branch}:${SERVER_VERSION.commit})`,
+        status: 'ready',
+      };
+      try {
+        const poxForceUnlockHeights = await fastify.db.getPoxForceUnlockHeights();
+        if (poxForceUnlockHeights.found) {
+          response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
+          response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
+          response.pox_v3_unlock_height = poxForceUnlockHeights.result.pox3UnlockHeight as number;
+        }
+        const chainTip = await fastify.db.getChainTip(fastify.db.sql);
+        if (chainTip.block_height > 0) {
+          response.chain_tip = {
+            block_height: chainTip.block_height,
+            block_hash: chainTip.block_hash,
+            index_block_hash: chainTip.index_block_hash,
+            microblock_hash: chainTip.microblock_hash,
+            microblock_sequence: chainTip.microblock_sequence,
+            burn_block_height: chainTip.burn_block_height,
+          };
+        }
+      } catch (error) {
+        // ignore error
       }
-      const chainTip = await fastify.db.getChainTip(fastify.db.sql);
-      if (chainTip.block_height > 0) {
-        response.chain_tip = {
-          block_height: chainTip.block_height,
-          block_hash: chainTip.block_hash,
-          index_block_hash: chainTip.index_block_hash,
-          microblock_hash: chainTip.microblock_hash,
-          microblock_sequence: chainTip.microblock_sequence,
-          burn_block_height: chainTip.burn_block_height,
-        };
-      }
-    } catch (error) {
-      // ignore error
-    }
-    return response;
-  };
-
-  fastify.get('/extended', { schema, preHandler: handleChainTipCache }, async (_, reply) => {
-    await reply.send(await getStatus());
-  });
-
-  fastify.post('/extended', { schema, preHandler: handleChainTipCache }, async (_, reply) => {
-    await reply.send(await getStatus());
+      await reply.send(response);
+    },
   });
 
   fastify.get('/', async (_, reply) => {

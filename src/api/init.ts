@@ -5,7 +5,7 @@ import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 
 import { TxRoutes } from './routes/tx';
-import { createDebugRouter } from './routes/debug';
+import { DebugRoutes } from './routes/debug';
 import { InfoRoutes } from './routes/info';
 import { ContractRoutes } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
@@ -203,14 +203,6 @@ export async function startApiServer(opts: {
         next();
       });
       router.use(
-        '/v1',
-        (() => {
-          const v1 = express.Router();
-          v1.use('/debug', createDebugRouter(datastore));
-          return v1;
-        })()
-      );
-      router.use(
         '/v2',
         (() => {
           const v2 = express.Router();
@@ -396,6 +388,7 @@ export async function startApiServer(opts: {
       await fastify.register(PoxRoutes, { prefix: '/:pox(pox\\d)' });
       await fastify.register(PoxEventRoutes, { prefix: '/:(pox\\d_events)' });
       await fastify.register(FaucetRoutes, { prefix: '/faucets' });
+      await fastify.register(DebugRoutes, { prefix: '/debug' });
     },
     { prefix: '/extended/v1' }
   );
@@ -404,27 +397,7 @@ export async function startApiServer(opts: {
   // However, it's the most straightforward way to split between Fastify and Express without
   // introducing a bunch of problamatic middleware side-effects.
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
-  const fastifyPaths = new RegExp(
-    [
-      '^/$',
-      '^/extended$',
-      '^/extended/v1/status',
-      '^/extended/v1/tx',
-      '^/extended/v1/stx_supply',
-      '^/extended/v1/info',
-      '^/extended/v1/tokens',
-      '^/extended/v1/contract',
-      '^/extended/v1/fee_rate',
-      '^/extended/v1/microblock',
-      '^/extended/v1/block',
-      '^/extended/v1/burnchain',
-      '^/extended/v1/address',
-      '^/extended/v1/search',
-      '^/extended/v1/pox',
-      '^/extended/v1/faucets',
-    ].join('|'),
-    'i'
-  );
+  const fastifyPaths = new RegExp(['^/$', '^/extended$', '^/extended/v1'].join('|'), 'i');
 
   const server = createServer(async (req, res) => {
     const path = new URL(req.url as string, 'http://x').pathname;
