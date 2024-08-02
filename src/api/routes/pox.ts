@@ -6,7 +6,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
-import { NotFoundError } from 'src/errors';
+import { NotFoundError } from '../../errors';
 import { PaginatedResponse } from '../schemas/util';
 import { PoolDelegation, PoolDelegationSchema } from '../schemas/entities/pox';
 

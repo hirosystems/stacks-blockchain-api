@@ -28,6 +28,7 @@ import {
 } from '../../../api/controllers/db-controller';
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
+import { SmartContractStatusList } from '../../schemas/entities/smart-contracts';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -70,11 +71,11 @@ export function parseDbBurnBlock(block: DbBurnBlock): BurnBlock {
 export function parseDbSmartContractStatusArray(
   params: SmartContractStatusParams,
   status: DbSmartContractStatus[]
-): SmartContractsStatusResponse {
+): SmartContractStatusList {
   const ids = new Set(
     Array.isArray(params.contract_id) ? params.contract_id : [params.contract_id]
   );
-  const response: SmartContractsStatusResponse = {};
+  const response: SmartContractStatusList = {};
   for (const s of status) {
     ids.delete(s.smart_contract_contract_id);
     response[s.smart_contract_contract_id] = {

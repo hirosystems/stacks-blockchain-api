@@ -13,7 +13,7 @@ import { handleChainTipCache } from '../controllers/cache-controller';
 import { LimitParam, OffsetParam } from '../schemas/params';
 import { PaginatedResponse } from '../schemas/util';
 import { MicroblockSchema } from '../schemas/entities/microblock';
-import { NotFoundError } from 'src/errors';
+import { NotFoundError } from '../../errors';
 import { TransactionSchema } from '../schemas/entities/transactions';
 
 export const MicroblockRoutes: FastifyPluginAsync<

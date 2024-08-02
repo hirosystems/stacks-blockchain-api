@@ -239,7 +239,7 @@ const PoxCycleSignerParamsSchema = Type.Object(
 export type PoxCycleSignerParams = Static<typeof PoxCycleSignerParamsSchema>;
 export const CompiledPoxCycleSignerParams = ajv.compile(PoxCycleSignerParamsSchema);
 
-const SmartContractStatusParamsSchema = Type.Object(
+export const SmartContractStatusParamsSchema = Type.Object(
   {
     contract_id: Type.Union([Type.Array(SmartContractIdParamSchema), SmartContractIdParamSchema]),
   },

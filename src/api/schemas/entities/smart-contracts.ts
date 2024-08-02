@@ -17,3 +17,31 @@ export const SmartContractSchema = Type.Object(
   }
 );
 export type SmartContract = Static<typeof SmartContractSchema>;
+
+export const SmartContractStatusFoundSchema = Type.Object({
+  found: Type.Literal(true),
+  result: Type.Object({
+    status: Type.String({
+      description: 'Smart contract deployment transaction status',
+    }),
+    tx_id: Type.String({ description: 'Deployment transaction ID' }),
+    contract_id: Type.String({ description: 'Smart contract ID' }),
+    block_height: Type.Optional(
+      Type.Integer({
+        description: 'Height of the transaction confirmation block',
+      })
+    ),
+  }),
+});
+export type SmartContractStatusFound = Static<typeof SmartContractStatusFoundSchema>;
+
+export const SmartContractStatusNotFoundSchema = Type.Object({
+  found: Type.Literal(false),
+});
+export type SmartContractStatusNotFound = Static<typeof SmartContractStatusNotFoundSchema>;
+
+export const SmartContractStatusListSchema = Type.Record(
+  Type.String({ description: 'Smart contract ID' }),
+  Type.Union([SmartContractStatusFoundSchema, SmartContractStatusNotFoundSchema])
+);
+export type SmartContractStatusList = Static<typeof SmartContractStatusListSchema>;
