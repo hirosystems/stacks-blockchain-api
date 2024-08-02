@@ -50,9 +50,9 @@ import {
   parseBoolean,
   waiter,
 } from '@hirosystems/api-toolkit';
-import { createV2BlocksRouter } from './routes/v2/blocks';
+import { BlockRoutesV2 } from './routes/v2/blocks';
 import { getReqQuery } from './query-helpers';
-import { createV2BurnBlocksRouter } from './routes/v2/burn-blocks';
+import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
 import { createMempoolRouter } from './routes/v2/mempool';
 import { createV2SmartContractsRouter } from './routes/v2/smart-contracts';
 import { createV2AddressesRouter } from './routes/v2/addresses';
@@ -206,27 +206,11 @@ export async function startApiServer(opts: {
         '/v2',
         (() => {
           const v2 = express.Router();
-          v2.use('/blocks', createV2BlocksRouter(datastore));
-          v2.use('/burn-blocks', createV2BurnBlocksRouter(datastore));
           v2.use('/smart-contracts', createV2SmartContractsRouter(datastore));
           v2.use('/mempool', createMempoolRouter(datastore));
           v2.use('/addresses', createV2AddressesRouter(datastore));
           v2.use('/pox', createPoxRouter(datastore, chainId));
           return v2;
-        })()
-      );
-      router.use(
-        '/beta',
-        (() => {
-          const beta = express.Router();
-          // Redirect to new endpoint for backward compatibility.
-          // TODO: remove this in the future
-          beta.use('/stacking/:pool_principal/delegations', (req, res) => {
-            const { pool_principal } = req.params;
-            const newPath = `/extended/v1/pox3/${pool_principal}/delegations${getReqQuery(req)}`;
-            return res.redirect(newPath);
-          });
-          return beta;
         })()
       );
       return router;
@@ -393,11 +377,19 @@ export async function startApiServer(opts: {
     { prefix: '/extended/v1' }
   );
 
+  await fastify.register(
+    async fastify => {
+      await fastify.register(BlockRoutesV2, { prefix: '/blocks' });
+      await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
+    },
+    { prefix: '/extended/v2' }
+  );
+
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
   // introducing a bunch of problamatic middleware side-effects.
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
-  const fastifyPaths = new RegExp(['^/$', '^/extended$', '^/extended/v1'].join('|'), 'i');
+  const fastifyPaths = new RegExp(['^/$', '^/extended'].join('|'), 'i');
 
   const server = createServer(async (req, res) => {
     const path = new URL(req.url as string, 'http://x').pathname;

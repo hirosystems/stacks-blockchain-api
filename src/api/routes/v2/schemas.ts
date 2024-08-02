@@ -119,6 +119,21 @@ const BurnBlockHeightParamSchema = Type.String({
   examples: ['777678'],
 });
 
+const BlockHeightParamSchema = Type.String({
+  pattern: '^[0-9]+$',
+  title: 'Block height',
+  description: 'Block height',
+  examples: ['777678'],
+});
+
+const BlockHashParamSchema = Type.String({
+  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  title: 'Block hash',
+  description: 'Block hash',
+  examples: ['daf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133'],
+});
+export const CompiledBlockHashParam = ajv.compile(BlockHashParamSchema);
+
 const AddressParamSchema = Type.String({
   pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'STX Address',
@@ -180,7 +195,19 @@ export const CompiledPoxSignerPaginationQueryParams = ajv.compile(
   PoxSignerPaginationQueryParamsSchema
 );
 
-const BlockParamsSchema = Type.Object(
+export const BlockParamsSchema = Type.Object(
+  {
+    height_or_hash: Type.Union([
+      Type.Literal('latest'),
+      BlockHashParamSchema,
+      BlockHeightParamSchema,
+    ]),
+  },
+  { additionalProperties: false }
+);
+export type BlockParams = Static<typeof BlockParamsSchema>;
+
+export const BurnBlockParamsSchema = Type.Object(
   {
     height_or_hash: Type.Union([
       Type.Literal('latest'),
@@ -190,8 +217,8 @@ const BlockParamsSchema = Type.Object(
   },
   { additionalProperties: false }
 );
-export type BlockParams = Static<typeof BlockParamsSchema>;
-export const CompiledBlockParams = ajv.compile(BlockParamsSchema);
+export type BurnBlockParams = Static<typeof BurnBlockParamsSchema>;
+export const CompiledBurnBlockParams = ajv.compile(BurnBlockParamsSchema);
 
 const PoxCycleParamsSchema = Type.Object(
   { cycle_number: Type.String({ pattern: '^[0-9]+$' }) },

@@ -5,6 +5,7 @@ import {
   TransactionPaginationQueryParams,
   TransactionLimitParamSchema,
   BlockParams,
+  BurnBlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
   AddressParams,
@@ -329,7 +330,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBurnBlock(args: BlockParams): Promise<DbBurnBlock | undefined> {
+  async getBurnBlock(args: BurnBlockParams): Promise<DbBurnBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
         args.height_or_hash === 'latest'

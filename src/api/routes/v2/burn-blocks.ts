@@ -1,98 +1,120 @@
-import * as express from 'express';
-import {
-  BurnBlockListResponse,
-  BurnBlock,
-  NakamotoBlockListResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
-import { asyncHandler } from '../../async-handler';
-import { PgStore } from '../../../datastore/pg-store';
+import { handleChainTipCache } from '../../controllers/cache-controller';
 import { parseDbBurnBlock, parseDbNakamotoBlock } from './helpers';
-import {
-  BlockPaginationQueryParams,
-  BlockParams,
-  CompiledBlockPaginationQueryParams,
-  CompiledBlockParams,
-  validRequestParams,
-  validRequestQuery,
-} from './schemas';
-import { InvalidRequestError } from '../../../errors';
+import { BurnBlockParamsSchema } from './schemas';
+import { InvalidRequestError, NotFoundError } from '../../../errors';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { LimitParam, OffsetParam } from '../../schemas/params';
+import { ResourceType } from '../../pagination';
+import { PaginatedResponse } from '../../schemas/util';
+import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks';
 
-export function createV2BurnBlocksRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-
-  router.get(
+export const BurnBlockRoutesV2: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (!validRequestQuery(req, res, CompiledBlockPaginationQueryParams)) return;
-      const query = req.query as BlockPaginationQueryParams;
-
-      const { limit, offset, results, total } = await db.v2.getBurnBlocks(query);
-      const response: BurnBlockListResponse = {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_burn_blocks',
+        summary: 'Get burn blocks',
+        description: `Retrieves a list of recent burn blocks`,
+        tags: ['Burn Blocks'],
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BurnBlock),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(BurnBlockSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const query = req.query;
+      const { limit, offset, results, total } = await fastify.db.v2.getBurnBlocks(query);
+      const blocks: BurnBlock[] = results.map(r => parseDbBurnBlock(r));
+      await reply.send({
         limit,
         offset,
         total,
-        results: results.map(r => parseDbBurnBlock(r)),
-      };
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+        results: blocks,
+      });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:height_or_hash',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (!validRequestParams(req, res, CompiledBlockParams)) return;
-      const params = req.params as BlockParams;
-
-      const block = await db.v2.getBurnBlock(params);
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_burn_block',
+        summary: 'Get burn block',
+        description: `Retrieves a single burn block`,
+        tags: ['Burn Blocks'],
+        params: BurnBlockParamsSchema,
+        response: {
+          200: BurnBlockSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const block = await fastify.db.v2.getBurnBlock(params);
       if (!block) {
-        res.status(404).json({ errors: 'Not found' });
-        return;
+        throw new NotFoundError();
       }
       const response: BurnBlock = parseDbBurnBlock(block);
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+      await reply.send(response);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:height_or_hash/blocks',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (
-        !validRequestParams(req, res, CompiledBlockParams) ||
-        !validRequestQuery(req, res, CompiledBlockPaginationQueryParams)
-      )
-        return;
-      const params = req.params as BlockParams;
-      const query = req.query as BlockPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: '',
+        summary: '',
+        description: ``,
+        tags: [''],
+        params: BurnBlockParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.BurnBlock),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: Type.Object({}),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getBlocksByBurnBlock({
+        const { limit, offset, results, total } = await fastify.db.v2.getBlocksByBurnBlock({
           ...params,
           ...query,
         });
-        const response: NakamotoBlockListResponse = {
+        const blocks = results.map(r => parseDbNakamotoBlock(r));
+        await reply.send({
           limit,
           offset,
           total,
-          results: results.map(r => parseDbNakamotoBlock(r)),
-        };
-        setETagCacheHeaders(res);
-        res.json(response);
+          results: blocks,
+        });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

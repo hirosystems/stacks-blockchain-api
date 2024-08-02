@@ -80,3 +80,39 @@ export const BlockSchema = Type.Object(
   { title: 'Block', description: 'A block' }
 );
 export type Block = Static<typeof BlockSchema>;
+
+export const NakamotoBlockSchema = Type.Object({
+  canonical: Type.Boolean({
+    description: 'Set to `true` if block corresponds to the canonical chain tip',
+  }),
+  height: Type.Integer({ description: 'Height of the block' }),
+  hash: Type.String({ description: 'Hash representing the block' }),
+  block_time: Type.Integer({
+    description: 'Unix timestamp (in seconds) indicating when this block was mined.',
+  }),
+  block_time_iso: Type.String({
+    description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
+  }),
+  index_block_hash: Type.String({
+    description:
+      'The only hash that can uniquely identify an anchored block or an unconfirmed state trie',
+  }),
+  parent_block_hash: Type.String({ description: 'Hash of the parent block' }),
+  parent_index_block_hash: Type.String({ description: 'Index block hash of the parent block' }),
+  burn_block_time: Type.Integer({
+    description: 'Unix timestamp (in seconds) indicating when this block was mined.',
+  }),
+  burn_block_time_iso: Type.String({
+    description: 'An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined.',
+  }),
+  burn_block_hash: Type.String({ description: 'Hash of the anchor chain block' }),
+  burn_block_height: Type.Integer({ description: 'Height of the anchor chain block' }),
+  miner_txid: Type.String({ description: 'Anchor chain transaction ID' }),
+  tx_count: Type.Integer({ description: 'Number of transactions included in the block' }),
+  execution_cost_read_count: Type.Integer({ description: 'Execution cost read count.' }),
+  execution_cost_read_length: Type.Integer({ description: 'Execution cost read length.' }),
+  execution_cost_runtime: Type.Integer({ description: 'Execution cost runtime.' }),
+  execution_cost_write_count: Type.Integer({ description: 'Execution cost write count.' }),
+  execution_cost_write_length: Type.Integer({ description: 'Execution cost write length.' }),
+});
+export type NakamotoBlock = Static<typeof NakamotoBlockSchema>;

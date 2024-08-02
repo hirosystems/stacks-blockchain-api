@@ -85,7 +85,7 @@ export const TokenRoutes: FastifyPluginAsync<
       }
       let assetIdentifiers: string[] | undefined;
       if (req.query.asset_identifiers) {
-        assetIdentifiers = req.query.asset_identifiers.flatMap(str => str.split(',') as string[]);
+        assetIdentifiers = req.query.asset_identifiers.flatMap(str => str.split(','));
         for (const assetIdentifier of assetIdentifiers) {
           if (!isValidPrincipal(assetIdentifier.split('::')[0])) {
             throw new InvalidRequestError(
