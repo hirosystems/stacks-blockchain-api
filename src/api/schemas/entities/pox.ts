@@ -25,3 +25,37 @@ export const PoolDelegationSchema = Type.Object({
   }),
 });
 export type PoolDelegation = Static<typeof PoolDelegationSchema>;
+
+export const PoxCycleSchema = Type.Object({
+  block_height: Type.Integer(),
+  index_block_hash: Type.String(),
+  cycle_number: Type.Integer(),
+  total_weight: Type.Integer(),
+  total_stacked_amount: Type.String(),
+  total_signers: Type.Integer(),
+});
+export type PoxCycle = Static<typeof PoxCycleSchema>;
+
+export const PoxSignerSchema = Type.Object({
+  signing_key: Type.String(),
+  signer_address: Type.String({ description: 'The Stacks address derived from the signing_key.' }),
+  weight: Type.Integer(),
+  stacked_amount: Type.String(),
+  weight_percent: Type.Number(),
+  stacked_amount_percent: Type.Number(),
+  solo_stacker_count: Type.Integer({
+    description: 'The number of solo stackers associated with this signer.',
+  }),
+  pooled_stacker_count: Type.Integer({
+    description: 'The number of pooled stackers associated with this signer.',
+  }),
+});
+export type PoxSigner = Static<typeof PoxSignerSchema>;
+
+export const PoxStackerSchema = Type.Object({
+  stacker_address: Type.String(),
+  stacked_amount: Type.String(),
+  pox_address: Type.String(),
+  stacker_type: Type.Enum({ solo: 'solo', pooled: 'pooled' }),
+});
+export type PoxStacker = Static<typeof PoxStackerSchema>;

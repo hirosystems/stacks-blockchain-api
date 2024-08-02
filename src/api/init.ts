@@ -56,7 +56,7 @@ import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
 import { MempoolRoutesV2 } from './routes/v2/mempool';
 import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
 import { createV2AddressesRouter } from './routes/v2/addresses';
-import { createPoxRouter } from './routes/v2/pox';
+import { PoxRoutesV2 } from './routes/v2/pox';
 
 import Fastify, { FastifyInstance } from 'fastify';
 import FastifyMetrics from 'fastify-metrics';
@@ -207,7 +207,6 @@ export async function startApiServer(opts: {
         (() => {
           const v2 = express.Router();
           v2.use('/addresses', createV2AddressesRouter(datastore));
-          v2.use('/pox', createPoxRouter(datastore, chainId));
           return v2;
         })()
       );
@@ -381,6 +380,7 @@ export async function startApiServer(opts: {
       await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
       await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
       await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
+      await fastify.register(PoxRoutesV2, { prefix: '/pox' });
     },
     { prefix: '/extended/v2' }
   );

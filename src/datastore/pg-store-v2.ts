@@ -608,7 +608,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycle(args: PoxCycleParams): Promise<DbPoxCycle | undefined> {
+  async getPoxCycle(args: { cycle_number: number }): Promise<DbPoxCycle | undefined> {
     return this.sqlTransaction(async sql => {
       const results = await sql<PoxCycleQueryResult[]>`
         SELECT
@@ -622,13 +622,15 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSigners(
-    args: PoxCycleParams & PoxSignerPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
+  async getPoxCycleSigners(args: {
+    cycle_number: number;
+    limit: number;
+    offset: number;
+  }): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
       if (cycleCheck.count === 0)
@@ -692,10 +694,13 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
+  async getPoxCycleSigner(args: {
+    cycle_number: number;
+    signer_key: string;
+  }): Promise<DbPoxCycleSigner | undefined> {
     return this.sqlTransaction(async sql => {
       const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1`;
       if (cycleCheck.count === 0)
@@ -753,14 +758,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSignerStackers(
-    args: PoxCycleSignerParams & PoxSignerPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
+  async getPoxCycleSignerStackers(args: {
+    cycle_number: number;
+    signer_key: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck = await sql`
         SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1
       `;
