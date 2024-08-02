@@ -14,6 +14,7 @@ export enum InvalidRequestErrorType {
   invalid_param = 'Invalid param',
   invalid_address = 'Invalid address',
   invalid_query = 'Invalid query',
+  forbidden = 'Forbidden',
 }
 export class InvalidRequestError extends Error {
   type: InvalidRequestErrorType;

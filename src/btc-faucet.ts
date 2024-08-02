@@ -72,7 +72,7 @@ const REGTEST_FEE_RATE = 50;
 
 const MIN_TX_CONFIRMATIONS = 1;
 
-function isValidBtcAddress(network: btc.Network, address: string): boolean {
+export function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
     btc.initEccLib(ecc);
     btc.address.toOutputScript(address, network);

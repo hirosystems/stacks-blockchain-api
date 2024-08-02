@@ -10,7 +10,7 @@ import { InfoRoutes } from './routes/info';
 import { ContractRoutes } from './routes/contract';
 import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { BlockRoutes } from './routes/block';
-import { createFaucetRouter } from './routes/faucets';
+import { FaucetRoutes } from './routes/faucets';
 import { AddressRoutes } from './routes/address';
 import { SearchRoutes } from './routes/search';
 import { StxSupplyRoutes } from './routes/stx-supply';
@@ -166,10 +166,6 @@ export async function startApiServer(opts: {
   // See https://expressjs.com/en/api.html#etag.options.table
   app.set('etag', false);
 
-  app.get('/', (req, res) => {
-    res.redirect(`/extended/`);
-  });
-
   app.use('/doc', (req, res) => {
     // if env variable for API_DOCS_URL is given
     if (apiDocumentationUrl) {
@@ -211,9 +207,6 @@ export async function startApiServer(opts: {
         (() => {
           const v1 = express.Router();
           v1.use('/debug', createDebugRouter(datastore));
-          if (getChainIDNetwork(chainId) === 'testnet' && writeDatastore) {
-            v1.use('/faucets', createFaucetRouter(writeDatastore));
-          }
           return v1;
         })()
       );
@@ -385,20 +378,27 @@ export async function startApiServer(opts: {
     // Set caching on all routes to be disabled by default, individual routes can override.
     void reply.header('Cache-Control', 'no-store');
   });
+
   await fastify.register(StatusRoutes);
-  await fastify.register(TxRoutes, { prefix: '/extended/v1/tx' });
-  await fastify.register(StxSupplyRoutes, { prefix: '/extended/v1/stx_supply' });
-  await fastify.register(InfoRoutes, { prefix: '/extended/v1/info' });
-  await fastify.register(TokenRoutes, { prefix: '/extended/v1/tokens' });
-  await fastify.register(ContractRoutes, { prefix: '/extended/v1/contract' });
-  await fastify.register(FeeRateRoutes, { prefix: '/extended/v1/fee_rate' });
-  await fastify.register(MicroblockRoutes, { prefix: '/extended/v1/microblock' });
-  await fastify.register(BlockRoutes, { prefix: '/extended/v1/block' });
-  await fastify.register(BurnchainRoutes, { prefix: '/extended/v1/burnchain' });
-  await fastify.register(AddressRoutes, { prefix: '/extended/v1/address' });
-  await fastify.register(SearchRoutes, { prefix: '/extended/v1/search' });
-  await fastify.register(PoxRoutes, { prefix: '/extended/v1/:pox(pox\\d)' });
-  await fastify.register(PoxEventRoutes, { prefix: '/extended/v1/:(pox\\d_events)' });
+  await fastify.register(
+    async fastify => {
+      await fastify.register(TxRoutes, { prefix: '/tx' });
+      await fastify.register(StxSupplyRoutes, { prefix: '/stx_supply' });
+      await fastify.register(InfoRoutes, { prefix: '/info' });
+      await fastify.register(TokenRoutes, { prefix: '/tokens' });
+      await fastify.register(ContractRoutes, { prefix: '/contract' });
+      await fastify.register(FeeRateRoutes, { prefix: '/fee_rate' });
+      await fastify.register(MicroblockRoutes, { prefix: '/microblock' });
+      await fastify.register(BlockRoutes, { prefix: '/block' });
+      await fastify.register(BurnchainRoutes, { prefix: '/burnchain' });
+      await fastify.register(AddressRoutes, { prefix: '/address' });
+      await fastify.register(SearchRoutes, { prefix: '/search' });
+      await fastify.register(PoxRoutes, { prefix: '/:pox(pox\\d)' });
+      await fastify.register(PoxEventRoutes, { prefix: '/:(pox\\d_events)' });
+      await fastify.register(FaucetRoutes, { prefix: '/faucets' });
+    },
+    { prefix: '/extended/v1' }
+  );
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -421,6 +421,7 @@ export async function startApiServer(opts: {
       '^/extended/v1/address',
       '^/extended/v1/search',
       '^/extended/v1/pox',
+      '^/extended/v1/faucets',
     ].join('|'),
     'i'
   );
