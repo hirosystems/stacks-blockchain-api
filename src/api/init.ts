@@ -55,7 +55,7 @@ import { getReqQuery } from './query-helpers';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
 import { MempoolRoutesV2 } from './routes/v2/mempool';
 import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
-import { createV2AddressesRouter } from './routes/v2/addresses';
+import { AddressRoutesV2 } from './routes/v2/addresses';
 import { PoxRoutesV2 } from './routes/v2/pox';
 
 import Fastify, { FastifyInstance } from 'fastify';
@@ -190,29 +190,6 @@ export async function startApiServer(opts: {
     };
     res.send(errObj).status(404);
   });
-
-  // Setup extended API routes
-  app.use(
-    '/extended',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use((req, res, next) => {
-        // Set caching on all routes to be disabled by default, individual routes can override
-        res.set('Cache-Control', 'no-store');
-        next();
-      });
-      router.use(
-        '/v2',
-        (() => {
-          const v2 = express.Router();
-          v2.use('/addresses', createV2AddressesRouter(datastore));
-          return v2;
-        })()
-      );
-      return router;
-    })()
-  );
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   // pricing endpoint
@@ -381,6 +358,7 @@ export async function startApiServer(opts: {
       await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
       await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
       await fastify.register(PoxRoutesV2, { prefix: '/pox' });
+      await fastify.register(AddressRoutesV2, { prefix: '/addresses' });
     },
     { prefix: '/extended/v2' }
   );

@@ -1,5 +1,4 @@
 import {
-  AddressTransaction,
   AddressTransactionEvent,
   BurnBlock,
   NakamotoBlock,
@@ -29,6 +28,7 @@ import {
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/entities/smart-contracts';
+import { AddressTransaction, AddressTransactionWithTransfers } from '../../schemas/entities/addresses';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {
@@ -96,7 +96,7 @@ export function parseDbTxWithAccountTransferSummary(
   tx: DbTxWithAddressTransfers
 ): AddressTransaction {
   return {
-    tx: parseDbTx(tx) as import('@stacks/stacks-blockchain-api-types').Transaction,
+    tx: parseDbTx(tx),
     stx_sent: tx.stx_sent.toString(),
     stx_received: tx.stx_received.toString(),
     events: {

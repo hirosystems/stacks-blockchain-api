@@ -527,9 +527,12 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getAddressTransactionEvents(
-    args: AddressTransactionParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
+  async getAddressTransactionEvents(args: {
+    limit: number;
+    offset: number;
+    tx_id: string;
+    address: string;
+  }): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
       await assertTxIdExists(sql, args.tx_id);
       const limit = args.limit ?? TransactionLimitParamSchema.default;

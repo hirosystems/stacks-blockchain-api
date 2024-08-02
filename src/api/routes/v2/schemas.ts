@@ -248,14 +248,14 @@ export const SmartContractStatusParamsSchema = Type.Object(
 export type SmartContractStatusParams = Static<typeof SmartContractStatusParamsSchema>;
 export const CompiledSmartContractStatusParams = ajv.compile(SmartContractStatusParamsSchema);
 
-const AddressParamsSchema = Type.Object(
+export const AddressParamsSchema = Type.Object(
   { address: Type.Union([AddressParamSchema, SmartContractIdParamSchema]) },
   { additionalProperties: false }
 );
 export type AddressParams = Static<typeof AddressParamsSchema>;
 export const CompiledAddressParams = ajv.compile(AddressParamsSchema);
 
-const AddressTransactionParamsSchema = Type.Object(
+export const AddressTransactionParamsSchema = Type.Object(
   {
     address: Type.Union([AddressParamSchema, SmartContractIdParamSchema]),
     tx_id: TransactionIdParamSchema,
