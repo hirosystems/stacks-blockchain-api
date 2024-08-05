@@ -175,7 +175,7 @@
     "@typescript-eslint/eslint-plugin": "5.46.1",
     "@typescript-eslint/parser": "5.51.0",
     "concurrently": "7.3.0",
-    "docker-compose": "0.23.14",
+    "docker-compose": "0.24.8",
     "eslint": "8.29.0",
     "eslint-plugin-prettier": "4.2.1",
     "eslint-plugin-tsdoc": "0.2.17",
