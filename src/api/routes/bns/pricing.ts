@@ -20,8 +20,6 @@ export const BnsPriceRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  const stacksNetwork = GetStacksNetwork(fastify.chainId);
-
   fastify.get(
     '/namespaces/:tld',
     {
@@ -70,7 +68,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         contractName: bnsContractName,
         functionName: 'get-namespace-price',
         functionArgs: [bufferCVFromString(namespace)],
-        network: stacksNetwork,
+        network: GetStacksNetwork(fastify.chainId),
       };
       const contractCallTx = await callReadOnlyFunction(txOptions);
       if (
@@ -146,7 +144,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         contractName: bnsContractName,
         functionName: 'get-name-price',
         functionArgs: [bufferCVFromString(namespace), bufferCVFromString(name)],
-        network: stacksNetwork,
+        network: GetStacksNetwork(fastify.chainId),
       };
 
       const contractCall = await callReadOnlyFunction(txOptions);

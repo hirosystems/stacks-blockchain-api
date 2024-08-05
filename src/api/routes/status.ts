@@ -54,10 +54,10 @@ export const StatusRoutes: FastifyPluginAsync<
     },
   });
 
-  fastify.get('/', async (_, reply) => {
+  fastify.get('/', { schema: { hide: true } }, async (_, reply) => {
     await reply.code(301).redirect('/extended');
   });
-  fastify.get('/extended/v1/status', async (_, reply) => {
+  fastify.get('/extended/v1/status', { schema: { hide: true } }, async (_, reply) => {
     await reply.code(301).redirect('/extended');
   });
 

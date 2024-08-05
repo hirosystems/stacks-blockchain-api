@@ -23,7 +23,7 @@ export const PoxRoutesV2: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  const isMainnet = getChainIDNetwork(fastify.chainId) === 'mainnet';
+  const getIsMainnet = () => getChainIDNetwork(fastify.chainId) === 'mainnet';
 
   fastify.get(
     '/cycles',
@@ -113,6 +113,7 @@ export const PoxRoutesV2: FastifyPluginAsync<
           ...params,
           ...query,
         });
+        const isMainnet = getIsMainnet();
         const signers: PoxSigner[] = results.map(r => parseDbPoxSigner(r, isMainnet));
         await reply.send({
           limit,
@@ -158,6 +159,7 @@ export const PoxRoutesV2: FastifyPluginAsync<
         if (!signer) {
           throw new NotFoundError();
         }
+        const isMainnet = getIsMainnet();
         const response: PoxSigner = parseDbPoxSigner(signer, isMainnet);
         await reply.send(response);
       } catch (error) {

@@ -136,12 +136,11 @@ export const DebugRoutes: FastifyPluginAsync<
   await fastify.register(fastifyFormbody);
 
   const defaultTxFee = 123450;
-  const stacksNetwork = getStacksTestnetNetwork();
 
   const routes: RouteOptions[] = [];
   fastify.addHook('onRoute', route => void routes.push(route));
 
-  fastify.get('/broadcast', async (req, reply) => {
+  fastify.get('/broadcast', { schema: { hide: true } }, async (req, reply) => {
     const paths = routes
       .filter(r => r.method === 'GET')
       .filter(r => !r.schema?.params)
@@ -194,14 +193,19 @@ export const DebugRoutes: FastifyPluginAsync<
     </form>
   `;
 
-  fastify.get('/broadcast/token-transfer-from-multisig', async (req, reply) => {
-    await reply.type('text/html').send(tokenTransferFromMultisigHtml);
-  });
+  fastify.get(
+    '/broadcast/token-transfer-from-multisig',
+    { schema: { hide: true } },
+    async (req, reply) => {
+      await reply.type('text/html').send(tokenTransferFromMultisigHtml);
+    }
+  );
 
   fastify.post(
     '/broadcast/token-transfer-from-multisig',
     {
       schema: {
+        hide: true,
         body: Type.Object({
           sponsored: Type.Optional(Type.Literal('sponsored')),
           signers: Type.Array(Type.String()),
@@ -231,7 +235,7 @@ export const DebugRoutes: FastifyPluginAsync<
         recipient: recipient_address,
         amount: BigInt(stx_amount),
         memo: memo,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         numSignatures: sigsRequired,
         publicKeys: signerPubKeys,
         sponsored: sponsored,
@@ -253,7 +257,7 @@ export const DebugRoutes: FastifyPluginAsync<
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -318,14 +322,19 @@ export const DebugRoutes: FastifyPluginAsync<
     </form>
   `;
 
-  fastify.get('/broadcast/token-transfer-multisig', async (req, res) => {
-    await res.type('text/html').send(tokenTransferMultisigHtml);
-  });
+  fastify.get(
+    '/broadcast/token-transfer-multisig',
+    { schema: { hide: true } },
+    async (req, res) => {
+      await res.type('text/html').send(tokenTransferMultisigHtml);
+    }
+  );
 
   fastify.post(
     '/broadcast/token-transfer-multisig',
     {
       schema: {
+        hide: true,
         body: Type.Object({
           origin_key: Type.String(),
           recipient_addresses: Type.Array(Type.String()),
@@ -353,7 +362,7 @@ export const DebugRoutes: FastifyPluginAsync<
       const sigRequired = signatures_required;
       const recipientAddress = addressToString(
         addressFromPublicKeys(
-          stacksNetwork.version === TransactionVersion.Testnet
+          getStacksTestnetNetwork().version === TransactionVersion.Testnet
             ? AddressVersion.TestnetMultiSig
             : AddressVersion.MainnetMultiSig,
           AddressHashMode.SerializeP2SH,
@@ -366,7 +375,7 @@ export const DebugRoutes: FastifyPluginAsync<
         recipient: recipientAddress,
         amount: BigInt(stx_amount),
         memo: memo,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         senderKey: origin_key,
         sponsored: sponsored,
         anchorMode: AnchorMode.Any,
@@ -378,7 +387,7 @@ export const DebugRoutes: FastifyPluginAsync<
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -451,7 +460,7 @@ export const DebugRoutes: FastifyPluginAsync<
     </form>
   `;
 
-  fastify.get('/broadcast/token-transfer', async (req, res) => {
+  fastify.get('/broadcast/token-transfer', { schema: { hide: true } }, async (req, res) => {
     await res.type('text/html').send(tokenTransferHtml);
   });
 
@@ -459,6 +468,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/broadcast/token-transfer',
     {
       schema: {
+        hide: true,
         body: Type.Object({
           origin_key: Type.String(),
           recipient_address: Type.String(),
@@ -490,7 +500,7 @@ export const DebugRoutes: FastifyPluginAsync<
         recipient: recipient_address,
         amount: BigInt(stx_amount),
         senderKey: origin_key,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         memo: memo,
         sponsored: sponsored,
         nonce: txNonce,
@@ -503,7 +513,7 @@ export const DebugRoutes: FastifyPluginAsync<
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -568,7 +578,7 @@ export const DebugRoutes: FastifyPluginAsync<
     </form>
   `;
 
-  fastify.get('/broadcast/stack', async (req, res) => {
+  fastify.get('/broadcast/stack', { schema: { hide: true } }, async (req, res) => {
     await res.type('text/html').send(sendPoxHtml);
   });
 
@@ -703,6 +713,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/broadcast/stack',
     {
       schema: {
+        hide: true,
         body: Type.Object({
           origin_key: Type.String(),
           recipient_address: Type.String(),
@@ -749,7 +760,7 @@ export const DebugRoutes: FastifyPluginAsync<
         const poxAddrTuple = poxAddressToTuple(recipient_address);
         burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
-        const stackingRpc = new StackingClient('', stacksNetwork);
+        const stackingRpc = new StackingClient('', getStacksTestnetNetwork());
         const signerPrivKey = makeRandomPrivKey();
         const signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
         const authId = `0x${randomBytes(16).toString('hex')}`;
@@ -779,7 +790,7 @@ export const DebugRoutes: FastifyPluginAsync<
             uintCV(ustxAmount), // max-amount
             uintCV(authId), // auth-id
           ],
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           anchorMode: AnchorMode.Any,
           fee: 10000,
           validateWithAbi: false,
@@ -823,6 +834,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/rosetta/tx/:tx_id',
     {
       schema: {
+        hide: true,
         params: Type.Object({
           tx_id: Type.String(),
         }),
@@ -887,7 +899,7 @@ export const DebugRoutes: FastifyPluginAsync<
     </form>
   `;
 
-  fastify.get('/broadcast/contract-deploy', async (req, res) => {
+  fastify.get('/broadcast/contract-deploy', { schema: { hide: true } }, async (req, res) => {
     await res.type('text/html').send(contractDeployHtml);
   });
 
@@ -895,6 +907,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/broadcast/contract-deploy',
     {
       schema: {
+        hide: true,
         body: Type.Object({
           origin_key: Type.String(),
           contract_name: Type.String(),
@@ -907,7 +920,7 @@ export const DebugRoutes: FastifyPluginAsync<
       const { origin_key, contract_name, source_code } = req.body;
       const sponsored = !!req.body.sponsored;
 
-      const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
+      const senderAddress = getAddressFromPrivateKey(origin_key, getStacksTestnetNetwork().version);
 
       const normalized_contract_source = source_code.replace(/\r/g, '').replace(/\t/g, ' ');
       const contractDeployTx = await makeContractDeploy({
@@ -927,7 +940,7 @@ export const DebugRoutes: FastifyPluginAsync<
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: contractDeployTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -996,6 +1009,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/broadcast/contract-call/:contract_id',
     {
       schema: {
+        hide: true,
         params: Type.Object({
           contract_id: Type.String(),
         }),
@@ -1053,6 +1067,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/broadcast/contract-call/:contract_id',
     {
       schema: {
+        hide: true,
         params: Type.Object({
           contract_id: Type.String(),
         }),
@@ -1101,7 +1116,7 @@ export const DebugRoutes: FastifyPluginAsync<
         functionName: functionName,
         functionArgs: clarityValueArgs,
         senderKey: originKey,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         fee: defaultTxFee,
         postConditionMode: PostConditionMode.Allow,
         sponsored: sponsored,
@@ -1113,7 +1128,7 @@ export const DebugRoutes: FastifyPluginAsync<
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: contractCallTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -1154,7 +1169,7 @@ export const DebugRoutes: FastifyPluginAsync<
     </script>
   `;
 
-  fastify.get('/watch-tx', async (req, res) => {
+  fastify.get('/watch-tx', { schema: { hide: true } }, async (req, res) => {
     await res.type('text/html').send(txWatchHtml);
   });
 
@@ -1162,6 +1177,7 @@ export const DebugRoutes: FastifyPluginAsync<
     '/faucet',
     {
       schema: {
+        hide: true,
         querystring: Type.Object({ address: Type.Optional(Type.String()) }),
         body: OptionalNullable(Type.Object({ address: Type.Optional(Type.String()) })),
       },

@@ -1,7 +1,6 @@
 import { Server, createServer } from 'http';
 import { Socket } from 'net';
 import * as express from 'express';
-import { v4 as uuid } from 'uuid';
 import * as cors from 'cors';
 
 import { TxRoutes } from './routes/tx';
@@ -53,21 +52,12 @@ import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
 import { AddressRoutesV2 } from './routes/v2/addresses';
 import { PoxRoutesV2 } from './routes/v2/pox';
 
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import FastifyMetrics from 'fastify-metrics';
 import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 
-declare module 'fastify' {
-  interface FastifyInstance {
-    db: PgStore;
-    writeDb?: PgWriteStore;
-    chainId: ChainID;
-  }
-}
-
 export interface ApiServer {
-  expressApp: express.Express;
   fastifyApp: FastifyInstance;
   server: Server;
   ws: WebSocketTransmitter;
@@ -77,30 +67,56 @@ export interface ApiServer {
   forceKill: () => Promise<void>;
 }
 
-export async function startApiServer(opts: {
-  datastore: PgStore;
-  writeDatastore?: PgWriteStore;
-  chainId: ChainID;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
-  serverHost?: string;
-  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
-  serverPort?: number;
-}): Promise<ApiServer> {
-  const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
-  const app = express();
-  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
-  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+export const StacksApiRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  await fastify.register(StatusRoutes);
+  await fastify.register(
+    async fastify => {
+      await fastify.register(TxRoutes, { prefix: '/tx' });
+      await fastify.register(StxSupplyRoutes, { prefix: '/stx_supply' });
+      await fastify.register(InfoRoutes, { prefix: '/info' });
+      await fastify.register(TokenRoutes, { prefix: '/tokens' });
+      await fastify.register(ContractRoutes, { prefix: '/contract' });
+      await fastify.register(FeeRateRoutes, { prefix: '/fee_rate' });
+      await fastify.register(MicroblockRoutes, { prefix: '/microblock' });
+      await fastify.register(BlockRoutes, { prefix: '/block' });
+      await fastify.register(BurnchainRoutes, { prefix: '/burnchain' });
+      await fastify.register(AddressRoutes, { prefix: '/address' });
+      await fastify.register(SearchRoutes, { prefix: '/search' });
+      await fastify.register(PoxRoutes, { prefix: '/:pox(pox\\d)' });
+      await fastify.register(PoxEventRoutes, { prefix: '/:(pox\\d_events)' });
+      await fastify.register(FaucetRoutes, { prefix: '/faucets' });
+      await fastify.register(DebugRoutes, { prefix: '/debug' });
+    },
+    { prefix: '/extended/v1' }
+  );
 
-  if (!apiHost) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
-    );
-  }
-  if (!apiPort) {
-    throw new Error(
-      `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
-    );
-  }
+  await fastify.register(
+    async fastify => {
+      await fastify.register(BlockRoutesV2, { prefix: '/blocks' });
+      await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
+      await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
+      await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
+      await fastify.register(PoxRoutesV2, { prefix: '/pox' });
+      await fastify.register(AddressRoutesV2, { prefix: '/addresses' });
+    },
+    { prefix: '/extended/v2' }
+  );
+
+  // Setup legacy API v1 and v2 routes
+  await fastify.register(BnsNameRoutes, { prefix: '/v1/names' });
+  await fastify.register(BnsNamespaceRoutes, { prefix: '/v1/namespaces' });
+  await fastify.register(BnsAddressRoutes, { prefix: '/v1/addresses' });
+  await fastify.register(BnsPriceRoutes, { prefix: '/v2/prices' });
+
+  await Promise.resolve();
+};
+
+function createRosettaServer(datastore: PgStore, chainId: ChainID) {
+  const app = express();
 
   // Add API version to header
   app.use((_, res, next) => {
@@ -142,21 +158,19 @@ export async function startApiServer(opts: {
     res.send(errObj).status(404);
   });
 
-  // Rosetta API -- https://www.rosetta-api.org
-  if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1'))
-    app.use(
-      '/rosetta/v1',
-      (() => {
-        const router = express.Router();
-        router.use(cors());
-        router.use('/network', createRosettaNetworkRouter(datastore, chainId));
-        router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
-        router.use('/block', createRosettaBlockRouter(datastore, chainId));
-        router.use('/account', createRosettaAccountRouter(datastore, chainId));
-        router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
-        return router;
-      })()
-    );
+  app.use(
+    '/rosetta/v1',
+    (() => {
+      const router = express.Router();
+      router.use(cors());
+      router.use('/network', createRosettaNetworkRouter(datastore, chainId));
+      router.use('/mempool', createRosettaMempoolRouter(datastore, chainId));
+      router.use('/block', createRosettaBlockRouter(datastore, chainId));
+      router.use('/account', createRosettaAccountRouter(datastore, chainId));
+      router.use('/construction', createRosettaConstructionRouter(datastore, chainId));
+      return router;
+    })()
+  );
 
   //handle invalid request gracefully
   app.use((req, res) => {
@@ -173,24 +187,54 @@ export async function startApiServer(opts: {
         res.status(503).json({ error: `The database service is unavailable` }).end();
       } else {
         res.status(500);
-        const errorTag = uuid();
-        Object.assign(error, { errorTag: errorTag });
-        res
-          .json({ error: error.toString(), stack: (error as Error).stack, errorTag: errorTag })
-          .end();
+        res.json({ error: error.toString(), stack: (error as Error).stack }).end();
       }
     }
     next(error);
   }) as express.ErrorRequestHandler);
+
+  return app;
+}
+
+export async function startApiServer(opts: {
+  datastore: PgStore;
+  writeDatastore?: PgWriteStore;
+  chainId: ChainID;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_HOST env var. */
+  serverHost?: string;
+  /** If not specified, this is read from the STACKS_BLOCKCHAIN_API_PORT env var. */
+  serverPort?: number;
+}): Promise<ApiServer> {
+  const { datastore, writeDatastore, chainId, serverHost, serverPort } = opts;
+
+  const apiHost = serverHost ?? process.env['STACKS_BLOCKCHAIN_API_HOST'];
+  const apiPort = serverPort ?? parseInt(process.env['STACKS_BLOCKCHAIN_API_PORT'] ?? '');
+
+  if (!apiHost) {
+    throw new Error(
+      `STACKS_BLOCKCHAIN_API_HOST must be specified, e.g. "STACKS_BLOCKCHAIN_API_HOST=127.0.0.1"`
+    );
+  }
+  if (!apiPort) {
+    throw new Error(
+      `STACKS_BLOCKCHAIN_API_PORT must be specified, e.g. "STACKS_BLOCKCHAIN_API_PORT=3999"`
+    );
+  }
+
+  // Rosetta API -- https://www.rosetta-api.org
+  let expressApp: express.Express | undefined;
+  if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1')) {
+    expressApp = createRosettaServer(datastore, chainId);
+  }
 
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
   }).withTypeProvider<TypeBoxTypeProvider>();
 
-  fastify.decorate('db', opts.datastore);
-  fastify.decorate('writeDb', opts.writeDatastore);
-  fastify.decorate('chainId', opts.chainId);
+  fastify.decorate('db', datastore);
+  fastify.decorate('writeDb', writeDatastore);
+  fastify.decorate('chainId', chainId);
 
   await fastify.register(FastifyMetrics, { endpoint: null });
   await fastify.register(FastifyCors, { exposedHeaders: ['X-API-Version'] });
@@ -205,45 +249,7 @@ export async function startApiServer(opts: {
     void reply.header('Cache-Control', 'no-store');
   });
 
-  await fastify.register(StatusRoutes);
-  await fastify.register(
-    async fastify => {
-      await fastify.register(TxRoutes, { prefix: '/tx' });
-      await fastify.register(StxSupplyRoutes, { prefix: '/stx_supply' });
-      await fastify.register(InfoRoutes, { prefix: '/info' });
-      await fastify.register(TokenRoutes, { prefix: '/tokens' });
-      await fastify.register(ContractRoutes, { prefix: '/contract' });
-      await fastify.register(FeeRateRoutes, { prefix: '/fee_rate' });
-      await fastify.register(MicroblockRoutes, { prefix: '/microblock' });
-      await fastify.register(BlockRoutes, { prefix: '/block' });
-      await fastify.register(BurnchainRoutes, { prefix: '/burnchain' });
-      await fastify.register(AddressRoutes, { prefix: '/address' });
-      await fastify.register(SearchRoutes, { prefix: '/search' });
-      await fastify.register(PoxRoutes, { prefix: '/:pox(pox\\d)' });
-      await fastify.register(PoxEventRoutes, { prefix: '/:(pox\\d_events)' });
-      await fastify.register(FaucetRoutes, { prefix: '/faucets' });
-      await fastify.register(DebugRoutes, { prefix: '/debug' });
-    },
-    { prefix: '/extended/v1' }
-  );
-
-  await fastify.register(
-    async fastify => {
-      await fastify.register(BlockRoutesV2, { prefix: '/blocks' });
-      await fastify.register(BurnBlockRoutesV2, { prefix: '/burn-blocks' });
-      await fastify.register(SmartContractRoutesV2, { prefix: '/smart-contracts' });
-      await fastify.register(MempoolRoutesV2, { prefix: '/mempool' });
-      await fastify.register(PoxRoutesV2, { prefix: '/pox' });
-      await fastify.register(AddressRoutesV2, { prefix: '/addresses' });
-    },
-    { prefix: '/extended/v2' }
-  );
-
-  // Setup legacy API v1 and v2 routes
-  await fastify.register(BnsNameRoutes, { prefix: '/v1/names' });
-  await fastify.register(BnsNamespaceRoutes, { prefix: '/v1/namespaces' });
-  await fastify.register(BnsAddressRoutes, { prefix: '/v1/addresses' });
-  await fastify.register(BnsPriceRoutes, { prefix: '/v2/prices' });
+  await fastify.register(StacksApiRoutes);
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
   await fastify.register(CoreNodeRpcProxyRouter, { prefix: '/v2' });
@@ -258,7 +264,7 @@ export async function startApiServer(opts: {
   const server = createServer((req, res) => {
     if (rosettaPath.test(req.url as string)) {
       // handle with express
-      app(req, res);
+      expressApp?.(req, res);
     } else {
       // handle with fastify
       fastify.server.emit('request', req, res);
@@ -331,7 +337,6 @@ export async function startApiServer(opts: {
   }
   const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
   return {
-    expressApp: app,
     fastifyApp: fastify,
     server: server,
     ws: ws,

@@ -16,7 +16,11 @@
     "paths": {
       "@stacks/stacks-blockchain-api-types": ["docs"],
       "@stacks/blockchain-api-client": ["client/src"]
-    }
+    },
+    "typeRoots": [
+      "./src/@types",
+      "./node_modules/@types"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["lib", "node_modules"]

@@ -247,7 +247,7 @@ export const FaucetRoutes: FastifyPluginAsync<
   const FAUCET_STACKING_WINDOW = 2 * 24 * 60 * 60 * 1000; // 2 days
   const FAUCET_STACKING_TRIGGER_COUNT = 1;
 
-  const STX_FAUCET_NETWORKS = getStxFaucetNetworks();
+  const STX_FAUCET_NETWORKS = () => getStxFaucetNetworks();
   const STX_FAUCET_KEYS = (process.env.FAUCET_PRIVATE_KEY ?? testnetKeys[0].secretKey).split(',');
 
   fastify.post(
@@ -366,7 +366,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         }
 
         const stxAmounts: bigint[] = [];
-        for (const network of STX_FAUCET_NETWORKS) {
+        for (const network of STX_FAUCET_NETWORKS()) {
           try {
             let stxAmount = FAUCET_DEFAULT_STX_AMOUNT;
             if (isStackingReq) {
@@ -424,7 +424,7 @@ export const FaucetRoutes: FastifyPluginAsync<
         const nonces: bigint[] = [];
         const fees: bigint[] = [];
         let txGenFetchError: Error | undefined;
-        for (const network of STX_FAUCET_NETWORKS) {
+        for (const network of STX_FAUCET_NETWORKS()) {
           try {
             const tx = await generateTx(network, 0);
             nonces.push(tx.auth.spendingCondition?.nonce ?? BigInt(0));
@@ -445,9 +445,9 @@ export const FaucetRoutes: FastifyPluginAsync<
         let lastSendError: Error | undefined;
         let stxKeyIndex = 0;
         do {
-          const tx = await generateTx(STX_FAUCET_NETWORKS[0], stxKeyIndex, nextNonce, fee);
+          const tx = await generateTx(STX_FAUCET_NETWORKS()[0], stxKeyIndex, nextNonce, fee);
           const rawTx = Buffer.from(tx.serialize());
-          for (const network of STX_FAUCET_NETWORKS) {
+          for (const network of STX_FAUCET_NETWORKS()) {
             const rpcClient = clientFromNetwork(network);
             try {
               const res = await rpcClient.sendTransaction(rawTx);

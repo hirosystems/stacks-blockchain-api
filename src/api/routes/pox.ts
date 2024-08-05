@@ -15,7 +15,7 @@ export const PoxEventRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  fastify.get('/', async (req, reply) => {
+  fastify.get('/', { schema: { hide: true } }, async (req, reply) => {
     // Redirect old pox routes, e.g. /poxX_events to /poxX/events
     const redirectUrl = req.url.replace(/(pox[\d])_events/, '$1/events');
     return reply.redirect(redirectUrl);
