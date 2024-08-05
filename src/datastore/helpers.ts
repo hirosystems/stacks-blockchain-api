@@ -62,7 +62,6 @@ import {
 import { getTxSenderAddress } from '../event-stream/reader';
 import postgres = require('postgres');
 import * as prom from 'prom-client';
-import { NftEvent } from 'docs/generated';
 import { getAssetEventTypeString } from '../api/controllers/db-controller';
 import { PgStoreEventEmitter } from './pg-store-event-emitter';
 import { SyntheticPoxEventName } from '../pox-helpers';
@@ -990,8 +989,8 @@ export function parseTxsWithAssetTransfers(
   return txs;
 }
 
-export function parseNftEvent(dbEvent: DbNftEvent): NftEvent {
-  const event: NftEvent = {
+export function parseNftEvent(dbEvent: DbNftEvent) {
+  const event = {
     asset_identifier: dbEvent.asset_identifier,
     asset_event_type: getAssetEventTypeString(dbEvent.asset_event_type_id),
     value: {

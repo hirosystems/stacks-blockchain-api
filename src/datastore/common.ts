@@ -1,5 +1,4 @@
-import { ClarityAbi } from '@stacks/transactions';
-import { Block } from '@stacks/stacks-blockchain-api-types';
+import { Block } from '../api/schemas/entities/block';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
 

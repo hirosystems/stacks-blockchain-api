@@ -10,7 +10,6 @@ import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../.
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { validateRequestHexInput, validatePrincipal } from '../query-helpers';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { GetRawTransactionResult } from '@stacks/stacks-blockchain-api-types';
 import {
   handleChainTipCache,
   handleMempoolCache,
@@ -583,7 +582,7 @@ export const TxRoutes: FastifyPluginAsync<
       const rawTxQuery = await fastify.db.getRawTx(tx_id);
 
       if (rawTxQuery.found) {
-        const response: GetRawTransactionResult = {
+        const response = {
           raw_tx: rawTxQuery.result.raw_tx,
         };
         await reply.send(response);

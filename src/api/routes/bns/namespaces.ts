@@ -1,6 +1,5 @@
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { BnsErrors } from '../../../event-stream/bns/bns-constants';
-import { BnsGetAllNamespacesResponse } from '@stacks/stacks-blockchain-api-types';
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -37,7 +36,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const includeUnanchored = req.query.unanchored;
       const { results } = await fastify.db.getNamespaceList({ includeUnanchored });
-      const response: BnsGetAllNamespacesResponse = {
+      const response = {
         namespaces: results,
       };
       await reply.send(response);

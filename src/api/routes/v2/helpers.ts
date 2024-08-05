@@ -1,13 +1,4 @@
 import {
-  AddressTransactionEvent,
-  BurnBlock,
-  NakamotoBlock,
-  PoxCycle,
-  PoxSigner,
-  PoxStacker,
-  SmartContractsStatusResponse,
-} from 'docs/generated';
-import {
   DbAddressTransactionEvent,
   DbBlock,
   DbBurnBlock,
@@ -28,7 +19,10 @@ import {
 import { decodeClarityValueToRepr } from 'stacks-encoding-native-js';
 import { TransactionVersion, getAddressFromPublicKey } from '@stacks/transactions';
 import { SmartContractStatusList } from '../../schemas/entities/smart-contracts';
-import { AddressTransaction, AddressTransactionWithTransfers } from '../../schemas/entities/addresses';
+import { AddressTransaction, AddressTransactionEvent } from '../../schemas/entities/addresses';
+import { NakamotoBlock } from '../../schemas/entities/block';
+import { BurnBlock } from '../../schemas/entities/burn-blocks';
+import { PoxCycle, PoxSigner, PoxStacker } from '../../schemas/entities/pox';
 
 export function parseDbNakamotoBlock(block: DbBlock): NakamotoBlock {
   const apiBlock: NakamotoBlock = {

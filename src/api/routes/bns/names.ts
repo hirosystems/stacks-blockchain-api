@@ -1,6 +1,5 @@
 import { parsePagingQueryInput } from '../../../api/pagination';
 import { bnsBlockchain, BnsErrors } from '../../../event-stream/bns/bns-constants';
-import { BnsGetNameInfoResponse } from '@stacks/stacks-blockchain-api-types';
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -278,7 +277,6 @@ export const BnsNameRoutes: FastifyPluginAsync<
 
       await fastify.db
         .sqlTransaction(async sql => {
-          let nameInfoResponse: BnsGetNameInfoResponse;
           // Subdomain case
           if (name.split('.').length == 3) {
             const subdomainQuery = await fastify.db.getSubdomain({
@@ -299,7 +297,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
             }
             const { result } = subdomainQuery;
 
-            nameInfoResponse = {
+            const nameInfoResponse = {
               address: result.owner,
               blockchain: bnsBlockchain,
               last_txid: result.tx_id,
@@ -308,6 +306,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
               zonefile: result.zonefile,
               zonefile_hash: result.zonefile_hash,
             };
+            await reply.send(nameInfoResponse);
           } else {
             const nameQuery = await fastify.db.getName({
               name,
@@ -317,7 +316,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
               throw { error: `cannot find name ${name}` };
             }
             const { result } = nameQuery;
-            nameInfoResponse = {
+            const nameInfoResponse = {
               address: result.address,
               blockchain: bnsBlockchain,
               expire_block: result.expire_block,
@@ -328,12 +327,8 @@ export const BnsNameRoutes: FastifyPluginAsync<
               zonefile: result.zonefile,
               zonefile_hash: result.zonefile_hash,
             };
+            await reply.send(nameInfoResponse);
           }
-
-          return nameInfoResponse;
-        })
-        .then(async response => {
-          await reply.send(response);
         })
         .catch(async error => {
           if (error instanceof NameRedirectError) {

@@ -1,4 +1,3 @@
-import { FeeRate } from '@stacks/stacks-blockchain-api-types';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
@@ -42,7 +41,7 @@ export const FeeRateRoutes: FastifyPluginAsync<
     },
     async (_req, reply) => {
       //validate and use req.body.transaction when we want to use it
-      const response: FeeRate = {
+      const response = {
         fee_rate: FEE_RATE,
       };
       await reply.send(response);
