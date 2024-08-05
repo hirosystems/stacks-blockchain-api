@@ -47,6 +47,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
   fastify.get(
     '/:tld/names',
     {
+      preHandler: handleChainTipCache,
       schema: {
         operationId: 'get_namespace_names',
         summary: 'Get Namespace Names',

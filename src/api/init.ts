@@ -25,7 +25,7 @@ import { BurnchainRoutes } from './routes/burnchain';
 import { BnsNamespaceRoutes } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { BnsNameRoutes } from './routes/bns/names';
-import { createBnsAddressesRouter } from './routes/bns/addresses';
+import { BnsAddressRoutes } from './routes/bns/addresses';
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
 import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
@@ -221,17 +221,6 @@ export async function startApiServer(opts: {
       })()
     );
 
-  // Setup legacy API v1 and v2 routes
-  app.use(
-    '/v1',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use('/addresses', createBnsAddressesRouter(datastore, chainId));
-      return router;
-    })()
-  );
-
   //handle invalid request gracefully
   app.use((req, res) => {
     res.status(404).json({ message: `${req.method} ${req.path} not found` });
@@ -361,19 +350,16 @@ export async function startApiServer(opts: {
     { prefix: '/extended/v2' }
   );
 
-  await fastify.register(
-    async fastify => {
-      await fastify.register(BnsNameRoutes, '/names');
-      await fastify.register(BnsNamespaceRoutes, '/namespaces');
-    },
-    { prefix: '/v1' }
-  );
+  // Setup legacy API v1 and v2 routes
+  await fastify.register(BnsNameRoutes, '/v1/names');
+  await fastify.register(BnsNamespaceRoutes, '/v1/namespaces');
+  await fastify.register(BnsAddressRoutes, '/v1/addresses');
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
   // introducing a bunch of problamatic middleware side-effects.
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
-  const fastifyPaths = new RegExp(['^/$', '^/extended'].join('|'), 'i');
+  const fastifyPaths = new RegExp(['^/$', '^/extended', '^/v1'].join('|'), 'i');
 
   const server = createServer(async (req, res) => {
     const path = new URL(req.url as string, 'http://x').pathname;
