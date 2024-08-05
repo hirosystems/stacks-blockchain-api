@@ -105,7 +105,10 @@ describe('v2-proxy tests', () => {
             mockedRequestBody = body as string;
             cb(null, extraStubbedResponse);
           });
-        const postTxReq = await supertest(api.server).post(`/v2/transactions`).send(testRequest);
+        const postTxReq = await supertest(api.server)
+          .post(`/v2/transactions`)
+          .set('Content-Type', 'application/octet-stream')
+          .send(testRequest);
         // test that main endpoint response was returned
         expect(postTxReq.status).toBe(200);
         expect(postTxReq.text).toBe(primaryStubbedResponse);

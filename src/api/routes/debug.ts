@@ -203,7 +203,7 @@ export const DebugRoutes: FastifyPluginAsync<
     {
       schema: {
         body: Type.Object({
-          sponsored: Type.Boolean(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
           signers: Type.Array(Type.String()),
           signatures_required: Type.Integer(),
           recipient_address: Type.String(),
@@ -332,7 +332,7 @@ export const DebugRoutes: FastifyPluginAsync<
           signatures_required: Type.Integer(),
           stx_amount: Type.String(),
           memo: Type.String(),
-          sponsored: Type.Boolean(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
         }),
       },
     },
@@ -344,7 +344,7 @@ export const DebugRoutes: FastifyPluginAsync<
         stx_amount,
         memo,
       } = req.body;
-      const sponsored = req.body.sponsored;
+      const sponsored = !!req.body.sponsored;
 
       const recipientAddresses = Array.isArray(recipientInput) ? recipientInput : [recipientInput];
       const recipientPubKeys = recipientAddresses
@@ -466,7 +466,7 @@ export const DebugRoutes: FastifyPluginAsync<
           memo: Type.String(),
           nonce: Type.String(),
           anchor_mode: Type.Integer(),
-          sponsored: Type.Boolean(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
         }),
       },
     },
@@ -899,7 +899,7 @@ export const DebugRoutes: FastifyPluginAsync<
           origin_key: Type.String(),
           contract_name: Type.String(),
           source_code: Type.String(),
-          sponsored: Type.Boolean(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
         }),
       },
     },

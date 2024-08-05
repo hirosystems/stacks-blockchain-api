@@ -8,7 +8,7 @@ import { TxRoutes } from './routes/tx';
 import { DebugRoutes } from './routes/debug';
 import { InfoRoutes } from './routes/info';
 import { ContractRoutes } from './routes/contract';
-import { createCoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
+import { CoreNodeRpcProxyRouter } from './routes/core-node-rpc-proxy';
 import { BlockRoutes } from './routes/block';
 import { FaucetRoutes } from './routes/faucets';
 import { AddressRoutes } from './routes/address';
@@ -191,9 +191,6 @@ export async function startApiServer(opts: {
     res.send(errObj).status(404);
   });
 
-  // Setup direct proxy to core-node RPC endpoints (/v2)
-  app.use('/v2', createCoreNodeRpcProxyRouter(datastore));
-
   // Rosetta API -- https://www.rosetta-api.org
   if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1'))
     app.use(
@@ -340,10 +337,16 @@ export async function startApiServer(opts: {
   );
 
   // Setup legacy API v1 and v2 routes
-  await fastify.register(BnsNameRoutes, '/v1/names');
-  await fastify.register(BnsNamespaceRoutes, '/v1/namespaces');
-  await fastify.register(BnsAddressRoutes, '/v1/addresses');
-  await fastify.register(BnsPriceRoutes, '/v2/prices');
+  await fastify.register(BnsNameRoutes, { prefix: '/v1/names' });
+  await fastify.register(BnsNamespaceRoutes, { prefix: '/v1/namespaces' });
+  await fastify.register(BnsAddressRoutes, { prefix: '/v1/addresses' });
+  await fastify.register(BnsPriceRoutes, { prefix: '/v2/prices' });
+
+  // Setup direct proxy to core-node RPC endpoints (/v2)
+  await fastify.register(CoreNodeRpcProxyRouter, { prefix: '/v2' });
+
+  // Wait for all routes and middleware to be ready before starting the server
+  await fastify.ready();
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
@@ -351,11 +354,10 @@ export async function startApiServer(opts: {
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
   const fastifyPaths = new RegExp(['^/$', '^/extended', '^/v1', '^/v2'].join('|'), 'i');
 
-  const server = createServer(async (req, res) => {
-    const path = new URL(req.url as string, 'http://x').pathname;
+  const server = createServer((req, res) => {
+    const path = new URL(req.url as string, `http://${req.headers.host}`).pathname;
     if (fastifyPaths.test(path)) {
       // handle with fastify
-      await fastify.ready();
       fastify.server.emit('request', req, res);
     } else {
       // handle with express
