@@ -1,3 +1,10 @@
+## [7.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.1...v7.13.2) (2024-08-05)
+
+
+### Bug Fixes
+
+* batch insert length assertion ([#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)) ([fe720d0](https://github.com/hirosystems/stacks-blockchain-api/commit/fe720d07c34cbc9efb4c3f641a6ca6ed35ee962c))
+
 ## [7.13.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.0...v7.13.1) (2024-08-02)
 
 
