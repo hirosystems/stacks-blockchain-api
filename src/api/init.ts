@@ -23,7 +23,7 @@ import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { BurnchainRoutes } from './routes/burnchain';
 import { BnsNamespaceRoutes } from './routes/bns/namespaces';
-import { createBnsPriceRouter } from './routes/bns/pricing';
+import { BnsPriceRoutes } from './routes/bns/pricing';
 import { BnsNameRoutes } from './routes/bns/names';
 import { BnsAddressRoutes } from './routes/bns/addresses';
 import * as pathToRegex from 'path-to-regexp';
@@ -192,18 +192,7 @@ export async function startApiServer(opts: {
   });
 
   // Setup direct proxy to core-node RPC endpoints (/v2)
-  // pricing endpoint
-  app.use(
-    '/v2',
-    (() => {
-      const router = express.Router();
-      router.use(cors());
-      router.use('/prices', createBnsPriceRouter(datastore, chainId));
-      router.use('/', createCoreNodeRpcProxyRouter(datastore));
-
-      return router;
-    })()
-  );
+  app.use('/v2', createCoreNodeRpcProxyRouter(datastore));
 
   // Rosetta API -- https://www.rosetta-api.org
   if (parseBoolean(process.env['STACKS_API_ENABLE_ROSETTA'] ?? '1'))
@@ -354,12 +343,13 @@ export async function startApiServer(opts: {
   await fastify.register(BnsNameRoutes, '/v1/names');
   await fastify.register(BnsNamespaceRoutes, '/v1/namespaces');
   await fastify.register(BnsAddressRoutes, '/v1/addresses');
+  await fastify.register(BnsPriceRoutes, '/v2/prices');
 
   // This will be a messy list as routes are migrated to Fastify,
   // However, it's the most straightforward way to split between Fastify and Express without
   // introducing a bunch of problamatic middleware side-effects.
   // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
-  const fastifyPaths = new RegExp(['^/$', '^/extended', '^/v1'].join('|'), 'i');
+  const fastifyPaths = new RegExp(['^/$', '^/extended', '^/v1', '^/v2'].join('|'), 'i');
 
   const server = createServer(async (req, res) => {
     const path = new URL(req.url as string, 'http://x').pathname;
