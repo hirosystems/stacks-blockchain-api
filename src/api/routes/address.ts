@@ -1,8 +1,12 @@
-import * as Bluebird from 'bluebird';
 import { BlockIdentifier } from '../../datastore/common';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import { getBlockParams, parseUntilBlockQuery, validatePrincipal } from '../query-helpers';
-import { formatMapToObject, getSendManyContract, isValidPrincipal } from '../../helpers';
+import {
+  formatMapToObject,
+  getSendManyContract,
+  isValidPrincipal,
+  mapSeriesAsync,
+} from '../../helpers';
 import {
   getTxFromDataStore,
   parseDbEvent,
@@ -474,7 +478,7 @@ export const AddressRoutes: FastifyPluginAsync<
           atSingleBlock,
         });
 
-        const results = await Bluebird.mapSeries(txResults, async entry => {
+        const results = await mapSeriesAsync(txResults, async entry => {
           const txQuery = await getTxFromDataStore(fastify.db, {
             txId: entry.tx.tx_id,
             dbTx: entry.tx,

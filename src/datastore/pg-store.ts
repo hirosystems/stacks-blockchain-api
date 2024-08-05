@@ -101,7 +101,6 @@ import {
 } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
-import { MempoolOrderByParam, OrderParam } from '../api/query-helpers';
 import { Fragment } from 'postgres';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');

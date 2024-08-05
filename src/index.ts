@@ -11,7 +11,6 @@ import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
 import { getSummary } from '@promster/metrics';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
-import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';

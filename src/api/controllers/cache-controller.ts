@@ -79,38 +79,6 @@ function getETagMetrics(): ETagCacheMetrics {
   return _eTagMetrics;
 }
 
-export function setResponseNonCacheable(res: Response) {
-  res.removeHeader('Cache-Control');
-  res.removeHeader('ETag');
-}
-
-/**
- * Sets the response `Cache-Control` and `ETag` headers using the etag previously added
- * to the response locals.
- */
-export function setETagCacheHeaders(res: Response, etagType: ETagType = ETagType.chainTip) {
-  const etag: ETag | undefined = res.locals[etagType];
-  if (!etag) {
-    logger.error(
-      `Cannot set cache control headers, no etag was set on \`Response.locals[${etagType}]\`.`
-    );
-    return;
-  }
-  if (etag === ETAG_EMPTY) {
-    return;
-  }
-  res.set({
-    'Cache-Control': CACHE_CONTROL_MUST_REVALIDATE,
-    // Use the current chain tip or mempool state as the etag so that cache is invalidated on new blocks or
-    // new mempool events.
-    // This value will be provided in the `If-None-Match` request header in subsequent requests.
-    // See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/ETag
-    // > Entity tag that uniquely represents the requested resource.
-    // > It is a string of ASCII characters placed between double quotes..
-    ETag: `"${etag}"`,
-  });
-}
-
 /**
  * Parses the etag values from a raw `If-None-Match` request header value.
  * The wrapping double quotes (if any) and validation prefix (if any) are stripped.

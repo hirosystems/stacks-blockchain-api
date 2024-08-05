@@ -825,3 +825,18 @@ export class BitVec {
     return bitVecStr;
   }
 }
+
+/**
+ * Runs an array of promises sequentially, mapping each item to a promise and awaiting its result before moving to the next.
+ */
+export async function mapSeriesAsync<T, U>(
+  items: T[],
+  mapper: (item: T, index: number, array: T[]) => Promise<U>
+): Promise<U[]> {
+  const results: U[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const result = await mapper(items[i], i, items);
+    results.push(result);
+  }
+  return results;
+}

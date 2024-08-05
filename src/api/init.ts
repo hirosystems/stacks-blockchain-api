@@ -19,21 +19,17 @@ import { createRosettaMempoolRouter } from './routes/rosetta/mempool';
 import { createRosettaBlockRouter } from './routes/rosetta/block';
 import { createRosettaAccountRouter } from './routes/rosetta/account';
 import { createRosettaConstructionRouter } from './routes/rosetta/construction';
-import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
+import { ChainID, apiDocumentationUrl } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { BurnchainRoutes } from './routes/burnchain';
 import { BnsNamespaceRoutes } from './routes/bns/namespaces';
 import { BnsPriceRoutes } from './routes/bns/pricing';
 import { BnsNameRoutes } from './routes/bns/names';
 import { BnsAddressRoutes } from './routes/bns/addresses';
-import * as pathToRegex from 'path-to-regexp';
-import * as expressListEndpoints from 'express-list-endpoints';
-import { createMiddleware as createPrometheusMiddleware } from '@promster/express';
 import { MicroblockRoutes } from './routes/microblock';
 import { StatusRoutes } from './routes/status';
 import { TokenRoutes } from './routes/tokens';
 import { FeeRateRoutes } from './routes/fee-rate';
-import { setResponseNonCacheable } from './controllers/cache-controller';
 
 import * as path from 'path';
 import * as fs from 'fs';
@@ -51,7 +47,6 @@ import {
   waiter,
 } from '@hirosystems/api-toolkit';
 import { BlockRoutesV2 } from './routes/v2/blocks';
-import { getReqQuery } from './query-helpers';
 import { BurnBlockRoutesV2 } from './routes/v2/burn-blocks';
 import { MempoolRoutesV2 } from './routes/v2/mempool';
 import { SmartContractRoutesV2 } from './routes/v2/smart-contracts';
@@ -107,45 +102,6 @@ export async function startApiServer(opts: {
     );
   }
 
-  let routes: {
-    path: string;
-    regexp: RegExp;
-  }[] = [];
-
-  if (isProdEnv) {
-    // The default from
-    // https://github.com/tdeekens/promster/blob/696803abf03a9a657d4af46d312fa9fb70a75320/packages/metrics/src/create-metric-types/create-metric-types.ts#L16
-    const defaultPromHttpRequestDurationInSeconds = [0.05, 0.1, 0.3, 0.5, 0.8, 1, 1.5, 2, 3, 10];
-
-    // Add a few more buckets to account for requests that take longer than 10 seconds
-    defaultPromHttpRequestDurationInSeconds.push(25, 50, 100, 250, 500);
-
-    const promMiddleware = createPrometheusMiddleware({
-      options: {
-        buckets: defaultPromHttpRequestDurationInSeconds as [number],
-        normalizePath: path => {
-          // Get the url pathname without a query string or fragment
-          // (note base url doesn't matter, but required by URL constructor)
-          try {
-            const pathTemplate = new URL(path, 'http://x').pathname;
-            // Match request url to the Express route, e.g.:
-            // `/extended/v1/address/ST26DR4VGV507V1RZ1JNM7NN4K3DTGX810S62SBBR/stx` to
-            // `/extended/v1/address/:stx_address/stx`
-            for (const pathRegex of routes) {
-              if (pathRegex.regexp.test(pathTemplate)) {
-                return pathRegex.path;
-              }
-            }
-            return '<invalid_path>';
-          } catch (error) {
-            logger.warn(`Warning: ${error}`);
-            return path;
-          }
-        },
-      },
-    });
-    app.use(promMiddleware);
-  }
   // Add API version to header
   app.use((_, res, next) => {
     res.setHeader(
@@ -160,11 +116,6 @@ export async function startApiServer(opts: {
   app.use(loggerMiddleware);
 
   app.set('json spaces', 2);
-
-  // Turn off Express's etag handling. By default CRC32 hashes are generated over response payloads
-  // which are useless for our use case and wastes CPU.
-  // See https://expressjs.com/en/api.html#etag.options.table
-  app.set('etag', false);
 
   app.use('/doc', (req, res) => {
     // if env variable for API_DOCS_URL is given
@@ -214,25 +165,6 @@ export async function startApiServer(opts: {
 
   // Setup error handler (must be added at the end of the middleware stack)
   app.use(((error, req, res, next) => {
-    if (req.method === 'GET' && res.statusCode !== 200 && res.hasHeader('ETag')) {
-      logger.error(
-        error,
-        `Non-200 request has ETag: ${res.header('ETag')}, Cache-Control: ${res.header(
-          'Cache-Control'
-        )}`
-      );
-    }
-    if (error && res.headersSent && res.statusCode !== 200 && res.hasHeader('ETag')) {
-      logger.error(
-        error,
-        `A non-200 response with an error in request processing has ETag: ${res.header(
-          'ETag'
-        )}, Cache-Control: ${res.header('Cache-Control')}`
-      );
-    }
-    if (!res.headersSent && (error || res.statusCode !== 200)) {
-      setResponseNonCacheable(res);
-    }
     if (error && !res.headersSent) {
       if (error instanceof InvalidRequestError) {
         logger.warn(error, error.message);
@@ -251,47 +183,18 @@ export async function startApiServer(opts: {
     next(error);
   }) as express.ErrorRequestHandler);
 
-  // Store all the registered express routes for usage with metrics reporting
-  routes = expressListEndpoints(app).map(endpoint => ({
-    path: endpoint.path,
-    regexp: pathToRegex.pathToRegexp(endpoint.path),
-  }));
-
-  // Manual route definitions for the /v2/ proxied endpoints
-  routes.push({
-    path: '/v2/pox',
-    regexp: /^\/v2\/pox(.*)/,
-  });
-  routes.push({
-    path: '/v2/info',
-    regexp: /^\/v2\/info(.*)/,
-  });
-  routes.push({
-    path: '/v2/accounts/*',
-    regexp: /^\/v2\/accounts(.*)/,
-  });
-  routes.push({
-    path: '/v2/contracts/call-read/*',
-    regexp: /^\/v2\/contracts\/call-read(.*)/,
-  });
-  routes.push({
-    path: '/v2/map_entry/*',
-    regexp: /^\/v2\/map_entry(.*)/,
-  });
-  routes.push({
-    path: '/v2/*',
-    regexp: /^\/v2(.*)/,
-  });
-
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
   }).withTypeProvider<TypeBoxTypeProvider>();
+
   fastify.decorate('db', opts.datastore);
   fastify.decorate('writeDb', opts.writeDatastore);
   fastify.decorate('chainId', opts.chainId);
+
   await fastify.register(FastifyMetrics, { endpoint: null });
   await fastify.register(FastifyCors, { exposedHeaders: ['X-API-Version'] });
+
   fastify.addHook('preHandler', async (_, reply) => {
     // Set API version in all responses.
     void reply.header(
@@ -348,20 +251,17 @@ export async function startApiServer(opts: {
   // Wait for all routes and middleware to be ready before starting the server
   await fastify.ready();
 
-  // This will be a messy list as routes are migrated to Fastify,
-  // However, it's the most straightforward way to split between Fastify and Express without
+  // The most straightforward way to split between Fastify and Express without
   // introducing a bunch of problamatic middleware side-effects.
-  // Once all `/extended` routes are migrated it will be simplified to something like "only use Express for Rosetta routes".
-  const fastifyPaths = new RegExp(['^/$', '^/extended', '^/v1', '^/v2'].join('|'), 'i');
+  const rosettaPath = new RegExp('^/rosetta');
 
   const server = createServer((req, res) => {
-    const path = new URL(req.url as string, `http://${req.headers.host}`).pathname;
-    if (fastifyPaths.test(path)) {
-      // handle with fastify
-      fastify.server.emit('request', req, res);
-    } else {
+    if (rosettaPath.test(req.url as string)) {
       // handle with express
       app(req, res);
+    } else {
+      // handle with fastify
+      fastify.server.emit('request', req, res);
     }
   });
 
