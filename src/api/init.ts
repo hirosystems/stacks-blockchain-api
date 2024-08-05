@@ -24,7 +24,7 @@ import { InvalidRequestError } from '../errors';
 import { BurnchainRoutes } from './routes/burnchain';
 import { createBnsNamespacesRouter } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
-import { createBnsNamesRouter } from './routes/bns/names';
+import { BnsNameRoutes } from './routes/bns/names';
 import { createBnsAddressesRouter } from './routes/bns/addresses';
 import * as pathToRegex from 'path-to-regexp';
 import * as expressListEndpoints from 'express-list-endpoints';
@@ -228,7 +228,6 @@ export async function startApiServer(opts: {
       const router = express.Router();
       router.use(cors());
       router.use('/namespaces', createBnsNamespacesRouter(datastore));
-      router.use('/names', createBnsNamesRouter(datastore, chainId));
       router.use('/addresses', createBnsAddressesRouter(datastore, chainId));
       return router;
     })()
@@ -361,6 +360,13 @@ export async function startApiServer(opts: {
       await fastify.register(AddressRoutesV2, { prefix: '/addresses' });
     },
     { prefix: '/extended/v2' }
+  );
+
+  await fastify.register(
+    async fastify => {
+      await fastify.register(BnsNameRoutes, '/names');
+    },
+    { prefix: '/v1' }
   );
 
   // This will be a messy list as routes are migrated to Fastify,
