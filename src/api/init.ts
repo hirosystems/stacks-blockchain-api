@@ -22,7 +22,7 @@ import { createRosettaConstructionRouter } from './routes/rosetta/construction';
 import { ChainID, apiDocumentationUrl, getChainIDNetwork } from '../helpers';
 import { InvalidRequestError } from '../errors';
 import { BurnchainRoutes } from './routes/burnchain';
-import { createBnsNamespacesRouter } from './routes/bns/namespaces';
+import { BnsNamespaceRoutes } from './routes/bns/namespaces';
 import { createBnsPriceRouter } from './routes/bns/pricing';
 import { BnsNameRoutes } from './routes/bns/names';
 import { createBnsAddressesRouter } from './routes/bns/addresses';
@@ -227,7 +227,6 @@ export async function startApiServer(opts: {
     (() => {
       const router = express.Router();
       router.use(cors());
-      router.use('/namespaces', createBnsNamespacesRouter(datastore));
       router.use('/addresses', createBnsAddressesRouter(datastore, chainId));
       return router;
     })()
@@ -365,6 +364,7 @@ export async function startApiServer(opts: {
   await fastify.register(
     async fastify => {
       await fastify.register(BnsNameRoutes, '/names');
+      await fastify.register(BnsNamespaceRoutes, '/namespaces');
     },
     { prefix: '/v1' }
   );
