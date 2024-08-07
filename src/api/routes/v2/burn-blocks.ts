@@ -77,10 +77,10 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
     {
       preHandler: handleChainTipCache,
       schema: {
-        operationId: '',
-        summary: '',
-        description: ``,
-        tags: [''],
+        operationId: 'get_blocks_by_burn_block',
+        summary: 'Get blocks by burn block',
+        description: `Retrieves a list of blocks confirmed by a specific burn block`,
+        tags: ['Burn Blocks'],
         params: BurnBlockParamsSchema,
         querystring: Type.Object({
           limit: LimitParam(ResourceType.BurnBlock),
