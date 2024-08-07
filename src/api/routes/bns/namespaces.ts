@@ -34,7 +34,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const { results } = await fastify.db.getNamespaceList({ includeUnanchored });
       const response = {
         namespaces: results,
@@ -86,7 +86,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
     async (req, reply) => {
       const { tld } = req.params;
       const page = parsePagingQueryInput(req.query.page ?? 0);
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       await fastify.db
         .sqlTransaction(async sql => {
           const response = await fastify.db.getNamespace({ namespace: tld, includeUnanchored });

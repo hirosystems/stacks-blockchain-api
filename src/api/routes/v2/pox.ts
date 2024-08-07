@@ -7,7 +7,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam } from '../../schemas/params';
-import { ResourceType } from '../../pagination';
+import { getPagingQueryLimit, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import {
   PoxCycle,
@@ -110,8 +110,9 @@ export const PoxRoutesV2: FastifyPluginAsync<
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getPoxCycleSigners({
-          ...params,
-          ...query,
+          cycle_number: params.cycle_number,
+          limit: getPagingQueryLimit(ResourceType.Signer, query.limit),
+          offset: query.offset ?? 0,
         });
         const isMainnet = getIsMainnet();
         const signers: PoxSigner[] = results.map(r => parseDbPoxSigner(r, isMainnet));
@@ -202,8 +203,10 @@ export const PoxRoutesV2: FastifyPluginAsync<
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getPoxCycleSignerStackers({
-          ...params,
-          ...query,
+          cycle_number: params.cycle_number,
+          signer_key: params.signer_key,
+          limit: getPagingQueryLimit(ResourceType.Stacker, query.limit),
+          offset: query.offset ?? 0,
         });
         const stackers: PoxStacker[] = results.map(r => parseDbPoxSignerStacker(r));
         await reply.send({

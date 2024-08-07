@@ -1,6 +1,6 @@
 import { isValidBitcoinAddress, tryConvertC32ToBtc } from '../../helpers';
 import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import { ResourceType } from '../pagination';
+import { getPagingQueryLimit, ResourceType } from '../pagination';
 
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -41,7 +41,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const limit = req.query.limit;
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = req.query.offset ?? 0;
 
       const queryResults = await fastify.db.getBurnchainRewardSlotHolders({ offset, limit });
@@ -91,7 +91,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const limit = req.query.limit;
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = req.query.offset ?? 0;
       const { address } = req.params;
 
@@ -163,7 +163,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const limit = req.query.limit;
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = req.query.offset ?? 0;
 
       const queryResults = await fastify.db.getBurnchainRewards({ offset, limit });
@@ -216,7 +216,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const limit = req.query.limit;
+      const limit = getPagingQueryLimit(ResourceType.Burnchain, req.query.limit);
       const offset = req.query.offset ?? 0;
       const { address } = req.params;
 

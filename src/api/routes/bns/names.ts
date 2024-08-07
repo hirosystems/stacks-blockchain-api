@@ -55,7 +55,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name, zoneFileHash } = req.params;
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const zonefile = await fastify.db.getHistoricalZoneFile({
         name: name,
         zoneFileHash: zoneFileHash,
@@ -104,7 +104,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const subdomainsList = await fastify.db.getSubdomainsListInName({
         name,
         includeUnanchored,
@@ -161,7 +161,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const zonefile = await fastify.db.getLatestZoneFile({ name: name, includeUnanchored });
       if (zonefile.found) {
         await reply.send(zonefile.result);
@@ -210,7 +210,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const page = parsePagingQueryInput(req.query.page ?? 0);
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const { results } = await fastify.db.getNamesList({ page, includeUnanchored });
       if (results.length === 0 && req.query.page) {
         await reply.status(400).send(BnsErrors.InvalidPageNumber);
@@ -273,7 +273,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const { name } = req.params;
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
 
       await fastify.db
         .sqlTransaction(async sql => {

@@ -6,7 +6,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { LimitParam, OffsetParam } from '../../schemas/params';
-import { ResourceType } from '../../pagination';
+import { getPagingQueryLimit, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import {
   AddressTransaction,
@@ -93,8 +93,9 @@ export const AddressRoutesV2: FastifyPluginAsync<
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactionEvents({
+          limit: getPagingQueryLimit(ResourceType.Tx, query.limit),
+          offset: query.offset ?? 0,
           ...params,
-          ...query,
         });
         const transfers: AddressTransactionEvent[] = results.map(r =>
           parseDbAddressTransactionTransfer(r)

@@ -76,7 +76,7 @@ export const TxRoutes: FastifyPluginAsync<
           type: Type.Optional(
             Type.Union([Type.Array(TransactionTypeSchema), TransactionTypeStringSchema])
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
           sort_by: Type.Optional(
             Type.Enum(
@@ -225,7 +225,7 @@ export const TxRoutes: FastifyPluginAsync<
           ]),
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: TransactionSearchResponseSchema,
@@ -275,7 +275,7 @@ export const TxRoutes: FastifyPluginAsync<
           address: Type.Optional(AddressParamSchema),
           order_by: Type.Optional(MempoolOrderByParamSchema),
           order: Type.Optional(OrderParamSchema),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
         }),
@@ -515,7 +515,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Union([TransactionSchema, MempoolTransactionSchema]),

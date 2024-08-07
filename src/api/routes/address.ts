@@ -92,7 +92,7 @@ export const AddressRoutes: FastifyPluginAsync<
           }),
         }),
         querystring: Type.Object({
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -160,7 +160,7 @@ export const AddressRoutes: FastifyPluginAsync<
           }),
         }),
         querystring: Type.Object({
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -274,7 +274,7 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -298,8 +298,8 @@ export const AddressRoutes: FastifyPluginAsync<
       const principal = req.params.principal;
       validatePrincipal(principal);
       const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
-      const limit = req.query.limit;
-      const offset = req.query.offset;
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+      const offset = req.query.offset ?? 0;
 
       const response = await fastify.db.sqlTransaction(async sql => {
         const blockParams = getBlockParams(req.query.height, req.query.unanchored);
@@ -427,7 +427,7 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -468,8 +468,8 @@ export const AddressRoutes: FastifyPluginAsync<
           blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
         }
 
-        const limit = req.query.limit;
-        const offset = req.query.offset;
+        const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+        const offset = req.query.offset ?? 0;
         const { results: txResults, total } = await fastify.db.getAddressTxsWithAssetTransfers({
           stxAddress: stxAddress,
           limit,
@@ -549,7 +549,7 @@ export const AddressRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Event),
           offset: OffsetParam(),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -572,8 +572,8 @@ export const AddressRoutes: FastifyPluginAsync<
       validatePrincipal(stxAddress);
       const untilBlock = parseUntilBlockQuery(req.query.until_block, req.query.unanchored);
 
-      const limit = req.query.limit;
-      const offset = req.query.offset;
+      const limit = getPagingQueryLimit(ResourceType.Event, req.query.limit);
+      const offset = req.query.offset ?? 0;
 
       const response = await fastify.db.sqlTransaction(async sql => {
         const blockHeight = await getBlockHeight(untilBlock, req.query.unanchored, fastify.db);
@@ -613,7 +613,7 @@ export const AddressRoutes: FastifyPluginAsync<
           height: Type.Optional(
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           until_block: Type.Optional(
             Type.String({
               description:
@@ -714,7 +714,7 @@ export const AddressRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
           offset: OffsetParam(),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: PaginatedResponse(MempoolTransactionSchema, {
@@ -724,8 +724,8 @@ export const AddressRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const limit = req.query.limit;
-      const offset = req.query.offset;
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
+      const offset = req.query.offset ?? 0;
       const address = req.params.principal;
       if (!isValidPrincipal(address)) {
         throw new InvalidRequestError(

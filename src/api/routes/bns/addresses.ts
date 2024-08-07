@@ -58,7 +58,7 @@ export const BnsAddressRoutes: FastifyPluginAsync<
       if (!SUPPORTED_BLOCKCHAINS.includes(blockchain)) {
         return await reply.status(404).send({ error: 'Unsupported blockchain' });
       }
-      const includeUnanchored = req.query.unanchored;
+      const includeUnanchored = req.query.unanchored ?? false;
       const namesByAddress = await fastify.db.getNamesByAddressList({
         address: address,
         includeUnanchored,

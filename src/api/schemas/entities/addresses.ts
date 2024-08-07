@@ -188,7 +188,7 @@ export const AddressTransactionEventSchema = Type.Union(
       type: Type.Literal('stx'),
       event_index: Type.Integer(),
       data: Type.Object({
-        type: Type.Enum(TransactionEventAssetTypeSchema),
+        type: TransactionEventAssetTypeSchema,
         amount: Type.String({
           description: 'Amount transferred in micro-STX as an integer string.',
         }),
@@ -208,7 +208,7 @@ export const AddressTransactionEventSchema = Type.Union(
       type: Type.Literal('ft'),
       event_index: Type.Integer(),
       data: Type.Object({
-        type: Type.Enum(TransactionEventAssetTypeSchema),
+        type: TransactionEventAssetTypeSchema,
         amount: Type.String({
           description:
             'Amount transferred as an integer string. This balance does not factor in possible SIP-010 decimals.',
@@ -232,7 +232,7 @@ export const AddressTransactionEventSchema = Type.Union(
       type: Type.Literal('nft'),
       event_index: Type.Integer(),
       data: Type.Object({
-        type: Type.Enum(TransactionEventAssetTypeSchema),
+        type: TransactionEventAssetTypeSchema,
         asset_identifier: Type.String({
           description: 'Non Fungible Token asset identifier.',
         }),

@@ -176,7 +176,7 @@ export const PoxRoutes: FastifyPluginAsync<
             })
           ),
           height: Type.Optional(Type.Integer({ minimum: 1 })),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: PaginatedResponse(PoolDelegationSchema),

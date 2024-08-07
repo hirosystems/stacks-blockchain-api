@@ -2,27 +2,33 @@ import { Type } from '@sinclair/typebox';
 import { pagingQueryLimits, ResourceType } from '../pagination';
 
 export const OffsetParam = (title?: string, description?: string) =>
-  Type.Integer({
-    minimum: 0,
-    default: 0,
-    title: title ?? 'Offset',
-    description: description ?? 'Result offset',
-  });
+  Type.Optional(
+    Type.Integer({
+      minimum: 0,
+      default: 0,
+      title: title ?? 'Offset',
+      description: description ?? 'Result offset',
+    })
+  );
 
 export const LimitParam = (resource: ResourceType, title?: string, description?: string) =>
-  Type.Integer({
-    minimum: 0,
-    default: pagingQueryLimits[resource].defaultLimit,
-    maximum: pagingQueryLimits[resource].maxLimit,
-    title: title ?? 'Limit',
-    description: description ?? 'Results per page',
-  });
+  Type.Optional(
+    Type.Integer({
+      minimum: 0,
+      default: pagingQueryLimits[resource].defaultLimit,
+      maximum: pagingQueryLimits[resource].maxLimit,
+      title: title ?? 'Limit',
+      description: description ?? 'Results per page',
+    })
+  );
 
-export const UnanchoredParamSchema = Type.Boolean({
-  default: false,
-  description: 'Include data from unanchored (i.e. unconfirmed) microblocks',
-  examples: [true],
-});
+export const UnanchoredParamSchema = Type.Optional(
+  Type.Boolean({
+    default: false,
+    description: 'Include data from unanchored (i.e. unconfirmed) microblocks',
+    examples: [true],
+  })
+);
 
 export const TransactionIdParamSchema = Type.String({
   pattern: '^(0x)?[a-fA-F0-9]{64}$',

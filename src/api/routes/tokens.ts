@@ -52,7 +52,7 @@ export const TokenRoutes: FastifyPluginAsync<
           ),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of tokens to fetch'),
           offset: OffsetParam('Offset', 'index of first tokens to fetch'),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -162,7 +162,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -273,7 +273,7 @@ export const TokenRoutes: FastifyPluginAsync<
           }),
           limit: LimitParam(ResourceType.Token, 'Limit', 'max number of events to fetch'),
           offset: OffsetParam('Offset', 'index of first event to fetch'),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
           tx_metadata: Type.Boolean({
             default: false,
             description:
@@ -408,7 +408,7 @@ export const TokenRoutes: FastifyPluginAsync<
     },
     async (req, reply) => {
       const token = req.params.token;
-      const limit = req.query.limit;
+      const limit = getPagingQueryLimit(ResourceType.TokenHolders, req.query.limit);
       const offset = req.query.offset ?? 0;
       const { results, total, totalSupply } = await fastify.db.getTokenHolders({
         token,

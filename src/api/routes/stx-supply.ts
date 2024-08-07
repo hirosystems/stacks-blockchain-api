@@ -60,7 +60,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               examples: [777678],
             })
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Object(
@@ -178,7 +178,7 @@ export const StxSupplyRoutes: FastifyPluginAsync<
               examples: [777678],
             })
           ),
-          unanchored: Type.Optional(UnanchoredParamSchema),
+          unanchored: UnanchoredParamSchema,
         }),
         response: {
           200: Type.Object(
