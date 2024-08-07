@@ -10,9 +10,7 @@ export const StatusRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  fastify.route({
-    method: ['GET', 'POST'],
-    url: '/extended',
+  fastify.get('/extended', {
     schema: {
       operationId: 'get_status',
       summary: 'API status',
