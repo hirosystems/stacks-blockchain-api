@@ -15,7 +15,6 @@
     "baseUrl": ".",
     "paths": {
       "@stacks/stacks-blockchain-api-types": ["docs"],
-      "@stacks/blockchain-api-client": ["client/src"]
     },
     "typeRoots": [
       "./src/@types",

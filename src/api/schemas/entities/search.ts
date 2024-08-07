@@ -1,8 +1,7 @@
 import { Static, Type } from '@sinclair/typebox';
 import { AddressStxBalanceSchema } from './addresses';
 import { BlockSchema } from './block';
-import { TransactionSchema } from './transactions';
-import { MempoolTransactionSchema } from './mempool-transactions';
+import { MempoolTransactionSchema, TransactionSchema } from './transactions';
 
 export const AddressSearchResultSchema = Type.Object(
   {

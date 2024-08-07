@@ -18,28 +18,27 @@ import {
   notification as jsonRpcNotification,
   success as jsonRpcSuccess,
 } from 'jsonrpc-lite';
-import {
+import type {
   RpcTxUpdateSubscriptionParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
   RpcBlockSubscriptionParams,
   RpcMicroblockSubscriptionParams,
   RpcMempoolSubscriptionParams,
-  AddressTransactionWithTransfers,
   AddressStxBalanceResponse,
   RpcNftEventSubscriptionParams,
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
   NftEvent,
-} from '@stacks/stacks-blockchain-api-types';
+} from 'client/src/types';
 import { getWsMessageTimeoutMs, getWsPingIntervalMs } from '../web-socket-transmitter';
 import { logger } from '../../../../logger';
 import { isProdEnv, resolveOrTimeout } from '@hirosystems/api-toolkit';
 
-import { Transaction } from '../../../schemas/entities/transactions';
-import { MempoolTransaction } from '../../..//schemas/entities/mempool-transactions';
+import { Transaction, MempoolTransaction } from '../../../schemas/entities/transactions';
 import { Block } from '../../..//schemas/entities/block';
 import { Microblock } from '../../..//schemas/entities/microblock';
+import { AddressTransactionWithTransfers } from '../../../schemas/entities/addresses';
 
 type Subscription =
   | RpcTxUpdateSubscriptionParams

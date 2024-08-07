@@ -12,7 +12,7 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from '../api/routes/fee-rate';
-import { FeeRateRequest } from 'docs/generated';
+import { FeeRateRequest } from '@stacks/stacks-blockchain-api-types';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';

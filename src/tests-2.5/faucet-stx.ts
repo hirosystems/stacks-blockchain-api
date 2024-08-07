@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
-import { AddressStxBalanceResponse } from 'docs/generated';
+import { RunFaucetResponse, AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import * as supertest from 'supertest';
 import {
   Account,

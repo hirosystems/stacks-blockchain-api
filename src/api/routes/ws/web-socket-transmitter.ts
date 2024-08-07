@@ -1,6 +1,6 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'docs/generated';
+import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'client/src/types';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,
@@ -230,7 +230,7 @@ export class WebSocketTransmitter {
         for (const addressTx of addressTxs) {
           const parsedTx = parseDbTx(addressTx.tx);
           const result: AddressTransactionWithTransfers = {
-            tx: parsedTx as import('@stacks/stacks-blockchain-api-types').Transaction,
+            tx: parsedTx,
             stx_sent: addressTx.stx_sent.toString(),
             stx_received: addressTx.stx_received.toString(),
             stx_transfers: addressTx.stx_transfers.map(value => {

@@ -34,13 +34,16 @@ import {
   UnanchoredParamSchema,
 } from '../schemas/params';
 import {
+  AbstractMempoolTransactionProperties,
+  BaseTransactionSchemaProperties,
+  MempoolTransactionSchema,
+  TokenTransferTransactionMetadataProperties,
   TransactionSchema,
   TransactionSearchResponseSchema,
   TransactionTypeSchema,
   TransactionTypeStringSchema,
 } from '../schemas/entities/transactions';
 import { PaginatedResponse } from '../schemas/util';
-import { MempoolTransactionSchema } from '../schemas/entities/mempool-transactions';
 import {
   ErrorResponseSchema,
   MempoolStatsResponseSchema,
@@ -64,11 +67,7 @@ export const TxRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_transaction_list',
         summary: 'Get recent transactions',
-        description: `Retrieves all recently mined transactions
-
-          If using TypeScript, import typings for this response from our types package:
-  
-          \`import type { TransactionResults } from '@stacks/stacks-blockchain-api-types';\``,
+        description: `Retrieves all recently mined transactions`,
         tags: ['Transactions'],
         querystring: Type.Object({
           offset: OffsetParam(),
@@ -212,11 +211,7 @@ export const TxRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_tx_list_details',
         summary: 'Get list of details for transactions',
-        description: `Retrieves a list of transactions for a given list of transaction IDs
-
-        If using TypeScript, import typings for this response from our types package:
-
-        \`import type { Transaction } from '@stacks/stacks-blockchain-api-types';\``,
+        description: `Retrieves a list of transactions for a given list of transaction IDs`,
         tags: ['Transactions'],
         querystring: Type.Object({
           tx_id: Type.Union([
@@ -505,9 +500,7 @@ export const TxRoutes: FastifyPluginAsync<
       schema: {
         operationId: 'get_transaction_by_id',
         summary: 'Get transaction',
-        description: `Retrieves transaction details for a given transaction ID
-
-        \`import type { Transaction } from '@stacks/stacks-blockchain-api-types';\``,
+        description: `Retrieves transaction details for a given transaction ID`,
         tags: ['Transactions'],
         params: Type.Object({
           tx_id: TransactionIdParamSchema,

@@ -37,12 +37,12 @@ import {
   InboundStxTransferSchema,
 } from '../schemas/entities/addresses';
 import { PaginatedResponse } from '../schemas/util';
-import { TransactionSchema } from '../schemas/entities/transactions';
-import { TransactionEvent, TransactionEventSchema } from '../schemas/entities/transaction-events';
 import {
   MempoolTransaction,
   MempoolTransactionSchema,
-} from '../schemas/entities/mempool-transactions';
+  TransactionSchema,
+} from '../schemas/entities/transactions';
+import { TransactionEvent, TransactionEventSchema } from '../schemas/entities/transaction-events';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,

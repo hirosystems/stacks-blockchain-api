@@ -1,4 +1,4 @@
-import {
+import type {
   AddressStxBalanceTopic,
   AddressTransactionTopic,
   ClientToServerMessages,
@@ -7,7 +7,7 @@ import {
   ServerToClientMessages,
   Topic,
   TransactionTopic,
-} from 'docs/socket-io';
+} from 'client/src/types';
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
@@ -187,29 +187,20 @@ export class SocketIOChannel extends WebSocketChannel {
       case 'microblock': {
         const [microblock] = args as ListenerType<WebSocketPayload['microblock']>;
         this.prometheus?.sendEvent('microblock');
-        this.io
-          ?.to('microblock')
-          .emit(
-            'microblock',
-            microblock as import('@stacks/stacks-blockchain-api-types').Microblock
-          );
+        this.io?.to('microblock').emit('microblock', microblock);
         break;
       }
       case 'mempoolTransaction': {
         const [tx] = args as ListenerType<WebSocketPayload['mempoolTransaction']>;
         this.prometheus?.sendEvent('mempool');
-        this.io
-          ?.to('mempool')
-          .emit('mempool', tx as import('@stacks/stacks-blockchain-api-types').MempoolTransaction);
+        this.io?.to('mempool').emit('mempool', tx);
         break;
       }
       case 'transaction': {
         const [tx] = args as ListenerType<WebSocketPayload['transaction']>;
         this.prometheus?.sendEvent('transaction');
         const topic: TransactionTopic = `transaction:${tx.tx_id}`;
-        this.io
-          ?.to(topic)
-          .emit(topic, tx as import('@stacks/stacks-blockchain-api-types').Transaction);
+        this.io?.to(topic).emit(topic, tx);
         break;
       }
       case 'nftEvent': {
@@ -294,6 +285,6 @@ export class SocketIOChannel extends WebSocketChannel {
     }
     const validatedSubs = subscriptions.map(isSubValid);
     const invalidSubs = validatedSubs.filter(validSub => typeof validSub === 'string');
-    return invalidSubs.length === 0 ? undefined : (invalidSubs as string[]);
+    return invalidSubs.length === 0 ? undefined : invalidSubs;
   }
 }

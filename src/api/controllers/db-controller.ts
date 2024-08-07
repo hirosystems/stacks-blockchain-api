@@ -42,10 +42,12 @@ import { SyntheticPoxEventName } from '../../pox-helpers';
 import { logger } from '../../logger';
 
 import {
+  AbstractMempoolTransaction,
   AbstractTransaction,
   BaseTransaction,
   CoinbaseTransactionMetadata,
   ContractCallTransactionMetadata,
+  MempoolTransaction,
   PoisonMicroblockTransactionMetadata,
   SmartContractTransactionMetadata,
   TenureChangeTransactionMetadata,
@@ -56,10 +58,6 @@ import {
   TransactionNotFound,
   TransactionSearchResponse,
 } from '../schemas/entities/transactions';
-import {
-  AbstractMempoolTransaction,
-  MempoolTransaction,
-} from '../schemas/entities/mempool-transactions';
 import {
   FungibleTokenAssetTransactionEvent,
   NonFungibleTokenAssetTransactionEvent,
