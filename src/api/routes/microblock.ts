@@ -15,6 +15,7 @@ import { PaginatedResponse } from '../schemas/util';
 import { MicroblockSchema } from '../schemas/entities/microblock';
 import { NotFoundError } from '../../errors';
 import { TransactionSchema } from '../schemas/entities/transactions';
+import { MicroblockListResponseSchema } from '../schemas/responses/responses';
 
 export const MicroblockRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -37,10 +38,7 @@ export const MicroblockRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
         }),
         response: {
-          200: PaginatedResponse(MicroblockSchema, {
-            title: 'MicroblockListResponse',
-            description: 'GET request that returns microblocks',
-          }),
+          200: MicroblockListResponseSchema,
         },
       },
     },

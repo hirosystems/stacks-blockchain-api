@@ -45,7 +45,7 @@ import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
-import { Transaction } from '@stacks/stacks-blockchain-api-types';
+import { Transaction } from '../api/schemas/entities/transactions';
 
 describe('tx tests', () => {
   let db: PgWriteStore;

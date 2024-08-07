@@ -1,6 +1,17 @@
 import { Static, Type } from '@sinclair/typebox';
-import { OptionalNullable } from '../util';
+import { OptionalNullable, PaginatedResponse } from '../util';
 import { MempoolStatsSchema } from '../entities/mempool-transactions';
+import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions';
+import { MicroblockSchema } from '../entities/microblock';
+import {
+  AddressTransactionWithTransfersSchema,
+  InboundStxTransferSchema,
+} from '../entities/addresses';
+import { TransactionEventSchema } from '../entities/transaction-events';
+import {
+  BurnchainRewardSchema,
+  BurnchainRewardSlotHolderSchema,
+} from '../entities/burnchain-rewards';
 
 export const ErrorResponseSchema = Type.Object(
   {
@@ -82,3 +93,88 @@ export const RawTransactionResponseSchema = Type.Object(
   },
   { title: 'GetRawTransactionResult', description: 'GET raw transaction' }
 );
+
+export const TransactionResultsSchema = PaginatedResponse(TransactionSchema, {
+  description: 'List of transactions',
+});
+export type TransactionResults = Static<typeof TransactionResultsSchema>;
+
+export const MempoolTransactionListResponse = PaginatedResponse(MempoolTransactionSchema, {
+  description: 'List of mempool transactions',
+});
+export type MempoolTransactionListResponse = Static<typeof MempoolTransactionListResponse>;
+
+export const MicroblockListResponseSchema = PaginatedResponse(MicroblockSchema, {
+  title: 'MicroblockListResponse',
+  description: 'GET request that returns microblocks',
+});
+export type MicroblockListResponse = Static<typeof MicroblockListResponseSchema>;
+
+export const AddressTransactionsWithTransfersListResponseSchema = PaginatedResponse(
+  AddressTransactionWithTransfersSchema,
+  {
+    title: 'AddressTransactionsWithTransfersListResponse',
+  }
+);
+export type AddressTransactionsWithTransfersListResponse = Static<
+  typeof AddressTransactionsWithTransfersListResponseSchema
+>;
+
+export const AddressTransactionsListResponseSchema = PaginatedResponse(TransactionSchema, {
+  title: 'AddressTransactionsListResponse',
+  description: 'GET request that returns account transactions',
+});
+export type AddressTransactionsListResponse = Static<typeof AddressTransactionsListResponseSchema>;
+
+export const AddressStxInboundListResponseSchema = PaginatedResponse(InboundStxTransferSchema, {
+  title: 'AddressStxInboundListResponse',
+});
+export type AddressStxInboundListResponse = Static<typeof AddressStxInboundListResponseSchema>;
+
+export const TransactionEventsResponseSchema = Type.Object(
+  {
+    limit: Type.Integer({ examples: [20] }),
+    offset: Type.Integer({ examples: [0] }),
+    events: Type.Array(TransactionEventSchema),
+  },
+  { title: 'List of events' }
+);
+export type TransactionEventsResponse = Static<typeof TransactionEventsResponseSchema>;
+
+export const BurnchainRewardSlotHolderListResponseSchema = PaginatedResponse(
+  BurnchainRewardSlotHolderSchema,
+  {
+    title: 'BurnchainRewardSlotHolderListResponse',
+    description: 'List of burnchain reward recipients and amounts',
+  }
+);
+export type BurnchainRewardSlotHolderListResponse = Static<
+  typeof BurnchainRewardSlotHolderListResponseSchema
+>;
+
+export const BurnchainRewardListResponseSchema = Type.Object(
+  {
+    limit: Type.Integer(),
+    offset: Type.Integer(),
+    results: Type.Array(BurnchainRewardSchema),
+  },
+  {
+    description: 'List of burnchain reward recipients and amounts',
+  }
+);
+export type BurnchainRewardListResponse = Static<typeof BurnchainRewardListResponseSchema>;
+
+export const RunFaucetResponseSchema = Type.Object(
+  {
+    success: Type.Literal(true, {
+      description: 'Indicates if the faucet call was successful',
+    }),
+    txId: Type.String({ description: 'The transaction ID for the faucet call' }),
+    txRaw: Type.String({ description: 'Raw transaction in hex string representation' }),
+  },
+  {
+    title: 'RunFaucetResponse',
+    description: 'POST request that initiates a transfer of tokens to a specified testnet address',
+  }
+);
+export type RunFaucetResponse = Static<typeof RunFaucetResponseSchema>;

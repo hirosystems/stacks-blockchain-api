@@ -16,7 +16,7 @@ import {
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   AnchorMode,
   AuthType,

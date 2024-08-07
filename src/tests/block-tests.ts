@@ -14,7 +14,6 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
-import { AverageBlockTimesResponse } from '@stacks/stacks-blockchain-api-types';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -858,7 +857,7 @@ describe('block tests', () => {
     }
 
     const fetch = await supertest(api.server).get(`/extended/v2/blocks/average-times`);
-    const response: AverageBlockTimesResponse = fetch.body;
+    const response = fetch.body;
     expect(fetch.status).toBe(200);
 
     // All block time averages should be about 30 minutes

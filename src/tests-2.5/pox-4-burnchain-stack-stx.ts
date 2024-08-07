@@ -1,11 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AddressStxBalanceResponse,
-  ContractCallTransaction,
-  TransactionEventsResponse,
-  TransactionEventStxLock,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   AnchorMode,
   boolCV,
   bufferCV,
@@ -40,6 +34,10 @@ import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js'
 import { decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
 import { hexToBytes } from '@stacks/common';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { TransactionEventsResponse } from '../api/schemas/responses/responses';
+import { StxLockTransactionEvent } from '../api/schemas/entities/transaction-events';
+import { ContractCallTransaction } from '../api/schemas/entities/transactions';
 
 // Perform Stack-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/0da29c6911c49c45e4125dbeaed58069854591eb/sips/sip-007/sip-007-stacking-consensus.md#stx-operations-on-bitcoin
@@ -225,7 +223,7 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
     // test API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
@@ -337,8 +335,8 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     const addressEventsResp = await supertest(api.server)
       .get(`/extended/v1/tx/events?address=${account.stxAddr}`)
       .expect(200);
-    const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['results'];
-    const event1 = addressEvents[0] as TransactionEventStxLock;
+    const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['events'];
+    const event1 = addressEvents[0] as StxLockTransactionEvent;
     expect(event1.event_type).toBe('stx_lock');
     expect(event1.stx_lock_event.locked_address).toBe(account.stxAddr);
     expect(event1.stx_lock_event.unlock_height).toBeGreaterThan(0);
@@ -377,7 +375,7 @@ describe('PoX-4 - Stack using Bitcoin-chain stack ops', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(testStackAmount);
 
     // test API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);

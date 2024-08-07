@@ -13,9 +13,6 @@
     "outDir": "lib",
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {
-      "@stacks/stacks-blockchain-api-types": ["docs"],
-    },
     "typeRoots": [
       "./src/@types",
       "./node_modules/@types"

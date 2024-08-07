@@ -356,6 +356,7 @@ export const TokenTransferTransactionSchema = Type.Object(
   },
   { title: 'TokenTransferTransaction' }
 );
+export type TokenTransferTransaction = Static<typeof TokenTransferTransactionSchema>;
 
 export const SmartContractTransactionSchema = Type.Object(
   {
@@ -364,6 +365,7 @@ export const SmartContractTransactionSchema = Type.Object(
   },
   { title: 'SmartContractTransaction' }
 );
+export type SmartContractTransaction = Static<typeof SmartContractTransactionSchema>;
 
 export const ContractCallTransactionSchema = Type.Object(
   {
@@ -372,6 +374,7 @@ export const ContractCallTransactionSchema = Type.Object(
   },
   { title: 'ContractCallTransaction' }
 );
+export type ContractCallTransaction = Static<typeof ContractCallTransactionSchema>;
 
 export const PoisonMicroblockTransactionSchema = Type.Object(
   {
@@ -380,6 +383,7 @@ export const PoisonMicroblockTransactionSchema = Type.Object(
   },
   { title: 'PoisonMicroblockTransaction' }
 );
+export type PoisonMicroblockTransaction = Static<typeof PoisonMicroblockTransactionSchema>;
 
 export const CoinbaseTransactionSchema = Type.Object(
   {
@@ -388,6 +392,7 @@ export const CoinbaseTransactionSchema = Type.Object(
   },
   { title: 'CoinbaseTransaction' }
 );
+export type CoinbaseTransaction = Static<typeof CoinbaseTransactionSchema>;
 
 export const TenureChangeTransactionSchema = Type.Object(
   {
@@ -396,6 +401,7 @@ export const TenureChangeTransactionSchema = Type.Object(
   },
   { title: 'TenureChangeTransaction' }
 );
+export type TenureChangeTransaction = Static<typeof TenureChangeTransactionSchema>;
 
 const TransactionMetadataSchema = Type.Union([
   TokenTransferTransactionMetadataSchema,

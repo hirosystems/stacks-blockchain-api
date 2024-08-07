@@ -12,7 +12,6 @@ import {
 import { startApiServer, ApiServer } from '../api/init';
 import { I32_MAX, microStxToStx, STACKS_DECIMAL_PLACES } from '../helpers';
 import { FEE_RATE } from '../api/routes/fee-rate';
-import { FeeRateRequest } from '@stacks/stacks-blockchain-api-types';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
@@ -233,7 +232,7 @@ describe('other tests', () => {
   });
 
   test('Get fee rate', async () => {
-    const request: FeeRateRequest = {
+    const request = {
       transaction: '0x5e9f3933e358df6a73fec0d47ce3e1062c20812c129f5294e6f37a8d27c051d9',
     };
     const result = await supertest(api.server).post('/extended/v1/fee_rate').send(request);

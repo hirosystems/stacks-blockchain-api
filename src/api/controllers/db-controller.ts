@@ -15,7 +15,7 @@ import {
   RosettaBlock,
   RosettaParentBlockIdentifier,
   RosettaTransaction,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../rosetta/types';
 
 import {
   BlockIdentifier,

@@ -37,12 +37,13 @@ import {
   InboundStxTransferSchema,
 } from '../schemas/entities/addresses';
 import { PaginatedResponse } from '../schemas/util';
-import {
-  MempoolTransaction,
-  MempoolTransactionSchema,
-  TransactionSchema,
-} from '../schemas/entities/transactions';
+import { MempoolTransaction, MempoolTransactionSchema } from '../schemas/entities/transactions';
 import { TransactionEvent, TransactionEventSchema } from '../schemas/entities/transaction-events';
+import {
+  AddressStxInboundListResponseSchema,
+  AddressTransactionsListResponseSchema,
+  AddressTransactionsWithTransfersListResponseSchema,
+} from '../schemas/responses/responses';
 
 async function getBlockHeight(
   untilBlock: number | string | undefined,
@@ -287,10 +288,7 @@ export const AddressRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema, {
-            title: 'AddressTransactionsListResponse',
-            description: 'GET request that returns account transactions',
-          }),
+          200: AddressTransactionsListResponseSchema,
         },
       },
     },
@@ -440,9 +438,7 @@ export const AddressRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: PaginatedResponse(AddressTransactionWithTransfersSchema, {
-            title: 'AddressTransactionsWithTransfersListResponse',
-          }),
+          200: AddressTransactionsWithTransfersListResponseSchema,
         },
       },
     },
@@ -626,9 +622,7 @@ export const AddressRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: PaginatedResponse(InboundStxTransferSchema, {
-            title: 'AddressStxInboundListResponse',
-          }),
+          200: AddressStxInboundListResponseSchema,
         },
       },
     },

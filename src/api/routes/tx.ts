@@ -47,7 +47,10 @@ import { PaginatedResponse } from '../schemas/util';
 import {
   ErrorResponseSchema,
   MempoolStatsResponseSchema,
+  MempoolTransactionListResponse,
   RawTransactionResponseSchema,
+  TransactionEventsResponseSchema,
+  TransactionResultsSchema,
 } from '../schemas/responses/responses';
 import {
   TransactionEventSchema,
@@ -132,7 +135,7 @@ export const TxRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
+          200: TransactionResultsSchema,
         },
       },
     },
@@ -275,9 +278,7 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Tx),
         }),
         response: {
-          200: PaginatedResponse(MempoolTransactionSchema, {
-            description: 'List of mempool transactions',
-          }),
+          200: MempoolTransactionListResponse,
         },
       },
     },
@@ -416,14 +417,7 @@ export const TxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Event),
         }),
         response: {
-          200: Type.Object(
-            {
-              limit: Type.Integer({ examples: [20] }),
-              offset: Type.Integer({ examples: [0] }),
-              events: Type.Array(TransactionEventSchema),
-            },
-            { title: 'List of events' }
-          ),
+          200: TransactionEventsResponseSchema,
         },
       },
     },

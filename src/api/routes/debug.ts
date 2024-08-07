@@ -48,7 +48,7 @@ import {
   RosettaConstructionSubmitRequest,
   RosettaConstructionSubmitResponse,
   RosettaOperation,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../rosetta/types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';

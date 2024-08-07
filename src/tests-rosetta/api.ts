@@ -19,7 +19,7 @@ import {
   RosettaNetworkStatusResponse,
   RosettaOperation,
   RosettaTransaction,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   RosettaErrors,
   RosettaOperationType,

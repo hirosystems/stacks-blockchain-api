@@ -1,19 +1,14 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import {
-  Block,
-  CoinbaseTransaction,
-  SmartContractTransaction,
-  TokenTransferTransaction,
-  Transaction,
-  TransactionEvent,
-  TransactionEventSmartContractLog,
-  TransactionEventsResponse,
-  TransactionEventStxAsset,
-} from '@stacks/stacks-blockchain-api-types';
 import * as supertest from 'supertest';
 import { BlockQueryResult } from '../datastore/common';
 import { parseBlockQueryResult } from '../datastore/helpers';
 import { standByUntilBlock, testEnv } from '../test-utils/test-helpers';
+import {
+  CoinbaseTransaction,
+  SmartContractTransaction,
+  Transaction,
+} from '../api/schemas/entities/transactions';
+import { Block } from '../api/schemas/entities/block';
 
 describe('Block-zero event handling', () => {
   const testnetBootAddr = 'ST000000000000000000002AMW42H';
@@ -126,20 +121,18 @@ describe('Block-zero event handling', () => {
     )[0] as SmartContractTransaction;
     expect(genesisContractTx).toBeDefined();
 
-    const genesisLogEvent: TransactionEventSmartContractLog[] = [
+    const genesisLogEvent = [
       {
         event_index: 0,
         event_type: 'smart_contract_log',
         tx_id: genesisContractTx.tx_id,
-        contract_log: expect.objectContaining<TransactionEventSmartContractLog['contract_log']>({
+        contract_log: expect.objectContaining({
           contract_id: genesisContractID,
           topic: 'print',
-          value: expect.objectContaining<TransactionEventSmartContractLog['contract_log']['value']>(
-            {
-              hex: expect.stringContaining('0x'),
-              repr: expect.stringContaining('share CPU power with Bitcoin'),
-            }
-          ),
+          value: expect.objectContaining({
+            hex: expect.stringContaining('0x'),
+            repr: expect.stringContaining('share CPU power with Bitcoin'),
+          }),
         }),
       },
     ];
@@ -150,22 +143,20 @@ describe('Block-zero event handling', () => {
     const contractEventsRes = await supertest(testEnv.api.server)
       .get(`/extended/v1/contract/${genesisContractID}/events`)
       .expect(200);
-    const contractEvents = contractEventsRes.body as TransactionEventsResponse;
+    const contractEvents = contractEventsRes.body;
     expect(contractEvents.results).toEqual(genesisLogEvent);
   });
 
   test('Genesis STX mint events', async () => {
     // One of the boot txs is a special "token_transfer" type that includes `stx_asset` mint events for seeding boot accounts
-    const genesisStxMintTx = blockOneTxs.filter(
-      tx => tx.tx_type === 'token_transfer'
-    )[0] as TokenTransferTransaction;
+    const genesisStxMintTx = blockOneTxs.filter(tx => tx.tx_type === 'token_transfer')[0];
     expect(genesisStxMintTx).toBeDefined();
 
-    const stxMintEvent: TransactionEventStxAsset = {
+    const stxMintEvent = {
       event_index: 0,
       event_type: 'stx_asset',
       tx_id: genesisStxMintTx.tx_id,
-      asset: expect.objectContaining<TransactionEventStxAsset['asset']>({
+      asset: expect.objectContaining({
         asset_event_type: 'mint',
         sender: '',
         recipient: expect.stringMatching(/^S/), // any stacks address
@@ -180,10 +171,8 @@ describe('Block-zero event handling', () => {
       .get(`/extended/v1/tx/events`)
       .query({ tx_id: genesisStxMintTx.tx_id, limit: 50 })
       .expect(200);
-    const mintTxEvents = mintTxEventsRes.body.events as TransactionEvent[];
-    const firstMintEvent = mintTxEvents.filter(
-      r => r.event_index === 0
-    )[0] as TransactionEventStxAsset;
+    const mintTxEvents = mintTxEventsRes.body.events as any[];
+    const firstMintEvent = mintTxEvents.filter(r => r.event_index === 0)[0];
     expect(firstMintEvent).toBeDefined();
     expect(firstMintEvent).toEqual(stxMintEvent);
   });

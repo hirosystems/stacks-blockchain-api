@@ -2,10 +2,6 @@
 import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
 import { bytesToHex } from '@stacks/common';
 import {
-  AddressStxBalanceResponse,
-  BurnchainRewardListResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   AnchorMode,
   TransactionVersion,
   getAddressFromPrivateKey,
@@ -28,6 +24,8 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { BurnchainRewardListResponse } from '../api/schemas/responses/responses';
 
 describe('PoX-4 - Rosetta - Stacking with segwit', () => {
   let btcAddr: string;
@@ -101,7 +99,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
     // test API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
@@ -149,7 +147,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(ustxAmount);
 
     // test API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.balance)).toBeLessThan(testAccountBalance);
@@ -177,7 +175,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(coreNodeBalance.unlock_height).toBe(0);
 
     // verify STX unlocked - API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(0n);
@@ -268,7 +266,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(coreNodeBalance.unlock_height).toBeGreaterThan(0);
 
     // ensure locked reported by API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
@@ -294,7 +292,7 @@ describe('PoX-4 - Rosetta - Stacking with segwit', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
     // ensure zero locked reported by API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(0n);

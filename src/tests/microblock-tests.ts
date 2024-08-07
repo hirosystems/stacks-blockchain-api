@@ -21,18 +21,20 @@ import {
 import { startApiServer } from '../api/init';
 import { httpPostRequest, I32_MAX } from '../helpers';
 import {
-  AddressStxBalanceResponse,
+  ContractCallTransaction,
+  MempoolTransaction,
+  Transaction,
+} from '../api/schemas/entities/transactions';
+import {
   AddressStxInboundListResponse,
   AddressTransactionsListResponse,
   AddressTransactionsWithTransfersListResponse,
-  ContractCallTransaction,
-  MempoolTransaction,
   MempoolTransactionListResponse,
-  Microblock,
   MicroblockListResponse,
-  Transaction,
   TransactionResults,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../api/schemas/responses/responses';
+import { Microblock } from '../api/schemas/entities/microblock';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
@@ -682,14 +684,14 @@ describe('microblock tests', () => {
         expect(addrTxsBody2.results[0].tx_id).toBe(mbTx2.tx_id);
 
         const addrBalance1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-        const { body: addrBalanceBody1 }: { body: AddressStxBalanceResponse } = addrBalance1;
+        const { body: addrBalanceBody1 }: { body: AddressStxBalance } = addrBalance1;
         expect(addrBalanceBody1.balance).toBe('0');
         expect(addrBalanceBody1.total_received).toBe('0');
 
         const addrBalance2 = await supertest(api.server).get(
           `/extended/v1/address/${addr2}/stx?unanchored`
         );
-        const { body: addrBalanceBody2 }: { body: AddressStxBalanceResponse } = addrBalance2;
+        const { body: addrBalanceBody2 }: { body: AddressStxBalance } = addrBalance2;
         expect(addrBalanceBody2.balance).toBe(mbTxStxEvent1.amount.toString());
         expect(addrBalanceBody2.total_received).toBe(mbTxStxEvent1.amount.toString());
 

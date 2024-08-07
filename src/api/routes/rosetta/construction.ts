@@ -23,7 +23,7 @@ import {
   RosettaOperation,
   RosettaOptions,
   RosettaPublicKey,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../../rosetta/types';
 import {
   AnchorMode,
   AuthType,

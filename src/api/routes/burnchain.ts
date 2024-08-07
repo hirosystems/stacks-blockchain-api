@@ -15,6 +15,10 @@ import {
   BurnchainRewardsTotal,
   BurnchainRewardsTotalSchema,
 } from '../schemas/entities/burnchain-rewards';
+import {
+  BurnchainRewardListResponseSchema,
+  BurnchainRewardSlotHolderListResponseSchema,
+} from '../schemas/responses/responses';
 
 export const BurnchainRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -83,10 +87,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
         }),
         response: {
-          200: PaginatedResponse(BurnchainRewardSlotHolderSchema, {
-            title: 'BurnchainRewardSlotHolderListResponse',
-            description: 'List of burnchain reward recipients and amounts',
-          }),
+          200: BurnchainRewardSlotHolderListResponseSchema,
         },
       },
     },
@@ -149,16 +150,7 @@ export const BurnchainRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
         }),
         response: {
-          200: Type.Object(
-            {
-              limit: Type.Integer(),
-              offset: Type.Integer(),
-              results: Type.Array(BurnchainRewardSchema),
-            },
-            {
-              description: 'List of burnchain reward recipients and amounts',
-            }
-          ),
+          200: BurnchainRewardListResponseSchema,
         },
       },
     },

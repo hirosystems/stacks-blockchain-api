@@ -25,6 +25,7 @@ import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { fastifyFormbody } from '@fastify/formbody';
 import { Server } from 'node:http';
 import { OptionalNullable } from '../schemas/util';
+import { RunFaucetResponseSchema } from '../schemas/responses/responses';
 
 export function getStxFaucetNetworks(): StacksNetwork[] {
   const networks: StacksNetwork[] = [getStacksTestnetNetwork()];
@@ -296,20 +297,7 @@ export const FaucetRoutes: FastifyPluginAsync<
           })
         ),
         response: {
-          200: Type.Object(
-            {
-              success: Type.Literal(true, {
-                description: 'Indicates if the faucet call was successful',
-              }),
-              txId: Type.String({ description: 'The transaction ID for the faucet call' }),
-              txRaw: Type.String({ description: 'Raw transaction in hex string representation' }),
-            },
-            {
-              title: 'RunFaucetResponse',
-              description:
-                'POST request that initiates a transfer of tokens to a specified testnet address',
-            }
-          ),
+          200: RunFaucetResponseSchema,
           '4xx': Type.Object({
             success: Type.Literal(false, {
               description: 'Indicates if the faucet call was successful',

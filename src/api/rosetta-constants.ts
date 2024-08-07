@@ -1,5 +1,13 @@
-import * as T from '@stacks/stacks-blockchain-api-types';
-import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
+import {
+  RosettaAccountBalanceRequest,
+  RosettaBlockRequest,
+  RosettaBlockTransactionRequest,
+  RosettaErrorNoDetails,
+  RosettaMempoolTransactionRequest,
+  RosettaNetworkListRequest,
+  RosettaOptionsRequest,
+  RosettaStatusRequest,
+} from '../rosetta/types';
 import { ChainID, getChainIDNetwork } from '../helpers';
 
 export const RosettaNetworks = {
@@ -368,13 +376,13 @@ export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDe
 
 // All request types, used to validate input.
 export type RosettaRequestType =
-  | T.RosettaAccountBalanceRequest
-  | T.RosettaBlockRequest
-  | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionRequest
-  | T.RosettaNetworkListRequest
-  | T.RosettaOptionsRequest
-  | T.RosettaStatusRequest;
+  | RosettaAccountBalanceRequest
+  | RosettaBlockRequest
+  | RosettaBlockTransactionRequest
+  | RosettaMempoolTransactionRequest
+  | RosettaNetworkListRequest
+  | RosettaOptionsRequest
+  | RosettaStatusRequest;
 
 export interface SchemaFiles {
   request: string;

@@ -9,11 +9,16 @@ import {
   getRosettaNetworkName,
   RosettaErrorsTypes,
 } from './rosetta-constants';
-import * as T from '@stacks/stacks-blockchain-api-types';
 import { dereferenceSchema, getDocSchemaFile } from './validate';
 import { ChainID } from '@stacks/transactions';
 import { logger } from '../logger';
 import { has0xPrefix, hexToBuffer } from '@hirosystems/api-toolkit';
+import {
+  RosettaBlockIdentifier,
+  RosettaError,
+  RosettaPartialBlockIdentifier,
+  TransactionIdentifier,
+} from '../rosetta/types';
 
 export interface ValidSchema {
   valid: boolean;
@@ -25,7 +30,7 @@ export async function validate(schemaFilePath: string, data: any): Promise<Valid
   const resolvedFilePath = getDocSchemaFile(schemaFilePath);
   const schemaDef = await dereferenceSchema(resolvedFilePath);
   const ajv = new Ajv();
-  const valid = await ajv.validate(schemaDef, data);
+  const valid = ajv.validate(schemaDef, data);
   if (!valid) {
     logger.error(`Schema validation:\n\n ${JSON.stringify(ajv.errors, null, 2)}`);
     const errors = ajv.errors || [{ message: 'error' }];
@@ -86,9 +91,9 @@ export async function rosettaValidateRequest(
 
 function validHexId(
   identifier:
-    | T.RosettaBlockIdentifier
-    | T.RosettaPartialBlockIdentifier
-    | T.TransactionIdentifier
+    | RosettaBlockIdentifier
+    | RosettaPartialBlockIdentifier
+    | TransactionIdentifier
     | undefined
 ): boolean {
   if (identifier === undefined) {
@@ -115,7 +120,7 @@ function validHexId(
 }
 
 // TODO: there has to be a better way to go from ajv errors to rosetta errors.
-export function makeRosettaError(notValid: ValidSchema): Readonly<T.RosettaError> {
+export function makeRosettaError(notValid: ValidSchema): Readonly<RosettaError> {
   const error = notValid.error || '';
   if (error.search(/network_identifier/) != -1) {
     return {
