@@ -1,6 +1,0 @@
-{
-  "title": "SignatureType",
-  "type": "string",
-  "description": "SignatureType is the type of a cryptographic signature.",
-  "enum": ["ecdsa", "ecdsa_recovery", "ed25519", "schnorr_1", "schnorr_poseidon"]
-}

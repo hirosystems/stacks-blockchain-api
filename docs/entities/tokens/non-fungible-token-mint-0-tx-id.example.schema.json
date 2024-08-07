@@ -1,9 +1,0 @@
-{
-  "recipient": "SP25KJH4N4YNKTVXSWSHDPVCWDFAN2BA4H2VQVN0G",
-  "event_index": 1,
-  "value": {
-    "hex": "0x01000000000000000000000000000009c7",
-    "repr": "u2503"
-  },
-  "tx_id": "0xd5c199447bc5f08d1821350455f4c103ad769976c7a6b745182782d53b5c7922"
-}

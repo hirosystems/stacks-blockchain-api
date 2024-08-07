@@ -26,7 +26,7 @@ export interface ValidSchema {
   errorType?: RosettaErrorsTypes; // discovered using our validation
 }
 
-export async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
+async function validate(schemaFilePath: string, data: any): Promise<ValidSchema> {
   const resolvedFilePath = getDocSchemaFile(schemaFilePath);
   const schemaDef = await dereferenceSchema(resolvedFilePath);
   const ajv = new Ajv();

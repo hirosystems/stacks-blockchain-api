@@ -1,7 +1,0 @@
-{
-  "found": false,
-  "result": {
-    "entity_type": "unknown_hash"
-  },
-  "error": "No block or transaction found with hash \"0xabc123\""
-}
