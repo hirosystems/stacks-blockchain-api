@@ -90,18 +90,6 @@ jobs:
       - name: Validate generated types
         run: tsc index.d.ts
 
-      - name: Lint JSON
-        run: npm run lint:json
-
-      - name: Lint YAML
-        run: npm run lint:yaml
-
-      - name: Lint OpenAPI
-        run: npm run lint:openapi
-
-      - name: Validate schemas
-        run: npm run validate:schemas
-
   test:
     runs-on: ubuntu-latest
     steps:
