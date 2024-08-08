@@ -56,6 +56,7 @@ import Fastify, { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import FastifyMetrics from 'fastify-metrics';
 import FastifyCors from '@fastify/cors';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import * as promClient from 'prom-client';
 
 export interface ApiServer {
   fastifyApp: FastifyInstance;
@@ -236,7 +237,14 @@ export async function startApiServer(opts: {
   fastify.decorate('writeDb', writeDatastore);
   fastify.decorate('chainId', chainId);
 
-  await fastify.register(FastifyMetrics, { endpoint: null });
+  if (isProdEnv) {
+    await fastify.register(FastifyMetrics, {
+      endpoint: null,
+      promClient: promClient,
+      defaultMetrics: { enabled: false },
+    });
+  }
+
   await fastify.register(FastifyCors, { exposedHeaders: ['X-API-Version'] });
 
   fastify.addHook('preHandler', async (_, reply) => {

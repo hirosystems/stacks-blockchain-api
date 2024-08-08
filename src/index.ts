@@ -5,11 +5,11 @@ import {
   chainIdConfigurationCheck,
 } from './helpers';
 import * as sourceMapSupport from 'source-map-support';
-import { ApiServer, startApiServer } from './api/init';
+import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import { getSummary } from '@promster/metrics';
+import * as promClient from 'prom-client';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
@@ -114,6 +114,7 @@ async function init(): Promise<void> {
         '`/extended/` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
+  promClient.collectDefaultMetrics();
   chainIdConfigurationCheck();
   const apiMode = getApiMode();
   let dbStore: PgStore;
@@ -162,18 +163,16 @@ async function init(): Promise<void> {
     });
   }
 
-  let apiServer: ApiServer;
   if (
     apiMode === StacksApiMode.default ||
     apiMode === StacksApiMode.readOnly ||
     apiMode === StacksApiMode.offline
   ) {
-    apiServer = await startApiServer({
+    const apiServer = await startApiServer({
       datastore: dbStore,
       writeDatastore: dbWriteStore,
       chainId: getApiConfiguredChainID(),
     });
-    apiServer.fastifyApp.metrics;
     logger.info(`API server listening on: http://${apiServer.address}`);
     registerShutdownConfig({
       name: 'API Server',
@@ -214,12 +213,8 @@ async function init(): Promise<void> {
       method: 'GET',
       logLevel: 'info',
       handler: async (_, reply) => {
-        let fastifyMetrics: string = '';
-        if (apiServer) {
-          fastifyMetrics = await apiServer.fastifyApp.metrics.client.register.metrics();
-        }
-        const metrics: string = await getSummary();
-        await reply.type('text/plain').send(metrics + '\n\n' + fastifyMetrics);
+        const metrics: string = await promClient.register.metrics();
+        await reply.type('text/plain').send(metrics);
       },
     });
     registerShutdownConfig({
