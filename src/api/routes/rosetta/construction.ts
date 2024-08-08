@@ -23,7 +23,7 @@ import {
   RosettaOperation,
   RosettaOptions,
   RosettaPublicKey,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../../rosetta/types';
 import {
   AnchorMode,
   AuthType,
@@ -108,7 +108,7 @@ export function createRosettaConstructionRouter(db: PgStore, chainId: ChainID): 
       const valid: ValidSchema = await rosettaValidateRequest(req.originalUrl, req.body, chainId);
       if (!valid.valid) {
         //TODO have to fix this and make error generic
-        if (valid.error?.includes('should be equal to one of the allowed values')) {
+        if (valid.error?.includes('must be equal to one of the allowed values')) {
           res.status(400).json(RosettaErrors[RosettaErrorsTypes.invalidCurveType]);
           return;
         }

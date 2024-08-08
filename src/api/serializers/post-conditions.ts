@@ -1,10 +1,4 @@
 import {
-  PostCondition,
-  PostConditionPrincipal as PostConditionPrincipalDocsType,
-  PostConditionMode,
-} from '@stacks/stacks-blockchain-api-types';
-
-import {
   TxPostCondition,
   PostConditionAssetInfoID,
   PostConditionPrincipal,
@@ -17,9 +11,7 @@ const assetPrincipalTypeMap = {
   [PostConditionPrincipalTypeID.Contract]: 'principal_contract',
 } as const;
 
-function serializePostConditionPrincipal(
-  principal: PostConditionPrincipal
-): PostConditionPrincipalDocsType {
+function serializePostConditionPrincipal(principal: PostConditionPrincipal) {
   if (principal.type_id === PostConditionPrincipalTypeID.Standard) {
     return {
       type_id: assetPrincipalTypeMap[principal.type_id],
@@ -44,7 +36,7 @@ const assetInfoTypeMap = {
   [PostConditionAssetInfoID.NonfungibleAsset]: 'non_fungible',
 } as const;
 
-export function serializePostCondition(pc: TxPostCondition): PostCondition {
+export function serializePostCondition(pc: TxPostCondition) {
   switch (pc.asset_info_id) {
     case PostConditionAssetInfoID.STX:
       return {
@@ -83,7 +75,7 @@ export function serializePostCondition(pc: TxPostCondition): PostCondition {
   }
 }
 
-export function serializePostConditionMode(byte: number): PostConditionMode {
+export function serializePostConditionMode(byte: number) {
   switch (byte) {
     case 1:
       return 'allow';

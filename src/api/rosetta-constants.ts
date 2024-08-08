@@ -1,5 +1,13 @@
-import * as T from '@stacks/stacks-blockchain-api-types';
-import { RosettaErrorNoDetails } from '@stacks/stacks-blockchain-api-types';
+import {
+  RosettaAccountBalanceRequest,
+  RosettaBlockRequest,
+  RosettaBlockTransactionRequest,
+  RosettaErrorNoDetails,
+  RosettaMempoolTransactionRequest,
+  RosettaNetworkListRequest,
+  RosettaOptionsRequest,
+  RosettaStatusRequest,
+} from '../rosetta/types';
 import { ChainID, getChainIDNetwork } from '../helpers';
 
 export const RosettaNetworks = {
@@ -368,13 +376,13 @@ export const RosettaErrors: Record<RosettaErrorsTypes, Readonly<RosettaErrorNoDe
 
 // All request types, used to validate input.
 export type RosettaRequestType =
-  | T.RosettaAccountBalanceRequest
-  | T.RosettaBlockRequest
-  | T.RosettaBlockTransactionRequest
-  | T.RosettaMempoolTransactionRequest
-  | T.RosettaNetworkListRequest
-  | T.RosettaOptionsRequest
-  | T.RosettaStatusRequest;
+  | RosettaAccountBalanceRequest
+  | RosettaBlockRequest
+  | RosettaBlockTransactionRequest
+  | RosettaMempoolTransactionRequest
+  | RosettaNetworkListRequest
+  | RosettaOptionsRequest
+  | RosettaStatusRequest;
 
 export interface SchemaFiles {
   request: string;
@@ -383,96 +391,67 @@ export interface SchemaFiles {
 
 export const RosettaSchemas: Record<string, SchemaFiles> = {
   '/rosetta/v1/network/list': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-list-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-list-response.schema.json',
+    request: 'rosetta-network-list-request.schema.json',
+    response: 'rosetta-network-list-response.schema.json',
   },
   '/rosetta/v1/network/options': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-options-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-options-response.schema.json',
+    request: 'rosetta-network-options-request.schema.json',
+    response: 'rosetta-network-options-response.schema.json',
   },
   '/rosetta/v1/network/status': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-status-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-network-status-response.schema.json',
+    request: 'rosetta-network-status-request.schema.json',
+    response: 'rosetta-network-status-response.schema.json',
   },
   '/rosetta/v1/block': {
-    request: '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-block-request.schema.json',
-    response: '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-block-response.schema.json',
+    request: 'rosetta-block-request.schema.json',
+    response: 'rosetta-block-response.schema.json',
   },
   '/rosetta/v1/block/transaction': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-block-transaction-response.schema.json',
+    request: 'rosetta-block-transaction-request.schema.json',
+    response: 'rosetta-block-transaction-response.schema.json',
   },
   '/rosetta/v1/mempool': {
-    request: '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-response.schema.json',
+    request: 'rosetta-mempool-request.schema.json',
+    response: 'rosetta-mempool-response.schema.json',
   },
   '/rosetta/v1/mempool/transaction': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-transaction-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-mempool-transaction-response.schema.json',
+    request: 'rosetta-mempool-transaction-request.schema.json',
+    response: 'rosetta-mempool-transaction-response.schema.json',
   },
   '/rosetta/v1/account/balance': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-account-balance-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-account-response.schema.json',
+    request: 'rosetta-account-balance-request.schema.json',
+    response: 'rosetta-account-response.schema.json',
   },
   '/rosetta/v1/construction/derive': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-derive-response.schema.json',
+    request: 'rosetta-construction-derive-request.schema.json',
+    response: 'rosetta-construction-derive-response.schema.json',
   },
   '/rosetta/v1/construction/preprocess': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-preprocess-response.schema.json',
+    request: 'rosetta-construction-preprocess-request.schema.json',
+    response: 'rosetta-construction-preprocess-response.schema.json',
   },
   '/rosetta/v1/construction/metadata': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-metadata-response.schema.json',
+    request: 'rosetta-construction-metadata-request.schema.json',
+    response: 'rosetta-construction-metadata-response.schema.json',
   },
   '/rosetta/v1/construction/hash': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-hash-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-hash-response.schema.json',
+    request: 'rosetta-construction-hash-request.schema.json',
+    response: 'rosetta-construction-hash-response.schema.json',
   },
   '/rosetta/v1/construction/parse': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-parse-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-parse-response.schema.json',
+    request: 'rosetta-construction-parse-request.schema.json',
+    response: 'rosetta-construction-parse-response.schema.json',
   },
   '/rosetta/v1/construction/submit': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-submit-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-submit-response.schema.json',
+    request: 'rosetta-construction-submit-request.schema.json',
+    response: 'rosetta-construction-submit-response.schema.json',
   },
   '/rosetta/v1/construction/payloads': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-payloads-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-payloads-response.schema.json',
+    request: 'rosetta-construction-payloads-request.schema.json',
+    response: 'rosetta-construction-payloads-response.schema.json',
   },
   '/rosetta/v1/construction/combine': {
-    request:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-request.schema.json',
-    response:
-      '@stacks/stacks-blockchain-api-types/api/rosetta/rosetta-construction-combine-response.schema.json',
+    request: 'rosetta-construction-combine-request.schema.json',
+    response: 'rosetta-construction-combine-response.schema.json',
   },
 };

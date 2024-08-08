@@ -2325,7 +2325,7 @@ describe('address tests', () => {
     });
 
     const searchResult8 = await supertest(api.server).get(
-      `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata`
+      `/extended/v1/search/0x1232000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult8.status).toBe(200);
     expect(searchResult8.type).toBe('application/json');

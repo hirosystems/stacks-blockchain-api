@@ -1,10 +1,9 @@
 import {
-  ContractCallTransaction,
   RosettaAccountIdentifier,
   RosettaCurrency,
   RosettaOperation,
   RosettaOptions,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   addressToString,
   AuthType,
@@ -73,6 +72,7 @@ import { logger } from '../logger';
 import { hexToBuffer } from '@hirosystems/api-toolkit';
 import { RosettaFtMetadata, RosettaFtMetadataClient } from './rosetta-ft-metadata-client';
 import { PoxContractIdentifiers } from '../pox-helpers';
+import { ContractCallTransaction } from '../api/schemas/entities/transactions';
 
 enum CoinAction {
   CoinSpent = 'coin_spent',

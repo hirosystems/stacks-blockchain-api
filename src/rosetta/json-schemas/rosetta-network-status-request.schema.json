@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "title": "RosettaStatusRequest",
+  "description": "This endpoint returns the current status of the network requested. Any NetworkIdentifier returned by /network/list should be accessible here.",
+  "required": ["network_identifier"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

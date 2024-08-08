@@ -1642,7 +1642,7 @@ describe('mempool tests', () => {
       nonce: 0,
       raw_tx: bufferToHex(Buffer.from('test-raw-mempool-tx')),
       type_id: DbTxTypeId.Coinbase,
-      status: 1,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1694,7 +1694,7 @@ describe('mempool tests', () => {
 
     // Verify tx also shows up as confirmed
     const txResult1 = await supertest(api.server).get(`/extended/v1/tx/${txId}`);
-    expect(txResult1.body.tx_status).toBe('success');
+    expect(txResult1.body.tx_status).toBe('pending');
 
     // Insert next block using regular update function to trigger the mempool reconcile function
     await db.update({

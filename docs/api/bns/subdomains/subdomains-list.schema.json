@@ -1,9 +1,0 @@
-{
-  "title": "GetAllSubdomainsInName",
-  "description": "Fetch a list of subdomains in a name.",
-  "type": "array",
-  "items": {
-    "type": "string",
-    "pattern": "^([a-z0-9-_.+]{3,37})$"
-  }
-}

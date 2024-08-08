@@ -37,7 +37,7 @@ import {
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
   RosettaConstructionMetadataResponse,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   getRosettaNetworkName,
   RosettaConstants,

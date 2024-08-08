@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "title": "RosettaMempoolTransactionRequest",
+  "description": "A MempoolTransactionRequest is utilized to retrieve a transaction from the mempool.",
+  "required": ["network_identifier", "transaction_identifier"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "transaction_identifier": {
+      "$ref": "./rosetta-transaction-identifier.schema.json"
+    }
+  }
+}

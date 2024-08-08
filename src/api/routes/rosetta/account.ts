@@ -8,13 +8,13 @@ import {
   RosettaBlockIdentifier,
   RosettaAccountBalanceResponse,
   RosettaSubAccount,
-  AddressTokenOfferingLocked,
   RosettaAmount,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../../rosetta/types';
 import { RosettaErrors, RosettaConstants, RosettaErrorsTypes } from '../../rosetta-constants';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
 import { RosettaFtMetadataClient } from '../../../rosetta/rosetta-ft-metadata-client';
+import { AddressTokenOfferingLocked } from '../../schemas/entities/addresses';
 
 export function createRosettaAccountRouter(db: PgStore, chainId: ChainID): express.Router {
   const router = express.Router();

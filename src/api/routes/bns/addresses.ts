@@ -1,43 +1,78 @@
-import * as express from 'express';
-import { asyncHandler } from '../../async-handler';
-import { PgStore } from '../../../datastore/pg-store';
-import { isUnanchoredRequest } from '../../query-helpers';
-import { ChainID } from '../../../helpers';
-import {
-  getETagCacheHandler,
-  setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { UnanchoredParamSchema } from '../../schemas/params';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
-export function createBnsAddressesRouter(db: PgStore, chainId: ChainID): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-
-  router.get(
+export const BnsAddressRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/:blockchain/:address',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_names_owned_by_address',
+        summary: 'Get Names Owned by Address',
+        description: `Retrieves a list of names owned by the address provided.`,
+        tags: ['Names'],
+        params: Type.Object({
+          blockchain: Type.String({
+            description: 'the layer-1 blockchain for the address',
+            examples: ['stacks'],
+          }),
+          address: Type.String({
+            description: 'the address to lookup',
+            examples: ['SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7'],
+          }),
+        }),
+        querystring: Type.Object({
+          unanchored: UnanchoredParamSchema,
+        }),
+        response: {
+          200: Type.Object(
+            {
+              names: Type.Array(
+                Type.String({
+                  examples: ['muneeb.id'],
+                })
+              ),
+            },
+            {
+              title: 'BnsNamesOwnByAddressResponse',
+              description: 'Retrieves a list of names owned by the address provided.',
+            }
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
       // Retrieves a list of names owned by the address provided.
       const { blockchain, address } = req.params;
       if (!SUPPORTED_BLOCKCHAINS.includes(blockchain)) {
-        res.status(404).json({ error: 'Unsupported blockchain' });
-        return;
+        throw new InvalidRequestError(
+          'Unsupported blockchain',
+          InvalidRequestErrorType.bad_request
+        );
       }
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const namesByAddress = await db.getNamesByAddressList({
+      const includeUnanchored = req.query.unanchored ?? false;
+      const namesByAddress = await fastify.db.getNamesByAddressList({
         address: address,
         includeUnanchored,
-        chainId,
+        chainId: fastify.chainId,
       });
-      setETagCacheHeaders(res);
       if (namesByAddress.found) {
-        res.json({ names: namesByAddress.result });
+        await reply.send({ names: namesByAddress.result });
       } else {
-        res.json({ names: [] });
+        await reply.send({ names: [] });
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

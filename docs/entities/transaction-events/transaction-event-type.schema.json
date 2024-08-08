@@ -1,6 +1,0 @@
-{
-  "title": "TransactionEventType",
-  "description": "Events types",
-  "type": "string",
-  "enum": ["smart_contract_log", "stx_lock", "stx_asset", "fungible_token_asset", "non_fungible_token_asset"]
-}

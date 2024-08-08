@@ -1,5 +1,3 @@
-import * as express from 'express';
-import { asyncHandler } from '../async-handler';
 import {
   DbBlock,
   DbTx,
@@ -9,27 +7,28 @@ import {
 } from '../../datastore/common';
 import { isValidPrincipal, FoundOrNot } from '../../helpers';
 import {
-  Block,
-  SearchResult,
-  BlockSearchResult,
-  TxSearchResult,
-  MempoolTxSearchResult,
-  ContractSearchResult,
-  AddressSearchResult,
-  SearchErrorResult,
-  AddressStxBalanceResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   getTxTypeString,
   parseDbMempoolTx,
   parseDbTx,
   searchHashWithMetadata,
 } from '../controllers/db-controller';
-import { booleanValueForParam } from '../query-helpers';
-import { PgStore } from '../../datastore/pg-store';
 import { has0xPrefix } from '@hirosystems/api-toolkit';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { AddressStxBalance } from '../schemas/entities/addresses';
+import { Block } from '../schemas/entities/block';
+import {
+  AddressSearchResult,
+  BlockSearchResult,
+  ContractSearchResult,
+  MempoolTxSearchResult,
+  SearchResult,
+  SearchResultSchema,
+  TxSearchResult,
+} from '../schemas/entities/search';
 
-const enum SearchResultType {
+enum SearchResultType {
   TxId = 'tx_id',
   MempoolTxId = 'mempool_tx_id',
   BlockHash = 'block_hash',
@@ -39,10 +38,18 @@ const enum SearchResultType {
   InvalidTerm = 'invalid_term',
 }
 
-export function createSearchRouter(db: PgStore): express.Router {
-  const router = express.Router();
-
-  const performSearch = async (term: string, includeMetadata: boolean): Promise<SearchResult> => {
+export const SearchRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  const performSearch = async (
+    term: string,
+    includeMetadata: boolean
+  ): Promise<
+    | { found: true; result: SearchResult }
+    | { found: false; result: { entity_type: SearchResultType }; error: string }
+  > => {
     // Check if term is a 32-byte hash, e.g.:
     //   `0x4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
     //   `4ac9b89ec7f2a0ca3b4399888904f171d7bdf3460b1c63ea86c28a83c2feaad8`
@@ -58,97 +65,84 @@ export function createSearchRouter(db: PgStore): express.Router {
         found: false,
       };
       if (!includeMetadata) {
-        queryResult = await db.searchHash({ hash });
+        queryResult = await fastify.db.searchHash({ hash });
       } else {
-        queryResult = await searchHashWithMetadata(hash, db);
+        queryResult = await searchHashWithMetadata(hash, fastify.db);
       }
       if (queryResult.found) {
         if (queryResult.result.entity_type === 'block_hash' && queryResult.result.entity_data) {
           if (includeMetadata) {
             const blockData = queryResult.result.entity_data as Block;
             const blockResult: BlockSearchResult = {
-              found: true,
-              result: {
-                entity_id: queryResult.result.entity_id,
-                entity_type: SearchResultType.BlockHash,
-                block_data: {
-                  canonical: blockData.canonical,
-                  hash: blockData.hash,
-                  parent_block_hash: blockData.parent_block_hash,
-                  burn_block_time: blockData.burn_block_time,
-                  height: blockData.height,
-                },
-                metadata: blockData,
-              },
-            };
-            return blockResult;
-          }
-          const blockData = queryResult.result.entity_data as DbBlock;
-          const blockResult: BlockSearchResult = {
-            found: true,
-            result: {
               entity_id: queryResult.result.entity_id,
               entity_type: SearchResultType.BlockHash,
               block_data: {
                 canonical: blockData.canonical,
-                hash: blockData.block_hash,
+                hash: blockData.hash,
                 parent_block_hash: blockData.parent_block_hash,
                 burn_block_time: blockData.burn_block_time,
-                height: blockData.block_height,
+                height: blockData.height,
               },
+              metadata: blockData,
+            };
+            return { found: true, result: blockResult };
+          }
+          const blockData = queryResult.result.entity_data as DbBlock;
+          const blockResult: BlockSearchResult = {
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.BlockHash,
+            block_data: {
+              canonical: blockData.canonical,
+              hash: blockData.block_hash,
+              parent_block_hash: blockData.parent_block_hash,
+              burn_block_time: blockData.burn_block_time,
+              height: blockData.block_height,
             },
           };
-          return blockResult;
+          return { found: true, result: blockResult };
         } else if (queryResult.result.entity_type === 'tx_id') {
           const txData = queryResult.result.entity_data as DbTx;
           const txResult: TxSearchResult = {
-            found: true,
-            result: {
-              entity_id: queryResult.result.entity_id,
-              entity_type: SearchResultType.TxId,
-              tx_data: {
-                canonical: txData.canonical,
-                block_hash: txData.block_hash,
-                burn_block_time: txData.burn_block_time,
-                block_height: txData.block_height,
-                tx_type: getTxTypeString(txData.type_id),
-              },
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.TxId,
+            tx_data: {
+              canonical: txData.canonical,
+              block_hash: txData.block_hash,
+              burn_block_time: txData.burn_block_time,
+              block_height: txData.block_height,
+              tx_type: getTxTypeString(txData.type_id),
             },
           };
           if (includeMetadata) {
-            txResult.result.metadata = parseDbTx(txData);
+            txResult.metadata = parseDbTx(txData);
           }
-          return txResult;
+          return { found: true, result: txResult };
         } else if (queryResult.result.entity_type === 'mempool_tx_id') {
           const txData = queryResult.result.entity_data as DbMempoolTx;
           const txResult: MempoolTxSearchResult = {
-            found: true,
-            result: {
-              entity_id: queryResult.result.entity_id,
-              entity_type: SearchResultType.MempoolTxId,
-              tx_data: {
-                tx_type: getTxTypeString(txData.type_id),
-              },
+            entity_id: queryResult.result.entity_id,
+            entity_type: SearchResultType.MempoolTxId,
+            tx_data: {
+              tx_type: getTxTypeString(txData.type_id),
             },
           };
           if (includeMetadata) {
-            txResult.result.metadata = parseDbMempoolTx(txData);
+            txResult.metadata = parseDbMempoolTx(txData);
           }
-          return txResult;
+          return { found: true, result: txResult };
         } else {
           throw new Error(
             `Unexpected entity_type from db search result: ${queryResult.result.entity_type}`
           );
         }
       } else {
-        const unknownResult: SearchErrorResult = {
+        return {
           found: false,
           result: {
             entity_type: SearchResultType.UnknownHash,
           },
           error: `No block or transaction found with hash "${hash}"`,
         };
-        return unknownResult;
       }
     }
 
@@ -157,7 +151,7 @@ export function createSearchRouter(db: PgStore): express.Router {
     //   `ST2TJRHDHMYBQ417HFB0BDX430TQA5PXRX6495G1V.contract-name`
     const principalCheck = isValidPrincipal(term);
     if (principalCheck) {
-      const principalResult = await db.searchPrincipal({ principal: term });
+      const principalResult = await fastify.db.searchPrincipal({ principal: term });
       const entityType =
         principalCheck.type === 'contractAddress'
           ? SearchResultType.ContractAddress
@@ -170,75 +164,63 @@ export function createSearchRouter(db: PgStore): express.Router {
           if ((principalResult.result.entity_data as DbTx).block_hash) {
             const txData = principalResult.result.entity_data as DbTx;
             const contractResult: ContractSearchResult = {
-              found: true,
-              result: {
-                entity_id: principalResult.result.entity_id,
-                entity_type: entityType,
-                tx_data: {
-                  canonical: txData.canonical,
-                  block_hash: txData.block_hash,
-                  burn_block_time: txData.burn_block_time,
-                  block_height: txData.block_height,
-                  tx_type: getTxTypeString(txData.type_id),
-                  tx_id: txData.tx_id,
-                },
+              entity_id: principalResult.result.entity_id,
+              entity_type: entityType,
+              tx_data: {
+                canonical: txData.canonical,
+                block_hash: txData.block_hash,
+                burn_block_time: txData.burn_block_time,
+                block_height: txData.block_height,
+                tx_type: getTxTypeString(txData.type_id),
+                tx_id: txData.tx_id,
               },
             };
             if (includeMetadata) {
-              contractResult.result.metadata = parseDbTx(txData);
+              contractResult.metadata = parseDbTx(txData);
             }
-            return contractResult;
+            return { found: true, result: contractResult };
           } else {
             // Associated tx is a mempool tx
             const txData = principalResult.result.entity_data as DbMempoolTx;
             const contractResult: ContractSearchResult = {
-              found: true,
-              result: {
-                entity_id: principalResult.result.entity_id,
-                entity_type: entityType,
-                tx_data: {
-                  tx_type: getTxTypeString(txData.type_id),
-                  tx_id: txData.tx_id,
-                },
+              entity_id: principalResult.result.entity_id,
+              entity_type: entityType,
+              tx_data: {
+                tx_type: getTxTypeString(txData.type_id),
+                tx_id: txData.tx_id,
               },
             };
             if (includeMetadata) {
-              contractResult.result.metadata = parseDbMempoolTx(txData);
+              contractResult.metadata = parseDbMempoolTx(txData);
             }
-            return contractResult;
+            return { found: true, result: contractResult };
           }
         } else if (entityType === SearchResultType.ContractAddress) {
           // Contract has no associated tx.
           // TODO: Can a non-materialized contract principal be an asset transfer recipient?
           const addrResult: ContractSearchResult = {
-            found: true,
-            result: {
-              entity_id: principalResult.result.entity_id,
-              entity_type: entityType,
-            },
-          };
-          return addrResult;
-        }
-        const addrResult: AddressSearchResult = {
-          found: true,
-          result: {
             entity_id: principalResult.result.entity_id,
             entity_type: entityType,
-          },
+          };
+          return { found: true, result: addrResult };
+        }
+        const addrResult: AddressSearchResult = {
+          entity_id: principalResult.result.entity_id,
+          entity_type: entityType,
         };
         if (includeMetadata) {
-          const currentBlockHeight = await db.getCurrentBlockHeight();
+          const currentBlockHeight = await fastify.db.getCurrentBlockHeight();
           if (!currentBlockHeight.found) {
             throw new Error('No current block');
           }
 
           const blockHeight = currentBlockHeight.result + 1;
 
-          const stxBalanceResult = await db.getStxBalanceAtBlock(
+          const stxBalanceResult = await fastify.db.getStxBalanceAtBlock(
             principalResult.result.entity_id,
             blockHeight
           );
-          const result: AddressStxBalanceResponse = {
+          const result: AddressStxBalance = {
             balance: stxBalanceResult.balance.toString(),
             total_sent: stxBalanceResult.totalSent.toString(),
             total_received: stxBalanceResult.totalReceived.toString(),
@@ -250,9 +232,9 @@ export function createSearchRouter(db: PgStore): express.Router {
             burnchain_lock_height: stxBalanceResult.burnchainLockHeight,
             burnchain_unlock_height: stxBalanceResult.burnchainUnlockHeight,
           };
-          addrResult.result.metadata = result;
+          addrResult.metadata = result;
         }
-        return addrResult;
+        return { found: true, result: addrResult };
       } else {
         return {
           found: false,
@@ -269,21 +251,58 @@ export function createSearchRouter(db: PgStore): express.Router {
     };
   };
 
-  router.get(
-    '/:term',
-    asyncHandler(async (req, res, next) => {
-      const { term: rawTerm } = req.params;
-      const includeMetadata = booleanValueForParam(req, res, next, 'include_metadata');
+  fastify.get(
+    '/:id',
+    {
+      schema: {
+        operationId: 'search_by_id',
+        summary: 'Search',
+        description: `Search blocks, transactions, contracts, or accounts by hash/ID`,
+        tags: ['Search'],
+        params: Type.Object({
+          id: Type.String({
+            description:
+              'The hex hash string for a block or transaction, account address, or contract address',
+            examples: ['0xcf8b233f19f6c07d2dc1963302d2436efd36e9afac127bf6582824a13961c06d'],
+          }),
+        }),
+        querystring: Type.Object({
+          include_metadata: Type.Optional(
+            Type.Boolean({
+              description: 'This includes the detailed data for purticular hash in the response',
+              default: false,
+            })
+          ),
+        }),
+        response: {
+          200: Type.Object({
+            found: Type.Literal(true),
+            result: SearchResultSchema,
+          }),
+          404: Type.Object({
+            found: Type.Literal(false),
+            result: Type.Object({
+              entity_type: Type.Enum(SearchResultType),
+            }),
+            error: Type.String(),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const { id: rawTerm } = req.params;
+      const includeMetadata = req.query.include_metadata ?? false;
       const term = rawTerm.trim();
-      const searchResult = await db.sqlTransaction(async sql => {
+      const searchResult = await fastify.db.sqlTransaction(async sql => {
         return await performSearch(term, includeMetadata);
       });
-      if (!searchResult.found) {
-        res.status(404);
+      if (searchResult.found) {
+        await reply.send(searchResult);
+      } else {
+        await reply.status(404).send(searchResult);
       }
-      res.json(searchResult);
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

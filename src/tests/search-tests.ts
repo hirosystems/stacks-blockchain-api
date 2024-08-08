@@ -12,6 +12,7 @@ import {
   DbMempoolTxRaw,
   DbSmartContract,
   DataStoreBlockUpdateData,
+  DbTxStatus,
 } from '../datastore/common';
 import { startApiServer, ApiServer } from '../api/init';
 import { I32_MAX } from '../helpers';
@@ -112,7 +113,7 @@ describe('search tests', () => {
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
-      status: 1,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -323,7 +324,7 @@ describe('search tests', () => {
       type_id: DbTxTypeId.Coinbase,
       receipt_time: 123456,
       coinbase_payload: bufferToHex(Buffer.from('coinbase hi')),
-      status: 1,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -452,7 +453,7 @@ describe('search tests', () => {
 
     // test mempool tx search
     const searchResult4 = await supertest(api.server).get(
-      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000?include_metadata=1`
+      `/extended/v1/search/0x8912000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult4.status).toBe(200);
     expect(searchResult4.type).toBe('application/json');
@@ -477,7 +478,7 @@ describe('search tests', () => {
           sender_address: 'sender-addr',
           sponsored: false,
           tx_id: '0x8912000000000000000000000000000000000000000000000000000000000000',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'coinbase',
         },
       },
@@ -486,7 +487,7 @@ describe('search tests', () => {
 
     // test hash not found
     const searchResult5 = await supertest(api.server).get(
-      `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000?include_metadata=on`
+      `/extended/v1/search/0x1111000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult5.status).toBe(404);
     expect(searchResult5.type).toBe('application/json');
@@ -501,7 +502,7 @@ describe('search tests', () => {
     // test invalid hash hex
     const invalidHex = '0x1111w00000000000000000000000000000000000000000000000000000000000';
     const searchResult6 = await supertest(api.server).get(
-      `/extended/v1/search/${invalidHex}?include_metadata`
+      `/extended/v1/search/${invalidHex}?include_metadata=true`
     );
     expect(searchResult6.status).toBe(404);
     expect(searchResult6.type).toBe('application/json');
@@ -515,7 +516,7 @@ describe('search tests', () => {
 
     // test tx search
     const searchResult8 = await supertest(api.server).get(
-      `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000?include_metadata`
+      `/extended/v1/search/0x4567000000000000000000000000000000000000000000000000000000000000?include_metadata=true`
     );
     expect(searchResult8.status).toBe(200);
     expect(searchResult8.type).toBe('application/json');
@@ -961,7 +962,7 @@ describe('search tests', () => {
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
-      status: 1,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1323,7 +1324,7 @@ describe('search tests', () => {
 
     // test address as a tx sender
     const searchResult1 = await supertest(api.server).get(
-      `/extended/v1/search/${addr1}?include_metadata`
+      `/extended/v1/search/${addr1}?include_metadata=true`
     );
     expect(searchResult1.status).toBe(200);
     expect(searchResult1.type).toBe('application/json');
@@ -1350,7 +1351,7 @@ describe('search tests', () => {
 
     // test address as a stx tx recipient
     const searchResult2 = await supertest(api.server).get(
-      `/extended/v1/search/${addr2}?include_metadata`
+      `/extended/v1/search/${addr2}?include_metadata=true`
     );
     expect(searchResult2.status).toBe(200);
     expect(searchResult2.type).toBe('application/json');
@@ -1377,7 +1378,7 @@ describe('search tests', () => {
 
     // test address as a stx event recipient
     const searchResult3 = await supertest(api.server).get(
-      `/extended/v1/search/${addr3}?include_metadata`
+      `/extended/v1/search/${addr3}?include_metadata=true`
     );
     expect(searchResult3.status).toBe(200);
     expect(searchResult3.type).toBe('application/json');
@@ -1431,7 +1432,7 @@ describe('search tests', () => {
 
     // test address as a ft event recipient
     const searchResult5 = await supertest(api.server).get(
-      `/extended/v1/search/${addr5}?include_metadata`
+      `/extended/v1/search/${addr5}?include_metadata=true`
     );
     expect(searchResult5.status).toBe(200);
     expect(searchResult5.type).toBe('application/json');
@@ -1459,7 +1460,7 @@ describe('search tests', () => {
 
     // test address as a ft event sender
     const searchResult6 = await supertest(api.server).get(
-      `/extended/v1/search/${addr6}?include_metadata`
+      `/extended/v1/search/${addr6}?include_metadata=true`
     );
     expect(searchResult6.status).toBe(200);
     expect(searchResult6.type).toBe('application/json');
@@ -1475,7 +1476,7 @@ describe('search tests', () => {
 
     // test address as a nft event recipient
     const searchResult7 = await supertest(api.server).get(
-      `/extended/v1/search/${addr7}?include_metadata`
+      `/extended/v1/search/${addr7}?include_metadata=true`
     );
     expect(searchResult7.status).toBe(200);
     expect(searchResult7.type).toBe('application/json');
@@ -1491,7 +1492,7 @@ describe('search tests', () => {
 
     // test address as a nft event sender
     const searchResult8 = await supertest(api.server).get(
-      `/extended/v1/search/${addr8}?include_metadata`
+      `/extended/v1/search/${addr8}?include_metadata=true`
     );
     expect(searchResult8.status).toBe(200);
     expect(searchResult8.type).toBe('application/json');
@@ -1582,7 +1583,7 @@ describe('search tests', () => {
       receipt_time: 123456,
       smart_contract_contract_id: contractAddr2,
       smart_contract_source_code: '(some-src)',
-      status: 1,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 1234n,
       sponsored: false,
@@ -1594,7 +1595,7 @@ describe('search tests', () => {
 
     // test contract address associated with mempool tx
     const searchResult10 = await supertest(api.server).get(
-      `/extended/v1/search/${contractAddr2}?include_metadata`
+      `/extended/v1/search/${contractAddr2}?include_metadata=true`
     );
     expect(searchResult10.status).toBe(200);
     expect(searchResult10.type).toBe('application/json');
@@ -1623,7 +1624,7 @@ describe('search tests', () => {
           },
           sponsored: false,
           tx_id: '0x1111882200000000000000000000000000000000000000000000000000000000',
-          tx_status: 'success',
+          tx_status: 'pending',
           tx_type: 'smart_contract',
         },
       },
@@ -1632,7 +1633,7 @@ describe('search tests', () => {
 
     // test contract address not found
     const searchResult11 = await supertest(api.server).get(
-      `/extended/v1/search/${contractAddr3}?include_metadata`
+      `/extended/v1/search/${contractAddr3}?include_metadata=true`
     );
     expect(searchResult11.status).toBe(404);
     expect(searchResult11.type).toBe('application/json');
@@ -1646,7 +1647,7 @@ describe('search tests', () => {
 
     // test standard address not found
     const searchResult12 = await supertest(api.server).get(
-      `/extended/v1/search/${addr9}?include_metadata`
+      `/extended/v1/search/${addr9}?include_metadata=true`
     );
     expect(searchResult12.status).toBe(404);
     expect(searchResult12.type).toBe('application/json');
@@ -1660,7 +1661,7 @@ describe('search tests', () => {
     // test invalid term
     const invalidTerm = 'bogus123';
     const searchResult13 = await supertest(api.server).get(
-      `/extended/v1/search/${invalidTerm}?include_metadata`
+      `/extended/v1/search/${invalidTerm}?include_metadata=true`
     );
     expect(searchResult13.status).toBe(404);
     expect(searchResult13.type).toBe('application/json');

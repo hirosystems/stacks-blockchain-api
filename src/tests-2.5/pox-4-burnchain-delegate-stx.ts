@@ -1,12 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import {
-  AddressStxBalanceResponse,
-  ContractCallTransaction,
-  TransactionEventsResponse,
-  TransactionEventStxLock,
-  TransactionResults,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   AnchorMode,
   Cl,
   makeContractCall,
@@ -41,6 +34,13 @@ import { PoxContractIdentifier } from '../pox-helpers';
 import { ClarityValueUInt, decodeClarityValue } from 'stacks-encoding-native-js';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import { timeout } from '@hirosystems/api-toolkit';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { ContractCallTransaction } from '../api/schemas/entities/transactions';
+import {
+  AddressTransactionsListResponse,
+  TransactionEventsResponse,
+} from '../api/schemas/responses/responses';
+import { StxLockTransactionEvent } from '../api/schemas/entities/transaction-events';
 
 // Perform Delegate-STX operation on Bitcoin.
 // See https://github.com/stacksgov/sips/blob/a7f2e58ec90c12ee1296145562eec75029b89c48/sips/sip-015/sip-015-network-upgrade.md#new-burnchain-transaction-delegate-stx
@@ -257,7 +257,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     expect(BigInt(coreNodeBalance.locked)).toBe(0n);
 
     // test API address endpoint balance
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.balance)).toBe(testAccountBalance);
@@ -449,8 +449,8 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     const delegatorAddressEventsResp = await supertest(api.server)
       .get(`/extended/v1/tx/events?address=${delegatorAccount.stxAddr}`)
       .expect(200);
-    const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['results'];
-    const event1 = addressEvents[0] as TransactionEventStxLock;
+    const addressEvents = addressEventsResp.body.events as TransactionEventsResponse['events'];
+    const event1 = addressEvents[0] as StxLockTransactionEvent;
     expect(event1.event_type).toBe('stx_lock');
     expect(event1.stx_lock_event.locked_address).toBe(account.stxAddr);
     expect(event1.stx_lock_event.unlock_height).toBeGreaterThan(0);
@@ -460,7 +460,7 @@ describe('PoX-4 - Stack using Bitcoin-chain delegate ops', () => {
     const addrTxsReq = await supertest(api.server)
       .get(`/extended/v1/address/${account.stxAddr}/transactions`)
       .expect(200);
-    const addrTxs = addrTxsReq.body as TransactionResults;
+    const addrTxs = addrTxsReq.body as AddressTransactionsListResponse;
     const txObj = addrTxs.results.find(
       tx => tx.sender_address === account.stxAddr
     ) as ContractCallTransaction;

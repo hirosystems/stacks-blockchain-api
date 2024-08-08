@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "title": "RosettaMempoolTransactionResponse",
+  "description": "A MempoolTransactionResponse contains an estimate of a mempool transaction. It may not be possible to know the full impact of a transaction in the mempool (ex: fee paid).",
+  "required": ["transaction"],
+  "additionalProperties": false,
+  "properties": {
+    "transaction": {
+      "$ref": "./rosetta-transaction.schema.json"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

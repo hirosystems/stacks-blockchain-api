@@ -11,7 +11,7 @@ import {
 import { StacksTestnet } from '@stacks/network';
 import * as fs from 'fs';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../core-rpc/client';
-import * as compose from 'docker-compose';
+import { v2 as compose } from 'docker-compose';
 import * as path from 'path';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { NonceJar, migrate, standByForTxSuccess } from '../test-utils/test-helpers';

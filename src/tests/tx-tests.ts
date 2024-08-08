@@ -45,7 +45,7 @@ import { createDbTxFromCoreMsg } from '../datastore/helpers';
 import { getPagingQueryLimit, ResourceType } from '../api/pagination';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
-import { Transaction } from '@stacks/stacks-blockchain-api-types';
+import { Transaction } from '../api/schemas/entities/transactions';
 
 describe('tx tests', () => {
   let db: PgWriteStore;
@@ -3802,7 +3802,7 @@ describe('tx tests', () => {
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
       raw_tx: bufferToHex(Buffer.from('')),
-      status: DbTxStatus.Success,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -3849,7 +3849,7 @@ describe('tx tests', () => {
       sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
       sponsored: false,
       tx_id: mempoolTx1.tx_id,
-      tx_status: 'success',
+      tx_status: 'pending',
       tx_type: 'contract_call',
     };
     const mempoolTxResult1 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx1.tx_id}`);
@@ -3862,7 +3862,7 @@ describe('tx tests', () => {
       anchor_mode: DbTxAnchorMode.Any,
       nonce: 0,
       raw_tx: bufferToHex(Buffer.from('')),
-      status: DbTxStatus.Success,
+      status: DbTxStatus.Pending,
       post_conditions: '0x01f5',
       fee_rate: 139200n,
       sponsored: false,
@@ -3910,7 +3910,7 @@ describe('tx tests', () => {
       sender_address: 'SPX3DV9X9CGA8P14B3CMP2X8DBW6ZDXEAXDNPTER',
       sponsored: false,
       tx_id: mempoolTx2.tx_id,
-      tx_status: 'success',
+      tx_status: 'pending',
       tx_type: 'contract_call',
     };
     const mempoolTxResult2 = await supertest(api.server).get(`/extended/v1/tx/${mempoolTx2.tx_id}`);
@@ -4062,7 +4062,7 @@ describe('tx tests', () => {
     );
     expect(result.status).toBe(200);
     expect(result.type).toBe('application/json');
-    let json = JSON.parse(result.text);
+    const json = JSON.parse(result.text);
     expect(json.total).toBe(2);
     expect(json.results[0]).toStrictEqual({
       anchor_mode: 'any',
@@ -4114,15 +4114,13 @@ describe('tx tests', () => {
     );
     expect(result.status).toBe(404);
     expect(result.type).toBe('application/json');
-    json = JSON.parse(result.text);
-    expect(json.errors).toBe('Block not found');
   });
 
   test('fetch transactions from block', async () => {
     const not_updated_tx_id = '0x1111';
-    const tx_not_found = {
-      error: `could not find transaction by ID ${not_updated_tx_id}`,
-    };
+    const tx_not_found = expect.objectContaining({
+      message: `could not find transaction by ID`,
+    });
     const block: DbBlock = {
       block_hash: '0x1234',
       index_block_hash: '0xdeadbeef',

@@ -19,7 +19,7 @@ import {
   RosettaNetworkStatusResponse,
   RosettaOperation,
   RosettaTransaction,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   RosettaErrors,
   RosettaOperationType,
@@ -98,7 +98,7 @@ describe('Rosetta API', () => {
       code: 613,
       message: 'Network identifier object is null.',
       retriable: false,
-      details: { message: "should have required property 'network_identifier'" },
+      details: { message: "must have required property 'network_identifier'" },
     });
   });
 
@@ -1332,7 +1332,7 @@ describe('Rosetta API', () => {
       code: 609,
       message: 'Invalid params.',
       retriable: false,
-      details: { message: "should have required property 'account_identifier'" }
+      details: { message: "must have required property 'account_identifier'" }
     }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
@@ -1482,7 +1482,7 @@ describe('Rosetta API', () => {
       code: 615,
       message: 'Block identifier is null.',
       retriable: false,
-      details: { message: "should have required property 'block_identifier'" }
+      details: { message: "must have required property 'block_identifier'" }
     }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });

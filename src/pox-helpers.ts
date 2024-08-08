@@ -17,17 +17,10 @@ export enum SyntheticPoxEventName {
 const BOOT_ADDR_MAINNET = 'SP000000000000000000002Q6VF78';
 const BOOT_ADDR_TESTNET = 'ST000000000000000000002AMW42H';
 
-export const POX_1_CONTRACT_NAME = 'pox';
+const POX_1_CONTRACT_NAME = 'pox';
 export const POX_2_CONTRACT_NAME = 'pox-2';
 export const POX_3_CONTRACT_NAME = 'pox-3';
 export const POX_4_CONTRACT_NAME = 'pox-4';
-
-export const PoxContractNames = [
-  POX_1_CONTRACT_NAME,
-  POX_2_CONTRACT_NAME,
-  POX_3_CONTRACT_NAME,
-  POX_4_CONTRACT_NAME,
-] as const;
 
 export const PoxContractIdentifier = {
   pox1: {

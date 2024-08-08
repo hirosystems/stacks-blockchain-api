@@ -1,6 +1,0 @@
-{
-  "title": "PostConditionPrincipalType",
-  "description": "",
-  "type": "string",
-  "enum": ["principal_origin", "principal_standard", "principal_contract"]
-}

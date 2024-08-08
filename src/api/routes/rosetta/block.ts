@@ -1,6 +1,6 @@
 import * as express from 'express';
 import { asyncHandler } from '../../async-handler';
-import { RosettaBlockResponse } from '@stacks/stacks-blockchain-api-types';
+import { RosettaBlockResponse } from '../../../rosetta/types';
 import { PgStore } from '../../../datastore/pg-store';
 import {
   getRosettaTransactionFromDataStore,

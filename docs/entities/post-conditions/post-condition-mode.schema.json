@@ -1,6 +1,0 @@
-{
-  "title": "PostConditionMode",
-  "description": "",
-  "type": "string",
-  "enum": ["allow", "deny"]
-}

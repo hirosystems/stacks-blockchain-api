@@ -1,6 +1,6 @@
 import * as prom from 'prom-client';
 import * as WebSocket from 'ws';
-import { Topic } from '@stacks/stacks-blockchain-api-types';
+import { Topic } from 'client/src/types';
 import { Socket } from 'socket.io';
 
 type WebSocketMetricsPrefix = 'socket_io' | 'websocket';

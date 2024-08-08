@@ -12,10 +12,7 @@
     "skipLibCheck": true,
     "outDir": "lib",
     "rootDir": "src",
-    "baseUrl": ".",
-    "paths": {
-      "@stacks/stacks-blockchain-api-types": ["docs"]
-    }
+    "baseUrl": "."
   },
   "include": ["src/**/*"],
   "exclude": ["lib", "node_modules", "src/tests*"]

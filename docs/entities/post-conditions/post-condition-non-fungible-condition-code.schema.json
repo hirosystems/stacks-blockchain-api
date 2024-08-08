@@ -1,6 +1,0 @@
-{
-  "title": "PostConditionNonFungibleConditionCode",
-  "description": "A non-fungible condition code encodes a statement being made about a non-fungible token, with respect to whether or not the particular non-fungible token is owned by the account.",
-  "type": "string",
-  "enum": ["sent", "not_sent"]
-}

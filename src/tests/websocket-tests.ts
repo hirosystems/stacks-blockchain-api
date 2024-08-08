@@ -4,25 +4,23 @@ import { DbTxTypeId, DbTxStatus, DbAssetEventTypeId } from '../datastore/common'
 import { once } from 'events';
 import { RpcWebSocketClient } from 'rpc-websocket-client';
 import {
-  RpcTxUpdateSubscriptionParams,
-  RpcAddressTxSubscriptionParams,
-  RpcAddressTxNotificationParams,
-  RpcAddressBalanceSubscriptionParams,
-  RpcAddressBalanceNotificationParams,
-  RpcMempoolSubscriptionParams,
-  MempoolTransaction,
-  TransactionStatus,
-  MempoolTransactionStatus,
-  RpcBlockSubscriptionParams,
   Block,
-  RpcMicroblockSubscriptionParams,
+  connectWebSocketClient,
+  MempoolTransaction,
   Microblock,
-  RpcNftEventSubscriptionParams,
+  NftEvent,
+  RpcAddressBalanceNotificationParams,
+  RpcAddressBalanceSubscriptionParams,
+  RpcAddressTxNotificationParams,
+  RpcAddressTxSubscriptionParams,
+  RpcBlockSubscriptionParams,
+  RpcMempoolSubscriptionParams,
+  RpcMicroblockSubscriptionParams,
   RpcNftAssetEventSubscriptionParams,
   RpcNftCollectionEventSubscriptionParams,
-  NftEvent,
-} from '@stacks/stacks-blockchain-api-types';
-import { connectWebSocketClient } from '../../client/src';
+  RpcNftEventSubscriptionParams,
+  RpcTxUpdateSubscriptionParams,
+} from '../../client/src';
 import { ChainID } from '@stacks/transactions';
 import {
   TestBlockBuilder,
@@ -82,7 +80,7 @@ describe('websocket notifications', () => {
 
       // watch for update to this tx
       let updateIndex = 0;
-      const txUpdates: Waiter<TransactionStatus | MempoolTransactionStatus>[] = [
+      const txUpdates: Waiter<RpcAddressTxNotificationParams['tx_status']>[] = [
         waiter(),
         waiter(),
         waiter(),

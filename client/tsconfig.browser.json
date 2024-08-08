@@ -4,8 +4,5 @@
     "target": "esnext",
     "module": "esnext",
     "baseUrl": ".",
-    "paths": {
-      "@stacks/stacks-blockchain-api-types": ["../docs"]
-    }
   }
 }

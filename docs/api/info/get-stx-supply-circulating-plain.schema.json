@@ -1,5 +1,0 @@
-{
-  "description": "GET request that returns network target block times",
-  "title": "GetStxCirculatingSupplyPlainResponse",
-  "type": "string"
-}

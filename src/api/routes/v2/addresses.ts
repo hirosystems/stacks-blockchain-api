@@ -1,100 +1,119 @@
-import * as express from 'express';
-import { PgStore } from '../../../datastore/pg-store';
-import {
-  getETagCacheHandler,
-  setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
-import { asyncHandler } from '../../async-handler';
-import {
-  AddressParams,
-  AddressTransactionParams,
-  CompiledAddressParams,
-  CompiledAddressTransactionParams,
-  CompiledTransactionPaginationQueryParams,
-  TransactionPaginationQueryParams,
-  validRequestParams,
-  validRequestQuery,
-} from './schemas';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { AddressParamsSchema, AddressTransactionParamsSchema } from './schemas';
 import { parseDbAddressTransactionTransfer, parseDbTxWithAccountTransferSummary } from './helpers';
+import { InvalidRequestError, NotFoundError } from '../../../errors';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { LimitParam, OffsetParam } from '../../schemas/params';
+import { getPagingQueryLimit, ResourceType } from '../../pagination';
+import { PaginatedResponse } from '../../schemas/util';
 import {
-  AddressTransactionEventListResponse,
-  AddressTransactionsV2ListResponse,
-} from '../../../../docs/generated';
-import { InvalidRequestError } from '../../../errors';
+  AddressTransaction,
+  AddressTransactionEvent,
+  AddressTransactionEventSchema,
+  AddressTransactionSchema,
+} from '../../schemas/entities/addresses';
 
-export function createV2AddressesRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-
-  router.get(
+export const AddressRoutesV2: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/:address/transactions',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (
-        !validRequestParams(req, res, CompiledAddressParams) ||
-        !validRequestQuery(req, res, CompiledTransactionPaginationQueryParams)
-      )
-        return;
-      const params = req.params as AddressParams;
-      const query = req.query as TransactionPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_address_transactions',
+        summary: 'Get address transactions',
+        description: `Retrieves a paginated list of confirmed transactions sent or received by a STX address or Smart Contract ID, alongside the total amount of STX sent or received and the number of STX, FT and NFT transfers contained within each transaction.
+        
+        More information on Transaction types can be found [here](https://docs.stacks.co/understand-stacks/transactions#types).`,
+        tags: ['Transactions'],
+        params: AddressParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Tx),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(AddressTransactionSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getAddressTransactions({
+        const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactions({
           ...params,
           ...query,
         });
-        const response: AddressTransactionsV2ListResponse = {
+        const transfers: AddressTransaction[] = results.map(r =>
+          parseDbTxWithAccountTransferSummary(r)
+        );
+        await reply.send({
           limit,
           offset,
           total,
-          results: results.map(r => parseDbTxWithAccountTransferSummary(r)),
-        };
-        setETagCacheHeaders(res);
-        res.json(response);
+          results: transfers,
+        });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:address/transactions/:tx_id/events',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (
-        !validRequestParams(req, res, CompiledAddressTransactionParams) ||
-        !validRequestQuery(req, res, CompiledTransactionPaginationQueryParams)
-      )
-        return;
-      const params = req.params as AddressTransactionParams;
-      const query = req.query as TransactionPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_address_transaction_events',
+        summary: 'Get events for an address transaction',
+        description: `Retrieves a paginated list of all STX, FT and NFT events concerning a STX address or Smart Contract ID within a specific transaction.`,
+        tags: ['Transactions'],
+        params: AddressTransactionParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Tx),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(AddressTransactionEventSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getAddressTransactionEvents({
+        const { limit, offset, results, total } = await fastify.db.v2.getAddressTransactionEvents({
+          limit: getPagingQueryLimit(ResourceType.Tx, query.limit),
+          offset: query.offset ?? 0,
           ...params,
-          ...query,
         });
-        const response: AddressTransactionEventListResponse = {
+        const transfers: AddressTransactionEvent[] = results.map(r =>
+          parseDbAddressTransactionTransfer(r)
+        );
+        await reply.send({
           limit,
           offset,
           total,
-          results: results.map(r => parseDbAddressTransactionTransfer(r)),
-        };
-        setETagCacheHeaders(res);
-        res.json(response);
+          results: transfers,
+        });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

@@ -2,12 +2,6 @@ import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { getBitcoinAddressFromKey, privateToPublicKey } from '../ec-helpers';
 import {
-  AddressStxBalanceResponse,
-  BurnchainRewardListResponse,
-  BurnchainRewardSlotHolderListResponse,
-  BurnchainRewardsTotal,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   AnchorMode,
   StacksPrivateKey,
   bufferCV,
@@ -31,6 +25,12 @@ import { hexToBuffer } from '@hirosystems/api-toolkit';
 import * as assert from 'assert';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import {
+  BurnchainRewardListResponse,
+  BurnchainRewardSlotHolderListResponse,
+} from '../api/schemas/responses/responses';
+import { BurnchainRewardsTotal } from '../api/schemas/entities/burnchain-rewards';
 
 describe('PoX-4 - Stack extend and increase operations', () => {
   const account = testnetKeys[1];
@@ -166,7 +166,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
 
     // Test the API address balance data after a `stack-stx` operation
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+    const addrBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(addrBalance.locked).toBe(ustxAmount.toString());
@@ -205,7 +205,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     );
 
     // validate API balance state
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(ustxAmount);
@@ -278,7 +278,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     expect(rpcAccountInfo.unlock_height).toBe(expectedUnlockHeight);
 
     // Test the API address balance data after a `stack-increase` operation
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+    const addrBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(addrBalance.locked).toBe(expectedLockedAmount.toString());
@@ -316,7 +316,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     );
 
     // validate API balance state
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(expectedLockedAmount);
@@ -393,7 +393,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     expect(rpcAccountInfo.unlock_height).toBe(expectedUnlockHeight);
 
     // Test the API address balance data after a `stack-extend` operation
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+    const addrBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(addrBalance.burnchain_unlock_height).toBe(expectedUnlockHeight);
@@ -430,7 +430,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
     );
 
     // validate API balance state
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(coreBalance.locked));
@@ -555,7 +555,7 @@ describe('PoX-4 - Stack extend and increase operations', () => {
 
   test('stx unlocked - API balance endpoint', async () => {
     // Check that STX are no longer reported as locked by the API endpoints:
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+    const addrBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${account.stacksAddress}/stx`
     );
     expect(BigInt(addrBalance.locked)).toBe(0n);

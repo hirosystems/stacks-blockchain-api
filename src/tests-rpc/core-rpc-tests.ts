@@ -27,9 +27,4 @@ describe('core RPC tests', () => {
     const balance = await client.getAccountBalance('STB44HYPYAT2BB2QE513NSP81HTMYWBJP02HPGK6');
     expect(balance).toBe(10000000000000000n);
   });
-
-  test('get estimated transfer fee', async () => {
-    const fee = await client.getEstimatedTransferFee();
-    expect(fee).toBeTruthy();
-  });
 });

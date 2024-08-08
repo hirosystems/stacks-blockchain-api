@@ -1,5 +1,4 @@
 import { timeout } from '@hirosystems/api-toolkit';
-import { BurnchainRewardSlotHolderListResponse } from '@stacks/stacks-blockchain-api-types';
 import { testnetKeys } from '../api/routes/debug';
 import { CoreRpcPoxInfo } from '../core-rpc/client';
 import { DbTxStatus } from '../datastore/common';
@@ -11,6 +10,7 @@ import {
   standByUntilBurnBlock,
   testEnv,
 } from '../test-utils/test-helpers';
+import { BurnchainRewardSlotHolderListResponse } from '../api/schemas/responses/responses';
 
 const BTC_ADDRESS_CASES = [
   { addressFormat: 'p2pkh' },

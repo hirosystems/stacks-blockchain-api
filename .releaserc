@@ -35,12 +35,6 @@
     [
       "@semantic-release/npm",
       {
-        "pkgRoot": "./docs"
-      }
-    ],
-    [
-      "@semantic-release/npm",
-      {
         "pkgRoot": "./client"
       }
     ],

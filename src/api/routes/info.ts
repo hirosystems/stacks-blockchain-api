@@ -1,13 +1,7 @@
-import * as express from 'express';
-import { asyncHandler } from '../async-handler';
-import { validate } from '../validate';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import {
-  NetworkBlockTimesResponse,
-  NetworkBlockTimeResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import { PgStore } from '../../datastore/pg-store';
-import { isProdEnv } from '@hirosystems/api-toolkit';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { handleChainTipCache } from '../controllers/cache-controller';
 
 const enum TargetBlockTime {
   /**
@@ -22,47 +16,79 @@ const enum TargetBlockTime {
   Mainnet = 10 * 60, // 10 minutes
 }
 
-export function createInfoRouter(db: PgStore): express.Router {
-  const router = express.Router();
-
-  router.get(
+export const InfoRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/network_block_times',
-    asyncHandler(async (req, res) => {
-      const response: NetworkBlockTimesResponse = {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_network_block_times',
+        summary: 'Get the network target block time',
+        description: `Retrieves the target block times for mainnet and testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.`,
+        tags: ['Info'],
+        response: {
+          200: Type.Object(
+            {
+              mainnet: Type.Object({
+                target_block_time: Type.Integer(),
+              }),
+              testnet: Type.Object({
+                target_block_time: Type.Integer(),
+              }),
+            },
+            {
+              title: 'NetworkBlockTimesResponse',
+              description: 'GET request that returns network target block times',
+            }
+          ),
+        },
+      },
+    },
+    async (_req, reply) => {
+      await reply.send({
         testnet: { target_block_time: TargetBlockTime.Testnet },
         mainnet: { target_block_time: TargetBlockTime.Mainnet },
-      };
-      if (!isProdEnv) {
-        const schemaPath =
-          '@stacks/stacks-blockchain-api-types/api/info/get-network-block-times.schema.json';
-        await validate(schemaPath, response);
-      }
-      res.json(response);
-    })
+      });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/network_block_time/:network',
-    asyncHandler(async (req, res) => {
-      const { network } = req.params || req.query;
-      if (!network || !['testnet', 'mainnet'].includes(network)) {
-        throw new InvalidRequestError(
-          '`network` param must be `testnet` or `mainnet`',
-          InvalidRequestErrorType.invalid_param
-        );
-      }
-      const response: NetworkBlockTimeResponse = {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_network_block_time_by_network',
+        summary: `Get a given network's target block time`,
+        description: `Retrieves the target block time for a given network. The network can be mainnet or testnet. The block time is hardcoded and will change throughout the implementation phases of the testnet.`,
+        tags: ['Info'],
+        params: Type.Object({
+          network: Type.Enum({ testnet: 'testnet', mainnet: 'mainnet' }),
+        }),
+        response: {
+          200: Type.Object(
+            {
+              target_block_time: Type.Integer(),
+            },
+            {
+              title: 'NetworkBlockTimeResponse',
+              description: 'GET request that target block time for a given network',
+            }
+          ),
+        },
+      },
+    },
+    async (req, reply) => {
+      const { network } = req.params;
+      await reply.send({
         target_block_time:
           network === 'testnet' ? TargetBlockTime.Testnet : TargetBlockTime.Mainnet,
-      };
-      if (!isProdEnv) {
-        const schemaPath =
-          '@stacks/stacks-blockchain-api-types/api/info/get-network-block-time-by-network.schema.json';
-        await validate(schemaPath, response);
-      }
-      res.json(response);
-    })
+      });
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

@@ -22,7 +22,6 @@
       "args": ["${workspaceFolder}/src/index.ts"],
       "outputCapture": "std",
       "internalConsoleOptions": "openOnSessionStart",
-      "preLaunchTask": "generate:schemas",
       "env": {
         "NODE_ENV": "development",
         "TS_NODE_SKIP_IGNORE": "true"

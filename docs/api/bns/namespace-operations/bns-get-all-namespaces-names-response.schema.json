@@ -1,9 +1,0 @@
-{
-  "title": "BnsGetAllNamespacesNamesResponse",
-  "description": "Fetch a list of names from the namespace.",
-  "type": "array",
-  "items": {
-    "type": "string",
-    "pattern": "^([a-z0-9-_.+]{3,37})$"
-  }
-}

@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import * as express from 'express';
 import { stacksToBitcoinAddress } from 'stacks-encoding-native-js';
-import * as bodyParser from 'body-parser';
-import { asyncHandler } from '../async-handler';
 import { htmlEscape } from 'escape-goat';
-import * as listEndpoints from 'express-list-endpoints';
 import {
   makeSTXTokenTransfer,
   makeContractDeploy,
@@ -26,7 +22,6 @@ import {
   addressToString,
   SignedContractCallOptions,
   uintCV,
-  tupleCV,
   bufferCV,
   AnchorMode,
   deserializeTransaction,
@@ -39,9 +34,7 @@ import { SampleContracts } from '../../sample-data/broadcast-contract-default';
 import { ClarityAbi, getTypeString, encodeClarityValue } from '../../event-stream/contract-abi';
 import { NETWORK_CHAIN_ID, cssEscape, unwrapOptional } from '../../helpers';
 import { StacksCoreRpcClient, getCoreNodeEndpoint } from '../../core-rpc/client';
-import { PgStore } from '../../datastore/pg-store';
 import { DbTx } from '../../datastore/common';
-import * as poxHelpers from '../../pox-helpers';
 import fetch from 'node-fetch';
 import {
   RosettaBlockTransactionRequest,
@@ -55,12 +48,17 @@ import {
   RosettaConstructionSubmitRequest,
   RosettaConstructionSubmitResponse,
   RosettaOperation,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../rosetta/types';
 import { getRosettaNetworkName, RosettaConstants } from '../rosetta-constants';
 import { StackingClient, decodeBtcAddress, poxAddressToTuple } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
 import { randomBytes } from 'node:crypto';
 import { hexToBytes } from '@stacks/common';
+import { FastifyPluginAsync, RouteOptions } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { fastifyFormbody } from '@fastify/formbody';
+import { Server } from 'node:http';
+import { OptionalNullable } from '../schemas/util';
 
 const testnetAccounts = [
   {
@@ -125,32 +123,33 @@ function getRandomInt(min: number, max: number) {
   return Math.floor(Math.random() * (max - min) + min);
 }
 
-export function createDebugRouter(db: PgStore): express.Router {
+async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
+  const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
+  return submitResult;
+}
+
+export const DebugRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  await fastify.register(fastifyFormbody);
+
   const defaultTxFee = 123450;
-  const stacksNetwork = getStacksTestnetNetwork();
 
-  const router = express.Router();
-  router.use(express.urlencoded({ extended: true }));
-  router.use(bodyParser.raw({ type: 'application/octet-stream' }));
+  const routes: RouteOptions[] = [];
+  fastify.addHook('onRoute', route => void routes.push(route));
 
-  async function sendCoreTx(serializedTx: Buffer): Promise<{ txId: string }> {
-    const submitResult = await new StacksCoreRpcClient().sendTransaction(serializedTx);
-    return submitResult;
-  }
-
-  router.get('/broadcast', (req, res) => {
-    const endpoints = listEndpoints(router as unknown as express.Express);
-    const paths: Set<string> = new Set();
-    endpoints.forEach(e => {
-      if (e.methods.includes('GET')) {
-        paths.add(req.baseUrl + e.path);
-      }
-    });
+  fastify.get('/broadcast', { schema: { hide: true } }, async (req, reply) => {
+    const paths = routes
+      .filter(r => r.method === 'GET')
+      .filter(r => !r.schema?.params)
+      .map(r => r.url);
     const links = [...paths].map(e => {
       return `<a href="${e}">${e}</a>`;
     });
     const html = links.join('</br>');
-    res.set('Content-Type', 'text/html').send(html);
+    await reply.type('text/html').send(html);
   });
 
   const tokenTransferFromMultisigHtml = `
@@ -194,56 +193,49 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get(
+  fastify.get(
     '/broadcast/token-transfer-from-multisig',
-    asyncHandler((req, res) => {
-      res.set('Content-Type', 'text/html').send(tokenTransferFromMultisigHtml);
-    })
+    { schema: { hide: true } },
+    async (req, reply) => {
+      await reply.type('text/html').send(tokenTransferFromMultisigHtml);
+    }
   );
 
-  router.post(
+  fastify.post(
     '/broadcast/token-transfer-from-multisig',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        body: Type.Object({
+          sponsored: Type.Optional(Type.Literal('sponsored')),
+          signers: Type.Array(Type.String()),
+          signatures_required: Type.Integer(),
+          recipient_address: Type.String(),
+          stx_amount: Type.String(),
+          memo: Type.String(),
+        }),
+      },
+    },
+    async (req, res) => {
       const {
         signers: signersInput,
         signatures_required,
         recipient_address,
         stx_amount,
         memo,
-      } = req.body as {
-        signers: string[] | string;
-        signatures_required: string;
-        recipient_address: string;
-        stx_amount: string;
-        memo: string;
-      };
+      } = req.body;
       const sponsored = !!req.body.sponsored;
-      const sigsRequired = parseInt(signatures_required);
+      const sigsRequired = signatures_required;
 
       const signers = Array.isArray(signersInput) ? signersInput : [signersInput];
       const signerPubKeys = signers.map(addr => testnetKeyMap[addr].pubKey);
       const signerPrivateKeys = signers.map(addr => testnetKeyMap[addr].secretKey);
 
-      /*
-    const transferTx1 = await makeSTXTokenTransfer({
-      recipient: recipient_address,
-      amount: new BN(stx_amount),
-      memo: memo,
-      network: stacksNetwork,
-      sponsored: sponsored,
-      numSignatures: sigsRequired,
-      // TODO: should this field be named `signerPublicKeys`?
-      publicKeys: signerPubKeys,
-      // TODO: should this field be named `signerPrivateKeys`?
-      signerKeys: signerPrivateKeys,
-    });
-    */
-
       const transferTx = await makeUnsignedSTXTokenTransfer({
         recipient: recipient_address,
         amount: BigInt(stx_amount),
         memo: memo,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         numSignatures: sigsRequired,
         publicKeys: signerPubKeys,
         sponsored: sponsored,
@@ -265,7 +257,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -281,14 +273,14 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
+      await res
+        .type('text/html')
         .send(
           tokenTransferFromMultisigHtml +
             '<h3>Broadcasted transaction:</h3>' +
             `<a href="/extended/v1/tx/${txId}">${txId}</a>`
         );
-    })
+    }
   );
 
   const tokenTransferMultisigHtml = `
@@ -330,39 +322,47 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get(
+  fastify.get(
     '/broadcast/token-transfer-multisig',
-    asyncHandler((req, res) => {
-      res.set('Content-Type', 'text/html').send(tokenTransferMultisigHtml);
-    })
+    { schema: { hide: true } },
+    async (req, res) => {
+      await res.type('text/html').send(tokenTransferMultisigHtml);
+    }
   );
 
-  router.post(
+  fastify.post(
     '/broadcast/token-transfer-multisig',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        body: Type.Object({
+          origin_key: Type.String(),
+          recipient_addresses: Type.Array(Type.String()),
+          signatures_required: Type.Integer(),
+          stx_amount: Type.String(),
+          memo: Type.String(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
+        }),
+      },
+    },
+    async (req, res) => {
       const {
         origin_key,
         recipient_addresses: recipientInput,
         signatures_required,
         stx_amount,
         memo,
-      } = req.body as {
-        origin_key: string;
-        recipient_addresses: string[] | string;
-        signatures_required: string;
-        stx_amount: string;
-        memo: string;
-      };
+      } = req.body;
       const sponsored = !!req.body.sponsored;
 
       const recipientAddresses = Array.isArray(recipientInput) ? recipientInput : [recipientInput];
       const recipientPubKeys = recipientAddresses
         .map(s => testnetKeyMap[s].pubKey)
         .map(k => createStacksPublicKey(k));
-      const sigRequired = parseInt(signatures_required);
+      const sigRequired = signatures_required;
       const recipientAddress = addressToString(
         addressFromPublicKeys(
-          stacksNetwork.version === TransactionVersion.Testnet
+          getStacksTestnetNetwork().version === TransactionVersion.Testnet
             ? AddressVersion.TestnetMultiSig
             : AddressVersion.MainnetMultiSig,
           AddressHashMode.SerializeP2SH,
@@ -375,7 +375,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         recipient: recipientAddress,
         amount: BigInt(stx_amount),
         memo: memo,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         senderKey: origin_key,
         sponsored: sponsored,
         anchorMode: AnchorMode.Any,
@@ -387,7 +387,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -403,14 +403,14 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
+      await res
+        .type('text/html')
         .send(
           tokenTransferMultisigHtml +
             '<h3>Broadcasted transaction:</h3>' +
             `<a href="/extended/v1/tx/${txId}">${txId}</a>`
         );
-    })
+    }
   );
 
   const tokenTransferHtml = `
@@ -460,16 +460,27 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get(
-    '/broadcast/token-transfer',
-    asyncHandler((req, res) => {
-      res.set('Content-Type', 'text/html').send(tokenTransferHtml);
-    })
-  );
+  fastify.get('/broadcast/token-transfer', { schema: { hide: true } }, async (req, res) => {
+    await res.type('text/html').send(tokenTransferHtml);
+  });
 
-  router.post(
+  fastify.post(
     '/broadcast/token-transfer',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        body: Type.Object({
+          origin_key: Type.String(),
+          recipient_address: Type.String(),
+          stx_amount: Type.String(),
+          memo: Type.String(),
+          nonce: Type.String(),
+          anchor_mode: Type.Integer(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
+        }),
+      },
+    },
+    async (req, res) => {
       const { origin_key, recipient_address, stx_amount, memo, nonce, anchor_mode } = req.body;
       const sponsored = !!req.body.sponsored;
 
@@ -480,7 +491,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (Number.isInteger(Number.parseInt(nonce))) {
         txNonce = Number.parseInt(nonce);
       } else {
-        const latestNonces = await db.getAddressNonces({ stxAddress: senderAddress });
+        const latestNonces = await fastify.db.getAddressNonces({ stxAddress: senderAddress });
         txNonce = latestNonces.possibleNextNonce;
       }
 
@@ -489,7 +500,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         recipient: recipient_address,
         amount: BigInt(stx_amount),
         senderKey: origin_key,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         memo: memo,
         sponsored: sponsored,
         nonce: txNonce,
@@ -502,7 +513,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: transferTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -518,14 +529,14 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
+      await res
+        .type('text/html')
         .send(
           tokenTransferHtml +
             '<h3>Broadcasted transaction:</h3>' +
             `<a href="/extended/v1/tx/${txId}">${txId}</a>`
         );
-    })
+    }
   );
 
   const sendPoxHtml = `
@@ -567,8 +578,8 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get('/broadcast/stack', (req, res) => {
-    res.set('Content-Type', 'text/html').send(sendPoxHtml);
+  fastify.get('/broadcast/stack', { schema: { hide: true } }, async (req, res) => {
+    await res.type('text/html').send(sendPoxHtml);
   });
 
   async function fetchRosetta<TPostBody, TRes>(port: number, endpoint: string, body: TPostBody) {
@@ -698,9 +709,21 @@ export function createDebugRouter(db: PgStore): express.Router {
     };
   }
 
-  router.post(
+  fastify.post(
     '/broadcast/stack',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        body: Type.Object({
+          origin_key: Type.String(),
+          recipient_address: Type.String(),
+          stx_amount: Type.String(),
+          cycle_count: Type.Integer(),
+          use_rosetta: Type.Boolean(),
+        }),
+      },
+    },
+    async (req, res) => {
       const { origin_key, recipient_address, stx_amount, cycle_count } = req.body;
       const cycles = Number(cycle_count);
       const useRosetta = !!req.body.use_rosetta;
@@ -737,7 +760,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         const poxAddrTuple = poxAddressToTuple(recipient_address);
         burnBlockHeight = poxInfo.current_burnchain_block_height as number;
 
-        const stackingRpc = new StackingClient('', stacksNetwork);
+        const stackingRpc = new StackingClient('', getStacksTestnetNetwork());
         const signerPrivKey = makeRandomPrivKey();
         const signerPubKey = getPublicKeyFromPrivate(signerPrivKey.data);
         const authId = `0x${randomBytes(16).toString('hex')}`;
@@ -767,7 +790,7 @@ export function createDebugRouter(db: PgStore): express.Router {
             uintCV(ustxAmount), // max-amount
             uintCV(authId), // auth-id
           ],
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           anchorMode: AnchorMode.Any,
           fee: 10000,
           validateWithAbi: false,
@@ -782,7 +805,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         }
       }
 
-      res.set('Content-Type', 'text/html').send(
+      await res.type('text/html').send(
         sendPoxHtml +
           `
           <h3>Broadcasted transaction:</h3>
@@ -804,20 +827,28 @@ export function createDebugRouter(db: PgStore): express.Router {
           </ul>
           `
       );
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/rosetta/tx/:tx_id',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        params: Type.Object({
+          tx_id: Type.String(),
+        }),
+      },
+    },
+    async (req, res) => {
       const { tx_id } = req.params;
-      const searchResult = await db.searchHash({ hash: tx_id });
+      const searchResult = await fastify.db.searchHash({ hash: tx_id });
       if (!searchResult.found) {
-        res.status(404).send('Transaction not found');
+        await res.status(404).send('Transaction not found');
         return;
       }
       if (searchResult.result.entity_type === 'mempool_tx_id') {
-        res.status(404).send('Transaction still pending in mempool');
+        await res.status(404).send('Transaction still pending in mempool');
         return;
       }
       const dbTx = searchResult.result.entity_data as DbTx;
@@ -831,8 +862,8 @@ export function createDebugRouter(db: PgStore): express.Router {
         transaction_identifier: { hash: dbTx.tx_id },
       });
 
-      res.set('Content-Type', 'application/json').send(JSON.stringify(txResult, null, 2));
-    })
+      await res.type('application/json').send(JSON.stringify(txResult, null, 2));
+    }
   );
 
   const contractDeployHtml = `
@@ -868,21 +899,30 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get('/broadcast/contract-deploy', (req, res) => {
-    res.set('Content-Type', 'text/html').send(contractDeployHtml);
+  fastify.get('/broadcast/contract-deploy', { schema: { hide: true } }, async (req, res) => {
+    await res.type('text/html').send(contractDeployHtml);
   });
 
-  router.post(
+  fastify.post(
     '/broadcast/contract-deploy',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        body: Type.Object({
+          origin_key: Type.String(),
+          contract_name: Type.String(),
+          source_code: Type.String(),
+          sponsored: Type.Optional(Type.Literal('sponsored')),
+        }),
+      },
+    },
+    async (req, res) => {
       const { origin_key, contract_name, source_code } = req.body;
       const sponsored = !!req.body.sponsored;
 
-      const senderAddress = getAddressFromPrivateKey(origin_key, stacksNetwork.version);
+      const senderAddress = getAddressFromPrivateKey(origin_key, getStacksTestnetNetwork().version);
 
-      const normalized_contract_source = (source_code as string)
-        .replace(/\r/g, '')
-        .replace(/\t/g, ' ');
+      const normalized_contract_source = source_code.replace(/\r/g, '').replace(/\t/g, ' ');
       const contractDeployTx = await makeContractDeploy({
         contractName: contract_name,
         clarityVersion: 2,
@@ -900,7 +940,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: contractDeployTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -917,8 +957,8 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
+      await res
+        .type('text/html')
         .send(
           contractDeployHtml +
             '<h3>Broadcasted transaction:</h3>' +
@@ -926,7 +966,7 @@ export function createDebugRouter(db: PgStore): express.Router {
             '<h3>Deployed contract:</h3>' +
             `<a href="contract-call/${contractId}">${contractId}</a>`
         );
-    })
+    }
   );
 
   const contractCallHtml = `
@@ -965,13 +1005,21 @@ export function createDebugRouter(db: PgStore): express.Router {
     </form>
   `;
 
-  router.get(
+  fastify.get(
     '/broadcast/contract-call/:contract_id',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        params: Type.Object({
+          contract_id: Type.String(),
+        }),
+      },
+    },
+    async (req, res) => {
       const { contract_id } = req.params;
-      const dbContractQuery = await db.getSmartContract(contract_id);
+      const dbContractQuery = await fastify.db.getSmartContract(contract_id);
       if (!dbContractQuery.found) {
-        res.status(404).json({ error: `cannot find contract by ID ${contract_id}` });
+        await res.status(404).send({ error: `cannot find contract by ID ${contract_id}` });
         return;
       }
       const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi as string);
@@ -1011,22 +1059,31 @@ export function createDebugRouter(db: PgStore): express.Router {
       );
       formHtml = formHtml.replace('{function_arg_controls}', funcHtml);
 
-      res.set('Content-Type', 'text/html').send(formHtml);
-    })
+      await res.type('text/html').send(formHtml);
+    }
   );
 
-  router.post(
+  fastify.post(
     '/broadcast/contract-call/:contract_id',
-    asyncHandler(async (req, res) => {
+    {
+      schema: {
+        hide: true,
+        params: Type.Object({
+          contract_id: Type.String(),
+        }),
+        body: Type.Record(Type.String(), Type.String()),
+      },
+    },
+    async (req, res) => {
       const contractId: string = req.params['contract_id'];
-      const dbContractQuery = await db.getSmartContract(contractId);
+      const dbContractQuery = await fastify.db.getSmartContract(contractId);
       if (!dbContractQuery.found) {
-        res.status(404).json({ error: `could not find contract by ID ${contractId}` });
+        await res.status(404).send({ error: `could not find contract by ID ${contractId}` });
         return;
       }
       const contractAbi: ClarityAbi = JSON.parse(dbContractQuery.result.abi as string);
 
-      const body = req.body as Record<string, string>;
+      const body = req.body;
       const originKey = body['origin_key'];
       const functionName = body['fn_name'];
       const functionArgs = new Map<string, string>();
@@ -1059,7 +1116,7 @@ export function createDebugRouter(db: PgStore): express.Router {
         functionName: functionName,
         functionArgs: clarityValueArgs,
         senderKey: originKey,
-        network: stacksNetwork,
+        network: getStacksTestnetNetwork(),
         fee: defaultTxFee,
         postConditionMode: PostConditionMode.Allow,
         sponsored: sponsored,
@@ -1071,7 +1128,7 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (sponsored) {
         const sponsorKey = testnetKeys[testnetKeys.length - 1].secretKey;
         const sponsoredTx = await sponsorTransaction({
-          network: stacksNetwork,
+          network: getStacksTestnetNetwork(),
           transaction: contractCallTx,
           sponsorPrivateKey: sponsorKey,
           fee: defaultTxFee,
@@ -1087,12 +1144,12 @@ export function createDebugRouter(db: PgStore): express.Router {
       if (txId !== '0x' + expectedTxId) {
         throw new Error(`Expected ${expectedTxId}, core ${txId}`);
       }
-      res
-        .set('Content-Type', 'text/html')
+      await res
+        .type('text/html')
         .send(
           '<h3>Broadcasted transaction:</h3>' + `<a href="/extended/v1/tx/${txId}">${txId}</a>`
         );
-    })
+    }
   );
 
   const txWatchHtml = `
@@ -1112,18 +1169,28 @@ export function createDebugRouter(db: PgStore): express.Router {
     </script>
   `;
 
-  router.get('/watch-tx', (req, res) => {
-    res.set('Content-Type', 'text/html').send(txWatchHtml);
+  fastify.get('/watch-tx', { schema: { hide: true } }, async (req, res) => {
+    await res.type('text/html').send(txWatchHtml);
   });
 
-  router.post('/faucet', (req, res) => {
-    // Redirect with 307 because: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
-    // "... the difference between 307 and 302 is that 307 guarantees that the method and the body
-    //  will not be changed when the redirected request is made ... the behavior with non-GET
-    //  methods and 302 is then unpredictable on the Web."
-    const address: string = req.query.address || req.body.address;
-    res.redirect(307, `../faucets/stx?address=${encodeURIComponent(address)}`);
-  });
+  fastify.post(
+    '/faucet',
+    {
+      schema: {
+        hide: true,
+        querystring: Type.Object({ address: Type.Optional(Type.String()) }),
+        body: OptionalNullable(Type.Object({ address: Type.Optional(Type.String()) })),
+      },
+    },
+    async (req, res) => {
+      // Redirect with 307 because: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/307
+      // "... the difference between 307 and 302 is that 307 guarantees that the method and the body
+      //  will not be changed when the redirected request is made ... the behavior with non-GET
+      //  methods and 302 is then unpredictable on the Web."
+      const address: string = req.query.address ?? req.body?.address ?? '';
+      await res.status(307).redirect(`../faucets/stx?address=${encodeURIComponent(address)}`);
+    }
+  );
 
-  return router;
-}
+  await Promise.resolve();
+};

@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "title": "RosettaMempoolRequest",
+  "description": "Get all Transaction Identifiers in the mempool",
+  "required": ["network_identifier"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}
