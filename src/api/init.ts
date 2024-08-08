@@ -281,7 +281,11 @@ export async function startApiServer(opts: {
   const server = createServer((req, res) => {
     if (rosettaPath.test(req.url as string)) {
       // handle with express
-      expressApp?.(req, res);
+      if (expressApp) {
+        expressApp(req, res);
+      } else {
+        res.writeHead(404).end();
+      }
     } else {
       // handle with fastify
       fastify.server.emit('request', req, res);

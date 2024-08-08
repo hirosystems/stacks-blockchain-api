@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "properties": {
     "network_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+      "$ref": "./rosetta-network-identifier.schema.json"
     },
     "unsigned_transaction": {
       "type": "string"
@@ -14,7 +14,7 @@
     "signatures": {
       "type": "array",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-signature.schema.json"
+        "$ref": "./rosetta-signature.schema.json"
       }
     }
   }

@@ -6,18 +6,18 @@
   "additionalProperties": false,
   "properties": {
     "network_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+      "$ref": "./rosetta-network-identifier.schema.json"
     },
     "operations": {
       "type": "array",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-operation.schema.json"
+        "$ref": "./rosetta-operation.schema.json"
       }
     },
     "public_keys": {
       "type": "array",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
+        "$ref": "./rosetta-public-key.schema.json"
       }
     },
     "metadata": {

@@ -9,7 +9,7 @@
       "type": "array",
       "description": "",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"
+        "$ref": "./rosetta-transaction-identifier.schema.json"
       }
     },
     "metadata": {

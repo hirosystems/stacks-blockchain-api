@@ -13,7 +13,7 @@
       "type": "array",
       "description": "An array of payloads that must be signed by the caller",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-signing-payload.schema.json"
+        "$ref": "./rosetta-signing-payload.schema.json"
       }
     }
   }

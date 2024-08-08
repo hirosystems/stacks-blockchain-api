@@ -11,26 +11,26 @@
   ],
   "properties": {
     "current_block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
+      "$ref": "./rosetta-block-identifier.schema.json"
     },
     "current_block_timestamp": {
       "type": "integer",
       "description": "The timestamp of the block in milliseconds since the Unix Epoch. The timestamp is stored in milliseconds because some blockchains produce blocks more often than once a second."
     },
     "genesis_block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-genesis-block-identifier.schema.json"
+      "$ref": "./rosetta-genesis-block-identifier.schema.json"
     },
     "oldest_block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-oldest-block-identifier.schema.json"
+      "$ref": "./rosetta-oldest-block-identifier.schema.json"
     },
     "sync_status": {
-      "$ref": "./../../entities/rosetta/rosetta-sync-status.schema.json"
+      "$ref": "./rosetta-sync-status.schema.json"
     },
     "peers": {
       "type": "array",
       "description": "Peers information",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-network-peers.schema.json"
+        "$ref": "./rosetta-network-peers.schema.json"
       }
     },
     "current_burn_block_height": {

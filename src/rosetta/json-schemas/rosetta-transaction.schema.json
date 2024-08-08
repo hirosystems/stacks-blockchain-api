@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "title": "RosettaTransaction",
+  "description": "Transactions contain an array of Operations that are attributable to the same TransactionIdentifier.",
+  "required": ["transaction_identifier", "operations"],
+  "additionalProperties": false,
+  "properties": {
+    "transaction_identifier": {
+      "$ref": "./rosetta-transaction-identifier.schema.json"
+    },
+    "operations": {
+      "type": "array",
+      "description": "List of operations",
+      "items": {
+        "$ref": "./rosetta-operation.schema.json"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Transactions that are related to other transactions (like a cross-shard transaction) should include the tranaction_identifier of these transactions in the metadata.",
+      "properties": {
+        "memo": {
+          "type": "string",
+          "description": "STX token transfer memo."
+        },
+        "size": {
+          "type": "integer",
+          "description": "The Size"
+        },
+        "lockTime": {
+          "type": "integer",
+          "description": "The locktime"
+        }
+      }
+    }
+  }
+}

@@ -6,13 +6,13 @@
   "additionalProperties": false,
   "properties": {
     "network_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+      "$ref": "./rosetta-network-identifier.schema.json"
     },
     "block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-partial-block-identifier.schema.json"
+      "$ref": "./rosetta-partial-block-identifier.schema.json"
     },
     "transaction_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-transaction-identifier.schema.json"
+      "$ref": "./rosetta-transaction-identifier.schema.json"
     }
   }
 }

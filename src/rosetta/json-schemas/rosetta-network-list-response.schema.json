@@ -9,7 +9,7 @@
       "type": "array",
       "description": "The network_identifier specifies which network a particular object is associated with.",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+        "$ref": "./rosetta-network-identifier.schema.json"
       }
     }
   }

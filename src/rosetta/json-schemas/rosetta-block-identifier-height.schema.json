@@ -1,0 +1,13 @@
+{
+  "type": "object",
+  "title": "RosettaBlockIdentifierHeight",
+  "description": "This is also known as the block height.",
+  "additionalProperties": false,
+  "required": ["index"],
+  "properties": {
+    "index": {
+      "type": "integer",
+      "description": "This is also known as the block height."
+    }
+  }
+}

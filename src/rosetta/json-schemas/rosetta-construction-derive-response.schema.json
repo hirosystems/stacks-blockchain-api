@@ -9,7 +9,7 @@
       "description": "[DEPRECATED by account_identifier in v1.4.4] Address in network-specific format."
     },
     "account_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-account-identifier.schema.json"
+      "$ref": "./rosetta-account-identifier.schema.json"
     },
     "metadata": {
       "type": "object"

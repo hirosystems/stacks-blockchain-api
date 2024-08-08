@@ -1,0 +1,24 @@
+{
+  "type": "object",
+  "title": "SigningPayload",
+  "description": "SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.",
+  "required": ["hex_bytes"],
+  "additionalProperties": false,
+  "properties": {
+    "address": {
+      "type": "string",
+      "description": "[DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload."
+    },
+    "account_identifier": {
+      "$ref": "./rosetta-account.schema.json"
+    },
+    "hex_bytes": {
+      "type": "string"
+    },
+    "signature_type": {
+      "type": "string",
+      "description": "SignatureType is the type of a cryptographic signature.",
+      "enum": ["ecdsa", "ecdsa_recovery", "ed25519", "schnorr_1", "schnorr_poseidon"]
+    }
+  }
+}

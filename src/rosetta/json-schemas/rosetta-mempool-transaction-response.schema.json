@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "properties": {
     "transaction": {
-      "$ref": "./../../entities/rosetta/rosetta-transaction.schema.json"
+      "$ref": "./rosetta-transaction.schema.json"
     },
     "metadata": {
       "type": "object"

@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "title": "RosettaPeers",
+  "description": "A Peer is a representation of a node's peer.",
+  "required": ["peer_id"],
+  "additionalProperties": false,
+  "properties": {
+    "peer_id": {
+      "type": "string",
+      "description": "peer id"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "meta data"
+    }
+  }
+}

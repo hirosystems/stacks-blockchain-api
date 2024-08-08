@@ -6,10 +6,10 @@
   "additionalProperties": false,
   "properties": {
     "network_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-network-identifier.schema.json"
+      "$ref": "./rosetta-network-identifier.schema.json"
     },
     "public_key": {
-      "$ref": "./../../entities/rosetta/rosetta-public-key.schema.json"
+      "$ref": "./rosetta-public-key.schema.json"
     },
     "metadata": {
       "type": "object"

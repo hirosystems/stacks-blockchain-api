@@ -6,20 +6,20 @@
   "additionalProperties": false,
   "properties": {
     "block_identifier": {
-      "$ref": "./../../entities/rosetta/rosetta-block-identifier.schema.json"
+      "$ref": "./rosetta-block-identifier.schema.json"
     },
     "balances": {
       "type": "array",
       "description": "A single account balance may have multiple currencies",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-amount.schema.json"
+        "$ref": "./rosetta-amount.schema.json"
       }
     },
     "coins": {
       "type": "array",
       "description": "If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.",
       "items": {
-        "$ref": "./../../entities/rosetta/rosetta-coin.schema.json"
+        "$ref": "./rosetta-coin.schema.json"
       }
     },
     "metadata": {

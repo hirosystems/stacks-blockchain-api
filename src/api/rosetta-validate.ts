@@ -152,7 +152,7 @@ export function makeRosettaError(notValid: ValidSchema): Readonly<RosettaError> 
       ...RosettaErrors[RosettaErrorsTypes.invalidOperation],
       details: { message: error },
     };
-  } else if (error.search(/should have required property/) != -1) {
+  } else if (error.search(/must have required property/) != -1) {
     return {
       ...RosettaErrors[RosettaErrorsTypes.invalidParams],
       details: { message: error },
