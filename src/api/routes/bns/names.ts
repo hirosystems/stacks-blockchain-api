@@ -244,7 +244,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
               last_txid: Type.String(),
               resolver: Type.Optional(Type.String()),
               status: Type.String(),
-              zonefile: Type.String(),
+              zonefile: Type.Optional(Type.String()),
               zonefile_hash: Type.String(),
             },
             {
@@ -290,7 +290,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
                 if (resolverResult.result === '') {
                   throw { error: `missing resolver from a malformed zonefile` };
                 }
-                throw new NameRedirectError(`${resolverResult.result}/v1/names${req.url}`);
+                throw new NameRedirectError(`${resolverResult.result}${req.url}`);
               }
               throw { error: `cannot find subdomain ${name}` };
             }
@@ -305,7 +305,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
               zonefile: result.zonefile,
               zonefile_hash: result.zonefile_hash,
             };
-            await reply.send(nameInfoResponse);
+            const response = Object.fromEntries(
+              Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
+            ) as typeof nameInfoResponse;
+            await reply.send(response);
           } else {
             const nameQuery = await fastify.db.getName({
               name,
@@ -326,7 +329,10 @@ export const BnsNameRoutes: FastifyPluginAsync<
               zonefile: result.zonefile,
               zonefile_hash: result.zonefile_hash,
             };
-            await reply.send(nameInfoResponse);
+            const response = Object.fromEntries(
+              Object.entries(nameInfoResponse).filter(([_, v]) => v != null)
+            ) as typeof nameInfoResponse;
+            await reply.send(response);
           }
         })
         .catch(async error => {

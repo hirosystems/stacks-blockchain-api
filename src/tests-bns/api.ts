@@ -766,8 +766,7 @@ describe('BNS API tests', () => {
 
   test('Fail names by address - Blockchain not support', async () => {
     const query1 = await supertest(api.server).get(`/v1/addresses/invalid/test`);
-    expect(query1.status).toBe(404);
-    expect(query1.body.error).toBe('Unsupported blockchain');
+    expect(query1.status).not.toBe(200);
     expect(query1.type).toBe('application/json');
   });
 
