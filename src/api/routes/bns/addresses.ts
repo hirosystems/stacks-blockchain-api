@@ -3,6 +3,7 @@ import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
 import { UnanchoredParamSchema } from '../../schemas/params';
+import { InvalidRequestError, InvalidRequestErrorType } from '../../../errors';
 
 const SUPPORTED_BLOCKCHAINS = ['stacks'];
 
@@ -38,7 +39,6 @@ export const BnsAddressRoutes: FastifyPluginAsync<
             {
               names: Type.Array(
                 Type.String({
-                  pattern: '^([a-z0-9-_.+]{3,37})$',
                   examples: ['muneeb.id'],
                 })
               ),
@@ -48,7 +48,6 @@ export const BnsAddressRoutes: FastifyPluginAsync<
               description: 'Retrieves a list of names owned by the address provided.',
             }
           ),
-          404: Type.Object({ error: Type.String() }, { title: 'BnsError', description: 'Error' }),
         },
       },
     },
@@ -56,7 +55,10 @@ export const BnsAddressRoutes: FastifyPluginAsync<
       // Retrieves a list of names owned by the address provided.
       const { blockchain, address } = req.params;
       if (!SUPPORTED_BLOCKCHAINS.includes(blockchain)) {
-        return await reply.status(404).send({ error: 'Unsupported blockchain' });
+        throw new InvalidRequestError(
+          'Unsupported blockchain',
+          InvalidRequestErrorType.bad_request
+        );
       }
       const includeUnanchored = req.query.unanchored ?? false;
       const namesByAddress = await fastify.db.getNamesByAddressList({

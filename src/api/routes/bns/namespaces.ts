@@ -66,7 +66,7 @@ export const BnsNamespaceRoutes: FastifyPluginAsync<
           unanchored: UnanchoredParamSchema,
         }),
         response: {
-          200: Type.Array(Type.String({ pattern: '^([a-z0-9-_.+]{3,37})$' }), {
+          200: Type.Array(Type.String(), {
             title: 'BnsGetAllNamespacesNamesResponse',
             description: 'Fetch a list of names from the namespace.',
             examples: [

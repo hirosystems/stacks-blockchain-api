@@ -1,6 +1,6 @@
 import { handleChainTipCache } from '../../controllers/cache-controller';
 import { parseDbBurnBlock, parseDbNakamotoBlock } from './helpers';
-import { BurnBlockParamsSchema } from './schemas';
+import { BurnBlockParamsSchema, parseBlockParam } from './schemas';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -9,6 +9,7 @@ import { LimitParam, OffsetParam } from '../../schemas/params';
 import { ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import { BurnBlock, BurnBlockSchema } from '../../schemas/entities/burn-blocks';
+import { NakamotoBlockSchema } from '../../schemas/entities/block';
 
 export const BurnBlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -62,7 +63,7 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const params = req.params;
+      const params = parseBlockParam(req.params.height_or_hash);
       const block = await fastify.db.v2.getBurnBlock(params);
       if (!block) {
         throw new NotFoundError();
@@ -87,17 +88,17 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
           offset: OffsetParam(),
         }),
         response: {
-          200: Type.Object({}),
+          200: PaginatedResponse(NakamotoBlockSchema),
         },
       },
     },
     async (req, reply) => {
-      const params = req.params;
+      const params = parseBlockParam(req.params.height_or_hash);
       const query = req.query;
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getBlocksByBurnBlock({
-          ...params,
+          block: params,
           ...query,
         });
         const blocks = results.map(r => parseDbNakamotoBlock(r));

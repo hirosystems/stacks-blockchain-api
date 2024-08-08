@@ -231,6 +231,7 @@ export async function startApiServer(opts: {
   const fastify = Fastify({
     trustProxy: true,
     logger: PINO_LOGGER_CONFIG,
+    ignoreTrailingSlash: true,
   }).withTypeProvider<TypeBoxTypeProvider>();
 
   fastify.decorate('db', datastore);
@@ -255,6 +256,14 @@ export async function startApiServer(opts: {
     );
     // Set caching on all routes to be disabled by default, individual routes can override.
     void reply.header('Cache-Control', 'no-store');
+  });
+
+  fastify.setErrorHandler(async (error, _req, reply) => {
+    if (isPgConnectionError(error)) {
+      return reply.status(503).send({ error: `The database service is unavailable` });
+    } else {
+      return reply.send(error);
+    }
   });
 
   await fastify.register(StacksApiRoutes);

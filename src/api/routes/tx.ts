@@ -7,7 +7,7 @@ import {
   parseDbEvent,
 } from '../controllers/db-controller';
 import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
 import { validateRequestHexInput, validatePrincipal } from '../query-helpers';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
 import {
@@ -36,8 +36,10 @@ import {
 import {
   AbstractMempoolTransactionProperties,
   BaseTransactionSchemaProperties,
+  MempoolTransaction,
   MempoolTransactionSchema,
   TokenTransferTransactionMetadataProperties,
+  Transaction,
   TransactionSchema,
   TransactionSearchResponseSchema,
   TransactionTypeSchema,
@@ -76,7 +78,7 @@ export const TxRoutes: FastifyPluginAsync<
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
           type: Type.Optional(
-            Type.Union([Type.Array(TransactionTypeSchema), TransactionTypeStringSchema])
+            Type.Array(Type.Union([TransactionTypeSchema, TransactionTypeStringSchema]))
           ),
           unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
@@ -143,16 +145,8 @@ export const TxRoutes: FastifyPluginAsync<
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const typeQuery = req.query.type;
-      const txTypeFilter = parseTxTypeStrings(
-        typeQuery === undefined
-          ? []
-          : Array.isArray(typeQuery)
-          ? typeQuery
-          : typeQuery.includes(',')
-          ? typeQuery.split(',')
-          : [typeQuery]
-      );
+      const typeQuery = req.query.type?.flatMap(t => t.split(','));
+      const txTypeFilter = parseTxTypeStrings(typeQuery ?? []);
 
       let fromAddress: string | undefined;
       if (typeof req.query.from_address === 'string') {
@@ -217,10 +211,9 @@ export const TxRoutes: FastifyPluginAsync<
         description: `Retrieves a list of transactions for a given list of transaction IDs`,
         tags: ['Transactions'],
         querystring: Type.Object({
-          tx_id: Type.Union([
-            Type.Array(TransactionIdParamSchema),
-            TransactionIdCommaListParamSchema,
-          ]),
+          tx_id: Type.Array(
+            Type.Union([TransactionIdParamSchema, TransactionIdCommaListParamSchema])
+          ),
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
@@ -231,16 +224,7 @@ export const TxRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      if (typeof req.query.tx_id === 'string') {
-        // check if tx_id is a comma-seperated list of tx_ids
-        if (req.query.tx_id.includes(',')) {
-          req.query.tx_id = req.query.tx_id.split(',');
-        } else {
-          // in case req.query.tx_id is a single tx_id string and not an array
-          req.query.tx_id = [req.query.tx_id];
-        }
-      }
-      const txList: string[] = req.query.tx_id;
+      const txList: string[] = req.query.tx_id.flatMap(t => t.split(','));
 
       const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query.event_limit);
       const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
@@ -408,10 +392,9 @@ export const TxRoutes: FastifyPluginAsync<
           tx_id: Type.Optional(TransactionIdParamSchema),
           address: Type.Optional(PrincipalSchema),
           type: Type.Optional(
-            Type.Union([
-              Type.Array(TransactionEventTypeSchema),
-              TransactionEventTypeCommaListSchema,
-            ])
+            Type.Array(
+              Type.Union([TransactionEventTypeSchema, TransactionEventTypeCommaListSchema])
+            )
           ),
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Event),
@@ -450,17 +433,11 @@ export const TxRoutes: FastifyPluginAsync<
         validateRequestHexInput(addrOrTx.txId);
       }
 
-      const typeQuery = req.query.type;
+      const typeQuery = req.query.type?.flatMap(t => t.split(','));
       let eventTypeFilter: DbEventTypeId[];
-      if (typeQuery) {
+      if (typeQuery && typeQuery.length > 0) {
         try {
-          eventTypeFilter = parseEventTypeStrings(
-            Array.isArray(typeQuery)
-              ? typeQuery
-              : typeQuery.includes(',')
-              ? typeQuery.split(',')
-              : [typeQuery]
-          );
+          eventTypeFilter = parseEventTypeStrings(typeQuery);
         } catch (error) {
           throw new InvalidRequestError(
             `invalid 'event type'`,
@@ -506,7 +483,6 @@ export const TxRoutes: FastifyPluginAsync<
         }),
         response: {
           200: Type.Union([TransactionSchema, MempoolTransactionSchema]),
-          404: ErrorResponseSchema,
         },
       },
     },
@@ -530,10 +506,10 @@ export const TxRoutes: FastifyPluginAsync<
         includeUnanchored,
       });
       if (!txQuery.found) {
-        await reply.status(404).send({ error: `could not find transaction by ID ${tx_id}` });
-        return;
+        throw new NotFoundError(`could not find transaction by ID`);
       }
-      await reply.send(txQuery.result);
+      const result: Transaction | MempoolTransaction = txQuery.result;
+      await reply.send(result);
     }
   );
 
@@ -555,7 +531,6 @@ export const TxRoutes: FastifyPluginAsync<
         }),
         response: {
           200: RawTransactionResponseSchema,
-          404: ErrorResponseSchema,
         },
       },
     },
@@ -574,7 +549,7 @@ export const TxRoutes: FastifyPluginAsync<
         };
         await reply.send(response);
       } else {
-        await reply.status(404).send({ error: `could not find transaction by ID ${tx_id}` });
+        throw new NotFoundError(`could not find raw transaction by ID`);
       }
     }
   );
@@ -600,7 +575,6 @@ export const TxRoutes: FastifyPluginAsync<
         }),
         response: {
           200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
-          404: ErrorResponseSchema,
         },
       },
     },
@@ -612,8 +586,7 @@ export const TxRoutes: FastifyPluginAsync<
       validateRequestHexInput(block_hash);
       const result = await fastify.db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
-        await reply.status(404).send({ error: `no block found by hash ${block_hash}` });
-        return;
+        throw new NotFoundError(`no block found by hash`);
       }
       const dbTxs = result.result;
       const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
@@ -648,7 +621,6 @@ export const TxRoutes: FastifyPluginAsync<
         }),
         response: {
           200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
-          404: ErrorResponseSchema,
         },
       },
     },
@@ -659,8 +631,7 @@ export const TxRoutes: FastifyPluginAsync<
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       const result = await fastify.db.getTxsFromBlock({ height: height }, limit, offset);
       if (!result.found) {
-        await reply.status(404).send({ error: `no block found at height ${height}` });
-        return;
+        throw new NotFoundError(`no block found at height ${height}`);
       }
       const dbTxs = result.result;
       const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));

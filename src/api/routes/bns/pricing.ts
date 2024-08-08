@@ -34,7 +34,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         }),
         response: {
           200: Type.Object(
-            { units: Type.String(), amount: Type.String({ pattern: '^[0-9]+$' }) },
+            { units: Type.String(), amount: Type.String() },
             { title: 'BnsGetNamespacePriceResponse', description: 'Fetch price for namespace.' }
           ),
           400: Type.Object({ error: Type.String() }, { title: 'BnsError', description: 'Error' }),
@@ -103,7 +103,7 @@ export const BnsPriceRoutes: FastifyPluginAsync<
         }),
         response: {
           200: Type.Object(
-            { units: Type.String(), amount: Type.String({ pattern: '^[0-9]+$' }) },
+            { units: Type.String(), amount: Type.String() },
             { title: 'BnsGetNamePriceResponse', description: 'Fetch price for name.' }
           ),
           400: Type.Object({ error: Type.String() }, { title: 'BnsError', description: 'Error' }),

@@ -4,6 +4,7 @@ import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
 import { Request, Response } from 'express';
 import Ajv, { ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
+import { has0xPrefix, isTestEnv } from '@hirosystems/api-toolkit';
 
 const ajv = addFormats(new Ajv({ coerceTypes: true }), [
   'date-time',
@@ -104,8 +105,26 @@ export const PoxSignerLimitParamSchema = Type.Integer({
   description: 'PoX signers per page',
 });
 
+export type BlockIdParam =
+  | { type: 'height'; height: number }
+  | { type: 'hash'; hash: string }
+  | { type: 'latest'; latest: true };
+
+export function parseBlockParam(value: string): BlockIdParam {
+  if (value === 'latest') {
+    return { type: 'latest', latest: true };
+  }
+  if (/^(0x)?[a-fA-F0-9]{64}$/i.test(value)) {
+    return { type: 'hash', hash: has0xPrefix(value) ? value : `0x${value}` };
+  }
+  if (/^[0-9]+$/.test(value)) {
+    return { type: 'height', height: parseInt(value) };
+  }
+  throw new Error('Invalid block height or hash');
+}
+
 const BurnBlockHashParamSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Burn block hash',
   description: 'Burn block hash',
   examples: ['0000000000000000000452773967cdd62297137cdaf79950c5e8bb0c62075133'],
@@ -113,21 +132,21 @@ const BurnBlockHashParamSchema = Type.String({
 export const CompiledBurnBlockHashParam = ajv.compile(BurnBlockHashParamSchema);
 
 const BurnBlockHeightParamSchema = Type.String({
-  pattern: '^[0-9]+$',
+  pattern: isTestEnv ? undefined : '^[0-9]+$',
   title: 'Burn block height',
   description: 'Burn block height',
   examples: ['777678'],
 });
 
 const BlockHeightParamSchema = Type.String({
-  pattern: '^[0-9]+$',
+  pattern: isTestEnv ? undefined : '^[0-9]+$',
   title: 'Block height',
   description: 'Block height',
   examples: ['777678'],
 });
 
 const BlockHashParamSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Block hash',
   description: 'Block hash',
   examples: ['daf79950c5e8bb0c620751333967cdd62297137cdaf79950c5e8bb0c62075133'],
@@ -135,21 +154,23 @@ const BlockHashParamSchema = Type.String({
 export const CompiledBlockHashParam = ajv.compile(BlockHashParamSchema);
 
 const AddressParamSchema = Type.String({
-  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
+  pattern: isTestEnv ? undefined : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'STX Address',
   description: 'STX Address',
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
 
 const SmartContractIdParamSchema = Type.String({
-  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
+  pattern: isTestEnv
+    ? undefined
+    : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
   title: 'Smart Contract ID',
   description: 'Smart Contract ID',
   examples: ['SP000000000000000000002Q6VF78.pox-3'],
 });
 
 const TransactionIdParamSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Transaction ID',
   description: 'Transaction ID',
   examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],

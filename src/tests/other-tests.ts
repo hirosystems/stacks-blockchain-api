@@ -245,17 +245,21 @@ describe('other tests', () => {
     const tx_id = '0x8407751d1a8d11ee986aca32a6459d9cd798283a12e048ebafcd4cc7dadb29a';
     const block_hash = '0xd10ccecfd7ac9e5f8a10de0532fac028559b31a6ff494d82147f6297fb66313';
     const principal_addr = 'S.hello-world';
-    const odd_tx_error = {
-      error: `Hex string is an odd number of digits`,
-    };
-    const odd_block_error = {
-      error: `Hex string is an odd number of digits`,
-    };
-    const metadata_error = { error: `Unexpected value for 'include_metadata' parameter: "bac"` };
-    const principal_error = { error: 'invalid STX address "S.hello-world"' };
-    const pagination_error = {
-      error: `'limit' must be equal to or less than ${getPagingQueryLimit(ResourceType.Tx, 50)}`,
-    };
+    const odd_tx_error = expect.objectContaining({
+      message: `Hex string is an odd number of digits`,
+    });
+    const odd_block_error = expect.objectContaining({
+      message: `Hex string is an odd number of digits`,
+    });
+    const metadata_error = expect.objectContaining({
+      message: `querystring/include_metadata must be boolean`,
+    });
+    const principal_error = expect.objectContaining({
+      message: 'invalid STX address "S.hello-world"',
+    });
+    const pagination_error = expect.objectContaining({
+      message: `querystring/limit must be <= ${getPagingQueryLimit(ResourceType.Tx, 50)}`,
+    });
     // extended/v1/tx
     const searchResult1 = await supertest(api.server).get(`/extended/v1/tx/${tx_id}`);
     expect(JSON.parse(searchResult1.text)).toEqual(odd_tx_error);

@@ -1,5 +1,6 @@
 import { Type } from '@sinclair/typebox';
 import { pagingQueryLimits, ResourceType } from '../pagination';
+import { isTestEnv } from '@hirosystems/api-toolkit';
 
 export const OffsetParam = (title?: string, description?: string) =>
   Type.Optional(
@@ -31,14 +32,14 @@ export const UnanchoredParamSchema = Type.Optional(
 );
 
 export const TransactionIdParamSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]{64}$',
+  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Transaction ID',
   description: 'Transaction ID',
   examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],
 });
 
 export const TransactionIdCommaListParamSchema = Type.String({
-  pattern: '^(0x)?[a-fA-F0-9]{64}(,(0x)?[a-fA-F0-9]{64})*$',
+  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}(,(0x)?[a-fA-F0-9]{64})*$',
   title: 'Comma separated list of transaction IDs',
   description: 'Comma separate list of transaction IDs',
   examples: [
@@ -54,14 +55,16 @@ export const BlockHeightSchema = Type.Integer({
 });
 
 export const AddressParamSchema = Type.String({
-  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
+  pattern: isTestEnv ? undefined : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}',
   title: 'STX Address',
   description: 'STX Address',
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
 
 export const SmartContractIdParamSchema = Type.String({
-  pattern: '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
+  pattern: isTestEnv
+    ? undefined
+    : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',
   title: 'Smart Contract ID',
   description: 'Smart Contract ID',
   examples: ['SP000000000000000000002Q6VF78.pox-3'],

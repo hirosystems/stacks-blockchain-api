@@ -86,7 +86,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
           unanchored: UnanchoredParamSchema,
         }),
         response: {
-          200: Type.Array(Type.String({ pattern: '^([a-z0-9-_.+]{3,37})$' }), {
+          200: Type.Array(Type.String(), {
             title: 'GetAllSubdomainsInName',
             description: 'Fetch a list of subdomains in a name.',
             examples: [
@@ -133,7 +133,6 @@ export const BnsNameRoutes: FastifyPluginAsync<
           200: Type.Object(
             {
               zonefile: Type.String({
-                pattern: '.+',
                 examples: [
                   '$ORIGIN bar.test\n$TTL 3600\n_https._tcp URI 10 1 "https://gaia.blockstack.org/hub/17Zijx61Sp7SbVfRTdETo7PhizJHYEUxbY/profile.json"\n',
                 ],
@@ -192,7 +191,7 @@ export const BnsNameRoutes: FastifyPluginAsync<
           ),
         }),
         response: {
-          200: Type.Array(Type.String({ pattern: '^([a-z0-9\\-_.+]{3,37})$' }), {
+          200: Type.Array(Type.String(), {
             title: 'BnsGetAllNamesResponse',
             description: 'Fetch a list of all names known to the node.',
             examples: [

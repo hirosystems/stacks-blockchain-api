@@ -1,5 +1,5 @@
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
-import { BlockParamsSchema } from './schemas';
+import { BlockParamsSchema, parseBlockParam } from './schemas';
 import { parseDbNakamotoBlock } from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { parseDbTx } from '../../../api/controllers/db-controller';
@@ -104,7 +104,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const params = req.params;
+      const params = parseBlockParam(req.params.height_or_hash);
       const block = await fastify.db.v2.getBlock(params);
       if (!block) {
         throw new NotFoundError('Block not found');
@@ -133,12 +133,12 @@ export const BlockRoutesV2: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const params = req.params;
+      const params = parseBlockParam(req.params.height_or_hash);
       const query = req.query;
 
       try {
         const { limit, offset, results, total } = await fastify.db.v2.getBlockTransactions({
-          ...params,
+          block: params,
           ...query,
         });
         const response = {

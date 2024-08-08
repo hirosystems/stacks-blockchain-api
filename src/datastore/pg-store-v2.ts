@@ -16,6 +16,7 @@ import {
   PoxSignerPaginationQueryParams,
   PoxSignerLimitParamSchema,
   PoxCycleSignerParams,
+  BlockIdParam,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -94,18 +95,20 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlocksByBurnBlock(
-    args: BlockParams & BlockPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbBlock>> {
+  async getBlocksByBurnBlock(args: {
+    block: BlockIdParam;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const filter =
-        args.height_or_hash === 'latest'
+        args.block.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`burn_block_hash = ${normalizeHashString(args.height_or_hash)}`
-          : sql`burn_block_height = ${args.height_or_hash}`;
+          : args.block.type === 'hash'
+          ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
+          : sql`burn_block_height = ${args.block.height}`;
       const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(
@@ -143,17 +146,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlock(args: BlockParams): Promise<DbBlock | undefined> {
+  async getBlock(args: BlockIdParam): Promise<DbBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
-        args.height_or_hash === 'latest'
+        args.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
+          : args.type === 'hash'
           ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
+              block_hash = ${normalizeHashString(args.hash)}
+              OR index_block_hash = ${normalizeHashString(args.hash)}
             )`
-          : sql`block_height = ${args.height_or_hash}`;
+          : sql`block_height = ${args.height}`;
       const blockQuery = await sql<BlockQueryResult[]>`
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
@@ -218,21 +221,23 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlockTransactions(
-    args: BlockParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTx>> {
+  async getBlockTransactions(args: {
+    block: BlockIdParam;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbTx>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const filter =
-        args.height_or_hash === 'latest'
+        args.block.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
+          : args.block.type === 'hash'
           ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
+              block_hash = ${normalizeHashString(args.block.hash)}
+              OR index_block_hash = ${normalizeHashString(args.block.hash)}
             )`
-          : sql`block_height = ${args.height_or_hash}`;
+          : sql`block_height = ${args.block.height}`;
       const blockCheck = await sql`SELECT index_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
@@ -330,14 +335,14 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBurnBlock(args: BurnBlockParams): Promise<DbBurnBlock | undefined> {
+  async getBurnBlock(args: BlockIdParam): Promise<DbBurnBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
-        args.height_or_hash === 'latest'
+        args.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`burn_block_hash = ${args.height_or_hash}`
-          : sql`burn_block_height = ${args.height_or_hash}`;
+          : args.type === 'hash'
+          ? sql`burn_block_hash = ${args.hash}`
+          : sql`burn_block_height = ${args.height}`;
       const blockQuery = await sql<DbBurnBlock[]>`
         WITH BlocksWithPrevTime AS (
           SELECT
