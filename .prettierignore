@@ -4,3 +4,4 @@ src/tests-rosetta/
 src/tests-rosetta-cli/
 src/tests-bns/
 src/tests/synthetic-tx-payloads/
+src/rosetta/json-schemas/

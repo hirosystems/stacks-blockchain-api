@@ -10,8 +10,8 @@
     "test": "echo 'ok'",
     "generate:git-info": "npm run generate:git-info --prefix ..",
     "generate:openapi": "npm run generate:openapi --prefix ..",
-    "generate:docs": "redocly build-docs .tmp/openapi.yaml --output .tmp/index.html",
-    "generate:postman": "openapi2postmanv2 --spec .tmp/openapi.yaml --output .tmp/collection.json --options folderStrategy=Tags,requestParametersResolution=Example,exampleParametersResolution=Example,schemaFaker=false 2>/dev/null",
+    "generate:docs": "redocly build-docs openapi.yaml --output .tmp/index.html",
+    "generate:postman": "openapi2postmanv2 --spec openapi.yaml --output .tmp/collection.json --options folderStrategy=Tags,requestParametersResolution=Example,exampleParametersResolution=Example,schemaFaker=false 2>/dev/null",
     "deploy:docs": "npm run build && gulp deployDocs"
   },
   "author": "@hirosystems",

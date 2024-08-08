@@ -1079,7 +1079,7 @@ export async function startEventServer(opts: {
     server.once('error', error => {
       reject(error);
     });
-    server.listen(eventPort, eventHost as string, () => {
+    server.listen(eventPort, eventHost, () => {
       resolve();
     });
   });

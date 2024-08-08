@@ -17,9 +17,8 @@ async function generateOpenApiFiles() {
   await fastify.register(FastifySwagger, OpenApiSchemaOptions);
   await fastify.register(StacksApiRoutes);
   await fastify.ready();
-  mkdirSync('./docs/.tmp', { recursive: true });
-  writeFileSync('./docs/.tmp/openapi.yaml', fastify.swagger({ yaml: true }));
-  writeFileSync('./docs/.tmp/openapi.json', JSON.stringify(fastify.swagger(), null, 2));
+  writeFileSync('./docs/openapi.yaml', fastify.swagger({ yaml: true }));
+  writeFileSync('./docs/openapi.json', JSON.stringify(fastify.swagger(), null, 2));
   await fastify.close();
 }
 

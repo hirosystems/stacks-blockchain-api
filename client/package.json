@@ -26,7 +26,7 @@
     "test": "ts-node test/test.ts",
     "open": "http-server -o 9222 -o index.html",
     "prep-openapi": "npm run build --prefix ../docs",
-    "generate-openapi": "npm run prep-openapi && openapi-typescript --default-non-nullable=false ../docs/.tmp/openapi.yaml -o ./src/generated/schema.d.ts",
+    "generate-openapi": "npm run prep-openapi && openapi-typescript --default-non-nullable=false ../docs/openapi.yaml -o ./src/generated/schema.d.ts",
     "generate:docs": "npm run generate-openapi && typedoc src/**/*.ts"
   },
   "files": [

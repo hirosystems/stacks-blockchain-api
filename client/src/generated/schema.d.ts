@@ -1050,9 +1050,7 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": Record<string, never>;
-                    };
+                    content?: never;
                 };
             };
         };
@@ -1089,9 +1087,7 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": Record<string, never>;
-                    };
+                    content?: never;
                 };
             };
         };
@@ -1128,9 +1124,7 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content: {
-                        "application/json": Record<string, never>;
-                    };
+                    content?: never;
                 };
             };
         };
@@ -1818,7 +1812,7 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
-                type?: ("coinbase" | "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "tenure_change")[] | string;
+                type?: (("coinbase" | "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "tenure_change") | string)[];
                 /**
                  * @description Include data from unanchored (i.e. unconfirmed) microblocks
                  * @example true
@@ -3183,7 +3177,7 @@ export interface operations {
     get_tx_list_details: {
         parameters: {
             query: {
-                tx_id: string[] | string;
+                tx_id: (string)[];
                 /** @description Results per page */
                 event_limit?: number;
                 /** @description Result offset */
@@ -6502,7 +6496,7 @@ export interface operations {
                  */
                 tx_id?: string;
                 address?: string;
-                type?: ("smart_contract_log" | "stx_lock" | "stx_asset" | "fungible_token_asset" | "non_fungible_token_asset")[] | string;
+                type?: (("smart_contract_log" | "stx_lock" | "stx_asset" | "fungible_token_asset" | "non_fungible_token_asset") | string)[];
                 /** @description Result offset */
                 offset?: number;
                 /** @description Results per page */
@@ -8538,17 +8532,6 @@ export interface operations {
                     });
                 };
             };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
-                    };
-                };
-            };
         };
     };
     get_raw_transaction_by_id: {
@@ -8579,17 +8562,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         raw_tx: string;
-                    };
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
                     };
                 };
             };
@@ -9923,17 +9895,6 @@ export interface operations {
                                 pubkey_hash: string;
                             };
                         })[];
-                    };
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
                     };
                 };
             };
@@ -11271,17 +11232,6 @@ export interface operations {
                                 pubkey_hash: string;
                             };
                         })[];
-                    };
-                };
-            };
-            /** @description Default Response */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
                     };
                 };
             };
@@ -28801,7 +28751,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": Record<string, never>;
+                    "application/json": {
+                        /** @example 20 */
+                        limit: number;
+                        /** @example 0 */
+                        offset: number;
+                        /** @example 1 */
+                        total: number;
+                        results: {
+                            /** @description Set to `true` if block corresponds to the canonical chain tip */
+                            canonical: boolean;
+                            /** @description Height of the block */
+                            height: number;
+                            /** @description Hash representing the block */
+                            hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            block_time: number;
+                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                            block_time_iso: string;
+                            /** @description The only hash that can uniquely identify an anchored block or an unconfirmed state trie */
+                            index_block_hash: string;
+                            /** @description Hash of the parent block */
+                            parent_block_hash: string;
+                            /** @description Index block hash of the parent block */
+                            parent_index_block_hash: string;
+                            /** @description Unix timestamp (in seconds) indicating when this block was mined. */
+                            burn_block_time: number;
+                            /** @description An ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ) indicating when this block was mined. */
+                            burn_block_time_iso: string;
+                            /** @description Hash of the anchor chain block */
+                            burn_block_hash: string;
+                            /** @description Height of the anchor chain block */
+                            burn_block_height: number;
+                            /** @description Anchor chain transaction ID */
+                            miner_txid: string;
+                            /** @description Number of transactions included in the block */
+                            tx_count: number;
+                            /** @description Execution cost read count. */
+                            execution_cost_read_count: number;
+                            /** @description Execution cost read length. */
+                            execution_cost_read_length: number;
+                            /** @description Execution cost runtime. */
+                            execution_cost_runtime: number;
+                            /** @description Execution cost write count. */
+                            execution_cost_write_count: number;
+                            /** @description Execution cost write length. */
+                            execution_cost_write_length: number;
+                        }[];
+                    };
                 };
             };
         };
@@ -30743,7 +30740,7 @@ export interface operations {
                         last_txid: string;
                         resolver?: string;
                         status: string;
-                        zonefile: string;
+                        zonefile?: string;
                         zonefile_hash: string;
                     };
                 };
@@ -30853,17 +30850,6 @@ export interface operations {
                 content: {
                     "application/json": {
                         names: string[];
-                    };
-                };
-            };
-            /** @description Error */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        error: string;
                     };
                 };
             };

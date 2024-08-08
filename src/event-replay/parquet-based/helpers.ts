@@ -23,8 +23,7 @@ const createTimeTracker = (): TimeTracker => {
       }
       const start = process.hrtime.bigint();
       return fn().finally(() => {
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        duration!.totalTime += process.hrtime.bigint() - start;
+        duration.totalTime += process.hrtime.bigint() - start;
       });
     },
     trackSync<T = void>(name: string, fn: () => T) {
