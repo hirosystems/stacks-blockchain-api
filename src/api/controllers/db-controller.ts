@@ -69,7 +69,7 @@ import {
 import { Microblock } from '../schemas/entities/microblock';
 import { Block } from '../schemas/entities/block';
 
-export const TransactionTypes = [
+const TransactionTypes = [
   'contract_call',
   'smart_contract',
   'token_transfer',
@@ -79,17 +79,13 @@ export const TransactionTypes = [
 ] as const;
 export type TransactionType = (typeof TransactionTypes)[number];
 
-export const TransactionAnchorModeTypes = ['on_chain_only', 'off_chain_only', 'any'] as const;
-export type TransactionAnchorModeType = (typeof TransactionAnchorModeTypes)[number];
+const TransactionAnchorModeTypes = ['on_chain_only', 'off_chain_only', 'any'] as const;
+type TransactionAnchorModeType = (typeof TransactionAnchorModeTypes)[number];
 
-export const TransactionStatuses = [
-  'success',
-  'abort_by_response',
-  'abort_by_post_condition',
-] as const;
-export type TransactionStatus = (typeof TransactionStatuses)[number];
+const TransactionStatuses = ['success', 'abort_by_response', 'abort_by_post_condition'] as const;
+type TransactionStatus = (typeof TransactionStatuses)[number];
 
-export const MempoolTransactionStatuses = [
+const MempoolTransactionStatuses = [
   'pending',
   'dropped_replace_by_fee',
   'dropped_replace_across_fork',
@@ -97,7 +93,7 @@ export const MempoolTransactionStatuses = [
   'dropped_stale_garbage_collect',
   'dropped_problematic',
 ] as const;
-export type MempoolTransactionStatus = (typeof MempoolTransactionStatuses)[number];
+type MempoolTransactionStatus = (typeof MempoolTransactionStatuses)[number];
 
 export function parseTxTypeStrings(values: string[]): TransactionType[] {
   return values.map(v => {

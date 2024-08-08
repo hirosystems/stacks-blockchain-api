@@ -3,7 +3,7 @@ import { CommaStringList, Nullable } from '../util';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions';
 import { TransactionEventSchema } from './transaction-events';
 
-export const TransactionType = {
+const TransactionType = {
   coinbase: 'coinbase',
   token_transfer: 'token_transfer',
   smart_contract: 'smart_contract',
@@ -175,7 +175,7 @@ export const TokenTransferTransactionMetadataProperties = {
     }),
   }),
 };
-export const TokenTransferTransactionMetadataSchema = Type.Object(
+const TokenTransferTransactionMetadataSchema = Type.Object(
   TokenTransferTransactionMetadataProperties,
   {
     title: 'TokenTransferTransactionMetadata',
@@ -203,7 +203,7 @@ export const SmartContractTransactionMetadataProperties = {
     }),
   }),
 };
-export const SmartContractTransactionMetadataSchema = Type.Object(
+const SmartContractTransactionMetadataSchema = Type.Object(
   SmartContractTransactionMetadataProperties,
   {
     title: 'SmartContractTransactionMetadata',
@@ -246,7 +246,7 @@ export const ContractCallTransactionMetadataProperties = {
     ),
   }),
 };
-export const ContractCallTransactionMetadataSchema = Type.Object(
+const ContractCallTransactionMetadataSchema = Type.Object(
   ContractCallTransactionMetadataProperties,
   {
     title: 'ContractCallTransactionMetadata',
@@ -266,7 +266,7 @@ export const PoisonMicroblockTransactionMetadataProperties = {
     }),
   }),
 };
-export const PoisonMicroblockTransactionMetadataSchema = Type.Object(
+const PoisonMicroblockTransactionMetadataSchema = Type.Object(
   PoisonMicroblockTransactionMetadataProperties,
   {
     title: 'PoisonMicroblockTransactionMetadata',
@@ -301,13 +301,10 @@ export const CoinbaseTransactionMetadataProperties = {
     ),
   }),
 };
-export const CoinbaseTransactionMetadataSchema = Type.Object(
-  CoinbaseTransactionMetadataProperties,
-  {
-    title: 'CoinbaseTransaction',
-    description: 'Metadata associated with a coinbase type transaction',
-  }
-);
+const CoinbaseTransactionMetadataSchema = Type.Object(CoinbaseTransactionMetadataProperties, {
+  title: 'CoinbaseTransaction',
+  description: 'Metadata associated with a coinbase type transaction',
+});
 export type CoinbaseTransactionMetadata = Static<typeof CoinbaseTransactionMetadataSchema>;
 
 export const TenureChangeTransactionMetadataProperties = {
@@ -340,7 +337,7 @@ export const TenureChangeTransactionMetadataProperties = {
     }),
   }),
 };
-export const TenureChangeTransactionMetadataSchema = Type.Object(
+const TenureChangeTransactionMetadataSchema = Type.Object(
   TenureChangeTransactionMetadataProperties,
   {
     title: 'TenureChangeTransaction',
@@ -349,16 +346,15 @@ export const TenureChangeTransactionMetadataSchema = Type.Object(
 );
 export type TenureChangeTransactionMetadata = Static<typeof TenureChangeTransactionMetadataSchema>;
 
-export const TokenTransferTransactionSchema = Type.Object(
+const TokenTransferTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...TokenTransferTransactionMetadataProperties,
   },
   { title: 'TokenTransferTransaction' }
 );
-export type TokenTransferTransaction = Static<typeof TokenTransferTransactionSchema>;
 
-export const SmartContractTransactionSchema = Type.Object(
+const SmartContractTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...SmartContractTransactionMetadataProperties,
@@ -367,7 +363,7 @@ export const SmartContractTransactionSchema = Type.Object(
 );
 export type SmartContractTransaction = Static<typeof SmartContractTransactionSchema>;
 
-export const ContractCallTransactionSchema = Type.Object(
+const ContractCallTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...ContractCallTransactionMetadataProperties,
@@ -376,16 +372,15 @@ export const ContractCallTransactionSchema = Type.Object(
 );
 export type ContractCallTransaction = Static<typeof ContractCallTransactionSchema>;
 
-export const PoisonMicroblockTransactionSchema = Type.Object(
+const PoisonMicroblockTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...PoisonMicroblockTransactionMetadataProperties,
   },
   { title: 'PoisonMicroblockTransaction' }
 );
-export type PoisonMicroblockTransaction = Static<typeof PoisonMicroblockTransactionSchema>;
 
-export const CoinbaseTransactionSchema = Type.Object(
+const CoinbaseTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...CoinbaseTransactionMetadataProperties,
@@ -394,14 +389,14 @@ export const CoinbaseTransactionSchema = Type.Object(
 );
 export type CoinbaseTransaction = Static<typeof CoinbaseTransactionSchema>;
 
-export const TenureChangeTransactionSchema = Type.Object(
+const TenureChangeTransactionSchema = Type.Object(
   {
     ...AbstractTransactionProperties,
     ...TenureChangeTransactionMetadataProperties,
   },
   { title: 'TenureChangeTransaction' }
 );
-export type TenureChangeTransaction = Static<typeof TenureChangeTransactionSchema>;
+type TenureChangeTransaction = Static<typeof TenureChangeTransactionSchema>;
 
 const TransactionMetadataSchema = Type.Union([
   TokenTransferTransactionMetadataSchema,
@@ -453,7 +448,7 @@ const AbstractMempoolTransactionSchema = Type.Object({
 });
 export type AbstractMempoolTransaction = Static<typeof AbstractMempoolTransactionSchema>;
 
-export const TokenTransferMempoolTransactionSchema = Type.Object(
+const TokenTransferMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...TokenTransferTransactionMetadataProperties,
@@ -461,7 +456,7 @@ export const TokenTransferMempoolTransactionSchema = Type.Object(
   { title: 'TokenTransferMempoolTransaction' }
 );
 
-export const SmartContractMempoolTransactionSchema = Type.Object(
+const SmartContractMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...SmartContractTransactionMetadataProperties,
@@ -469,7 +464,7 @@ export const SmartContractMempoolTransactionSchema = Type.Object(
   { title: 'SmartContractMempoolTransaction' }
 );
 
-export const ContractCallMempoolTransactionSchema = Type.Object(
+const ContractCallMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...ContractCallTransactionMetadataProperties,
@@ -477,7 +472,7 @@ export const ContractCallMempoolTransactionSchema = Type.Object(
   { title: 'ContractCallMempoolTransaction' }
 );
 
-export const PoisonMicroblockMempoolTransactionSchema = Type.Object(
+const PoisonMicroblockMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...PoisonMicroblockTransactionMetadataProperties,
@@ -485,7 +480,7 @@ export const PoisonMicroblockMempoolTransactionSchema = Type.Object(
   { title: 'PoisonMicroblockMempoolTransaction' }
 );
 
-export const CoinbaseMempoolTransactionSchema = Type.Object(
+const CoinbaseMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...CoinbaseTransactionMetadataProperties,
@@ -493,7 +488,7 @@ export const CoinbaseMempoolTransactionSchema = Type.Object(
   { title: 'CoinbaseMempoolTransaction' }
 );
 
-export const TenureChangeMempoolTransactionSchema = Type.Object(
+const TenureChangeMempoolTransactionSchema = Type.Object(
   {
     ...AbstractMempoolTransactionProperties,
     ...TenureChangeTransactionMetadataProperties,
@@ -511,7 +506,7 @@ export const MempoolTransactionSchema = Type.Union([
 ]);
 export type MempoolTransaction = Static<typeof MempoolTransactionSchema>;
 
-export const TransactionFoundSchema = Type.Object(
+const TransactionFoundSchema = Type.Object(
   {
     found: Type.Literal(true),
     result: Type.Union([TransactionSchema, MempoolTransactionSchema]),
@@ -523,7 +518,7 @@ export const TransactionFoundSchema = Type.Object(
 );
 export type TransactionFound = Static<typeof TransactionFoundSchema>;
 
-export const TransactionNotFoundSchema = Type.Object(
+const TransactionNotFoundSchema = Type.Object(
   {
     found: Type.Literal(false),
     result: Type.Object({
@@ -537,11 +532,10 @@ export const TransactionNotFoundSchema = Type.Object(
 );
 export type TransactionNotFound = Static<typeof TransactionNotFoundSchema>;
 
-export const TransactionSearchResultSchema = Type.Union([
+const TransactionSearchResultSchema = Type.Union([
   TransactionFoundSchema,
   TransactionNotFoundSchema,
 ]);
-export type TransactionSearchResult = Static<typeof TransactionSearchResultSchema>;
 
 export const TransactionSearchResponseSchema = Type.Record(
   Type.String(),

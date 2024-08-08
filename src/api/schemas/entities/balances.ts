@@ -8,7 +8,6 @@ export const FtBalanceSchema = Type.Object(
   },
   { title: 'FtBalance' }
 );
-export type FtBalance = Static<typeof FtBalanceSchema>;
 
 export const NftBalanceSchema = Type.Object(
   {
@@ -18,7 +17,6 @@ export const NftBalanceSchema = Type.Object(
   },
   { title: 'NftBalance' }
 );
-export type NftBalance = Static<typeof NftBalanceSchema>;
 
 export const StxBalanceSchema = Type.Object(
   {
@@ -49,4 +47,3 @@ export const StxBalanceSchema = Type.Object(
   },
   { title: 'StxBalance' }
 );
-export type StxBalance = Static<typeof StxBalanceSchema>;

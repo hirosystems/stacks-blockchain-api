@@ -1,7 +1,6 @@
 import { Static, Type } from '@sinclair/typebox';
 
 export const PostConditionModeSchema = Type.Union([Type.Literal('allow'), Type.Literal('deny')]);
-export type PostConditionMode = Static<typeof PostConditionModeSchema>;
 
 const PostConditionPrincipalSchema = Type.Union([
   Type.Object({
@@ -17,7 +16,6 @@ const PostConditionPrincipalSchema = Type.Union([
     contract_name: Type.String(),
   }),
 ]);
-export type PostConditionPrincipal = Static<typeof PostConditionPrincipalSchema>;
 
 const PostConditionFungibleConditionCodeSchema = Type.Union([
   Type.Literal('sent_equal_to'),
@@ -66,4 +64,3 @@ export const PostConditionSchema = Type.Union([
   PostConditionFungibleAssetSchema,
   PostConditionNonFungibleAssetSchema,
 ]);
-export type PostCondition = Static<typeof PostConditionSchema>;

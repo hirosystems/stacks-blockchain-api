@@ -7,7 +7,7 @@ export const TransactionEventAssetTypeSchema = Type.Enum({
   burn: 'burn',
 });
 
-export const TransactionEventType = {
+const TransactionEventType = {
   smart_contract_log: 'smart_contract_log',
   stx_lock: 'stx_lock',
   stx_asset: 'stx_asset',
@@ -20,7 +20,7 @@ export const TransactionEventTypeCommaListSchema = CommaStringList(TransactionEv
   examples: ['smart_contract_log,stx_lock,stx_asset'],
 });
 
-export const AbstractTransactionEventSchema = Type.Object(
+const AbstractTransactionEventSchema = Type.Object(
   {
     event_index: Type.Integer(),
   },
@@ -28,9 +28,9 @@ export const AbstractTransactionEventSchema = Type.Object(
     title: 'AbstractTransactionEvent',
   }
 );
-export type AbstractTransactionEvent = Static<typeof AbstractTransactionEventSchema>;
+type AbstractTransactionEvent = Static<typeof AbstractTransactionEventSchema>;
 
-export const SmartContractLogTransactionEventSchema = Type.Intersect(
+const SmartContractLogTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({
@@ -55,7 +55,7 @@ export type SmartContractLogTransactionEvent = Static<
   typeof SmartContractLogTransactionEventSchema
 >;
 
-export const StxLockTransactionEventSchema = Type.Intersect(
+const StxLockTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({
@@ -75,7 +75,7 @@ export const StxLockTransactionEventSchema = Type.Intersect(
 );
 export type StxLockTransactionEvent = Static<typeof StxLockTransactionEventSchema>;
 
-export const StxAssetTransactionEventSchema = Type.Intersect(
+const StxAssetTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({
@@ -97,7 +97,7 @@ export const StxAssetTransactionEventSchema = Type.Intersect(
 );
 export type StxAssetTransactionEvent = Static<typeof StxAssetTransactionEventSchema>;
 
-export const FungibleTokenAssetTransactionEventSchema = Type.Intersect(
+const FungibleTokenAssetTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({
@@ -120,7 +120,7 @@ export type FungibleTokenAssetTransactionEvent = Static<
   typeof FungibleTokenAssetTransactionEventSchema
 >;
 
-export const NonFungibleTokenAssetTransactionEventSchema = Type.Intersect(
+const NonFungibleTokenAssetTransactionEventSchema = Type.Intersect(
   [
     AbstractTransactionEventSchema,
     Type.Object({

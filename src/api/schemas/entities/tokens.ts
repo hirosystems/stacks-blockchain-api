@@ -2,7 +2,7 @@ import { Static, Type } from '@sinclair/typebox';
 import { TransactionSchema } from './transactions';
 import { OptionalNullable } from '../util';
 
-export const NonFungibleTokenValueSchema = Type.Object(
+const NonFungibleTokenValueSchema = Type.Object(
   {
     hex: Type.String({
       description: 'Hex string representing the identifier of the Non-Fungible Token',
@@ -28,7 +28,6 @@ export const NonFungibleTokenHoldingWithTxIdSchema = Type.Object(
     description: 'Ownership of a Non-Fungible Token',
   }
 );
-export type NonFungibleTokenHoldingWithTxId = Static<typeof NonFungibleTokenHoldingWithTxIdSchema>;
 
 export const NonFungibleTokenHoldingWithTxMetadataSchema = Type.Object(
   {
@@ -42,9 +41,6 @@ export const NonFungibleTokenHoldingWithTxMetadataSchema = Type.Object(
     description: 'Ownership of a Non-Fungible Token with transaction metadata',
   }
 );
-export type NonFungibleTokenHoldingWithTxMetadata = Static<
-  typeof NonFungibleTokenHoldingWithTxMetadataSchema
->;
 
 export const NonFungibleTokenHistoryEventWithTxIdSchema = Type.Object(
   {
@@ -59,9 +55,6 @@ export const NonFungibleTokenHistoryEventWithTxIdSchema = Type.Object(
     description: 'Non-Fungible Token history event with transaction id',
   }
 );
-export type NonFungibleTokenHistoryEventWithTxId = Static<
-  typeof NonFungibleTokenHistoryEventWithTxIdSchema
->;
 
 export const NonFungibleTokenHistoryEventWithTxMetadataSchema = Type.Object(
   {
@@ -76,9 +69,6 @@ export const NonFungibleTokenHistoryEventWithTxMetadataSchema = Type.Object(
     description: 'Non-Fungible Token history event with transaction metadata',
   }
 );
-export type NonFungibleTokenHistoryEventWithTxMetadata = Static<
-  typeof NonFungibleTokenHistoryEventWithTxMetadataSchema
->;
 
 export const NonFungibleTokenMintWithTxIdSchema = Type.Object(
   {
@@ -92,7 +82,7 @@ export const NonFungibleTokenMintWithTxIdSchema = Type.Object(
     description: 'Non-Fungible Token mint event with transaction id',
   }
 );
-export type NonFungibleTokenMintWithTxId = Static<typeof NonFungibleTokenMintWithTxIdSchema>;
+type NonFungibleTokenMintWithTxId = Static<typeof NonFungibleTokenMintWithTxIdSchema>;
 
 export const NonFungibleTokenMintWithTxMetadataSchema = Type.Object({
   recipient: Type.Optional(Type.String()),
@@ -100,6 +90,3 @@ export const NonFungibleTokenMintWithTxMetadataSchema = Type.Object({
   value: NonFungibleTokenValueSchema,
   tx: TransactionSchema,
 });
-export type NonFungibleTokenMintWithTxMetadata = Static<
-  typeof NonFungibleTokenMintWithTxMetadataSchema
->;

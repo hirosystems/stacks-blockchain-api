@@ -61,7 +61,7 @@ export const AddressParamSchema = Type.String({
   examples: ['SP318Q55DEKHRXJK696033DQN5C54D9K2EE6DHRWP'],
 });
 
-export const SmartContractIdParamSchema = Type.String({
+const SmartContractIdParamSchema = Type.String({
   pattern: isTestEnv
     ? undefined
     : '^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{28,41}.[a-zA-Z]([a-zA-Z0-9]|[-_]){0,39}$',

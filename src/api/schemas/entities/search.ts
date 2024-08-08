@@ -3,7 +3,7 @@ import { AddressStxBalanceSchema } from './addresses';
 import { BlockSchema } from './block';
 import { MempoolTransactionSchema, TransactionSchema } from './transactions';
 
-export const AddressSearchResultSchema = Type.Object(
+const AddressSearchResultSchema = Type.Object(
   {
     entity_id: Type.String({ description: 'The id used to search this query.' }),
     entity_type: Type.Literal('standard_address'),
@@ -13,7 +13,7 @@ export const AddressSearchResultSchema = Type.Object(
 );
 export type AddressSearchResult = Static<typeof AddressSearchResultSchema>;
 
-export const BlockSearchResultSchema = Type.Object(
+const BlockSearchResultSchema = Type.Object(
   {
     entity_id: Type.String({ description: 'The id used to search this query.' }),
     entity_type: Type.Literal('block_hash'),
@@ -30,7 +30,7 @@ export const BlockSearchResultSchema = Type.Object(
 );
 export type BlockSearchResult = Static<typeof BlockSearchResultSchema>;
 
-export const ContractSearchResultSchema = Type.Object(
+const ContractSearchResultSchema = Type.Object(
   {
     entity_id: Type.String({ description: 'The id used to search this query.' }),
     entity_type: Type.Literal('contract_address'),
@@ -50,7 +50,7 @@ export const ContractSearchResultSchema = Type.Object(
 );
 export type ContractSearchResult = Static<typeof ContractSearchResultSchema>;
 
-export const MempoolTxSearchResultSchema = Type.Object(
+const MempoolTxSearchResultSchema = Type.Object(
   {
     entity_id: Type.String({ description: 'The id used to search this query.' }),
     entity_type: Type.Literal('mempool_tx_id'),
@@ -63,7 +63,7 @@ export const MempoolTxSearchResultSchema = Type.Object(
 );
 export type MempoolTxSearchResult = Static<typeof MempoolTxSearchResultSchema>;
 
-export const TxSearchResultSchema = Type.Object(
+const TxSearchResultSchema = Type.Object(
   {
     entity_id: Type.String({ description: 'The id used to search this query.' }),
     entity_type: Type.Literal('tx_id'),

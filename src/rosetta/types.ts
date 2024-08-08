@@ -94,7 +94,7 @@ export interface RosettaSubAccount {
 /**
  * This is also known as the block hash.
  */
-export interface RosettaBlockIdentifierHash {
+interface RosettaBlockIdentifierHash {
   /**
    * This is also known as the block hash.
    */
@@ -104,7 +104,7 @@ export interface RosettaBlockIdentifierHash {
 /**
  * This is also known as the block height.
  */
-export interface RosettaBlockIdentifierHeight {
+interface RosettaBlockIdentifierHeight {
   /**
    * This is also known as the block height.
    */
@@ -178,7 +178,7 @@ export interface RosettaOperation {
 /**
  * The operation_identifier uniquely identifies an operation within a transaction.
  */
-export interface RosettaOperationIdentifier {
+interface RosettaOperationIdentifier {
   /**
    * The operation index is used to ensure each operation has a unique identifier within a transaction. This index is only relative to the transaction and NOT GLOBAL. The operations in each transaction should start from index 0. To clarify, there may not be any notion of an operation index in the blockchain being described.
    */
@@ -206,7 +206,7 @@ export interface RosettaAmount {
 /**
  * CoinChange is used to represent a change in state of a some coin identified by a coin_identifier. This object is part of the Operation model and must be populated for UTXO-based blockchains. Coincidentally, this abstraction of UTXOs allows for supporting both account-based transfers and UTXO-based transfers on the same blockchain (when a transfer is account-based, don't populate this model).
  */
-export interface RosettaCoinChange {
+interface RosettaCoinChange {
   /**
    * CoinIdentifier uniquely identifies a Coin.
    */
@@ -246,7 +246,7 @@ export interface RosettaCurrency {
 /**
  * Restrict referenced related_operations to identifier indexes \< the current operation_identifier.index. This ensures there exists a clear DAG-structure of relations. Since operations are one-sided, one could imagine relating operations in a single transfer or linking operations in a call tree.
  */
-export interface RosettaRelatedOperation {
+interface RosettaRelatedOperation {
   /**
    * Describes the index of related operation.
    */
@@ -420,7 +420,7 @@ export interface RosettaConstructionPayloadResponse {
 /**
  * SigningPayload is signed by the client with the keypair associated with an address using the specified SignatureType. SignatureType can be optionally populated if there is a restriction on the signature scheme that can be used to sign the payload.
  */
-export interface SigningPayload {
+interface SigningPayload {
   /**
    * [DEPRECATED by account_identifier in v1.4.4] The network-specific address of the account that should sign the payload.
    */
@@ -649,7 +649,7 @@ export interface RosettaAccountBalanceResponse {
 /**
  * If a blockchain is UTXO-based, all unspent Coins owned by an account_identifier should be returned alongside the balance. It is highly recommended to populate this field so that users of the Rosetta API implementation don't need to maintain their own indexer to track their UTXOs.
  */
-export interface RosettaCoin {
+interface RosettaCoin {
   /**
    * CoinIdentifier uniquely identifies a Coin.
    */
@@ -676,7 +676,7 @@ export interface RosettaBlockResponse {
 /**
  * The transaction_identifier uniquely identifies a transaction in a particular network and block or in the mempool.
  */
-export interface OtherTransactionIdentifier {
+interface OtherTransactionIdentifier {
   /**
    * Any transactions that are attributable only to a block (ex: a block event) should use the hash of the block as the identifier.
    */
@@ -713,7 +713,7 @@ export interface RosettaConstructionCombineRequest {
 /**
  * Signature contains the payload that was signed, the public keys of the keypairs used to produce the signature, the signature (encoded in hex), and the SignatureType. PublicKey is often times not known during construction of the signing payloads but may be needed to combine signatures properly.
  */
-export interface RosettaSignature {
+interface RosettaSignature {
   signing_payload: SigningPayload;
   public_key: RosettaPublicKey;
   signature_type: SignatureType;
@@ -723,12 +723,7 @@ export interface RosettaSignature {
 /**
  * SignatureType is the type of a cryptographic signature.
  */
-export type SignatureType =
-  | 'ecdsa'
-  | 'ecdsa_recovery'
-  | 'ed25519'
-  | 'schnorr_1'
-  | 'schnorr_poseidon';
+type SignatureType = 'ecdsa' | 'ecdsa_recovery' | 'ed25519' | 'schnorr_1' | 'schnorr_poseidon';
 
 /**
  * RosettaConstructionCombineResponse is returned by /construction/combine. The network payload will be sent directly to the construction/submit endpoint.
@@ -899,7 +894,7 @@ export interface RosettaNetworkOptionsResponse {
 /**
  * OperationStatus is utilized to indicate which Operation status are considered successful.
  */
-export interface RosettaOperationStatus {
+interface RosettaOperationStatus {
   /**
    * The status is the network-specific status of the operation.
    */
@@ -935,7 +930,7 @@ export interface RosettaNetworkStatusResponse {
 /**
  * The block_identifier uniquely identifies a block in a particular network.
  */
-export interface RosettaGenesisBlockIdentifier {
+interface RosettaGenesisBlockIdentifier {
   /**
    * This is also known as the block height.
    */
@@ -949,7 +944,7 @@ export interface RosettaGenesisBlockIdentifier {
 /**
  * The block_identifier uniquely identifies a block in a particular network.
  */
-export interface RosettaOldestBlockIdentifier {
+interface RosettaOldestBlockIdentifier {
   /**
    * This is also known as the block height.
    */
@@ -985,7 +980,7 @@ export interface RosettaSyncStatus {
 /**
  * A Peer is a representation of a node's peer.
  */
-export interface RosettaPeers {
+interface RosettaPeers {
   /**
    * peer id
    */

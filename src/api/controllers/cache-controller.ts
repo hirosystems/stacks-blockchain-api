@@ -22,7 +22,7 @@ const CACHE_CONTROL_MUST_REVALIDATE = 'public, no-cache, must-revalidate';
  * state of the chain depending on the type of information being requested by the endpoint.
  * This entry will have an `ETag` string as the value.
  */
-export enum ETagType {
+enum ETagType {
   /** ETag based on the latest `index_block_hash` or `microblock_hash`. */
   chainTip = 'chain_tip',
   /** ETag based on a digest of all pending mempool `tx_id`s. */
@@ -175,42 +175,6 @@ async function checkETagCacheOK(
     }
     return etag;
   }
-}
-
-/**
- * Check if the request has an up-to-date cached response by comparing the `If-None-Match` request header to the
- * current state. If the cache is valid then a `304 Not Modified` response is sent and the route handling for
- * this request is completed. If the cache is outdated, the current state is added to the `Request.locals` for
- * later use in setting response cache headers.
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Caching#freshness
- * @see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/If-None-Match
- * ```md
- * The If-None-Match HTTP request header makes the request conditional. For GET and HEAD methods, the server
- * will return the requested resource, with a 200 status, only if it doesn't have an ETag matching the given
- * ones. For other methods, the request will be processed only if the eventually existing resource's ETag
- * doesn't match any of the values listed.
- * ```
- */
-export function getETagCacheHandler(
-  db: PgStore,
-  etagType: ETagType = ETagType.chainTip
-): RequestHandler {
-  const requestHandler = asyncHandler(async (req, res, next) => {
-    const result = await checkETagCacheOK(db, req, etagType);
-    if (result === CACHE_OK) {
-      // Instruct the client to use the cached response via a `304 Not Modified` response header.
-      // This completes the handling for this request, do not call `next()` in order to skip the
-      // router handler used for non-cached responses.
-      res.set('Cache-Control', CACHE_CONTROL_MUST_REVALIDATE).status(304).send();
-    } else {
-      // Request does not have a valid cache. Store the etag for later
-      // use in setting response cache headers.
-      const etag: ETag | undefined = result;
-      res.locals[etagType] = etag;
-      next();
-    }
-  });
-  return requestHandler;
 }
 
 async function calculateETag(

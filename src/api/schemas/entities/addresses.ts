@@ -38,7 +38,7 @@ export const AddressNoncesSchema = Type.Object(
 );
 export type AddressNonces = Static<typeof AddressNoncesSchema>;
 
-export const AddressUnlockScheduleSchema = Type.Object(
+const AddressUnlockScheduleSchema = Type.Object(
   {
     amount: Type.String({
       description: 'Micro-STX amount locked at this block height.',
@@ -47,9 +47,8 @@ export const AddressUnlockScheduleSchema = Type.Object(
   },
   { title: 'AddressUnlockSchedule', description: 'Unlock schedule amount and block height' }
 );
-export type AddressUnlockSchedule = Static<typeof AddressUnlockScheduleSchema>;
 
-export const AddressTokenOfferingLockedSchema = Type.Object(
+const AddressTokenOfferingLockedSchema = Type.Object(
   {
     total_locked: Type.String({
       description: 'Micro-STX amount still locked at current block height.',

@@ -16,9 +16,8 @@ export const SmartContractSchema = Type.Object(
     description: 'A Smart Contract Detail',
   }
 );
-export type SmartContract = Static<typeof SmartContractSchema>;
 
-export const SmartContractStatusFoundSchema = Type.Object({
+const SmartContractStatusFoundSchema = Type.Object({
   found: Type.Literal(true),
   result: Type.Object({
     status: Type.String({
@@ -33,12 +32,10 @@ export const SmartContractStatusFoundSchema = Type.Object({
     ),
   }),
 });
-export type SmartContractStatusFound = Static<typeof SmartContractStatusFoundSchema>;
 
-export const SmartContractStatusNotFoundSchema = Type.Object({
+const SmartContractStatusNotFoundSchema = Type.Object({
   found: Type.Literal(false),
 });
-export type SmartContractStatusNotFound = Static<typeof SmartContractStatusNotFoundSchema>;
 
 export const SmartContractStatusListSchema = Type.Record(
   Type.String({ description: 'Smart contract ID' }),
