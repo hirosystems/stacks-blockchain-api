@@ -15,9 +15,11 @@ export const PoxEventRoutes: FastifyPluginAsync<
   Server,
   TypeBoxTypeProvider
 > = async fastify => {
-  fastify.get('/', { schema: { hide: true } }, async (req, reply) => {
+  fastify.get('/*', { schema: { hide: true } }, async (req, reply) => {
     // Redirect old pox routes, e.g. /poxX_events to /poxX/events
-    const redirectUrl = req.url.replace(/(pox[\d])_events/, '$1/events');
+    const redirectUrl = req.url.replace(/\/(pox4)_events(\/|$)/, (_, p1, p2) =>
+      p2 === '/' ? `/${p1}${p2}` : `/${p1}/events`
+    );
     return reply.redirect(redirectUrl);
   });
   await Promise.resolve();
@@ -50,9 +52,6 @@ export const PoxRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Pox2Event),
           offset: OffsetParam(),
         }),
-        response: {
-          200: Type.Any(),
-        },
       },
     },
     async (req, reply) => {
@@ -88,9 +87,6 @@ export const PoxRoutes: FastifyPluginAsync<
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
           tx_id: Type.String(),
         }),
-        response: {
-          200: Type.Any(),
-        },
       },
     },
     async (req, reply) => {
@@ -125,9 +121,6 @@ export const PoxRoutes: FastifyPluginAsync<
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
           principal: Type.String(),
         }),
-        response: {
-          200: Type.Any(),
-        },
       },
     },
     async (req, reply) => {
