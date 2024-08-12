@@ -5,7 +5,6 @@ import { BASE_PATH } from "./common";
 export function createClient(options?: ClientOptions) {
   return createOpenApiClient<paths>({ baseUrl: BASE_PATH, ...options });
 }
-export default createClient;
 
 export * from './common';
 export * from './socket-io';

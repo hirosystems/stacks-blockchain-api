@@ -18,36 +18,29 @@
   "unpkg": "lib/index.umd.js",
   "scripts": {
     "prepublishOnly": "npm run build",
-    "build": "rimraf ./lib && npm run generate-openapi && npm run build:node && npm run build:browser",
+    "build": "rimraf ./lib && npm run build:client --prefix .. && npm run build:node && npm run build:browser",
     "build:node": "tsc",
     "build:browser": "microbundle -i src/index.ts -o lib/index.umd.js --no-pkg-main -f umd --external none --globals none --no-compress --tsconfig tsconfig.browser.json --name StacksBlockchainApiClient",
     "build:browser:watch": "npm run build:browser -- watch",
     "start": "concurrently npm:build:browser:watch npm:open",
-    "test": "ts-node test/test.ts",
-    "open": "http-server -o 9222 -o index.html",
-    "prep-openapi": "npm run build --prefix ../docs",
-    "generate-openapi": "npm run prep-openapi && openapi-typescript --default-non-nullable=false ../docs/openapi.yaml -o ./src/generated/schema.d.ts",
-    "generate:docs": "npm run generate-openapi && typedoc src/**/*.ts"
+    "open": "http-server -o 9222 -o index.html"
   },
   "files": [
     "src",
     "lib"
   ],
   "dependencies": {
+    "@types/node": "20.14.14",
     "eventemitter3": "^4.0.7",
     "jsonrpc-lite": "^2.2.0",
     "openapi-fetch": "^0.10.5",
     "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
-    "@types/node": "20.10.6",
     "concurrently": "7.6.0",
     "http-server": "14.0.0",
     "microbundle": "0.15.1",
-    "openapi-typescript": "7.3.0",
     "rimraf": "6.0.1",
-    "ts-node": "10.9.2",
-    "typedoc": "0.26.5",
     "typescript": "5.5.4"
   }
 }

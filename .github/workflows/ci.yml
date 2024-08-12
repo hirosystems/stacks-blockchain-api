@@ -83,10 +83,6 @@ jobs:
         working-directory: client
         run: npm ci --audit=false
 
-      - name: Install docs deps
-        working-directory: docs
-        run: npm ci --audit=false
-
       - name: Setup env vars
         run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
 

@@ -422,7 +422,7 @@ export async function fetchGet<TRes>(endpoint: string): Promise<TRes> {
   const result = await supertest(testEnv.api.server).get(endpoint);
   // Follow redirects
   if (result.status >= 300 && result.status < 400) {
-    return await fetchGet<TRes>(result.header.location as string);
+    return await fetchGet<TRes>(result.header.location);
   }
   expect(result.status).toBe(200);
   expect(result.type).toBe('application/json');
