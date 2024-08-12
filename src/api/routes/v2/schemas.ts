@@ -1,8 +1,6 @@
 import { Type, Static, TSchema } from '@sinclair/typebox';
-import { TypeCompiler } from '@sinclair/typebox/compiler';
 import { ResourceType, pagingQueryLimits } from '../../../api/pagination';
-import { Request, Response } from 'express';
-import Ajv, { ValidateFunction } from 'ajv';
+import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 import { has0xPrefix, isTestEnv } from '@hirosystems/api-toolkit';
 

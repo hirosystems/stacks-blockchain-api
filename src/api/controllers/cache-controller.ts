@@ -1,13 +1,9 @@
-import { RequestHandler, Request, Response } from 'express';
 import * as prom from 'prom-client';
 import { normalizeHashString } from '../../helpers';
-import { asyncHandler } from '../async-handler';
 import { PgStore } from '../../datastore/pg-store';
 import { logger } from '../../logger';
 import { sha256 } from '@hirosystems/api-toolkit';
 import { FastifyReply, FastifyRequest } from 'fastify';
-
-const CACHE_OK = Symbol('cache_ok');
 
 /**
  * A `Cache-Control` header used for re-validation based caching.
@@ -125,62 +121,10 @@ export function parseIfNoneMatchHeader(
   }
 }
 
-/**
- * Parse the `ETag` from the given request's `If-None-Match` header which represents the chain tip or
- * mempool state associated with the client's cached response. Query the current state from the db, and
- * compare the two.
- * This function is also responsible for tracking the prometheus metrics associated with cache hits/misses.
- * @returns `CACHE_OK` if the client's cached response is up-to-date with the current state, otherwise,
- * returns a string which can be used later for setting the cache control `ETag` response header.
- */
-async function checkETagCacheOK(
-  db: PgStore,
-  req: Request,
-  etagType: ETagType
-): Promise<ETag | undefined | typeof CACHE_OK> {
-  const metrics = getETagMetrics();
-  const etag = await calculateETag(db, etagType, req);
-  if (!etag || etag === ETAG_EMPTY) {
-    return;
-  }
-  // Parse ETag values from the request's `If-None-Match` header, if any.
-  // Note: node.js normalizes `IncomingMessage.headers` to lowercase.
-  const ifNoneMatch = parseIfNoneMatchHeader(req.headers['if-none-match']);
-  if (ifNoneMatch === undefined || ifNoneMatch.length === 0) {
-    // No if-none-match header specified.
-    if (etagType === ETagType.chainTip) {
-      metrics.chainTipCacheNoHeader.inc();
-    } else {
-      metrics.mempoolCacheNoHeader.inc();
-    }
-    return etag;
-  }
-  if (ifNoneMatch.includes(etag)) {
-    // The client cache's ETag matches the current state, so no need to re-process the request
-    // server-side as there will be no change in response. Record this as a "cache hit" and return CACHE_OK.
-    if (etagType === ETagType.chainTip) {
-      metrics.chainTipCacheHits.inc();
-    } else {
-      metrics.mempoolCacheHits.inc();
-    }
-    return CACHE_OK;
-  } else {
-    // The client cache's ETag is associated with an different block than current latest state, typically
-    // an older block or a forked block, so the client's cached response is stale and should not be used.
-    // Record this as a "cache miss" and return the current state.
-    if (etagType === ETagType.chainTip) {
-      metrics.chainTipCacheMisses.inc();
-    } else {
-      metrics.mempoolCacheMisses.inc();
-    }
-    return etag;
-  }
-}
-
 async function calculateETag(
   db: PgStore,
   etagType: ETagType,
-  req: Request | FastifyRequest
+  req: FastifyRequest
 ): Promise<ETag | undefined> {
   switch (etagType) {
     case ETagType.chainTip:

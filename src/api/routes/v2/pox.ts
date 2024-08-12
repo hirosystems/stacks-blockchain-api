@@ -1,4 +1,3 @@
-import * as express from 'express';
 import { handleChainTipCache } from '../../controllers/cache-controller';
 import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
