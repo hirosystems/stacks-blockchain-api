@@ -274,7 +274,7 @@ function getProgramArgs() {
 async function handleProgramArgs() {
   const { args, parsedOpts } = getProgramArgs();
   if (args.operand === 'export-events') {
-    await exportEventsAsTsv(args.options.file, args.options['overwrite-file']);
+    await exportEventsAsTsv(args.options.file);
   } else if (args.operand === 'import-events') {
     await importEventsFromTsv(
       args.options.file,

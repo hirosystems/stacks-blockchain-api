@@ -44,8 +44,7 @@ describe('import/export tests', () => {
     } catch (error: any) {
       if (error.code != 'EEXIST') throw error;
     }
-    const tmpTsvPath = `${tmpDir}/export.tsv`;
-    await exportEventsAsTsv(tmpTsvPath, true);
+    await exportEventsAsTsv('/tmp/tests-event-replay/export.tsv');
 
     // Re-import with exported TSV and check that chain tip matches.
     try {

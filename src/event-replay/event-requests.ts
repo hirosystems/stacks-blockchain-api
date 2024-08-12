@@ -1,30 +1,27 @@
 import { pipelineAsync } from '../helpers';
-import { Readable, Writable } from 'stream';
+import { Readable } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
-import { PgServer } from '../datastore/connection';
-import { connectPgPool, connectWithRetry } from './connection-legacy';
+import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
+import { connectPgPool } from './connection-legacy';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
+import { connectPostgres } from '@hirosystems/api-toolkit';
 
-export async function exportRawEventRequests(targetStream: Writable): Promise<void> {
-  const pool = await connectPgPool({
-    usageName: 'export-raw-events',
-    pgServer: PgServer.primary,
+export async function exportRawEventRequests(filePath: string): Promise<void> {
+  const sql = await connectPostgres({
+    usageName: `export-events`,
+    connectionArgs: getConnectionArgs(PgServer.primary),
+    connectionConfig: getConnectionConfig(PgServer.primary),
   });
-  const client = await connectWithRetry(pool);
-  try {
-    const copyQuery = pgCopyStreams.to(
-      `
-      COPY (SELECT id, receive_timestamp, event_path, payload FROM event_observer_requests ORDER BY id ASC)
-      TO STDOUT ENCODING 'UTF8'
-      `
-    );
-    const queryStream = client.query(copyQuery);
-    await pipelineAsync(queryStream, targetStream);
-  } finally {
-    client.release();
-    await pool.end();
-  }
+  await sql`
+    COPY (
+      SELECT id, receive_timestamp, event_path, payload
+      FROM event_observer_requests
+      ORDER BY id ASC
+    )
+    TO '${sql.unsafe(filePath)}' WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
+  `;
+  await sql.end();
 }
 
 export async function* getRawEventRequests(

@@ -31,23 +31,16 @@ enum EventImportMode {
  * @param filePath - Path to TSV file to write
  * @param overwriteFile - If we should overwrite the file
  */
-export async function exportEventsAsTsv(
-  filePath?: string,
-  overwriteFile: boolean = false
-): Promise<void> {
+export async function exportEventsAsTsv(filePath?: string): Promise<void> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
-  const resolvedFilePath = path.resolve(filePath);
-  if (fs.existsSync(resolvedFilePath) && overwriteFile !== true) {
-    throw new Error(
-      `A file already exists at ${resolvedFilePath}. Add --overwrite-file to truncate an existing file`
-    );
+  if (!path.isAbsolute(filePath)) {
+    throw new Error(`The file path must be absolute`);
   }
-  console.log(`Export event data to file: ${resolvedFilePath}`);
-  const writeStream = fs.createWriteStream(resolvedFilePath);
+  console.log(`Exporting event data to ${filePath} inside the PostgreSQL server`);
   console.log(`Export started...`);
-  await exportRawEventRequests(writeStream);
+  await exportRawEventRequests(filePath);
   console.log('Export successful.');
 }
 
