@@ -1,4 +1,4 @@
-import {
+import type {
   AddressStxBalanceTopic,
   AddressTransactionTopic,
   ClientToServerMessages,
@@ -7,7 +7,7 @@ import {
   ServerToClientMessages,
   Topic,
   TransactionTopic,
-} from 'docs/socket-io';
+} from 'client/src/types';
 import * as http from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { Adapter } from 'socket.io-adapter';
@@ -285,6 +285,6 @@ export class SocketIOChannel extends WebSocketChannel {
     }
     const validatedSubs = subscriptions.map(isSubValid);
     const invalidSubs = validatedSubs.filter(validSub => typeof validSub === 'string');
-    return invalidSubs.length === 0 ? undefined : (invalidSubs as string[]);
+    return invalidSubs.length === 0 ? undefined : invalidSubs;
   }
 }

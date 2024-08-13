@@ -1,18 +1,18 @@
 import { io, Socket } from 'socket.io-client';
 import type { ManagerOptions, SocketOptions } from 'socket.io-client';
-import {
-  ClientToServerMessages,
-  Topic,
-  ServerToClientMessages,
-  MempoolTransaction,
-  Transaction,
-  Block,
-  Microblock,
-  AddressTransactionWithTransfers,
-  NftEvent,
+import type { 
   AddressStxBalanceResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import { BASE_PATH } from '../generated/runtime';
+  AddressTransactionWithTransfers,
+  Block,
+  ClientToServerMessages,
+  MempoolTransaction,
+  Microblock,
+  NftEvent,
+  ServerToClientMessages,
+  Topic,
+  Transaction,
+} from '../types';
+import { BASE_PATH } from '../common';
 
 export type StacksApiSocket = Socket<ServerToClientMessages, ClientToServerMessages>;
 

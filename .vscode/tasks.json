@@ -4,14 +4,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "generate:schemas",
-      "type": "npm",
-      "script": "generate:schemas",
-      "presentation": {
-        "reveal": "silent"
-      }
-    },
-    {
       "label": "stacks-node:deploy-dev",
       "type": "shell",
       "command": "npm run devenv:deploy",

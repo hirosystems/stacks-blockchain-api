@@ -1,9 +1,6 @@
 import { inspect } from 'util';
 import * as net from 'net';
-import { createServer } from 'http';
-import * as express from 'express';
-import * as bodyParser from 'body-parser';
-import { asyncHandler } from '../api/async-handler';
+import Fastify, { FastifyRequest, FastifyServerOptions } from 'fastify';
 import PQueue from 'p-queue';
 import * as prom from 'prom-client';
 import {
@@ -79,9 +76,9 @@ import {
 } from '../datastore/helpers';
 import { handleBnsImport } from '../import-v1';
 import { decodePoxSyntheticPrintEvent } from './pox-event-parsing';
-import { logger, loggerMiddleware } from '../logger';
+import { logger } from '../logger';
 import * as zoneFileParser from 'zone-file';
-import { hexToBuffer, isProdEnv, stopwatch } from '@hirosystems/api-toolkit';
+import { hexToBuffer, isProdEnv, PINO_LOGGER_CONFIG, stopwatch } from '@hirosystems/api-toolkit';
 import { POX_2_CONTRACT_NAME, POX_3_CONTRACT_NAME, POX_4_CONTRACT_NAME } from '../pox-helpers';
 
 const IBD_PRUNABLE_ROUTES = ['/new_mempool_tx', '/drop_mempool_tx', '/new_microblocks'];
@@ -931,174 +928,145 @@ export async function startEventServer(opts: {
     eventHost = hostname;
   }
 
-  const app = express();
+  const bodyLimit = 1_000_000 * 500; // 500MB body limit
+  const loggerOpts: FastifyServerOptions['logger'] = {
+    ...PINO_LOGGER_CONFIG,
+    name: 'stacks-node-event',
+  };
+  const app = Fastify({
+    bodyLimit,
+    trustProxy: true,
+    logger: loggerOpts,
+    ignoreTrailingSlash: true,
+  });
 
-  const handleRawEventRequest = async (req: express.Request) => {
-    await messageHandler.handleRawEventRequest(req.path, req.body, db);
+  const handleRawEventRequest = async (req: FastifyRequest) => {
+    await messageHandler.handleRawEventRequest(req.url, req.body, db);
 
     if (logger.level === 'debug') {
-      const eventPath = req.path;
       let payload = JSON.stringify(req.body);
       // Skip logging massive event payloads, this _should_ only exclude the genesis block payload which is ~80 MB.
       if (payload.length > 10_000_000) {
         payload = 'payload body too large for logging';
       }
-      logger.debug(`${eventPath} ${payload}`, { component: 'stacks-node-event' });
+      logger.debug(`${req.url} ${payload}`, { component: 'stacks-node-event' });
     }
   };
 
-  app.use(loggerMiddleware);
-  app.use(bodyParser.json({ type: 'application/json', limit: '500MB' }));
-
   const ibdHeight = getIbdBlockHeight();
   if (ibdHeight) {
-    app.use(IBD_PRUNABLE_ROUTES, async (req, res, next) => {
-      try {
-        const chainTip = await db.getChainTip(db.sql);
-        if (chainTip.block_height > ibdHeight) {
-          next();
-        } else {
-          await handleRawEventRequest(req);
-          res.status(200).send(`IBD`);
+    app.addHook('preHandler', async (req, res) => {
+      if (IBD_PRUNABLE_ROUTES.includes(req.url)) {
+        try {
+          const chainTip = await db.getChainTip(db.sql);
+          if (chainTip.block_height <= ibdHeight) {
+            await handleRawEventRequest(req);
+            await res.status(200).send(`IBD`);
+          }
+        } catch (error) {
+          await res
+            .status(500)
+            .send({ message: 'A middleware error occurred processing the request in IBD mode.' });
         }
-      } catch (error) {
-        res
-          .status(500)
-          .json({ message: 'A middleware error occurred processing the request in IBD mode.' });
       }
     });
   }
 
-  app.get('/', (req, res) => {
-    res
+  app.get('/', async (_req, res) => {
+    await res
       .status(200)
-      .json({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
+      .send({ status: 'ready', msg: 'API event server listening for core-node POST messages' });
   });
 
-  app.post(
-    '/new_block',
-    asyncHandler(async (req, res) => {
-      try {
-        const blockMessage: CoreNodeBlockMessage = req.body;
-        await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
-        if (blockMessage.block_height === 1) {
-          await handleBnsImport(db);
-        }
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /new_block');
-        res.status(500).json({ error: error });
+  app.post('/new_block', async (req, res) => {
+    try {
+      const blockMessage = req.body as CoreNodeBlockMessage;
+      await messageHandler.handleBlockMessage(opts.chainId, blockMessage, db);
+      if (blockMessage.block_height === 1) {
+        await handleBnsImport(db);
       }
-    })
-  );
-
-  app.post(
-    '/new_burn_block',
-    asyncHandler(async (req, res) => {
-      try {
-        const msg: CoreNodeBurnBlockMessage = req.body;
-        await messageHandler.handleBurnBlock(msg, db);
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /new_burn_block');
-        res.status(500).json({ error: error });
-      }
-    })
-  );
-
-  app.post(
-    '/new_mempool_tx',
-    asyncHandler(async (req, res) => {
-      try {
-        const rawTxs: string[] = req.body;
-        await messageHandler.handleMempoolTxs(rawTxs, db);
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /new_mempool_tx');
-        res.status(500).json({ error: error });
-      }
-    })
-  );
-
-  app.post(
-    '/drop_mempool_tx',
-    asyncHandler(async (req, res) => {
-      try {
-        const msg: CoreNodeDropMempoolTxMessage = req.body;
-        await messageHandler.handleDroppedMempoolTxs(msg, db);
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /drop_mempool_tx');
-        res.status(500).json({ error: error });
-      }
-    })
-  );
-
-  app.post(
-    '/attachments/new',
-    asyncHandler(async (req, res) => {
-      try {
-        const msg: CoreNodeAttachmentMessage[] = req.body;
-        await messageHandler.handleNewAttachment(msg, db);
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /attachments/new');
-        res.status(500).json({ error: error });
-      }
-    })
-  );
-
-  app.post(
-    '/new_microblocks',
-    asyncHandler(async (req, res) => {
-      try {
-        const msg: CoreNodeMicroblockMessage = req.body;
-        await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
-        await handleRawEventRequest(req);
-        res.status(200).json({ result: 'ok' });
-      } catch (error) {
-        logger.error(error, 'error processing core-node /new_microblocks');
-        res.status(500).json({ error: error });
-      }
-    })
-  );
-
-  app.post('*', (req, res, next) => {
-    res.status(404).json({ error: `no route handler for ${req.path}` });
-    logger.error(`Unexpected event on path ${req.path}`);
-    next();
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /new_block');
+      await res.status(500).send({ error: error });
+    }
   });
 
-  const server = createServer(app);
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', error => {
-      reject(error);
-    });
-    server.listen(eventPort, eventHost as string, () => {
-      resolve();
-    });
+  app.post('/new_burn_block', async (req, res) => {
+    try {
+      const msg = req.body as CoreNodeBurnBlockMessage;
+      await messageHandler.handleBurnBlock(msg, db);
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /new_burn_block');
+      await res.status(500).send({ error: error });
+    }
   });
 
-  const addr = server.address();
-  if (addr === null) {
-    throw new Error('server missing address');
-  }
-  const addrStr = typeof addr === 'string' ? addr : `${addr.address}:${addr.port}`;
-  logger.info(`Event observer listening at: http://${addrStr}`);
+  app.post('/new_mempool_tx', async (req, res) => {
+    try {
+      const rawTxs = req.body as string[];
+      await messageHandler.handleMempoolTxs(rawTxs, db);
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /new_mempool_tx');
+      await res.status(500).send({ error: error });
+    }
+  });
+
+  app.post('/drop_mempool_tx', async (req, res) => {
+    try {
+      const msg = req.body as CoreNodeDropMempoolTxMessage;
+      await messageHandler.handleDroppedMempoolTxs(msg, db);
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /drop_mempool_tx');
+      await res.status(500).send({ error: error });
+    }
+  });
+
+  app.post('/attachments/new', async (req, res) => {
+    try {
+      const msg = req.body as CoreNodeAttachmentMessage[];
+      await messageHandler.handleNewAttachment(msg, db);
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /attachments/new');
+      await res.status(500).send({ error: error });
+    }
+  });
+
+  app.post('/new_microblocks', async (req, res) => {
+    try {
+      const msg = req.body as CoreNodeMicroblockMessage;
+      await messageHandler.handleMicroblockMessage(opts.chainId, msg, db);
+      await handleRawEventRequest(req);
+      await res.status(200).send({ result: 'ok' });
+    } catch (error) {
+      logger.error(error, 'error processing core-node /new_microblocks');
+      await res.status(500).send({ error: error });
+    }
+  });
+
+  app.post('*', async (req, res) => {
+    await res.status(404).send({ error: `no route handler for ${req.url}` });
+    logger.error(`Unexpected event on path ${req.url}`);
+  });
+
+  const addr = await app.listen({ port: eventPort, host: eventHost });
+  logger.info(`Event observer listening at: ${addr}`);
 
   const closeFn = async () => {
-    await new Promise<void>((resolve, reject) => {
-      logger.info('Closing event observer server...');
-      server.close(error => (error ? reject(error) : resolve()));
-    });
+    logger.info('Closing event observer server...');
+    await app.close();
   };
-  const eventStreamServer: EventStreamServer = Object.assign(server, {
-    serverAddress: addr as net.AddressInfo,
+  const eventStreamServer: EventStreamServer = Object.assign(app.server, {
+    serverAddress: app.addresses()[0],
     closeAsync: closeFn,
   });
   return eventStreamServer;

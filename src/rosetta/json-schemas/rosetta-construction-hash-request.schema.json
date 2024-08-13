@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "title": "RosettaConstructionHashRequest",
+  "description": "TransactionHash returns the network-specific transaction hash for a signed transaction.",
+  "required": ["network_identifier", "signed_transaction"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "signed_transaction": {
+      "type": "string",
+      "description": "Signed transaction"
+    }
+  }
+}

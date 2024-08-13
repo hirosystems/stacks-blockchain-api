@@ -1,6 +1,6 @@
 import * as http from 'http';
 import PQueue from 'p-queue';
-import { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'docs/generated';
+import type { AddressStxBalanceResponse, AddressTransactionWithTransfers } from 'client/src/types';
 import {
   getBlockFromDataStore,
   getMempoolTxsFromDataStore,

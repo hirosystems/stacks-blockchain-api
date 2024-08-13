@@ -1,5 +1,4 @@
 import { StackingClient, poxAddressToTuple } from '@stacks/stacking';
-import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import {
   AnchorMode,
   Cl,
@@ -32,6 +31,7 @@ import {
 } from '../test-utils/test-helpers';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
 
 describe('PoX-4 - Delegate Revoked Stacking', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -261,7 +261,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     );
 
     // validate API balance state
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${STACKER.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(DELEGATE_HALF_AMOUNT));
@@ -483,7 +483,7 @@ describe('PoX-4 - Delegate Revoked Stacking', () => {
     expect(coreBalanceInfo.unlock_height).toBe(0);
 
     // validate API endpoint balance state for account
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${STACKER.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));

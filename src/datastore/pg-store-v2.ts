@@ -5,6 +5,7 @@ import {
   TransactionPaginationQueryParams,
   TransactionLimitParamSchema,
   BlockParams,
+  BurnBlockParams,
   BlockPaginationQueryParams,
   SmartContractStatusParams,
   AddressParams,
@@ -15,6 +16,7 @@ import {
   PoxSignerPaginationQueryParams,
   PoxSignerLimitParamSchema,
   PoxCycleSignerParams,
+  BlockIdParam,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';
 import { normalizeHashString } from '../helpers';
@@ -93,18 +95,20 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlocksByBurnBlock(
-    args: BlockParams & BlockPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbBlock>> {
+  async getBlocksByBurnBlock(args: {
+    block: BlockIdParam;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? BlockLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const filter =
-        args.height_or_hash === 'latest'
+        args.block.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`burn_block_hash = ${normalizeHashString(args.height_or_hash)}`
-          : sql`burn_block_height = ${args.height_or_hash}`;
+          : args.block.type === 'hash'
+          ? sql`burn_block_hash = ${normalizeHashString(args.block.hash)}`
+          : sql`burn_block_height = ${args.block.height}`;
       const blockCheck = await sql`SELECT burn_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(
@@ -142,17 +146,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlock(args: BlockParams): Promise<DbBlock | undefined> {
+  async getBlock(args: BlockIdParam): Promise<DbBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
-        args.height_or_hash === 'latest'
+        args.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
+          : args.type === 'hash'
           ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
+              block_hash = ${normalizeHashString(args.hash)}
+              OR index_block_hash = ${normalizeHashString(args.hash)}
             )`
-          : sql`block_height = ${args.height_or_hash}`;
+          : sql`block_height = ${args.height}`;
       const blockQuery = await sql<BlockQueryResult[]>`
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM blocks
@@ -217,21 +221,23 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBlockTransactions(
-    args: BlockParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbTx>> {
+  async getBlockTransactions(args: {
+    block: BlockIdParam;
+    limit?: number;
+    offset?: number;
+  }): Promise<DbPaginatedResult<DbTx>> {
     return await this.sqlTransaction(async sql => {
       const limit = args.limit ?? TransactionLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const filter =
-        args.height_or_hash === 'latest'
+        args.block.type === 'latest'
           ? sql`index_block_hash = (SELECT index_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
+          : args.block.type === 'hash'
           ? sql`(
-              block_hash = ${normalizeHashString(args.height_or_hash)}
-              OR index_block_hash = ${normalizeHashString(args.height_or_hash)}
+              block_hash = ${normalizeHashString(args.block.hash)}
+              OR index_block_hash = ${normalizeHashString(args.block.hash)}
             )`
-          : sql`block_height = ${args.height_or_hash}`;
+          : sql`block_height = ${args.block.height}`;
       const blockCheck = await sql`SELECT index_block_hash FROM blocks WHERE ${filter} LIMIT 1`;
       if (blockCheck.count === 0)
         throw new InvalidRequestError(`Block not found`, InvalidRequestErrorType.invalid_param);
@@ -329,14 +335,14 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getBurnBlock(args: BlockParams): Promise<DbBurnBlock | undefined> {
+  async getBurnBlock(args: BlockIdParam): Promise<DbBurnBlock | undefined> {
     return await this.sqlTransaction(async sql => {
       const filter =
-        args.height_or_hash === 'latest'
+        args.type === 'latest'
           ? sql`burn_block_hash = (SELECT burn_block_hash FROM blocks WHERE canonical = TRUE ORDER BY block_height DESC LIMIT 1)`
-          : CompiledBurnBlockHashParam(args.height_or_hash)
-          ? sql`burn_block_hash = ${args.height_or_hash}`
-          : sql`burn_block_height = ${args.height_or_hash}`;
+          : args.type === 'hash'
+          ? sql`burn_block_hash = ${args.hash}`
+          : sql`burn_block_height = ${args.height}`;
       const blockQuery = await sql<DbBurnBlock[]>`
         WITH BlocksWithPrevTime AS (
           SELECT
@@ -526,9 +532,12 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getAddressTransactionEvents(
-    args: AddressTransactionParams & TransactionPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
+  async getAddressTransactionEvents(args: {
+    limit: number;
+    offset: number;
+    tx_id: string;
+    address: string;
+  }): Promise<DbPaginatedResult<DbAddressTransactionEvent>> {
     return await this.sqlTransaction(async sql => {
       await assertTxIdExists(sql, args.tx_id);
       const limit = args.limit ?? TransactionLimitParamSchema.default;
@@ -607,7 +616,7 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycle(args: PoxCycleParams): Promise<DbPoxCycle | undefined> {
+  async getPoxCycle(args: { cycle_number: number }): Promise<DbPoxCycle | undefined> {
     return this.sqlTransaction(async sql => {
       const results = await sql<PoxCycleQueryResult[]>`
         SELECT
@@ -621,13 +630,15 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSigners(
-    args: PoxCycleParams & PoxSignerPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
+  async getPoxCycleSigners(args: {
+    cycle_number: number;
+    limit: number;
+    offset: number;
+  }): Promise<DbPaginatedResult<DbPoxCycleSigner>> {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${args.cycle_number} LIMIT 1`;
       if (cycleCheck.count === 0)
@@ -691,10 +702,13 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSigner(args: PoxCycleSignerParams): Promise<DbPoxCycleSigner | undefined> {
+  async getPoxCycleSigner(args: {
+    cycle_number: number;
+    signer_key: string;
+  }): Promise<DbPoxCycleSigner | undefined> {
     return this.sqlTransaction(async sql => {
       const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck =
         await sql`SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1`;
       if (cycleCheck.count === 0)
@@ -752,14 +766,17 @@ export class PgStoreV2 extends BasePgStoreModule {
     });
   }
 
-  async getPoxCycleSignerStackers(
-    args: PoxCycleSignerParams & PoxSignerPaginationQueryParams
-  ): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
+  async getPoxCycleSignerStackers(args: {
+    cycle_number: number;
+    signer_key: string;
+    limit: number;
+    offset: number;
+  }): Promise<DbPaginatedResult<DbPoxCycleSignerStacker>> {
     return this.sqlTransaction(async sql => {
       const limit = args.limit ?? PoxSignerLimitParamSchema.default;
       const offset = args.offset ?? 0;
       const signerKey = has0xPrefix(args.signer_key) ? args.signer_key : '0x' + args.signer_key;
-      const cycleNumber = parseInt(args.cycle_number);
+      const cycleNumber = args.cycle_number;
       const cycleCheck = await sql`
         SELECT cycle_number FROM pox_cycles WHERE cycle_number = ${cycleNumber} LIMIT 1
       `;

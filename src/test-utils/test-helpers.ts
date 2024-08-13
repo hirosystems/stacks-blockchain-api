@@ -3,7 +3,6 @@ import { bytesToHex, hexToBytes } from '@stacks/common';
 import { StacksNetwork } from '@stacks/network';
 import { decodeBtcAddress, poxAddressToBtcAddress } from '@stacks/stacking';
 import {
-  AddressStxBalanceResponse,
   NetworkIdentifier,
   RosettaAccountBalanceRequest,
   RosettaAccountBalanceResponse,
@@ -18,8 +17,7 @@ import {
   RosettaConstructionSubmitRequest,
   RosettaConstructionSubmitResponse,
   RosettaOperation,
-  ServerStatusResponse,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   bufferCV,
   ChainID,
@@ -53,6 +51,8 @@ import { b58ToC32 } from 'c32check';
 import { coerceToBuffer, hexToBuffer, runMigrations, timeout } from '@hirosystems/api-toolkit';
 import { MIGRATIONS_DIR } from '../datastore/pg-store';
 import { getConnectionArgs } from '../datastore/connection';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import { ServerStatusResponse } from '../api/schemas/responses/responses';
 
 export async function migrate(direction: 'up' | 'down') {
   await runMigrations(MIGRATIONS_DIR, direction, getConnectionArgs());
@@ -397,9 +397,7 @@ export async function standByForAccountUnlock(address: string): Promise<void> {
     const poxInfo = await testEnv.client.getPox();
     const info = await testEnv.client.getInfo();
     const accountInfo = await testEnv.client.getAccount(address);
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
-      `/extended/v1/address/${address}/stx`
-    );
+    const addrBalance = await fetchGet<AddressStxBalance>(`/extended/v1/address/${address}/stx`);
     const status = await fetchGet<ServerStatusResponse>('/extended/v1/status');
     console.log({
       poxInfo,
@@ -424,7 +422,7 @@ export async function fetchGet<TRes>(endpoint: string): Promise<TRes> {
   const result = await supertest(testEnv.api.server).get(endpoint);
   // Follow redirects
   if (result.status >= 300 && result.status < 400) {
-    return await fetchGet<TRes>(result.header.location as string);
+    return await fetchGet<TRes>(result.header.location);
   }
   expect(result.status).toBe(200);
   expect(result.type).toBe('application/json');

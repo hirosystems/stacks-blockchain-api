@@ -1,165 +1,227 @@
-import * as express from 'express';
-import { getETagCacheHandler, setETagCacheHeaders } from '../../controllers/cache-controller';
-import { asyncHandler } from '../../async-handler';
-import { PgStore } from '../../../datastore/pg-store';
-import {
-  CompiledPoxCyclePaginationQueryParams,
-  CompiledPoxCycleParams,
-  CompiledPoxCycleSignerParams,
-  CompiledPoxSignerPaginationQueryParams,
-  PoxCyclePaginationQueryParams,
-  PoxCycleParams,
-  PoxCycleSignerParams,
-  PoxSignerPaginationQueryParams,
-  validRequestParams,
-  validRequestQuery,
-} from './schemas';
-import {
-  PoxCycleListResponse,
-  PoxCycleSignerStackersListResponse,
-  PoxCycleSignersListResponse,
-  PoxSigner,
-} from '@stacks/stacks-blockchain-api-types';
+import { handleChainTipCache } from '../../controllers/cache-controller';
 import { parseDbPoxCycle, parseDbPoxSigner, parseDbPoxSignerStacker } from './helpers';
-import { InvalidRequestError } from '../../../errors';
-import { ChainID, getChainIDNetwork } from '../../../helpers';
+import { InvalidRequestError, NotFoundError } from '../../../errors';
+import { getChainIDNetwork } from '../../../helpers';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { LimitParam, OffsetParam } from '../../schemas/params';
+import { getPagingQueryLimit, ResourceType } from '../../pagination';
+import { PaginatedResponse } from '../../schemas/util';
+import {
+  PoxCycle,
+  PoxCycleSchema,
+  PoxSigner,
+  PoxSignerSchema,
+  PoxStacker,
+  PoxStackerSchema,
+} from '../../schemas/entities/pox';
 
-export function createPoxRouter(db: PgStore, chainId: ChainID): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-  const isMainnet = getChainIDNetwork(chainId) === 'mainnet';
+export const PoxRoutesV2: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  const getIsMainnet = () => getChainIDNetwork(fastify.chainId) === 'mainnet';
 
-  router.get(
+  fastify.get(
     '/cycles',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      if (!validRequestQuery(req, res, CompiledPoxCyclePaginationQueryParams)) return;
-      const query = req.query as PoxCyclePaginationQueryParams;
-
-      const cycles = await db.v2.getPoxCycles(query);
-      const response: PoxCycleListResponse = {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_pox_cycles',
+        summary: 'Get PoX cycles',
+        description: `Retrieves a list of PoX cycles`,
+        tags: ['Proof of Transfer'],
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.PoxCycle),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(PoxCycleSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const query = req.query;
+      const cycles = await fastify.db.v2.getPoxCycles(query);
+      const results: PoxCycle[] = cycles.results.map(c => parseDbPoxCycle(c));
+      await reply.send({
         limit: cycles.limit,
         offset: cycles.offset,
         total: cycles.total,
-        results: cycles.results.map(c => parseDbPoxCycle(c)),
-      };
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+        results: results,
+      });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/cycles/:cycle_number',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      if (!validRequestParams(req, res, CompiledPoxCycleParams)) return;
-      const params = req.params as PoxCycleParams;
-
-      const cycle = await db.v2.getPoxCycle(params);
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_pox_cycle',
+        summary: 'Get PoX cycle',
+        description: `Retrieves details for a PoX cycle`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          cycle_number: Type.Integer({ description: 'PoX cycle number' }),
+        }),
+        response: {
+          200: PoxCycleSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const cycle = await fastify.db.v2.getPoxCycle(params);
       if (!cycle) {
-        res.status(404).json({ error: `Not found` });
-        return;
+        throw new NotFoundError();
       }
-      setETagCacheHeaders(res);
-      res.json(parseDbPoxCycle(cycle));
-    })
+      await reply.send(cycle);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/cycles/:cycle_number/signers',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      if (
-        !validRequestParams(req, res, CompiledPoxCycleParams) ||
-        !validRequestQuery(req, res, CompiledPoxSignerPaginationQueryParams)
-      )
-        return;
-      const params = req.params as PoxCycleParams;
-      const query = req.query as PoxSignerPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_pox_cycle_signers',
+        summary: 'Get signers in PoX cycle',
+        description: `Retrieves a list of signers in a PoX cycle`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          cycle_number: Type.Integer({ description: 'PoX cycle number' }),
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Signer),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(PoxSignerSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getPoxCycleSigners({
-          ...params,
-          ...query,
+        const { limit, offset, results, total } = await fastify.db.v2.getPoxCycleSigners({
+          cycle_number: params.cycle_number,
+          limit: getPagingQueryLimit(ResourceType.Signer, query.limit),
+          offset: query.offset ?? 0,
         });
-        const response: PoxCycleSignersListResponse = {
+        const isMainnet = getIsMainnet();
+        const signers: PoxSigner[] = results.map(r => parseDbPoxSigner(r, isMainnet));
+        await reply.send({
           limit,
           offset,
           total,
-          results: results.map(r => parseDbPoxSigner(r, isMainnet)),
-        };
-        setETagCacheHeaders(res);
-        res.json(response);
+          results: signers,
+        });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/cycles/:cycle_number/signers/:signer_key',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      if (!validRequestParams(req, res, CompiledPoxCycleSignerParams)) return;
-      const params = req.params as PoxCycleSignerParams;
-
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_pox_cycle_signer',
+        summary: 'Get signer in PoX cycle',
+        description: `Retrieves details for a signer in a PoX cycle`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          cycle_number: Type.Integer({ description: 'PoX cycle number' }),
+          signer_key: Type.String({
+            description: 'Signer key',
+            examples: ['0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d'],
+          }),
+        }),
+        querystring: Type.Object({}),
+        response: {
+          200: PoxSignerSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
       try {
-        const signer = await db.v2.getPoxCycleSigner(params);
+        const signer = await fastify.db.v2.getPoxCycleSigner(params);
         if (!signer) {
-          res.status(404).json({ error: `Not found` });
-          return;
+          throw new NotFoundError();
         }
+        const isMainnet = getIsMainnet();
         const response: PoxSigner = parseDbPoxSigner(signer, isMainnet);
-        setETagCacheHeaders(res);
-        res.json(response);
+        await reply.send(response);
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/cycles/:cycle_number/signers/:signer_key/stackers',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      if (
-        !validRequestParams(req, res, CompiledPoxCycleSignerParams) ||
-        !validRequestQuery(req, res, CompiledPoxSignerPaginationQueryParams)
-      )
-        return;
-      const params = req.params as PoxCycleSignerParams;
-      const query = req.query as PoxSignerPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_pox_cycle_signer_stackers',
+        summary: 'Get stackers for signer in PoX cycle',
+        description: `Retrieves a list of stackers for a signer in a PoX cycle`,
+        tags: ['Proof of Transfer'],
+        params: Type.Object({
+          cycle_number: Type.Integer({ description: 'PoX cycle number' }),
+          signer_key: Type.String({
+            description: 'Signer key',
+            examples: ['0x038e3c4529395611be9abf6fa3b6987e81d402385e3d605a073f42f407565a4a3d'],
+          }),
+        }),
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Stacker),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(PoxStackerSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = req.params;
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getPoxCycleSignerStackers({
-          ...params,
-          ...query,
+        const { limit, offset, results, total } = await fastify.db.v2.getPoxCycleSignerStackers({
+          cycle_number: params.cycle_number,
+          signer_key: params.signer_key,
+          limit: getPagingQueryLimit(ResourceType.Stacker, query.limit),
+          offset: query.offset ?? 0,
         });
-        const response: PoxCycleSignerStackersListResponse = {
+        const stackers: PoxStacker[] = results.map(r => parseDbPoxSignerStacker(r));
+        await reply.send({
           limit,
           offset,
           total,
-          results: results.map(r => parseDbPoxSignerStacker(r)),
-        };
-        setETagCacheHeaders(res);
-        res.json(response);
+          results: stackers,
+        });
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError(error.message);
         }
         throw error;
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

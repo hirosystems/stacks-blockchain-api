@@ -1,8 +1,7 @@
 import { RPCClient } from 'rpc-bitcoin';
 import * as btc from 'bitcoinjs-lib';
 import * as ecc from 'tiny-secp256k1';
-import * as Bluebird from 'bluebird';
-import { parsePort } from './helpers';
+import { mapSeriesAsync, parsePort } from './helpers';
 import * as coinselect from 'coinselect';
 import { ECPair, ECPairInterface, validateSigFunction } from './ec-helpers';
 import { BtcFaucetConfigError } from './errors';
@@ -72,7 +71,7 @@ const REGTEST_FEE_RATE = 50;
 
 const MIN_TX_CONFIRMATIONS = 1;
 
-function isValidBtcAddress(network: btc.Network, address: string): boolean {
+export function isValidBtcAddress(network: btc.Network, address: string): boolean {
   try {
     btc.initEccLib(ecc);
     btc.address.toOutputScript(address, network);
@@ -135,7 +134,7 @@ async function getRawTransactions(client: RPCClient, txIds: string[]): Promise<G
   const batchRawTxRes: GetRawTxResult[] = await time(
     async () => {
       // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-      return await Bluebird.mapSeries(txIds, async txId =>
+      return await mapSeriesAsync(txIds, async txId =>
         client.getrawtransaction({ txid: txId, verbose: true })
       );
     },

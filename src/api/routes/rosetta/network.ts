@@ -18,7 +18,7 @@ import {
   RosettaNetworkOptionsResponse,
   RosettaNetworkStatusResponse,
   RosettaSyncStatus,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../../../rosetta/types';
 import { rosettaValidateRequest, ValidSchema, makeRosettaError } from '../../rosetta-validate';
 import { ChainID } from '../../../helpers';
 import { PgStore } from '../../../datastore/pg-store';

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "title": "RosettaConstructionDeriveRequest",
+  "description": "Network is provided in the request because some blockchains have different address formats for different networks",
+  "required": ["network_identifier", "public_key"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "public_key": {
+      "$ref": "./rosetta-public-key.schema.json"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

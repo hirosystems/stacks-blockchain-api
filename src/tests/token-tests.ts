@@ -5,7 +5,6 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { DbAssetEventTypeId } from '../datastore/common';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
-import { FungibleTokenHolderList } from '@stacks/stacks-blockchain-api-types';
 
 describe('/extended/v1/tokens tests', () => {
   let db: PgWriteStore;
@@ -1027,7 +1026,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
 
-    const request1Body: FungibleTokenHolderList = request1.body;
+    const request1Body = request1.body as { results: any[] };
     const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
     expect(balance1).toBe('1000');
   });
@@ -1051,7 +1050,7 @@ describe('/extended/v1/tokens tests', () => {
     expect(request1.status).toBe(200);
     expect(request1.type).toBe('application/json');
 
-    const request1Body: FungibleTokenHolderList = request1.body;
+    const request1Body = request1.body as { results: any[] };
     const balance1 = request1Body.results.find(b => b.address === addr1)?.balance;
     expect(balance1).toBe('1000');
   });

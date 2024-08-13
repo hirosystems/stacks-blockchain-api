@@ -1,10 +1,5 @@
-import {
-  AddressTokenOfferingLocked,
-  AddressUnlockSchedule,
-  TransactionType,
-} from '@stacks/stacks-blockchain-api-types';
 import { ClarityAbi } from '@stacks/transactions';
-import { getTxTypeId, getTxTypeString } from '../api/controllers/db-controller';
+import { getTxTypeId, getTxTypeString, TransactionType } from '../api/controllers/db-controller';
 import {
   unwrapNotNullish,
   FoundOrNot,
@@ -101,7 +96,6 @@ import {
 } from './connection';
 import * as path from 'path';
 import { PgStoreV2 } from './pg-store-v2';
-import { MempoolOrderByParam, OrderParam } from '../api/query-helpers';
 import { Fragment } from 'postgres';
 
 export const MIGRATIONS_DIR = path.join(REPO_DIR, 'migrations');
@@ -1301,8 +1295,8 @@ export class PgStore extends BasePgStore {
     limit: number;
     offset: number;
     includeUnanchored: boolean;
-    orderBy?: MempoolOrderByParam;
-    order?: OrderParam;
+    orderBy?: 'fee' | 'size' | 'age';
+    order?: 'asc' | 'desc';
     senderAddress?: string;
     recipientAddress?: string;
     address?: string;
@@ -4059,21 +4053,20 @@ export class PgStore extends BasePgStore {
     if (queryResult.length > 0) {
       let totalLocked = 0n;
       let totalUnlocked = 0n;
-      const unlockSchedules: AddressUnlockSchedule[] = [];
-      queryResult.forEach(lockedInfo => {
-        const unlockSchedule: AddressUnlockSchedule = {
+      const unlockSchedules = queryResult.map(lockedInfo => {
+        const unlockSchedule = {
           amount: lockedInfo.value.toString(),
           block_height: lockedInfo.block,
         };
-        unlockSchedules.push(unlockSchedule);
         if (lockedInfo.block > blockHeight) {
           totalLocked += BigInt(lockedInfo.value);
         } else {
           totalUnlocked += BigInt(lockedInfo.value);
         }
+        return unlockSchedule;
       });
 
-      const tokenOfferingLocked: AddressTokenOfferingLocked = {
+      const tokenOfferingLocked = {
         total_locked: totalLocked.toString(),
         total_unlocked: totalUnlocked.toString(),
         unlock_schedule: unlockSchedules,
