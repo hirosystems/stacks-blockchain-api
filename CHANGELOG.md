@@ -1,3 +1,14 @@
+## [8.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.2...v8.0.0-beta.1) (2024-08-13)
+
+
+### ⚠ BREAKING CHANGES
+
+* refactor from Express to Fastify
+
+### Features
+
+* refactor from Express to Fastify ([aa0e51e](https://github.com/hirosystems/stacks-blockchain-api/commit/aa0e51e557491daff1a98dd36c4e952e05c58dd4)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
 ## [7.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.1...v7.13.2) (2024-08-05)
 
 
