@@ -35,12 +35,17 @@ export async function exportEventsAsTsv(filePath?: string): Promise<void> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
-  if (!path.isAbsolute(filePath)) {
-    throw new Error(`The file path must be absolute`);
+  const isLocal = filePath.startsWith('local:');
+  if (isLocal) {
+    filePath = filePath.replace(/^local:/, '');
+    if (!path.isAbsolute(filePath)) {
+      throw new Error(`The file path must be absolute`);
+    }
   }
-  console.log(`Exporting event data to ${filePath} inside the PostgreSQL server`);
+
+  console.log(`Exporting event data to ${filePath}`);
   console.log(`Export started...`);
-  await exportRawEventRequests(filePath);
+  await exportRawEventRequests(filePath, isLocal);
   console.log('Export successful.');
 }
 

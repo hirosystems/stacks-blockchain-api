@@ -1,4 +1,4 @@
-import { pipelineAsync } from '../helpers';
+import { pipeline } from 'node:stream/promises';
 import { Readable } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
 import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
@@ -6,21 +6,32 @@ import { connectPgPool } from './connection-legacy';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
 import { connectPostgres } from '@hirosystems/api-toolkit';
+import { createWriteStream } from 'node:fs';
 
-export async function exportRawEventRequests(filePath: string): Promise<void> {
+export async function exportRawEventRequests(filePath: string, local: boolean): Promise<void> {
   const sql = await connectPostgres({
     usageName: `export-events`,
     connectionArgs: getConnectionArgs(PgServer.primary),
     connectionConfig: getConnectionConfig(PgServer.primary),
   });
-  await sql`
+  const copyQuery = sql`
     COPY (
       SELECT id, receive_timestamp, event_path, payload
       FROM event_observer_requests
       ORDER BY id ASC
-    )
-    TO '${sql.unsafe(filePath)}' WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
-  `;
+    )`;
+  if (local) {
+    await sql`${copyQuery}
+      TO '${sql.unsafe(filePath)}'
+      WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
+    `;
+  } else {
+    const readableStream = await sql`${copyQuery}
+      TO STDOUT
+      WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
+    `.readable();
+    await pipeline(readableStream, createWriteStream(filePath));
+  }
   await sql.end();
 }
 
@@ -58,7 +69,7 @@ export async function* getRawEventRequests(
       `);
       onStatusUpdate?.('Importing raw event requests into temporary table...');
       const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
-      await pipelineAsync(readStream, importStream);
+      await pipeline(readStream, importStream);
       onStatusUpdate?.('Removing any duplicate raw event requests...');
       await client.query(`
         INSERT INTO temp_event_observer_requests

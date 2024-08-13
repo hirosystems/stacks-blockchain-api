@@ -25,7 +25,7 @@ describe('import/export tests', () => {
     await db?.close();
   });
 
-  test('event import and export cycle', async () => {
+  test('event import and export cycle - remote', async () => {
     // Import from mocknet TSV
     await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
     const chainTip = await db.getChainTip(db.sql);
@@ -39,12 +39,8 @@ describe('import/export tests', () => {
 
     // Export into temp TSV
     const tmpDir = 'src/tests-event-replay/.tmp';
-    try {
-      fs.mkdirSync(tmpDir);
-    } catch (error: any) {
-      if (error.code != 'EEXIST') throw error;
-    }
-    await exportEventsAsTsv('/tmp/tests-event-replay/export.tsv');
+    fs.mkdirSync(tmpDir, { recursive: true });
+    await exportEventsAsTsv(`${tmpDir}/export.tsv`);
 
     // Re-import with exported TSV and check that chain tip matches.
     try {
@@ -58,7 +54,40 @@ describe('import/export tests', () => {
         '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
       );
     } finally {
-      fs.rmSync(tmpDir, { force: true, recursive: true });
+      fs.rmSync(`${tmpDir}/export.tsv`);
+    }
+  });
+
+  test('event import and export cycle - local', async () => {
+    // Import from mocknet TSV
+    await importEventsFromTsv('src/tests-event-replay/tsv/mocknet.tsv', 'archival', true, true);
+    const chainTip = await db.getChainTip(db.sql);
+    expect(chainTip.block_height).toBe(28);
+    expect(chainTip.index_block_hash).toBe(
+      '0x76cd67a65c0dfd5ea450bb9efe30da89fa125bfc077c953802f718353283a533'
+    );
+    expect(chainTip.block_hash).toBe(
+      '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
+    );
+
+    // Export into temp TSV
+    const tmpDir = 'src/tests-event-replay/.tmp';
+    fs.mkdirSync(tmpDir, { recursive: true });
+    await exportEventsAsTsv('local:/tmp/tests-event-replay/export.tsv');
+
+    // Re-import with exported TSV and check that chain tip matches.
+    try {
+      await importEventsFromTsv(`${tmpDir}/export.tsv`, 'archival', true, true);
+      const newChainTip = await db.getChainTip(db.sql);
+      expect(newChainTip.block_height).toBe(28);
+      expect(newChainTip.index_block_hash).toBe(
+        '0x76cd67a65c0dfd5ea450bb9efe30da89fa125bfc077c953802f718353283a533'
+      );
+      expect(newChainTip.block_hash).toBe(
+        '0x7682af212d3c1ef62613412f9b5a727269b4548f14eca2e3f941f7ad8b3c11b2'
+      );
+    } finally {
+      fs.rmSync(`${tmpDir}/export.tsv`);
     }
   });
 
