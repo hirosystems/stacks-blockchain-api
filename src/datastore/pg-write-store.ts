@@ -1074,7 +1074,7 @@ export class PgWriteStore extends PgStore {
         DO UPDATE
         SET balance = ft_balances.balance + EXCLUDED.balance
       `;
-      assert(res.count === values.length, `Expecting ${values.length} inserts, got ${res.count}`);
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
@@ -1119,7 +1119,7 @@ export class PgWriteStore extends PgStore {
         DO UPDATE
         SET balance = ft_balances.balance + EXCLUDED.balance
       `;
-      assert(res.count === values.length, `Expecting ${values.length} inserts, got ${res.count}`);
+      assert(res.count === batch.length, `Expecting ${batch.length} inserts, got ${res.count}`);
     }
   }
 
