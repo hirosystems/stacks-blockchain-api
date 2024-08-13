@@ -28,6 +28,12 @@
     [
       "@semantic-release/exec",
       {
+        "prepareCmd": "npm ci"
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
         "execCwd": "client",
         "prepareCmd": "npm ci"
       }
