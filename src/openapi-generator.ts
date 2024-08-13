@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import { TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import FastifySwagger from '@fastify/swagger';
-import { mkdirSync, writeFileSync } from 'fs';
+import { writeFileSync } from 'fs';
 import { OpenApiSchemaOptions } from './api/schemas/openapi';
 import { StacksApiRoutes } from './api/init';
 
