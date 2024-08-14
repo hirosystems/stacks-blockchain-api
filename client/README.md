@@ -3,6 +3,10 @@
 
 A JS Client for the Stacks Blockchain API
 
+## Breaking changes from (&lt;=7.x.x) → (8.x.x)
+
+See [MIGRATION.md](./MIGRATION.md) for details.
+
 ## Features
 
 This package provides the ability to:

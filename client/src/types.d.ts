@@ -1,9 +1,13 @@
-import type { operations } from "./generated/schema";
+import type { operations, paths } from './generated/schema';
 
 type Extract200Response<T> = T extends { 200: infer R } ? R : never;
 type ExtractOperationResponse<T extends keyof operations> = Extract200Response<operations[T]['responses']> extends { content: { 'application/json': infer U } } ? U : never;
+type PathResponse<T extends keyof paths> = paths[T]['get'] extends { responses: infer R } ? Extract200Response<R> extends { content: { 'application/json': infer U } } ? U : never : never;
+
 export type OperationResponse = {
   [K in keyof operations]: ExtractOperationResponse<K>;
+} & {
+  [P in keyof paths]: PathResponse<P>;
 };
 
 export type Transaction = OperationResponse['get_transaction_list']['results'][number];
