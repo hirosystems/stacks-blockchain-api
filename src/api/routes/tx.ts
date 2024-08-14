@@ -29,7 +29,6 @@ import {
   OffsetParam,
   OrderParamSchema,
   PrincipalSchema,
-  TransactionIdCommaListParamSchema,
   TransactionIdParamSchema,
   UnanchoredParamSchema,
 } from '../schemas/params';
@@ -43,7 +42,6 @@ import {
   TransactionSchema,
   TransactionSearchResponseSchema,
   TransactionTypeSchema,
-  TransactionTypeStringSchema,
 } from '../schemas/entities/transactions';
 import { PaginatedResponse } from '../schemas/util';
 import {
@@ -54,11 +52,7 @@ import {
   TransactionEventsResponseSchema,
   TransactionResultsSchema,
 } from '../schemas/responses/responses';
-import {
-  TransactionEventSchema,
-  TransactionEventTypeCommaListSchema,
-  TransactionEventTypeSchema,
-} from '../schemas/entities/transaction-events';
+import { TransactionEventTypeSchema } from '../schemas/entities/transaction-events';
 
 export const TxRoutes: FastifyPluginAsync<
   Record<never, never>,
@@ -69,6 +63,12 @@ export const TxRoutes: FastifyPluginAsync<
     '/',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.type === 'string') {
+          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
+        }
+        done();
+      },
       schema: {
         operationId: 'get_transaction_list',
         summary: 'Get recent transactions',
@@ -77,9 +77,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Tx),
-          type: Type.Optional(
-            Type.Array(Type.Union([TransactionTypeSchema, TransactionTypeStringSchema]))
-          ),
+          type: Type.Optional(Type.Array(TransactionTypeSchema)),
           unanchored: UnanchoredParamSchema,
           order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
           sort_by: Type.Optional(
@@ -145,8 +143,7 @@ export const TxRoutes: FastifyPluginAsync<
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const typeQuery = req.query.type?.flatMap(t => t.split(','));
-      const txTypeFilter = parseTxTypeStrings(typeQuery ?? []);
+      const txTypeFilter = parseTxTypeStrings(req.query.type ?? []);
 
       let fromAddress: string | undefined;
       if (typeof req.query.from_address === 'string') {
@@ -205,15 +202,19 @@ export const TxRoutes: FastifyPluginAsync<
     '/multiple',
     {
       preHandler: handleMempoolCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.tx_id === 'string') {
+          req.query.tx_id = (req.query.tx_id as string).split(',') as typeof req.query.tx_id;
+        }
+        done();
+      },
       schema: {
         operationId: 'get_tx_list_details',
         summary: 'Get list of details for transactions',
         description: `Retrieves a list of transactions for a given list of transaction IDs`,
         tags: ['Transactions'],
         querystring: Type.Object({
-          tx_id: Type.Array(
-            Type.Union([TransactionIdParamSchema, TransactionIdCommaListParamSchema])
-          ),
+          tx_id: Type.Array(TransactionIdParamSchema),
           event_limit: LimitParam(ResourceType.Tx),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
@@ -224,14 +225,12 @@ export const TxRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const txList: string[] = req.query.tx_id.flatMap(t => t.split(','));
-
       const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query.event_limit);
       const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
-      txList.forEach(tx => validateRequestHexInput(tx));
+      req.query.tx_id.forEach(tx => validateRequestHexInput(tx));
       const txQuery = await searchTxs(fastify.db, {
-        txIds: txList,
+        txIds: req.query.tx_id,
         eventLimit,
         eventOffset,
         includeUnanchored,
@@ -382,6 +381,12 @@ export const TxRoutes: FastifyPluginAsync<
     '/events',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.type === 'string') {
+          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
+        }
+        done();
+      },
       schema: {
         operationId: 'get_filtered_events',
         summary: 'Transaction Events',
@@ -391,11 +396,7 @@ export const TxRoutes: FastifyPluginAsync<
         querystring: Type.Object({
           tx_id: Type.Optional(TransactionIdParamSchema),
           address: Type.Optional(PrincipalSchema),
-          type: Type.Optional(
-            Type.Array(
-              Type.Union([TransactionEventTypeSchema, TransactionEventTypeCommaListSchema])
-            )
-          ),
+          type: Type.Optional(Type.Array(TransactionEventTypeSchema)),
           offset: OffsetParam(),
           limit: LimitParam(ResourceType.Event),
         }),
@@ -433,7 +434,7 @@ export const TxRoutes: FastifyPluginAsync<
         validateRequestHexInput(addrOrTx.txId);
       }
 
-      const typeQuery = req.query.type?.flatMap(t => t.split(','));
+      const typeQuery = req.query.type;
       let eventTypeFilter: DbEventTypeId[];
       if (typeQuery && typeQuery.length > 0) {
         try {

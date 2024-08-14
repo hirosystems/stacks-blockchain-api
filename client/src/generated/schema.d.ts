@@ -1812,7 +1812,7 @@ export interface operations {
                 offset?: number;
                 /** @description Results per page */
                 limit?: number;
-                type?: (("coinbase" | "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "tenure_change") | string)[];
+                type?: ("coinbase" | "token_transfer" | "smart_contract" | "contract_call" | "poison_microblock" | "tenure_change")[];
                 /**
                  * @description Include data from unanchored (i.e. unconfirmed) microblocks
                  * @example true
@@ -3177,7 +3177,7 @@ export interface operations {
     get_tx_list_details: {
         parameters: {
             query: {
-                tx_id: (string)[];
+                tx_id: string[];
                 /** @description Results per page */
                 event_limit?: number;
                 /** @description Result offset */
@@ -6496,7 +6496,7 @@ export interface operations {
                  */
                 tx_id?: string;
                 address?: string;
-                type?: (("smart_contract_log" | "stx_lock" | "stx_asset" | "fungible_token_asset" | "non_fungible_token_asset") | string)[];
+                type?: ("smart_contract_log" | "stx_lock" | "stx_asset" | "fungible_token_asset" | "non_fungible_token_asset")[];
                 /** @description Result offset */
                 offset?: number;
                 /** @description Results per page */
