@@ -1,14 +1,21 @@
 import type { operations } from "./generated/schema";
 
-export type Transaction = operations['get_transaction_list']['responses']['200']['content']['application/json']['results'][number];
-export type MempoolTransaction = operations['get_mempool_transaction_list']['responses']['200']['content']['application/json']['results'][number];
-export type Block = operations['get_block_by_height']['responses']['200']['content']['application/json'];
-export type Microblock = operations['get_microblock_by_hash']['responses']['200']['content']['application/json'];
-export type NakamotoBlock = operations['get_block']['responses']['200']['content']['application/json'];
-export type BurnBlock = operations['get_burn_blocks']['responses']['200']['content']['application/json']['results'][number];
-export type SmartContract = operations['get_contract_by_id']['responses']['200']['content']['application/json'];
-export type AddressTransactionWithTransfers = operations['get_account_transactions_with_transfers']['responses']['200']['content']['application/json']['results'][number];
-export type AddressStxBalanceResponse = operations['get_account_stx_balance']['responses']['200']['content']['application/json'];
+type Extract200Response<T> = T extends { 200: infer R } ? R : never;
+type ExtractOperationResponse<T extends keyof operations> = Extract200Response<operations[T]['responses']> extends { content: { 'application/json': infer U } } ? U : never;
+export type OperationResponse = {
+  [K in keyof operations]: ExtractOperationResponse<K>;
+};
+
+export type Transaction = OperationResponse['get_transaction_list']['results'][number];
+export type MempoolTransaction = OperationResponse['get_mempool_transaction_list']['results'][number];
+export type Block = OperationResponse['get_block_by_height'];
+export type Microblock = OperationResponse['get_microblock_by_hash'];
+export type NakamotoBlock = OperationResponse['get_block'];
+export type BurnBlock = OperationResponse['get_burn_blocks']['results'][number];
+export type SmartContract = OperationResponse['get_contract_by_id'];
+export type AddressTransactionWithTransfers = OperationResponse['get_account_transactions_with_transfers']['results'][number];
+export type AddressStxBalanceResponse = OperationResponse['get_account_stx_balance'];
+
 export type RpcAddressTxNotificationParams = AddressTransactionWithTransfers & {
   address: string;
   tx_id: string;
