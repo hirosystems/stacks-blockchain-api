@@ -225,7 +225,7 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       coinbase_vrf_proof: args?.coinbase_vrf_proof,
       event_count: args?.event_count ?? 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-      parent_block_hash: args?.block_hash ?? BLOCK_HASH,
+      parent_block_hash: args?.parent_block_hash ?? BLOCK_HASH,
       microblock_canonical: args?.microblock_canonical ?? true,
       microblock_sequence: args?.microblock_sequence ?? 0,
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,

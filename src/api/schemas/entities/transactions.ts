@@ -3,7 +3,7 @@ import { Nullable } from '../util';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions';
 import { TransactionEventSchema } from './transaction-events';
 
-export const TransactionType = {
+const TransactionType = {
   coinbase: 'coinbase',
   token_transfer: 'token_transfer',
   smart_contract: 'smart_contract',
