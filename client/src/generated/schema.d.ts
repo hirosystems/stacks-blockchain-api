@@ -27255,7 +27255,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                height_or_hash: "latest" | string;
+                height_or_hash: "latest" | string | number;
             };
             cookie?: never;
         };
@@ -27321,7 +27321,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                height_or_hash: "latest" | string;
+                height_or_hash: "latest" | string | number;
             };
             cookie?: never;
         };
@@ -28697,7 +28697,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                height_or_hash: "latest" | string;
+                height_or_hash: "latest" | string | number;
             };
             cookie?: never;
         };
@@ -28739,7 +28739,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                height_or_hash: "latest" | string;
+                height_or_hash: "latest" | string | number;
             };
             cookie?: never;
         };

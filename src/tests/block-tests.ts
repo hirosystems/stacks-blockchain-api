@@ -824,6 +824,27 @@ describe('block tests', () => {
     expect(json).toStrictEqual(block5);
   });
 
+  test('blocks v2 retrieved by digit-only hash', async () => {
+    const block = new TestBlockBuilder({
+      block_height: 1,
+      block_hash: `0x1111111111111111111111111111111111111111111111111111111111111111`,
+      index_block_hash: `0x1111111111111111111111111111111111111111111111111111111111111111`,
+      parent_index_block_hash: `0x0000000000000000000000000000000000000000000000000000000000000000`,
+      parent_block_hash: `0x0000000000000000000000000000000000000000000000000000000000000000`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    }).build();
+    await db.update(block);
+
+    // Get by hash
+    const fetch = await supertest(api.server).get(
+      `/extended/v2/blocks/1111111111111111111111111111111111111111111111111111111111111111`
+    );
+    const json = JSON.parse(fetch.text);
+    expect(fetch.status).toBe(200);
+    expect(json.height).toStrictEqual(block.block.block_height);
+  });
+
   test('blocks average time', async () => {
     const blockCount = 50;
     const now = Math.round(Date.now() / 1000);
