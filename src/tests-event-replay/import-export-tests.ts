@@ -38,7 +38,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = 'src/tests-event-replay/.tmp';
+    const tmpDir = 'src/tests-event-replay/.tmp/remote';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv(`${tmpDir}/export.tsv`);
 
@@ -71,7 +71,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = 'src/tests-event-replay/.tmp';
+    const tmpDir = 'src/tests-event-replay/.tmp/local';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv('local:/root/export.tsv');
 
