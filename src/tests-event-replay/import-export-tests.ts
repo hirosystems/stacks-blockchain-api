@@ -73,7 +73,7 @@ describe('import/export tests', () => {
     // Export into temp TSV
     const tmpDir = 'src/tests-event-replay/.tmp';
     fs.mkdirSync(tmpDir, { recursive: true });
-    await exportEventsAsTsv('local:/tmp/tests-event-replay/export.tsv');
+    await exportEventsAsTsv('local:/root/export.tsv');
 
     // Re-import with exported TSV and check that chain tip matches.
     try {

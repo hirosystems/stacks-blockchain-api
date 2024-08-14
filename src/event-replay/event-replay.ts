@@ -31,7 +31,10 @@ enum EventImportMode {
  * @param filePath - Path to TSV file to write
  * @param overwriteFile - If we should overwrite the file
  */
-export async function exportEventsAsTsv(filePath?: string): Promise<void> {
+export async function exportEventsAsTsv(
+  filePath?: string,
+  overwriteFile: boolean = false
+): Promise<void> {
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
@@ -40,6 +43,13 @@ export async function exportEventsAsTsv(filePath?: string): Promise<void> {
     filePath = filePath.replace(/^local:/, '');
     if (!path.isAbsolute(filePath)) {
       throw new Error(`The file path must be absolute`);
+    }
+  } else {
+    const resolvedFilePath = path.resolve(filePath);
+    if (fs.existsSync(resolvedFilePath) && overwriteFile !== true) {
+      throw new Error(
+        `A file already exists at ${resolvedFilePath}. Add --overwrite-file to truncate an existing file`
+      );
     }
   }
 
