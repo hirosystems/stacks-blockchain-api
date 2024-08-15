@@ -1,6 +1,6 @@
 import { handleChainTipCache } from '../../controllers/cache-controller';
 import { parseDbBurnBlock, parseDbNakamotoBlock } from './helpers';
-import { BurnBlockParamsSchema, parseBlockParam } from './schemas';
+import { BurnBlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
@@ -51,6 +51,10 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
     '/:height_or_hash',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
       schema: {
         operationId: 'get_burn_block',
         summary: 'Get burn block',
@@ -77,6 +81,10 @@ export const BurnBlockRoutesV2: FastifyPluginAsync<
     '/:height_or_hash/blocks',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
       schema: {
         operationId: 'get_blocks_by_burn_block',
         summary: 'Get blocks by burn block',

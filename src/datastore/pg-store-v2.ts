@@ -12,10 +12,8 @@ import {
   AddressTransactionParams,
   PoxCyclePaginationQueryParams,
   PoxCycleLimitParamSchema,
-  PoxCycleParams,
   PoxSignerPaginationQueryParams,
   PoxSignerLimitParamSchema,
-  PoxCycleSignerParams,
   BlockIdParam,
 } from '../api/routes/v2/schemas';
 import { InvalidRequestError, InvalidRequestErrorType } from '../errors';

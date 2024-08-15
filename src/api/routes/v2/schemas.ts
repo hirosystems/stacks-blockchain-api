@@ -68,10 +68,11 @@ export type BlockIdParam =
   | { type: 'hash'; hash: string }
   | { type: 'latest'; latest: true };
 
-export function parseBlockParam(value: string): BlockIdParam {
+export function parseBlockParam(value: string | number): BlockIdParam {
   if (value === 'latest') {
     return { type: 'latest', latest: true };
   }
+  value = typeof value === 'string' ? value : value.toString();
   if (/^(0x)?[a-fA-F0-9]{64}$/i.test(value)) {
     return { type: 'hash', hash: has0xPrefix(value) ? value : `0x${value}` };
   }
@@ -79,6 +80,19 @@ export function parseBlockParam(value: string): BlockIdParam {
     return { type: 'height', height: parseInt(value) };
   }
   throw new Error('Invalid block height or hash');
+}
+
+/**
+ * If a param can accept a block hash or height, then ensure that the hash is prefixed with '0x' so
+ * that hashes with only digits are not accidentally parsed as a number.
+ */
+export function cleanBlockHeightOrHashParam(params: { height_or_hash: string | number }) {
+  if (
+    typeof params.height_or_hash === 'string' &&
+    /^[a-fA-F0-9]{64}$/i.test(params.height_or_hash)
+  ) {
+    params.height_or_hash = '0x' + params.height_or_hash;
+  }
 }
 
 const BurnBlockHashParamSchema = Type.String({
@@ -89,18 +103,16 @@ const BurnBlockHashParamSchema = Type.String({
 });
 export const CompiledBurnBlockHashParam = ajv.compile(BurnBlockHashParamSchema);
 
-const BurnBlockHeightParamSchema = Type.String({
-  pattern: isTestEnv ? undefined : '^[0-9]+$',
+const BurnBlockHeightParamSchema = Type.Integer({
   title: 'Burn block height',
   description: 'Burn block height',
-  examples: ['777678'],
+  examples: [777678],
 });
 
-const BlockHeightParamSchema = Type.String({
-  pattern: isTestEnv ? undefined : '^[0-9]+$',
+const BlockHeightParamSchema = Type.Integer({
   title: 'Block height',
   description: 'Block height',
-  examples: ['777678'],
+  examples: [777678],
 });
 
 const BlockHashParamSchema = Type.String({
@@ -186,23 +198,6 @@ export const BurnBlockParamsSchema = Type.Object(
   { additionalProperties: false }
 );
 export type BurnBlockParams = Static<typeof BurnBlockParamsSchema>;
-
-const PoxCycleParamsSchema = Type.Object(
-  { cycle_number: Type.String({ pattern: '^[0-9]+$' }) },
-  { additionalProperties: false }
-);
-export type PoxCycleParams = Static<typeof PoxCycleParamsSchema>;
-
-const PoxCycleSignerParamsSchema = Type.Object(
-  {
-    cycle_number: Type.String({ pattern: '^[0-9]+$' }),
-    signer_key: Type.String({
-      pattern: '^(0x)?[a-fA-F0-9]{66}$',
-    }),
-  },
-  { additionalProperties: false }
-);
-export type PoxCycleSignerParams = Static<typeof PoxCycleSignerParamsSchema>;
 
 export const SmartContractStatusParamsSchema = Type.Object(
   {

@@ -38,15 +38,6 @@ export const TransactionIdParamSchema = Type.String({
   examples: ['0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6'],
 });
 
-export const TransactionIdCommaListParamSchema = Type.String({
-  pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}(,(0x)?[a-fA-F0-9]{64})*$',
-  title: 'Comma separated list of transaction IDs',
-  description: 'Comma separate list of transaction IDs',
-  examples: [
-    '0xf6bd5f4a7b26184a3466340b2e99fd003b4962c0e382a7e4b6a13df3dd7a91c6,0xbf06fc00be4333166b9a9be0557b9f560bee8700dfe7988bd3d3df1f1a077ed8',
-  ],
-});
-
 export const BlockHeightSchema = Type.Integer({
   minimum: 0,
   title: 'Block height',

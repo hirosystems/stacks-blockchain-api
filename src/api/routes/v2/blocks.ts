@@ -1,5 +1,5 @@
 import { handleChainTipCache } from '../../../api/controllers/cache-controller';
-import { BlockParamsSchema, parseBlockParam } from './schemas';
+import { BlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
 import { parseDbNakamotoBlock } from './helpers';
 import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { parseDbTx } from '../../../api/controllers/db-controller';
@@ -92,6 +92,10 @@ export const BlockRoutesV2: FastifyPluginAsync<
     '/:height_or_hash',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
       schema: {
         operationId: 'get_block',
         summary: 'Get block',
@@ -117,6 +121,10 @@ export const BlockRoutesV2: FastifyPluginAsync<
     '/:height_or_hash/transactions',
     {
       preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
       schema: {
         operationId: 'get_transactions_by_block',
         summary: 'Get transactions by block',

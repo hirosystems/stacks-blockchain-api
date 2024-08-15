@@ -24,6 +24,7 @@ import {
   DbSmartContractEvent,
   DbStxEvent,
   DbStxLockEvent,
+  DbTxRaw,
   DbTxStatus,
   DbTxTypeId,
 } from '../datastore/common';
@@ -156,7 +157,7 @@ function testMicroblock(args?: TestMicroblockArgs): DbMicroblockPartial {
   };
 }
 
-export interface TestTxArgs {
+export interface TestTxArgs extends Partial<DbTxRaw> {
   block_hash?: string;
   block_height?: number;
   burn_block_time?: number;
@@ -199,9 +200,9 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
     tx: {
       tx_id: args?.tx_id ?? TX_ID,
       tx_index: args?.tx_index ?? 0,
-      anchor_mode: 3,
+      anchor_mode: args?.anchor_mode ?? 3,
       nonce: args?.nonce ?? 0,
-      raw_tx: '',
+      raw_tx: args?.raw_tx ?? '',
       index_block_hash: args?.index_block_hash ?? INDEX_BLOCK_HASH,
       block_hash: args?.block_hash ?? BLOCK_HASH,
       block_height: args?.block_height ?? BLOCK_HEIGHT,
@@ -213,18 +214,18 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       status: args?.status ?? DbTxStatus.Success,
       raw_result: args?.raw_result ?? '0x0703',
       canonical: args?.canonical ?? true,
-      post_conditions: '0x01f5',
+      post_conditions: args?.post_conditions ?? '0x01f5',
       fee_rate: args?.fee_rate ?? FEE_RATE,
-      sponsored: false,
-      sponsor_address: undefined,
+      sponsored: args?.sponsored ?? false,
+      sponsor_address: args?.sponsor_address ?? undefined,
       sender_address: args?.sender_address ?? SENDER_ADDRESS,
-      origin_hash_mode: 1,
-      coinbase_payload: bufferToHex(Buffer.from('hi')),
+      origin_hash_mode: args?.origin_hash_mode ?? 1,
+      coinbase_payload: args?.coinbase_payload ?? bufferToHex(Buffer.from('hi')),
       coinbase_alt_recipient: args?.coinbase_alt_recipient,
       coinbase_vrf_proof: args?.coinbase_vrf_proof,
-      event_count: 0,
+      event_count: args?.event_count ?? 0,
       parent_index_block_hash: args?.parent_index_block_hash ?? INDEX_BLOCK_HASH,
-      parent_block_hash: BLOCK_HASH,
+      parent_block_hash: args?.parent_block_hash ?? BLOCK_HASH,
       microblock_canonical: args?.microblock_canonical ?? true,
       microblock_sequence: args?.microblock_sequence ?? 0,
       microblock_hash: args?.microblock_hash ?? MICROBLOCK_HASH,
@@ -239,10 +240,20 @@ function testTx(args?: TestTxArgs): DataStoreTxEventData {
       execution_cost_runtime: 0,
       execution_cost_write_count: 0,
       execution_cost_write_length: 0,
+      poison_microblock_header_1: args?.poison_microblock_header_1,
+      poison_microblock_header_2: args?.poison_microblock_header_2,
+      sponsor_nonce: args?.sponsor_nonce,
       contract_call_contract_id: args?.contract_call_contract_id,
       contract_call_function_name: args?.contract_call_function_name,
       contract_call_function_args: args?.contract_call_function_args,
       abi: args?.abi,
+      tenure_change_tenure_consensus_hash: args?.tenure_change_tenure_consensus_hash,
+      tenure_change_prev_tenure_consensus_hash: args?.tenure_change_prev_tenure_consensus_hash,
+      tenure_change_burn_view_consensus_hash: args?.tenure_change_burn_view_consensus_hash,
+      tenure_change_previous_tenure_end: args?.tenure_change_previous_tenure_end,
+      tenure_change_previous_tenure_blocks: args?.tenure_change_previous_tenure_blocks,
+      tenure_change_cause: args?.tenure_change_cause,
+      tenure_change_pubkey_hash: args?.tenure_change_pubkey_hash,
     },
     stxLockEvents: [],
     stxEvents: [],

@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { CommaStringList, Nullable } from '../util';
+import { Nullable } from '../util';
 import { PostConditionModeSchema, PostConditionSchema } from './post-conditions';
 import { TransactionEventSchema } from './transaction-events';
 
@@ -12,11 +12,6 @@ const TransactionType = {
   tenure_change: 'tenure_change',
 } as const;
 export const TransactionTypeSchema = Type.Enum(TransactionType);
-// Comma-separated list of transaction types, e.g. `coinbase,token_transfer`
-export const TransactionTypeStringSchema = CommaStringList(TransactionType, {
-  description: 'Comma separated list of transaction types',
-  examples: ['coinbase,token_transfer,smart_contract'],
-});
 
 export const BaseTransactionSchemaProperties = {
   tx_id: Type.String({
