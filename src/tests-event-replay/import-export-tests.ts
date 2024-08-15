@@ -1,5 +1,6 @@
 import { ChainID } from '@stacks/transactions';
 import * as fs from 'fs';
+import * as path from 'path';
 import { getRawEventRequests } from '../event-replay/event-requests';
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { exportEventsAsTsv, importEventsFromTsv } from '../event-replay/event-replay';
@@ -38,7 +39,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = './.tmp/remote';
+    const tmpDir = 'src/tests-event-replay/.tmp/remote';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv(`${tmpDir}/export.tsv`);
 
@@ -71,7 +72,7 @@ describe('import/export tests', () => {
     );
 
     // Export into temp TSV
-    const tmpDir = './.tmp/local';
+    const tmpDir = 'src/tests-event-replay/.tmp/local';
     fs.mkdirSync(tmpDir, { recursive: true });
     await exportEventsAsTsv('local:/root/export.tsv');
 
