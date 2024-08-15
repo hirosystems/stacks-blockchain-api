@@ -215,7 +215,7 @@ export const TxRoutes: FastifyPluginAsync<
         tags: ['Transactions'],
         querystring: Type.Object({
           tx_id: Type.Array(TransactionIdParamSchema),
-          event_limit: LimitParam(ResourceType.Tx),
+          event_limit: LimitParam(ResourceType.Event),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
         }),
@@ -225,7 +225,7 @@ export const TxRoutes: FastifyPluginAsync<
       },
     },
     async (req, reply) => {
-      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query.event_limit);
+      const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query.event_limit);
       const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
       req.query.tx_id.forEach(tx => validateRequestHexInput(tx));
@@ -478,7 +478,7 @@ export const TxRoutes: FastifyPluginAsync<
           tx_id: TransactionIdParamSchema,
         }),
         querystring: Type.Object({
-          event_limit: LimitParam(ResourceType.Tx),
+          event_limit: LimitParam(ResourceType.Event),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
         }),
@@ -495,7 +495,7 @@ export const TxRoutes: FastifyPluginAsync<
         return reply.redirect('/extended/v1/tx/0x' + req.params.tx_id + url.search);
       }
 
-      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit'], 100);
+      const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query['event_limit'], 100);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
       const includeUnanchored = req.query.unanchored ?? false;
       validateRequestHexInput(tx_id);
@@ -527,7 +527,7 @@ export const TxRoutes: FastifyPluginAsync<
           tx_id: TransactionIdParamSchema,
         }),
         querystring: Type.Object({
-          event_limit: LimitParam(ResourceType.Tx),
+          event_limit: LimitParam(ResourceType.Event),
           event_offset: OffsetParam(),
         }),
         response: {
