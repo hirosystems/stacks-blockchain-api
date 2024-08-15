@@ -56,7 +56,7 @@ export const pagingQueryLimits: Record<ResourceType, { defaultLimit: number; max
   },
   [ResourceType.Event]: {
     defaultLimit: 20,
-    maxLimit: 50,
+    maxLimit: 100,
   },
   [ResourceType.Burnchain]: {
     defaultLimit: 96,
