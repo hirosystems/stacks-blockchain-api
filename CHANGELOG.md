@@ -1,3 +1,10 @@
+## [8.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.2...v8.0.0-beta.3) (2024-08-15)
+
+
+### Bug Fixes
+
+* tx event-limit default should be 100 ([32d0670](https://github.com/hirosystems/stacks-blockchain-api/commit/32d0670a531582b8eb269790fa7a3695a8ce7610))
+
 ## [8.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.1...v8.0.0-beta.2) (2024-08-15)
 
 
