@@ -1,3 +1,10 @@
+## [8.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.3...v8.0.0-beta.4) (2024-08-15)
+
+
+### Bug Fixes
+
+* missing event limit max overrides on a few endpoints ([4f70930](https://github.com/hirosystems/stacks-blockchain-api/commit/4f709308fb95721866b523142536b738aa64a3eb))
+
 ## [8.0.0-beta.3](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.2...v8.0.0-beta.3) (2024-08-15)
 
 
