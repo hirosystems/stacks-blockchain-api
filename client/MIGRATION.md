@@ -4,6 +4,9 @@
 
 This library is now generated with [openapi-typescript](https://openapi-ts.dev/openapi-fetch/) rather than [swagger-codegen](https://github.com/swagger-api/swagger-codegen). Several types which previously presented as the `any` type are now fixed, and the `@stacks/stacks-blockchain-api-types` package is no longer needed.
 
+
+This repo no longer includes a schema for the Stacks Blockchain RPC interface. An alternative client library for the RPC interface can be found at https://github.com/hirosystems/stacks.js/pull/1737.
+
 #### Configuration & Middleware
 
 ```ts
