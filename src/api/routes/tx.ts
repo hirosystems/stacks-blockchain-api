@@ -398,7 +398,7 @@ export const TxRoutes: FastifyPluginAsync<
           address: Type.Optional(PrincipalSchema),
           type: Type.Optional(Type.Array(TransactionEventTypeSchema)),
           offset: OffsetParam(),
-          limit: LimitParam(ResourceType.Event),
+          limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
         }),
         response: {
           200: TransactionEventsResponseSchema,
@@ -478,7 +478,7 @@ export const TxRoutes: FastifyPluginAsync<
           tx_id: TransactionIdParamSchema,
         }),
         querystring: Type.Object({
-          event_limit: LimitParam(ResourceType.Event),
+          event_limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
           event_offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
         }),
@@ -572,7 +572,7 @@ export const TxRoutes: FastifyPluginAsync<
         }),
         querystring: Type.Object({
           offset: OffsetParam(),
-          limit: LimitParam(ResourceType.Tx),
+          limit: LimitParam(ResourceType.Tx, undefined, undefined, 200),
         }),
         response: {
           200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
