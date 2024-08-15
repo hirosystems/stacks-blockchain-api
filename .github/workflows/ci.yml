@@ -201,6 +201,9 @@ jobs:
       - name: Setup integration environment
         run: |
           sudo ufw disable
+          mkdir -p src/tests-event-replay/.tmp/local/
+          sudo chown 999:999 src/tests-event-replay/.tmp/local/
+          sudo chmod -R 777 src/tests-event-replay/.tmp/local/
           docker compose -f docker/docker-compose.dev.postgres.yml up -d
           npm run devenv:logs -- --no-color &> docker-compose-logs.txt &
 
