@@ -12,12 +12,17 @@ export const OffsetParam = (title?: string, description?: string) =>
     })
   );
 
-export const LimitParam = (resource: ResourceType, title?: string, description?: string) =>
+export const LimitParam = (
+  resource: ResourceType,
+  title?: string,
+  description?: string,
+  limitOverride?: number
+) =>
   Type.Optional(
     Type.Integer({
       minimum: 0,
       default: pagingQueryLimits[resource].defaultLimit,
-      maximum: pagingQueryLimits[resource].maxLimit,
+      maximum: limitOverride ?? pagingQueryLimits[resource].maxLimit,
       title: title ?? 'Limit',
       description: description ?? 'Results per page',
     })
