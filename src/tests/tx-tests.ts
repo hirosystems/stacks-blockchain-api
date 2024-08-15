@@ -22,7 +22,7 @@ import {
 } from '@stacks/transactions';
 import { createClarityValueArray } from '../stacks-encoding-helpers';
 import { decodeTransaction, TxPayloadVersionedSmartContract } from 'stacks-encoding-native-js';
-import { getTxFromDataStore } from '../api/controllers/db-controller';
+import { getTxFromDataStore, TransactionType } from '../api/controllers/db-controller';
 import {
   DbBlock,
   DbTxRaw,
@@ -2541,6 +2541,85 @@ describe('tx tests', () => {
         results: [
           expect.objectContaining({
             tx_id: block2.txs[0].tx.tx_id,
+          }),
+        ],
+      })
+    );
+  });
+
+  test('tx list - filter by tx-type', async () => {
+    const testSendertAddr = 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y';
+    const block1 = new TestBlockBuilder({
+      block_height: 1,
+      index_block_hash: '0x01',
+      burn_block_time: 1710000000,
+    })
+      .addTx({
+        tx_id: '0x1234',
+        fee_rate: 1n,
+        sender_address: testSendertAddr,
+        nonce: 1,
+        type_id: DbTxTypeId.Coinbase,
+      })
+      .build();
+
+    await db.update(block1);
+
+    const block2 = new TestBlockBuilder({
+      block_height: 2,
+      index_block_hash: '0x02',
+      parent_block_hash: block1.block.block_hash,
+      parent_index_block_hash: block1.block.index_block_hash,
+      burn_block_time: 1720000000,
+    })
+      .addTx({
+        tx_id: '0x2234',
+        fee_rate: 3n,
+        sender_address: testSendertAddr,
+        nonce: 2,
+        type_id: DbTxTypeId.PoisonMicroblock,
+        poison_microblock_header_1: '0x01',
+        poison_microblock_header_2: '0x02',
+      })
+      .build();
+    await db.update(block2);
+
+    const block3 = new TestBlockBuilder({
+      block_height: 3,
+      index_block_hash: '0x03',
+      parent_block_hash: block2.block.block_hash,
+      parent_index_block_hash: block2.block.index_block_hash,
+      burn_block_time: 1730000000,
+    })
+      .addTx({
+        tx_id: '0x3234',
+        fee_rate: 2n,
+        sender_address: testSendertAddr,
+        nonce: 3,
+        type_id: DbTxTypeId.TokenTransfer,
+        token_transfer_amount: 123456n,
+        token_transfer_memo: '0x1234',
+        token_transfer_recipient_address: 'ST27W5M8BRKA7C5MZE2R1S1F4XTPHFWFRNHA9M04Y',
+      })
+      .build();
+    await db.update(block3);
+
+    const filterTypes: TransactionType[] = ['coinbase', 'poison_microblock', 'token_transfer'];
+    const txsReq1 = await supertest(api.server).get(
+      `/extended/v1/tx?type=${filterTypes.join(',')}`
+    );
+    expect(txsReq1.status).toBe(200);
+    expect(txsReq1.body).toEqual(
+      expect.objectContaining({
+        results: [
+          expect.objectContaining({
+            tx_id: block3.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block2.txs[0].tx.tx_id,
+          }),
+          expect.objectContaining({
+            tx_id: block1.txs[0].tx.tx_id,
           }),
         ],
       })

@@ -1,5 +1,4 @@
 import { Static, Type } from '@sinclair/typebox';
-import { CommaStringList } from '../util';
 
 export const TransactionEventAssetTypeSchema = Type.Enum({
   transfer: 'transfer',
@@ -15,10 +14,6 @@ const TransactionEventType = {
   non_fungible_token_asset: 'non_fungible_token_asset',
 };
 export const TransactionEventTypeSchema = Type.Enum(TransactionEventType);
-export const TransactionEventTypeCommaListSchema = CommaStringList(TransactionEventType, {
-  description: 'Comma separated list of transaction event types',
-  examples: ['smart_contract_log,stx_lock,stx_asset'],
-});
 
 const AbstractTransactionEventSchema = Type.Object(
   {
