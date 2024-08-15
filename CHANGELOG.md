@@ -1,3 +1,10 @@
+## [8.0.0-beta.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.1...v8.0.0-beta.2) (2024-08-15)
+
+
+### Bug Fixes
+
+* pagination and query param parsing bugs ([a382d2b](https://github.com/hirosystems/stacks-blockchain-api/commit/a382d2b80fc8d3e7ff49ce96047f1621749172b2)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
 ## [8.0.0-beta.1](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.2...v8.0.0-beta.1) (2024-08-13)
 
 
