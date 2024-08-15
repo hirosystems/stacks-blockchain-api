@@ -150,25 +150,3 @@ function getPgClientConfig<TGetPoolConfig extends boolean = false>({
     return clientConfig;
   }
 }
-
-/**
- * Creates a postgres pool client connection. If the connection fails due to a transient error, it is retried until successful.
- * You'd expect that the pg lib to handle this, but it doesn't, see https://github.com/brianc/node-postgres/issues/1789
- */
-export async function connectWithRetry(pool: Pool): Promise<PoolClient> {
-  for (let retryAttempts = 1; ; retryAttempts++) {
-    try {
-      const client = await pool.connect();
-      return client;
-    } catch (error: any) {
-      // Check for transient errors, and retry after 1 second
-      const pgConnectionError = isPgConnectionError(error);
-      if (pgConnectionError) {
-        logger.warn(`${pgConnectionError}, will retry, attempt #${retryAttempts}`);
-        await timeout(1000);
-      } else {
-        throw error;
-      }
-    }
-  }
-}
