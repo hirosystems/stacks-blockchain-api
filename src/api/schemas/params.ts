@@ -36,6 +36,14 @@ export const UnanchoredParamSchema = Type.Optional(
   })
 );
 
+export const UntilBlockSchema = Type.Optional(
+  Type.String({
+    description:
+      'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
+    examples: ['60000', '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79'],
+  })
+);
+
 export const TransactionIdParamSchema = Type.String({
   pattern: isTestEnv ? undefined : '^(0x)?[a-fA-F0-9]{64}$',
   title: 'Transaction ID',
