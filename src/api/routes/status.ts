@@ -28,23 +28,25 @@ export const StatusRoutes: FastifyPluginAsync<
         status: 'ready',
       };
       try {
-        const poxForceUnlockHeights = await fastify.db.getPoxForceUnlockHeights();
-        if (poxForceUnlockHeights.found) {
-          response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
-          response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
-          response.pox_v3_unlock_height = poxForceUnlockHeights.result.pox3UnlockHeight as number;
-        }
-        const chainTip = await fastify.db.getChainTip(fastify.db.sql);
-        if (chainTip.block_height > 0) {
-          response.chain_tip = {
-            block_height: chainTip.block_height,
-            block_hash: chainTip.block_hash,
-            index_block_hash: chainTip.index_block_hash,
-            microblock_hash: chainTip.microblock_hash,
-            microblock_sequence: chainTip.microblock_sequence,
-            burn_block_height: chainTip.burn_block_height,
-          };
-        }
+        await fastify.db.sqlTransaction(async sql => {
+          const poxForceUnlockHeights = await fastify.db.getPoxForcedUnlockHeightsInternal(sql);
+          if (poxForceUnlockHeights.found) {
+            response.pox_v1_unlock_height = poxForceUnlockHeights.result.pox1UnlockHeight as number;
+            response.pox_v2_unlock_height = poxForceUnlockHeights.result.pox2UnlockHeight as number;
+            response.pox_v3_unlock_height = poxForceUnlockHeights.result.pox3UnlockHeight as number;
+          }
+          const chainTip = await fastify.db.getChainTip(sql);
+          if (chainTip.block_height > 0) {
+            response.chain_tip = {
+              block_height: chainTip.block_height,
+              block_hash: chainTip.block_hash,
+              index_block_hash: chainTip.index_block_hash,
+              microblock_hash: chainTip.microblock_hash,
+              microblock_sequence: chainTip.microblock_sequence,
+              burn_block_height: chainTip.burn_block_height,
+            };
+          }
+        });
       } catch (error) {
         // ignore error
       }
