@@ -1,3 +1,10 @@
+## [8.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.4...v8.0.0-beta.5) (2024-08-16)
+
+
+### Bug Fixes
+
+* perform status endpoint sql inside transactions ([b23445c](https://github.com/hirosystems/stacks-blockchain-api/commit/b23445c85f826d0e6cf98695f985c3670d00c1db))
+
 ## [8.0.0-beta.4](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.3...v8.0.0-beta.4) (2024-08-15)
 
 
