@@ -5,7 +5,7 @@ import { handleChainTipCache } from '../controllers/cache-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
+import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
 import { NotFoundError } from '../../errors';
 import { PaginatedResponse } from '../schemas/util';
 import { PoolDelegation, PoolDelegationSchema } from '../schemas/entities/pox';
@@ -119,7 +119,7 @@ export const PoxRoutes: FastifyPluginAsync<
         tags: ['Stacking'],
         params: Type.Object({
           pox: Type.Enum({ pox2: 'pox2', pox3: 'pox3', pox4: 'pox4' }),
-          principal: Type.String(),
+          principal: PrincipalSchema,
         }),
       },
     },

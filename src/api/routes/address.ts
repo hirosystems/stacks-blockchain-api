@@ -23,7 +23,7 @@ import { has0xPrefix } from '@hirosystems/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
+import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
 import {
   AddressBalance,
   AddressBalanceSchema,
@@ -87,10 +87,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieves STX token balance for a given Address or Contract Identifier.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
@@ -155,10 +152,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieves total account balance information for a given Address or Contract Identifier. This includes the balances of  STX Tokens, Fungible Tokens and Non-Fungible Tokens for the account.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
@@ -264,10 +258,7 @@ export const AddressRoutes: FastifyPluginAsync<
         If you need to actively monitor new transactions for an address or contract id, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
@@ -347,10 +338,7 @@ export const AddressRoutes: FastifyPluginAsync<
         Retrieves transaction details for a given Transaction Id \`tx_id\`, for a given account or contract Identifier.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
           tx_id: Type.String({
             description: 'Transaction ID',
             examples: ['0x34d79c7cfc2fe525438736733e501a4bf0308a5556e3e080d1e2c0858aad7448'],
@@ -414,10 +402,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieve all transactions for an account or contract identifier including STX transfers for each transaction.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
@@ -537,10 +522,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieves a list of all assets events associated with an account or a Contract Identifier. This includes Transfers, Mints.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Event),
@@ -598,10 +580,7 @@ export const AddressRoutes: FastifyPluginAsync<
         and transfers from contract-call transactions a the \`send-many-memo\` bulk sending contract.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
@@ -700,10 +679,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieves all transactions for a given address that are currently in mempool`,
         tags: ['Transactions'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Tx),
@@ -750,10 +726,7 @@ export const AddressRoutes: FastifyPluginAsync<
         description: `Retrieves the latest nonce values used by an account by inspecting the mempool, microblock transactions, and anchored transactions.`,
         tags: ['Accounts'],
         params: Type.Object({
-          principal: Type.String({
-            description: 'Stacks address or a Contract identifier',
-            examples: ['SP31DA6FTSJX2WGTZ69SFY11BH51NZMB0ZW97B5P0'],
-          }),
+          principal: PrincipalSchema,
         }),
         querystring: Type.Object({
           block_height: Type.Optional(

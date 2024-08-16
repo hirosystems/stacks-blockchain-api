@@ -9,7 +9,7 @@ import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, UnanchoredParamSchema } from '../schemas/params';
+import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
 import { PaginatedResponse } from '../schemas/util';
 import {
   NonFungibleTokenHistoryEventWithTxIdSchema,
@@ -38,10 +38,7 @@ export const TokenRoutes: FastifyPluginAsync<
         More information on Non-Fungible Tokens on the Stacks blockchain can be found [here](https://docs.stacks.co/write-smart-contracts/tokens#non-fungible-tokens-nfts).`,
         tags: ['Non-Fungible Tokens'],
         querystring: Type.Object({
-          principal: Type.String({
-            description: `token owner's STX address or Smart Contract ID`,
-            examples: ['SPNWZ5V2TPWGQGVDR6T7B6RQ4XMGZ4PXTEE0VQ0S.marketplace-v3'],
-          }),
+          principal: PrincipalSchema,
           asset_identifiers: Type.Optional(
             Type.Array(
               Type.String({
