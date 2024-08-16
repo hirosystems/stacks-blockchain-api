@@ -23,7 +23,13 @@ import { has0xPrefix } from '@hirosystems/api-toolkit';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam, PrincipalSchema, UnanchoredParamSchema } from '../schemas/params';
+import {
+  LimitParam,
+  OffsetParam,
+  PrincipalSchema,
+  UnanchoredParamSchema,
+  UntilBlockSchema,
+} from '../schemas/params';
 import {
   AddressBalance,
   AddressBalanceSchema,
@@ -91,16 +97,7 @@ export const AddressRoutes: FastifyPluginAsync<
         }),
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: AddressStxBalanceSchema,
@@ -156,16 +153,7 @@ export const AddressRoutes: FastifyPluginAsync<
         }),
         querystring: Type.Object({
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: AddressBalanceSchema,
@@ -267,16 +255,7 @@ export const AddressRoutes: FastifyPluginAsync<
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: AddressTransactionsListResponseSchema,
@@ -411,16 +390,7 @@ export const AddressRoutes: FastifyPluginAsync<
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: AddressTransactionsWithTransfersListResponseSchema,
@@ -528,16 +498,7 @@ export const AddressRoutes: FastifyPluginAsync<
           limit: LimitParam(ResourceType.Event),
           offset: OffsetParam(),
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: PaginatedResponse(TransactionEventSchema, { title: 'AddressAssetsListResponse' }),
@@ -589,16 +550,7 @@ export const AddressRoutes: FastifyPluginAsync<
             Type.Integer({ description: 'Filter for transactions only at this given block height' })
           ),
           unanchored: UnanchoredParamSchema,
-          until_block: Type.Optional(
-            Type.String({
-              description:
-                'Block hash or block height. Return data representing the state up until that point in time, rather than the current block. Note - Use either of the query parameters but not both at a time.',
-              examples: [
-                '60000',
-                '0x4839a8b01cfb39ffcc0d07d3db31e848d5adf5279d529ed5062300b9f353ff79',
-              ],
-            })
-          ),
+          until_block: UntilBlockSchema,
         }),
         response: {
           200: AddressStxInboundListResponseSchema,
