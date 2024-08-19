@@ -52,56 +52,6 @@ jobs:
       - name: Lint Unused Exports
         run: npm run lint:unused-exports
 
-  lint-docs:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./docs
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: ".nvmrc"
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Build schema & docs
-        run: npm run build
-
-      - name: Validate generated types
-        run: tsc index.d.ts
-
-      - name: Lint JSON
-        run: npm run lint:json
-
-      - name: Lint YAML
-        run: npm run lint:yaml
-
-      - name: Lint OpenAPI
-        run: npm run lint:openapi
-
-      - name: Validate schemas
-        run: npm run validate:schemas
-
   test:
     runs-on: ubuntu-latest
     steps:
@@ -131,10 +81,6 @@ jobs:
 
       - name: Install client deps
         working-directory: client
-        run: npm ci --audit=false
-
-      - name: Install docs deps
-        working-directory: docs
         run: npm ci --audit=false
 
       - name: Setup env vars
@@ -410,68 +356,6 @@ jobs:
       - name: Upload coverage to Coveralls
         uses: coverallsapp/github-action@master
         if: ${{ false }}
-        with:
-          github-token: ${{ secrets.github_token }}
-          flag-name: run-${{ github.job }}
-          parallel: true
-
-  test-subnets:
-    if: false
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: '.nvmrc'
-
-      - name: Cache node modules
-        uses: actions/cache@v3
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: |
-            ~/.npm
-            **/node_modules
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
-            ${{ runner.os }}-build-
-            ${{ runner.os }}-
-
-      - name: Install deps
-        run: npm ci --audit=false
-
-      - name: Setup env vars
-        run: echo "STACKS_CORE_EVENT_HOST=http://0.0.0.0" >> $GITHUB_ENV
-
-      - name: Setup integration environment
-        run: |
-          sudo ufw disable
-          npm run devenv:deploy:subnets -- -d
-          npm run devenv:logs:subnets -- --no-color &> docker-compose-logs.txt &
-
-      - name: Run tests
-        run: npm run test:subnets
-
-      - name: Print integration environment logs
-        run: cat docker-compose-logs.txt
-        if: failure()
-
-      - name: Teardown integration environment
-        run: npm run devenv:stop:subnets
-        if: always()
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-        if: always()
-
-      - name: Upload coverage to Coveralls
-        uses: coverallsapp/github-action@master
-        if: always()
         with:
           github-token: ${{ secrets.github_token }}
           flag-name: run-${{ github.job }}

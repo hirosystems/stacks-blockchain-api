@@ -34,11 +34,11 @@ import {
   ClarityValueUInt,
   decodeClarityValue,
 } from 'stacks-encoding-native-js';
-import { AddressStxBalanceResponse } from '@stacks/stacks-blockchain-api-types';
 import * as assert from 'assert';
 import { hexToBytes } from '@stacks/common';
 import { StackingClient } from '@stacks/stacking';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
 
 describe('PoX-4 - Delegate aggregation increase operations', () => {
   const seedKey = testnetKeys[4].secretKey;
@@ -256,7 +256,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
 
     // validate API balance state
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(amountStackedInitial));
@@ -458,7 +458,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     );
 
     // validate API endpoint balance state for account
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));
@@ -504,7 +504,7 @@ describe('PoX-4 - Delegate aggregation increase operations', () => {
     expect(coreBalanceInfo.unlock_height).toBe(0);
 
     // validate API endpoint balance state for account
-    const apiBalance = await fetchGet<AddressStxBalanceResponse>(
+    const apiBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${delegateeAccount.stxAddr}/stx`
     );
     expect(BigInt(apiBalance.locked)).toBe(BigInt(BigInt(coreBalanceInfo.locked)));

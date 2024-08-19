@@ -9,9 +9,8 @@ import { startApiServer } from './api/init';
 import { startProfilerServer } from './inspector-util';
 import { startEventServer } from './event-stream/event-server';
 import { StacksCoreRpcClient } from './core-rpc/client';
-import { createServer as createPrometheusServer } from '@promster/server';
+import * as promClient from 'prom-client';
 import { OfflineDummyStore } from './datastore/offline-dummy-store';
-import { Socket } from 'net';
 import * as getopts from 'getopts';
 import * as fs from 'fs';
 import { injectC32addressEncodeCache } from './c32-addr-cache';
@@ -24,9 +23,11 @@ import {
   isProdEnv,
   numberToHex,
   parseBoolean,
+  PINO_LOGGER_CONFIG,
   registerShutdownConfig,
   timeout,
 } from '@hirosystems/api-toolkit';
+import Fastify from 'fastify';
 
 enum StacksApiMode {
   /**
@@ -113,6 +114,7 @@ async function init(): Promise<void> {
         '`/extended/` endpoint. Please execute `npm run build` to regenerate it.'
     );
   }
+  promClient.collectDefaultMetrics();
   chainIdConfigurationCheck();
   const apiMode = getApiMode();
   let dbStore: PgStore;
@@ -202,24 +204,27 @@ async function init(): Promise<void> {
   }
 
   if (isProdEnv) {
-    const prometheusServer = await createPrometheusServer({ port: 9153 });
-    logger.info(`@promster/server started on port 9153.`);
-    const sockets = new Set<Socket>();
-    prometheusServer.on('connection', socket => {
-      sockets.add(socket);
-      socket.once('close', () => sockets.delete(socket));
+    const promServer = Fastify({
+      trustProxy: true,
+      logger: PINO_LOGGER_CONFIG,
+    });
+    promServer.route({
+      url: '/metrics',
+      method: 'GET',
+      logLevel: 'info',
+      handler: async (_, reply) => {
+        const metrics: string = await promClient.register.metrics();
+        await reply.type('text/plain').send(metrics);
+      },
     });
     registerShutdownConfig({
-      name: 'Prometheus',
+      name: 'Prometheus Server',
+      forceKillable: false,
       handler: async () => {
-        for (const socket of sockets) {
-          socket.destroy();
-          sockets.delete(socket);
-        }
-        await Promise.resolve(prometheusServer.close());
+        await promServer.close();
       },
-      forceKillable: true,
     });
+    await promServer.listen({ host: '0.0.0.0', port: 9153 });
   }
 }
 

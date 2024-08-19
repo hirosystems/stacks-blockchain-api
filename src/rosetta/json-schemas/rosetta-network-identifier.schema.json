@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "title": "NetworkIdentifier",
+  "description": "The network_identifier specifies which network a particular object is associated with.",
+  "required": ["blockchain", "network"],
+  "additionalProperties": false,
+  "properties": {
+    "blockchain": {
+      "type": "string",
+      "description": "Blockchain name"
+    },
+    "network": {
+      "type": "string",
+      "description": "If a blockchain has a specific chain-id or network identifier, it should go in this field. It is up to the client to determine which network-specific identifier is mainnet or testnet."
+    },
+    "sub_network_identifier": {
+      "type": "object",
+      "description": "In blockchains with sharded state, the SubNetworkIdentifier is required to query some object on a specific shard. This identifier is optional for all non-sharded blockchains.",
+      "required": ["network"],
+      "additionalProperties": false,
+      "properties": {
+        "network": {
+          "type": "string",
+          "description": "Network name"
+        },
+        "metadata": {
+          "type": "object",
+          "description": "Meta data from subnetwork identifier",
+          "required": ["producer"],
+          "properties": {
+            "producer": {
+              "type": "string",
+              "description": "producer"
+            }
+          }
+        }
+      }
+    }
+  }
+}

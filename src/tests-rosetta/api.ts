@@ -19,7 +19,7 @@ import {
   RosettaNetworkStatusResponse,
   RosettaOperation,
   RosettaTransaction,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   RosettaErrors,
   RosettaOperationType,
@@ -98,7 +98,7 @@ describe('Rosetta API', () => {
       code: 613,
       message: 'Network identifier object is null.',
       retriable: false,
-      details: { message: "should have required property 'network_identifier'" },
+      details: { message: "must have required property 'network_identifier'" },
     });
   });
 
@@ -200,10 +200,10 @@ describe('Rosetta API', () => {
     const blockHeight = 2;
     const tx = {
       type_id: DbTxTypeId.Coinbase,
-      anchor_mode: AnchorMode.OnChainOnly,
+      anchor_mode: DbTxAnchorMode.OnChainOnly,
       status: DbTxStatus.Success,
       sender_address: 'ST2N3HQ5BZV43J0ZZY4X6T50NTQTQBMZ3AVRQ86A',
-      coinbase_payload: Buffer.alloc(0)
+      coinbase_payload: ''
     }
     const parentData = new TestBlockBuilder().addTx().build();
     const data = new TestBlockBuilder({
@@ -261,10 +261,10 @@ describe('Rosetta API', () => {
     const blockHeight = 2;
     const tx = {
       type_id: DbTxTypeId.Coinbase,
-      anchor_mode: AnchorMode.OnChainOnly,
+      anchor_mode: DbTxAnchorMode.OnChainOnly,
       status: DbTxStatus.Success,
       sender_address: 'ST2N3HQ5BZV43J0ZZY4X6T50NTQTQBMZ3AVRQ86A',
-      coinbase_payload: Buffer.alloc(0)
+      coinbase_payload: ''
     }
     const parentData = new TestBlockBuilder().addTx().build();
     const data = new TestBlockBuilder({
@@ -963,7 +963,7 @@ describe('Rosetta API', () => {
     const tx_1 =  {
       tx_id: '0xa95f0f833cf3b90473a9654526e9cb02626b85f32efae7f05c139d3460225d5f',
       type_id: DbTxTypeId.TokenTransfer,
-      anchor_mode: AnchorMode.Any,
+      anchor_mode: DbTxAnchorMode.Any,
       status: DbTxStatus.Success,
       sender_address: 'ST1HB1T8WRNBYB0Y3T7WXZS38NKKPTBR3EG9EPJKR',
       event_count: 1,
@@ -976,7 +976,7 @@ describe('Rosetta API', () => {
     const tx_2 = {
       tx_id: '0xf03f217ebd89d2e0fd9bdf56ad2cc09b42455cd0d3442a4ebbb9f9dbf0dcc6b9',
       type_id: DbTxTypeId.TokenTransfer,
-      anchor_mode: AnchorMode.Any,
+      anchor_mode: DbTxAnchorMode.Any,
       status: DbTxStatus.Success,
       sender_address: testAddr1,
       event_count: 1,
@@ -989,7 +989,7 @@ describe('Rosetta API', () => {
     const tx_3 = {
       tx_id: '0xc9d72d08ae48503e93f54b218b9048b1afdb1054f15baa3244490ad41a5a5902',
       type_id: DbTxTypeId.TokenTransfer,
-      anchor_mode: AnchorMode.Any,
+      anchor_mode: DbTxAnchorMode.Any,
       status: DbTxStatus.Success,
       sender_address: testAddr1,
       event_count: 1,
@@ -1003,7 +1003,7 @@ describe('Rosetta API', () => {
     const tx_4 = {
       tx_id: '0x552e94a0d57683fd8b8e4dfa5c807096e1fa7b6ab67f651f735b9d5e3c8bea93',
       type_id: DbTxTypeId.TokenTransfer,
-      anchor_mode: AnchorMode.Any,
+      anchor_mode: DbTxAnchorMode.Any,
       status: DbTxStatus.Success,
       sender_address: testAddr1,
       event_count: 1,
@@ -1166,7 +1166,7 @@ describe('Rosetta API', () => {
     const tx_1 =  {
       tx_id: '0xa95f0f833cf3b90473a9654526e9cb02626b85f32efae7f05c139d3460225d5f',
       type_id: DbTxTypeId.TokenTransfer,
-      anchor_mode: AnchorMode.Any,
+      anchor_mode: DbTxAnchorMode.Any,
       status: DbTxStatus.Success,
       sender_address: senderAddr,
       event_count: 1,
@@ -1332,7 +1332,7 @@ describe('Rosetta API', () => {
       code: 609,
       message: 'Invalid params.',
       retriable: false,
-      details: { message: "should have required property 'account_identifier'" }
+      details: { message: "must have required property 'account_identifier'" }
     }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });
@@ -1482,7 +1482,7 @@ describe('Rosetta API', () => {
       code: 615,
       message: 'Block identifier is null.',
       retriable: false,
-      details: { message: "should have required property 'block_identifier'" }
+      details: { message: "must have required property 'block_identifier'" }
     }
     expect(JSON.parse(result.text)).toEqual(expectResponse);
   });

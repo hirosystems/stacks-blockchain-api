@@ -16,7 +16,7 @@ import {
   RosettaConstructionPayloadsRequest,
   RosettaConstructionPreprocessRequest,
   RosettaConstructionPreprocessResponse,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../rosetta/types';
 import {
   AnchorMode,
   AuthType,
@@ -381,7 +381,7 @@ describe('Rosetta Construction', () => {
       message: 'Network identifier object is null.',
       retriable: false,
       details: {
-        message: "should have required property 'network_identifier'",
+        message: "must have required property 'network_identifier'",
       },
     };
 
@@ -2544,7 +2544,7 @@ describe('Rosetta Construction', () => {
         code: 613,
         message: 'Network identifier object is null.',
         retriable: false,
-        details: { message: "should have required property 'network_identifier'" },
+        details: { message: "must have required property 'network_identifier'" },
       });
     });
 

@@ -1,25 +1,25 @@
 import * as JsonRpcLite from 'jsonrpc-lite';
 import { EventEmitter } from 'eventemitter3';
-import {
+import { BASE_PATH } from '../common';
+import type { 
+  Block,
+  Transaction,
+  Microblock,
+  RpcAddressTxNotificationParams,
+  RpcAddressBalanceNotificationParams,
+  NftEvent,
+  MempoolTransaction,
+  RpcSubscriptionType,
+  RpcBlockSubscriptionParams,
+  RpcMicroblockSubscriptionParams,
+  RpcMempoolSubscriptionParams,
   RpcTxUpdateSubscriptionParams,
   RpcAddressTxSubscriptionParams,
   RpcAddressBalanceSubscriptionParams,
-  RpcSubscriptionType,
-  Block,
-  RpcBlockSubscriptionParams,
-  Microblock,
-  Transaction,
-  RpcMicroblockSubscriptionParams,
-  RpcMempoolSubscriptionParams,
-  MempoolTransaction,
-  RpcAddressBalanceNotificationParams,
-  RpcAddressTxNotificationParams,
-  NftEvent,
   RpcNftEventSubscriptionParams,
   RpcNftAssetEventSubscriptionParams,
-  RpcNftCollectionEventSubscriptionParams,
-} from '@stacks/stacks-blockchain-api-types';
-import { BASE_PATH } from '../generated/runtime';
+  RpcNftCollectionEventSubscriptionParams
+} from '../types';
 
 type IWebSocket = import('ws') | WebSocket;
 

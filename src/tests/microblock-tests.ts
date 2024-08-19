@@ -21,18 +21,20 @@ import {
 import { startApiServer } from '../api/init';
 import { httpPostRequest, I32_MAX } from '../helpers';
 import {
-  AddressStxBalanceResponse,
+  ContractCallTransaction,
+  MempoolTransaction,
+  Transaction,
+} from '../api/schemas/entities/transactions';
+import {
   AddressStxInboundListResponse,
   AddressTransactionsListResponse,
   AddressTransactionsWithTransfersListResponse,
-  ContractCallTransaction,
-  MempoolTransaction,
   MempoolTransactionListResponse,
-  Microblock,
   MicroblockListResponse,
-  Transaction,
   TransactionResults,
-} from '@stacks/stacks-blockchain-api-types';
+} from '../api/schemas/responses/responses';
+import { Microblock } from '../api/schemas/entities/microblock';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
 import { useWithCleanup } from './test-helpers';
 import { startEventServer } from '../event-stream/event-server';
 import * as fs from 'fs';
@@ -569,7 +571,7 @@ describe('microblock tests', () => {
         expect(txListBody1.results).toHaveLength(1);
         expect(txListBody1.results[0].tx_id).toBe(tx1.tx_id);
 
-        const txListResult2 = await supertest(api.server).get(`/extended/v1/tx?unanchored`);
+        const txListResult2 = await supertest(api.server).get(`/extended/v1/tx?unanchored=true`);
         const { body: txListBody2 }: { body: TransactionResults } = txListResult2;
         expect(txListBody2.results).toHaveLength(3);
         expect(txListBody2.results[0].tx_id).toBe(mbTx2.tx_id);
@@ -611,7 +613,7 @@ describe('microblock tests', () => {
         expect(mempoolBody1.results[0].tx_status).toBe('pending');
 
         const mempoolResult2 = await supertest(api.server).get(
-          `/extended/v1/tx/mempool?unanchored`
+          `/extended/v1/tx/mempool?unanchored=true`
         );
         const { body: mempoolBody2 }: { body: MempoolTransactionListResponse } = mempoolResult2;
         expect(mempoolBody2.results).toHaveLength(0);
@@ -622,7 +624,7 @@ describe('microblock tests', () => {
         expect(txBody1.tx_status).toBe('pending');
 
         const txResult2 = await supertest(api.server).get(
-          `/extended/v1/tx/${mbTx1.tx_id}?unanchored`
+          `/extended/v1/tx/${mbTx1.tx_id}?unanchored=true`
         );
         const { body: txBody2 }: { body: Transaction } = txResult2;
         expect(txBody2.tx_id).toBe(mbTx1.tx_id);
@@ -659,7 +661,7 @@ describe('microblock tests', () => {
         expect(addrTxsTransfersBody1.results).toHaveLength(0);
 
         const addrTxsTransfers2 = await supertest(api.server).get(
-          `/extended/v1/address/${addr2}/transactions_with_transfers?unanchored`
+          `/extended/v1/address/${addr2}/transactions_with_transfers?unanchored=true`
         );
         const {
           body: addrTxsTransfersBody2,
@@ -675,21 +677,21 @@ describe('microblock tests', () => {
         expect(addrTxsBody1.results).toHaveLength(0);
 
         const addrTxs2 = await supertest(api.server).get(
-          `/extended/v1/address/${addr2}/transactions?unanchored`
+          `/extended/v1/address/${addr2}/transactions?unanchored=true`
         );
         const { body: addrTxsBody2 }: { body: AddressTransactionsListResponse } = addrTxs2;
         expect(addrTxsBody2.results).toHaveLength(2);
         expect(addrTxsBody2.results[0].tx_id).toBe(mbTx2.tx_id);
 
         const addrBalance1 = await supertest(api.server).get(`/extended/v1/address/${addr2}/stx`);
-        const { body: addrBalanceBody1 }: { body: AddressStxBalanceResponse } = addrBalance1;
+        const { body: addrBalanceBody1 }: { body: AddressStxBalance } = addrBalance1;
         expect(addrBalanceBody1.balance).toBe('0');
         expect(addrBalanceBody1.total_received).toBe('0');
 
         const addrBalance2 = await supertest(api.server).get(
-          `/extended/v1/address/${addr2}/stx?unanchored`
+          `/extended/v1/address/${addr2}/stx?unanchored=true`
         );
-        const { body: addrBalanceBody2 }: { body: AddressStxBalanceResponse } = addrBalance2;
+        const { body: addrBalanceBody2 }: { body: AddressStxBalance } = addrBalance2;
         expect(addrBalanceBody2.balance).toBe(mbTxStxEvent1.amount.toString());
         expect(addrBalanceBody2.total_received).toBe(mbTxStxEvent1.amount.toString());
 
@@ -701,7 +703,7 @@ describe('microblock tests', () => {
         expect(addrStxInboundBody1.results).toHaveLength(0);
 
         const addrStxInbound2 = await supertest(api.server).get(
-          `/extended/v1/address/${addr2}/stx_inbound?unanchored`
+          `/extended/v1/address/${addr2}/stx_inbound?unanchored=true`
         );
         const { body: addrStxInboundBody2 }: { body: AddressStxInboundListResponse } =
           addrStxInbound2;

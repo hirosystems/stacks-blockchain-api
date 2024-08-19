@@ -1,7 +1,0 @@
-{
-  "last_mempool_tx_nonce": 5,
-  "last_executed_tx_nonce": 2,
-  "possible_next_nonce": 6,
-  "detected_missing_nonces": [3, 4],
-  "detected_mempool_nonces": []
-}

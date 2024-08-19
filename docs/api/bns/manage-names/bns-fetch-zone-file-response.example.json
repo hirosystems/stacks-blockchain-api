@@ -1,3 +1,0 @@
-{
-  "zonefile": "$ORIGIN bar.test\n$TTL 3600\n_https._tcp URI 10 1 \"https://gaia.blockstack.org/hub/17Zijx61Sp7SbVfRTdETo7PhizJHYEUxbY/profile.json\"\n"
-}

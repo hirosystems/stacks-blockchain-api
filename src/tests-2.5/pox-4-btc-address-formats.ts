@@ -1,12 +1,6 @@
 import { hexToBuffer, timeout } from '@hirosystems/api-toolkit';
 import { StackingClient, decodeBtcAddress } from '@stacks/stacking';
 import {
-  AddressStxBalanceResponse,
-  BurnchainRewardListResponse,
-  BurnchainRewardSlotHolderListResponse,
-  BurnchainRewardsTotal,
-} from '@stacks/stacks-blockchain-api-types';
-import {
   AnchorMode,
   StacksPrivateKey,
   bufferCV,
@@ -31,6 +25,12 @@ import {
 import { RPCClient } from 'rpc-bitcoin';
 import { hexToBytes } from '@stacks/common';
 import { getPublicKeyFromPrivate } from '@stacks/encryption';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
+import {
+  BurnchainRewardListResponse,
+  BurnchainRewardSlotHolderListResponse,
+} from '../api/schemas/responses/responses';
+import { BurnchainRewardsTotal } from '../api/schemas/entities/burnchain-rewards';
 
 const BTC_PRIVATE_KEY = '0000000000000000000000000000000000000000000000000000000000000002';
 
@@ -173,7 +173,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
       expect(lockEvent.unlock_height).toBe(expectedUnlockHeight);
 
       // Test the API address balance data after a `stack-stx` operation
-      const balance = await fetchGet<AddressStxBalanceResponse>(
+      const balance = await fetchGet<AddressStxBalance>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
       expect(balance.locked).toBe(ustxAmount.toString());
@@ -196,7 +196,7 @@ describe.each([P2SH_P2WPKH, P2WPKH, P2WSH, P2TR])(
 
     test('stx unlocked - API balance', async () => {
       // Check that STX are no longer reported as locked by the API endpoints:
-      const balance = await fetchGet<AddressStxBalanceResponse>(
+      const balance = await fetchGet<AddressStxBalance>(
         `/extended/v1/address/${account.stacksAddress}/stx`
       );
       expect(BigInt(balance.locked)).toBe(0n);

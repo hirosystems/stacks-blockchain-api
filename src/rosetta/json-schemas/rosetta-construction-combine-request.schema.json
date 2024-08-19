@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "title": "RosettaConstructionCombineRequest",
+  "description": "RosettaConstructionCombineRequest is the input to the /construction/combine endpoint. It contains the unsigned transaction blob returned by /construction/payloads and all required signatures to create a network transaction.",
+  "required": ["network_identifier", "unsigned_transaction", "signatures"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "unsigned_transaction": {
+      "type": "string"
+    },
+    "signatures": {
+      "type": "array",
+      "items": {
+        "$ref": "./rosetta-signature.schema.json"
+      }
+    }
+  }
+}

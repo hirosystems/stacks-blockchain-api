@@ -1,9 +1,0 @@
-{
-  "title": "BnsGetAllNamesResponse",
-  "description": "Fetch a list of all names known to the node.",
-  "type": "array",
-  "items": {
-    "type": "string",
-    "pattern": "^([a-z0-9\\-_.+]{3,37})$"
-  }
-}

@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "title": "RosettaMempoolResponse",
+  "description": "A MempoolResponse contains all transaction identifiers in the mempool for a particular network_identifier.",
+  "required": ["transaction_identifiers"],
+  "additionalProperties": false,
+  "properties": {
+    "transaction_identifiers": {
+      "type": "array",
+      "description": "",
+      "items": {
+        "$ref": "./rosetta-transaction-identifier.schema.json"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

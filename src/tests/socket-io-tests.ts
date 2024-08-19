@@ -3,15 +3,6 @@ import { ChainID } from '@stacks/common';
 import { ApiServer, startApiServer } from '../api/init';
 import { DbAssetEventTypeId, DbTxStatus } from '../datastore/common';
 import {
-  Block,
-  Microblock,
-  MempoolTransaction,
-  AddressTransactionWithTransfers,
-  AddressStxBalanceResponse,
-  Transaction,
-  NftEvent,
-} from '../../docs/generated';
-import {
   TestBlockBuilder,
   testMempoolTx,
   TestMicroblockStreamBuilder,
@@ -20,6 +11,15 @@ import { PgWriteStore } from '../datastore/pg-write-store';
 import { migrate } from '../test-utils/test-helpers';
 import { Waiter, waiter } from '@hirosystems/api-toolkit';
 import { StacksApiSocketClient } from '../../client/src/socket-io';
+import {
+  AddressStxBalanceResponse,
+  AddressTransactionWithTransfers,
+  Block,
+  MempoolTransaction,
+  Microblock,
+  NftEvent,
+  Transaction,
+} from 'client/src/types';
 
 describe('socket-io', () => {
   let apiServer: ApiServer;
