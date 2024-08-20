@@ -1,30 +1,38 @@
-import { pipelineAsync } from '../helpers';
-import { Readable, Writable } from 'stream';
+import { pipeline } from 'node:stream/promises';
+import { Readable } from 'stream';
 import { DbRawEventRequest } from '../datastore/common';
-import { PgServer } from '../datastore/connection';
-import { connectPgPool, connectWithRetry } from './connection-legacy';
+import { getConnectionArgs, getConnectionConfig, PgServer } from '../datastore/connection';
+import { connectPgPool } from './connection-legacy';
 import * as pgCopyStreams from 'pg-copy-streams';
 import * as PgCursor from 'pg-cursor';
+import { connectPostgres } from '@hirosystems/api-toolkit';
+import { createWriteStream } from 'node:fs';
 
-export async function exportRawEventRequests(targetStream: Writable): Promise<void> {
-  const pool = await connectPgPool({
-    usageName: 'export-raw-events',
-    pgServer: PgServer.primary,
+export async function exportRawEventRequests(filePath: string, local: boolean): Promise<void> {
+  const sql = await connectPostgres({
+    usageName: `export-events`,
+    connectionArgs: getConnectionArgs(PgServer.primary),
+    connectionConfig: getConnectionConfig(PgServer.primary),
   });
-  const client = await connectWithRetry(pool);
-  try {
-    const copyQuery = pgCopyStreams.to(
-      `
-      COPY (SELECT id, receive_timestamp, event_path, payload FROM event_observer_requests ORDER BY id ASC)
-      TO STDOUT ENCODING 'UTF8'
-      `
-    );
-    const queryStream = client.query(copyQuery);
-    await pipelineAsync(queryStream, targetStream);
-  } finally {
-    client.release();
-    await pool.end();
+  const copyQuery = sql`
+    COPY (
+      SELECT id, receive_timestamp, event_path, payload
+      FROM event_observer_requests
+      ORDER BY id ASC
+    )`;
+  if (local) {
+    await sql`${copyQuery}
+      TO '${sql.unsafe(filePath)}'
+      WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
+    `;
+  } else {
+    const readableStream = await sql`${copyQuery}
+      TO STDOUT
+      WITH (FORMAT TEXT, DELIMITER E'\t', ENCODING 'UTF8')
+    `.readable();
+    await pipeline(readableStream, createWriteStream(filePath));
   }
+  await sql.end();
 }
 
 export async function* getRawEventRequests(
@@ -61,7 +69,7 @@ export async function* getRawEventRequests(
       `);
       onStatusUpdate?.('Importing raw event requests into temporary table...');
       const importStream = client.query(pgCopyStreams.from(`COPY temp_raw_tsv FROM STDIN`));
-      await pipelineAsync(readStream, importStream);
+      await pipeline(readStream, importStream);
       onStatusUpdate?.('Removing any duplicate raw event requests...');
       await client.query(`
         INSERT INTO temp_event_observer_requests
