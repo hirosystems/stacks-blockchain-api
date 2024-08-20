@@ -1,3 +1,10 @@
+## [7.14.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.2...v7.14.0) (2024-08-20)
+
+
+### Features
+
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([#2058](https://github.com/hirosystems/stacks-blockchain-api/issues/2058)) ([a1f5b12](https://github.com/hirosystems/stacks-blockchain-api/commit/a1f5b12675118f6d7742c54e3420c38151aef4a7))
+
 ## [7.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.1...v7.13.2) (2024-08-05)
 
 
