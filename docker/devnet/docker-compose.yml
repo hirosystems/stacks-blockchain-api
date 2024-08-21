@@ -1,0 +1,21 @@
+services:
+  clarinet-devnet:
+    networks:
+      - stacks
+    build:
+      context: .
+      # platform: ${BUILDPLATFORM:-linux/amd64}
+    ports:
+      - "3700:3700"
+      - "20443:20443"
+      - "18443:18443"
+      - "5490:5490"
+    volumes:
+      - chainstate:/chainstate
+    environment:
+      - CLARINET_VERSION=v2.8.0
+
+networks:
+  stacks:
+volumes:
+  chainstate:
