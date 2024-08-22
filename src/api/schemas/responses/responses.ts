@@ -1,5 +1,5 @@
 import { Static, Type } from '@sinclair/typebox';
-import { OptionalNullable, PaginatedResponse } from '../util';
+import { Nullable, OptionalNullable, PaginatedResponse } from '../util';
 import { MempoolStatsSchema } from '../entities/mempool-transactions';
 import { MempoolTransactionSchema, TransactionSchema } from '../entities/transactions';
 import { MicroblockSchema } from '../entities/microblock';
@@ -12,6 +12,7 @@ import {
   BurnchainRewardSchema,
   BurnchainRewardSlotHolderSchema,
 } from '../entities/burnchain-rewards';
+import { NakamotoBlockSchema } from '../entities/block';
 
 export const ErrorResponseSchema = Type.Object(
   {
@@ -178,3 +179,14 @@ export const RunFaucetResponseSchema = Type.Object(
   }
 );
 export type RunFaucetResponse = Static<typeof RunFaucetResponseSchema>;
+
+export const BlockListV2ResponseSchema = Type.Object({
+  limit: Type.Integer({ examples: [20] }),
+  offset: Type.Integer({ examples: [0] }),
+  total: Type.Integer({ examples: [1] }),
+  next_cursor: Nullable(Type.String({ description: 'Next page cursor' })),
+  prev_cursor: Nullable(Type.String({ description: 'Previous page cursor' })),
+  cursor: Nullable(Type.String({ description: 'Current page cursor' })),
+  results: Type.Array(NakamotoBlockSchema),
+});
+export type BlockListV2Response = Static<typeof BlockListV2ResponseSchema>;

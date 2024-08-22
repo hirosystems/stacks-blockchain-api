@@ -36,6 +36,7 @@ import {
   PoxCycleQueryResult,
   DbPoxCycleSigner,
   DbPoxCycleSignerStacker,
+  DbCursorPaginatedResult,
 } from './common';
 import {
   BLOCK_COLUMNS,
@@ -59,10 +60,16 @@ async function assertTxIdExists(sql: PgSqlClient, tx_id: string) {
 }
 
 export class PgStoreV2 extends BasePgStoreModule {
-  async getBlocks(args: BlockPaginationQueryParams): Promise<DbPaginatedResult<DbBlock>> {
+  async getBlocks(args: {
+    limit: number;
+    offset?: number;
+    cursor?: string;
+  }): Promise<DbCursorPaginatedResult<DbBlock>> {
     return await this.sqlTransaction(async sql => {
-      const limit = args.limit ?? BlockLimitParamSchema.default;
+      const limit = args.limit;
       const offset = args.offset ?? 0;
+      const cursor = args.cursor ?? null;
+
       const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
         WITH block_count AS (
           SELECT block_count AS count FROM chain_tip
@@ -71,25 +78,54 @@ export class PgStoreV2 extends BasePgStoreModule {
           ${sql(BLOCK_COLUMNS)},
           (SELECT count FROM block_count)::int AS total
         FROM blocks
-        WHERE canonical = true
+        WHERE canonical = true ${
+          cursor
+            ? sql`
+                AND block_height <= (
+                  SELECT block_height 
+                  FROM blocks 
+                  WHERE canonical = true AND block_hash = ${cursor}
+                )`
+            : sql``
+        }
         ORDER BY block_height DESC
         LIMIT ${limit}
         OFFSET ${offset}
       `;
-      if (blocksQuery.count === 0)
-        return {
-          limit,
-          offset,
-          results: [],
-          total: 0,
-        };
+
+      // Get the current_cursor from the first block in the current result set
+      const currentCursorHeight = blocksQuery[0]?.block_height ?? null;
+
+      // Determine next_cursor by looking LIMIT blocks ahead of the last block in the current results
+      const nextCursorQuery = await sql<{ block_hash: string }[]>`
+        SELECT block_hash
+        FROM blocks
+        WHERE canonical = true AND block_height = ${currentCursorHeight + limit}
+        LIMIT 1
+      `;
+
+      // Determine prev_cursor by looking LIMIT blocks after the first block in the current results
+      const prevCursorQuery = await sql<{ block_hash: string }[]>`
+        SELECT block_hash
+        FROM blocks
+        WHERE canonical = true AND block_height = ${currentCursorHeight - limit}
+        LIMIT 1
+      `;
       const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
-      return {
+
+      const nextCursor = nextCursorQuery[0]?.block_hash ?? null;
+      const prevCursor = prevCursorQuery[0]?.block_hash ?? null;
+      const currentCursor = blocksQuery[0]?.block_hash ?? null;
+      const result: DbCursorPaginatedResult<DbBlock> = {
         limit,
-        offset,
+        offset: 0,
         results: blocks,
         total: blocksQuery[0].total,
+        next_cursor: nextCursor,
+        prev_cursor: prevCursor,
+        current_cursor: currentCursor,
       };
+      return result;
     });
   }
 

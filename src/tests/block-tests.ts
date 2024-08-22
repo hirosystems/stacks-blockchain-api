@@ -14,6 +14,7 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { BlockListV2Response } from 'src/api/schemas/responses/responses';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -752,6 +753,99 @@ describe('block tests', () => {
     // Block hashes are validated
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
     expect(fetch.status).not.toBe(200);
+  });
+
+  test('blocks v2 cursor pagination', async () => {
+    for (let i = 1; i <= 14; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x${i.toString().padStart(64, '0')}`,
+        index_block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        parent_index_block_hash: `0x11${(i - 1).toString().padStart(62, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    // Fetch latest page
+    let { body }: { body: BlockListV2Response } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3`
+    );
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        results: [
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
+          expect.objectContaining({ height: 12 }),
+        ],
+      })
+    );
+
+    // Can fetch same page using cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.cursor}`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        results: [
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
+          expect.objectContaining({ height: 12 }),
+        ],
+      })
+    );
+
+    // Fetch previous page
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.prev_cursor}`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+        results: [
+          expect.objectContaining({ height: 11 }),
+          expect.objectContaining({ height: 10 }),
+          expect.objectContaining({ height: 9 }),
+        ],
+      })
+    );
+
+    // Oldest page has no prev_cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000002`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000002',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000005',
+        prev_cursor: null,
+        results: [expect.objectContaining({ height: 2 }), expect.objectContaining({ height: 1 })],
+      })
+    );
   });
 
   test('blocks v2 retrieved by hash or height', async () => {
