@@ -14,6 +14,8 @@ services:
       - chainstate:/chainstate
     environment:
       - CLARINET_VERSION=v2.8.0
+    privileged: true
+
 
 networks:
   stacks:

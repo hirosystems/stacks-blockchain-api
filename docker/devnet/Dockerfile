@@ -1,4 +1,5 @@
 FROM --platform=$BUILDPLATFORM rust:1.68 as builder
+# FROM --platform=linux/amd64 rust:1.68 as builder
 
 ARG CLARINET_VERSION=v2.8.0
 WORKDIR /usr/src/clarinet
@@ -13,6 +14,7 @@ RUN git clone https://github.com/hirosystems/clarinet.git . && \
     cargo build --release
 
 # Final stage (using Docker-in-Docker)
+# FROM --platform=linux/amd64 docker:dind
 FROM --platform=$BUILDPLATFORM docker:dind
 
 # Install necessary packages
@@ -21,6 +23,7 @@ RUN apk add --no-cache \
     docker \
     sudo \
     net-tools \
+    file \
     iproute2 \
     shadow
 

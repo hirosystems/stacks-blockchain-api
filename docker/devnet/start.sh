@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -x  # Enable debugging output
 
@@ -16,5 +16,7 @@ docker ps -a
 netstat -tuln | grep 18443
 netstat -tuln | grep 18453
 
+mkdir /app/.cache
+
 # Start Clarinet devnet
-clarinet devnet start --no-dashboard --manifest-path /app/Clarinet.toml
+/usr/local/bin/clarinet devnet start --no-dashboard --manifest-path /app/Clarinet.toml
