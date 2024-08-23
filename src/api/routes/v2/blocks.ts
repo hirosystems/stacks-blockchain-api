@@ -29,7 +29,13 @@ export const BlockRoutesV2: FastifyPluginAsync<
         tags: ['Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
-          offset: OffsetParam(),
+          offset: Type.Optional(
+            Type.Integer({
+              default: 0,
+              title: 'Offset',
+              description: 'Result offset',
+            })
+          ),
           cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
         }),
         response: {

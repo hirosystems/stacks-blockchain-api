@@ -771,10 +771,10 @@ describe('block tests', () => {
       await db.update(block);
     }
 
+    let body: BlockListV2Response;
+
     // Fetch latest page
-    let { body }: { body: BlockListV2Response } = await supertest(api.server).get(
-      `/extended/v2/blocks?limit=3`
-    );
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
     expect(body).toEqual(
       expect.objectContaining({
         limit: 3,
@@ -863,6 +863,26 @@ describe('block tests', () => {
           expect.objectContaining({ height: 9 }),
           expect.objectContaining({ height: 8 }),
           expect.objectContaining({ height: 7 }),
+        ],
+      })
+    );
+
+    // Test with negative offset
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+        results: [
+          expect.objectContaining({ height: 10 }),
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
         ],
       })
     );

@@ -73,27 +73,28 @@ export class PgStoreV2 extends BasePgStoreModule {
       const blocksQuery = await sql<
         (BlockQueryResult & { total: number; next_block_hash: string; prev_block_hash: string })[]
       >`
-      WITH filtered_blocks AS (
+      WITH cursor_block AS (
+        WITH ordered_blocks AS (
+          SELECT *, LEAD(block_height, ${offset}) OVER (ORDER BY block_height DESC) offset_block_height
+          FROM blocks
+          WHERE canonical = true
+          ORDER BY block_height DESC
+        )
+        SELECT offset_block_height as block_height
+        FROM ordered_blocks 
+        WHERE block_hash = ${cursor}
+        LIMIT 1
+      ),
+      filtered_blocks AS (
         SELECT *
         FROM blocks
         WHERE canonical = true
-        ${
-          cursor
-            ? sql`
-          AND block_height <= (
-            SELECT block_height 
-            FROM blocks 
-            WHERE canonical = true AND block_hash = ${cursor}
-            LIMIT 1
-          )`
-            : sql``
-        }
+        ${cursor ? sql`AND block_height <= (SELECT block_height FROM cursor_block)` : sql``}
         ORDER BY block_height DESC
       ),
       selected_blocks AS (
         SELECT ${sql(BLOCK_COLUMNS)}
         FROM filtered_blocks
-        OFFSET ${offset}
         LIMIT ${limit}
       ),
       prev_page AS (
@@ -137,6 +138,7 @@ export class PgStoreV2 extends BasePgStoreModule {
 
       // Parse blocks
       const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
+      const total = blocksQuery[0]?.total ?? 0;
 
       // Determine cursors
       const nextCursor = blocksQuery[0]?.next_block_hash ?? null;
@@ -147,7 +149,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         limit,
         offset: 0,
         results: blocks,
-        total: blocksQuery[0].total,
+        total: total,
         next_cursor: nextCursor,
         prev_cursor: prevCursor,
         current_cursor: currentCursor,
