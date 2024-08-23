@@ -846,6 +846,26 @@ describe('block tests', () => {
         results: [expect.objectContaining({ height: 2 }), expect.objectContaining({ height: 1 })],
       })
     );
+
+    // Offset + cursor works
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+        results: [
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
+          expect.objectContaining({ height: 7 }),
+        ],
+      })
+    );
   });
 
   test('blocks v2 retrieved by hash or height', async () => {

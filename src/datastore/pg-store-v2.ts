@@ -70,52 +70,79 @@ export class PgStoreV2 extends BasePgStoreModule {
       const offset = args.offset ?? 0;
       const cursor = args.cursor ?? null;
 
-      const blocksQuery = await sql<(BlockQueryResult & { total: number })[]>`
-        WITH block_count AS (
-          SELECT block_count AS count FROM chain_tip
-        )
-        SELECT
-          ${sql(BLOCK_COLUMNS)},
-          (SELECT count FROM block_count)::int AS total
+      const blocksQuery = await sql<
+        (BlockQueryResult & { total: number; next_block_hash: string; prev_block_hash: string })[]
+      >`
+      WITH filtered_blocks AS (
+        SELECT *
         FROM blocks
-        WHERE canonical = true ${
+        WHERE canonical = true
+        ${
           cursor
             ? sql`
-                AND block_height <= (
-                  SELECT block_height 
-                  FROM blocks 
-                  WHERE canonical = true AND block_hash = ${cursor}
-                )`
+          AND block_height <= (
+            SELECT block_height 
+            FROM blocks 
+            WHERE canonical = true AND block_hash = ${cursor}
+            LIMIT 1
+          )`
             : sql``
         }
         ORDER BY block_height DESC
-        LIMIT ${limit}
+      ),
+      selected_blocks AS (
+        SELECT ${sql(BLOCK_COLUMNS)}
+        FROM filtered_blocks
         OFFSET ${offset}
-      `;
-
-      // Get the current_cursor from the first block in the current result set
-      const currentCursorHeight = blocksQuery[0]?.block_height ?? null;
-
-      // Determine next_cursor by looking LIMIT blocks ahead of the last block in the current results
-      const nextCursorQuery = await sql<{ block_hash: string }[]>`
-        SELECT block_hash
+        LIMIT ${limit}
+      ),
+      prev_page AS (
+        SELECT block_hash as prev_block_hash
         FROM blocks
-        WHERE canonical = true AND block_height = ${currentCursorHeight + limit}
+        WHERE canonical = true
+        AND block_height < (
+          SELECT block_height
+          FROM selected_blocks
+          ORDER BY block_height DESC
+          LIMIT 1
+        )
+        ORDER BY block_height DESC
+        OFFSET ${limit - 1}
         LIMIT 1
+      ),
+      next_page AS (
+        SELECT block_hash as next_block_hash
+        FROM blocks
+        WHERE canonical = true
+        AND block_height > (
+          SELECT block_height
+          FROM selected_blocks
+          ORDER BY block_height DESC
+          LIMIT 1
+        )
+        ORDER BY block_height ASC
+        OFFSET ${limit - 1}
+        LIMIT 1
+      )
+      SELECT
+        (SELECT block_count FROM chain_tip)::int AS total,
+        sb.*,
+        nb.next_block_hash,
+        pb.prev_block_hash
+      FROM selected_blocks sb
+      LEFT JOIN next_page nb ON true
+      LEFT JOIN prev_page pb ON true
+      ORDER BY sb.block_height DESC
       `;
 
-      // Determine prev_cursor by looking LIMIT blocks after the first block in the current results
-      const prevCursorQuery = await sql<{ block_hash: string }[]>`
-        SELECT block_hash
-        FROM blocks
-        WHERE canonical = true AND block_height = ${currentCursorHeight - limit}
-        LIMIT 1
-      `;
+      // Parse blocks
       const blocks = blocksQuery.map(b => parseBlockQueryResult(b));
 
-      const nextCursor = nextCursorQuery[0]?.block_hash ?? null;
-      const prevCursor = prevCursorQuery[0]?.block_hash ?? null;
+      // Determine cursors
+      const nextCursor = blocksQuery[0]?.next_block_hash ?? null;
+      const prevCursor = blocksQuery[0]?.prev_block_hash ?? null;
       const currentCursor = blocksQuery[0]?.block_hash ?? null;
+
       const result: DbCursorPaginatedResult<DbBlock> = {
         limit,
         offset: 0,
