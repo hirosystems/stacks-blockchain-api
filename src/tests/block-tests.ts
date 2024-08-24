@@ -854,7 +854,7 @@ describe('block tests', () => {
     expect(body).toEqual(
       expect.objectContaining({
         limit: 3,
-        offset: 0,
+        offset: 2,
         total: 14,
         cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
         next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
@@ -867,14 +867,14 @@ describe('block tests', () => {
       })
     );
 
-    // Test with negative offset
+    // Negative offset + cursor
     ({ body } = await supertest(api.server).get(
       `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
     ));
     expect(body).toEqual(
       expect.objectContaining({
         limit: 3,
-        offset: 0,
+        offset: -2,
         total: 14,
         cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
         next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
@@ -883,6 +883,24 @@ describe('block tests', () => {
           expect.objectContaining({ height: 10 }),
           expect.objectContaining({ height: 9 }),
           expect.objectContaining({ height: 8 }),
+        ],
+      })
+    );
+
+    // Offset (no cursor) works, has original behavior
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3&offset=5`));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 5,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+        results: [
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
+          expect.objectContaining({ height: 7 }),
         ],
       })
     );
