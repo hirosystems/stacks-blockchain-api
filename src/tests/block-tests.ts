@@ -790,6 +790,8 @@ describe('block tests', () => {
         ],
       })
     );
+    const latestPageCursor = body.cursor;
+    const latestBlock = body.results[0];
 
     // Can fetch same page using cursor
     ({ body } = await supertest(api.server).get(
@@ -901,6 +903,56 @@ describe('block tests', () => {
           expect.objectContaining({ height: 9 }),
           expect.objectContaining({ height: 8 }),
           expect.objectContaining({ height: 7 }),
+        ],
+      })
+    );
+
+    // Re-org the the cursor for the latest block, should get a 404 on use
+    const blockB1 = new TestBlockBuilder({
+      block_height: latestBlock.height,
+      block_hash: `0x22${latestBlock.height.toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      parent_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${latestBlock.height.toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB1);
+    const blockB2 = new TestBlockBuilder({
+      block_height: latestBlock.height + 1,
+      block_hash: `0x22${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_block_hash: `0x${latestBlock.height.toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${(latestBlock.height + 1).toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB2);
+
+    // Should get a 404 when using cursor for re-orged block
+    const req = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${latestPageCursor}`
+    );
+    expect(req.statusCode).toBe(404);
+
+    // Latest page should have the re-org blocks
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 15,
+        cursor: '0xbb00000000000000000000000000000000000000000000000000000000000015',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        results: [
+          expect.objectContaining({ height: 15 }),
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
         ],
       })
     );

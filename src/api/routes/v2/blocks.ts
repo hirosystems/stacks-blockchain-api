@@ -41,6 +41,9 @@ export const BlockRoutesV2: FastifyPluginAsync<
       const query = req.query;
       const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
       const blockQuery = await fastify.db.v2.getBlocks({ ...query, limit });
+      if (query.cursor && !blockQuery.current_cursor) {
+        throw new NotFoundError('Cursor not found');
+      }
       const blocks: NakamotoBlock[] = blockQuery.results.map(r => parseDbNakamotoBlock(r));
       await reply.send({
         limit: blockQuery.limit,
