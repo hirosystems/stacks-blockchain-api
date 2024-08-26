@@ -82,7 +82,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         )
         SELECT offset_block_height as block_height
         FROM ordered_blocks 
-        WHERE block_hash = ${cursor ? cursor : sql`(SELECT block_hash FROM chain_tip LIMIT 1)`}
+        WHERE index_block_hash = ${cursor ?? sql`(SELECT index_block_hash FROM chain_tip LIMIT 1)`}
         LIMIT 1
       ),
       selected_blocks AS (
@@ -94,7 +94,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT ${limit}
       ),
       prev_page AS (
-        SELECT block_hash as prev_block_hash
+        SELECT index_block_hash as prev_block_hash
         FROM blocks
         WHERE canonical = true
         AND block_height < (
@@ -108,7 +108,7 @@ export class PgStoreV2 extends BasePgStoreModule {
         LIMIT 1
       ),
       next_page AS (
-        SELECT block_hash as next_block_hash
+        SELECT index_block_hash as next_block_hash
         FROM blocks
         WHERE canonical = true
         AND block_height > (
@@ -139,7 +139,7 @@ export class PgStoreV2 extends BasePgStoreModule {
       // Determine cursors
       const nextCursor = blocksQuery[0]?.next_block_hash ?? null;
       const prevCursor = blocksQuery[0]?.prev_block_hash ?? null;
-      const currentCursor = blocksQuery[0]?.block_hash ?? null;
+      const currentCursor = blocksQuery[0]?.index_block_hash ?? null;
 
       const result: DbCursorPaginatedResult<DbBlock> = {
         limit,

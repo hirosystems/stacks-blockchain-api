@@ -759,9 +759,9 @@ describe('block tests', () => {
     for (let i = 1; i <= 14; i++) {
       const block = new TestBlockBuilder({
         block_height: i,
-        block_hash: `0x${i.toString().padStart(64, '0')}`,
-        index_block_hash: `0x11${i.toString().padStart(62, '0')}`,
-        parent_index_block_hash: `0x11${(i - 1).toString().padStart(62, '0')}`,
+        block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        index_block_hash: `0x${i.toString().padStart(64, '0')}`,
+        parent_index_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
         parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
         burn_block_height: 700000,
         burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
