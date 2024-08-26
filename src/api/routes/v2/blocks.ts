@@ -6,7 +6,7 @@ import { parseDbTx } from '../../../api/controllers/db-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
 import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
@@ -29,15 +29,7 @@ export const BlockRoutesV2: FastifyPluginAsync<
         tags: ['Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
-          offset: Type.Optional(
-            Type.Integer({
-              default: 0,
-              maximum: pagingQueryLimits[ResourceType.Block].maxLimit * 10, // Random access up to 10 pages
-              minimum: -pagingQueryLimits[ResourceType.Block].maxLimit * 10,
-              title: 'Offset',
-              description: 'Result offset',
-            })
-          ),
+          offset: CursorOffsetParam({ resource: ResourceType.Block }),
           cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
         }),
         response: {

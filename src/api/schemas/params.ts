@@ -28,6 +28,23 @@ export const LimitParam = (
     })
   );
 
+export const CursorOffsetParam = (args: {
+  resource: ResourceType;
+  title?: string;
+  description?: string;
+  limitOverride?: number;
+  maxPages?: number;
+}) =>
+  Type.Optional(
+    Type.Integer({
+      default: 0,
+      maximum: pagingQueryLimits[args.resource].maxLimit * (args.maxPages ?? 10),
+      minimum: -pagingQueryLimits[args.resource].maxLimit * (args.maxPages ?? 10),
+      title: args.title ?? 'Offset',
+      description: args.description ?? 'Result offset',
+    })
+  );
+
 export const UnanchoredParamSchema = Type.Optional(
   Type.Boolean({
     default: false,
