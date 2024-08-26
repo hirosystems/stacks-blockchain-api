@@ -1,20 +1,21 @@
-FROM --platform=$BUILDPLATFORM rust:1.68 as builder
-# FROM --platform=linux/amd64 rust:1.68 as builder
+FROM --platform=$BUILDPLATFORM rust:1.68-alpine as builder
 
 ARG CLARINET_VERSION=v2.8.0
 WORKDIR /usr/src/clarinet
 
-RUN apt-get update && apt-get install -y \
+RUN apk add --no-cache \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    build-base \
+    curl \
+    pkgconfig
 
 # building from source because I wasn't able to get the platform working from binary
-RUN git clone https://github.com/hirosystems/clarinet.git . && \
+RUN git clone https://github.com/hirosystems/clarinet.git && \
+    cd clarinet && \
     git checkout main && \
     cargo build --release
 
 # Final stage (using Docker-in-Docker)
-# FROM --platform=linux/amd64 docker:dind
 FROM --platform=$BUILDPLATFORM docker:dind
 
 # Install necessary packages
@@ -31,7 +32,7 @@ RUN apk add --no-cache \
 RUN usermod -aG docker root
 
 # Copy Clarinet binary from builder stage
-COPY --from=builder /usr/src/clarinet/target/release/clarinet /usr/local/bin/clarinet
+COPY --from=builder /usr/src/clarinet/clarinet/target/release/clarinet /usr/local/bin/clarinet
 
 WORKDIR /app
 
@@ -45,6 +46,7 @@ EXPOSE 20443
 EXPOSE 18443
 # Postgres
 EXPOSE 5490
+EXPOSE 5432
 
 # Copy Clarinet config files
 COPY Clarinet.toml .
