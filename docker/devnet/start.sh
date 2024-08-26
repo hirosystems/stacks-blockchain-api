@@ -19,4 +19,5 @@ netstat -tuln | grep 18453
 mkdir /app/.cache
 
 # Start Clarinet devnet
+sh -c dockerd-entrypoint.sh
 /usr/local/bin/clarinet devnet start --no-dashboard --manifest-path /app/Clarinet.toml

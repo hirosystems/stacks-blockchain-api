@@ -56,4 +56,4 @@ COPY start.sh .
 RUN chmod +x start.sh
 
 # Start the Docker daemon and the devnet
-CMD ["sh", "-c", "dockerd-entrypoint.sh && /app/start.sh"]
+CMD ["/app/start.sh"]

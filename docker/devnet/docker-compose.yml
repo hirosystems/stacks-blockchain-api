@@ -2,18 +2,25 @@ services:
   clarinet-devnet:
     networks:
       - stacks
+    restart: on-failure
     build:
       context: .
       # platform: ${BUILDPLATFORM:-linux/amd64}
     ports:
       - "3700:3700"
       - "20443:20443"
+      - '20444:20444'
       - "18443:18443"
       - "5490:5490"
     volumes:
       - chainstate:/chainstate
+      - ../stacks-blockchain/:/app/config
+      - ../stacks-blockchain/.chaindata:/tmp/stacks-blockchain-data
     environment:
       - CLARINET_VERSION=v2.8.0
+      - STACKS_EVENT_OBSERVER=host.docker.internal:3700
+    extra_hosts:
+      - 'host.docker.internal:host-gateway' # fixes `host.docker.internal` on linux hosts
     privileged: true
 
 
