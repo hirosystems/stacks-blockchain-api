@@ -1143,6 +1143,16 @@ export type DbPaginatedResult<T> = {
   results: T[];
 };
 
+export type DbCursorPaginatedResult<T> = {
+  limit: number;
+  offset: number;
+  next_cursor: string | null;
+  prev_cursor: string | null;
+  current_cursor: string | null;
+  total: number;
+  results: T[];
+};
+
 export interface BlocksWithMetadata {
   results: {
     block: DbBlock;

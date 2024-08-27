@@ -38,16 +38,24 @@ export async function exportEventsAsTsv(
   if (!filePath) {
     throw new Error(`A file path should be specified with the --file option`);
   }
-  const resolvedFilePath = path.resolve(filePath);
-  if (fs.existsSync(resolvedFilePath) && overwriteFile !== true) {
-    throw new Error(
-      `A file already exists at ${resolvedFilePath}. Add --overwrite-file to truncate an existing file`
-    );
+  const isLocal = filePath.startsWith('local:');
+  if (isLocal) {
+    filePath = filePath.replace(/^local:/, '');
+    if (!path.isAbsolute(filePath)) {
+      throw new Error(`The file path must be absolute`);
+    }
+  } else {
+    const resolvedFilePath = path.resolve(filePath);
+    if (fs.existsSync(resolvedFilePath) && overwriteFile !== true) {
+      throw new Error(
+        `A file already exists at ${resolvedFilePath}. Add --overwrite-file to truncate an existing file`
+      );
+    }
   }
-  console.log(`Export event data to file: ${resolvedFilePath}`);
-  const writeStream = fs.createWriteStream(resolvedFilePath);
+
+  console.log(`Exporting event data to ${filePath}`);
   console.log(`Export started...`);
-  await exportRawEventRequests(writeStream);
+  await exportRawEventRequests(filePath, isLocal);
   console.log('Export successful.');
 }
 

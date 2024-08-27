@@ -37,6 +37,15 @@
 
 * refactor from Express to Fastify ([aa0e51e](https://github.com/hirosystems/stacks-blockchain-api/commit/aa0e51e557491daff1a98dd36c4e952e05c58dd4)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
 
+* index on `principal_stx_txs` table for faster `/v1/address/{addr}/transactions` lookups ([#2059](https://github.com/hirosystems/stacks-blockchain-api/issues/2059)) ([ab64ab7](https://github.com/hirosystems/stacks-blockchain-api/commit/ab64ab7148a3656f81f0a3c5a176c40caca3345a))
+
+## [7.14.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.2...v7.14.0) (2024-08-20)
+
+
+### Features
+
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([#2058](https://github.com/hirosystems/stacks-blockchain-api/issues/2058)) ([a1f5b12](https://github.com/hirosystems/stacks-blockchain-api/commit/a1f5b12675118f6d7742c54e3420c38151aef4a7))
+
 ## [7.13.2](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.13.1...v7.13.2) (2024-08-05)
 
 

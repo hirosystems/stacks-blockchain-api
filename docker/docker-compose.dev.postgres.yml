@@ -1,7 +1,6 @@
-version: '3.7'
 services:
   postgres:
-    image: "postgres:14"
+    image: "postgres:15"
     ports:
       - "5490:5432"
     environment:
@@ -9,3 +8,5 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: stacks_blockchain_api
       POSTGRES_PORT: 5432
+    volumes:
+      - ../src/tests-event-replay/.tmp/local/:/root/
