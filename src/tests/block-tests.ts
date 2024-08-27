@@ -14,6 +14,7 @@ import { TestBlockBuilder, TestMicroblockStreamBuilder } from '../test-utils/tes
 import { PgWriteStore } from '../datastore/pg-write-store';
 import { PgSqlClient, bufferToHex } from '@hirosystems/api-toolkit';
 import { migrate } from '../test-utils/test-helpers';
+import { BlockListV2Response } from 'src/api/schemas/responses/responses';
 
 describe('block tests', () => {
   let db: PgWriteStore;
@@ -752,6 +753,209 @@ describe('block tests', () => {
     // Block hashes are validated
     fetch = await supertest(api.server).get(`/extended/v2/burn-blocks/testvalue/blocks`);
     expect(fetch.status).not.toBe(200);
+  });
+
+  test('blocks v2 cursor pagination', async () => {
+    for (let i = 1; i <= 14; i++) {
+      const block = new TestBlockBuilder({
+        block_height: i,
+        block_hash: `0x11${i.toString().padStart(62, '0')}`,
+        index_block_hash: `0x${i.toString().padStart(64, '0')}`,
+        parent_index_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        parent_block_hash: `0x${(i - 1).toString().padStart(64, '0')}`,
+        burn_block_height: 700000,
+        burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+      })
+        .addTx({ tx_id: `0x${i.toString().padStart(64, '0')}` })
+        .build();
+      await db.update(block);
+    }
+
+    let body: BlockListV2Response;
+
+    // Fetch latest page
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        results: [
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
+          expect.objectContaining({ height: 12 }),
+        ],
+      })
+    );
+    const latestPageCursor = body.cursor;
+    const latestBlock = body.results[0];
+
+    // Can fetch same page using cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.cursor}`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        results: [
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
+          expect.objectContaining({ height: 12 }),
+        ],
+      })
+    );
+
+    // Fetch previous page
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${body.prev_cursor}`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000011',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000014',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000008',
+        results: [
+          expect.objectContaining({ height: 11 }),
+          expect.objectContaining({ height: 10 }),
+          expect.objectContaining({ height: 9 }),
+        ],
+      })
+    );
+
+    // Oldest page has no prev_cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000002`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000002',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000005',
+        prev_cursor: null,
+        results: [expect.objectContaining({ height: 2 }), expect.objectContaining({ height: 1 })],
+      })
+    );
+
+    // Offset + cursor works
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000011&offset=2`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 2,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+        results: [
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
+          expect.objectContaining({ height: 7 }),
+        ],
+      })
+    );
+
+    // Negative offset + cursor
+    ({ body } = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=0x0000000000000000000000000000000000000000000000000000000000000008&offset=-2`
+    ));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: -2,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000010',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000013',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000007',
+        results: [
+          expect.objectContaining({ height: 10 }),
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
+        ],
+      })
+    );
+
+    // Offset (no cursor) works, has original behavior
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3&offset=5`));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 5,
+        total: 14,
+        cursor: '0x0000000000000000000000000000000000000000000000000000000000000009',
+        next_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000006',
+        results: [
+          expect.objectContaining({ height: 9 }),
+          expect.objectContaining({ height: 8 }),
+          expect.objectContaining({ height: 7 }),
+        ],
+      })
+    );
+
+    // Re-org the the cursor for the latest block, should get a 404 on use
+    const blockB1 = new TestBlockBuilder({
+      block_height: latestBlock.height,
+      block_hash: `0x22${latestBlock.height.toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      parent_block_hash: `0x${(latestBlock.height - 1).toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${latestBlock.height.toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB1);
+    const blockB2 = new TestBlockBuilder({
+      block_height: latestBlock.height + 1,
+      block_hash: `0x22${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      index_block_hash: `0xbb${(latestBlock.height + 1).toString().padStart(62, '0')}`,
+      parent_index_block_hash: `0xbb${latestBlock.height.toString().padStart(62, '0')}`,
+      parent_block_hash: `0x${latestBlock.height.toString().padStart(64, '0')}`,
+      burn_block_height: 700000,
+      burn_block_hash: '0x00000000000000000001e2ee7f0c6bd5361b5e7afd76156ca7d6f524ee5ca3d8',
+    })
+      .addTx({ tx_id: `0x${(latestBlock.height + 1).toString().padStart(64, '0')}` })
+      .build();
+    await db.update(blockB2);
+
+    // Should get a 404 when using cursor for re-orged block
+    const req = await supertest(api.server).get(
+      `/extended/v2/blocks?limit=3&cursor=${latestPageCursor}`
+    );
+    expect(req.statusCode).toBe(404);
+
+    // Latest page should have the re-org blocks
+    ({ body } = await supertest(api.server).get(`/extended/v2/blocks?limit=3`));
+    expect(body).toEqual(
+      expect.objectContaining({
+        limit: 3,
+        offset: 0,
+        total: 15,
+        cursor: '0xbb00000000000000000000000000000000000000000000000000000000000015',
+        next_cursor: null,
+        prev_cursor: '0x0000000000000000000000000000000000000000000000000000000000000012',
+        results: [
+          expect.objectContaining({ height: 15 }),
+          expect.objectContaining({ height: 14 }),
+          expect.objectContaining({ height: 13 }),
+        ],
+      })
+    );
   });
 
   test('blocks v2 retrieved by hash or height', async () => {

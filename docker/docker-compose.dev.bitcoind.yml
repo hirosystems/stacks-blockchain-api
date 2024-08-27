@@ -1,4 +1,3 @@
-version: "3"
 services:
   bitcoind:
     image: "blockstack/bitcoind:v0.20.99.0"
