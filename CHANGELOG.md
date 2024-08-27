@@ -1,3 +1,22 @@
+## [8.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.5...v8.0.0-beta.6) (2024-08-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* refactor from express to fastify (#2045)
+
+### Features
+
+* cursor-based pagination on blocks endpoint ([#2060](https://github.com/hirosystems/stacks-blockchain-api/issues/2060)) ([bfdcce1](https://github.com/hirosystems/stacks-blockchain-api/commit/bfdcce1c2936980299c90bf36f3d45fe74bd573c))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([f401a0f](https://github.com/hirosystems/stacks-blockchain-api/commit/f401a0f676ced14572b9f3f263dcc8559e831cdf))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([#2058](https://github.com/hirosystems/stacks-blockchain-api/issues/2058)) ([a1f5b12](https://github.com/hirosystems/stacks-blockchain-api/commit/a1f5b12675118f6d7742c54e3420c38151aef4a7))
+* refactor from express to fastify ([#2045](https://github.com/hirosystems/stacks-blockchain-api/issues/2045)) ([bd65fcf](https://github.com/hirosystems/stacks-blockchain-api/commit/bd65fcf93984c37a9de3cb284c43a49cb6b3694a)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
+
+### Bug Fixes
+
+* index on `principal_stx_txs` table for faster `/v1/address/{addr}/transactions` lookups ([#2059](https://github.com/hirosystems/stacks-blockchain-api/issues/2059)) ([ab64ab7](https://github.com/hirosystems/stacks-blockchain-api/commit/ab64ab7148a3656f81f0a3c5a176c40caca3345a))
+
 ## [8.0.0-beta.5](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.4...v8.0.0-beta.5) (2024-08-16)
 
 
