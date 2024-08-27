@@ -6,11 +6,12 @@ import { parseDbTx } from '../../../api/controllers/db-controller';
 import { FastifyPluginAsync } from 'fastify';
 import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
 import { Server } from 'node:http';
-import { LimitParam, OffsetParam } from '../../schemas/params';
-import { ResourceType } from '../../pagination';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
+import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
 import { PaginatedResponse } from '../../schemas/util';
 import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
 import { TransactionSchema } from '../../schemas/entities/transactions';
+import { BlockListV2ResponseSchema } from '../../schemas/responses/responses';
 
 export const BlockRoutesV2: FastifyPluginAsync<
   Record<never, never>,
@@ -28,21 +29,29 @@ export const BlockRoutesV2: FastifyPluginAsync<
         tags: ['Blocks'],
         querystring: Type.Object({
           limit: LimitParam(ResourceType.Block),
-          offset: OffsetParam(),
+          offset: CursorOffsetParam({ resource: ResourceType.Block }),
+          cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
         }),
         response: {
-          200: PaginatedResponse(NakamotoBlockSchema),
+          200: BlockListV2ResponseSchema,
         },
       },
     },
     async (req, reply) => {
       const query = req.query;
-      const { limit, offset, results, total } = await fastify.db.v2.getBlocks(query);
-      const blocks: NakamotoBlock[] = results.map(r => parseDbNakamotoBlock(r));
+      const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
+      const blockQuery = await fastify.db.v2.getBlocks({ ...query, limit });
+      if (query.cursor && !blockQuery.current_cursor) {
+        throw new NotFoundError('Cursor not found');
+      }
+      const blocks: NakamotoBlock[] = blockQuery.results.map(r => parseDbNakamotoBlock(r));
       await reply.send({
-        limit,
-        offset,
-        total,
+        limit: blockQuery.limit,
+        offset: blockQuery.offset,
+        total: blockQuery.total,
+        next_cursor: blockQuery.next_cursor,
+        prev_cursor: blockQuery.prev_cursor,
+        cursor: blockQuery.current_cursor,
         results: blocks,
       });
     }
