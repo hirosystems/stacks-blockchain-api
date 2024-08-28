@@ -1,53 +1,91 @@
-import * as express from 'express';
-import { PgStore } from '../../../datastore/pg-store';
-import {
-  getETagCacheHandler,
-  setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
-import { asyncHandler } from '../../async-handler';
-import { NakamotoBlockListResponse, TransactionResults } from 'docs/generated';
-import {
-  BlockParams,
-  CompiledBlockParams,
-  CompiledTransactionPaginationQueryParams,
-  TransactionPaginationQueryParams,
-  validRequestQuery,
-  validRequestParams,
-  CompiledBlockPaginationQueryParams,
-  BlockPaginationQueryParams,
-} from './schemas';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { BlockParamsSchema, cleanBlockHeightOrHashParam, parseBlockParam } from './schemas';
 import { parseDbNakamotoBlock } from './helpers';
-import { InvalidRequestError } from '../../../errors';
+import { InvalidRequestError, NotFoundError } from '../../../errors';
 import { parseDbTx } from '../../../api/controllers/db-controller';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { CursorOffsetParam, LimitParam, OffsetParam } from '../../schemas/params';
+import { getPagingQueryLimit, pagingQueryLimits, ResourceType } from '../../pagination';
+import { PaginatedResponse } from '../../schemas/util';
+import { NakamotoBlock, NakamotoBlockSchema } from '../../schemas/entities/block';
+import { TransactionSchema } from '../../schemas/entities/transactions';
+import { BlockListV2ResponseSchema } from '../../schemas/responses/responses';
 
-export function createV2BlocksRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-
-  router.get(
+export const BlockRoutesV2: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (!validRequestQuery(req, res, CompiledBlockPaginationQueryParams)) return;
-      const query = req.query as BlockPaginationQueryParams;
-
-      const { limit, offset, results, total } = await db.v2.getBlocks(query);
-      const response: NakamotoBlockListResponse = {
-        limit,
-        offset,
-        total,
-        results: results.map(r => parseDbNakamotoBlock(r)),
-      };
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_blocks',
+        summary: 'Get blocks',
+        description: `Retrieves a list of recently mined blocks`,
+        tags: ['Blocks'],
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Block),
+          offset: CursorOffsetParam({ resource: ResourceType.Block }),
+          cursor: Type.Optional(Type.String({ description: 'Cursor for pagination' })),
+        }),
+        response: {
+          200: BlockListV2ResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const query = req.query;
+      const limit = getPagingQueryLimit(ResourceType.Block, req.query.limit);
+      const blockQuery = await fastify.db.v2.getBlocks({ ...query, limit });
+      if (query.cursor && !blockQuery.current_cursor) {
+        throw new NotFoundError('Cursor not found');
+      }
+      const blocks: NakamotoBlock[] = blockQuery.results.map(r => parseDbNakamotoBlock(r));
+      await reply.send({
+        limit: blockQuery.limit,
+        offset: blockQuery.offset,
+        total: blockQuery.total,
+        next_cursor: blockQuery.next_cursor,
+        prev_cursor: blockQuery.prev_cursor,
+        cursor: blockQuery.current_cursor,
+        results: blocks,
+      });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/average-times',
-    cacheHandler,
-    asyncHandler(async (_req, res) => {
-      const query = await db.v2.getAverageBlockTimes();
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_average_block_times',
+        summary: 'Get average block times',
+        description: `Retrieves average block times (in seconds)`,
+        tags: ['Blocks'],
+        response: {
+          200: Type.Object({
+            last_1h: Type.Number({
+              description: 'Average block times over the last hour (in seconds)',
+            }),
+            last_24h: Type.Number({
+              description: 'Average block times over the last 24 hours (in seconds)',
+            }),
+            last_7d: Type.Number({
+              description: 'Average block times over the last 7 days (in seconds)',
+            }),
+            last_30d: Type.Number({
+              description: 'Average block times over the last 30 days (in seconds)',
+            }),
+          }),
+        },
+      },
+    },
+    async (_req, reply) => {
+      const query = await fastify.db.v2.getAverageBlockTimes();
       // Round to 2 decimal places
       const times = {
         last_1h: parseFloat(query.last_1h.toFixed(2)),
@@ -55,62 +93,86 @@ export function createV2BlocksRouter(db: PgStore): express.Router {
         last_7d: parseFloat(query.last_7d.toFixed(2)),
         last_30d: parseFloat(query.last_30d.toFixed(2)),
       };
-      setETagCacheHeaders(res);
-      res.json(times);
-    })
+      await reply.send(times);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:height_or_hash',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (!validRequestParams(req, res, CompiledBlockParams)) return;
-      const params = req.params as BlockParams;
-
-      const block = await db.v2.getBlock(params);
+    {
+      preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
+      schema: {
+        operationId: 'get_block',
+        summary: 'Get block',
+        description: `Retrieves a single block`,
+        tags: ['Blocks'],
+        params: BlockParamsSchema,
+        response: {
+          200: NakamotoBlockSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = parseBlockParam(req.params.height_or_hash);
+      const block = await fastify.db.v2.getBlock(params);
       if (!block) {
-        res.status(404).json({ errors: 'Not found' });
-        return;
+        throw new NotFoundError('Block not found');
       }
-      setETagCacheHeaders(res);
-      res.json(parseDbNakamotoBlock(block));
-    })
+      await reply.send(parseDbNakamotoBlock(block));
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:height_or_hash/transactions',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
-      if (
-        !validRequestParams(req, res, CompiledBlockParams) ||
-        !validRequestQuery(req, res, CompiledTransactionPaginationQueryParams)
-      )
-        return;
-      const params = req.params as BlockParams;
-      const query = req.query as TransactionPaginationQueryParams;
+    {
+      preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        cleanBlockHeightOrHashParam(req.params);
+        done();
+      },
+      schema: {
+        operationId: 'get_transactions_by_block',
+        summary: 'Get transactions by block',
+        description: `Retrieves transactions confirmed in a single block`,
+        tags: ['Transactions'],
+        params: BlockParamsSchema,
+        querystring: Type.Object({
+          limit: LimitParam(ResourceType.Tx),
+          offset: OffsetParam(),
+        }),
+        response: {
+          200: PaginatedResponse(TransactionSchema),
+        },
+      },
+    },
+    async (req, reply) => {
+      const params = parseBlockParam(req.params.height_or_hash);
+      const query = req.query;
 
       try {
-        const { limit, offset, results, total } = await db.v2.getBlockTransactions({
-          ...params,
+        const { limit, offset, results, total } = await fastify.db.v2.getBlockTransactions({
+          block: params,
           ...query,
         });
-        const response: TransactionResults = {
+        const response = {
           limit,
           offset,
           total,
           results: results.map(r => parseDbTx(r)),
         };
-        setETagCacheHeaders(res);
-        res.json(response);
+        await reply.send(response);
       } catch (error) {
         if (error instanceof InvalidRequestError) {
-          res.status(404).json({ errors: error.message });
-          return;
+          throw new NotFoundError('Block not found');
         }
         throw error;
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

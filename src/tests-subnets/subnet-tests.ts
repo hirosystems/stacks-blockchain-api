@@ -1,10 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import {
-  TransactionResults,
-  TokenTransferTransaction,
-  TransactionEventsResponse,
-  ContractCallTransaction,
-} from '@stacks/stacks-blockchain-api-types';
 import * as supertest from 'supertest';
 import {
   standByForTxSuccess,
@@ -33,6 +27,8 @@ import { StacksCoreRpcClient } from '../core-rpc/client';
 import { StacksTestnet } from '@stacks/network';
 import { ClarityTypeID, decodeClarityValue } from 'stacks-encoding-native-js';
 import { timeout } from '@hirosystems/api-toolkit';
+import { TransactionEventsResponse, TransactionResults } from '../api/schemas/responses/responses';
+import { ContractCallTransaction } from '../api/schemas/entities/transactions';
 
 describe('Subnets tests', () => {
   let l1Client: StacksCoreRpcClient;
@@ -335,7 +331,7 @@ describe('Subnets tests', () => {
         const respEvents = await supertest(testEnv.api.server)
           .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
           .expect(200);
-        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        const txEvents = respEvents.body.events as TransactionEventsResponse['events'];
         expect(txEvents).toEqual([
           {
             contract_log: {
@@ -464,7 +460,7 @@ describe('Subnets tests', () => {
         const respEvents = await supertest(testEnv.api.server)
           .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
           .expect(200);
-        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        const txEvents = respEvents.body.events as TransactionEventsResponse['events'];
         expect(txEvents).toEqual([
           {
             asset: {
@@ -768,7 +764,7 @@ describe('Subnets tests', () => {
         const respEvents = await supertest(testEnv.api.server)
           .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
           .expect(200);
-        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        const txEvents = respEvents.body.events as TransactionEventsResponse['events'];
         expect(txEvents).toEqual([
           {
             contract_log: {
@@ -898,7 +894,7 @@ describe('Subnets tests', () => {
         const respEvents = await supertest(testEnv.api.server)
           .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
           .expect(200);
-        const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+        const txEvents = respEvents.body.events as TransactionEventsResponse['events'];
         expect(txEvents).toEqual([
           {
             asset: {
@@ -1114,7 +1110,7 @@ describe('Subnets tests', () => {
         .get(`/extended/v1/tx?limit=1&type=token_transfer`)
         .expect(200);
       const txListResp = resp.body as TransactionResults;
-      const tx = txListResp.results[0] as TokenTransferTransaction;
+      const tx = txListResp.results[0];
       expect(tx).toEqual(
         expect.objectContaining({
           anchor_mode: 'any',
@@ -1144,7 +1140,7 @@ describe('Subnets tests', () => {
       const respEvents = await supertest(testEnv.api.server)
         .get(`/extended/v1/tx/events?tx_id=${tx.tx_id}`)
         .expect(200);
-      const txEvents = respEvents.body.events as TransactionEventsResponse['results'];
+      const txEvents = respEvents.body.events as TransactionEventsResponse['events'];
       expect(txEvents).toEqual([
         {
           asset: {

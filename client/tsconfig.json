@@ -9,9 +9,7 @@
     "strictNullChecks": false,
     "outDir": "lib",
     "baseUrl": ".",
-    "paths": {
-      "@stacks/stacks-blockchain-api-types": ["../docs"]
-    }
+    "noUncheckedIndexedAccess": true,
   },
   "include": ["./src/**/*.ts"],
   "typedocOptions": {

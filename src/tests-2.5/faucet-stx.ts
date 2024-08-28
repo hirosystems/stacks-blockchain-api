@@ -1,6 +1,4 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { RunFaucetResponse } from '@stacks/stacks-blockchain-api-types';
-import { AddressStxBalanceResponse } from 'docs/generated';
 import * as supertest from 'supertest';
 import {
   Account,
@@ -9,6 +7,8 @@ import {
   standByForTxSuccess,
   testEnv,
 } from '../test-utils/test-helpers';
+import { RunFaucetResponse } from '../api/schemas/responses/responses';
+import { AddressStxBalance } from '../api/schemas/entities/addresses';
 
 describe('STX Faucet', () => {
   const reqAccountKey = 'b1ee37d996b1cf95ff67996a38426cff398d3adfeccf8ae8b3651a530837dd5801';
@@ -43,13 +43,13 @@ describe('STX Faucet', () => {
   });
 
   test('STX faucet tx mined successfully', async () => {
-    const tx = await standByForTxSuccess(reqTx.txId!);
+    const tx = await standByForTxSuccess(reqTx.txId);
     expect(tx.token_transfer_recipient_address).toBe(reqAccount.stxAddr);
   });
 
   test('STX faucet recipient balance', async () => {
     // Validate account has balance from API endpoint
-    const addrBalance = await fetchGet<AddressStxBalanceResponse>(
+    const addrBalance = await fetchGet<AddressStxBalance>(
       `/extended/v1/address/${reqAccount.stxAddr}/stx`
     );
     expect(BigInt(addrBalance.balance)).toBeGreaterThan(0n);

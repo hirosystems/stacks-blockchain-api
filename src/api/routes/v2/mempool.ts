@@ -1,13 +1,23 @@
-import * as express from 'express';
-import { asyncHandler } from '../../async-handler';
-import {
-  ETagType,
-  getETagCacheHandler,
-  setETagCacheHeaders,
-} from '../../controllers/cache-controller';
-import { PgStore } from '../../../datastore/pg-store';
+import { handleMempoolCache } from '../../controllers/cache-controller';
 import { DbMempoolFeePriority, DbTxTypeId } from '../../../datastore/common';
-import { MempoolFeePriorities } from '../../../../docs/generated';
+import { FastifyPluginAsync } from 'fastify';
+import { Static, Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+
+const MempoolFeePrioritiySchema = Type.Object({
+  no_priority: Type.Integer(),
+  low_priority: Type.Integer(),
+  medium_priority: Type.Integer(),
+  high_priority: Type.Integer(),
+});
+
+const MempoolFeePrioritiesSchema = Type.Object({
+  all: MempoolFeePrioritiySchema,
+  token_transfer: Type.Optional(MempoolFeePrioritiySchema),
+  contract_call: Type.Optional(MempoolFeePrioritiySchema),
+  smart_contract: Type.Optional(MempoolFeePrioritiySchema),
+});
+type MempoolFeePriorities = Static<typeof MempoolFeePrioritiesSchema>;
 
 function parseMempoolFeePriority(fees: DbMempoolFeePriority[]): MempoolFeePriorities {
   const out: MempoolFeePriorities = {
@@ -38,18 +48,31 @@ function parseMempoolFeePriority(fees: DbMempoolFeePriority[]): MempoolFeePriori
   return out;
 }
 
-export function createMempoolRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
-
-  router.get(
+export const MempoolRoutesV2: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/fees',
-    mempoolCacheHandler,
-    asyncHandler(async (req, res, next) => {
-      setETagCacheHeaders(res);
-      res.status(200).json(parseMempoolFeePriority(await db.getMempoolFeePriority()));
-    })
+    {
+      preHandler: handleMempoolCache,
+      schema: {
+        operationId: 'get_mempool_fee_priorities',
+        summary: 'Get mempool transaction fee priorities',
+        description: `Returns estimated fee priorities (in micro-STX) for all transactions that are currently in the mempool. Also returns priorities separated by transaction type.`,
+        tags: ['Mempool'],
+        response: {
+          200: MempoolFeePrioritiesSchema,
+        },
+      },
+    },
+    async (_req, reply) => {
+      const feePriority = await fastify.db.getMempoolFeePriority();
+      const result = parseMempoolFeePriority(feePriority);
+      await reply.send(result);
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

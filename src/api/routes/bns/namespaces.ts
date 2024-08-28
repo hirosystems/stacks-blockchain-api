@@ -1,48 +1,99 @@
-import * as express from 'express';
-import { asyncHandler } from '../../async-handler';
-import { PgStore } from '../../../datastore/pg-store';
 import { parsePagingQueryInput } from '../../../api/pagination';
-import { isUnanchoredRequest } from '../../query-helpers';
 import { BnsErrors } from '../../../event-stream/bns/bns-constants';
-import { BnsGetAllNamespacesResponse } from '@stacks/stacks-blockchain-api-types';
-import {
-  getETagCacheHandler,
-  setETagCacheHeaders,
-} from '../../../api/controllers/cache-controller';
+import { handleChainTipCache } from '../../../api/controllers/cache-controller';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { UnanchoredParamSchema } from '../../schemas/params';
 
-export function createBnsNamespacesRouter(db: PgStore): express.Router {
-  const router = express.Router();
-  const cacheHandler = getETagCacheHandler(db);
-
-  router.get(
+export const BnsNamespaceRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results } = await db.getNamespaceList({ includeUnanchored });
-      const response: BnsGetAllNamespacesResponse = {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_all_namespaces',
+        summary: 'Get All Namespaces',
+        description: `Retrieves a list of all namespaces known to the node.`,
+        tags: ['Names'],
+        querystring: Type.Object({
+          unanchored: UnanchoredParamSchema,
+        }),
+        response: {
+          200: Type.Object({
+            namespaces: Type.Array(Type.String(), {
+              title: 'BnsGetAllNamespacesResponse',
+              description: 'Fetch a list of all namespaces known to the node.',
+            }),
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const includeUnanchored = req.query.unanchored ?? false;
+      const { results } = await fastify.db.getNamespaceList({ includeUnanchored });
+      const response = {
         namespaces: results,
       };
-      setETagCacheHeaders(res);
-      res.json(response);
-      return;
-    })
+      await reply.send(response);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:tld/names',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_namespace_names',
+        summary: 'Get Namespace Names',
+        description: `Retrieves a list of names within a given namespace.`,
+        tags: ['Names'],
+        params: Type.Object({
+          tld: Type.String({ description: 'the namespace to fetch names from.', examples: ['id'] }),
+        }),
+        querystring: Type.Object({
+          page: Type.Optional(
+            Type.Number({
+              description:
+                "namespace values are defaulted to page 1 with 100 results. You can query specific page results by using the 'page' query parameter.",
+              examples: [22],
+            })
+          ),
+          unanchored: UnanchoredParamSchema,
+        }),
+        response: {
+          200: Type.Array(Type.String(), {
+            title: 'BnsGetAllNamespacesNamesResponse',
+            description: 'Fetch a list of names from the namespace.',
+            examples: [
+              [
+                'aldenquimby.id',
+                'aldeoryn.id',
+                'alderete.id',
+                'aldert.id',
+                'aldi.id',
+                'aldighieri.id',
+              ],
+            ],
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
       const { tld } = req.params;
       const page = parsePagingQueryInput(req.query.page ?? 0);
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      await db
+      const includeUnanchored = req.query.unanchored ?? false;
+      await fastify.db
         .sqlTransaction(async sql => {
-          const response = await db.getNamespace({ namespace: tld, includeUnanchored });
+          const response = await fastify.db.getNamespace({ namespace: tld, includeUnanchored });
           if (!response.found) {
             throw BnsErrors.NoSuchNamespace;
           } else {
-            const { results } = await db.getNamespaceNamesList({
+            const { results } = await fastify.db.getNamespaceNamesList({
               namespace: tld,
               page,
               includeUnanchored,
@@ -54,15 +105,14 @@ export function createBnsNamespacesRouter(db: PgStore): express.Router {
             }
           }
         })
-        .then(results => {
-          setETagCacheHeaders(res);
-          res.json(results);
+        .then(async results => {
+          await reply.send(results);
         })
-        .catch(error => {
-          res.status(400).json(error);
+        .catch(async error => {
+          await reply.status(400).send(error);
         });
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

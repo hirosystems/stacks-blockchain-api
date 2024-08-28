@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "title": "RosettaConstructionParseRequest",
+  "description": "Parse is called on both unsigned and signed transactions to understand the intent of the formulated transaction. This is run as a sanity check before signing (after /construction/payloads) and before broadcast (after /construction/combine).",
+  "required": ["network_identifier", "signed", "transaction"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "signed": {
+      "type": "boolean",
+      "description": "Signed is a boolean indicating whether the transaction is signed."
+    },
+    "transaction": {
+      "type": "string",
+      "description": "This must be either the unsigned transaction blob returned by /construction/payloads or the signed transaction blob returned by /construction/combine."
+    }
+  }
+}

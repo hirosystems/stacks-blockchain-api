@@ -1,6 +1,0 @@
-{
-  "title": "TransactionStatus",
-  "description": "Status of the transaction",
-  "type": "string",
-  "enum": ["success", "abort_by_response", "abort_by_post_condition"]
-}

@@ -1,5 +1,4 @@
-import { ClarityAbi } from '@stacks/transactions';
-import { Block } from '@stacks/stacks-blockchain-api-types';
+import { Block } from '../api/schemas/entities/block';
 import { SyntheticPoxEventName } from '../pox-helpers';
 import { PgBytea, PgJsonb, PgNumeric } from '@hirosystems/api-toolkit';
 
@@ -1140,6 +1139,16 @@ export interface TransferQueryResult {
 export type DbPaginatedResult<T> = {
   limit: number;
   offset: number;
+  total: number;
+  results: T[];
+};
+
+export type DbCursorPaginatedResult<T> = {
+  limit: number;
+  offset: number;
+  next_cursor: string | null;
+  prev_cursor: string | null;
+  current_cursor: string | null;
   total: number;
   results: T[];
 };

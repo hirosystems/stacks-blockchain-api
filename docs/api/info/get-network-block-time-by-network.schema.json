@@ -1,5 +1,0 @@
-{
-  "description": "GET request that target block time for a given network",
-  "title": "NetworkBlockTimeResponse",
-  "$ref": "../../entities/info/block-time.schema.json"
-}

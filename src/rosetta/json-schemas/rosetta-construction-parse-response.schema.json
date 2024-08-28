@@ -1,0 +1,35 @@
+{
+  "type": "object",
+  "title": "RosettaConstructionParseResponse",
+  "description": "RosettaConstructionParseResponse contains an array of operations that occur in a transaction blob. This should match the array of operations provided to /construction/preprocess and /construction/payloads.",
+  "required": ["operations"],
+  "additionalProperties": false,
+  "properties": {
+    "operations": {
+      "type": "array",
+      "items": {
+        "$ref": "./rosetta-operation.schema.json"
+      }
+    },
+    "signers": {
+      "type": "array",
+      "description": "[DEPRECATED by account_identifier_signers in v1.4.4] All signers (addresses) of a particular transaction. If the transaction is unsigned, it should be empty.",
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          }
+        ]
+      }
+    },
+    "account_identifier_signers": {
+      "type": "array",
+      "items": {
+        "$ref": "./rosetta-account-identifier.schema.json"
+      }
+    },
+    "metadata": {
+      "type": "object"
+    }
+  }
+}

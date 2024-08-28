@@ -16,3 +16,4 @@ src/tests-bns/
 client/src/
 config/
 utils/src/
+client*

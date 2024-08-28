@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "title": "RosettaBlockRequest",
+  "description": "A BlockRequest is utilized to make a block request on the /block endpoint.",
+  "required": ["network_identifier", "block_identifier"],
+  "additionalProperties": false,
+  "properties": {
+    "network_identifier": {
+      "$ref": "./rosetta-network-identifier.schema.json"
+    },
+    "block_identifier": {
+      "$ref": "./rosetta-partial-block-identifier.schema.json"
+    }
+  }
+}

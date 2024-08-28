@@ -1,5 +1,3 @@
-import * as express from 'express';
-import { asyncHandler } from '../../async-handler';
 import {
   makeRandomPrivKey,
   getAddressFromPrivateKey,
@@ -9,39 +7,57 @@ import {
   callReadOnlyFunction,
   ClarityType,
 } from '@stacks/transactions';
-import {
-  BnsGetNamePriceResponse,
-  BnsGetNamespacePriceResponse,
-} from '@stacks/stacks-blockchain-api-types';
-import { ChainID, getChainIDNetwork, isValidPrincipal } from './../../../helpers';
-import { PgStore } from '../../../datastore/pg-store';
+import { getChainIDNetwork, isValidPrincipal } from './../../../helpers';
 import { getBnsContractID, GetStacksNetwork } from '../../../event-stream/bns/bns-helpers';
 import { logger } from '../../../logger';
+import { FastifyPluginAsync } from 'fastify';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import { Server } from 'node:http';
+import { handleChainTipCache } from '../../controllers/cache-controller';
 
-export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Router {
-  const router = express.Router();
-  const stacksNetwork = GetStacksNetwork(chainId);
-
-  router.get(
-    '/namespaces/:namespace',
-    asyncHandler(async (req, res) => {
-      const { namespace } = req.params;
+export const BnsPriceRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
+    '/namespaces/:tld',
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_namespace_price',
+        summary: 'Get Namespace Price',
+        description: `Retrieves the price of a namespace. The \`amount\` given will be in the smallest possible units of the currency.`,
+        tags: ['Names'],
+        params: Type.Object({
+          tld: Type.String({ description: 'the namespace to fetch price for', examples: ['id'] }),
+        }),
+        response: {
+          200: Type.Object(
+            { units: Type.String(), amount: Type.String() },
+            { title: 'BnsGetNamespacePriceResponse', description: 'Fetch price for namespace.' }
+          ),
+          400: Type.Object({ error: Type.String() }, { title: 'BnsError', description: 'Error' }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const namespace = req.params.tld;
       if (namespace.length > 20) {
-        res.status(400).json({ error: 'Invalid namespace' });
+        await reply.status(400).send({ error: 'Invalid namespace' });
         return;
       }
       const randomPrivKey = makeRandomPrivKey();
       const address = getAddressFromPrivateKey(
         randomPrivKey.data,
-        getChainIDNetwork(chainId) === 'mainnet'
+        getChainIDNetwork(fastify.chainId) === 'mainnet'
           ? TransactionVersion.Mainnet
           : TransactionVersion.Testnet
       );
-      const bnsContractIdentifier = getBnsContractID(chainId);
+      const bnsContractIdentifier = getBnsContractID(fastify.chainId);
       if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
         logger.error('BNS contract ID not properly configured');
-        res.status(500).json({ error: 'BNS contract ID not properly configured' });
-        return;
+        throw new Error('BNS contract ID not properly configured');
       }
 
       const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
@@ -52,35 +68,57 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
         contractName: bnsContractName,
         functionName: 'get-namespace-price',
         functionArgs: [bufferCVFromString(namespace)],
-        network: stacksNetwork,
+        network: GetStacksNetwork(fastify.chainId),
       };
       const contractCallTx = await callReadOnlyFunction(txOptions);
       if (
         contractCallTx.type == ClarityType.ResponseOk &&
         contractCallTx.value.type == ClarityType.UInt
       ) {
-        const response: BnsGetNamespacePriceResponse = {
+        const response = {
           units: 'STX',
           amount: contractCallTx.value.value.toString(10),
         };
-        res.json(response);
+        await reply.send(response);
       } else {
-        res.status(400).json({ error: 'Invalid namespace' });
+        await reply.status(400).send({ error: 'Invalid namespace' });
       }
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/names/:name',
-    asyncHandler(async (req, res) => {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        operationId: 'get_name_price',
+        summary: 'Get Name Price',
+        description: `Retrieves the price of a name. The \`amount\` given will be in the smallest possible units of the currency.`,
+        tags: ['Names'],
+        params: Type.Object({
+          name: Type.String({
+            description: 'the name to query price information for',
+            examples: ['muneeb.id'],
+          }),
+        }),
+        response: {
+          200: Type.Object(
+            { units: Type.String(), amount: Type.String() },
+            { title: 'BnsGetNamePriceResponse', description: 'Fetch price for name.' }
+          ),
+          400: Type.Object({ error: Type.String() }, { title: 'BnsError', description: 'Error' }),
+        },
+      },
+    },
+    async (req, reply) => {
       const input = req.params.name;
       if (!input.includes('.')) {
-        res.status(400).json({ error: 'Invalid name' });
+        await reply.status(400).send({ error: 'Invalid name' });
         return;
       }
       const split = input.split('.');
       if (split.length != 2) {
-        res.status(400).json({ error: 'Invalid name' });
+        await reply.status(400).send({ error: 'Invalid name' });
         return;
       }
       const name = split[0];
@@ -88,16 +126,15 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
       const randomPrivKey = makeRandomPrivKey();
       const address = getAddressFromPrivateKey(
         randomPrivKey.data,
-        getChainIDNetwork(chainId) === 'mainnet'
+        getChainIDNetwork(fastify.chainId) === 'mainnet'
           ? TransactionVersion.Mainnet
           : TransactionVersion.Testnet
       );
 
-      const bnsContractIdentifier = getBnsContractID(chainId);
+      const bnsContractIdentifier = getBnsContractID(fastify.chainId);
       if (!bnsContractIdentifier || !isValidPrincipal(bnsContractIdentifier)) {
         logger.error('BNS contract ID not properly configured');
-        res.status(500).json({ error: 'BNS contract ID not properly configured' });
-        return;
+        throw new Error('BNS contract ID not properly configured');
       }
 
       const [bnsContractAddress, bnsContractName] = bnsContractIdentifier.split('.');
@@ -107,7 +144,7 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
         contractName: bnsContractName,
         functionName: 'get-name-price',
         functionArgs: [bufferCVFromString(namespace), bufferCVFromString(name)],
-        network: stacksNetwork,
+        network: GetStacksNetwork(fastify.chainId),
       };
 
       const contractCall = await callReadOnlyFunction(txOptions);
@@ -115,16 +152,16 @@ export function createBnsPriceRouter(db: PgStore, chainId: ChainID): express.Rou
         contractCall.type == ClarityType.ResponseOk &&
         contractCall.value.type == ClarityType.UInt
       ) {
-        const response: BnsGetNamePriceResponse = {
+        const response = {
           units: 'STX',
           amount: contractCall.value.value.toString(10),
         };
-        res.json(response);
+        await reply.send(response);
       } else {
-        res.status(400).json({ error: 'Invalid name' });
+        await reply.status(400).send({ error: 'Invalid name' });
       }
-    })
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};

@@ -1,5 +1,3 @@
-import * as express from 'express';
-import { asyncHandler } from '../async-handler';
 import {
   parseTxTypeStrings,
   parseDbMempoolTx,
@@ -8,77 +6,144 @@ import {
   parseDbTx,
   parseDbEvent,
 } from '../controllers/db-controller';
-import { isValidC32Address, isValidPrincipal } from '../../helpers';
-import { InvalidRequestError, InvalidRequestErrorType } from '../../errors';
-import {
-  isUnanchoredRequest,
-  getBlockHeightPathParam,
-  validateRequestHexInput,
-  parseAddressOrTxId,
-  parseEventTypeFilter,
-  MempoolOrderByParam,
-  OrderParam,
-} from '../query-helpers';
+import { isValidC32Address, isValidPrincipal, parseEventTypeStrings } from '../../helpers';
+import { InvalidRequestError, InvalidRequestErrorType, NotFoundError } from '../../errors';
+import { validateRequestHexInput, validatePrincipal } from '../query-helpers';
 import { getPagingQueryLimit, parsePagingQueryInput, ResourceType } from '../pagination';
-import { validate } from '../validate';
 import {
-  TransactionType,
-  TransactionResults,
-  MempoolTransactionListResponse,
-  GetRawTransactionResult,
-} from '@stacks/stacks-blockchain-api-types';
-import {
-  ETagType,
-  getETagCacheHandler,
-  setETagCacheHeaders,
+  handleChainTipCache,
+  handleMempoolCache,
+  handleTransactionCache,
 } from '../controllers/cache-controller';
-import { PgStore } from '../../datastore/pg-store';
-import { has0xPrefix, isProdEnv } from '@hirosystems/api-toolkit';
+import { DbEventTypeId } from '../../datastore/common';
+import { has0xPrefix } from '@hirosystems/api-toolkit';
 
-export function createTxRouter(db: PgStore): express.Router {
-  const router = express.Router();
+import { FastifyPluginAsync } from 'fastify';
+import { Server } from 'node:http';
+import { Type, TypeBoxTypeProvider } from '@fastify/type-provider-typebox';
+import {
+  AddressParamSchema,
+  BlockHeightSchema,
+  LimitParam,
+  MempoolOrderByParamSchema,
+  OffsetParam,
+  OrderParamSchema,
+  PrincipalSchema,
+  TransactionIdParamSchema,
+  UnanchoredParamSchema,
+} from '../schemas/params';
+import {
+  AbstractMempoolTransactionProperties,
+  BaseTransactionSchemaProperties,
+  MempoolTransaction,
+  MempoolTransactionSchema,
+  TokenTransferTransactionMetadataProperties,
+  Transaction,
+  TransactionSchema,
+  TransactionSearchResponseSchema,
+  TransactionTypeSchema,
+} from '../schemas/entities/transactions';
+import { PaginatedResponse } from '../schemas/util';
+import {
+  ErrorResponseSchema,
+  MempoolStatsResponseSchema,
+  MempoolTransactionListResponse,
+  RawTransactionResponseSchema,
+  TransactionEventsResponseSchema,
+  TransactionResultsSchema,
+} from '../schemas/responses/responses';
+import { TransactionEventTypeSchema } from '../schemas/entities/transaction-events';
 
-  const cacheHandler = getETagCacheHandler(db);
-  const mempoolCacheHandler = getETagCacheHandler(db, ETagType.mempool);
-  const txCacheHandler = getETagCacheHandler(db, ETagType.transaction);
-
-  router.get(
+export const TxRoutes: FastifyPluginAsync<
+  Record<never, never>,
+  Server,
+  TypeBoxTypeProvider
+> = async fastify => {
+  fastify.get(
     '/',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
+    {
+      preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.type === 'string') {
+          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
+        }
+        done();
+      },
+      schema: {
+        operationId: 'get_transaction_list',
+        summary: 'Get recent transactions',
+        description: `Retrieves all recently mined transactions`,
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Tx),
+          type: Type.Optional(Type.Array(TransactionTypeSchema)),
+          unanchored: UnanchoredParamSchema,
+          order: Type.Optional(Type.Enum({ asc: 'asc', desc: 'desc' })),
+          sort_by: Type.Optional(
+            Type.Enum(
+              {
+                block_height: 'block_height',
+                burn_block_time: 'burn_block_time',
+                fee: 'fee',
+              },
+              {
+                default: 'block_height',
+                description: 'Option to sort results by block height, timestamp, or fee',
+              }
+            )
+          ),
+          from_address: Type.Optional(
+            Type.String({ description: 'Option to filter results by sender address' })
+          ),
+          to_address: Type.Optional(
+            Type.String({ description: 'Option to filter results by recipient address' })
+          ),
+          start_time: Type.Optional(
+            Type.Integer({
+              description:
+                'Filter by transactions after this timestamp (unix timestamp in seconds)',
+              examples: [1704067200],
+            })
+          ),
+          end_time: Type.Optional(
+            Type.Integer({
+              description:
+                'Filter by transactions before this timestamp (unix timestamp in seconds)',
+              examples: [1706745599],
+            })
+          ),
+          contract_id: Type.Optional(
+            Type.String({
+              description: 'Option to filter results by contract ID',
+              examples: ['SP000000000000000000002Q6VF78.pox-4'],
+            })
+          ),
+          function_name: Type.Optional(
+            Type.String({
+              description: 'Filter by contract call transactions involving this function name',
+              examples: ['delegate-stx'],
+            })
+          ),
+          nonce: Type.Optional(
+            Type.Integer({
+              description: 'Filter by transactions with this nonce',
+              minimum: 0,
+              maximum: Number.MAX_SAFE_INTEGER,
+              examples: [123],
+            })
+          ),
+        }),
+        response: {
+          200: TransactionResultsSchema,
+        },
+      },
+    },
+    async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const typeQuery = req.query.type;
-      let txTypeFilter: TransactionType[];
-      if (Array.isArray(typeQuery)) {
-        txTypeFilter = parseTxTypeStrings(typeQuery as string[]);
-      } else if (typeof typeQuery === 'string') {
-        if (typeQuery.includes(',')) {
-          txTypeFilter = parseTxTypeStrings(typeQuery.split(','));
-        } else {
-          txTypeFilter = parseTxTypeStrings([typeQuery]);
-        }
-      } else if (typeQuery) {
-        throw new Error(`Unexpected tx type query value: ${JSON.stringify(typeQuery)}`);
-      } else {
-        txTypeFilter = [];
-      }
-
-      let order: 'asc' | 'desc' | undefined;
-      if (req.query.order) {
-        if (
-          typeof req.query.order === 'string' &&
-          (req.query.order === 'asc' || req.query.order === 'desc')
-        ) {
-          order = req.query.order;
-        } else {
-          throw new InvalidRequestError(
-            `The "order" query parameter must be a 'desc' or 'asc'`,
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-      }
+      const txTypeFilter = parseTxTypeStrings(req.query.type ?? []);
 
       let fromAddress: string | undefined;
       if (typeof req.query.from_address === 'string') {
@@ -102,28 +167,6 @@ export function createTxRouter(db: PgStore): express.Router {
         toAddress = req.query.to_address;
       }
 
-      let startTime: number | undefined;
-      if (typeof req.query.start_time === 'string') {
-        if (!/^\d{10}$/.test(req.query.start_time)) {
-          throw new InvalidRequestError(
-            `Invalid query parameter for "start_time": "${req.query.start_time}" is not a valid timestamp`,
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-        startTime = parseInt(req.query.start_time);
-      }
-
-      let endTime: number | undefined;
-      if (typeof req.query.end_time === 'string') {
-        if (!/^\d{10}$/.test(req.query.end_time)) {
-          throw new InvalidRequestError(
-            `Invalid query parameter for "end_time": "${req.query.end_time}" is not a valid timestamp`,
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-        endTime = parseInt(req.query.end_time);
-      }
-
       let contractId: string | undefined;
       if (typeof req.query.contract_id === 'string') {
         if (!isValidPrincipal(req.query.contract_id)) {
@@ -135,137 +178,118 @@ export function createTxRouter(db: PgStore): express.Router {
         contractId = req.query.contract_id;
       }
 
-      let functionName: string | undefined;
-      if (typeof req.query.function_name === 'string') {
-        functionName = req.query.function_name;
-      }
-
-      let nonce: number | undefined;
-      if (typeof req.query.nonce === 'string') {
-        if (!/^\d{1,10}$/.test(req.query.nonce)) {
-          throw new InvalidRequestError(
-            `Invalid query parameter for "nonce": "${req.query.nonce}" is not a valid nonce`,
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-        nonce = parseInt(req.query.nonce);
-      }
-
-      let sortBy: 'block_height' | 'burn_block_time' | 'fee' | undefined;
-      if (req.query.sort_by) {
-        if (
-          typeof req.query.sort_by === 'string' &&
-          ['block_height', 'burn_block_time', 'fee'].includes(req.query.sort_by)
-        ) {
-          sortBy = req.query.sort_by as typeof sortBy;
-        } else {
-          throw new InvalidRequestError(
-            `The "sort_by" query parameter must be 'block_height', 'burn_block_time', or 'fee'`,
-            InvalidRequestErrorType.invalid_param
-          );
-        }
-      }
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      const { results: txResults, total } = await db.getTxList({
+      const { results: txResults, total } = await fastify.db.getTxList({
         offset,
         limit,
         txTypeFilter,
-        includeUnanchored,
+        includeUnanchored: req.query.unanchored ?? false,
         fromAddress,
         toAddress,
-        startTime,
-        endTime,
+        startTime: req.query.start_time,
+        endTime: req.query.end_time,
         contractId,
-        functionName,
-        nonce,
-        order,
-        sortBy,
+        functionName: req.query.function_name,
+        nonce: req.query.nonce,
+        order: req.query.order,
+        sortBy: req.query.sort_by,
       });
       const results = txResults.map(tx => parseDbTx(tx));
-      const response: TransactionResults = { limit, offset, total, results };
-      if (!isProdEnv) {
-        const schemaPath =
-          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
-        await validate(schemaPath, response);
-      }
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+      await reply.send({ limit, offset, total, results });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/multiple',
-    asyncHandler(async (req, res, next) => {
-      if (typeof req.query.tx_id === 'string') {
-        // check if tx_id is a comma-seperated list of tx_ids
-        if (req.query.tx_id.includes(',')) {
-          req.query.tx_id = req.query.tx_id.split(',');
-        } else {
-          // in case req.query.tx_id is a single tx_id string and not an array
-          req.query.tx_id = [req.query.tx_id];
+    {
+      preHandler: handleMempoolCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.tx_id === 'string') {
+          req.query.tx_id = (req.query.tx_id as string).split(',') as typeof req.query.tx_id;
         }
-      }
-      const txList: string[] = req.query.tx_id as string[];
-
-      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit']);
-      const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
-      txList.forEach(tx => validateRequestHexInput(tx));
-      const txQuery = await searchTxs(db, {
-        txIds: txList,
+        done();
+      },
+      schema: {
+        operationId: 'get_tx_list_details',
+        summary: 'Get list of details for transactions',
+        description: `Retrieves a list of transactions for a given list of transaction IDs`,
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          tx_id: Type.Array(TransactionIdParamSchema),
+          event_limit: LimitParam(ResourceType.Event),
+          event_offset: OffsetParam(),
+          unanchored: UnanchoredParamSchema,
+        }),
+        response: {
+          200: TransactionSearchResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query.event_limit);
+      const eventOffset = parsePagingQueryInput(req.query.event_offset ?? 0);
+      const includeUnanchored = req.query.unanchored ?? false;
+      req.query.tx_id.forEach(tx => validateRequestHexInput(tx));
+      const txQuery = await searchTxs(fastify.db, {
+        txIds: req.query.tx_id,
         eventLimit,
         eventOffset,
         includeUnanchored,
       });
-      // TODO: this validation needs fixed now that the mempool-tx and mined-tx types no longer overlap
-      /*
-    const schemaPath = require.resolve(
-      '@stacks/stacks-blockchain-api-types/entities/transactions/transaction.schema.json'
-    );
-    await validate(schemaPath, txQuery.result);
-    */
-      res.json(txQuery);
-    })
+      await reply.send(txQuery);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/mempool',
-    mempoolCacheHandler,
-    asyncHandler(async (req, res, next) => {
+    {
+      preHandler: handleMempoolCache,
+      schema: {
+        operationId: 'get_mempool_transaction_list',
+        summary: 'Get mempool transactions',
+        description: `Retrieves all transactions that have been recently broadcast to the mempool. These are pending transactions awaiting confirmation.
+
+        If you need to monitor new transactions, we highly recommend subscribing to [WebSockets or Socket.io](https://github.com/hirosystems/stacks-blockchain-api/tree/master/client) for real-time updates.`,
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          sender_address: Type.Optional(AddressParamSchema),
+          recipient_address: Type.Optional(AddressParamSchema),
+          address: Type.Optional(AddressParamSchema),
+          order_by: Type.Optional(MempoolOrderByParamSchema),
+          order: Type.Optional(OrderParamSchema),
+          unanchored: UnanchoredParamSchema,
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Tx),
+        }),
+        response: {
+          200: MempoolTransactionListResponse,
+        },
+      },
+    },
+    async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      let addrParams: (string | undefined)[];
+      const addrParams: (string | undefined)[] = [
+        req.query.sender_address,
+        req.query.recipient_address,
+        req.query.address,
+      ];
       try {
-        addrParams = ['sender_address', 'recipient_address', 'address'].map(p => {
-          const addr: string | undefined = req.query[p] as string;
+        addrParams.forEach(addr => {
           if (!addr) {
             return undefined;
           }
-          switch (p) {
-            case 'sender_address':
-              if (!isValidC32Address(addr)) {
-                throw new Error(
-                  `Invalid query parameter for "${p}": "${addr}" is not a valid STX address`
-                );
-              }
-              break;
-            case 'recipient_address':
-            case 'address':
-              if (!(isValidC32Address(addr) || isValidPrincipal(addr))) {
-                throw new Error(
-                  `Invalid query parameter for "${p}": "${addr}" is not a valid STX address or principal`
-                );
-              }
-              break;
+          if (!isValidPrincipal(addr)) {
+            throw new Error(
+              `Invalid query parameter: "${addr}" is not a valid STX address or principal`
+            );
           }
-          return addr;
         });
       } catch (error) {
         throw new InvalidRequestError(`${error}`, InvalidRequestErrorType.invalid_param);
       }
 
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeUnanchored = req.query.unanchored ?? false;
       const [senderAddress, recipientAddress, address] = addrParams;
       if (address && (recipientAddress || senderAddress)) {
         throw new InvalidRequestError(
@@ -275,26 +299,9 @@ export function createTxRouter(db: PgStore): express.Router {
       }
 
       const orderBy = req.query.order_by;
-      if (
-        orderBy !== undefined &&
-        orderBy != MempoolOrderByParam.fee &&
-        orderBy != MempoolOrderByParam.age &&
-        orderBy != MempoolOrderByParam.size
-      ) {
-        throw new InvalidRequestError(
-          `The "order_by" param can only be 'fee', 'age', or 'size'`,
-          InvalidRequestErrorType.invalid_param
-        );
-      }
       const order = req.query.order;
-      if (order !== undefined && order != OrderParam.asc && order != OrderParam.desc) {
-        throw new InvalidRequestError(
-          `The "order" param can only be 'asc' or 'desc'`,
-          InvalidRequestErrorType.invalid_param
-        );
-      }
 
-      const { results: txResults, total } = await db.getMempoolTxList({
+      const { results: txResults, total } = await fastify.db.getMempoolTxList({
         offset,
         limit,
         includeUnanchored,
@@ -306,180 +313,338 @@ export function createTxRouter(db: PgStore): express.Router {
       });
 
       const results = txResults.map(tx => parseDbMempoolTx(tx));
-      const response: MempoolTransactionListResponse = { limit, offset, total, results };
-      setETagCacheHeaders(res, ETagType.mempool);
-      res.json(response);
-    })
+      const response = { limit, offset, total, results };
+      await reply.send(response);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/mempool/dropped',
-    mempoolCacheHandler,
-    asyncHandler(async (req, res) => {
+    {
+      preHandler: handleMempoolCache,
+      schema: {
+        operationId: 'get_dropped_mempool_transaction_list',
+        summary: 'Get dropped mempool transactions',
+        description: `Retrieves all recently-broadcast transactions that have been dropped from the mempool.
+
+        Transactions are dropped from the mempool if:
+         * they were stale and awaiting garbage collection or,
+         * were expensive, or
+         * were replaced with a new fee`,
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Tx),
+        }),
+        response: {
+          200: PaginatedResponse(MempoolTransactionSchema, {
+            description: 'List of dropped mempool transactions',
+          }),
+        },
+      },
+    },
+    async (req, reply) => {
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit);
       const offset = parsePagingQueryInput(req.query.offset ?? 0);
-      const { results: txResults, total } = await db.getDroppedTxs({
+      const { results: txResults, total } = await fastify.db.getDroppedTxs({
         offset,
         limit,
       });
       const results = txResults.map(tx => parseDbMempoolTx(tx));
-      const response: MempoolTransactionListResponse = { limit, offset, total, results };
-      setETagCacheHeaders(res, ETagType.mempool);
-      res.json(response);
-    })
+      const response = { limit, offset, total, results };
+      await reply.send(response);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/mempool/stats',
-    mempoolCacheHandler,
-    asyncHandler(async (req, res) => {
-      const queryResult = await db.getMempoolStats({ lastBlockCount: undefined });
-      setETagCacheHeaders(res, ETagType.mempool);
-      res.json(queryResult);
-    })
+    {
+      preHandler: handleMempoolCache,
+      schema: {
+        operationId: 'get_mempool_transaction_stats',
+        summary: 'Get statistics for mempool transactions',
+        description: `Queries for transactions counts, age (by block height), fees (simple average), and size.
+        All results broken down by transaction type and percentiles (p25, p50, p75, p95).`,
+        tags: ['Transactions'],
+        response: {
+          200: MempoolStatsResponseSchema,
+        },
+      },
+    },
+    async (_req, reply) => {
+      const queryResult = await fastify.db.getMempoolStats({ lastBlockCount: undefined });
+      await reply.send(queryResult);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/events',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 100);
-      const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
+    {
+      preHandler: handleChainTipCache,
+      preValidation: (req, _reply, done) => {
+        if (typeof req.query.type === 'string') {
+          req.query.type = (req.query.type as string).split(',') as typeof req.query.type;
+        }
+        done();
+      },
+      schema: {
+        operationId: 'get_filtered_events',
+        summary: 'Transaction Events',
+        description: `Retrieves the list of events filtered by principal (STX address or Smart Contract ID), transaction id or event types.
+        The list of event types is ('smart_contract_log', 'stx_lock', 'stx_asset', 'fungible_token_asset', 'non_fungible_token_asset').`,
+        tags: ['Transactions'],
+        querystring: Type.Object({
+          tx_id: Type.Optional(TransactionIdParamSchema),
+          address: Type.Optional(PrincipalSchema),
+          type: Type.Optional(Type.Array(TransactionEventTypeSchema)),
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
+        }),
+        response: {
+          200: TransactionEventsResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
+      const limit = getPagingQueryLimit(ResourceType.Tx, req.query.limit, 100);
+      const offset = parsePagingQueryInput(req.query.offset ?? 0);
 
-      const principalOrTxId = parseAddressOrTxId(req, res, next);
-      const eventTypeFilter = parseEventTypeFilter(req, res, next);
+      const addrOrTx = {
+        address: req.query.address,
+        txId: req.query.tx_id,
+      } as { address: string; txId: undefined } | { address: undefined; txId: string };
+      if (!addrOrTx.address && !addrOrTx.txId) {
+        throw new InvalidRequestError(
+          `can not find 'address' or 'tx_id' in the request`,
+          InvalidRequestErrorType.bad_request
+        );
+      }
+      if (addrOrTx.address && addrOrTx.txId) {
+        // if mutually exclusive address and txId specified throw
+        throw new InvalidRequestError(
+          `can't handle both 'address' and 'tx_id' in the same request`,
+          InvalidRequestErrorType.bad_request
+        );
+      }
+      if (addrOrTx.address) {
+        validatePrincipal(addrOrTx.address);
+      }
+      if (addrOrTx.txId) {
+        addrOrTx.txId = has0xPrefix(addrOrTx.txId) ? addrOrTx.txId : '0x' + addrOrTx.txId;
+        validateRequestHexInput(addrOrTx.txId);
+      }
 
-      const { results } = await db.getTransactionEvents({
-        addressOrTxId: principalOrTxId,
+      const typeQuery = req.query.type;
+      let eventTypeFilter: DbEventTypeId[];
+      if (typeQuery && typeQuery.length > 0) {
+        try {
+          eventTypeFilter = parseEventTypeStrings(typeQuery);
+        } catch (error) {
+          throw new InvalidRequestError(
+            `invalid 'event type'`,
+            InvalidRequestErrorType.bad_request
+          );
+        }
+      } else {
+        eventTypeFilter = [
+          DbEventTypeId.SmartContractLog,
+          DbEventTypeId.StxAsset,
+          DbEventTypeId.FungibleTokenAsset,
+          DbEventTypeId.NonFungibleTokenAsset,
+          DbEventTypeId.StxLock,
+        ]; //no filter provided , return all types of events
+      }
+
+      const { results } = await fastify.db.getTransactionEvents({
+        addressOrTxId: addrOrTx,
         eventTypeFilter,
         offset,
         limit,
       });
-      const response = { limit, offset, events: results.map(e => parseDbEvent(e)) };
-      setETagCacheHeaders(res);
-      res.status(200).json(response);
-    })
+      await reply.send({ limit, offset, events: results.map(e => parseDbEvent(e)) });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:tx_id',
-    txCacheHandler,
-    asyncHandler(async (req, res, next) => {
+    {
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_transaction_by_id',
+        summary: 'Get transaction',
+        description: `Retrieves transaction details for a given transaction ID`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdParamSchema,
+        }),
+        querystring: Type.Object({
+          event_limit: LimitParam(ResourceType.Event, undefined, undefined, 100),
+          event_offset: OffsetParam(),
+          unanchored: UnanchoredParamSchema,
+        }),
+        response: {
+          200: Type.Union([TransactionSchema, MempoolTransactionSchema]),
+        },
+      },
+    },
+    async (req, reply) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
         const baseURL = req.protocol + '://' + req.headers.host + '/';
         const url = new URL(req.url, baseURL);
-        return res.redirect('/extended/v1/tx/0x' + tx_id + url.search);
+        return reply.redirect('/extended/v1/tx/0x' + req.params.tx_id + url.search);
       }
 
-      const eventLimit = getPagingQueryLimit(ResourceType.Tx, req.query['event_limit'], 100);
+      const eventLimit = getPagingQueryLimit(ResourceType.Event, req.query['event_limit'], 100);
       const eventOffset = parsePagingQueryInput(req.query['event_offset'] ?? 0);
-      const includeUnanchored = isUnanchoredRequest(req, res, next);
+      const includeUnanchored = req.query.unanchored ?? false;
       validateRequestHexInput(tx_id);
 
-      const txQuery = await searchTx(db, {
+      const txQuery = await searchTx(fastify.db, {
         txId: tx_id,
         eventLimit,
         eventOffset,
         includeUnanchored,
       });
       if (!txQuery.found) {
-        res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
-        return;
+        throw new NotFoundError(`could not find transaction by ID`);
       }
-      setETagCacheHeaders(res, ETagType.transaction);
-      res.json(txQuery.result);
-    })
+      const result: Transaction | MempoolTransaction = txQuery.result;
+      await reply.send(result);
+    }
   );
 
-  router.get(
+  fastify.get(
     '/:tx_id/raw',
-    txCacheHandler,
-    asyncHandler(async (req, res) => {
+    {
+      preHandler: handleTransactionCache,
+      schema: {
+        operationId: 'get_raw_transaction_by_id',
+        summary: 'Get raw transaction',
+        description: `Retrieves a hex encoded serialized transaction for a given ID`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          tx_id: TransactionIdParamSchema,
+        }),
+        querystring: Type.Object({
+          event_limit: LimitParam(ResourceType.Event),
+          event_offset: OffsetParam(),
+        }),
+        response: {
+          200: RawTransactionResponseSchema,
+        },
+      },
+    },
+    async (req, reply) => {
       const { tx_id } = req.params;
       if (!has0xPrefix(tx_id)) {
-        return res.redirect('/extended/v1/tx/0x' + tx_id + '/raw');
+        return reply.redirect('/extended/v1/tx/0x' + tx_id + '/raw');
       }
       validateRequestHexInput(tx_id);
 
-      const rawTxQuery = await db.getRawTx(tx_id);
+      const rawTxQuery = await fastify.db.getRawTx(tx_id);
 
       if (rawTxQuery.found) {
-        const response: GetRawTransactionResult = {
+        const response = {
           raw_tx: rawTxQuery.result.raw_tx,
         };
-        setETagCacheHeaders(res, ETagType.transaction);
-        res.json(response);
+        await reply.send(response);
       } else {
-        res.status(404).json({ error: `could not find transaction by ID ${tx_id}` });
+        throw new NotFoundError(`could not find raw transaction by ID`);
       }
-    })
+    }
   );
 
-  router.get(
+  fastify.get(
     '/block/:block_hash',
-    cacheHandler,
-    asyncHandler(async (req, res) => {
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        deprecated: true,
+        operationId: 'get_transactions_by_block_hash',
+        summary: 'Transactions by block hash',
+        description: `**NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
+
+        Retrieves a list of all transactions within a block for a given block hash.`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          block_hash: Type.String(),
+        }),
+        querystring: Type.Object({
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Tx, undefined, undefined, 200),
+        }),
+        response: {
+          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
+        },
+      },
+    },
+    async (req, reply) => {
       const { block_hash } = req.params;
 
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit'], 200);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
       validateRequestHexInput(block_hash);
-      const result = await db.getTxsFromBlock({ hash: block_hash }, limit, offset);
+      const result = await fastify.db.getTxsFromBlock({ hash: block_hash }, limit, offset);
       if (!result.found) {
-        res.status(404).json({ error: `no block found by hash ${block_hash}` });
-        return;
+        throw new NotFoundError(`no block found by hash`);
       }
       const dbTxs = result.result;
       const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
 
-      const response: TransactionResults = {
+      await reply.send({
         limit: limit,
         offset: offset,
         total: dbTxs.total,
         results: results,
-      };
-      if (!isProdEnv) {
-        const schemaPath =
-          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
-        await validate(schemaPath, response);
-      }
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+      });
+    }
   );
 
-  router.get(
+  fastify.get(
     '/block_height/:height',
-    cacheHandler,
-    asyncHandler(async (req, res, next) => {
-      const height = getBlockHeightPathParam(req, res, next);
+    {
+      preHandler: handleChainTipCache,
+      schema: {
+        deprecated: true,
+        operationId: 'get_transactions_by_block_height',
+        summary: 'Transactions by block height',
+        description: `**NOTE:** This endpoint is deprecated in favor of [Get transactions by block](/api/get-transactions-by-block).
+
+        Retrieves all transactions within a block at a given height`,
+        tags: ['Transactions'],
+        params: Type.Object({
+          height: BlockHeightSchema,
+        }),
+        querystring: Type.Object({
+          offset: OffsetParam(),
+          limit: LimitParam(ResourceType.Tx),
+        }),
+        response: {
+          200: PaginatedResponse(TransactionSchema, { description: 'List of transactions' }),
+        },
+      },
+    },
+    async (req, reply) => {
+      const height = req.params.height;
 
       const limit = getPagingQueryLimit(ResourceType.Tx, req.query['limit']);
       const offset = parsePagingQueryInput(req.query['offset'] ?? 0);
-      const result = await db.getTxsFromBlock({ height: height }, limit, offset);
+      const result = await fastify.db.getTxsFromBlock({ height: height }, limit, offset);
       if (!result.found) {
-        res.status(404).json({ error: `no block found at height ${height}` });
-        return;
+        throw new NotFoundError(`no block found at height ${height}`);
       }
       const dbTxs = result.result;
       const results = dbTxs.results.map(dbTx => parseDbTx(dbTx));
 
-      const response: TransactionResults = {
+      await reply.send({
         limit: limit,
         offset: offset,
         total: dbTxs.total,
         results: results,
-      };
-      if (!isProdEnv) {
-        const schemaPath =
-          '@stacks/stacks-blockchain-api-types/api/transaction/get-transactions.schema.json';
-        await validate(schemaPath, response);
-      }
-      setETagCacheHeaders(res);
-      res.json(response);
-    })
+      });
+    }
   );
 
-  return router;
-}
+  await Promise.resolve();
+};
