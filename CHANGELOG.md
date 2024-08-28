@@ -1,3 +1,26 @@
+## [8.0.0](https://github.com/hirosystems/stacks-blockchain-api/compare/v7.14.1...v8.0.0) (2024-08-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* refactor from express to fastify (#2045)
+* refactor from Express to Fastify
+
+### Features
+
+* cursor-based pagination on blocks endpoint ([#2060](https://github.com/hirosystems/stacks-blockchain-api/issues/2060)) ([bfdcce1](https://github.com/hirosystems/stacks-blockchain-api/commit/bfdcce1c2936980299c90bf36f3d45fe74bd573c))
+* export events tsv directly to postgres instance ([#2048](https://github.com/hirosystems/stacks-blockchain-api/issues/2048)) ([f401a0f](https://github.com/hirosystems/stacks-blockchain-api/commit/f401a0f676ced14572b9f3f263dcc8559e831cdf))
+* refactor from Express to Fastify ([aa0e51e](https://github.com/hirosystems/stacks-blockchain-api/commit/aa0e51e557491daff1a98dd36c4e952e05c58dd4)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+* refactor from express to fastify ([#2045](https://github.com/hirosystems/stacks-blockchain-api/issues/2045)) ([bd65fcf](https://github.com/hirosystems/stacks-blockchain-api/commit/bd65fcf93984c37a9de3cb284c43a49cb6b3694a)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+
+
+### Bug Fixes
+
+* missing event limit max overrides on a few endpoints ([4f70930](https://github.com/hirosystems/stacks-blockchain-api/commit/4f709308fb95721866b523142536b738aa64a3eb))
+* pagination and query param parsing bugs ([a382d2b](https://github.com/hirosystems/stacks-blockchain-api/commit/a382d2b80fc8d3e7ff49ce96047f1621749172b2)), closes [#2042](https://github.com/hirosystems/stacks-blockchain-api/issues/2042)
+* perform status endpoint sql inside transactions ([b23445c](https://github.com/hirosystems/stacks-blockchain-api/commit/b23445c85f826d0e6cf98695f985c3670d00c1db))
+* tx event-limit default should be 100 ([32d0670](https://github.com/hirosystems/stacks-blockchain-api/commit/32d0670a531582b8eb269790fa7a3695a8ce7610))
+
 ## [8.0.0-beta.6](https://github.com/hirosystems/stacks-blockchain-api/compare/v8.0.0-beta.5...v8.0.0-beta.6) (2024-08-27)
 
 
