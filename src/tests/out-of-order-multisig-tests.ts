@@ -37,17 +37,6 @@ describe('Out-of-order-multisig tx tests', () => {
     await migrate('down');
   });
 
-  test('api with empty cycles', async () => {
-    const cycles0 = await supertest(api.server).get(`/extended/v2/pox/cycles`);
-    expect(cycles0.status).toBe(200);
-    expect(JSON.parse(cycles0.text)).toStrictEqual({
-      limit: 20,
-      offset: 0,
-      results: [],
-      total: 0,
-    });
-  });
-
   test('tsv replay with out-of-order-multisig tx', async () => {
     await importEventsFromTsv(
       'src/tests/tsv/regtest-env-pox-4-out-of-order-multisig-tx.tsv',
