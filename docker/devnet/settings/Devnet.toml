@@ -73,6 +73,7 @@ balance = 100_000_000_000_000
 # btc_address: mjSrB3wS4xab3kYqFktwBzfTdPg367ZJ2d
 
 [devnet]
+use_docker_gateway_routing = true
 disable_stacks_explorer = true
 disable_stacks_api = true
 # disable_subnet_api = false
@@ -99,7 +100,8 @@ stacks_api_events_port = 3700
 postgres_port = 5490
 # postgres_username = "postgres"
 # postgres_password = "postgres"
-# postgres_database = "postgres"
+postgres_database = "postgres"
+# postgres_database = "stacks_blockchain_api"
 # bitcoin_node_image_url = "quay.io/hirosystems/bitcoind:26.0"
 # stacks_node_image_url = "quay.io/hirosystems/stacks-node:devnet-2.5"
 # stacks_signer_image_url = "quay.io/hirosystems/stacks-signer:devnet-2.5"

@@ -1,7 +1,7 @@
 FROM --platform=$BUILDPLATFORM rust:1.68-alpine as builder
 
 ARG CLARINET_VERSION=v2.8.0
-WORKDIR /usr/src/clarinet
+WORKDIR /usr/src/
 
 RUN apk add --no-cache \
     git \
@@ -32,7 +32,7 @@ RUN apk add --no-cache \
 RUN usermod -aG docker root
 
 # Copy Clarinet binary from builder stage
-COPY --from=builder /usr/src/clarinet/clarinet/target/release/clarinet /usr/local/bin/clarinet
+COPY --from=builder /usr/src/clarinet/target/release/clarinet /usr/local/bin/clarinet
 
 WORKDIR /app
 

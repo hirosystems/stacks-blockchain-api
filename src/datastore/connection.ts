@@ -26,18 +26,18 @@ export function getPgConnectionEnvValue(
 }
 
 export function getConnectionArgs(server: PgServer = PgServer.default): PgConnectionArgs {
-  return (
-    getPgConnectionEnvValue('CONNECTION_URI', server) ?? {
-      database: getPgConnectionEnvValue('DATABASE', server),
-      user: getPgConnectionEnvValue('USER', server),
-      password: getPgConnectionEnvValue('PASSWORD', server),
-      host: getPgConnectionEnvValue('HOST', server),
-      port: parseInt(getPgConnectionEnvValue('PORT', server) ?? '5432'),
-      ssl: getPgConnectionEnvValue('SSL', server) == 'true',
-      schema: getPgConnectionEnvValue('SCHEMA', server),
-      application_name: getPgConnectionEnvValue('APPLICATION_NAME', server),
-    }
-  );
+  const conn = getPgConnectionEnvValue('CONNECTION_URI', server) ?? {
+    database: getPgConnectionEnvValue('DATABASE', server),
+    user: getPgConnectionEnvValue('USER', server),
+    password: getPgConnectionEnvValue('PASSWORD', server),
+    host: getPgConnectionEnvValue('HOST', server),
+    port: parseInt(getPgConnectionEnvValue('PORT', server) ?? '5432'),
+    ssl: getPgConnectionEnvValue('SSL', server) == 'true',
+    schema: getPgConnectionEnvValue('SCHEMA', server),
+    application_name: getPgConnectionEnvValue('APPLICATION_NAME', server),
+  };
+  console.log(conn);
+  return conn;
 }
 
 export function getConnectionConfig(server: PgServer = PgServer.default): PgConnectionOptions {

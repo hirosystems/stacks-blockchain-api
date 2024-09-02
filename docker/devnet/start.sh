@@ -2,22 +2,11 @@
 
 set -x  # Enable debugging output
 
-# Clean up existing network and containers
-docker network rm devnet.devnet || true
-docker rm -f $(docker ps -a -q --filter name=devnet.devnet) || true
+sh -c dockerd-entrypoint.sh &
 
-# List existing networks and containers
-echo "Existing networks:"
-docker network ls
-echo "Existing containers:"
-docker ps -a
-
-
-netstat -tuln | grep 18443
-netstat -tuln | grep 18453
-
-mkdir /app/.cache
-
-# Start Clarinet devnet
-sh -c dockerd-entrypoint.sh
+until [ -S /var/run/docker.sock ]; do
+  echo "Waiting for Docker to start..."
+  sleep 1
+done
+echo "starting clarinet devnet"
 /usr/local/bin/clarinet devnet start --no-dashboard --manifest-path /app/Clarinet.toml
