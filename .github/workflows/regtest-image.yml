@@ -96,7 +96,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4.1.7
         with:
           name: stacks-node-bin
           path: docker/stacks-blockchain-binaries
