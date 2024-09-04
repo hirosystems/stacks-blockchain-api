@@ -3,6 +3,9 @@
 
 ### ⚠ BREAKING CHANGES
 
+> [!NOTE]
+> The client version number is synchronized with the API's version number, necessitating a major version bump. This does _not_ require DB restore.
+
 * refactor from express to fastify (#2045)
 * refactor from Express to Fastify
 

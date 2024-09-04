@@ -9,11 +9,11 @@
 
 ### Local
 
-This service requires `postgres`, `stacks-node`, `bitcoind`, and a few other components in order to run. 
+This service requires `postgres`, `stacks-node`, `bitcoind`, and a few other components in order to run.
 The [`clarinet`](https://github.com/hirosystems/clarinet) project provides an easy way to spin up the API and all these services:
 > clarinet devnet - a local standalone development environment that simulates Bitcoin, Stacks node and other helpful components, similar to a staging environment.
 
-Get started at https://docs.hiro.so/clarinet/getting-started 
+Get started at https://docs.hiro.so/clarinet/getting-started
 
 ### Production
 
@@ -36,7 +36,7 @@ Check to see if the server started successfully by visiting http://localhost:399
 
 ## Local Development
 
-To run the server, run `npm run dev:integrated`, which uses docker-compose to deploy the service dependencies (e.g., PostgreSQL, Stacks core node, etc.). 
+To run the server, run `npm run dev:integrated`, which uses docker-compose to deploy the service dependencies (e.g., PostgreSQL, Stacks core node, etc.).
 
 You'll have a server on port 3999.
 
@@ -52,7 +52,7 @@ We recommend running the API database on PostgreSQL version 14 or newer for opti
 
 ## Upgrading
 
-If upgrading the API to a new major version (e.g., `3.0.0` to `4.0.0`), then the Postgres database from the previous version will not be compatible, and the process will fail to start.
+If upgrading the API to a new major version (e.g., `3.0.0` to `4.0.0`), then the Postgres database from the previous version will likely be incompatible, and the process will fail to start. However, in some cases, the major versions are for client library changes (which are synced with the api version number). Check the changelog if you're unclear.
 
 [Event Replay](#event-replay) must be used when upgrading major versions. Follow the event replay [instructions](#event-replay-instructions) below. Failure to do so will require wiping the Stacks Blockchain chain state data and the API Postgres database and re-syncing from scratch.
 
@@ -170,7 +170,7 @@ To run the new event-replay, please follow the instructions at [stacks-event-rep
    * `archival` (default): The process will import and ingest *all* blockchain events that have
      happened since the first block.
    * `pruned`: The import process will ignore some prunable events (mempool, microblocks) until the
-     import block height has reached `chain tip - 256` blocks. This saves considerable 
+     import block height has reached `chain tip - 256` blocks. This saves considerable
      time during import but sacrifices some historical data. You can use this mode if you're mostly
      interested in running an API that prioritizes real-time information.
 
@@ -189,7 +189,7 @@ Please **do not** use the issue tracker for personal support requests or to ask 
 Development of this product happens in the open on GitHub, and we are grateful to the community for contributing bug fixes and improvements. Read below to learn how you can take part in improving the product.
 
 ### Code of Conduct
-Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it. 
+Please read our [Code of Conduct](../../../.github/blob/main/CODE_OF_CONDUCT.md) since we expect project participants to adhere to it.
 
 ### Contributing Guide
 
@@ -199,7 +199,7 @@ Hiro welcomes all contributions to Hiro documentation. These contributions come 
 
 Bugs, feature requests, and development-related questions should be directed to our [GitHub issues tracker](https://github.com/hirosystems/stacks-blockchain-api/issues/new).
 
-If reporting a bug, try to provide as much context as possible and anything else that might be relevant to the describe the issue.  If possible include a simple test case that we can use to reproduce the problem on our own. 
+If reporting a bug, try to provide as much context as possible and anything else that might be relevant to the describe the issue.  If possible include a simple test case that we can use to reproduce the problem on our own.
 
 For feature requests, please explain what you're trying to do, and how the requested feature would be a complement to the project.
 
