@@ -4,7 +4,8 @@
 ### ⚠ BREAKING CHANGES
 
 > [!NOTE]
-> The client version number is synchronized with the API's version number, necessitating a major version bump. This does _not_ require DB restore.
+> This is only a breaking change because significant changes were made to the JavaScript client library's interface and how its types are generated, and because its library version always matches the API version.
+> There are **no changes** to endpoints or database schemas that necessitate a full Stacks node event replay i.e. you may upgrade to v8.0.0 from v7.x directly.
 
 * refactor from express to fastify (#2045)
 * refactor from Express to Fastify
